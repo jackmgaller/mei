@@ -1,4 +1,4 @@
-"""Region backdrops (docs/WORLDKIT.md, "Backdrops"): a sky and a horizon silhouette drawn by the
+"""Region backdrops (docs/WORLDKIT-REFERENCE.md, "Backdrops"): a sky and a horizon silhouette drawn by the
 Horizon Engine (docs/PLANES.md) behind the 3D world, at no GPU cost.
 
 The sky is a gradient on the plane chip's backdrop colour, by elevation above the horizon: the

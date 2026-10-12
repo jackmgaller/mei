@@ -1,4 +1,4 @@
-"""Impostors: an asset's far level as a few cut-out pictures of itself (docs/ASSETKIT.md, "Impostors").
+"""Impostors: an asset's far level as a few cut-out pictures of itself (docs/ASSETKIT-REFERENCE.md, "Impostors").
 
 `render(recipe, base, view, ppu)` draws the asset's level 0 orthographically, as the console would
 colour it (textures, palette-backed colours and the baked shade), from the front (looking along +Z),

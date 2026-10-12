@@ -1,4 +1,4 @@
-"""Pairs a native mesh's triangles into quads (WORLDKIT.md, "Quads").
+"""Pairs a native mesh's triangles into quads (WORLDKIT-REFERENCE.md, "Quads").
 
     mesh = pair(mesh)       # the same picture, fewer faces
 

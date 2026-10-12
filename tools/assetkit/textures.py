@@ -1,6 +1,6 @@
 """Textured materials: sources (patterns, texel grids, PNG images, sheets), quantisation,
 projections (UVs), splitting faces that span too many texels of a repeating texture, and the
-default placement of a single asset's textures (docs/ASSETKIT.md, "Textures").
+default placement of a single asset's textures (docs/ASSETKIT-REFERENCE.md, "Textures").
 
 The order of work in compile_recipe():
 

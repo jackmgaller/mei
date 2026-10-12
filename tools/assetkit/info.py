@@ -1,4 +1,4 @@
-"""`mei_assets.py info` and `floors` (docs/ASSETKIT.md, "Quick facts"): what placing an asset
+"""`mei_assets.py info` and `floors` (docs/ASSETKIT-REFERENCE.md, "Quick facts"): what placing an asset
 costs and where its collision can be stood on, from the recipe alone (nothing is rendered or
 written).
 

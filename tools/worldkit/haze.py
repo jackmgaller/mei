@@ -1,4 +1,4 @@
-"""Aerial perspective (docs/WORLDKIT.md, "Haze"): far geometry fades toward the colour of the sky at
+"""Aerial perspective (docs/WORLDKIT-REFERENCE.md, "Haze"): far geometry fades toward the colour of the sky at
 the horizon, so it recedes instead of reading as dark blocks.
 
 Nothing is computed at run time. What is drawn far off is already separate data, so the kit

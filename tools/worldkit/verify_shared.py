@@ -1,6 +1,6 @@
 """Everything the World Checker takes from the Asset Kit, in one place.
 
-These are the shared-core pieces docs/WORLDKIT.md says both kits should import (NumPy loading,
+These are the shared-core pieces docs/WORLDKIT-DESIGN.md says both kits should import (NumPy loading,
 PNG writing, the triangle-ID colour code, the ID-buffer diagnostic picture). They live in
 tools/assetkit/ today and are expected to move to tools/kitcore/; when they do, only this
 module changes.

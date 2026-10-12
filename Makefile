@@ -61,7 +61,7 @@ $(B)/carts/$(1).mei: $(call SRC_EXT,carts/$(1)/$(1)) $(call CART_FILES,$(1)) $(S
 endef
 $(foreach c,$(LANG_CARTS),$(eval $(call LANG_CART_RULE,$(notdir $(c:.mei=)))))
 
-# Carts that use worlds (docs/WORLDKIT.md, "Using a world in a cart"). carts/NAME/worlds.txt
+# Carts that use worlds (docs/WORLDKIT-REFERENCE.md, "Using a world in a cart"). carts/NAME/worlds.txt
 # lists World Kit recipes, one repository path per line (# starts a comment). Each recipe is
 # built once into $(B)/worlds/<its folder>/ (the World Checker runs, report-only, and prints a
 # summary); tools/world_cart.py writes the sources it read to build.d, so editing any of them

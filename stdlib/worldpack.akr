@@ -1032,7 +1032,7 @@ const __WP_ACROSS: [4]vec3 = [vec3(0.0625, 0.0, 0.0), vec3(0.0, 0.0, 0.0625),
 // it, wp_hit.y its height under that side's point). The first direction in that order that
 // bridges wins. With none, the answer is wp_floor()'s again. A gap narrower than span - 1/8 is
 // bridged across its line, and one narrower than 0.92 (span - 1/8) at any angle; a gap wider
-// than span is never bridged, nor is an edge with no floor beyond it (WORLDKIT.md, "Cracks").
+// than span is never bridged, nor is an edge with no floor beyond it (WORLDKIT-REFERENCE.md, "Cracks").
 fn wp_floor_across(p: vec3, above: fixed, below: fixed, span: fixed) -> bool {
     let lo = p.y - below
     let found = wp_floor(p, above)
@@ -1273,7 +1273,7 @@ fn wp_textures_load(k: s32) {
 }
 
 // Copies texture t of region k into its slot, unless that slot already holds it: a texture the
-// pack stores once for several regions (the stand-ins' common set, WORLDKIT.md) is copied on the
+// pack stores once for several regions (the stand-ins' common set, WORLDKIT-REFERENCE.md) is copied on the
 // first region entry only. The reader remembers what it copied into each
 // slot since wp_open(); a game that writes a world's slot itself calls wp_textures_forget().
 fn wp_texture_load(k: s32, t: s32) {
@@ -1392,7 +1392,7 @@ fn wp_backdrop_load(k: s32) {
 // texture set holds) and sets wp_region_loaded = k, so near cells of other regions, whose
 // textures are not loaded, draw as their stand-ins. About 56,000 cycles a 32 KB texture slot:
 // call it where the player cannot see a region's textured cells, or spread a swap over frames
-// with wp_texture_load() (WORLDKIT.md, "Region seams").
+// with wp_texture_load() (WORLDKIT-REFERENCE.md, "Region seams").
 fn wp_region_enter(k: s32, v: s32) {
     if k < 0 || k >= wp_pack.region_count as s32 { return }
     wp_textures_load(k)

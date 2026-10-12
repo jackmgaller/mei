@@ -178,7 +178,7 @@ class TerrainAsset:
 
 class TerrainTextures:
     """What RegionTextures needs of the terrain's textured materials: an asset's name, materials
-    and textures (WORLDKIT.md, "Textured terrain"). A material with faces drawn through a texture
+    and textures (WORLDKIT-REFERENCE.md, "Textured terrain"). A material with faces drawn through a texture
     window also brings its tile as loaded, as 'MATERIAL window'."""
     textured = True
 
@@ -283,7 +283,7 @@ def compile_world(source, lock=None, assets_dir=None):
 
     def on_ground(spec, path, cs):
         """A placement's or entity's position: as given, or on the ground ([x, z], or drop) and
-        lifted (WORLDKIT.md, "On the ground")."""
+        lifted (WORLDKIT-REFERENCE.md, "On the ground")."""
         pos = spec['position']
         drop = spec.get('drop', False)
         if len(pos) == 3 and not drop:
@@ -514,7 +514,7 @@ def compile_world(source, lock=None, assets_dir=None):
         return P.Lod(levels, entry['band'])
 
     def chunk_levels(sname, sc, batch, rp, centre):
-        """A scatter chunk's levels with "lod": "assets" (WORLDKIT.md, "Scatter"): a level wherever
+        """A scatter chunk's levels with "lod": "assets" (WORLDKIT-REFERENCE.md, "Scatter"): a level wherever
         one of its assets switches level or is culled, at that asset's own distance (the world's
         lod overrides and scale applied), each level the merge of every prop at the level its
         asset draws there, without the props culled by then; a cull mark once every prop is culled,
@@ -1032,7 +1032,7 @@ def compile_world(source, lock=None, assets_dir=None):
             if piece.kind == 'field':
                 field_src[len(cell.placements)] = levels[-1][1] if levels and levels[-1][1] else base
             if piece.kind == 'field' and ground_lod:
-                # far ground (WORLDKIT.md, "Levels of detail"): grids resampled from level 0, each
+                # far ground (WORLDKIT-REFERENCE.md, "Levels of detail"): grids resampled from level 0, each
                 # kept only where it has fewer faces than the level before it
                 # resampled from the coarsest level there is: with textured ground that level is
                 # drawn in the textures' far colours, which suit the distance
@@ -1086,7 +1086,7 @@ def compile_world(source, lock=None, assets_dir=None):
         hz.levels = haze_levels
 
     if w.get('meshes', {}).get('quads'):
-        # pairs of triangles drawn as quads (WORLDKIT.md, "Quads"): the same pictures, fewer faces;
+        # pairs of triangles drawn as quads (WORLDKIT-REFERENCE.md, "Quads"): the same pictures, fewer faces;
         # at level 0 double-sided faces (cutout cards) stay triangles, sorted nearest first one by
         # one, which keeps the overdraw of a crown of cards filling the screen down
         paired = {}
@@ -1346,7 +1346,7 @@ def standin_triangles(binary):
 
 
 def standin_size(binary, position=None, yaw=0.0, scale=1.0):
-    """The sort key of a piece of a capped stand-in, largest first (WORLDKIT.md, "Stand-ins made by
+    """The sort key of a piece of a capped stand-in, largest first (WORLDKIT-REFERENCE.md, "Stand-ins made by
     the kit"): its bounding box's height times its larger horizontal side, then its footprint."""
     nv, _, vo = struct.unpack_from('<HHI', binary)
     if not nv:

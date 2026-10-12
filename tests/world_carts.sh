@@ -1,5 +1,5 @@
 #!/bin/sh
-# make's handling of carts that use worlds (docs/WORLDKIT.md, "Using a world in a cart"), checked
+# make's handling of carts that use worlds (docs/WORLDKIT-REFERENCE.md, "Using a world in a cart"), checked
 # on World Viewer (carts/worldview/worlds.txt). make test-carts runs it once it has built
 # $B/carts/worldview.mei. Nothing in the repository changes: make -W pretends a file was edited,
 # and the recipes edited below are copies in $B/world-carts-test/.

@@ -1,4 +1,4 @@
-"""Occlusion zones (WORLDKIT.md, "Occlusion"; WORLDPACK.md, "Occlusion zones").
+"""Occlusion zones (WORLDKIT-REFERENCE.md, "Occlusion"; WORLDPACK.md, "Occlusion zones").
 
 A world recipe declares occluders (boxes or quads that are solid: inside walls, floors, roofs)
 and camera zones (boxes the eye can be in). For each zone the kit works out which placements of

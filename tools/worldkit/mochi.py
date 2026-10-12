@@ -1,5 +1,5 @@
-"""Mochi: a small language for the World Kit's game schema (docs/WORLDKIT.md, "Built: the game
-schema"). A thin front end: parse() turns Mochi text into exactly the dict the JSON form (format
+"""Mochi: a small language for the World Kit's game schema (docs/WORLDKIT-REFERENCE.md, "Game data
+and stable IDs"). A thin front end: parse() turns Mochi text into exactly the dict the JSON form (format
 mei-world-game) loads as, so the kit's own validation runs on it unchanged; format() turns such
 a dict back into canonical Mochi. Types only: no expressions, includes or macros.
 

@@ -641,7 +641,7 @@ class BuildTests(unittest.TestCase):
                 ex.build(Path(tmp)/'out')
             self.assertFalse((Path(tmp)/'out'/'test_room.world.bin').exists())
             # In a world drawn with the depth buffer the crossing boxes are drawn right: its assets
-            # are checked in depth mode, and so is the world (docs/WORLDKIT.md, "Depth mode").
+            # are checked in depth mode, and so is the world (docs/WORLDKIT-REFERENCE.md, "Depth mode").
             ex.edit(lambda w: w.update(runtime={'depth': True, 'perspective': True}))
             if not (COMPILER.parent/'mei-scene-probe').exists():
                 return
@@ -719,7 +719,7 @@ def t_junctions(tris):
 
 
 class TerrainTests(unittest.TestCase):
-    """Ground heightfields and sweeps (WORLDKIT.md, "Terrain")."""
+    """Ground heightfields and sweeps (WORLDKIT-REFERENCE.md, "Terrain")."""
 
     def error(self, tmp, **kw):
         with self.assertRaises(WorldError) as caught:
@@ -1163,7 +1163,7 @@ def raw_mesh(verts, faces):
 
 class FarLodTests(unittest.TestCase):
     """Levels of detail for distance: quads, far ground, scatter levels from the assets, thinning,
-    sweep culls, cull-only recipes and stand-ins made by the kit (WORLDKIT.md)."""
+    sweep culls, cull-only recipes and stand-ins made by the kit (WORLDKIT-REFERENCE.md)."""
 
     def test_quads_pair_flat_convex_pairs_only(self):
         from worldkit import quads
@@ -1467,7 +1467,7 @@ def no_policies(ex):
 
 @pillow
 class TextureTests(unittest.TestCase):
-    """Textures in worlds (WORLDKIT.md, "Textures per region"), on the night market example."""
+    """Textures in worlds (WORLDKIT-REFERENCE.md, "Textures per region"), on the night market example."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -2205,7 +2205,7 @@ class QuickToolTests(unittest.TestCase):
 
 
 class OcclusionTests(unittest.TestCase):
-    """Occlusion zones (WORLDKIT.md, "Occlusion"): the recipe's occluders and zones, the sets the
+    """Occlusion zones (WORLDKIT-REFERENCE.md, "Occlusion"): the recipe's occluders and zones, the sets the
     kit works out, its errors and warnings, and the World Checker's leak check."""
     WALL = {'box': [[28.1, 0.1, 41.85], [35.9, 4.9, 42.15]]}     # inside test_room's climb wall
     FRONT = {'box': [[30, 1, 33], [34, 2.5, 38]]}

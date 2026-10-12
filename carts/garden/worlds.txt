@@ -1,2 +1,2 @@
-# The world the garden runs on (docs/WORLDKIT.md, "Using a world in a cart").
+# The world the garden runs on (docs/WORLDKIT-REFERENCE.md, "Using a world in a cart").
 carts/garden/shrinetown/shrinetown.world.json

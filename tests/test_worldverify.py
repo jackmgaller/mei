@@ -222,7 +222,7 @@ class StaticTests(unittest.TestCase):
 
     def test_bridged_cracks_are_not_cracks(self):
         """A probe with a bridge leaves out the cracks and mismatched edges the game's floor query
-        (wp_floor_across) steps across, and keeps those wider than it (WORLDKIT.md, "Cracks")."""
+        (wp_floor_across) steps across, and keeps those wider than it (WORLDKIT-REFERENCE.md, "Cracks")."""
         bridge = {'radius': 0.3, 'height': 1.6, 'step': 0.32, 'bridge': 0.4375}
         found, _ = self.check_static(F.crack_world(), settings={'probe': bridge})
         self.assertEqual(found, [])

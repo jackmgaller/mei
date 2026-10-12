@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Mei Asset Kit: agent-first procedural 3D modeling and native render feedback.
 
-Run `python3 tools/mei_assets.py schema` for the complete recipe contract, or
-read docs/ASSETKIT.md. Command results and errors are JSON on stdout, except that preview and
-verify print a one-screen summary (--json: the full report) and info and floors plain text.
+Run `python3 tools/mei_assets.py schema` for the complete recipe contract, or read
+docs/ASSETKIT.md (the guide) and docs/ASSETKIT-REFERENCE.md. Command results and errors are JSON
+on stdout, except that preview and verify print a one-screen summary (--json: the full report)
+and info and floors plain text.
 """
 import json
 import os

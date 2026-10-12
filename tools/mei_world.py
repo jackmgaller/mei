@@ -2,8 +2,8 @@
 """Mei World Kit: agent-first world recipes (cells, regions, layers, game data) to world packs.
 
 Run `python3 tools/mei_world.py schema` for the complete recipe contract (the game schema's
-Mochi form is described under $defs/game x-mochi), or read docs/WORLDKIT.md. All command results
-and errors are JSON on stdout; exit 0 or 1. The quick tools (check, floors, textures, cracks) print
+Mochi form is described under $defs/game x-mochi), or read docs/WORLDKIT.md (the guide) and
+docs/WORLDKIT-REFERENCE.md. All command results and errors are JSON on stdout; exit 0 or 1. The quick tools (check, floors, textures, cracks) print
 plain text, or JSON with --json.
 """
 import os

@@ -35,7 +35,7 @@ AKARI_KEYWORDS = {'fn','var','let','const','struct','enum','if','else','while','
                   'continue','return','import','asm','reg','embed','as','true','false','null','cart',
                   'assert','assert_eq','private','sizeof','len'}
 
-# A stand-in's limits (WORLDKIT.md, "Stand-ins made by the kit"), for the world and per cell.
+# A stand-in's limits (WORLDKIT-REFERENCE.md, "Stand-ins made by the kit"), for the world and per cell.
 STANDIN_LIMITS = {
     'triangles':dict(integer(1,4000),description='At most this many triangles as drawn (a quad is 2): the cell\'s ground first, then its other contents largest first, each whole or not at all. Default: no cap.'),
     'ground':dict(choice(4,8,16,32,64),description='The ground as a grid of this many units resampled over the cell\'s field tiles, in place of the level they draw at distance. Default: that level.')}
@@ -51,7 +51,7 @@ PLACEMENT = obj({
     'collision':{'type':'string','pattern':r'^[a-z][a-z0-9_]{0,47}$',
                  'description':'"self" (the asset\'s own mesh), "none", or a companion collision asset recipe.'},
     'merge':dict(BOOL,description='Merge this static prop with the cell\'s other merged props into one mesh per layer (trades ROM for the ~500-cycle cost per drawn placement). Default false.'),
-    'ground':dict(BOOL,description='Ground: drawn before everything else near the camera, so nothing standing on it is drawn behind it. Only for surfaces nothing can be seen through or behind: open floors with nothing below them (WORLDKIT.md, "Ground"). Default false.'),
+    'ground':dict(BOOL,description='Ground: drawn before everything else near the camera, so nothing standing on it is drawn behind it. Only for surfaces nothing can be seen through or behind: open floors with nothing below them (WORLDKIT-REFERENCE.md, "Ground"). Default false.'),
 }, ['id','asset','position','collision'])
 
 ENTITY = obj({
@@ -126,9 +126,9 @@ HEIGHTFIELD = obj({
     'tile':dict(choice(4,8,16,32,64,128),description='Units per side of a tile: one mesh and one placement. At most a cell and 32 quads. Default: a cell, or 16 quads if that is less.'),
     'tolerance':dict(number(0,1),description='How far (units) level 0 may stray from the samples where flat or evenly sloping quads are merged. Default 0.001.'),
     'shading':dict(choice('smooth','flat'),description='smooth (default): each sample shaded by the field\'s normal there, so shading runs on across seams; flat: each face by its own.'),
-    'ground':dict(BOOL,description='Drawn in the ground pass (WORLDKIT.md, "Ground"). Default true.'),
+    'ground':dict(BOOL,description='Drawn in the ground pass (WORLDKIT-REFERENCE.md, "Ground"). Default true.'),
     'collision':dict(BOOL,description='The field\'s faces are collision triangles. Default true.'),
-    'slide_floor_degrees':dict(number(1,89),description='The field\'s faces steeper than the game\'s floor_max_degrees, up to this slope, are floors as well as walls: the wall stops a body moving into them, the floor catches a falling one, which the game slides down, where between walls alone it can sink through the ground (WORLDKIT.md, "Steep ground"). Default: none, walls only.'),
+    'slide_floor_degrees':dict(number(1,89),description='The field\'s faces steeper than the game\'s floor_max_degrees, up to this slope, are floors as well as walls: the wall stops a body moving into them, the floor catches a falling one, which the game slides down, where between walls alone it can sink through the ground (WORLDKIT-REFERENCE.md, "Steep ground"). Default: none, walls only.'),
     'lod':dict(FIELD_LOD,description='A coarser level of every tile, for distance.'),
 }, ['spacing','min','max','material'])
 TERRAIN_MATERIAL = obj({
@@ -137,7 +137,7 @@ TERRAIN_MATERIAL = obj({
     'tag':dict(NAME,description='A surface tag, mapped to the collision surface byte by collision.surfaces.'),
     'share':dict(BOOL,description='As an Asset Kit material\'s: false gives the material a palette entry of its own. Default true.'),
     'water':dict(BOOL,description='Water: semi-transparent (half blend), no collision, not ground; its upward faces answer the reader\'s wp_water() with the tag\'s surface byte. For water operations and water sweeps. Default false.'),
-    'texture':dict(ASSET_TEXTURE,description='A texture repeating in world coordinates (WORLDKIT.md, "Textured terrain"): an Asset Kit texture\'s pattern, texels or image (relative to the world file), without holes, projection box (default) or planar (default axis y), scale in units a repeat, and span. It joins the region\'s texture set; the material has a palette entry only for a field\'s coarse level (the texture\'s mean colour).'),
+    'texture':dict(ASSET_TEXTURE,description='A texture repeating in world coordinates (WORLDKIT-REFERENCE.md, "Textured terrain"): an Asset Kit texture\'s pattern, texels or image (relative to the world file), without holes, projection box (default) or planar (default axis y), scale in units a repeat, and span. It joins the region\'s texture set; the material has a palette entry only for a field\'s coarse level (the texture\'s mean colour).'),
 }, ['color'])
 SWEEP = obj({
     'profile':dict(array(array(NUM,2,2),2,64),description='[[x, y], ...]: the cross-section, x to the right of the path\'s direction, y up from its line. Each edge faces to its left (an edge drawn from left to right faces up).'),
@@ -200,7 +200,7 @@ PATH_SPEC = obj({
     'raised':dict(BOOL,description='Raised: not lying on the ground (a rail, a wire, a jib). Carried to the pack for the game; a raised path\'s sweep is not ground. Default false.'),
     'closed':dict(BOOL,description='A loop: the last point joins the first. Default false.'),
     'tag':dict(NAME,description='A surface tag, mapped to the pack\'s surface byte by collision.surfaces as material tags are.'),
-    'sweep':dict(SWEEP,description='A profile swept along the path: geometry and collision the kit makes and cuts per cell (WORLDKIT.md, "Terrain"), in the world\'s terrain materials.'),
+    'sweep':dict(SWEEP,description='A profile swept along the path: geometry and collision the kit makes and cuts per cell (WORLDKIT-REFERENCE.md, "Terrain"), in the world\'s terrain materials.'),
 }, ['points'])
 
 RESERVED = 'is reserved for a later version of the World Kit and not supported yet.'
@@ -267,7 +267,7 @@ REGION = dict(obj({
     'variants':{'type':'object','propertyNames':NAME,'additionalProperties':VARIANT,'maxProperties':64,
                 'description':'Named palette variants, in order; the kit does not know what they mean. Default: one, "default".'},
     'textures':dict(TEXTURES,description='The region\'s texture set: its slots and VRAM budget (default: the world\'s textures).'),
-    'backdrop':dict(BACKDROP,description='A sky gradient and a horizon silhouette drawn by the plane chip behind the world (WORLDKIT.md, "Backdrops").'),
+    'backdrop':dict(BACKDROP,description='A sky gradient and a horizon silhouette drawn by the plane chip behind the world (WORLDKIT-REFERENCE.md, "Backdrops").'),
 }),**{'x-unknown':{'audio':'Region audio '+RESERVED}})
 
 WORLD = dict(obj({
@@ -305,13 +305,13 @@ WORLD = dict(obj({
         'ground':dict(array(obj({'distance':POS,
                                  'grid':dict(choice(4,8,16,32,64),description='Units per side of the level\'s squares.')},
                                 ['distance','grid']),1,4),
-                      description='Far levels of every field tile, coarsest last: a regular grid resampled from the tile\'s level 0, with skirts where its edges could open cracks (WORLDKIT.md, "Levels of detail").'),
+                      description='Far levels of every field tile, coarsest last: a regular grid resampled from the tile\'s level 0, with skirts where its edges could open cracks (WORLDKIT-REFERENCE.md, "Levels of detail").'),
         'sweeps':dict(obj({'cull':dict(POS,description='Sweeps\' pieces are not drawn from this distance (units, eye to the piece\'s centre).'),
                            'paths':{'type':'object','propertyNames':NAME,'maxProperties':4096,
                                     'additionalProperties':obj({'cull':{'anyOf':[POS,{'type':'null'}]}}),
                                     'description':'Per sweep (its path\'s name): its own cull distance; null: never culled.'}}),
                       description='Cull distances for swept profiles, which have no levels of their own.'),
-     }),description='Levels of detail: the switch distances the pack stores for assets whose recipe has lod (WORLDKIT.md, "Levels of detail").'),
+     }),description='Levels of detail: the switch distances the pack stores for assets whose recipe has lod (WORLDKIT-REFERENCE.md, "Levels of detail").'),
     'runtime':dict(obj({'near_far':dict(number(1,2048),description='The near pass\'s far depth (units) the pack asks the reader for; default 1.5 cells. The World Checker measures with it.'),
                         'depth':dict(BOOL,description='The game draws the world with the depth buffer (render_depth(true), docs/RENDERING.md). The World Checker and the Asset Checker judge it so. Not stored in the pack. Default false.'),
                         'perspective':dict(BOOL,description='The game draws it with perspective-correct texturing (render_perspective(true)). The checkers draw it so. Not stored in the pack. Default false.')}),
@@ -329,7 +329,7 @@ WORLD = dict(obj({
                                                         ['position']),0,512),
                                               description='Cameras the World Checker always checks, on top of its sample (WORLDCHECKER.md, "Vantage points"): the views known to be heavy, say.')}),
     'meshes':dict(obj({'quads':dict(BOOL,description='Pairs of triangles that share an edge and agree in every face field are packed as one quad, which Mei draws as those two triangles: the same picture, about half the faces. Semi-transparent and keyed faces stay triangles. Default false.')}),
-                  description='How the kit writes the meshes it packs (WORLDKIT.md, "Quads").'),
+                  description='How the kit writes the meshes it packs (WORLDKIT-REFERENCE.md, "Quads").'),
     'standins':dict(obj({'distance':dict(POS,description='Each cell is drawn as it looks from this far: every placement, scatter chunk and terrain tile at the level it draws at this distance, without those culled by then (units).'),
                          'sweeps':dict(BOOL,description='Put swept profiles in too, at that level. Default false: the field\'s ground stands in for them.'),
                          **STANDIN_LIMITS,
@@ -339,7 +339,7 @@ WORLD = dict(obj({
                          'cells':{'type':'object','propertyNames':NAME,'additionalProperties':obj(STANDIN_LIMITS),
                                   'description':'Per-cell overrides of triangles and ground, by cell ID.'}},
                         ['distance']),
-                    description='Stand-ins made by the kit for every cell that does not name one: the cell\'s own contents at a distance, merged into one mesh (WORLDKIT.md, "Sight lines and stand-ins").'),
+                    description='Stand-ins made by the kit for every cell that does not name one: the cell\'s own contents at a distance, merged into one mesh (WORLDKIT-REFERENCE.md, "Stand-ins made by the kit").'),
     'haze':dict(obj({'start':dict(number(0,32767),description='Where the haze begins (units from the eye). Default 0.'),
                      'end':dict(POS,description='Where it reaches its full amount.'),
                      'amount':dict(number(0,1),description='How far a colour moves toward the haze colour at end and beyond (0..1).'),
@@ -349,7 +349,7 @@ WORLD = dict(obj({
                      'colors':{'type':'object','propertyNames':NAME,'additionalProperties':COLOR,'maxProperties':64,
                                'description':'The haze colour per palette variant name, instead of the backdrop\'s sky.'}},
                     ['end','amount']),
-                description='Aerial perspective: levels of detail after level 0 and stand-ins are baked fading toward the horizon\'s colour by distance (WORLDKIT.md, "Haze").'),
+                description='Aerial perspective: levels of detail after level 0 and stand-ins are baked fading toward the horizon\'s colour by distance (WORLDKIT-REFERENCE.md, "Haze").'),
     'occlusion':dict(obj({
         'occluders':{'type':'object','propertyNames':NAME,'maxProperties':1024,
                      'additionalProperties':obj({
@@ -357,7 +357,7 @@ WORLD = dict(obj({
                          'yaw':dict(YAW,description='The box turned about its centre\'s vertical. Default 0.'),
                          'quad':dict(array(VEC,4,4),description='Four corners in order of a flat convex quad: a wall or roof seen from one side or both.'),
                          'layer':dict(NAME,description='The occluder exists only while this layer is on: only zones of that layer may use it.')}),
-                     'description':'Solid boxes and quads; each hides what lies wholly in its shadow from the whole of a zone (WORLDKIT.md, "Occlusion").'},
+                     'description':'Solid boxes and quads; each hides what lies wholly in its shadow from the whole of a zone (WORLDKIT-REFERENCE.md, "Occlusion").'},
         'zones':{'type':'object','propertyNames':NAME,'maxProperties':1024,
                  'additionalProperties':obj({
                      'box':dict(array(VEC,2,2),description='[[x0, y0, z0], [x1, y1, z1]], world coordinates: where the eye (the camera) may be. The reader uses the first zone, in this order, whose box holds the eye.'),
@@ -365,10 +365,10 @@ WORLD = dict(obj({
                      'layer':dict(NAME,description='The zone is used only while this layer is on.')},
                      ['box']),
                  'description':'Camera zones, in order: from inside one, the reader skips the placements and stand-ins its occluders hide from all of it.'}}),
-                     description='Hand-placed occluders and the camera zones they hide things from, a potentially visible set per zone (WORLDKIT.md, "Occlusion"; WORLDPACK.md 1.5).'),
+                     description='Hand-placed occluders and the camera zones they hide things from, a potentially visible set per zone (WORLDKIT-REFERENCE.md, "Occlusion"; WORLDPACK.md 1.5).'),
     'scatter':{'type':'object','propertyNames':NAME,'additionalProperties':SCATTER,'maxProperties':256,
-               'description':'Seeded props over an area, set on the ground, cut per cell and merged per chunk (WORLDKIT.md, "Scatter").'},
-    'terrain':dict(TERRAIN,description='Ground heightfields and their materials (WORLDKIT.md, "Terrain"); profiles swept along paths are in paths.'),
+               'description':'Seeded props over an area, set on the ground, cut per cell and merged per chunk (WORLDKIT-REFERENCE.md, "Scatter").'},
+    'terrain':dict(TERRAIN,description='Ground heightfields and their materials (WORLDKIT-REFERENCE.md, "Terrain"); profiles swept along paths are in paths.'),
 }, ['format','version','name','game','assets','grid','regions']))
 
 
@@ -393,7 +393,7 @@ GAME = obj({
     'format':{'const':'mei-world-game'},'version':{'const':1},'name':NAME,
     'probe':obj({'radius':POS,'height':POS,'step':number(0,64),
                  'floor_max_degrees':number(1,89),'ceiling_max_degrees':number(1,89),
-                 'bridge':dict(number(0,4),description='Units: the span of the floor query\'s crack bridging (wp_floor_across(); WORLDKIT.md, "Cracks"). The World Checker does not report a crack that this bridges. Default 0: none.')},
+                 'bridge':dict(number(0,4),description='Units: the span of the floor query\'s crack bridging (wp_floor_across(); WORLDKIT-REFERENCE.md, "Cracks"). The World Checker does not report a crack that this bridges. Default 0: none.')},
                 ['radius','floor_max_degrees']),
     'types':{'type':'object','propertyNames':NAME,'maxProperties':1024,
              'additionalProperties':obj({'saved':BOOL,'params':{'type':'object','propertyNames':NAME,

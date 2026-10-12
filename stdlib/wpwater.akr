@@ -1,4 +1,4 @@
-// World water (docs/WORLDKIT.md, "Water"): the surfaces of a world's ponds and streams, for a
+// World water (docs/WORLDKIT-REFERENCE.md, "Water"): the surfaces of a world's ponds and streams, for a
 // game that wades. The World Kit writes NAME.water.bin when a world has water; NAME.akr embeds
 // it, imports this file and calls wp_water_open() in world_NAME_load().
 //

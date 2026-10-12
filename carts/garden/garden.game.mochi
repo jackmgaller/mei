@@ -4,7 +4,7 @@
 game garden
 
 // bridge: the controller's floor query steps across cracks narrower than this (wp_floor_across(),
-// docs/WORLDKIT.md "Cracks"), and the World Checker does not report the cracks it bridges.
+// docs/WORLDKIT-REFERENCE.md "Cracks"), and the World Checker does not report the cracks it bridges.
 probe {
   radius            = 0.3
   height            = 1.6

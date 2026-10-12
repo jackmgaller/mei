@@ -63,7 +63,7 @@ DEFAULTS = {
         'ground_inversion_pixels': 0,   # per view: pixels where ground truly hides what is drawn over it
         'gpu_cycles': 1600000,          # per view (80% of 2,000,000)
         'draw_cpu_cycles': 600000,      # wp_draw() plus entity meshes per view (60% of 1,000,000)
-        'view_triangles': 4000,         # triangles submitted per view (WORLDKIT.md, "A frame budget")
+        'view_triangles': 4000,         # triangles submitted per view (WORLDKIT-DESIGN.md, "A frame budget")
         'cell_triangles': 1600,
         'cell_placements': 100,
         'standin_triangles': 32,

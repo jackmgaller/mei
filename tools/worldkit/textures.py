@@ -1,4 +1,4 @@
-"""Region texture sets (docs/WORLDKIT.md, "Textures per region").
+"""Region texture sets (docs/WORLDKIT-REFERENCE.md, "Textures per region").
 
 Every textured asset drawn in a region (placements and entity meshes) contributes its tiles; the
 region's set is packed once with the kits' shared packer (kitcore/texpack.py): duplicate tiles

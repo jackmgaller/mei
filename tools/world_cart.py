@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The make side of carts that use worlds (docs/WORLDKIT.md, "Using a world in a cart").
+"""The make side of carts that use worlds (docs/WORLDKIT-REFERENCE.md, "Using a world in a cart").
 
     world_cart.py build RECIPE BUILD_DIR
         Builds one world recipe with tools/mei_world.py into BUILD_DIR/worlds/<the recipe's

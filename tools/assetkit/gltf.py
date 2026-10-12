@@ -1,5 +1,5 @@
 """Export a compiled asset as glTF 2.0 (`mei_assets.py export`): one self-contained `.glb` (or
-`.gltf`) that an ordinary 3D viewer shows the way Mei draws the asset (docs/ASSETKIT.md, "Viewing
+`.gltf`) that an ordinary 3D viewer shows the way Mei draws the asset (docs/ASSETKIT-REFERENCE.md, "Viewing
 an asset elsewhere: export").
 
 The export reads what the console reads, not the recipe: the native mesh exactly as `build`

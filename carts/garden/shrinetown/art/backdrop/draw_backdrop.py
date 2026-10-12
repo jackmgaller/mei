@@ -8,7 +8,7 @@
 
     python3 carts/garden/shrinetown/art/backdrop/draw_backdrop.py [--preview DIR]
 
-The PNG is the Horizon Engine's silhouette panorama (WORLDKIT.md, "Backdrops"): 1,024 pixels
+The PNG is the Horizon Engine's silhouette panorama (WORLDKIT-REFERENCE.md, "Backdrops"): 1,024 pixels
 round the compass (2.84 a degree, column 0 north, then east, south at column 512), UNDER rows
 standing under the horizon line, transparent where the sky shows, at most 15 colours. The sky
 itself (a gradient on the backdrop colour, stops by elevation, day and night) is in backdrop.json.

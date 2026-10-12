@@ -1,4 +1,4 @@
-"""Packing textures into Mei's texture slots and palettes (docs/ASSETKIT.md, "Textures").
+"""Packing textures into Mei's texture slots and palettes (docs/ASSETKIT-REFERENCE.md, "Textures").
 
 A **tile** is one texture as the GPU will read it: a width and height in texels, a depth (4 or
 8 bits), one or more frames of 15-bit colours (None for a hole: texel 0), and how faces sample

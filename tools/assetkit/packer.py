@@ -2,8 +2,8 @@
 Their textures go into one set of slots and palettes (kitcore/texpack.py: duplicates removed,
 tiles at window-aligned origins, palettes shared while colours fit), their palette-backed
 materials into consecutive palettes with one shared swatch, and each mesh is written for that
-placement. One Akari file embeds every mesh and loads everything (docs/ASSETKIT.md, "Packing
-assets for a cart")."""
+placement. One Akari file embeds every mesh and loads everything (docs/ASSETKIT-REFERENCE.md,
+"Placement: `build` and `pack`")."""
 import json
 
 from kitcore.texpack import pack as pack_tiles

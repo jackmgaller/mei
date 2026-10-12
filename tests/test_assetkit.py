@@ -1030,7 +1030,7 @@ class NativeVisibilityGateTests(unittest.TestCase):
             with self.assertRaises(AssetError):verify(recipe(),overrides,compiler=COMPILER,probe=PROBE)
 
     def test_depth_policy_judges_the_asset_as_the_depth_buffer_draws_it(self):
-        # docs/ASSETKIT.md, "Depth mode": the depth test orders faces per pixel, so a plate on a
+        # docs/ASSETKIT-REFERENCE.md, "Depth mode": the depth test orders faces per pixel, so a plate on a
         # body and two crossing faces pass; ordering is a regression check (0 wrong pixels).
         depth={'depth':True,'perspective':True}
         plain=self.checked(self.overlap())
@@ -1055,7 +1055,7 @@ class NativeVisibilityGateTests(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------------------------
-# Textures (docs/ASSETKIT.md, "Textures")
+# Textures (docs/ASSETKIT-REFERENCE.md, "Textures")
 
 DEPTH_POLICY = {'required':False,'depth':True,'perspective':True}
 
@@ -1618,7 +1618,7 @@ class TextureCheckerTests(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------------------------
-# One check cart per asset, and the views judged in depth mode (docs/ASSETKIT.md, "Depth mode")
+# One check cart per asset, and the views judged in depth mode (docs/ASSETKIT-REFERENCE.md, "Depth mode")
 
 @unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
 class CheckViewTests(unittest.TestCase):
@@ -1769,7 +1769,7 @@ class CheckViewTests(unittest.TestCase):
 
 # ---------------------------------------------------------------------------------------------
 # Agent ergonomics: complete failing findings, camera views, flush contacts, tool paths
-# (docs/ASSETKIT.md, "Authoring rules", "Reports and repairs", "Camera views", "Native tools")
+# (docs/ASSETKIT.md, "Authoring rules"; docs/ASSETKIT-REFERENCE.md, "Reports and repairs", "Camera views", "Native tools")
 
 def png_pixels(path):
     """(width, height, RGB bytes) of a PNG the kit wrote (8-bit RGB, filter 0 on every row)."""
@@ -2952,7 +2952,7 @@ class InfoFloorsTests(unittest.TestCase):
 
 
 class LookTests(unittest.TestCase):
-    """preview's look: --background, --ground and asset-preview.json (docs/ASSETKIT.md, "The look")."""
+    """preview's look: --background, --ground and asset-preview.json (docs/ASSETKIT-REFERENCE.md, "The look")."""
     def test_looks_parse_and_without_one_the_carts_are_as_before(self):
         from assetkit.preview import make_look, source, camera_source, camera
         self.assertIsNone(make_look())
@@ -3148,7 +3148,7 @@ class SummaryTests(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------------------------
-# Semi-transparent materials (docs/ASSETKIT.md, "Semi-transparent materials")
+# Semi-transparent materials (docs/ASSETKIT-REFERENCE.md, "Semi-transparent materials")
 
 def glass_box(blend='half', **glass):
     """A red core inside a glass shell: the core is seen only through the glass."""

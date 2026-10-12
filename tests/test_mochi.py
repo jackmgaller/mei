@@ -134,7 +134,7 @@ class ParseTests(unittest.TestCase):
                 self.assertEqual(ordered(mochi.parse(mochi.format(game))[0]), ordered(game))
 
     def test_probe_bridge(self):
-        """The probe's bridge (WORLDKIT.md, "Cracks"): parsed, formatted, validated and exported
+        """The probe's bridge (WORLDKIT-REFERENCE.md, "Cracks"): parsed, formatted, validated and exported
         to GAME.game.akr as GAME_PROBE_BRIDGE, and nothing new without it."""
         from worldkit.akr import game_source
         text = 'game g\n\nprobe {\n  radius            = 0.3\n  floor_max_degrees = 40\n  bridge            = 0.4375\n}\n'

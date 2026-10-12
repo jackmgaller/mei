@@ -8,7 +8,7 @@ camera, so only a dense sweep finds them. With the depth buffer the depth test o
 and what the views are still for is coverage: that every face, and every texel of a cutout face,
 is drawn where the reference expects it. A face's coverage can only be judged where it is seen, so
 select_views() chooses `depth_views` views of the sweep that see every face the sweep sees, each
-also from a view that shows it well (docs/ASSETKIT.md, "Depth mode"). Drawing a view is cheap (the
+also from a view that shows it well (docs/ASSETKIT-REFERENCE.md, "Depth mode"). Drawing a view is cheap (the
 probe runs every camera of the sweep, about 3 ms each); judging one is not (the reference
 rasteriser in Python), so the choice is made from what the console drew:
 

@@ -1,4 +1,4 @@
-"""Far ground: coarse levels of a terrain tile resampled from its own mesh (WORLDKIT.md, "Levels of
+"""Far ground: coarse levels of a terrain tile resampled from its own mesh (WORLDKIT-REFERENCE.md, "Levels of
 detail", far ground).
 
     meshes = far_levels(mesh0, [8, 16])     # one native mesh per grid (or None), coarsest last

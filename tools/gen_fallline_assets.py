@@ -10,7 +10,7 @@ Writes, in carts/fallline/:
                 loader, assets_load()
 
 Semi-transparent faces (the sled's canopy, whose material has `blend: "half"`) come out of the
-Asset Kit so (docs/ASSETKIT.md, "Semi-transparent materials"); their ranges are read from the
+Asset Kit so (docs/ASSETKIT-REFERENCE.md, "Semi-transparent materials"); their ranges are read from the
 pack's manifest, each asset's materials and their faces.
 
 Recipes are whatever exists; one the kit rejects (a recipe still being written) is left out with

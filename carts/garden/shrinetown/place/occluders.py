@@ -1,4 +1,4 @@
-"""The shrine town's occlusion zones (WORLDKIT.md, "Occlusion"; DESIGN.md 12.9, "Workstream 7").
+"""The shrine town's occlusion zones (WORLDKIT-REFERENCE.md, "Occlusion"; DESIGN.md 12.9, "Workstream 7").
 
 Called by the placement hook (place/__init__.py) from make_world.py's `world` stage, after the
 zones: it adds the recipe's `occlusion` section. Each occluder is a box inside solid geometry of a

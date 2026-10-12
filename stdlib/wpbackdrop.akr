@@ -1,4 +1,4 @@
-// World pack backdrops (docs/WORLDPACK.md, "Backdrops"; docs/WORLDKIT.md, "Backdrops"): a
+// World pack backdrops (docs/WORLDPACK.md, "Backdrops"; docs/WORLDKIT-REFERENCE.md, "Backdrops"): a
 // region's sky and horizon silhouette drawn by the plane chip (docs/PLANES.md) behind the 3D
 // world, at no GPU cost.
 //

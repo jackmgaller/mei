@@ -12,7 +12,7 @@ surface intersections and ordering cycles are not failures, coplanar overlaps st
 
 Semi-transparent faces (materials with `blend`) hide nothing: in the ID buffer they are drawn
 semi-transparent adding nothing, and its reference leaves them out; a second buffer, the blended
-layer, judges where they show (compare_blend(); docs/ASSETKIT.md, "Semi-transparent faces").
+layer, judges where they show (compare_blend(); docs/ASSETKIT-REFERENCE.md, "Semi-transparent faces").
 """
 from collections import Counter, defaultdict
 import hashlib

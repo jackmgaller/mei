@@ -1,5 +1,5 @@
 """Per-face materials on primitives (`faces`) and decals baked into a primitive's flat faces
-(`decals`) (docs/ASSETKIT.md, "Face materials and decals").
+(`decals`) (docs/ASSETKIT-REFERENCE.md, "Face materials and decals").
 
 Both work on a primitive's own mesh, in its own coordinates, before its modifiers and transform,
 so copies made by modifiers and instances carry them.

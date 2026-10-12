@@ -1,5 +1,5 @@
 """Terrain: ground heightfields and profiles swept along paths, in world coordinates, cut per
-cell by the kit so that seams match by construction (WORLDKIT.md, "Terrain").
+cell by the kit so that seams match by construction (WORLDKIT-REFERENCE.md, "Terrain").
 
     result = compile_terrain(world, base, cell_size, cells, surface_of, warnings, overhang,
                              floor_max_degrees)

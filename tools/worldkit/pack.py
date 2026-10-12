@@ -136,7 +136,7 @@ class Tri:
     tag a 16-bit number carried into the record (0xFFFF: none), e.g. the placement it came from.
     slide_floor_degrees: a triangle steeper than the world's floor limit, up to this slope, is a
     floor as well as a wall (two records): the wall stops a body moving into it, the floor
-    catches a falling one, which a game slides down (a heightfield's steep ground, WORLDKIT.md,
+    catches a falling one, which a game slides down (a heightfield's steep ground, WORLDKIT-REFERENCE.md,
     "Steep ground"). None: a wall only."""
     a: tuple
     b: tuple

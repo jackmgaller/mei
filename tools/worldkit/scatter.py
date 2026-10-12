@@ -1,4 +1,4 @@
-"""Scatter: seeded props over an area, set on the ground, cut per cell (WORLDKIT.md, "Scatter").
+"""Scatter: seeded props over an area, set on the ground, cut per cell (WORLDKIT-REFERENCE.md, "Scatter").
 
     items, report = scatter_items(world, terrain, cell_size, cells, warnings)
     items[(i, j)]   [Item]: an asset at a position and yaw in the cell, with its scatter's name

@@ -6,7 +6,7 @@
  *   mei-asset-probe cart.mei out.bin sv-address vertex-count [view-address views]
  *
  * With a view address, the cart draws the camera whose index it reads from the s32 global there
- * (docs/ASSETKIT.md, "What is checked"): for each index from 0 to views - 1 the probe starts a
+ * (docs/ASSETKIT-REFERENCE.md, "What is checked"): for each index from 0 to views - 1 the probe starts a
  * fresh machine, loads the cart, writes the index there before the first frame and runs it as
  * without one, so each view is captured exactly as a cart compiled for that camera alone would
  * be. out.bin is then one capture per view, in order. A capture is "MAV1", the vertex count, the

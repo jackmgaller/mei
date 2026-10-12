@@ -1,4 +1,4 @@
-"""The quick tools over a world recipe (docs/WORLDKIT.md, "Quick tools"): `mei_world.py check`
+"""The quick tools over a world recipe (docs/WORLDKIT-REFERENCE.md, "Quick tools"): `mei_world.py check`
 (the World Checker on a few cells or cameras), `floors` (the pack's floor heights over an area),
 `textures` (texture VRAM by region, asset and image) and `cracks` (every crack the game's floor
 query does not bridge, against the crack baseline). They only read: nothing a build writes

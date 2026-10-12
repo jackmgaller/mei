@@ -455,7 +455,7 @@ class DifferentialTests(unittest.TestCase):
         """wp_floor_across() and the World Checker's reader_floor_across() give the same answer,
         bit for bit, near gaps of many widths and angles between slabs 2 units up over a ground
         at 0 (outside the window), some across a cell seam and some with the far slab higher;
-        and a gap is bridged as WORLDKIT.md says: narrower than (span - 1/8) cos 22.5 at every
+        and a gap is bridged as WORLDKIT-REFERENCE.md says: narrower than (span - 1/8) cos 22.5 at every
         point, never wider than the span."""
         try:
             from worldkit import verify_static as ST
@@ -980,7 +980,7 @@ class CostTests(unittest.TestCase):
         if VERBOSE:
             print('\n  ' + '\n  '.join(lines))
         per = {k: got[k][0][0] for k in ('cell', 'floor', 'across', 'across_air', 'ceiling', 'push', 'ray4', 'ray15')}
-        # Tsumiki's floor query among 41 solids took about 2,000 cycles (docs/WORLDKIT.md)
+        # Tsumiki's floor query among 41 solids took about 2,000 cycles (docs/WORLDKIT-DESIGN.md)
         self.assertLess(per['floor'], 1000)
         # wp_floor_across(): wp_floor() and little more on whole ground; at most 25 queries when
         # there is nothing in the window (in the air), 6 steps out along each of 4 directions

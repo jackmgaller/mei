@@ -157,7 +157,7 @@ fn col_hit() {
 // that is the answer, as before; the callers' below is at least their own reach down, so a floor
 // they would have taken is taken as before. Only where there is none does it ask
 // wp_floor_across() for floors on both sides of a gap narrower than the probe's bridge, at most
-// below under p (docs/WORLDKIT.md, "Cracks"): a fall that was a crack becomes a step across it.
+// below under p (docs/WORLDKIT-REFERENCE.md, "Cracks"): a fall that was a crack becomes a step across it.
 fn col_stand(p: vec3, above: fixed, below: fixed) -> bool {
     let found = col_floor(p, above)
     if found && col_y >= p.y - below { return true }

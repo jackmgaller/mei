@@ -23,7 +23,7 @@ box's neighbour_KEY at the same position (0.2 m inside the edge), with the yaw t
 front to the level (GROUND.md, "Edges"). Collision: "self" (the box's faces).
 
 Night: the lit-window glass is its own colour (LIT below), so a palette variant lights some
-windows: "texels": {"edge_neighbour_s0.facade": {"#3e4a5e": "#e8c878"}} (WORLDKIT.md, "Night");
+windows: "texels": {"edge_neighbour_s0.facade": {"#3e4a5e": "#e8c878"}} (WORLDKIT-REFERENCE.md, "Night");
 make_world.py does that for every neighbour, both levels (NIGHT_TEXELS below).
 
 Run: python3 carts/garden/shrinetown/assets/edge_neighbour/make_edge_neighbour.py   (Pillow)

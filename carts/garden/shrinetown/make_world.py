@@ -118,7 +118,7 @@ STANDINS = {'distance': 128, 'sweeps': True, 'triangles': 90, 'ground': 32, 'cel
             # the trees' far cards and the landmarks' impostors stay cut out in the stand-ins: their
             # textures in slots 0, 31 and 30 (96 KB: slot 0 kept free by the regions' split, and the top
             # of VRAM's second megabyte; the third since the pagoda's star of cards, DESIGN.md 12.9), held
-            # by both regions' sets (WORLDKIT.md, "Stand-ins made by the kit")
+            # by both regions' sets (WORLDKIT-REFERENCE.md, "Stand-ins made by the kit")
             'textures': {'slots': '0,31,30'}}
 BD = json.loads((ST / 'art' / 'backdrop' / 'backdrop.json').read_text())
 
@@ -135,7 +135,7 @@ FOG_RANGE = {'day': (20, 240), 'night': (16, 220)}
 FOG_COLOUR = BD['town']['fog']
 assert BD['town'] == BD['shrine'], 'one backdrop for both regions (art/backdrop/APPLY.md)'
 
-# ---- haze (WORLDKIT.md, "Haze"): baked into the stand-ins only, a little. The GPU's fog fades every
+# ---- haze (WORLDKIT-REFERENCE.md, "Haze"): baked into the stand-ins only, a little. The GPU's fog fades every
 # far surface by its depth, the levels included, so the levels are not hazed again; the stand-ins'
 # far colours are moved a little toward each variant's fog colour as well, which softens their flat
 # colours where the fog is still thin (100-200 units).
@@ -195,7 +195,7 @@ regions = {r: {'textures': {'slots': TEXTURE_SLOTS[r], 'budget': TEXTURE_BUDGETS
                             'silhouette': {'image': 'art/backdrop/backdrop.png', 'horizon': BD[r]['horizon'],
                                            'repeat': 1}}} for r in L.REGIONS}
 
-# ---- the ground's levels (WORLDKIT.md, "Levels of detail"): the field's coarse level from 22 units,
+# ---- the ground's levels (WORLDKIT-REFERENCE.md, "Levels of detail"): the field's coarse level from 22 units,
 # to 2.5 units, drawn in each texture's mean colour, untextured; the far levels on 8- and 16-unit
 # grids. The alpha review (far views) found the ridge, the grove and the mountain flat brown facets
 # from 22 units; moving the coarse level out was measured and not taken (DESIGN.md 12.9): at 40 units
@@ -231,7 +231,7 @@ world = {
         'spacing': 2, 'min': [0, 0], 'max': [320, 384], 'heights': HEIGHTS,
         'material': 'floor', 'steep': {'degrees': 38, 'material': 'rock'}, 'tolerance': 0.15, 'tile': 16,
         # steep faces up to 70 degrees are floors a falling body slides down, not only walls, so no
-        # crease between two steep faces lets a body through (WORLDKIT.md, "Steep ground")
+        # crease between two steep faces lets a body through (WORLDKIT-REFERENCE.md, "Steep ground")
         'slide_floor_degrees': 70,
         'lod': GROUND_LOD, 'operations': ops}}},
     'scatter': scatter,
