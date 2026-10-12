@@ -22,7 +22,7 @@ and are drawn from fixed seeds (authored art: rerun only to change them). No 8-b
 Measured with `preview_ground.py` (`B=build-gt`): each region's `textures.vram_bytes_allocated`
 in the test world's `report.json`. A terrain texture is stored repeated `span` texels further
 each way plus a 1-texel gutter, on the 8-texel grid, and once more as loaded (its tile size) when
-any of its faces needs a texture window (WORLDKIT.md, "Textured terrain"):
+any of its faces needs a texture window (WORLDKIT-REFERENCE.md, "Textured terrain"):
 
 | Texture | Span | Stored | Window tile | Bytes |
 |---|---|---|---|---|

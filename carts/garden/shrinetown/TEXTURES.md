@@ -37,7 +37,7 @@ The ground is not textured yet. The shrine's textured ground is 15 materials, 27
 32-texel textures stored with a span of 223 (32,768 bytes each). A 32-texel 4-bit texture costs
 8,192 bytes at span 88 (120 + 1 texels a side: 16 × 16 cells of 8 × 8), 9,248 at the default 96,
 2,048 at span 24, plus 512 for the tile as loaded when some faces reach past the span (they are
-drawn through a texture window: about 55 cycles a mesh and 10 a visible face more). WORLDKIT.md,
+drawn through a texture window: about 55 cycles a mesh and 10 a visible face more). WORLDKIT-REFERENCE.md,
 "Textured terrain", has the rules.
 
 **With 1 MB, one region could not hold it:** 595 KB of assets before the ground, against 448 KB
@@ -102,7 +102,7 @@ within 16 m of the line, as the World Checker measures them, are about 515,000 (
 hitches:** about 920,000 entering the town, 780,000 entering the shrine. Filled to its budget, the
 shrine's entry still fits (about 990,000); **the town's would not** (about 1,190,000: one frame
 shown a tick late, no more, since it stays under 2,000,000). The town fits a frame up to about
-470 KB of textures, 75 KB more than now. Past that the fix is the seam WORLDKIT.md, "Region
+470 KB of textures, 75 KB more than now. Past that the fix is the seam WORLDKIT-REFERENCE.md, "Region
 seams", describes and the World Kit can already do: entering the region a slot a frame
 (`wp_texture_load()`) while the player is in the 24 m of open ground the line runs through,
 rather than the whole set at once (`follow_region()` in `game.akr`).
@@ -122,7 +122,7 @@ a hard limit: over it the world does not build, and the error lists every asset'
 **The common set is the stand-ins' cards only.** The World Kit packs each region's set by itself:
 a tile drawn in both regions is in both sets and loaded with each. DESIGN.md 8.5's common set
 (asphalt, kerb, concrete, signs, shared with the city levels) is a plan, not a kit feature; here it
-is the 10 KB in both. What is built (2026-10-05, `standins.textures`, WORLDKIT.md "Stand-ins made by
+is the 10 KB in both. What is built (2026-10-05, `standins.textures`, WORLDKIT-REFERENCE.md "Stand-ins made by
 the kit") is a set for the stand-ins' cutouts: slots 0 and 31, taken out of both regions' slots
 and held by both regions' sets at the same places (measured on `far-views` after the split):
 
@@ -148,9 +148,9 @@ entered draw as their stand-ins.
 
 **Stand-ins.** A stand-in is drawn whichever region is loaded, so in a world with two regions the
 kit's stand-ins draw every textured face in its tile's far colour, a flat colour of its own
-region's palette (WORLDKIT.md, "Stand-ins made by the kit"; built for this level). Far trees were
+region's palette (WORLDKIT-REFERENCE.md, "Stand-ins made by the kit"; built for this level). Far trees were
 solid cards in their foliage's colour; since 2026-10-05 they keep their cut-out cards (the
-stand-ins' set above), and the far colours and cards are hazed toward the sky (WORLDKIT.md, "Haze").
+stand-ins' set above), and the far colours and cards are hazed toward the sky (WORLDKIT-REFERENCE.md, "Haze").
 
 **The grey box** has no textures, so the World Checker still judges every view with every cell
 drawn in full; its numbers are unchanged (README.md). With the first textured asset in the pack it
@@ -180,7 +180,7 @@ terraces, the road's row is (the shops' north ends from 24 m). From the precinct
 white wall hides the town; from the mountain the town is beyond the near ring anyway. Crossing
 the line swaps which side is coarse, with one late frame.
 
-This is not a hidden seam. A hidden one needs what WORLDKIT.md "Region seams" lists as not built:
+This is not a hidden seam. A hidden one needs what WORLDKIT-REFERENCE.md "Region seams" lists as not built:
 cells along a boundary drawn in full from both regions (their tiles in both sets at the same
 places), a swap spread over frames while nothing on screen uses the slots being replaced, and the
 World Checker's seam check. Until then, options for the owner:
@@ -195,7 +195,7 @@ The future downtown district (DESIGN.md 7.1) would be a third region, entered un
 
 ## Palettes
 
-**Now (2 MB).** There are 512 4-bit palettes in two banks: 0–255 and 256–511 (WORLDKIT.md,
+**Now (2 MB).** There are 512 4-bit palettes in two banks: 0–255 and 256–511 (WORLDKIT-REFERENCE.md,
 "Palettes per region"). `make_world.py` starts the shrine's palettes at 256, so the town has
 bank 0 to itself: palettes 0–253, since 254 is the star's and 255 the fonts'. The town uses
 0–187, the shrine 256–320 (`report.json`'s `regions.NAME.palette.palettes`):
@@ -210,7 +210,7 @@ The town was the binding limit (palettes 0–185 of the 254 the two regions shar
 (colours 7936 on, the top of bank 1), so each costs the shrine's range 16 palettes, not the town's.
 
 **Before (1 MB).** Regions get disjoint palettes and every region's are loaded at once
-(WORLDKIT.md, "Palettes per region"). A world has 255 4-bit palettes (0–254; 255 is the fonts'), and each 8-bit palette takes
+(WORLDKIT-REFERENCE.md, "Palettes per region"). A world has 255 4-bit palettes (0–254; 255 is the fonts'), and each 8-bit palette takes
 16 of them from 14 downward (8-bit palette 14 is 4-bit palettes 224–239). The planned placements
 need, by the kit's own packing (`kitcore/texpack.py`, `assign_palettes`; entries are the assets'
 palette-backed colours, 15 to a palette):

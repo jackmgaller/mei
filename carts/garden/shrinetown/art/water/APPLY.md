@@ -41,7 +41,7 @@ frames. Without the cart patch the water is textured and still; the world edits 
 
 `shrinetown.world.json` is `make_world.py`'s output; the places in the generators are named. A
 textured water material is the kit's ordinary textured terrain material
-([WORLDKIT.md](../../../../../docs/WORLDKIT.md#textured-terrain)) with `water: true`.
+([WORLDKIT-REFERENCE.md](../../../../../docs/WORLDKIT-REFERENCE.md#textured-terrain)) with `water: true`.
 
 ### 1. Materials: `terrain.materials` (`make_world.py`'s `materials`, joined from the parts)
 

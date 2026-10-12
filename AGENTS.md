@@ -70,7 +70,7 @@ Pass the tools to scripts the same way, for example
 `MEIC=build-mine/meic RUN=build-mine/mei-headless tests/run_lang_tests.sh planes`. The Asset
 Kit's `verify`, `preview` and `build` take `--build-dir build-mine`, or read `B=build-mine` (or
 `MEIC`, `RUN` and `PROBE`) from the environment
-([ASSETKIT.md](docs/ASSETKIT.md#native-tools)):
+([ASSETKIT-REFERENCE.md](docs/ASSETKIT-REFERENCE.md#native-tools)):
 `python3 tools/mei_assets.py preview model.asset.json -o build-mine/assets/model --build-dir build-mine --closeups`.
 
 Mei Demo, Sound Lab and World Viewer are built only on request (`make build/carts/demo.mei
@@ -88,7 +88,7 @@ repository path per line. make builds each recipe once into `build/worlds/<its f
 needs NumPy), links the cart's worlds and their games' `GAME.game.akr` into
 `build/cart-worlds/NAME/` and compiles the cart with `meic -I build/cart-worlds/NAME`. `meic -I
 DIR` (repeatable) names a directory searched for imports after the importing file's own folder
-and before the standard library. [WORLDKIT.md](docs/WORLDKIT.md#using-a-world-in-a-cart) has the
+and before the standard library. [WORLDKIT-REFERENCE.md](docs/WORLDKIT-REFERENCE.md#using-a-world-in-a-cart) has the
 details; `carts/worldview/` is the example.
 
 **Quick feedback while placing assets in a world** (plain text; `--json` for JSON):
@@ -102,7 +102,7 @@ python3 tools/mei_world.py textures WORLD [--cells I,J] --build-dir build-mine
 ```
 
 The world commands keep the compiled world in `BUILD_DIR/kit-cache/quick/` and reuse it while
-nothing it read has changed ([WORLDKIT.md](docs/WORLDKIT.md#quick-tools)).
+nothing it read has changed ([WORLDKIT-REFERENCE.md](docs/WORLDKIT-REFERENCE.md#quick-tools)).
 
 ## Dependencies
 
@@ -194,7 +194,7 @@ marked stale. `show ID` prints the record with any answers. Records live in `.gi
   world's ID lock file (`NAME.ids.json`), are the source.
 - **A cart that uses worlds** lists their recipes in `carts/NAME/worlds.txt` and imports
   `WORLD.akr` by name; make builds the worlds into `build/worlds/` and passes them to meic
-  with `-I` ([WORLDKIT.md](docs/WORLDKIT.md#using-a-world-in-a-cart); `carts/worldview/` is
+  with `-I` ([WORLDKIT-REFERENCE.md](docs/WORLDKIT-REFERENCE.md#using-a-world-in-a-cart); `carts/worldview/` is
   the example).
 - **A cart's assets:** binaries in the cart's `art/` (meshes, textures, palettes, icons) and
   `audio/` (sounds, music) folders, and generated `.akr` files at the top of the cart folder.

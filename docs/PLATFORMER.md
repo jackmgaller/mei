@@ -4,7 +4,7 @@
 the project owner has decided about the first open-world game (from 2026-10-03), and the
 movement ideas to try. The tools it needs are the World Kit ([WORLDKIT.md](WORLDKIT.md)) and the
 Asset Kit ([ASSETKIT.md](ASSETKIT.md)); the game, its character control and its cameras are its
-own ([WORLDKIT.md, "Goals and non-goals"](WORLDKIT.md#goals-and-non-goals)).
+own ([WORLDKIT-DESIGN.md, "Goals and non-goals"](WORLDKIT-DESIGN.md#goals-and-non-goals)).
 
 ## The game
 
@@ -91,7 +91,7 @@ has the rule and what it does not handle).
    variants.
 3. A second region, to force the texture-swap seam.
 
-[WORLDKIT.md, "Build order"](WORLDKIT.md#build-order) says what each stage proves and what the
+[WORLDKIT-DESIGN.md, "Build order"](WORLDKIT-DESIGN.md#build-order) says what each stage proves and what the
 kits need first.
 
 ## Ideas under consideration

@@ -7,7 +7,7 @@ TextMate scopes pick up your editor theme's colors. Also provides comment
 toggling, bracket matching, quote pairing and indentation.
 
 It also highlights `.mochi` files, the World Kit's game schemas written in Mochi
-(docs/WORLDKIT.md): statements, type and field names, field types, `ref?`, enum
+(docs/WORLDKIT-REFERENCE.md): statements, type and field names, field types, `ref?`, enum
 values, defaults, numbers and comments.
 
 This is a declarative extension with no runtime code or dependencies. It does not

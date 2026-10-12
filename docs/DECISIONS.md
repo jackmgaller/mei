@@ -661,10 +661,12 @@ open-world game is. Most of those decisions are about tools and a game, not abou
 machine departs from the spec, so they are recorded where they apply:
 
 - the World Kit's (the two tools and their boundary, the world format, terrain, streaming, the
-  runtime reader, verification) in [WORLDKIT.md](WORLDKIT.md), with the World Checker in
-  [WORLDCHECKER.md](WORLDCHECKER.md) and the pack format in [WORLDPACK.md](WORLDPACK.md);
-- the Asset Kit's (palettes for day and night, shading, examples, textures) in
-  [ASSETKIT.md](ASSETKIT.md);
+  runtime reader, verification) in [WORLDKIT-DESIGN.md](WORLDKIT-DESIGN.md), with what was built
+  in [WORLDKIT.md](WORLDKIT.md) and [WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md), the World
+  Checker in [WORLDCHECKER.md](WORLDCHECKER.md) and the pack format in
+  [WORLDPACK.md](WORLDPACK.md);
+- the Asset Kit's (palettes for day and night, shading, examples, textures) [below](#the-asset-kit),
+  with the kit in [ASSETKIT.md](ASSETKIT.md);
 - the platformer's (setting, pace, moves, the movement garden, build order) in
   [PLATFORMER.md](PLATFORMER.md), as design intent.
 
@@ -672,7 +674,7 @@ Three tools check the work, each under its own name:
 
 | Name | What it checks | Where |
 |---|---|---|
-| **Asset Checker** | One asset's faces draw in the right order from every side (`mei_assets.py verify`) | [ASSETKIT.md](ASSETKIT.md#automated-visibility-gate) |
+| **Asset Checker** | One asset's faces draw in the right order from every side (`mei_assets.py verify`) | [ASSETKIT-REFERENCE.md](ASSETKIT-REFERENCE.md#automated-visibility-gate) |
 | **World Checker** | A level from where a player can stand: budgets, drawing order, collision holes (`tools/worldkit/verify.py`, run by `mei_world.py build`) | [WORLDCHECKER.md](WORLDCHECKER.md) |
 | **Reference Renderer** | Mei itself: an independent renderer its output is compared against (`make rendercheck`, `make rendercheck-motion`) | [tests/reference_renderer/README.md](../tests/reference_renderer/README.md) |
 
@@ -685,6 +687,39 @@ Three tools check the work, each under its own name:
 - **VRAM stays 1 MB** and the ordering table stays a cart convention. Both are to be revisited
   only if a second region or a real district shows they cannot work. (The shrine town did:
   VRAM is 2 MB since 2026-10-05, [below](#vram-at-2-mb).)
+
+### The Asset Kit
+
+The project owner's decisions about the kit (2026-10-03), besides those described in
+[ASSETKIT.md](ASSETKIT.md) and [ASSETKIT-REFERENCE.md](ASSETKIT-REFERENCE.md):
+
+- **The boundary with the World Kit is "could you place it twice?"** Anything reusable (a
+  staircase, a vending machine, a length of guard rail) is an asset. Anything that exists once,
+  at one place in a world, belongs to the world recipe ([WORLDKIT.md](WORLDKIT.md)), including
+  terrain. The World Kit refers to asset recipes by name; this kit never learns that worlds
+  exist. Both import `tools/kitcore/`. A single tool that both models and builds levels was
+  rejected.
+- **Day and night through palettes:** palette-backed materials, with emissive ones on entries of
+  their own ([Palette-backed materials](ASSETKIT-REFERENCE.md#palette-backed-materials)).
+- **Shading** is baked, time-neutral and, for placed assets, rotation-neutral (`"mode":
+  "vertical"`). Every wall then has the same shade, which is accepted: colour, textures and the
+  palette's tint separate surfaces. If a real street looks flat, the fallback is a variation of
+  a few percent by facing, baked in the asset's own frame. Baking a sun direction per placement
+  and lighting at draw time were both rejected.
+- **Textures** (revised 2026-10-04): procedural patterns and recipe texel grids for repeats, and
+  PNG images and sheets now for detailed art; 4-bit by default, 8-bit per texture; UVs by
+  projection or `fit`, hand UVs only in `mesh` nodes; cutouts in depth-mode assets; animated
+  textures from sheet frames; the World Kit packs VRAM per region
+  ([Textures](ASSETKIT-REFERENCE.md#textures)). Built as decided, with these details settled in
+  the building: the projections work in each primitive's own coordinates; repeating textures are
+  8–128 texels (power-of-two) tiles, at most 7 an asset (a mesh's windows); textures drawn once
+  carry a one-texel gutter; `build` places one asset's textures itself and `pack` places a set's.
+- **Examples.** Of the five examples, `kiosk` and `stall` (in depth mode) pass the Asset
+  Checker (and require it).
+  `robot`, `vessel` and `cottage` predate the gate and fail its geometry check with surface
+  intersections (`verify`, October 2026); they remain as modelling examples. Three more recipes
+  made while the kit was developed (`ion_cruise`, `sky_castle` and `clockwork_kraken`) also fail
+  it and were left out until fixed, as was `tools/mei_modeler.py`.
 
 ## The CPU at 60 MHz
 
@@ -1152,7 +1187,7 @@ without fog, 10.2 ms with it.
 `tris_fog` and `px_fog` in `MeiGpuStats` and the `--gpu-stats` columns); `gpu_fog(colour, near,
 far)` and `gpu_fog_off()` in `stdlib/gfx.akr`; in the World Kit, a palette variant's `fog`
 (`{"color", "near", "far"}`), from which `NAME.akr` gets `world_NAME_fog(region, variant)`
-([WORLDKIT.md](WORLDKIT.md#palettes-per-region)). Tests: `tests/test_gpu.c` (`test_fog_*`: the
+([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#palettes-per-region)). Tests: `tests/test_gpu.c` (`test_fog_*`: the
 registers, the factor, the blend, the semi-transparent rule, the cost, and 400 random packets
 against an independent reference), `tests/lang/gpu_fog.akr`, and the World Kit's
 `test_fog_per_variant_on_the_console`.

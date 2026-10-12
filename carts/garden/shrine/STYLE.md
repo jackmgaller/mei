@@ -74,7 +74,7 @@ most 28 degrees in their collision (the render may be steeper by a few degrees).
   | Bamboo | `#a8b860`, `#8a9a48`, `#c8c890` dry |
   | Street | `#4a4a50` asphalt, `#a8a69e` kerb, `#eceae4` white, `#c8c4b8` concrete, `#3a6ab0` blue, `#40a060` green |
 
-- **Textures** ([ASSETKIT.md, Textures](../../../docs/ASSETKIT.md#textures)) are welcome where
+- **Textures** ([ASSETKIT-REFERENCE.md, Textures](../../../docs/ASSETKIT-REFERENCE.md#textures)) are welcome where
   they make the thing: leaf clusters with cutouts, bark, roof tiles, planks, moss on stone. Keep
   them small (16 to 64 texels; 4-bit unless a texture truly needs 8), and texels about 2 to 8
   cm at the size the player sees them from. Sources: patterns, texel grids, or PNGs in

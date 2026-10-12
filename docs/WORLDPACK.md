@@ -261,7 +261,7 @@ the game switches at run time.
 ## Regions
 
 `region_count` records of 32 bytes. Cells name their region by number. A region's resources are
-what a game loads when the player crosses into it ([WORLDKIT.md](WORLDKIT.md), "Regions and the
+what a game loads when the player crosses into it ([WORLDKIT-DESIGN.md](WORLDKIT-DESIGN.md#regions-and-the-vram-split), "Regions and the
 VRAM split").
 
 | Offset | Type | Field | |
@@ -350,7 +350,7 @@ to screen line 120 − *F* tan(*e*ᵢ − pitch) and the backdrop colour is inte
 stops on every line (a line channel on BD_COLOR); the horizon is line *h* = 120 + *F* tan(pitch);
 BG1 scrolls to x = yaw × `rate` − 160 (yaw taken in [0, 2π)), y = `horizon` − *h*, and is shown
 only on lines `top` − y .. `top` + `height` − y − 1 (its window), so the map's vertical wrap
-never shows twice. [WORLDKIT.md](WORLDKIT.md#backdrops) explains the choice.
+never shows twice. [WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#backdrops) explains the choice.
 
 ## Cells
 
@@ -529,7 +529,7 @@ what is drawn over it ([WORLDCHECKER.md](WORLDCHECKER.md), "Ground").
 Stand-ins are never ground: a stand-in is a whole cell, drawn in the far pass (or, for a near cell
 whose region is not loaded, in the near pass), so there is nothing to flag. A merged scatter mesh
 is ground when the props merged into it are (the World Kit merges ground and the rest apart).
-Terrain, when it is built ([WORLDKIT.md](WORLDKIT.md), "Terrain"), is ground by default.
+Terrain ([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#terrain)) is ground by default.
 
 ## Occlusion zones
 
@@ -538,7 +538,7 @@ and sorted, and in a town most of it is behind walls. A world may therefore say,
 box the eye can be in), which placements of the near cells and which stand-ins of the far ring
 cannot be seen from anywhere in it, and the reader skips them while the eye is there: a
 potentially visible set, worked out offline by the World Kit from occluders the author places
-([WORLDKIT.md](WORLDKIT.md#occlusion)), checked by the World Checker
+([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#occlusion)), checked by the World Checker
 ([WORLDCHECKER.md](WORLDCHECKER.md#occlusion)). The format holds only the answer, not the
 occluders.
 
@@ -875,7 +875,7 @@ name the path they use (a `name` parameter), or the game uses the path numbers t
 exports. A path is **raised** (not lying on the ground: a rail, a wire) or not, and **closed** (a
 loop) or open, and carries a surface byte, from its tag as a collision triangle's comes from its
 material's tag. Paths are neither drawn nor collided with: what a rail looks like and how it is
-stood on are an asset's, and later swept terrain's ([WORLDKIT.md](WORLDKIT.md#terrain)).
+stood on are an asset's, and later swept terrain's ([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#terrain)).
 
 **Stored once per world, not per cell.** The path table hangs off the header and its points are
 world coordinates. Paths are few (tens in a level) and short (a rail is a few segments); a game
@@ -973,7 +973,7 @@ The answer is the fraction *t* along the segment, the triangle, and whether it w
 behind. Every cell the segment's box touches is asked (each in its own frame), and in each the
 buckets the segment passes through.
 
-**Drawing** (three passes, [WORLDKIT.md](WORLDKIT.md), "Sight lines and stand-ins"). The frame's
+**Drawing** (three passes, [WORLDKIT-DESIGN.md](WORLDKIT-DESIGN.md#sight-lines-and-stand-ins), "Sight lines and stand-ins"). The frame's
 origin is the centre of the camera's cell; the camera and everything drawn are relative to it,
 so the vertex transform never sees a large coordinate. First the **far pass**: the stand-ins of
 the cells 2 .. *R* cells from the camera's cell (Chebyshev distance), with the clip range
@@ -1009,7 +1009,7 @@ the one on screen, within one mesh and across two `mesh_at()` calls). `wp_draw()
 fixed order: the far pass's stand-ins (flushed), the ground pass (flushed), then the near cells
 by row and column (*dj* then *di*, from −1 to 1), each cell's placements in their order in the
 cell (as the recipe lists them), each mesh's faces in their order in the mesh (an Asset Kit
-asset's: its recipe's order, [ASSETKIT.md](ASSETKIT.md#automated-visibility-gate)). The cart's
+asset's: its recipe's order, [ASSETKIT-REFERENCE.md](ASSETKIT-REFERENCE.md#automated-visibility-gate)). The cart's
 own meshes come after `wp_draw()`, so in a shared bucket the world's faces are drawn over them;
 `wp_draw_object()`'s keys and biases move an object out of the shared buckets. Within one asset
 this is a rule recipes may rely on (a sign earlier than the wall it hangs on wins their ties);
@@ -1026,7 +1026,7 @@ grazing angle) still tie, and a tie still goes to the later packet. So the rule 
 recipe orders that rely on it ("a sign before its wall"), apply only without depth; a decal on a
 coplanar wall needs the decal offset instead. Semi-transparent faces are not depth-written and
 are still drawn by the table. A world says it is drawn with depth in its recipe
-(`"runtime": {"depth": true}`, [WORLDKIT.md](WORLDKIT.md#depth-mode)), and the World Checker
+(`"runtime": {"depth": true}`, [WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#depth-mode)), and the World Checker
 then judges it so.
 
 **Entities.** A tracked area is the cells within a radius (0–2) of a point. An entity is active
@@ -1188,7 +1188,7 @@ radius (2), and `WP_MAX_LOD` = 2,048 bytes of level memory, one per placement sl
 | `wp_object_bias`, `wp_object_squash` | `wp_draw_object()`'s settings: units nearer from above (1.5); squash of the object's own depths (2; 1: no key, the bias alone) |
 | `wp_stats` | near cells, placements looked at and drawn, stand-ins drawn, ground placements drawn, placements drawn at a coarser level (`coarse`) and culled by their LOD set (`lod_culled`), placements and stand-ins skipped by the eye's occlusion zone (`occluded`, `standins_occluded`) and the zone's number in its cell (`zone`, −1 for none), last `wp_draw` |
 | `wp_floor(p, above)`, `wp_ceiling(p, below)`, `wp_push(p, radius)`, `wp_ray(a, b)` | collision in the world; answers in `wp_hit` |
-| `wp_floor_across(p, above, below, span)` | `wp_floor()` bridging cracks narrower than `span`: where it finds no floor at or above `p.y - below`, the higher of two floors in that window on either side of `p`, at most `span` apart along x, z or a diagonal ([WORLDKIT.md](WORLDKIT.md#cracks)) |
+| `wp_floor_across(p, above, below, span)` | `wp_floor()` bridging cracks narrower than `span`: where it finds no floor at or above `p.y - below`, the higher of two floors in that window on either side of `p`, at most `span` apart along x, z or a diagonal ([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#cracks)) |
 | `wp_coll_floor`, `wp_coll_ceiling`, `wp_coll_push`, `wp_coll_ray` | the same against one block, in its frame (an entity's: `wp_entity_coll(e)`) |
 | `wp_hit_normal()` | the unit front normal of what was hit |
 | `wp_entity(n)`, `wp_cell_entity(c, k)`, `wp_entity_pos(e)`, `wp_entity_live(e)`, `wp_entity_params(e)`, `wp_entity_mesh(e)`, `wp_entity_coll(e)` | entities |
@@ -1211,7 +1211,7 @@ depth cost 14–24 cycles more each, less the two `ot_flush()` table resets it n
 The GPU figures are in [LANGUAGE.md](LANGUAGE.md#the-depth-buffer-and-perspective-depthakr).
 
 Not implemented: reading audio banks, swapping a region's textures across frames by itself
-([WORLDKIT.md](WORLDKIT.md#region-seams)), character control, cameras, goals and saving (the
+([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#region-seams)), character control, cameras, goals and saving (the
 game's).
 
 ## Extensions not made
@@ -1227,7 +1227,7 @@ version (a reserved field or a flag) unless noted.
   heights rather than triangles. Triangles were fast enough.
 - **Collision layers that are not draw layers**, and per-triangle flags (one-sided walls, forced
   kinds). The surface byte and the tag can carry game meaning meanwhile.
-- **Occluder fusion.** A zone hides what one occluder hides alone (WORLDKIT.md, "Occlusion"); the
+- **Occluder fusion.** A zone hides what one occluder hides alone (WORLDKIT-REFERENCE.md, "Occlusion"); the
   sets are the format's, so a kit that joins shadows needs no new version.
 - **Non-uniform cells** (quadtrees, irregular districts): out of scope; the grid is uniform.
 - **Ordered ground** (several ground passes, lowest first, so a raised floor could be ground over

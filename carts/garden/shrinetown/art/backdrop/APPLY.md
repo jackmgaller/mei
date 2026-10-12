@@ -1,7 +1,7 @@
 # Shrine town: the backdrop
 
 A sky and a far view round the level, on the Horizon Engine's tile plane
-([WORLDKIT.md](../../../../../docs/WORLDKIT.md#backdrops), [PLANES.md](../../../../../docs/PLANES.md)):
+([WORLDKIT-REFERENCE.md](../../../../../docs/WORLDKIT-REFERENCE.md#backdrops), [PLANES.md](../../../../../docs/PLANES.md)):
 no triangles and no GPU cycles. **One backdrop for both texture regions** (`town` and `shrine`)
 since the alpha fixes (DESIGN.md 12.9): until then each region had its own, and crossing z = 128
 moved the ranges by up to 45 rows, rearranged the clouds and moved the radio tower by 5 degrees.

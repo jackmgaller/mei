@@ -124,7 +124,7 @@ across: `col_stand()` (`player.akr`), which stands the body and lands it, asks `
 before, and only where that finds no floor (the world's or a mover's) within reach asks
 `wp_floor_across()`, so a gap of up to about 0.3 m between two floors within a step of the feet
 holds the body; the World Checker does not report such gaps
-([WORLDKIT.md](../../docs/WORLDKIT.md#cracks)).
+([WORLDKIT-REFERENCE.md](../../docs/WORLDKIT-REFERENCE.md#cracks)).
 
 ## Goals
 

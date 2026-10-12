@@ -1506,7 +1506,7 @@ fn draw() {
 ### Animated textures (`texanim.akr`) and world backdrops (`wpbackdrop.akr`)
 
 Neither is in the prelude. **`texanim.akr`** copies the frames of an animated texture
-([ASSETKIT.md](ASSETKIT.md#animated-textures)) into its tile: meshes are read in place from ROM,
+([ASSETKIT-REFERENCE.md](ASSETKIT-REFERENCE.md#animated-textures)) into its tile: meshes are read in place from ROM,
 so a frame is changed by rewriting the tile's texels, and every face using it changes with it.
 
 | | |
@@ -1540,14 +1540,14 @@ animation of the entered region (`wp_region_enter(k, v)`), and `wp_variant_load(
 included ([WORLDPACK.md](WORLDPACK.md#the-console-reader-stdlibworldpackakr)).
 
 **`wpbackdrop.akr`** (it imports `planes.akr` and `worldpack.akr`) shows a region's backdrop, a
-sky gradient and a horizon silhouette, on the plane chip ([WORLDKIT.md](WORLDKIT.md#backdrops)):
+sky gradient and a horizon silhouette, on the plane chip ([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#backdrops)):
 `wp_backdrop_show(k)` (the compositor on, BG1 set up; false when the region has none),
 `wp_backdrop_draw(yaw, pitch)` every frame with the camera's yaw and pitch (about 5,500 cycles),
 `wp_backdrop_variant(va, vb, t)` (the sky's colours between two variants) and
 `wp_backdrop_hide()`. `wp_backdrop_focal` (207.8) is the camera's pixels a radian. A cart that
 shows a backdrop draws no `cls()`: the plane chip erases the frame to holes.
 
-**`wpwater.akr`** answers where a world's water is ([WORLDKIT.md](WORLDKIT.md#water)). A world
+**`wpwater.akr`** answers where a world's water is ([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#water)). A world
 with water imports it from its `NAME.akr`, which opens the world's `NAME.water.bin` in
 `world_NAME_load()`. `wp_water(p, above)` is true when point `p` is under a water surface, or
 within `above` units over one, and sets `wp_water_hit`: `level` (the surface's height there),

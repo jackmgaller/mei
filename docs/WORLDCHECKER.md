@@ -2,7 +2,7 @@
 
 The World Checker is the World Kit's in-level verification ([WORLDKIT.md](WORLDKIT.md),
 "Verification"): the level-scale counterpart of the Asset Kit's Asset Checker
-([ASSETKIT.md](ASSETKIT.md), "Automated visibility gate"). The Asset Checker looks at one object
+([ASSETKIT-REFERENCE.md](ASSETKIT-REFERENCE.md#automated-visibility-gate), "Automated visibility gate"). The Asset Checker looks at one object
 from outside. The World Checker looks at a level from inside, from where a player can stand,
 glide and look, on the real runtime (`stdlib/worldpack.akr`) and the real console core.
 
@@ -62,7 +62,7 @@ one row per view, a `summary` of the worst views, `images`, `scope` and `timing`
 ## Settings
 
 Settings are a JSON object merged over these defaults; unknown keys are errors. The thresholds
-are WORLDKIT.md's placeholders.
+are the World Kit design's placeholders ([WORLDKIT-DESIGN.md](WORLDKIT-DESIGN.md#a-frame-budget-placeholder)).
 
 | Setting | Default | |
 |---|---|---|
@@ -76,7 +76,7 @@ are WORLDKIT.md's placeholders.
 | `thresholds.ground_inversion_pixels` | 0 | per view: pixels where ground truly hides what is drawn over it |
 | `thresholds.gpu_cycles` | 1,600,000 | 80% of the GPU's budget (2,000,000 since 2026-10-03) |
 | `thresholds.draw_cpu_cycles` | 600,000 | 60% of the CPU's: `wp_draw()` plus entity meshes |
-| `thresholds.view_triangles` | 4,000 | triangles submitted per view (WORLDKIT.md, "A frame budget") |
+| `thresholds.view_triangles` | 4,000 | triangles submitted per view (WORLDKIT-DESIGN.md, "A frame budget") |
 | `thresholds.cell_triangles`, `cell_placements`, `standin_triangles` | 1,600, 100, 32 | every layer on |
 | `thresholds.occlusion_leaks` | 0 | rays from an occlusion zone that reach what it hides ([Occlusion](#occlusion)) |
 | `sampling.floor_spacing` | 16 | grid spacing over each cell's floors (`null`: none) |
@@ -122,7 +122,7 @@ the console has. Each check runs with every layer off and with each layer on alo
   corners that disagree, inside a cell or across a seam (`on_seam`). WORLDPACK.md, "Floor and
   ceiling records", says these leave cracks; the checker rejects them.
 - **Bridged cracks.** When the game's probe gives `bridge`, its floor query
-  (`wp_floor_across()`, [WORLDKIT.md](WORLDKIT.md#cracks)) steps across gaps narrower than it,
+  (`wp_floor_across()`, [WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#cracks)) steps across gaps narrower than it,
   and the checker asks the same question with the same arithmetic (`reader_floor_across()`):
   a gap is a crack only if one of its points is not bridged for a body at the edge's height, with
   the probe's step above and below; a mismatched edge only if a point of its sliver (at the
@@ -150,7 +150,7 @@ The crack check looks at floors; it cannot see steep ground, which is all walls.
 body out along its horizontal normal only, so a body falling onto a slope too steep to stand on
 is held at the surface while it creeps down a single face, but in a crease, where two steep faces
 meet in a V, the faces push it back and forth and it sinks through the world (the shrine town's
-B3, [WORLDKIT.md](WORLDKIT.md#steep-ground)). The drop check finds those places.
+B3, [WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#steep-ground)). The drop check finds those places.
 
 Over a grid of points (`collision.drop.spacing`, 1 unit) in every cell, wherever the highest
 up-facing collision is a wall rather than a floor (a wall whose normal's y is at least
@@ -369,7 +369,7 @@ and the largest depth error. Each view reports `tested_pixels`, `tested_backgrou
 `entity_views` adds these up over the views aimed at entities.
 
 The Asset Checker judges depth order with the same `edge_margin` rule and default
-([ASSETKIT.md](ASSETKIT.md#what-is-checked)), so an asset that passes it is not failed in a level
+([ASSETKIT-REFERENCE.md](ASSETKIT-REFERENCE.md#what-is-checked)), so an asset that passes it is not failed in a level
 for the same 1-pixel edge flips, and both report what the margin leaves undecided.
 
 **Collision edges of long thin floors.** The static check finds a floor's boundary edges by
@@ -518,7 +518,7 @@ no ground flag can change; its ground-over-ground pixels are the sides of the 0.
 slabs, which the static check names as `ground_over_ground` and a ground tile modelled as a
 surface would remove.
 
-Both were then fixed in the examples' asset recipes (WORLDKIT.md, "Ground"): the ground tiles,
+Both were then fixed in the examples' asset recipes (WORLDKIT-REFERENCE.md, "Ground"): the ground tiles,
 the room's floor and the far block's ground became upward quads; the shop became one shell whose
 window, sign and roof edge are bands of its walls, with no faces inside it; the canopy's trim
 became its roof's front and back edges. Measured the same way:
@@ -572,7 +572,7 @@ Evidence (`tests/test_worldverify.py`, `EntityViewTests`; worlds in `tests/world
 
 Measured on the example worlds, default settings, before (the sampling without entity cameras,
 `test_room`'s coin as it was, entities drawn with `mesh_at()`) and after (the coin remodelled,
-[WORLDKIT.md](WORLDKIT.md), and drawn with `wp_draw_entities()`):
+[WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#objects-on-platforms), and drawn with `wp_draw_entities()`):
 
 | | `test_room` before | entity cameras, coin and drawing as before | after | `two_districts` before | after |
 |---|---|---|---|---|---|
@@ -608,7 +608,7 @@ the coin, or seen only from afar, has that much less checked.
 
 ### Textures
 
-A pack with region texture sets ([WORLDKIT.md](WORLDKIT.md#textures-per-region)) is checked as a
+A pack with region texture sets ([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#textures-per-region)) is checked as a
 game draws it: every view enters its camera cell's region (`wp_region_enter()`, so the measured
 frame samples the real texels, at their real cost, and the near cells of other regions are drawn,
 and expected, as their stand-ins). The reference reads the region's texture set from the pack:
@@ -826,7 +826,7 @@ with the number of floors.
 ## The quick check
 
 `verify(..., focus={'cells': [(i, j), ...]})` narrows a check to some cells, for
-`mei_world.py check` ([WORLDKIT.md](WORLDKIT.md#quick-tools)); `focus=None` (the default) is
+`mei_world.py check` ([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#quick-tools)); `focus=None` (the default) is
 the whole check, unchanged. With a focus:
 
 - the static collision checks run on the triangles near the cells (`near_cells()`: those whose
@@ -858,7 +858,7 @@ shrine town's two cells with 12 findings, and in `tests/test_worldkit.py`).
 - **Drops** model the garden's body (its fall speed and wall sample heights), not every game's;
   a fall through a slope onto a floor beneath it is not caught.
 - **Not checked yet:** the seam rule for region textures (no region texture drawn while slots
-  are swapped: [WORLDKIT.md](WORLDKIT.md#region-seams)), the backdrop (the plane chip draws it
+  are swapped: [WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#region-seams)), the backdrop (the plane chip draws it
   behind every polygon; the check judges polygons only) and the overhang limit (the encoder enforces it); fog and the game's own drawing
   beyond entity meshes.
 

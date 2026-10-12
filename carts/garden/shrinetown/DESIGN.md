@@ -159,7 +159,7 @@ more than about 64 m along a dense street except the axis, whose contents are bu
 ### 2.1 Size, coordinates, heights
 
 - **320 × 384 m**, x east 0–320, z north 0–384, heights in metres above the street (0).
-- **Cells:** 64 m (WORLDKIT.md recommends 64 until stage 2 measures; the shrine uses 64), so
+- **Cells:** 64 m (WORLDKIT-DESIGN.md recommends 64 until stage 2 measures; the shrine uses 64), so
   **5 × 6 = 30 cells**, `c{col}_{row}` with col = x / 64, row = z / 64. The built shrine has 15.
 - Direction A's shrine sits at A's x + 64, z = 280 − A's y; its internal numbers are unchanged
   except where this document says so.
@@ -775,7 +775,7 @@ underpass and the walls seen from inside it use only the common set (asphalt, ke
 the viaduct, guardrails, road signs). While the player is between the two dog-legs (300 ticks at
 walking speed) the region's eight slots are swapped one a tick (about 56,000 cycles a slot, about
 6% of the CPU, over 8 ticks), then its palettes and backdrop. The World Checker needs a check
-that no view between the dog-legs draws a region-textured cell (proposed in WORLDKIT.md, "Region
+that no view between the dog-legs draws a region-textured cell (proposed in WORLDKIT-REFERENCE.md, "Region
 seams"; not built). A player gliding or grinding along the viaduct's parapet crosses the same
 line 9 m higher: the parapet's views are the deck and the sky, and the swap runs the same way.
 
@@ -1333,7 +1333,7 @@ cells' trees were already crossed cut-out cards past 16–20 m; what read as box
 stand-ins (the far ring, from about 96 m), which drew every textured face in a flat far colour,
 so each tree's two cards became two dark slabs (the cedars) or yellow and orange blocks (the
 ginkgos and maples), and nothing faded with distance. Three changes, in the World Kit and the
-world's settings (WORLDKIT.md, "Stand-ins made by the kit" and "Haze"):
+world's settings (WORLDKIT-REFERENCE.md, "Stand-ins made by the kit" and "Haze"):
 
 | What | Where | Effect |
 |---|---|---|
@@ -1419,7 +1419,7 @@ zones), and case 414's start on the temple's ridge (waits for the shrine's climb
 
 #### Workstream 7: occluders
 
-**What was built.** Hand-placed occluders in the World Kit (WORLDKIT.md, "Occlusion"): a recipe
+**What was built.** Hand-placed occluders in the World Kit (WORLDKIT-REFERENCE.md, "Occlusion"): a recipe
 declares occluder boxes or quads and camera zones; the kit works out, per zone, the placements of
 the near cells and the stand-ins of the far ring that one occluder hides from every point of the
 zone; the pack stores those sets (WORLDPACK.md 1.5, "Occlusion zones"); the reader finds the
