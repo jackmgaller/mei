@@ -1,0 +1,307 @@
+// The fight's effects (D's), from the fight's events and state; the fight never draws.
+//
+//   trails   each weapon's sweep during an attack: the blade's base and tip (anim_part) kept for
+//            the last TRAIL_N frames, drawn as a strip of additive Gouraud quads in the world
+//            (a mesh in RAM, depth-tested), fading toward the oldest. The Hero's sword white
+//            into cyan, the echo's daggers violet.
+//   sparks   on hits, blocks, chip, breaks, throws and the KO: additive sprites (a spark star,
+//            a glow, an expanding ring) on the interface list at the projected contact point,
+//            sized in metres; dust on landings
+//   shots    the Hero's ground wave (fight.shot[]): a crescent of light and its glow
+//   flash    the colour offset: white over everything as a super starts or a round is won,
+//            then the hall and the floor darkened for the rest of the super's freeze
+// Screen shake is the camera's (camera.akr), from fight.shake.
+
+private const TRAIL_N = 8                  // samples a weapon
+private const TRAILS = 4                   // two fighters, two weapons each
+private const SPARKS = 24
+
+private enum FxKind: u8 { Spark, Glow, Ring, Dust }
+
+private struct Trail {
+    n: s32                         // samples held (0..TRAIL_N)
+    head: s32                      // the newest
+    base: [TRAIL_N]vec3
+    tip: [TRAIL_N]vec3
+    idle: s32                      // frames since the weapon was last swinging
+}
+
+private struct Spark {
+    kind: FxKind
+    t: s32
+    life: s32
+    pos: vec3
+    size: fixed                    // metres across at its biggest
+    col: u32
+    vx: fixed                      // drift, metres a frame
+    vy: fixed
+}
+
+private struct TrailMesh {
+    hdr: Mesh
+    v: [TRAILS * TRAIL_N * 2]vec4
+    f: [TRAILS * (TRAIL_N - 1)]Face
+}
+
+var fx_trails: [TRAILS]Trail
+var fx_sparks: [SPARKS]Spark
+var fx_next: s32
+var fx_flash: s32                  // frames of white flash left
+var fx_flash_max: s32
+var fx_dark: bool                  // the super's freeze darkens the hall
+var fx_mesh: TrailMesh
+var fx_tick: s32
+
+fn fx_reset() {
+    for i in 0..TRAILS { fx_trails[i].n = 0 }
+    for i in 0..SPARKS { fx_sparks[i].life = 0 }
+    fx_flash = 0
+    fx_dark = false
+    layer_offset(0, 0, 0, 0)
+}
+
+// ---- spawning
+
+private fn fx_spawn(kind: FxKind, pos: vec3, size: fixed, life: s32, col: u32, vx: fixed, vy: fixed) {
+    let s = &fx_sparks[fx_next]
+    fx_next = (fx_next + 1) % SPARKS
+    s.kind = kind
+    s.t = 0
+    s.life = life
+    s.pos = pos
+    s.size = size
+    s.col = col
+    s.vx = vx
+    s.vy = vy
+}
+
+fn fx_flash_start(n: s32) {
+    if n > fx_flash {
+        fx_flash = n
+        fx_flash_max = n
+    }
+}
+
+// A fight event's effects.
+fn fx_event(e: *Event, f: *Fight) {
+    let p = vec3(e.x, e.y, -1.0)          // a little in front of the mechs
+    let pw = clamp(e.power, 0, 3)
+    let k = fixed(pw + 2)
+    match e.kind {
+        Hit => {
+            fx_spawn(FxKind.Glow, p, 1.1 * k, 8 + pw * 2, 0x4080C0, 0.0, 0.0)
+            fx_spawn(FxKind.Spark, p, 1.6 * k, 8 + pw * 2, 0xFFFFFF, 0.0, 0.0)
+            fx_spawn(FxKind.Ring, p, 1.8 * k, 12 + pw * 2, 0xFFE0A0, 0.0, 0.0)
+            if pw >= 2 { fx_flash_start(3) }
+        }
+        Block, Chip => {
+            fx_spawn(FxKind.Ring, p, 3.0 * k / 2, 12, 0xFFD080, 0.0, 0.0)
+            fx_spawn(FxKind.Spark, p, 1.2 * k, 6, 0xFFE8C0, 0.0, 0.0)
+        }
+        Parry => {
+            fx_spawn(FxKind.Ring, p, 8.0, 14, 0xFFF0A0, 0.0, 0.0)
+            fx_spawn(FxKind.Spark, p, 6.0, 10, 0xFFFFFF, 0.0, 0.0)
+            fx_flash_start(3)
+        }
+        Clash => {
+            fx_spawn(FxKind.Ring, p, 10.0, 16, 0xFFE0A0, 0.0, 0.0)
+            fx_spawn(FxKind.Glow, p, 8.0, 12, 0xFFC060, 0.0, 0.0)
+        }
+        Break => {
+            fx_spawn(FxKind.Ring, p, 9.0, 16, 0xFFFFFF, 0.0, 0.0)
+            fx_spawn(FxKind.Glow, p, 7.0, 10, 0xF0D830, 0.0, 0.0)
+        }
+        Throw => {
+            fx_spawn(FxKind.Dust, vec3(e.x, 0.5, -1.0), 9.0, 22, 0x806858, 0.0, 0.02)
+            fx_spawn(FxKind.Ring, vec3(e.x, 0.5, -1.0), 12.0, 18, 0xC0A090, 0.0, 0.0)
+        }
+        Land => {
+            fx_spawn(FxKind.Dust, vec3(e.x - 1.5, 0.4, -1.0), 4.5, 18, 0x504038, -0.05, 0.015)
+            fx_spawn(FxKind.Dust, vec3(e.x + 1.5, 0.4, -1.0), 4.5, 18, 0x504038, 0.05, 0.015)
+        }
+        Super => {
+            fx_flash_start(10)
+            fx_spawn(FxKind.Ring, vec3(f.f[e.side].x, 6.0, -1.0), 22.0, 20, 0xFFFFFF, 0.0, 0.0)
+            fx_spawn(FxKind.Glow, vec3(f.f[e.side].x, 6.0, -1.0), 16.0, 20, mech_colour(f.f[e.side].mech), 0.0, 0.0)
+        }
+        Ko => {
+            fx_flash_start(14)
+            fx_spawn(FxKind.Glow, p, 14.0, 24, 0xFFFFFF, 0.0, 0.0)
+            fx_spawn(FxKind.Ring, p, 18.0, 24, 0x60D0FF, 0.0, 0.0)
+        }
+        Shot => {
+            fx_spawn(FxKind.Glow, p, 5.0, 10, 0xFFE0A0, 0.0, 0.0)
+        }
+        else => {}
+    }
+}
+
+// ---- trails
+
+fn is_swing(mv: Mv) -> bool {
+    return (mv >= Mv.atk_n && mv <= Mv.sp_d) || mv == Mv.super
+}
+
+private fn trail_sample(t: *Trail, m: mat4, b0: fixed, b1: fixed, on: bool) {
+    let base = (m * vec4(0.0, b0, 0.0, 1.0)) as vec3
+    let tip = (m * vec4(0.0, b1, 0.0, 1.0)) as vec3
+    if !on {
+        t.idle += 1
+        if t.idle > 2 && t.n > 0 { t.n -= 1 }          // the strip shrinks from its tail
+        return
+    }
+    t.idle = 0
+    if t.n > 0 {
+        let d = tip - t.tip[t.head]
+        if abs(d.x) + abs(d.y) < 0.05 { return }       // hitstop: nothing moved
+    }
+    t.head = (t.head + 1) % TRAIL_N
+    t.base[t.head] = base
+    t.tip[t.head] = tip
+    t.n = min(t.n + 1, TRAIL_N)
+}
+
+// Once a frame of the fight (after fight_tick): sample the weapons.
+fn fx_update(f: *Fight) {
+    fx_tick += 1
+    for s in 0..2 {
+        let fi = &f.f[s]
+        let root = anim_place(vec2(fi.x, fi.y), fi.facing)
+        let on = is_swing(fi.mv)
+        if fi.mech == Mech.Hero {
+            let m = anim_part(fi.mech, fi.mv, fi.frame, root, Part.weapon_r)
+            trail_sample(&fx_trails[s * 2], m, 1.2, 7.0, on)
+            fx_trails[s * 2 + 1].n = 0
+        } else {
+            let mr = anim_part(fi.mech, fi.mv, fi.frame, root, Part.weapon_r)
+            trail_sample(&fx_trails[s * 2], mr, 0.6, 3.2, on)
+            let ml = anim_part(fi.mech, fi.mv, fi.frame, root, Part.weapon_l)
+            trail_sample(&fx_trails[s * 2 + 1], ml, 0.6, 3.2, on)
+        }
+    }
+    for i in 0..SPARKS {
+        let s = &fx_sparks[i]
+        if s.t < s.life {
+            s.t += 1
+            s.pos.x += s.vx
+            s.pos.y += s.vy
+        }
+    }
+    // the flash: white first, then (during a super's freeze) the hall darkened
+    if fx_flash > 0 { fx_flash -= 1 }
+    fx_dark = f.flash_side >= 0 && f.freeze > 0
+}
+
+// The colour offset for this frame.
+fn fx_offset() {
+    if fx_flash > 0 {
+        let v = 4 + 24 * fx_flash / max(fx_flash_max, 1)
+        layer_offset(0x3F, v, v, v)
+    } else if fx_dark {
+        layer_offset(0x26, -8, -8, -7)          // BG1, BG2 and the backdrop
+    } else {
+        layer_offset(0, 0, 0, 0)
+    }
+}
+
+// The trails, as one mesh of additive quads (call with the camera set, the depth test on).
+fn fx_draw_trails(f: *Fight) {
+    let m = &fx_mesh
+    var nv = 0
+    var nf = 0
+    for i in 0..TRAILS {
+        let t = &fx_trails[i]
+        if t.n < 2 { continue }
+        let s = i / 2
+        var c0: u32 = 0xFFF0C0           // the Hero: white into cyan
+        var c1: u32 = 0xC08020
+        if f.f[s].mech == Mech.Doubleblade {
+            c0 = 0xFFB0E0
+            c1 = 0x801850
+        }
+        let v0 = nv
+        for k in 0..t.n {
+            let j = (t.head - k + TRAIL_N) % TRAIL_N
+            m.v[nv] = vec4(t.base[j], 1.0)
+            m.v[nv + 1] = vec4(t.tip[j], 1.0)
+            nv += 2
+        }
+        for k in 0..t.n - 1 {
+            let fc = &m.f[nf]
+            fc.flags = (FACE_QUAD | FACE_GOURAUD | FACE_SEMI | FACE_DOUBLE) as u8
+            fc.blend = BLEND_ADD as u8
+            fc.idx[0] = (v0 + k * 2) as u16
+            fc.idx[1] = (v0 + k * 2 + 1) as u16
+            fc.idx[2] = (v0 + k * 2 + 2) as u16
+            fc.idx[3] = (v0 + k * 2 + 3) as u16
+            let a0 = fixed(t.n - 1 - k) / (t.n - 1)
+            let a1 = fixed(t.n - 2 - k) / (t.n - 1)
+            fc.col[0] = col_scale(c1, a0)
+            fc.col[1] = col_scale(c0, a0)
+            fc.col[2] = col_scale(c1, a1)
+            fc.col[3] = col_scale(c0, a1)
+            nf += 1
+        }
+    }
+    if nf == 0 { return }
+    m.hdr.nverts = nv as u16
+    m.hdr.nfaces = nf as u16
+    m.hdr.verts = 16
+    m.hdr.faces = (16 + len(m.v) * 16) as u32
+    m.hdr.windows = 0
+    mesh(&m.hdr)
+}
+
+// ---- sprites (the interface list)
+
+// Pixels across of size metres at world point p (0 behind the camera).
+fn fx_px(p: vec3, size: fixed) -> s32 {
+    let w = view_depth(p)
+    if w < 1.0 { return 0 }
+    return (size * 207.8 / w) as s32
+}
+
+fn fx_draw_sprites(f: *Fight) {
+    // the waves
+    for s in 0..2 {
+        let sh = &f.shot[s]
+        if !sh.on { continue }
+        let p = vec3(sh.x, sh.y + 3.0, -0.5)
+        let q = project_point(p)
+        if q.z < 0 { continue }
+        let px = fx_px(p, 1.0)
+        var w = px * 8
+        if sh.vx < 0.0 { w = -w }
+        let flick = (fx_tick & 2) as s32
+        fx_sprite(&FX_GLOW[0], q.x, q.y, px * 10, px * 7, 0x804010, BLEND_ADD)
+        fx_sprite(&FX_WAVE[0], q.x, q.y, w, px * (6 + flick / 2), 0xFFE8A0, BLEND_ADD)
+        fx_sprite(&FX_STREAK[0], q.x - w / 2, q.y + px * 2, w, px, 0xC09040, BLEND_ADD)
+    }
+    for i in 0..SPARKS {
+        let s = &fx_sparks[i]
+        if s.t >= s.life { continue }
+        let q = project_point(s.pos)
+        if q.z < 0 { continue }
+        let k = fixed(s.t) / s.life             // 0 .. 1 over its life
+        let fade = 1.0 - k
+        let px = fx_px(s.pos, s.size)
+        match s.kind {
+            Spark => {
+                let d = (px * (1.0 - k * 0.5)) as s32
+                fx_sprite(&FX_SPARK[0], q.x, q.y, d, d, col_scale(s.col, fade), BLEND_ADD)
+            }
+            Glow => {
+                let d = (px * (0.6 + k * 0.6)) as s32
+                fx_sprite(&FX_GLOW[0], q.x, q.y, d, d, col_scale(s.col, fade), BLEND_ADD)
+            }
+            Ring => {
+                let d = (px * (0.3 + k)) as s32
+                fx_sprite(&FX_RING[0], q.x, q.y, d, d, col_scale(s.col, fade), BLEND_ADD)
+            }
+            Dust => {
+                let d = (px * (0.5 + k * 0.7)) as s32
+                fx_sprite(&FX_GLOW[0], q.x, q.y, d, d / 2, col_scale(s.col, fade), BLEND_ADD)
+            }
+        }
+    }
+}

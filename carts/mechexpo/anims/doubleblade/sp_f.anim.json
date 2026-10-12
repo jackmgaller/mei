@@ -1,0 +1,175 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Charge Slash (MOVES.md): the Hero's (base), shorter and quicker: a 5 m skate (frames 3-13) with both blades trailing, ripped up across the body together (active 13-16, x 1.0-6.5, y 3-9.5: a fixed rectangle over the sweep). Knocks down.",
+  "base": "../hero/sp_f.anim.json",
+  "rig": "../../models/doubleblade/doubleblade.rig.json",
+  "length": 41,
+  "motion": [{"from": 3, "to": 13, "by": [5.0, 0], "ease": "ease"}],
+  "marks": {"step": [37]},
+  "phases": {"startup": 13, "active": 4, "recovery": 24},
+  "design": {
+    "hit": [1.0, 3.0, 6.5, 9.5],
+    "tolerance": 0.3,
+    "note": "MOVES.md, Charge Slash (the Double-blade Hero: shorter): the stand-in box x 1.0-6.5, y 3-9.5"
+  },
+  "allow": [
+    ["forearm_r", "weapon_r"],
+    ["forearm_l", "weapon_l"],
+    ["torso", "thigh_r"],
+    ["weapon_r", "weapon_l"],
+    ["hand_r", "weapon_l"],
+    ["hand_l", "weapon_r"],
+    ["pelvis", "shin_r"],
+    ["pelvis", "shin_l"]
+  ],
+  "keys": [
+    {"at": 0, "remove": true},
+    {"at": 3, "remove": true},
+    {"at": 8, "remove": true},
+    {"at": 14, "remove": true},
+    {"at": 15, "remove": true},
+    {"at": 16, "remove": true},
+    {"at": 17, "remove": true},
+    {"at": 18, "remove": true},
+    {"at": 20, "remove": true},
+    {"at": 27, "remove": true},
+    {"at": 34, "remove": true},
+    {"at": 39, "remove": true},
+    {"at": 42, "remove": true},
+    {"at": 45, "remove": true},
+    {"at": 0, "from": "guard", "ease": "in", "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}},
+    {
+      "at": 3,
+      "ease": "ease",
+      "offset": [-0.4, -1.6],
+      "reach": {"foot_r": [0.8, 0.0], "foot_l": [-2.8, 0.0]},
+      "pose": {
+        "pelvis": [-8, -4, 0],
+        "torso": [-16, 6, 0],
+        "head": [16, -4, 0],
+        "upper_arm_r": [24, 0, -16],
+        "forearm_r": [0, 0, 0],
+        "hand_r": [0, 150, 0],
+        "upper_arm_l": [50, 0, 26],
+        "forearm_l": [60, 0, -6],
+        "pauldron_r": [0, 0, -10]
+      }
+    },
+    {
+      "at": 7,
+      "ease": "ease",
+      "offset": [0.3, -1.7],
+      "reach": {"foot_r": [1.4, 0.0], "foot_l": [-2.6, 0.0]},
+      "pose": {
+        "pelvis": [-12, -4, 0],
+        "torso": [-24, 10, 0],
+        "head": [30, -6, 0],
+        "upper_arm_r": [36, 0, -16],
+        "forearm_r": [0, 0, 0],
+        "hand_r": [0, 180, 0],
+        "upper_arm_l": [70, 0, 30],
+        "forearm_l": [40, 0, -6],
+        "pauldron_r": [-6, 0, -10],
+        "pauldron_l": [26, 0, 10]
+      }
+    },
+    {
+      "at": 11,
+      "ease": "in",
+      "offset": [0.0, -1.7],
+      "reach": {"foot_r": [1.6, 0.0], "foot_l": [-2.4, 0.0]},
+      "pose": {
+        "pelvis": [-10, -6, 0],
+        "torso": [-18, 2, 0],
+        "head": [24, 0, 0],
+        "upper_arm_r": [28, 0, -16],
+        "forearm_r": [0, 0, 0],
+        "hand_r": [0, 170, 0]
+      }
+    },
+    {
+      "at": 12,
+      "ease": "linear",
+      "pose": {
+        "pelvis": [-8, -6, 0],
+        "torso": [-12, -6, 0],
+        "upper_arm_r": [20, 0, -14],
+        "forearm_r": [0, 0, 0],
+        "hand_r": [0, 95, 0]
+      }
+    },
+    {
+      "at": 13,
+      "ease": "linear",
+      "offset": [-0.2, -1.35],
+      "reach": {"foot_r": [1.6, 0.0], "foot_l": [-2.4, 0.0]},
+      "boxes": {
+        "slash": {"kind": "hit", "rect": [1.0, 3.0, 6.5, 9.5]},
+        "arm": {"kind": "hurt", "part": "weapon_r", "min": [-0.3, -0.8, -0.5], "max": [0.3, 1.0, 0.5]}
+      },
+      "pose": {
+        "pelvis": [-4, -8, 0],
+        "torso": [-6, -16, 0],
+        "head": [6, 14, 0],
+        "upper_arm_r": [14, 0, -12],
+        "forearm_r": [20, 0, 0],
+        "hand_r": [0, 62, 0]
+      }
+    },
+    {
+      "at": 14,
+      "ease": "linear",
+      "pose": {"upper_arm_r": [24, 0, -12], "forearm_r": [56, 0, 0], "hand_r": [-20, 20, 0], "torso": [-5, -20, 0]}
+    },
+    {
+      "at": 15,
+      "ease": "linear",
+      "pose": {"upper_arm_r": [40, 0, -12], "forearm_r": [60, 0, 0], "hand_r": [-30, 0, 0], "torso": [-4, -24, 0]}
+    },
+    {
+      "at": 17,
+      "ease": "out",
+      "offset": [-0.1, -1.1],
+      "boxes": {"slash": null},
+      "pose": {
+        "pelvis": [0, -12, 0],
+        "torso": [0, -34, 0],
+        "head": [-4, 24, 0],
+        "upper_arm_r": [120, 0, -10],
+        "forearm_r": [30, 0, 0],
+        "hand_r": [-40, 0, 0],
+        "upper_arm_l": [20, 0, 34],
+        "forearm_l": [50, 0, -6],
+        "pauldron_r": [40, 0, -10]
+      }
+    },
+    {
+      "at": 23,
+      "ease": "ease",
+      "offset": [-0.1, -1.05],
+      "pose": {"torso": [2, -36, 0], "upper_arm_r": [130, 0, -10], "forearm_r": [36, 0, 0]}
+    },
+    {
+      "at": 30,
+      "ease": "ease",
+      "offset": [-0.2, -1.0],
+      "boxes": {"arm": null},
+      "reach": {"foot_r": [1.6, 0.0], "foot_l": [-2.4, 0.0]},
+      "pose": {
+        "pelvis": [-2, -10, 0],
+        "torso": [-6, -20, 0],
+        "head": [0, 16, 0],
+        "upper_arm_r": [60, 0, -14],
+        "forearm_r": [40, 0, 4],
+        "hand_r": [-26, 0, 0],
+        "upper_arm_l": [36, 0, 22],
+        "forearm_l": [76, 0, -6],
+        "pauldron_r": [16, 0, -8]
+      }
+    },
+    {"at": 35, "reach": {"foot_r": [1.0, 0.5]}},
+    {"at": 37, "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}},
+    {"at": 40, "from": "guard", "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}}
+  ]
+}

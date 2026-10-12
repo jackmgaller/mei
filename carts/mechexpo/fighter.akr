@@ -1,0 +1,961 @@
+// Mech Expo 2000: the fighters (C's). Input and its buffer, the state machine (moves, hit and
+// block stun, jumps, knockdowns, throws), movement with the walls and the separation limit, and
+// the collisions: hits, blocks, chip, grabs and breaks, the Parry, the wave. fight.akr runs it
+// a frame at a time and owns the rounds. Everything is fixed-point and deterministic.
+
+import "moves.akr"
+import "meter.akr"
+import "fight.akr"
+
+// Relative directions (forward is toward the way the mech faces).
+const D_N = 0
+const D_F = 1
+const D_B = 2
+const D_D = 3
+const D_U = 4
+
+// Buffered buttons.
+const BI_A = 0
+const BI_B = 1
+const BI_X = 2
+const BI_Y = 3
+const NBUF = 4
+const BUF = 8                   // a press is kept this many frames
+const NO_PRESS = 1000
+const SUPER_WINDOW = 3          // A and B within this many frames: the super
+const KARA = 3                  // a move this young may still become the super
+const BREAK_WINDOW = 10         // frames after a catch in which the victim may break
+const BREAK_EARLY = 3           // or this many frames before it
+const SLIDE_FRICTION: fixed = 0.012
+const BLOCK_STOP = 7
+const COMBO_2 = 80              // per cent of damage for a combo's second hit
+const COMBO_3 = 65              // and the third and later
+const STICK_ON: fixed = 0.5
+
+struct Fx {
+    t: s32                      // frame of the current move
+    stun: s32                   // hitstun or blockstun frames left
+    stun_len: s32
+    lag: s32                    // landing lag left
+    pause: s32                  // frozen by a Parry
+    air: bool                   // in the air under gravity
+    vx: fixed
+    vy: fixed
+    slide: fixed                // the knockback slide, world metres a frame
+    slide_by: s32               // who caused it (a wall passes it back to them), or -1
+    hits: u32                   // hit indices of the current move that connected
+    contact: bool               // the current move hit or was blocked (cancels)
+    chain: s32                  // Double-blade: its second neutral attack used
+    combo: s32                  // hits taken in the current combo
+    air_used: bool              // the air attack of this jump
+    riposte: bool               // the Parry caught something
+    ko: bool                    // knocked out (lands in ko)
+    break_t: s32                // the victim's break window left
+    had_hit: bool               // the last frame had a hit box (swing and whiff events)
+    // input
+    pad: u32
+    held_dir: s32               // the relative direction held now
+    hx: s32                     // the horizontal direction held, world (-1, 0, 1)
+    down: bool
+    age: [NBUF]s32              // frames since each button's last press (NO_PRESS: none)
+    dir: [NBUF]s32              // the direction held at that press
+    sa: s32                     // frames since A and B were pressed, for the super (a move
+    sb: s32                     // started by one of them does not use these up)
+    calm: s32                   // training: frames since last hurt
+    prev_x: fixed               // x at the start of the frame (the separation limit)
+}
+
+var fx: [2]Fx
+var fbox: [2]Boxes              // this frame's boxes, world-relative (fight-local, by facing)
+
+fn other(i: s32) -> s32 { return 1 - i }
+
+fn sgn(v: fixed) -> s32 {
+    if v > 0.0 { return 1 }
+    if v < 0.0 { return -1 }
+    return 0
+}
+
+fn fighter_reset(i: s32, x: fixed, facing: s32) {
+    let f = &fight.f[i]
+    f.x = x
+    f.y = 0.0
+    f.facing = facing
+    f.mv = Mv.idle
+    f.frame = 0.0
+    f.flash = 0
+    f.health = STATS[f.mech].health
+    f.health_max = f.health
+    fx[i] = Fx { slide_by: -1 }
+    for b in 0..NBUF { fx[i].age[b] = NO_PRESS }
+    fx[i].sa = NO_PRESS
+    fx[i].sb = NO_PRESS
+}
+
+// ---- input
+
+fn fighter_input(i: s32, pad_in: u32, st: vec2) {
+    let f = &fight.f[i]
+    let x = &fx[i]
+    var pad = pad_in
+    if st.x > STICK_ON { pad |= RIGHT }
+    if st.x < -STICK_ON { pad |= LEFT }
+    if st.y > STICK_ON { pad |= UP }
+    if st.y < -STICK_ON { pad |= DOWN }
+    let pressed = pad & ~x.pad
+    x.pad = pad
+    x.hx = 0
+    if pad & RIGHT != 0 { x.hx += 1 }
+    if pad & LEFT != 0 { x.hx -= 1 }
+    x.down = pad & DOWN != 0
+    var d = D_N
+    if pad & UP != 0 { d = D_U }
+    else if x.down { d = D_D }
+    else if x.hx == f.facing { d = D_F }
+    else if x.hx == -f.facing { d = D_B }
+    x.held_dir = d
+    let bits: [NBUF]u32 = [A, B, X, Y]
+    for b in 0..NBUF {
+        if pressed & bits[b] != 0 {
+            x.age[b] = 0
+            x.dir[b] = d
+        }
+    }
+    if pressed & A != 0 { x.sa = 0 }
+    if pressed & B != 0 { x.sb = 0 }
+}
+
+// Once a frame outside the freezes: presses get older.
+fn fighter_age_input(i: s32) {
+    for b in 0..NBUF {
+        if fx[i].age[b] < NO_PRESS { fx[i].age[b] += 1 }
+    }
+    if fx[i].sa < NO_PRESS { fx[i].sa += 1 }
+    if fx[i].sb < NO_PRESS { fx[i].sb += 1 }
+}
+
+private fn fresh(i: s32, b: s32) -> bool { return fx[i].age[b] <= BUF }
+private fn consume(i: s32, b: s32) { fx[i].age[b] = NO_PRESS }
+
+fn super_pressed(i: s32) -> bool {
+    let x = &fx[i]
+    return x.sa <= BUF && x.sb <= BUF && abs(x.sa - x.sb) <= SUPER_WINDOW
+}
+
+// ---- states
+
+fn is_neutral(mv: Mv) -> bool {
+    return mv == Mv.idle || mv == Mv.walk_f || mv == Mv.walk_b || mv == Mv.crouch || mv == Mv.block
+}
+
+fn grounded(i: s32) -> bool { return !fx[i].air && fight.f[i].y <= 0.0 }
+
+// Hit and block stun, knockdowns, throws: the states nothing else may change.
+fn is_hurt(mv: Mv) -> bool {
+    return mv == Mv.hit_high || mv == Mv.hit_low || mv == Mv.hit_air || mv == Mv.knockdown
+        || mv == Mv.getup || mv == Mv.ko || is_thrown(mv)
+}
+
+fn is_thrown(mv: Mv) -> bool { return mv == Mv.thrown || mv == Mv.thrown_vault }
+
+fn actionable(i: s32) -> bool {
+    let f = &fight.f[i]
+    if !grounded(i) { return false }
+    if f.mv == Mv.block { return fx[i].stun == 0 }
+    return is_neutral(f.mv)
+}
+
+fn set_mv(i: s32, mv: Mv) {
+    let f = &fight.f[i]
+    let x = &fx[i]
+    f.mv = mv
+    x.t = 0
+    x.hits = 0
+    x.contact = false
+    x.riposte = false
+    x.had_hit = false
+}
+
+private fn to_neutral(i: s32) {
+    let x = &fx[i]
+    x.stun = 0
+    x.combo = 0
+    x.chain = 0
+    if x.down { set_mv(i, Mv.crouch) } else { set_mv(i, Mv.idle) }
+}
+
+// The fighter's world box from a fight-local one.
+fn world_box(i: s32, b: *Box) -> vec4 {
+    let f = &fight.f[i]
+    if f.facing > 0 { return vec4(f.x + b.x0, f.y + b.y0, f.x + b.x1, f.y + b.y1) }
+    return vec4(f.x - b.x1, f.y + b.y0, f.x - b.x0, f.y + b.y1)
+}
+
+fn cur_frame(i: s32) -> s32 {
+    let f = &fight.f[i]
+    let n = mv_len(f.mech, f.mv)
+    // crouch and block: the get-down or the raise, then the last frame held (they are held
+    // states, so the fight keeps them going like loops)
+    if f.mv == Mv.crouch || f.mv == Mv.block { return min(fx[i].t, n - 1) }
+    if mv_loops(f.mech, f.mv) { return fx[i].t % n }
+    return min(fx[i].t, n - 1)
+}
+
+fn cur_marks(i: s32) -> u32 {
+    let f = &fight.f[i]
+    return mv_marks(f.mech, f.mv, cur_frame(i))
+}
+
+// The frame with a mark in a move (the Parry's riposte), or -1.
+private fn find_mark(m: Mech, mv: Mv, mark: u32) -> s32 {
+    let n = mv_len(m, mv)
+    for k in 0..n {
+        if mv_marks(m, mv, k) & mark != 0 { return k }
+    }
+    return -1
+}
+
+private fn count_mark(m: Mech, mv: Mv, mark: u32) -> s32 {
+    let n = mv_len(m, mv)
+    var c = 0
+    for k in 0..n {
+        if mv_marks(m, mv, k) & mark != 0 { c += 1 }
+    }
+    return c
+}
+
+// ---- starting moves
+
+fn start_super(i: s32) {
+    let f = &fight.f[i]
+    meter_spend(f)
+    consume(i, BI_A)
+    consume(i, BI_B)
+    fx[i].sa = NO_PRESS
+    fx[i].sb = NO_PRESS
+    set_mv(i, Mv.super)
+    let flash = count_mark(f.mech, Mv.super, MARK_FLASH)
+    if flash > 0 {
+        fight.freeze = flash
+        fight.flash_side = i
+    }
+    ev_add(Ev.Super, i, f.x, 6.0, 3)
+}
+
+// Starts the move a buffered press asks for, if allowed (mask: the moves it may be, for a cancel;
+// 0xFFFFFFFF from neutral). Returns whether one started.
+fn try_press(i: s32, mask: u32) -> bool {
+    let f = &fight.f[i]
+    let x = &fx[i]
+    if (mask & SUPER_BIT) != 0 && super_pressed(i) && meter_can_super(f) && grounded(i) {
+        start_super(i)
+        return true
+    }
+    if fresh(i, BI_Y) && (mask & mv_bit(Mv.grab)) != 0 && grounded(i) {
+        consume(i, BI_Y)
+        set_mv(i, Mv.grab)
+        return true
+    }
+    if fresh(i, BI_B) && grounded(i) {
+        let mv = match x.dir[BI_B] { D_U => Mv.sp_u, D_D => Mv.sp_d, D_F => Mv.sp_f, else => Mv.sp_n }
+        if (mask & mv_bit(mv)) != 0 {
+            consume(i, BI_B)
+            if mv == Mv.sp_n && f.mech == Mech.Hero && fight.shot[i].on { return false }
+            set_mv(i, mv)
+            return true
+        }
+    }
+    if fresh(i, BI_A) {
+        if !grounded(i) {
+            if !x.air_used && (mask & mv_bit(Mv.atk_air)) != 0 && fight.f[i].mv == Mv.jump {
+                consume(i, BI_A)
+                let keep_t = 0
+                fight.f[i].mv = Mv.atk_air
+                x.t = keep_t
+                x.hits = 0
+                x.contact = false
+                x.air_used = true
+                return true
+            }
+            return false
+        }
+        let mv = match x.dir[BI_A] { D_D => Mv.atk_d, D_F => Mv.atk_f, else => Mv.atk_n }
+        if (mask & mv_bit(mv)) != 0 {
+            if mv == Mv.atk_n && f.mv == Mv.atk_n {
+                if x.chain > 0 { return false }
+                x.chain = 1
+            }
+            consume(i, BI_A)
+            set_mv(i, mv)
+            return true
+        }
+    }
+    if fresh(i, BI_X) && (mask & mv_bit(Mv.jump)) != 0 && grounded(i) {
+        consume(i, BI_X)
+        set_mv(i, Mv.jump)
+        x.vx = fixed(x.hx) * STATS[f.mech].jvx
+        x.air_used = false
+        return true
+    }
+    return false
+}
+
+const ANY: u32 = 0xFFFFFFFF
+
+// ---- one frame of a fighter
+
+fn fighter_tick(i: s32, live: bool) {
+    let x = &fx[i]
+    x.prev_x = fight.f[i].x
+    if x.pause > 0 {
+        x.pause -= 1
+        return
+    }
+    advance(i)
+    if live { decide(i) }
+    let f = &fight.f[i]
+    // the slide (knockback, pushback, a break)
+    if x.slide != 0.0 && grounded(i) {
+        f.x += x.slide
+        if x.slide > 0.0 { x.slide = max(x.slide - SLIDE_FRICTION, 0.0) }
+        else { x.slide = min(x.slide + SLIDE_FRICTION, 0.0) }
+        if x.slide == 0.0 { x.slide_by = -1 }
+    }
+}
+
+private fn advance(i: s32) {
+    let f = &fight.f[i]
+    let x = &fx[i]
+    let s = &STATS[f.mech]
+    let mv = f.mv
+    if mv == Mv.hit_high || mv == Mv.hit_low || (mv == Mv.block && x.stun > 0) {
+        x.t += 1
+        x.stun -= 1
+        if x.stun <= 0 {
+            x.stun = 0
+            if mv != Mv.block { to_neutral(i) }
+        }
+        return
+    }
+    if mv == Mv.hit_air || mv == Mv.ko {
+        x.t += 1
+        if x.air {
+            air_step(i)
+            if !x.air {
+                if x.ko { set_mv(i, Mv.ko); x.t = 0; f.mv = Mv.ko }
+                else { set_mv(i, Mv.knockdown) }
+                ev_add(Ev.Land, i, f.x, 0.0, 2)
+            }
+        }
+        return
+    }
+    if mv == Mv.jump || mv == Mv.atk_air {
+        x.t += 1
+        if mv == Mv.jump && !x.air && x.t == s.pre {
+            x.air = true
+            x.vy = s.jv
+        }
+        if x.air {
+            air_step(i)
+            if !x.air {
+                let lag = if_else(mv == Mv.atk_air, s.land_air, s.land)
+                set_mv(i, Mv.land)
+                x.lag = lag
+                x.vx = 0.0
+                ev_add(Ev.Land, i, f.x, 0.0, 0)
+            }
+        }
+        return
+    }
+    if mv == Mv.land {
+        x.t += 1
+        x.lag -= 1
+        if x.lag <= 0 { to_neutral(i) }
+        return
+    }
+    if is_thrown(mv) { return }         // the thrower places it
+    if mv_loops(f.mech, mv) || mv == Mv.crouch || mv == Mv.block {
+        x.t += 1                        // loops, and the held states (cur_frame() holds them)
+        return
+    }
+    // a move: root motion, then the end
+    let r = mv_root(f.mech, mv, x.t)
+    move_root(i, fixed(f.facing) * r.x, r.y)
+    x.t += 1
+    if mv == Mv.knockdown && x.t >= mv_len(f.mech, mv) { set_mv(i, Mv.getup); return }
+    if mv == Mv.sp_d && !x.riposte {
+        let rip = find_mark(f.mech, Mv.sp_d, MARK_RIPOSTE)
+        if rip >= 0 && x.t >= rip { end_move(i); return }
+    }
+    if x.t >= mv_len(f.mech, mv) { end_move(i) }
+}
+
+fn if_else(c: bool, a: s32, b: s32) -> s32 {
+    if c { return a }
+    return b
+}
+
+private fn end_move(i: s32) {
+    let f = &fight.f[i]
+    let x = &fx[i]
+    if f.mv == Mv.grab {
+        set_mv(i, Mv.grab_whiff)
+        return
+    }
+    if f.y > 0.0 {                      // ended above the floor (the Rising Arc): fall
+        f.mv = Mv.jump
+        x.t = mv_len(f.mech, Mv.jump) - 1
+        x.air = true
+        x.vx = 0.0
+        x.vy = 0.0
+        x.air_used = true
+        return
+    }
+    f.y = 0.0
+    to_neutral(i)
+}
+
+private fn air_step(i: s32) {
+    let f = &fight.f[i]
+    let x = &fx[i]
+    f.x += x.vx
+    f.y += x.vy
+    x.vy -= STATS[f.mech].grav
+    if f.y <= 0.0 && x.vy < 0.0 {
+        f.y = 0.0
+        x.air = false
+        x.vy = 0.0
+        x.air_used = false
+    }
+}
+
+// Root motion, which may push into the other mech but not through it (unless it has no push
+// box: the Void Step).
+private fn move_root(i: s32, dx: fixed, dy: fixed) {
+    let f = &fight.f[i]
+    let o = &fight.f[other(i)]
+    var nx = f.x + dx
+    f.y = max(f.y + dy, 0.0)
+    if dx != 0.0 && grounded(other(i)) && (cur_marks(i) & MARK_NOPUSH) == 0 {
+        if f.x <= o.x && nx > o.x - 0.5 { nx = max(f.x, o.x - 0.5) }
+        if f.x >= o.x && nx < o.x + 0.5 { nx = min(f.x, o.x + 0.5) }
+    }
+    f.x = nx
+}
+
+private fn face_other(i: s32) {
+    let f = &fight.f[i]
+    let o = &fight.f[other(i)]
+    if o.x > f.x { f.facing = 1 }
+    if o.x < f.x { f.facing = -1 }
+}
+
+private fn decide(i: s32) {
+    let f = &fight.f[i]
+    let x = &fx[i]
+    let s = &STATS[f.mech]
+    if actionable(i) {
+        face_other(i)
+        // the direction of the presses is relative to the facing now
+        if x.combo != 0 { x.combo = 0 }
+        if try_press(i, ANY) { return }
+        if x.pad & R != 0 {
+            if f.mv != Mv.block { set_mv(i, Mv.block) }
+            return
+        }
+        if f.mv == Mv.block && x.stun == 0 {
+            to_neutral(i)
+        }
+        var want = Mv.idle
+        if x.down { want = Mv.crouch }
+        else if x.hx == f.facing { want = Mv.walk_f }
+        else if x.hx == -f.facing { want = Mv.walk_b }
+        if f.mv != want { set_mv(i, want) }
+        if want == Mv.walk_f { f.x += fixed(f.facing) * s.walk_f }
+        if want == Mv.walk_b { f.x -= fixed(f.facing) * s.walk_b }
+        if want == Mv.walk_f || want == Mv.walk_b {
+            if cur_marks(i) & MARK_STEP != 0 { ev_add(Ev.Step, i, f.x, 0.0, 0) }
+        }
+        return
+    }
+    // cancels: on contact, in the cancel window, into what the move allows
+    if x.contact && is_attack(f.mv) && (cur_marks(i) & MARK_CANCEL) != 0 {
+        let c = cancels(f.mech, f.mv)
+        if c != 0 && try_press(i, c) { return }
+    }
+    // a move started by A or B a moment ago becomes the super when the other button follows
+    if x.t <= KARA && (f.mv == Mv.atk_n || f.mv == Mv.atk_f || f.mv == Mv.atk_d || is_special(f.mv))
+        && super_pressed(i) && meter_can_super(f) && grounded(i) {
+        start_super(i)
+    }
+}
+
+// ---- the throw
+
+fn throw_tick(i: s32) {
+    let f = &fight.f[i]
+    if f.mv != Mv.throw { return }
+    let j = other(i)
+    let o = &fight.f[j]
+    let t = fx[i].t
+    if !is_thrown(o.mv) { return }
+    fx[j].t = t
+    // the victim's break
+    if fx[j].break_t > 0 {
+        fx[j].break_t -= 1
+        if fresh(j, BI_Y) {
+            consume(j, BI_Y)
+            grab_break(i)
+            return
+        }
+    }
+    let rel = find_mark(f.mech, Mv.throw, MARK_RELEASE)
+    let ft = fixed(f.facing)
+    if f.mech == Mech.Hero {
+        // held in front at arm's length, lifted
+        o.x = f.x + ft * 3.4
+        o.y = min(fixed(t) * 0.1, 3.0)
+    } else {
+        // vaulted over the head to the other side
+        var k = clamp(fixed(t - 6) / 22, 0.0, 1.0)
+        o.x = f.x + ft * (3.4 - k * 8.4)
+        o.y = 8.0 * k * (1.0 - k) * 4.0 / 4.0
+    }
+    if t == rel || (rel < 0 && t == 30) {
+        let h = move_hit(f.mech, Mv.throw)
+        damage(j, meter_damage(o, h.dmg), true)
+        meter_on_hit(f, true, false)
+        o.mv = Mv.hit_air
+        // from the thrown pose, lying flat: carry on from hit_air's last frame (also lying)
+        fx[j].t = mv_len(o.mech, Mv.hit_air) - 1
+        fx[j].air = true
+        fx[j].vy = h.launch
+        if f.mech == Mech.Hero { fx[j].vx = ft * 0.30 } else { fx[j].vx = -ft * 0.08 }
+        fight.freeze = h.stop
+        fight.flash_side = -1
+        o.flash = h.stop
+        fight.shake = 0.6
+        ev_add(Ev.Throw, i, o.x, o.y, h.power)
+        if o.health <= 0 { knock_out(j) }
+    }
+}
+
+fn grab_break(i: s32) {
+    let j = other(i)
+    set_mv(i, Mv.grab_break)
+    set_mv(j, Mv.grab_break)
+    fight.f[j].y = 0.0
+    fx[j].air = false
+    fx[i].break_t = 0
+    fx[j].break_t = 0
+    let d = sgn(fight.f[j].x - fight.f[i].x)
+    var dd = d
+    if dd == 0 { dd = fight.f[i].facing }
+    fx[i].slide = -fixed(dd) * 0.25
+    fx[j].slide = fixed(dd) * 0.25
+    fx[i].slide_by = -1
+    fx[j].slide_by = -1
+    ev_add(Ev.Break, i, (fight.f[i].x + fight.f[j].x) / 2, 6.0, 1)
+}
+
+// ---- damage and KOs
+
+fn damage(j: s32, dmg: s32, can_ko: bool) {
+    let o = &fight.f[j]
+    o.health -= dmg
+    var floor = 0
+    if !can_ko { floor = 1 }
+    if fight.mode == FightMode.Training { floor = 1 }
+    if o.health < floor { o.health = floor }
+    fx[j].calm = 0
+}
+
+fn knock_out(j: s32) {
+    fx[j].ko = true
+    let o = &fight.f[j]
+    if o.mv != Mv.hit_air {
+        o.mv = Mv.hit_air
+        fx[j].t = 0
+        fx[j].air = true
+        fx[j].vy = 0.4
+        fx[j].vx = -fixed(o.facing) * 0.12
+    }
+    ev_add(Ev.Ko, other(j), o.x, 6.0, 3)
+}
+
+// ---- collisions
+
+const R_NONE = 0
+const R_HIT = 1
+const R_BLOCK = 2
+const R_PARRY = 3
+const R_GRAB = 4
+
+private fn overlap(a: vec4, b: vec4) -> bool {
+    return a.x < b.z && b.x < a.z && a.y < b.w && b.y < a.w
+}
+
+fn hittable(j: s32) -> bool {
+    let o = &fight.f[j]
+    if is_hurt(o.mv) && o.mv != Mv.hit_high && o.mv != Mv.hit_low { return false }
+    if o.mv == Mv.throw || o.mv == Mv.intro || o.mv == Mv.win { return false }
+    if cur_marks(j) & (MARK_INVULN | MARK_NOPUSH) != 0 { return false }
+    return true
+}
+
+private fn grabbable(j: s32) -> bool {
+    let o = &fight.f[j]
+    if !grounded(j) { return false }
+    if o.mv == Mv.block { return fx[j].stun == 0 }
+    // a mech grabbing too: the first to catch wins, two at once break (collide())
+    return o.mv == Mv.idle || o.mv == Mv.walk_f || o.mv == Mv.walk_b || o.mv == Mv.crouch
+        || o.mv == Mv.grab
+}
+
+private fn parrying(j: s32) -> bool {
+    return fight.f[j].mv == Mv.sp_d && !fx[j].riposte && (cur_marks(j) & MARK_PARRY) != 0
+}
+
+// Fills fbox with both fighters' boxes for this frame.
+fn load_boxes() {
+    for i in 0..2 {
+        let f = &fight.f[i]
+        mv_boxes(f.mech, f.mv, cur_frame(i), &fbox[i])
+    }
+}
+
+var c_hit: [2]s32           // which box index of i's hit boxes connected
+var c_pt: [2]vec2           // the contact point
+
+// What i's hit boxes do to the other this frame.
+private fn strike(i: s32) -> s32 {
+    let j = other(i)
+    let f = &fight.f[i]
+    if fx[i].pause > 0 { return R_NONE }
+    let bi = &fbox[i]
+    let bj = &fbox[j]
+    for k in 0..bi.n {
+        let hb = &bi.b[k]
+        if hb.kind != BOX_HIT { continue }
+        if (fx[i].hits & ((1 as u32) << (hb.hit as u32))) != 0 { continue }
+        let w = world_box(i, hb)
+        if f.mv == Mv.grab {
+            if !grabbable(j) || cur_marks(j) & (MARK_INVULN | MARK_NOPUSH) != 0 { continue }
+        } else if !hittable(j) {
+            continue
+        }
+        for q in 0..bj.n {
+            let hu = &bj.b[q]
+            if hu.kind != BOX_HURT { continue }
+            let u = world_box(j, hu)
+            if overlap(w, u) {
+                c_hit[i] = hb.hit as s32
+                c_pt[i] = vec2((max(w.x, u.x) + min(w.z, u.z)) / 2, (max(w.y, u.y) + min(w.w, u.w)) / 2)
+                if f.mv == Mv.grab { return R_GRAB }
+                if parrying(j) && f.mv != Mv.super { return R_PARRY }
+                if fight.f[j].mv == Mv.block { return R_BLOCK }
+                return R_HIT
+            }
+        }
+    }
+    return R_NONE
+}
+
+fn collide() {
+    load_boxes()
+    let r0 = strike(0)
+    let r1 = strike(1)
+    if r0 == R_GRAB && r1 == R_GRAB {
+        ev_add(Ev.Grab, 0, (fight.f[0].x + fight.f[1].x) / 2, 6.0, 0)
+        grab_break(0)
+        return
+    }
+    let h0 = move_hit(fight.f[0].mech, fight.f[0].mv)
+    let h1 = move_hit(fight.f[1].mech, fight.f[1].mv)
+    let mv0 = fight.f[0].mv
+    let mv1 = fight.f[1].mv
+    resolve(0, r0, h0, mv0)
+    resolve(1, r1, h1, mv1)
+}
+
+private fn resolve(i: s32, r: s32, h: Hit, mv: Mv) {
+    if r == R_NONE { return }
+    let j = other(i)
+    fx[i].hits |= (1 as u32) << (c_hit[i] as u32)
+    match r {
+        R_GRAB => catch(i)
+        R_PARRY => {
+            fx[i].contact = true
+            parry(j, i)
+        }
+        R_BLOCK => {
+            fx[i].contact = true
+            blocked(i, j, h, mv, c_pt[i], false)
+        }
+        else => {
+            fx[i].contact = true
+            struck(i, j, h, c_pt[i], false)
+        }
+    }
+}
+
+private fn catch(i: s32) {
+    let j = other(i)
+    let f = &fight.f[i]
+    ev_add(Ev.Grab, i, (f.x + fight.f[j].x) / 2, 6.0, 1)
+    let early = fx[j].age[BI_Y] <= BREAK_EARLY
+    set_mv(i, Mv.throw)
+    // the Vault Throw's victim has its own animation (flipped over the thrower's head)
+    if f.mech == Mech.Doubleblade { set_mv(j, Mv.thrown_vault) } else { set_mv(j, Mv.thrown) }
+    fight.f[j].facing = -f.facing
+    fx[j].slide = 0.0
+    fx[i].slide = 0.0
+    fx[j].break_t = BREAK_WINDOW
+    if early {
+        consume(j, BI_Y)
+        grab_break(i)
+    }
+}
+
+private fn parry(j: s32, i: s32) {
+    // j parries i
+    let o = &fight.f[j]
+    let rip = find_mark(o.mech, Mv.sp_d, MARK_RIPOSTE)
+    fx[i].pause = PARRY_FREEZE
+    fx[j].riposte = true
+    if rip >= 0 { fx[j].t = rip }
+    fight.freeze = 6
+    fight.flash_side = -1
+    ev_add(Ev.Parry, j, c_pt[i].x, c_pt[i].y, 1)
+}
+
+private fn combo_scale(dmg: s32, combo: s32) -> s32 {
+    if combo == 1 { return dmg * COMBO_2 / 100 }
+    if combo >= 2 { return dmg * COMBO_3 / 100 }
+    return dmg
+}
+
+// i's hit h lands on j at p (shot: the wave).
+fn struck(i: s32, j: s32, h: Hit, p: vec2, shot: bool) {
+    let a = &fight.f[i]
+    let d = &fight.f[j]
+    let dx = &fx[j]
+    let dmg = meter_damage(d, combo_scale(h.dmg, dx.combo))
+    damage(j, dmg, true)
+    meter_on_hit(a, true, shot)
+    var dir = sgn(d.x - a.x)
+    if dir == 0 || shot { dir = sgn(p.x - a.x) }
+    if dir == 0 { dir = a.facing }
+    let crouching = d.mv == Mv.crouch || d.mv == Mv.atk_d || d.mv == Mv.hit_low
+        || (d.mv == Mv.sp_d && d.mech == Mech.Doubleblade)
+    let in_air = !grounded(j)
+    dx.combo += 1
+    dx.pause = 0
+    if h.kd || in_air || d.health <= 0 {
+        set_mv(j, Mv.hit_air)
+        dx.air = true
+        dx.vy = max(h.launch, 0.3)
+        dx.vx = fixed(dir) * 0.12
+        dx.slide = 0.0
+        dx.stun = 0
+    } else {
+        if crouching { set_mv(j, Mv.hit_low) } else { set_mv(j, Mv.hit_high) }
+        dx.stun = h.hitstun
+        dx.stun_len = h.hitstun
+        dx.slide = fixed(dir) * h.kb
+        dx.slide_by = i
+    }
+    fight.freeze = max(fight.freeze, h.stop)
+    fight.flash_side = -1
+    d.flash = h.stop
+    fight.shake = fixed(h.power + 1) * 0.15
+    ev_add(Ev.Hit, i, p.x, p.y, h.power)
+    if d.health <= 0 { knock_out(j) }
+}
+
+fn blocked(i: s32, j: s32, h: Hit, mv: Mv, p: vec2, shot: bool) {
+    let a = &fight.f[i]
+    let d = &fight.f[j]
+    let dx = &fx[j]
+    meter_on_hit(a, false, shot)
+    var dir = sgn(d.x - a.x)
+    if dir == 0 || shot { dir = sgn(p.x - a.x) }
+    if dir == 0 { dir = a.facing }
+    dx.t = 0
+    dx.stun = h.blockstun
+    dx.stun_len = h.blockstun
+    dx.slide = fixed(dir) * h.kb * 0.8
+    dx.slide_by = i
+    if shot { dx.slide_by = -1 }
+    fight.freeze = max(fight.freeze, BLOCK_STOP)
+    fight.flash_side = -1
+    fight.shake = 0.08
+    d.flash = 0
+    ev_add(Ev.Block, i, p.x, p.y, h.power)
+    if h.chip > 0 {
+        damage(j, meter_damage(d, h.chip), mv == Mv.super)
+        ev_add(Ev.Chip, i, p.x, p.y, h.power)
+        if d.health <= 0 { knock_out(j) }
+    }
+}
+
+// ---- the wave
+
+fn shots_tick() {
+    for i in 0..2 {
+        let f = &fight.f[i]
+        let s = &fight.shot[i]
+        // fired on the release frame of the Hero's neutral special
+        if f.mv == Mv.sp_n && f.mech == Mech.Hero && !s.on && fx[i].pause == 0
+            && (cur_marks(i) & MARK_RELEASE) != 0 && fx[i].t > 0 {
+            s.on = true
+            s.x = f.x + fixed(f.facing) * WAVE_X
+            s.y = 0.0
+            s.vx = fixed(f.facing) * WAVE_SPEED
+            s.t = 0
+            ev_add(Ev.Shot, i, s.x, 0.0, 1)
+            continue
+        }
+        if !s.on { continue }
+        s.x += s.vx
+        s.t += 1
+        if s.t > WAVE_LIFE || s.x > FIGHT_WALL || s.x < -FIGHT_WALL { s.on = false }
+    }
+    let s0 = &fight.shot[0]
+    let s1 = &fight.shot[1]
+    if s0.on && s1.on && abs(s0.x - s1.x) < WAVE_HALF * 2 {
+        s0.on = false
+        s1.on = false
+        ev_add(Ev.Clash, 0, (s0.x + s1.x) / 2, 1.5, 1)
+    }
+    for i in 0..2 {
+        let s = &fight.shot[i]
+        if !s.on { continue }
+        let j = other(i)
+        if !hittable(j) { continue }
+        let w = vec4(s.x - WAVE_HALF, 0.0, s.x + WAVE_HALF, WAVE_H)
+        let bj = &fbox[j]
+        for q in 0..bj.n {
+            let hu = &bj.b[q]
+            if hu.kind != BOX_HURT { continue }
+            let u = world_box(j, hu)
+            if overlap(w, u) {
+                s.on = false
+                let p = vec2(s.x, 1.5)
+                let h = move_hit(Mech.Hero, Mv.sp_n)
+                c_pt[i] = p
+                if parrying(j) {
+                    fx[j].riposte = true
+                    let rip = find_mark(fight.f[j].mech, Mv.sp_d, MARK_RIPOSTE)
+                    if rip >= 0 { fx[j].t = rip }
+                    fight.freeze = 6
+                    ev_add(Ev.Parry, j, p.x, p.y, 1)
+                } else if fight.f[j].mv == Mv.block {
+                    blocked(i, j, h, Mv.sp_n, p, true)
+                } else {
+                    struck(i, j, h, p, true)
+                }
+                break
+            }
+        }
+    }
+}
+
+// ---- the walls, the separation limit and the push boxes
+
+fn push_half(i: s32) -> fixed {
+    let b = &fbox[i]
+    for k in 0..b.n {
+        if b.b[k].kind == BOX_PUSH { return (b.b[k].x1 - b.b[k].x0) / 2 }
+    }
+    return 0.0
+}
+
+fn bound() {
+    load_boxes()
+    let f0 = &fight.f[0]
+    let f1 = &fight.f[1]
+    let busy = f0.mv == Mv.throw || f1.mv == Mv.throw
+    // push apart on the ground
+    let p0 = push_half(0)
+    let p1 = push_half(1)
+    if !busy && grounded(0) && grounded(1) && p0 > 0.0 && p1 > 0.0 {
+        let d = f1.x - f0.x
+        let need = p0 + p1
+        if abs(d) < need {
+            var s = sgn(d)
+            if s == 0 { s = sgn(fx[1].prev_x - fx[0].prev_x) }
+            if s == 0 { s = f0.facing }
+            let half = (need - abs(d)) / 2
+            f0.x -= fixed(s) * half
+            f1.x += fixed(s) * half
+            // a mech against a wall stays; the other takes the whole push
+            let w0 = wall_clamp(0)
+            let w1 = wall_clamp(1)
+            if w0 != 0.0 { f1.x += w0 }
+            if w1 != 0.0 { f0.x += w1 }
+        }
+    }
+    // the walls: a sliding defender stopped by one passes the rest to its attacker
+    for i in 0..2 {
+        let c = wall_clamp(i)
+        if c != 0.0 { pass_back(i, c) }
+    }
+    // the separation limit
+    let sep = abs(f1.x - f0.x)
+    if sep > FIGHT_MAX_SEP {
+        let excess = sep - FIGHT_MAX_SEP
+        let s = sgn(f1.x - f0.x)                // f0 is on the -s side
+        let out0 = (fx[0].prev_x - f0.x) * s    // how far each moved outward this frame
+        let out1 = (f1.x - fx[1].prev_x) * s
+        var g0 = 0.0
+        var g1 = 0.0
+        if out0 > 0.0 && out1 > 0.0 {
+            g0 = min(out0, excess / 2)
+            g1 = excess - g0
+        } else if out0 > 0.0 {
+            g0 = min(out0, excess)
+            g1 = excess - g0
+        } else {
+            g1 = excess
+        }
+        f0.x += fixed(s) * g0
+        f1.x -= fixed(s) * g1
+        if fx[0].slide_by >= 0 && g0 > 0.0 { pass_back(0, fixed(s) * g0) }
+        if fx[1].slide_by >= 0 && g1 > 0.0 { pass_back(1, -fixed(s) * g1) }
+    }
+}
+
+// Keeps i inside the walls; returns how far it was moved back (signed).
+private fn wall_clamp(i: s32) -> fixed {
+    let f = &fight.f[i]
+    let lim = FIGHT_WALL - STATS[f.mech].push
+    if f.x > lim { let c = lim - f.x; f.x = lim; return c }
+    if f.x < -lim { let c = -lim - f.x; f.x = -lim; return c }
+    return 0.0
+}
+
+// i was stopped by a wall or the limit by c (signed) while sliding from a hit: the attacker
+// slides back instead.
+private fn pass_back(i: s32, c: fixed) {
+    let a = fx[i].slide_by
+    if a < 0 || fx[i].slide == 0.0 { return }
+    if !grounded(a) || fight.f[a].mv == Mv.throw { return }
+    fx[a].slide = -fx[i].slide
+    fx[a].slide_by = -1
+    fx[i].slide = 0.0
+    fx[i].slide_by = -1
+    fight.f[a].x += c
+}
+
+// The frame D draws.
+fn draw_frame(i: s32) -> fixed {
+    let f = &fight.f[i]
+    let x = &fx[i]
+    let n = mv_len(f.mech, f.mv)
+    if (f.mv == Mv.hit_high || f.mv == Mv.hit_low) && x.stun_len > 0 {
+        return min(fixed(x.t * n) / x.stun_len, fixed(n - 1))
+    }
+    if f.mv == Mv.block && x.stun > 0 { return fixed(n - 1) }
+    return fixed(cur_frame(i))
+}

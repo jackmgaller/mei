@@ -1,0 +1,57 @@
+// Mech Expo 2000: the power meter (C's). One bar, spent on the super (MOVES.md, "The meters").
+// Kinetic (the Hero) fills by landing hits. Antimatter (the Double-blade Hero) fills by itself
+// and borrows: the super is there whenever the meter is at zero or above, the meter may go a
+// bar into debt, and in debt the mech takes a quarter more damage.
+
+import "moves.akr"
+
+const METER_BAR = 1200              // one bar
+const KIN_HIT = 150                 // kinetic: a hit that lands (12.5 %)
+const KIN_SHOT = 120                // the wave landing (10 %)
+const KIN_BLOCKED = 60              // a hit the other blocked (5 %)
+const ANTI_REGEN = 1                // antimatter: a frame (a bar in 20 s)
+const ANTI_HIT = 60                 // a hit that lands (5 %)
+const DEBT_DMG_NUM = 5              // damage taken in debt: x 5/4
+const DEBT_DMG_DEN = 4
+
+fn meter_power(m: Mech) -> Power { return STATS[m].power }
+
+// The attacker's meter after one of its hits landed (blocked: false for a block), shot: the wave.
+fn meter_on_hit(f: *Fighter, landed: bool, shot: bool) {
+    if meter_power(f.mech) == Power.Kinetic {
+        if !landed { meter_add(f, KIN_BLOCKED) }
+        else if shot { meter_add(f, KIN_SHOT) }
+        else { meter_add(f, KIN_HIT) }
+    } else if landed {
+        meter_add(f, ANTI_HIT)
+    }
+}
+
+// Once a frame of fighting (not in hitstop, the flash or between rounds).
+fn meter_tick(f: *Fighter) {
+    if meter_power(f.mech) == Power.Antimatter { meter_add(f, ANTI_REGEN) }
+}
+
+fn meter_add(f: *Fighter, n: s32) {
+    f.meter = min(f.meter + n, METER_BAR)
+}
+
+fn meter_can_super(f: *Fighter) -> bool {
+    if meter_power(f.mech) == Power.Kinetic { return f.meter >= METER_BAR }
+    return f.meter >= 0
+}
+
+fn meter_spend(f: *Fighter) {
+    f.meter = max(f.meter - METER_BAR, -METER_BAR)
+}
+
+fn meter_in_debt(f: *Fighter) -> bool { return f.meter < 0 }
+
+// The damage f takes from a hit of dmg.
+fn meter_damage(f: *Fighter, dmg: s32) -> s32 {
+    if f.meter < 0 { return dmg * DEBT_DMG_NUM / DEBT_DMG_DEN }
+    return dmg
+}
+
+// A full meter for training (antimatter: a full bar, so the super costs no debt).
+fn meter_fill(f: *Fighter) { f.meter = METER_BAR }

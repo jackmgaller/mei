@@ -1,0 +1,12 @@
+// Mech Expo 2000 - a side-on mech fighting game for the Mei console. Rival companies bring their
+// newest mechs to the year 2000's big expo, where the UAPC runs a trial for a defence contract;
+// every fight is a product demonstration. README.md is the contract, STYLE.md the look.
+//
+// Stick or d-pad: walk, crouch, the direction of a move. A attack, B special, X jump, Y grab,
+// R block, A + B super. START: start, pause. SELECT in a fight: the camera's framing.
+//
+// This file is the cart's entry point; the game is in game.akr, so that tests can import it with
+// scripted input (their harness replaces its weak input hooks).
+cart "Mech Expo 2000", "MECHEXPO"
+
+import "game.akr"

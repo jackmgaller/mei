@@ -1,0 +1,127 @@
+// Mech Expo 2000's music (tools/gen_mechexpo_audio.py composes and renders it into mu_data.akr
+// and audio/music.adp): "Live Demo" for the fights, 174 bpm drum and bass with a big-beat
+// section, and "Showfloor" for the menus, 128 bpm big beat.
+//
+// Each track is three ADPCM stems started together and looped by the console itself (the loop
+// is in the samples, so it never drifts and a late frame cannot make it stutter): the beat
+// (drums and bass, mono, dry) and the air (a stereo pair: pads, stabs, leads, chops, cymbals,
+// risers, sent to the reverb). The fight's channels are 0-2 and the menu's 3-5, so one can fade
+// out while the other starts. This file only starts the stems and sets their volumes: the fades
+// between tracks, the pause duck and the dip under a super or a KO. Channels 0-9 are the
+// music's; it uses 0-5.
+//
+// music_fight() starts the fight from its 5.5-second intro (the machines powering up, a riser
+// and a snare roll), whose drop is the loop's start; the loop is 66 seconds, longer than a round.
+// music_fight() and music_menu() do nothing if their track is already playing, so the fight
+// runs on through the rounds of a match and the menu loop through the menus. music_stop() fades
+// out over a quarter of a second. music_tick() must be called once every frame, always.
+
+import "mu_data.akr"
+
+const MU_FIGHT = 0
+const MU_MENU = 1
+const MU_FADE = 16               // per frame, of 256: a quarter-second fade out
+const MU_DUCK_LEVEL = 72         // the music's level while paused, of 256 (about -11 dB)
+const MU_DIP_LEVEL = 120         // under a super or a KO (about -6.6 dB)
+const MU_DOWN = 24               // per frame, going down
+const MU_UP = 6                  // per frame, coming back
+
+private var mu_want: s32 = -1    // the track that should be heard (-1: none)
+private var mu_on: [2]bool       // its stems are playing
+private var mu_lvl: [2]s32       // its fade level, 0..256
+private var mu_gain: s32 = 256   // the duck and the dip, 0..256
+private var mu_ducked: bool
+private var mu_dip: s32          // frames of dip left
+
+// The console reverb, shared with sfx.akr: set once, left alone after (a change of preset
+// clears its memory).
+fn mu_reverb() {
+    if REVERB_CTRL != MU_REVERB as u32 {
+        reverb(MU_REVERB, MU_WET, MU_WET)
+        reverb_decay(MU_REV_DECAY)
+    }
+}
+
+private fn mu_volumes(k: s32) {
+    let g = mu_lvl[k] * mu_gain >> 8
+    for s in 0..MU_STEMS {
+        let e = (k * MU_STEMS + s) * 7
+        sound_vol(MU_STEM[e], MU_STEM[e + 4] * g >> 8, MU_STEM[e + 5] * g >> 8)
+    }
+}
+
+private fn mu_halt(k: s32) {
+    for s in 0..MU_STEMS { stop(MU_STEM[(k * MU_STEMS + s) * 7]) }
+    mu_on[k] = false
+    mu_lvl[k] = 0
+}
+
+// Starts track k from its beginning, at full level (the three stems in the same frame, so
+// they stay sample-locked).
+private fn mu_start(k: s32) {
+    mu_reverb()
+    if mu_on[k] { mu_halt(k) }
+    for s in 0..MU_STEMS {
+        let e = (k * MU_STEMS + s) * 7
+        var flags = SND_ADPCM | SND_LOOP
+        if MU_STEM[e + 6] != 0 { flags = flags | SND_REVERB }
+        play_sample(MU_STEM[e], MU_BANK + MU_STEM[e + 1], MU_STEM[e + 2] as u32, MU_STEM[e + 3] as u32,
+                    1.0, 0, 0, flags as u32)
+    }
+    mu_on[k] = true
+    mu_lvl[k] = 256
+    mu_want = k
+    mu_volumes(k)
+}
+
+private fn mu_play(k: s32) {
+    if mu_want == k && mu_on[k] { return }
+    mu_start(k)
+}
+
+// The menu loop. Does nothing if it is already playing (and not fading out).
+fn music_menu() { mu_play(MU_MENU) }
+
+// The fight, from its intro. Does nothing if it is already playing (and not fading out).
+fn music_fight() { mu_play(MU_FIGHT) }
+
+// Fades the music out (music_tick() does the fade).
+fn music_stop() { mu_want = -1 }
+
+// Pause: on brings the music down to about a quarter, off back up.
+fn music_duck(on: bool) { mu_ducked = on }
+
+// Brings the music down by about 6.6 dB for `frames` frames, then back up (sfx.akr calls it
+// for the super and the KO).
+fn music_dip(frames: s32) { mu_dip = max(mu_dip, frames) }
+
+// Once a frame: the fades, the duck and the dip.
+fn music_tick() {
+    var target = 256
+    if mu_dip > 0 {
+        target = MU_DIP_LEVEL
+        mu_dip -= 1
+    }
+    if mu_ducked { target = MU_DUCK_LEVEL }
+    var changed = false
+    if mu_gain < target {
+        mu_gain = min(target, mu_gain + MU_UP)
+        changed = true
+    } else if mu_gain > target {
+        mu_gain = max(target, mu_gain - MU_DOWN)
+        changed = true
+    }
+    for k in 0..2 {
+        if !mu_on[k] { continue }
+        if k != mu_want {
+            mu_lvl[k] = max(0, mu_lvl[k] - MU_FADE)
+            if mu_lvl[k] == 0 {
+                mu_halt(k)
+            } else {
+                mu_volumes(k)
+            }
+        } else if changed {
+            mu_volumes(k)
+        }
+    }
+}

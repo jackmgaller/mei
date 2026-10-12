@@ -1,0 +1,285 @@
+// Mech Expo 2000: the moves (C's). What each mech's moves do when they hit (damage, hitstun,
+// blockstun, chip, knockback), the mechs' stats (walk, jump, health), and the timing source:
+// A's anim.akr (the animations F makes), or until their data lands, the stand-in timings and
+// boxes below, which follow MOVES.md. The fight reads timing only through the mv_* functions.
+
+import "anim.akr"
+
+// The stand-in data (below) is used for every move anim.akr still stands in for (it holds the
+// guard pose there: anim_standin()), and for all of them while STANDIN_ALL is set.
+const STANDIN_ALL = false
+
+fn use_standin(m: Mech, mv: Mv) -> bool { return STANDIN_ALL || anim_standin(m, mv) }
+
+// The marks the fight reads are anim.akr's MARK_*; the stand-in below sets them too.
+
+enum Power { Kinetic, Antimatter }
+
+struct Stats {
+    health: s32
+    walk_f: fixed           // metres a frame
+    walk_b: fixed
+    pre: s32                // the jump's crouch, frames on the ground
+    jv: fixed               // the jump's launch speed (m a frame)
+    grav: fixed             // m a frame a frame
+    jvx: fixed              // a diagonal jump's speed across
+    land: s32               // landing lag, frames
+    land_air: s32           // after an air attack
+    push: fixed             // the push box's half width
+    power: Power
+}
+
+const STATS: [2]Stats = [
+    Stats { health: 1000, walk_f: 0.075, walk_b: 0.060, pre: 4, jv: 0.68421, grav: 0.036011,
+            jvx: 0.16, land: 5, land_air: 8, push: 1.6, power: Power.Kinetic },
+    Stats { health: 950, walk_f: 0.095, walk_b: 0.075, pre: 3, jv: 0.647059, grav: 0.038062,
+            jvx: 0.19, land: 4, land_air: 7, push: 1.5, power: Power.Antimatter },
+]
+
+// ---- what a hit does
+
+struct Hit {
+    dmg: s32
+    chip: s32               // through a block (specials and supers)
+    hitstun: s32
+    blockstun: s32
+    stop: s32               // hitstop frames
+    power: s32              // 0 light .. 3 super (events, shake)
+    kb: fixed               // the knockback slide's speed, m a frame
+    kd: bool                // knocks down
+    launch: fixed           // upward speed of a knockdown or an air hit
+}
+
+const HIT_NONE = Hit {}
+
+fn move_hit(m: Mech, mv: Mv) -> Hit {
+    if m == Mech.Hero {
+        return match mv {
+            atk_n => Hit { dmg: 70, hitstun: 18, blockstun: 13, stop: 8, kb: 0.10 }
+            atk_f => Hit { dmg: 120, hitstun: 26, blockstun: 18, stop: 11, power: 1, kb: 0.14 }
+            atk_d => Hit { dmg: 90, blockstun: 16, stop: 11, power: 1, kb: 0.10, kd: true, launch: 0.30 }
+            atk_air => Hit { dmg: 100, hitstun: 20, blockstun: 15, stop: 11, power: 1, kb: 0.08 }
+            sp_n => Hit { dmg: 80, chip: 16, hitstun: 20, blockstun: 16, stop: 9, power: 1, kb: 0.12 }
+            sp_f => Hit { dmg: 130, chip: 26, blockstun: 16, stop: 12, power: 2, kb: 0.20, kd: true, launch: 0.35 }
+            sp_u => Hit { dmg: 120, chip: 24, blockstun: 14, stop: 12, power: 2, kb: 0.10, kd: true, launch: 0.55 }
+            sp_d => Hit { dmg: 110, stop: 12, power: 2, kb: 0.16, kd: true, launch: 0.35 }
+            throw => Hit { dmg: 140, stop: 10, power: 2, kd: true, launch: 0.30 }
+            super => Hit { dmg: 340, chip: 85, blockstun: 20, stop: 20, power: 3, kb: 0.25, kd: true, launch: 0.60 }
+            else => HIT_NONE
+        }
+    }
+    return match mv {
+        atk_n => Hit { dmg: 60, hitstun: 17, blockstun: 12, stop: 7, kb: 0.09 }
+        atk_f => Hit { dmg: 100, hitstun: 24, blockstun: 17, stop: 10, power: 1, kb: 0.13 }
+        atk_d => Hit { dmg: 75, blockstun: 15, stop: 10, power: 1, kb: 0.09, kd: true, launch: 0.30 }
+        atk_air => Hit { dmg: 85, hitstun: 19, blockstun: 14, stop: 10, power: 1, kb: 0.08 }
+        sp_f => Hit { dmg: 110, chip: 22, blockstun: 15, stop: 12, power: 2, kb: 0.20, kd: true, launch: 0.35 }
+        sp_u => Hit { dmg: 100, chip: 20, blockstun: 14, stop: 12, power: 2, kb: 0.10, kd: true, launch: 0.50 }
+        sp_d => Hit { dmg: 90, chip: 18, blockstun: 14, stop: 11, power: 1, kb: 0.10, kd: true, launch: 0.30 }
+        throw => Hit { dmg: 120, stop: 10, power: 2, kd: true, launch: 0.30 }
+        super => Hit { dmg: 320, chip: 80, blockstun: 20, stop: 20, power: 3, kb: 0.25, kd: true, launch: 0.60 }
+        else => HIT_NONE
+    }
+}
+
+// The moves a move may cancel into on contact (during its cancel window), as a bit per Mv.
+fn mv_bit(mv: Mv) -> u32 { return (1 as u32) << (mv as u32) }
+const SPECIALS: u32 = ((1 as u32) << (Mv.sp_n as u32)) | ((1 as u32) << (Mv.sp_f as u32)) | ((1 as u32) << (Mv.sp_u as u32))
+    | ((1 as u32) << (Mv.sp_d as u32))
+const SUPER_BIT: u32 = (1 as u32) << (Mv.super as u32)
+
+fn cancels(m: Mech, mv: Mv) -> u32 {
+    if mv == Mv.atk_n {
+        var c = mv_bit(Mv.atk_f) | SPECIALS | SUPER_BIT
+        if m == Mech.Doubleblade { c |= mv_bit(Mv.atk_n) }
+        return c
+    }
+    if mv == Mv.atk_f { return SPECIALS | SUPER_BIT }
+    return 0
+}
+
+fn is_special(mv: Mv) -> bool { return mv >= Mv.sp_n && mv <= Mv.sp_d }
+fn is_attack(mv: Mv) -> bool { return mv >= Mv.atk_n && mv <= Mv.sp_d || mv == Mv.super }
+
+// The Hero's wave (sp_n): speed, life, and its box around the wave's root.
+const WAVE_SPEED: fixed = 0.22
+const WAVE_LIFE = 150
+const WAVE_X: fixed = 4.0           // where it starts, ahead of the mech
+const WAVE_HALF: fixed = 0.8
+const WAVE_H: fixed = 3.0
+
+// The Parry: how long the parried attacker freezes.
+const PARRY_FREEZE = 20
+
+// ---- the timing source
+
+fn mv_len(m: Mech, mv: Mv) -> s32 {
+    if use_standin(m, mv) { return tm(m, mv).len }
+    return anim_len(m, mv)
+}
+
+fn mv_loops(m: Mech, mv: Mv) -> bool {
+    if use_standin(m, mv) { return tm(m, mv).loops }
+    return anim_loops(m, mv)
+}
+
+fn mv_root(m: Mech, mv: Mv, f: s32) -> vec2 {
+    if !use_standin(m, mv) { return anim_root(m, mv, f) }
+    let t = tm(m, mv)
+    var r = vec2(0.0, 0.0)
+    if f >= t.m0 && f <= t.m1 { r = vec2(t.dx, t.dy) }
+    if f >= t.n0 && f <= t.n1 { r = r + vec2(t.ex, t.ey) }
+    return r
+}
+
+fn mv_marks(m: Mech, mv: Mv, f: s32) -> u32 {
+    if !use_standin(m, mv) { return anim_marks(m, mv, f) }
+    let t = tm(m, mv)
+    var k: u32 = 0
+    if t.a0 >= 0 && t.c1 > 0 && f >= t.a0 && f <= t.c1 { k |= MARK_CANCEL }
+    if f >= t.i0 && f <= t.i1 { k |= MARK_INVULN }
+    if f < t.flash { k |= MARK_FLASH }
+    if f == t.rel { k |= MARK_RELEASE }
+    if f == t.rip { k |= MARK_RIPOSTE }
+    if f >= t.p0 && f <= t.p1 { k |= MARK_PARRY }
+    if f >= t.q0 && f <= t.q1 { k |= MARK_NOPUSH | MARK_HIDE }
+    if (mv == Mv.walk_f || mv == Mv.walk_b) && (f == 0 || f == t.len / 2) { k |= MARK_STEP }
+    return k
+}
+
+fn mv_boxes(m: Mech, mv: Mv, f: s32, out: *Boxes) {
+    if !use_standin(m, mv) {
+        anim_boxes(m, mv, f, out)
+        return
+    }
+    let t = tm(m, mv)
+    let s = &STATS[m]
+    out.n = 0
+    var hx0 = -1.8
+    var hx1 = 1.8
+    var hy0 = 0.0
+    var hy1 = 12.0
+    var py1 = 11.5
+    match t.shape {
+        1 => { hy1 = 8.0; py1 = 7.5 }
+        2 => { hx0 = -1.6; hx1 = 1.6; hy0 = 1.0; hy1 = 11.0 }
+        3 => { hx0 = -2.5; hx1 = 2.0; hy1 = 4.0; py1 = 4.0 }
+        4 => { hx0 = -5.0; hx1 = 5.0; hy1 = 2.0; py1 = 2.0 }
+        else => {}
+    }
+    add_box(out, BOX_HURT, hx0, hy0, hx1, hy1)
+    if t.q0 < 0 || f < t.q0 || f > t.q1 { add_box(out, BOX_PUSH, -s.push, 0.0, s.push, py1) }
+    if t.a0 >= 0 && f >= t.a0 && f <= t.a1 { add_box(out, BOX_HIT, t.hx0, t.hy0, t.hx1, t.hy1) }
+    // the arm reaching out: hurtable from the first active frame until it comes back
+    if t.reach > 0.0 && f >= t.a0 && f <= t.a1 + 10 {
+        add_box(out, BOX_HURT, 0.0, t.hy0 - 1.0, t.reach, t.hy1 + 1.0)
+    }
+}
+
+private fn add_box(out: *Boxes, kind: u8, x0: fixed, y0: fixed, x1: fixed, y1: fixed) {
+    out.b[out.n] = Box { kind: kind, x0: x0, y0: y0, x1: x1, y1: y1 }
+    out.n += 1
+}
+
+// ---- the stand-in timings and boxes (MOVES.md), until anim_data.akr
+
+struct Tm {
+    len: s32
+    loops: bool
+    a0: s32 = -1            // active frames a0..a1 (0-based: startup 7 is a0 = 7)
+    a1: s32 = -1
+    hx0: fixed              // the hit box
+    hy0: fixed
+    hx1: fixed
+    hy1: fixed
+    c1: s32                 // the cancel window: a0..c1
+    i0: s32 = -1            // invulnerable i0..i1
+    i1: s32 = -1
+    m0: s32 = -1            // root motion (dx, dy) a frame over m0..m1
+    m1: s32 = -1
+    dx: fixed
+    dy: fixed
+    n0: s32 = -1            // and a second stretch
+    n1: s32 = -1
+    ex: fixed
+    ey: fixed
+    shape: s32              // the hurt box: 0 standing, 1 crouching, 2 air, 3 slide, 4 lying
+    reach: fixed            // the arm's hurt box reaches this far out during the attack
+    flash: s32              // MARK_FLASH on frames 0..flash-1
+    rel: s32 = -1           // MARK_RELEASE
+    rip: s32 = -1           // MARK_RIPOSTE
+    p0: s32 = -1            // MARK_PARRY p0..p1
+    p1: s32 = -1
+    q0: s32 = -1            // MARK_NOPUSH (and no hurt) q0..q1
+    q1: s32 = -1
+}
+
+fn tm(m: Mech, mv: Mv) -> Tm {
+    if m == Mech.Hero {
+        return match mv {
+            idle => Tm { len: 60, loops: true }
+            walk_f, walk_b => Tm { len: 48, loops: true }
+            crouch => Tm { len: 8, loops: true, shape: 1 }
+            jump => Tm { len: 42, shape: 2 }
+            atk_n => Tm { len: 24, a0: 7, a1: 9, hx0: 2.0, hy0: 6.0, hx1: 7.2, hy1: 9.0, c1: 15, reach: 3.5 }
+            atk_f => Tm { len: 38, a0: 13, a1: 16, hx0: 4.0, hy0: 6.5, hx1: 10.4, hy1: 8.5, c1: 22,
+                          m0: 3, m1: 12, dx: 0.12, reach: 5.0 }
+            atk_d => Tm { len: 39, a0: 11, a1: 14, hx0: 2.0, hy0: 0.0, hx1: 8.0, hy1: 2.0, shape: 1, reach: 4.0 }
+            atk_air => Tm { len: 30, a0: 8, a1: 29, hx0: 1.0, hy0: -2.0, hx1: 6.5, hy1: 4.0, shape: 2 }
+            sp_n => Tm { len: 48, rel: 16 }
+            sp_f => Tm { len: 46, a0: 16, a1: 19, hx0: 1.0, hy0: 3.0, hx1: 7.0, hy1: 10.0,
+                         m0: 3, m1: 15, dx: 0.423, reach: 3.0 }
+            sp_u => Tm { len: 42, a0: 6, a1: 13, hx0: 0.5, hy0: 4.0, hx1: 5.0, hy1: 14.0, i0: 0, i1: 6,
+                         m0: 6, m1: 13, dx: 0.05, dy: 0.625, n0: 14, n1: 41, ey: -0.178572 }
+            sp_d => Tm { len: 66, a0: 47, a1: 49, hx0: 1.5, hy0: 4.0, hx1: 7.5, hy1: 10.0, rip: 42,
+                         p0: 3, p1: 23, m0: 42, m1: 46, dx: 0.2 }
+            grab => Tm { len: 7, a0: 5, a1: 6, hx0: 1.0, hy0: 2.0, hx1: 3.6, hy1: 10.0 }
+            throw, thrown => Tm { len: 44, rel: 30 }
+            thrown_vault => Tm { len: 40, rel: 28 }
+            super => Tm { len: 96, a0: 46, a1: 55, hx0: 0.0, hy0: 3.0, hx1: 8.0, hy1: 10.0, flash: 40,
+                          i0: 0, i1: 45, m0: 40, m1: 46, dx: 2.0 }
+            else => common_tm(mv)
+        }
+    }
+    return match mv {
+        idle => Tm { len: 60, loops: true }
+        walk_f, walk_b => Tm { len: 40, loops: true }
+        crouch => Tm { len: 8, loops: true, shape: 1 }
+        jump => Tm { len: 37, shape: 2 }
+        atk_n => Tm { len: 19, a0: 5, a1: 7, hx0: 1.8, hy0: 5.5, hx1: 5.8, hy1: 9.0, c1: 13, reach: 2.8 }
+        atk_f => Tm { len: 32, a0: 10, a1: 13, hx0: 2.5, hy0: 5.0, hx1: 7.6, hy1: 9.0, c1: 19,
+                      m0: 2, m1: 9, dx: 0.225, reach: 4.0 }
+        atk_d => Tm { len: 35, a0: 9, a1: 12, hx0: 1.8, hy0: 0.0, hx1: 6.6, hy1: 2.0, shape: 1, reach: 3.5 }
+        atk_air => Tm { len: 26, a0: 6, a1: 25, hx0: 0.8, hy0: -2.5, hx1: 5.2, hy1: 3.5, shape: 2 }
+        sp_n => Tm { len: 28, i0: 6, i1: 17, q0: 6, q1: 17, m0: 6, m1: 17, dx: 0.75 }
+        sp_f => Tm { len: 41, a0: 13, a1: 16, hx0: 1.0, hy0: 3.0, hx1: 6.5, hy1: 9.5,
+                     m0: 3, m1: 12, dx: 0.5, reach: 2.5 }
+        sp_u => Tm { len: 39, a0: 5, a1: 12, hx0: 0.5, hy0: 3.5, hx1: 4.5, hy1: 13.0, i0: 0, i1: 4,
+                     m0: 5, m1: 12, dx: 0.05, dy: 0.5625, n0: 13, n1: 38, ey: -0.173077 }
+        sp_d => Tm { len: 40, a0: 5, a1: 21, hx0: 0.5, hy0: 0.0, hx1: 4.0, hy1: 2.5, shape: 3,
+                     m0: 3, m1: 21, dx: 0.368421 }
+        grab => Tm { len: 7, a0: 5, a1: 6, hx0: 1.0, hy0: 2.0, hx1: 3.6, hy1: 10.0 }
+        throw, thrown, thrown_vault => Tm { len: 40, rel: 28 }
+        super => Tm { len: 87, a0: 43, a1: 50, hx0: 0.0, hy0: 2.0, hx1: 6.0, hy1: 10.0, flash: 40,
+                      i0: 0, i1: 42, m0: 42, m1: 42, dx: 12.0 }
+        else => common_tm(mv)
+    }
+}
+
+private fn common_tm(mv: Mv) -> Tm {
+    return match mv {
+        land => Tm { len: 8 }
+        block => Tm { len: 4, loops: true }
+        hit_high => Tm { len: 20 }
+        hit_low => Tm { len: 20, shape: 1 }
+        hit_air => Tm { len: 30, shape: 2 }
+        knockdown => Tm { len: 32, shape: 4 }
+        getup => Tm { len: 20, shape: 4 }
+        ko => Tm { len: 90, shape: 4 }
+        win => Tm { len: 120 }
+        intro => Tm { len: 90 }
+        grab_whiff => Tm { len: 22 }
+        grab_break => Tm { len: 20 }
+        else => Tm { len: 60 }
+    }
+}

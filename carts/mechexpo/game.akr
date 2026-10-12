@@ -1,0 +1,647 @@
+// Mech Expo 2000: the game's flow (D's). mechexpo.akr is the entry point; tests import this
+// file with their own input (the weak hooks below).
+//
+//   title -> mode select (Arcade, Versus, Training) -> character select -> VS -> the fight
+//   (C's fight.akr: round intro, FIGHT, KO, rounds, time up) -> results -> back; START pauses.
+//
+// Arcade: a ladder of two CPU fights. As the Hero: a CPU Hero (the mirror), then the CPU
+// Double-blade Hero; as the echo: the mirror, then the Hero. Clearing it with the Hero unlocks
+// the Double-blade Hero, saved to the memory card (save.akr). A loss offers a continue.
+// Versus: 1P against 2P (pad 2 joins on the character select with A or START), or the CPU.
+// Training: 1P against a dummy (C's fight_training options) with the move list and the boxes.
+//
+// The parts other agents deliver (README.md, "Folders and owners"):
+import "fight.akr"           // C: the fight (moves.akr imports A's anim.akr)
+import "anim.akr"            // A: the mechs' animation and drawing (imports B's assets.akr)
+import "music.akr"           // E
+import "sfx.akr"             // E
+// D's:
+import "planes.akr"
+import "depth.akr"
+import "stage_art.akr"
+import "ui_art.akr"
+import "ui.akr"
+import "save.akr"
+import "camera.akr"
+import "stage.akr"
+import "hud.akr"
+import "fx.akr"
+import "menus.akr"
+
+// Input, replaced by the tests.
+weak fn input_pad(n: s32) -> u32 {
+    if n == 0 { return PAD1 }
+    return PAD2
+}
+weak fn input_stick(n: s32) -> vec2 {
+    if n == 0 { return stick() }
+    return stick2()
+}
+weak fn test_init() {}
+weak fn test_hook() {}
+
+enum St { Title, Mode, Select, Vs, Fight, Results, Unlock }
+enum Game { Arcade, Versus, Training }
+
+const VS_FRAMES = 150
+const RESULTS_WAIT = 150           // frames into the match's end before the results
+const CPU_LEVEL_VS = 2
+const LADDER_N = 2
+
+var st: St
+var st_t: s32
+var tick: s32
+var game: Game
+var pad_now: [2]u32
+var pad_prev: [2]u32
+var stk: [2]vec2
+var rep: [2]KeyRepeat
+
+// the character select
+var sel_cur: [2]s32                // the card under each cursor (0 Hero, 1 Double-blade)
+var sel_done: [2]bool
+var sel_human2: bool               // pad 2 joined
+var sel_mech: [2]Mech
+
+// the match
+var p_mech: [2]Mech
+var p_cpu: bool                    // side 1 is the CPU (or the dummy)
+var ladder: s32                    // arcade: the fight on the ladder (0, 1)
+var cont_n: s32                    // arcade continues used
+var won: bool                      // the results: side 0 won the match
+var cleared: bool                  // the arcade ladder is cleared
+var unlocked_now: bool
+
+// the pause
+var paused: bool
+var pause_sel: s32
+var pause_page: s32                // 0 the menu, 1 the move list
+var train: TrainOpts
+var show_boxes: bool
+var mode_sel: s32
+var res_sel: s32
+// CPU cycles of the last frame's parts (for measuring against the budget)
+var prof_fight: s32                // fight_tick
+var prof_mechs: s32                // both anim_draw calls
+var prof_fx: s32                   // the trails and the effects' sprites
+var prof_hud: s32                  // the HUD and the overlays
+
+fn held(n: s32, b: u32) -> bool { return pad_now[n] & b != 0 }
+fn pressed(n: s32, b: u32) -> bool { return pad_now[n] & ~pad_prev[n] & b != 0 }
+fn any_pressed(b: u32) -> bool { return pressed(0, b) || pressed(1, b) }
+fn ok_pressed(n: s32) -> bool { return pressed(n, A) || pressed(n, START) }
+
+// The menu directions with key repeat (the d-pad or the stick).
+fn dirs(n: s32) -> u32 {
+    var h = pad_now[n] & (UP | DOWN | LEFT | RIGHT)
+    if stk[n].x < -0.5 { h |= LEFT }
+    if stk[n].x > 0.5 { h |= RIGHT }
+    if stk[n].y < -0.5 { h |= UP }
+    if stk[n].y > 0.5 { h |= DOWN }
+    return key_repeat(&rep[n], h)
+}
+
+fn init() {
+    planes_on()
+    render_depth(true)
+    render_perspective(true)
+    camera_clip(0.5, 300.0)
+    assets_load()
+    ui_boot()
+    stage_boot()
+    save_boot()
+    train = TrainOpts { dummy: Dummy.Stand, refill_health: true, refill_meter: true }
+    enter_title()
+    test_init()
+}
+
+fn enter(s: St) {
+    st = s
+    st_t = 0
+}
+
+fn enter_title() {
+    enter(St.Title)
+    paused = false
+    music_menu()
+    // the attract view: the hangar with the two mechs in it
+    p_mech[0] = Mech.Hero
+    p_mech[1] = Mech.Hero
+    if echo_unlocked() { p_mech[1] = Mech.Doubleblade }
+    fight_init(p_mech[0], p_mech[1], FightMode.Versus, 0)
+    menus_hangar()
+    cam_reset(-9.0, 9.0)
+}
+
+fn enter_mode() {
+    enter(St.Mode)
+    menus_page()
+}
+
+fn enter_select() {
+    enter(St.Select)
+    menus_page()
+    for s in 0..2 { sel_done[s] = false }
+    sel_cur[0] = 0
+    sel_cur[1] = 0
+    if echo_unlocked() { sel_cur[1] = 1 }
+    sel_human2 = false
+}
+
+// The arcade ladder's opponent for fight n.
+fn ladder_foe(me: Mech, n: s32) -> Mech {
+    if n == 0 { return me }
+    if me == Mech.Hero { return Mech.Doubleblade }
+    return Mech.Hero
+}
+
+fn enter_vs() {
+    enter(St.Vs)
+    menus_page()
+    if game == Game.Arcade { p_mech[1] = ladder_foe(p_mech[0], ladder) }
+}
+
+fn enter_fight() {
+    enter(St.Fight)
+    paused = false
+    pause_page = 0
+    var fm = FightMode.Versus
+    var lvl = CPU_LEVEL_VS
+    match game {
+        Arcade => {
+            fm = FightMode.Arcade
+            lvl = 1 + ladder
+        }
+        Versus => { if p_cpu { fm = FightMode.VsCpu } }
+        Training => {
+            fm = FightMode.Training
+            lvl = 1
+        }
+    }
+    fight_init(p_mech[0], p_mech[1], fm, lvl)
+    if game == Game.Training { fight_training(&train) }
+    menus_hangar()
+    hud_show(true)
+    let f = fight_get()
+    hud_reset(f)
+    fx_reset()
+    cam_reset(f.f[0].x, f.f[1].x)
+    music_fight()
+}
+
+fn leave_fight() {
+    hud_show(false)
+    fx_reset()
+    music_duck(false)
+}
+
+fn enter_results() {
+    let f = fight_get()
+    leave_fight()
+    enter(St.Results)
+    menus_page()
+    won = f.winner == 0
+    res_sel = 0
+    cleared = false
+    unlocked_now = false
+    if game == Game.Arcade && won && ladder == LADDER_N - 1 {
+        cleared = true
+        save.clears += 1
+        if p_mech[0] == Mech.Hero && !echo_unlocked() {
+            unlocked_now = true
+            save_unlock_echo()
+        } else {
+            save_write()
+        }
+    }
+    music_menu()
+}
+
+fn update() {
+    for n in 0..2 {
+        pad_prev[n] = pad_now[n]
+        pad_now[n] = input_pad(n)
+        stk[n] = input_stick(n)
+    }
+    test_hook()
+    save_tick()
+    tick += 1
+    st_t += 1
+    match st {
+        Title => update_title()
+        Mode => update_mode()
+        Select => update_select()
+        Vs => {
+            if st_t >= VS_FRAMES || (st_t > 20 && any_pressed(A | START)) { enter_fight() }
+        }
+        Fight => update_fight()
+        Results => update_results()
+        Unlock => {
+            if st_t > 90 && any_pressed(A | START) && !save_writing {
+                enter_results_after_unlock()
+            }
+        }
+    }
+    music_tick()
+}
+
+fn update_title() {
+    let f = fight_get()
+    // the attract: the camera drifts between the two mechs
+    let sway = sin(frame_angle(tick, 0.004)) * 6.0
+    cam_follow(f.f[0].x + sway - 5.0, 0.0, f.f[1].x + sway + 5.0, 0.0, 0.0)
+    if st_t > 20 && any_pressed(START | A) {
+        sfx_menu_ok()
+        mode_sel = 0
+        enter_mode()
+    }
+}
+
+fn update_mode() {
+    let d = dirs(0)
+    if d & UP != 0 && mode_sel > 0 {
+        mode_sel -= 1
+        sfx_menu_move()
+    }
+    if d & DOWN != 0 && mode_sel < 2 {
+        mode_sel += 1
+        sfx_menu_move()
+    }
+    if ok_pressed(0) {
+        sfx_menu_ok()
+        game = mode_sel as Game
+        ladder = 0
+        cont_n = 0
+        enter_select()
+    } else if pressed(0, B) {
+        sfx_menu_back()
+        enter_title()
+    }
+}
+
+// The mech under card c (the locked card is no mech).
+fn card_ok(c: s32) -> bool { return c == 0 || echo_unlocked() }
+
+fn update_select() {
+    // pad 2 joins in Versus
+    if game == Game.Versus && !sel_human2 && !sel_done[1] && (pressed(1, A) || pressed(1, START)) {
+        sel_human2 = true
+        sfx_menu_ok()
+        return
+    }
+    // who moves the second cursor: pad 2 when it joined, else 1P once its own pick is made
+    for n in 0..2 {
+        var side = n
+        if n == 0 && sel_done[0] && !sel_human2 { side = 1 }
+        if n == 1 && !sel_human2 { continue }
+        if sel_done[side] {
+            if pressed(n, B) {
+                sel_done[side] = false
+                sfx_menu_back()
+            }
+            continue
+        }
+        let d = dirs(n)
+        if d & LEFT != 0 && sel_cur[side] > 0 {
+            sel_cur[side] -= 1
+            sfx_menu_move()
+        }
+        if d & RIGHT != 0 && sel_cur[side] < 1 {
+            sel_cur[side] += 1
+            sfx_menu_move()
+        }
+        if ok_pressed(n) {
+            if card_ok(sel_cur[side]) {
+                sel_done[side] = true
+                sel_mech[side] = sel_cur[side] as Mech
+                sfx_menu_ok()
+            } else {
+                sfx_menu_back()
+            }
+        } else if pressed(n, B) {
+            sfx_menu_back()
+            if side == 1 && n == 0 {
+                sel_done[0] = false            // 1P steps back to its own pick
+            } else if side == 0 {
+                enter_mode()
+                return
+            }
+        }
+    }
+    // the arcade needs only 1P's pick
+    let need2 = game != Game.Arcade
+    if sel_done[0] && (!need2 || sel_done[1]) {
+        if st_t > 0 && sel_wait() > 30 {
+            p_mech[0] = sel_mech[0]
+            p_mech[1] = sel_mech[1]
+            p_cpu = game != Game.Versus || !sel_human2
+            ladder = 0
+            enter_vs()
+        }
+    } else {
+        sel_ready_t = 0
+    }
+}
+
+var sel_ready_t: s32
+fn sel_wait() -> s32 {
+    sel_ready_t += 1
+    return sel_ready_t
+}
+
+fn update_fight() {
+    let f = fight_get()
+    if paused {
+        update_pause()
+        return
+    }
+    if pressed(0, START) || (!p_cpu && pressed(1, START)) {
+        paused = true
+        pause_sel = 0
+        pause_page = 0
+        music_duck(true)
+        sfx_menu_ok()
+        return
+    }
+    if pressed(0, SELECT) { cam_angled = !cam_angled }
+    let ph0 = f.phase
+    let round0 = f.round
+    var p2 = pad_now[1]
+    var s2 = stk[1]
+    if p_cpu {
+        p2 = 0
+        s2 = vec2(0.0, 0.0)
+    }
+    let c0 = cycle_count()
+    fight_tick(pad_now[0], p2, stk[0], s2)
+    prof_fight = cycle_count() - c0
+    if f.round != round0 || (f.phase == Phase.Intro && ph0 != Phase.Intro) {
+        sfx_round()
+        music_fight()
+    }
+    let ev = fight_events()
+    for i in 0..ev.n {
+        let e = &ev.e[i]
+        sound_event(e, f)
+        fx_event(e, f)
+    }
+    fx_update(f)
+    hud_update(f)
+    cam_follow(f.f[0].x, f.f[0].y, f.f[1].x, f.f[1].y, f.shake)
+    if f.phase == Phase.MatchOver && f.phase_t >= RESULTS_WAIT && game != Game.Training {
+        enter_results()
+    }
+}
+
+// The fight's events to E's sound effects.
+fn sound_event(e: *Event, f: *Fight) {
+    match e.kind {
+        Hit => {
+            sfx_pan(e.x)
+            sfx_hit(e.power)
+        }
+        Block => {
+            sfx_pan(e.x)
+            sfx_block()
+        }
+        Chip => {
+            sfx_pan(e.x)
+            sfx_chip()
+        }
+        Swing => sfx_swing(f.f[clamp(e.side, 0, 1)].mech)
+        Parry => sfx_block()
+        Clash => sfx_break()
+        Grab => sfx_grab()
+        Throw => sfx_throw()
+        Break => sfx_break()
+        Land => {
+            sfx_pan(e.x)
+            sfx_land()
+        }
+        Step => {
+            sfx_pan(e.x)
+            sfx_step()
+        }
+        MeterFull => sfx_meter_full()
+        Super => sfx_super()
+        Ko => sfx_ko()
+        TimeUp => sfx_round()
+        Shot => sfx_swing(f.f[clamp(e.side, 0, 1)].mech)
+        else => {}
+    }
+}
+
+// ---- pause
+
+// The pause menu's entries for this game.
+const PZ_RESUME = 0
+const PZ_CAMERA = 1
+const PZ_DUMMY = 2
+const PZ_REFILL = 3
+const PZ_BOXES = 4
+const PZ_MOVES = 5
+const PZ_SELECT = 6
+const PZ_QUIT = 7
+
+fn pause_items(out: *s32) -> s32 {
+    var n = 0
+    out[n] = PZ_RESUME
+    n += 1
+    out[n] = PZ_CAMERA
+    n += 1
+    if game == Game.Training {
+        out[n] = PZ_DUMMY
+        n += 1
+        out[n] = PZ_REFILL
+        n += 1
+        out[n] = PZ_BOXES
+        n += 1
+    }
+    out[n] = PZ_MOVES
+    n += 1
+    out[n] = PZ_SELECT
+    n += 1
+    out[n] = PZ_QUIT
+    n += 1
+    return n
+}
+
+fn update_pause() {
+    if pause_page == 1 {
+        if any_pressed(B | START | A) {
+            pause_page = 0
+            sfx_menu_back()
+        }
+        return
+    }
+    var items: [8]s32
+    let n = pause_items(&items[0])
+    let d = dirs(0)
+    if d & UP != 0 && pause_sel > 0 {
+        pause_sel -= 1
+        sfx_menu_move()
+    }
+    if d & DOWN != 0 && pause_sel < n - 1 {
+        pause_sel += 1
+        sfx_menu_move()
+    }
+    let it = items[pause_sel]
+    let lr = d & (LEFT | RIGHT) != 0
+    if pressed(0, START) || pressed(0, B) {
+        unpause()
+        return
+    }
+    if it == PZ_CAMERA && (lr || pressed(0, A)) {
+        cam_angled = !cam_angled
+        sfx_menu_move()
+    } else if it == PZ_DUMMY && (lr || pressed(0, A)) {
+        var k = train.dummy as s32
+        if d & LEFT != 0 { k = (k + 4) % 5 } else { k = (k + 1) % 5 }
+        train.dummy = k as Dummy
+        fight_training(&train)
+        sfx_menu_move()
+    } else if it == PZ_REFILL && (lr || pressed(0, A)) {
+        train.refill_health = !train.refill_health
+        train.refill_meter = train.refill_health
+        fight_training(&train)
+        sfx_menu_move()
+    } else if it == PZ_BOXES && (lr || pressed(0, A)) {
+        show_boxes = !show_boxes
+        sfx_menu_move()
+    } else if pressed(0, A) {
+        if it == PZ_RESUME {
+            unpause()
+        } else if it == PZ_MOVES {
+            pause_page = 1
+            sfx_menu_ok()
+        } else if it == PZ_SELECT {
+            sfx_menu_back()
+            leave_fight()
+            enter_select()
+        } else if it == PZ_QUIT {
+            sfx_menu_back()
+            leave_fight()
+            enter_title()
+        }
+    }
+}
+
+fn unpause() {
+    paused = false
+    music_duck(false)
+    sfx_menu_back()
+}
+
+// ---- results
+
+fn update_results() {
+    if st_t < 40 { return }
+    match game {
+        Arcade => {
+            if won && !cleared {
+                if any_pressed(A | START) {
+                    sfx_menu_ok()
+                    ladder += 1
+                    enter_vs()
+                }
+            } else if won {
+                if any_pressed(A | START) && !save_writing {
+                    sfx_menu_ok()
+                    if unlocked_now {
+                        enter(St.Unlock)
+                        sfx_unlock()
+                    } else {
+                        enter_title()
+                    }
+                }
+            } else {
+                // continue?
+                if pressed(0, A) || pressed(0, START) {
+                    sfx_menu_ok()
+                    cont_n += 1
+                    enter_vs()
+                } else if pressed(0, B) {
+                    sfx_menu_back()
+                    enter_title()
+                }
+            }
+        }
+        else => {
+            let d = dirs(0)
+            if d & UP != 0 && res_sel > 0 {
+                res_sel -= 1
+                sfx_menu_move()
+            }
+            if d & DOWN != 0 && res_sel < 2 {
+                res_sel += 1
+                sfx_menu_move()
+            }
+            if pressed(0, A) || pressed(0, START) {
+                sfx_menu_ok()
+                if res_sel == 0 { enter_vs() }
+                else if res_sel == 1 { enter_select() }
+                else { enter_title() }
+            }
+        }
+    }
+}
+
+fn enter_results_after_unlock() {
+    sfx_menu_ok()
+    enter_title()
+}
+
+// ---- drawing
+
+fn draw() {
+    match st {
+        Title => {
+            draw_hangar(false)
+            draw_title()
+        }
+        Mode => draw_mode()
+        Select => draw_select()
+        Vs => draw_vs()
+        Fight => {
+            draw_hangar(true)
+            let c0 = cycle_count()
+            draw_fight_overlay()
+            prof_hud = cycle_count() - c0
+            if paused { draw_pause() }
+        }
+        Results => draw_results()
+        Unlock => draw_unlock()
+    }
+}
+
+// The hangar, the mechs and the effects, from the camera.
+fn draw_hangar(fighting: bool) {
+    let f = fight_get()
+    cam_apply(tick)
+    stage_frame()
+    stage_props()
+    let c0 = cycle_count()
+    for s in 0..2 {
+        let fi = &f.f[s]
+        if fighting {
+            anim_draw(fi.mech, fi.mv, fi.frame, anim_place(vec2(fi.x, fi.y), fi.facing))
+        } else {
+            let n = max(anim_len(fi.mech, Mv.idle), 1)
+            anim_draw(fi.mech, Mv.idle, fixed((tick + s * 17) % n), anim_place(vec2(fi.x, fi.y), fi.facing))
+        }
+    }
+    prof_mechs = cycle_count() - c0
+    if fighting {
+        let c1 = cycle_count()
+        fx_draw_trails(f)
+        fx_draw_sprites(f)
+        fx_offset()
+        prof_fx = cycle_count() - c1
+        if show_boxes && game == Game.Training {
+            for s in 0..2 {
+                let fi = &f.f[s]
+                anim_draw_boxes(fi.mech, fi.mv, fi.frame as s32, vec2(fi.x, fi.y), fi.facing)
+            }
+        }
+    }
+}

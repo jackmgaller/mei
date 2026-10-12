@@ -34,6 +34,8 @@ repository, and the [names](docs/OVERVIEW.md#names) of the project's parts.
 - [ASSETKIT.md](docs/ASSETKIT.md): the Asset Kit, which builds JSON recipes into native meshes
   for agent-driven 3D modelling, and its Asset Checker
 - [WORLDKIT.md](docs/WORLDKIT.md): the World Kit, which builds levels from placed assets
+- [ANIMKIT.md](docs/ANIMKIT.md): the Animation Kit, which builds JSON keyframe moves for rigid-part
+  rigs into baked animation data, with its checker and Mei-rendered previews
 - [WORLDPACK.md](docs/WORLDPACK.md): the world pack format
 - [WORLDCHECKER.md](docs/WORLDCHECKER.md): the World Checker, the World Kit's in-level
   verification

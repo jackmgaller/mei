@@ -1,0 +1,11 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Hit high: the Hero's (base), on the Double-blade Hero's rig and guard; the feet stay at its own guard's places.",
+  "base": "../hero/hit_high.anim.json",
+  "rig": "../../models/doubleblade/doubleblade.rig.json",
+  "keys": [
+    {"at": 0, "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}},
+    {"at": 19, "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}}
+  ]
+}

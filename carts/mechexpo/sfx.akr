@@ -1,0 +1,107 @@
+// Mech Expo 2000's sound effects (tools/gen_mechexpo_audio.py synthesises them into
+// mu_data.akr and audio/sfx.adp): servos, hydraulics and tonnes of metal in the hangar's
+// reverb. Channels 10-15, through voice.akr's allocator: a sound takes a free channel or the
+// least important one playing, never a more important one; the same sound started again
+// within two frames plays once.
+//
+// sfx_hit(power): 0 light, 1 medium, 2 heavy, 3 crushing (a super's or a throw's hit); clamped
+// to 0..3. sfx_swing(m) has a sound for each mech. sfx_throw() is the thrown mech meeting the
+// floor (the throw landing); sfx_grab() the hand closing. sfx_round() is the PA chime and,
+// 0.7 s later, the horn: call it as "Round N" shows, and the horn is the start.
+// sfx_super() and sfx_ko() also bring the music down for a moment (music.akr's music_dip()).
+// sfx_ko() has its own crushing impact: a hit in the same frame as the KO (or the one before
+// or after) is left out, whichever of the two calls comes first.
+//
+// Hits, blocks, swings, landings and steps vary their pitch a little from one to the next
+// (a fixed cycle, so a replay sounds the same). sfx_pan(x) is optional: the next one-shot is
+// panned to stage x (metres, -36..36; the far side drops to 40 %), then the pan goes back to
+// the centre.
+
+import "anim.akr"
+import "music.akr"
+import "mu_data.akr"
+
+const SFX_CH_FIRST = 10
+const SFX_CH_LAST = 15
+const SFX_STAGE_HALF: fixed = 36.0     // the walls: full pan
+
+private var sx_ready: bool
+private var sx_voices: Voices
+private var sx_pan: s32                 // -256 (left) .. 256 (right), for the next one-shot
+private var sx_turn: s32                // the pitch cycle's position
+private var sx_ko_at: u32 = 0xFFFFFF00  // FRAME of the last KO
+private var sx_hit_at: u32 = 0xFFFFFF00 // FRAME of the last hit, and its channel
+private var sx_hit_ch: s32 = -1
+private const SX_VARY: [8]fixed = [1.0, 0.955, 1.035, 0.98, 1.05, 0.94, 1.015, 0.97]
+
+private fn sx_init() {
+    if sx_ready { return }
+    sx_ready = true
+    voices_init(&sx_voices, SFX_CH_FIRST, SFX_CH_LAST, 2)
+    mu_reverb()                         // as music.akr does: whichever runs first sets it
+}
+
+// One-shot `id` (pri: higher wins a channel; limit: instances at once).
+private fn sx_one(id: s32, pri: s32, limit: s32, vary: bool) -> s32 {
+    sx_init()
+    let e = id * 4
+    var flags = SND_ADPCM
+    if SFX[e + 3] != 0 { flags = flags | SND_REVERB }
+    let v = SFX[e + 2]
+    var pitch = 1.0
+    if vary {
+        sx_turn = (sx_turn + 1) & 7
+        pitch = SX_VARY[sx_turn]
+    }
+    let p = sx_pan
+    sx_pan = 0
+    let vl = v * (256 - max(0, p) * 160 / 256) >> 8
+    let vr = v * (256 - max(0, -p) * 160 / 256) >> 8
+    return voice_play(&sx_voices, id, pri, limit, SFX_BANK + SFX[e], SFX[e + 1] as u32, pitch, vl, vr, flags as u32)
+}
+
+fn sfx_pan(x: fixed) {
+    sx_pan = clamp((clamp(x, -SFX_STAGE_HALF, SFX_STAGE_HALF) / SFX_STAGE_HALF * 256.0) as s32, -256, 256)
+}
+
+// A hit within two frames of a KO is not played: the KO has its own crushing impact.
+fn sfx_hit(power: s32) {
+    if ((FRAME - sx_ko_at) as s32) < 2 { return }
+    let p = clamp(power, 0, 3)
+    sx_hit_ch = sx_one(SFX_HIT0 + p, 6 + p, 2, true)
+    sx_hit_at = FRAME
+}
+fn sfx_block() { sx_one(SFX_BLOCK, 6, 2, true) }
+fn sfx_chip() { sx_one(SFX_CHIP, 3, 1, true) }
+fn sfx_swing(m: Mech) {
+    if m == Mech.Doubleblade {
+        sx_one(SFX_SWING_DBLADE, 4, 2, true)
+    } else {
+        sx_one(SFX_SWING_HERO, 4, 2, true)
+    }
+}
+fn sfx_grab() { sx_one(SFX_GRAB, 6, 1, false) }
+fn sfx_throw() { sx_one(SFX_THROW, 8, 1, false) }
+fn sfx_break() { sx_one(SFX_BREAK, 7, 1, false) }
+fn sfx_land() { sx_one(SFX_LAND, 4, 2, true) }
+fn sfx_step() { sx_one(SFX_STEP, 2, 2, true) }
+fn sfx_meter_full() { sx_one(SFX_METER_FULL, 5, 1, false) }
+fn sfx_super() {
+    sx_one(SFX_SUPER, 9, 1, false)
+    music_dip(90)
+}
+// The KO: its impact replaces a hit played in the same frame (or the one before).
+fn sfx_ko() {
+    let c = sx_hit_ch
+    if c >= 0 && ((FRAME - sx_hit_at) as s32) < 2 && sx_voices.id[c] >= SFX_HIT0 && sx_voices.id[c] <= SFX_HIT3 {
+        stop(c)
+    }
+    sx_ko_at = FRAME
+    sx_one(SFX_KO, 10, 1, false)
+    music_dip(240)
+}
+fn sfx_round() { sx_one(SFX_ROUND, 9, 1, false) }
+fn sfx_menu_move() { sx_one(SFX_MENU_MOVE, 3, 1, false) }
+fn sfx_menu_ok() { sx_one(SFX_MENU_OK, 4, 1, false) }
+fn sfx_menu_back() { sx_one(SFX_MENU_BACK, 4, 1, false) }
+fn sfx_unlock() { sx_one(SFX_UNLOCK, 9, 1, false) }

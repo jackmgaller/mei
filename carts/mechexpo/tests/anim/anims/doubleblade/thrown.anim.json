@@ -1,0 +1,15 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "A test of being grabbed (not the game's): the Double-blade recoils, leans back, arms up.",
+  "base": "../../../../anims/doubleblade/_body.anim.json",
+  "length": 32,
+  "keys": [
+    {"at": 0, "from": "guard"},
+    {"at": 8, "offset": [-0.3, -1.15], "ease": "out",
+     "pose": {"pelvis": [4, 0, 0], "torso": [16, 10, 0], "head": [22, 0, 0],
+              "upper_arm_r": [120, 0, -30], "forearm_r": [60, 0, 0], "upper_arm_l": [110, 0, 30], "forearm_l": [60, 0, 0]}},
+    {"at": 31, "pose": {"torso": [18, 12, 0]}}
+  ],
+  "plant": {"foot_l": [[0, 31]], "foot_r": [[0, 31]]}
+}

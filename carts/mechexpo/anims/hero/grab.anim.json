@@ -1,0 +1,48 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Grab (MOVES.md): a quick lunge with the free left hand and the sword hand both reaching for the other's shoulders, the body pitched forward over the front foot. Startup 5, active 2 (the grab box x 1.0-3.6, y 2-10, a fixed rectangle), no recovery: a miss goes on into grab_whiff, a catch into throw.",
+  "base": "_body.anim.json",
+  "length": 7,
+  "phases": {"startup": 5, "active": 2, "recovery": 0},
+  "design": {"hit": [1.0, 2.0, 3.6, 10.0], "tolerance": 0.2, "note": "MOVES.md, grab: x 1.0-3.6, y 2-10"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in", "reach": {"foot_r": [0.54, 0.0], "foot_l": [-2.51, 0.0]}},
+    {
+      "at": 2,
+      "ease": "ease",
+      "offset": [-0.1, -0.8],
+      "pose": {
+        "pelvis": [0, 0, 0],
+        "torso": [-4, 4, 0],
+        "head": [0, 0, 0],
+        "upper_arm_r": [40, 0, -24],
+        "forearm_r": [70, 0, 4],
+        "hand_r": [-40, 0, 0],
+        "upper_arm_l": [50, 0, 34],
+        "forearm_l": [60, 0, -6]
+      }
+    },
+    {
+      "at": 5,
+      "offset": [0.4, -1.05],
+      "reach": {"foot_r": [0.9, 0.0], "foot_l": [-2.51, 0.0]},
+      "boxes": {"grab": {"kind": "hit", "rect": [1.0, 2.0, 3.6, 10.0]}},
+      "pose": {
+        "pelvis": [-6, -2, 0],
+        "torso": [-16, 0, 0],
+        "head": [14, 0, 0],
+        "upper_arm_r": [96, 0, -8],
+        "forearm_r": [16, 0, 4],
+        "hand_r": [-40, 0, 0],
+        "upper_arm_l": [96, 0, 10],
+        "forearm_l": [16, 0, -6],
+        "hand_l": [-10, 0, 0],
+        "pauldron_r": [26, 0, -8],
+        "pauldron_l": [28, 0, 10]
+      }
+    },
+    {"at": 6, "offset": [0.45, -1.08], "reach": {"foot_r": [0.9, 0.0], "foot_l": [-2.51, 0.0]}}
+  ],
+  "allow": [["forearm_r", "weapon_r"]]
+}

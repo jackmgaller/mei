@@ -1,0 +1,132 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Vault Throw (MOVES.md; the other plays thrown_vault, carried by the fight from 3.4 m in front over to 5 m behind on frames 6-28): both hands hook the other's shoulders (0-5), the Double-blade Hero sinks and heaves it up and over its own head (6-17, arms straight up), turns with it, arching back as the arms carry it down behind (17-26), and slams it into the floor: the release mark on 28. It comes up out of the arch into the guard (29-39).",
+  "base": "_body.anim.json",
+  "length": 40,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "out",
+      "offset": [0.0, -1.1],
+      "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]},
+      "pose": {
+        "pelvis": [-4, -2, 0],
+        "torso": [-8, -2, 0],
+        "head": [10, 2, 0],
+        "upper_arm_r": [80, 0, -6],
+        "forearm_r": [50, 0, 4],
+        "hand_r": [-10, 0, 0],
+        "upper_arm_l": [80, 0, 8],
+        "forearm_l": [50, 0, -6],
+        "hand_l": [-10, 0, 0],
+        "pauldron_r": [24, 0, -8],
+        "pauldron_l": [24, 0, 10]
+      }
+    },
+    {
+      "at": 6,
+      "ease": "in",
+      "offset": [-0.2, -1.8],
+      "pose": {
+        "pelvis": [-8, -2, 0],
+        "torso": [-12, -2, 0],
+        "head": [14, 2, 0],
+        "upper_arm_r": [96, 0, -6],
+        "forearm_r": [40, 0, 4],
+        "upper_arm_l": [96, 0, 8],
+        "forearm_l": [40, 0, -6]
+      }
+    },
+    {
+      "at": 12,
+      "ease": "linear",
+      "offset": [-0.1, -0.6],
+      "pose": {
+        "pelvis": [0, -2, 0],
+        "torso": [4, -2, 0],
+        "head": [-10, 2, 0],
+        "upper_arm_r": [150, 0, -6],
+        "forearm_r": [20, 0, 4],
+        "hand_r": [-10, 0, 0],
+        "upper_arm_l": [150, 0, 8],
+        "forearm_l": [20, 0, -6],
+        "hand_l": [-10, 0, 0],
+        "pauldron_r": [44, 0, -10],
+        "pauldron_l": [44, 0, 12]
+      }
+    },
+    {
+      "at": 17,
+      "ease": "linear",
+      "offset": [-0.3, -0.5],
+      "pose": {
+        "pelvis": [6, -2, 0],
+        "torso": [12, -2, 0],
+        "head": [-20, 2, 0],
+        "upper_arm_r": [178, 0, -6],
+        "forearm_r": [10, 0, 4],
+        "upper_arm_l": [178, 0, 8],
+        "forearm_l": [10, 0, -6]
+      }
+    },
+    {
+      "at": 24,
+      "ease": "in",
+      "offset": [-0.6, -1.0],
+      "pose": {
+        "pelvis": [10, -2, 0],
+        "torso": [22, -2, 0],
+        "head": [-24, 2, 0],
+        "upper_arm_r": [200, 0, -8],
+        "forearm_r": [10, 0, 4],
+        "upper_arm_l": [200, 0, 10],
+        "forearm_l": [10, 0, -6]
+      }
+    },
+    {
+      "at": 28,
+      "ease": "out",
+      "offset": [-0.9, -2.2],
+      "pose": {
+        "pelvis": [12, -2, 0],
+        "torso": [30, -2, 0],
+        "head": [-20, 2, 0],
+        "upper_arm_r": [215, 0, -10],
+        "forearm_r": [10, 0, 4],
+        "upper_arm_l": [215, 0, 12],
+        "forearm_l": [10, 0, -6]
+      }
+    },
+    {
+      "at": 33,
+      "ease": "ease",
+      "offset": [-0.5, -1.6],
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [0, -8, 0],
+        "head": [6, 8, 0],
+        "upper_arm_r": [100, 0, -10],
+        "forearm_r": [40, 0, 4],
+        "hand_r": [-20, 0, 0],
+        "upper_arm_l": [90, 0, 14],
+        "forearm_l": [50, 0, -6],
+        "hand_l": [-30, 0, 0]
+      }
+    },
+    {"at": 39, "from": "guard", "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}}
+  ],
+  "marks": {"release": [28], "step": [28]},
+  "allow": [
+    ["forearm_r", "weapon_r"],
+    ["forearm_l", "weapon_l"],
+    ["weapon_r", "weapon_l"],
+    ["hand_r", "weapon_l"],
+    ["hand_l", "weapon_r"],
+    ["head", "upper_arm_r"],
+    ["head", "upper_arm_l"],
+    ["forearm_r", "forearm_l"],
+    ["hand_r", "hand_l"]
+  ]
+}

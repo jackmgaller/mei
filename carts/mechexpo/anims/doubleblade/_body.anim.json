@@ -1,0 +1,14 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "The Double-blade Hero's body: the Hero's hurt boxes on its own rig, in its own guard, and its narrower push box (1.5 m either side, MOVES.md).",
+  "base": "../hero/_body.anim.json",
+  "rig": "../../models/doubleblade/doubleblade.rig.json",
+  "boxes": {
+    "push": {
+      "kind": "push",
+      "rect": [-1.5, 0, 1.5, 11.5],
+      "note": "MOVES.md: 1.5 m either side of the root for the Double-blade Hero"
+    }
+  }
+}

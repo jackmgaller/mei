@@ -1,0 +1,374 @@
+// Mech Expo 2000: the fight (C's): the interface the game (D) builds against (README.md,
+// "Fight (C) -> game (D)"), the rounds and the frame. The fighters' rules are in fighter.akr,
+// the moves' effects in moves.akr, the meters in meter.akr, the CPU and the dummy in cpu.akr;
+// MOVES.md is the design. The fight never draws or plays sound: D does both, from fight_get()
+// and fight_events().
+
+import "anim.akr"
+import "moves.akr"
+import "meter.akr"
+import "fighter.akr"
+import "cpu.akr"
+
+const FIGHT_MAX_SEP: fixed = 36.0   // the fighters are never further apart than this (metres)
+const FIGHT_WALL: fixed = 36.0      // the hangar's walls at x = +-36
+const FIGHT_START_X: fixed = 9.0    // the rounds start at x = -9 and 9
+const ROUND_FRAMES = 3600           // 60 s
+const INTRO_FIRST = 90              // the first round's intro (both play `intro`)
+const INTRO_NEXT = 60               // later rounds: a moment to get ready
+const KO_FRAMES = 150               // from the KO (or time up) to the round's end
+const ROUND_OVER_FRAMES = 120       // the winner's pose
+const ROUNDS_TO_WIN = 2
+const TRAIN_REFILL = 60             // training: health refills this long after the last hurt
+
+enum FightMode { Versus, VsCpu, Arcade, Training }
+enum Phase { Intro, Fight, Ko, RoundOver, MatchOver }
+
+struct Fighter {
+    mech: Mech
+    mv: Mv
+    frame: fixed            // the animation frame to draw (fractional during hit reactions)
+    x: fixed
+    y: fixed
+    facing: s32             // 1: faces +x, -1: faces -x
+    health: s32
+    health_max: s32
+    meter: s32              // 0..METER_BAR; antimatter down to -METER_BAR (debt)
+    flash: s32              // frames left of the hit flash
+    super_ok: bool          // A + B would start the super now (the HUD's "ready")
+    debt: bool              // antimatter below zero: takes a quarter more damage
+}
+
+struct Shot {               // a projectile (the Hero's wave)
+    on: bool
+    x: fixed
+    y: fixed
+    vx: fixed
+    t: s32                  // frames since it was fired
+}
+
+struct Fight {
+    f: [2]Fighter
+    shot: [2]Shot
+    mode: FightMode
+    cpu_level: s32
+    phase: Phase
+    phase_t: s32            // frames in this phase
+    round: s32              // 1, 2, 3 ...
+    timer: s32              // frames left in the round
+    wins: [2]s32
+    round_winner: s32       // -1 none yet, 0 or 1, 2 a draw
+    winner: s32             // the match: -1 none yet, 0 or 1, 2 a draw
+    shake: fixed            // the camera's shake, metres (decays by itself)
+    freeze: s32             // frames left of hitstop or the super flash
+    flash_side: s32         // whose super flash it is, or -1
+    ticks: s32              // frames since fight_init
+}
+
+// Hit: a hit landed (side: the attacker; x, y: the contact; power 0..3). Block, Chip: blocked,
+// and chip damage through it. Whiff: an attack's active frames ended without contact. Swing:
+// an attack's hit box came out (the swing sound). Grab: a grab caught (or two clashed). Throw:
+// the throw's slam. Break: a grab broken. Land: a landing (power 2 from a knockdown). Step: a
+// foot plant. MeterFull: the super became available. Super: a super started. Ko, TimeUp: the
+// round ends (side: the winner, or 2 for a draw). Shot: a wave fired. Parry: a Parry caught a
+// hit (side: who parried). Clash: two waves met.
+enum Ev { Hit, Block, Chip, Whiff, Grab, Throw, Break, Land, Step, MeterFull, Super, Ko, TimeUp,
+          Shot, Parry, Clash, Swing }
+
+struct Event {
+    kind: Ev
+    side: s32
+    x: fixed
+    y: fixed
+    power: s32              // 0 light, 1 medium, 2 heavy, 3 super
+}
+
+const EVENTS_MAX = 16
+struct Events { n: s32, e: [EVENTS_MAX]Event }
+
+enum Dummy { Stand, Crouch, Jump, Block, Cpu }
+struct TrainOpts { dummy: Dummy, refill_health: bool, refill_meter: bool }
+
+struct MoveEntry { name: *u8, input: *u8 }
+const MOVES_MAX = 16
+struct MoveList { n: s32, e: [MOVES_MAX]MoveEntry }
+
+var fight: Fight
+var fight_ev: Events
+var fight_opts: TrainOpts
+
+fn ev_add(kind: Ev, side: s32, x: fixed, y: fixed, power: s32) {
+    if fight_ev.n >= EVENTS_MAX { return }
+    fight_ev.e[fight_ev.n] = Event { kind: kind, side: side, x: x, y: y, power: power }
+    fight_ev.n += 1
+}
+
+fn fight_init(p1: Mech, p2: Mech, mode: FightMode, cpu_level: s32) {
+    fight = Fight {}
+    fight_ev.n = 0
+    fight.mode = mode
+    fight.cpu_level = cpu_level
+    fight.round = 1
+    fight.round_winner = -1
+    fight.winner = -1
+    fight.flash_side = -1
+    fight.f[0].mech = p1
+    fight.f[1].mech = p2
+    fight.f[0].meter = 0
+    fight.f[1].meter = 0
+    fight_opts = TrainOpts { dummy: Dummy.Stand, refill_health: true, refill_meter: false }
+    cpu_init(0x5EED + (p1 as s32) * 7 + (p2 as s32) * 13 + cpu_level * 101)
+    start_round()
+}
+
+private fn start_round() {
+    fighter_reset(0, -FIGHT_START_X, 1)
+    fighter_reset(1, FIGHT_START_X, -1)
+    fight.shot[0].on = false
+    fight.shot[1].on = false
+    fight.timer = ROUND_FRAMES
+    fight.round_winner = -1
+    fight.freeze = 0
+    fight.flash_side = -1
+    fight.phase = Phase.Intro
+    fight.phase_t = 0
+    if fight.mode == FightMode.Training {
+        fight.phase = Phase.Fight
+    } else if fight.round == 1 {
+        set_mv(0, Mv.intro)
+        set_mv(1, Mv.intro)
+    }
+    publish()
+}
+
+private fn set_phase(p: Phase) {
+    fight.phase = p
+    fight.phase_t = 0
+}
+
+// One frame of the fight: hitstop, the flash and the rounds included. pad1 and pad2 are the
+// pads' buttons (PAD1, PAD2), st1 and st2 the sticks (stick(), stick2()). In VsCpu and Arcade
+// pad2 is ignored (the CPU plays side 2); in Training pad2 is the dummy's (fight_training()).
+fn fight_tick(pad1: u32, pad2: u32, st1: vec2, st2: vec2) {
+    fight_ev.n = 0
+    fight.ticks += 1
+    fight.phase_t += 1
+    var p2 = pad2
+    var s2 = st2
+    match fight.mode {
+        VsCpu, Arcade => { p2 = cpu_pad(1, fight.cpu_level); s2 = vec2(0.0, 0.0) }
+        Training => { p2 = dummy_pad(1); s2 = vec2(0.0, 0.0) }
+        else => {}
+    }
+    let live = fight.phase == Phase.Fight
+    if live {
+        fighter_input(0, pad1, st1)
+        fighter_input(1, p2, s2)
+    } else {
+        fighter_input(0, 0, vec2(0.0, 0.0))
+        fighter_input(1, 0, vec2(0.0, 0.0))
+    }
+    fight.shake = max(fight.shake - 0.02, 0.0)
+    for i in 0..2 {
+        if fight.f[i].flash > 0 { fight.f[i].flash -= 1 }
+    }
+    if fight.freeze > 0 {
+        fight.freeze -= 1
+        let s = fight.flash_side
+        if s >= 0 {
+            // the super flash: only its owner moves
+            fx[s].t += 1
+            if fight.freeze == 0 { fight.flash_side = -1 }
+        }
+        publish()
+        return
+    }
+    fight.flash_side = -1
+    if live {
+        fighter_age_input(0)
+        fighter_age_input(1)
+    }
+    for i in 0..2 {
+        fighter_tick(i, live)
+    }
+    for i in 0..2 { throw_tick(i) }
+    bound()
+    collide()
+    shots_tick()
+    swings()
+    if live {
+        meter_tick(&fight.f[0])
+        meter_tick(&fight.f[1])
+        if fight.mode == FightMode.Training {
+            training_tick()
+        } else {
+            fight.timer -= 1
+        }
+        check_round_end()
+    }
+    phases()
+    publish()
+}
+
+// The Swing and Whiff events: an attack's hit box coming out, and going away without contact.
+private fn swings() {
+    for i in 0..2 {
+        let f = &fight.f[i]
+        var has = false
+        let b = &fbox[i]
+        for k in 0..b.n {
+            if b.b[k].kind == BOX_HIT { has = true }
+        }
+        if has && !fx[i].had_hit && f.mv != Mv.grab { ev_add(Ev.Swing, i, f.x, 6.0, 0) }
+        if !has && fx[i].had_hit && !fx[i].contact && is_attack(f.mv) { ev_add(Ev.Whiff, i, f.x, 6.0, 0) }
+        fx[i].had_hit = has
+    }
+}
+
+private fn check_round_end() {
+    let h0 = fight.f[0].health
+    let h1 = fight.f[1].health
+    if h0 <= 0 || h1 <= 0 {
+        var w = 2
+        if h0 > 0 { w = 0 }
+        if h1 > 0 { w = 1 }
+        fight.round_winner = w
+        set_phase(Phase.Ko)
+        return
+    }
+    if fight.timer <= 0 {
+        fight.timer = 0
+        // the larger share of health wins
+        let a = h0 * fight.f[1].health_max
+        let b = h1 * fight.f[0].health_max
+        var w = 2
+        if a > b { w = 0 }
+        if b > a { w = 1 }
+        fight.round_winner = w
+        ev_add(Ev.TimeUp, w, 0.0, 0.0, 0)
+        set_phase(Phase.Ko)
+    }
+}
+
+private fn phases() {
+    match fight.phase {
+        Intro => {
+            var n = INTRO_NEXT
+            if fight.round == 1 { n = INTRO_FIRST }
+            if fight.phase_t >= n {
+                for i in 0..2 {
+                    if fight.f[i].mv == Mv.intro { set_mv(i, Mv.idle) }
+                }
+                set_phase(Phase.Fight)
+            }
+        }
+        Ko => {
+            if fight.phase_t >= KO_FRAMES {
+                let w = fight.round_winner
+                if w == 0 || w == 2 { fight.wins[0] += 1 }
+                if w == 1 || w == 2 { fight.wins[1] += 1 }
+                if w == 0 || w == 1 {
+                    if grounded(w) && fight.f[w].mv != Mv.ko { set_mv(w, Mv.win) }
+                }
+                set_phase(Phase.RoundOver)
+            }
+        }
+        RoundOver => {
+            if fight.phase_t >= ROUND_OVER_FRAMES {
+                let a = fight.wins[0] >= ROUNDS_TO_WIN
+                let b = fight.wins[1] >= ROUNDS_TO_WIN
+                if a || b {
+                    if a && b { fight.winner = 2 } else if a { fight.winner = 0 } else { fight.winner = 1 }
+                    set_phase(Phase.MatchOver)
+                } else {
+                    fight.round += 1
+                    start_round()
+                }
+            }
+        }
+        else => {}
+    }
+}
+
+private fn training_tick() {
+    for i in 0..2 {
+        let f = &fight.f[i]
+        fx[i].calm += 1
+        if is_hurt(f.mv) || fx[i].stun > 0 { fx[i].calm = 0 }
+        if fight_opts.refill_health && fx[i].calm >= TRAIN_REFILL { f.health = f.health_max }
+        if fight_opts.refill_meter && f.mv != Mv.super { meter_fill(f) }
+    }
+}
+
+// Copies the fighters' state into the fields D reads.
+private fn publish() {
+    for i in 0..2 {
+        let f = &fight.f[i]
+        f.frame = draw_frame(i)
+        let ok = fight.phase == Phase.Fight && meter_can_super(f)
+        if ok && !f.super_ok && fight.ticks > 1 { ev_add(Ev.MeterFull, i, f.x, 6.0, 0) }
+        f.super_ok = ok
+        f.debt = meter_in_debt(f)
+    }
+}
+
+fn fight_get() -> *Fight { return &fight }
+fn fight_events() -> *Events { return &fight_ev }
+
+// The boxes the fight uses for a fighter this frame (fight-local: flip x by its facing), for
+// training's box view: the stand-in's for moves anim.akr still stands in for, else the
+// animation's (the same as anim_draw_boxes() draws once every move is animated).
+fn fight_boxes(side: s32, out: *Boxes) {
+    let f = &fight.f[side]
+    mv_boxes(f.mech, f.mv, cur_frame(side), out)
+}
+
+// The training options (takes effect at once). The dummy is side 2.
+fn fight_training(opt: *TrainOpts) { fight_opts = *opt }
+
+// ---- the move list (training)
+
+const HERO_MOVES = MoveList { n: 15, e: [
+    MoveEntry { name: "Guard Cut", input: "A" },
+    MoveEntry { name: "Tip Thrust", input: "FWD + A" },
+    MoveEntry { name: "Low Sweep", input: "DOWN + A" },
+    MoveEntry { name: "Falling Cleave", input: "A in the air" },
+    MoveEntry { name: "Kinetic Wave", input: "B" },
+    MoveEntry { name: "Charge Slash", input: "FWD + B" },
+    MoveEntry { name: "Rising Arc", input: "UP + B" },
+    MoveEntry { name: "Parry", input: "DOWN + B" },
+    MoveEntry { name: "Grapple", input: "Y" },
+    MoveEntry { name: "Break a grab", input: "Y when grabbed" },
+    MoveEntry { name: "Momentum Drive", input: "A + B, one bar" },
+    MoveEntry { name: "Block", input: "hold R" },
+    MoveEntry { name: "Jump", input: "X (+ FWD or BACK)" },
+    MoveEntry { name: "Chain", input: "A, FWD + A, B" },
+    MoveEntry { name: "Kinetic meter", input: "fills by landing hits" },
+    MoveEntry {}
+] }
+
+const DB_MOVES = MoveList { n: 15, e: [
+    MoveEntry { name: "Twin Cut", input: "A (twice)" },
+    MoveEntry { name: "Cross Lunge", input: "FWD + A" },
+    MoveEntry { name: "Low Sweep", input: "DOWN + A" },
+    MoveEntry { name: "Scissor Drop", input: "A in the air" },
+    MoveEntry { name: "Void Step", input: "B" },
+    MoveEntry { name: "Charge Slash", input: "FWD + B" },
+    MoveEntry { name: "Rising Arc", input: "UP + B" },
+    MoveEntry { name: "Antimatter Slide", input: "DOWN + B" },
+    MoveEntry { name: "Vault Throw", input: "Y" },
+    MoveEntry { name: "Break a grab", input: "Y when grabbed" },
+    MoveEntry { name: "Antimatter Rend", input: "A + B, from zero" },
+    MoveEntry { name: "Block", input: "hold R" },
+    MoveEntry { name: "Jump", input: "X (+ FWD or BACK)" },
+    MoveEntry { name: "Chain", input: "A, A, FWD + A, B" },
+    MoveEntry { name: "Antimatter meter", input: "borrows: debt takes +25%" },
+    MoveEntry {}
+] }
+
+var move_list: MoveList
+
+fn fight_moves(m: Mech) -> *MoveList {
+    if m == Mech.Hero { move_list = HERO_MOVES } else { move_list = DB_MOVES }
+    return &move_list
+}

@@ -1,0 +1,57 @@
+// Mech Expo 2000's save (D's): one small save on the memory card (save number 0) that holds the
+// unlocks. Clearing the arcade ladder with the Hero Mech unlocks the Double-blade Hero.
+// Read once at boot (blocking: the title is not up yet); written in the background
+// (save_write starts it, save_tick watches it) so the frame loop keeps running.
+
+struct MxSave {
+    magic: u32               // SAVE_MAGIC
+    version: u32
+    unlocked: u32            // bit 0: the Double-blade Hero
+    clears: u32              // arcade clears, any mech
+}
+
+const SAVE_MAGIC: u32 = 0x3058454D   // "MEX0"
+const SAVE_VERSION: u32 = 1
+const SAVE_NUM = 0
+const UNLOCK_ECHO: u32 = 1
+
+var save: MxSave
+var save_meta: SaveMeta
+var save_writing: bool       // a write is in progress
+var save_result: s32 = -1    // the last write's error (CARD_OK...), -1 none yet
+var save_shown: s32          // frames the result has been on screen
+
+fn save_boot() {
+    save = MxSave { magic: SAVE_MAGIC, version: SAVE_VERSION }
+    save_meta = *UI_SAVE_ICON
+    var got: MxSave
+    let n = card_load(SAVE_NUM, &got, sizeof(MxSave))
+    if n == sizeof(MxSave) && got.magic == SAVE_MAGIC { save = got }
+}
+
+fn echo_unlocked() -> bool { return save.unlocked & UNLOCK_ECHO != 0 }
+
+// Starts writing the save; the result shows while save_writing, then in save_result.
+fn save_write() {
+    if card_busy() {
+        save_result = CARD_BUSY
+        return
+    }
+    let err = card_save(SAVE_NUM, &save, sizeof(MxSave), &save_meta)
+    save_result = err
+    save_writing = err == CARD_OK
+    save_shown = 0
+}
+
+fn save_unlock_echo() {
+    save.unlocked |= UNLOCK_ECHO
+    save_write()
+}
+
+fn save_tick() {
+    if save_writing && !card_busy() {
+        save_writing = false
+        save_result = card_error()
+    }
+    save_shown += 1
+}

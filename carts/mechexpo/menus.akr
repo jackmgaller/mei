@@ -1,0 +1,515 @@
+// The menus and the fight's overlays (D's), at placeholder quality but already the expo's
+// brochure: a pale catalogue page (BG1, a technical grid with a big faint "2000") over a
+// white-blue backdrop, translucent cards with navy rules, spec sheets, lanyard badges and booth
+// numbers, set in Figtree and Sofia Sans Condensed (ui_art.akr). The title is the hangar itself
+// with the logo over it.
+
+const PAGE_SKY: [3]u32 = [0xF6EEE6, 0xEADCCC, 0xD6C0A8]   // 0xBBGGRR: white into pale blue
+const PAGE_SKY_Y: [3]s32 = [0, 120, 240]
+const PAGE_PRIO: u32 = 0x42001133
+
+// ---- the backgrounds
+
+// The menus' page: the hall's planes off, the brochure's pattern on BG1.
+fn menus_page() {
+    stage_hide()
+    hud_show(false)
+    layer_offset(0, 0, 0, 0)
+    atlas_load(ATLAS_3, UI_PAGE_TILES, UI_PAGE_TILES_BYTES)
+    load_palette(PAL_PAGE * 16, &UI_PAL[5 * 16], 16)
+    plane(BG1, ATLAS_3, MAP_BG1, 64, 32, 0, PAL_PAGE)
+    map_load(BG1, UI_PAGE_MAP)
+    plane_window(BG1, 0, 0, 320, 240)
+    line_off(2)
+    sky_gradient(&PAGE_SKY[0], &PAGE_SKY_Y[0], 3)
+    PLN_PRIO = PAGE_PRIO
+}
+
+// The hangar (the title's attract and the fight).
+fn menus_hangar() {
+    hud_show(false)
+    stage_show()
+}
+
+private fn page_scroll() { plane_scroll(BG1, tick / 3, tick / 5) }
+
+// The menus' 3D view: a fixed camera on mechs standing at x = +-sep, their feet at screen row
+// feet_y; a dark disc under each (their turntables).
+private fn menu_camera(dist: fixed, feet_y: s32) {
+    camera_look(vec3(0.0, 6.5, -dist), 0.0, -0.05)
+    let p = project_point(vec3(0.0, 0.0, 0.0))
+    camera_pan(0, feet_y - p.y)
+}
+
+private fn menu_mech(m: Mech, mv: Mv, x: fixed, facing: s32) {
+    let q = project_point(vec3(x, 0.0, 0.0))
+    let w = (6.0 * 207.8 / view_depth(vec3(x, 0.0, 0.0))) as s32
+    fx_sprite(&FX_GLOW[0], q.x, q.y, w * 2, w / 2, 0x705030, BLEND_SUB)
+    let n = max(anim_len(m, mv), 1)
+    anim_draw(m, mv, fixed(tick % n), anim_place(vec2(x, 0.0), facing))
+}
+
+// ---- the title
+
+fn draw_title() {
+    // the logo over a glass band
+    rect_grad(0, 26, 320, 92, 0x301008, 0x100400, BLEND_HALF)
+    rect_blend(0, 26, 320, 1, C_CYAN, BLEND_NONE)
+    rect_blend(0, 117, 320, 1, C_CYAN, BLEND_NONE)
+    ui_sprite(&UI_LOGO[0], PAL_LOGO, 160 - UI_LOGO[2] / 2, 36, 0x808080, BLEND_NONE)
+    txt(FONT_LABEL, 8, 28, "EXPO HALL 1 // DEMO HANGAR", C_SKY, ALIGN_LEFT)
+    txt(FONT_LABEL, 312, 28, "OSAKA 2000.10.12", C_SKY, ALIGN_RIGHT)
+    barcode(8, 104, 16, 8, C_SILVER)
+    if (tick / 20) & 1 == 0 || st_t < 30 {
+        txt_sh(FONT_HEAD, 160, 186, "PRESS START", C_WHITE, C_INK, 1, ALIGN_CENTRE)
+    }
+    rect_blend(0, 222, 320, 14, C_GLASS, BLEND_HALF)
+    txt(FONT_LABEL, 160, 223, "FIVE MAKERS  //  ONE CONTRACT  //  DEMO HANGAR 1", C_SILVER, ALIGN_CENTRE)
+}
+
+// ---- mode select
+
+const MODE_NAMES: [3]*u8 = ["ARCADE", "VERSUS", "TRAINING"]
+const MODE_INFO: [3]*u8 = [
+    "TWO DEMONSTRATIONS AGAINST THE CPU",
+    "1P AGAINST 2P, OR THE CPU",
+    "A DUMMY, THE MOVES, THE HIT BOXES",
+]
+const MODE_CODES: [3]*u8 = ["HALL A", "HALL B", "HALL C"]
+
+fn draw_mode() {
+    page_scroll()
+    draw_header("PROGRAMME", "VISITOR GUIDE")
+    for i in 0..3 {
+        let y = 70 + i * 44
+        let on = i == mode_sel
+        var x = 40
+        if on { x = 52 }
+        panel_card(x, y, 220, 36)
+        if on {
+            rect_blend(x, y, 6, 36, C_RED, BLEND_NONE)
+            quad_fill(x - 14, y + 12, x - 6, y + 18, x - 14, y + 24, x - 6, y + 18, C_RED, BLEND_NONE)
+        }
+        txt(FONT_HEAD, x + 14, y + 6, MODE_NAMES[i], C_INK, ALIGN_LEFT)
+        txt(FONT_LABEL, x + 14, y + 21, MODE_INFO[i], C_STEEL, ALIGN_LEFT)
+        txt(FONT_LABEL, x + 214, y + 6, MODE_CODES[i], C_NAVY, ALIGN_RIGHT)
+    }
+    draw_footer("UP / DOWN CHOOSE  //  A ENTER  //  B BACK")
+}
+
+private fn draw_header(title: *u8, sub: *u8) {
+    rect_blend(0, 0, 320, 44, C_NAVY, BLEND_NONE)
+    rect_blend(0, 44, 320, 2, C_CYAN, BLEND_NONE)
+    rect_blend(0, 46, 320, 1, C_WHITE, BLEND_NONE)
+    txt(FONT_TITLE, 12, 9, title, C_WHITE, ALIGN_LEFT)
+    txt(FONT_LABEL, 308, 6, "MECH EXPO 2000", C_CYAN, ALIGN_RIGHT)
+    txt(FONT_HEAD, 308, 20, sub, C_WHITE, ALIGN_RIGHT)
+}
+
+private fn draw_footer(s: *u8) {
+    rect_blend(0, 226, 320, 14, C_NAVY, BLEND_NONE)
+    txt(FONT_LABEL, 160, 226, s, C_WHITE, ALIGN_CENTRE)
+}
+
+// ---- character select
+
+const SEL_CARD_X: [2]s32 = [124, 164]
+const SEL_CARD_Y = 178
+
+fn draw_select() {
+    page_scroll()
+    let gname = MODE_NAMES[game as s32]
+    draw_header("DEMO UNITS", gname)
+    // the two mechs under the cursors, on their turntables
+    menu_camera(27.0, 150)
+    for s in 0..2 {
+        if s == 1 && game == Game.Arcade { continue }
+        let c = sel_cur[s]
+        if !card_ok(c) { continue }
+        var x = -5.5
+        var fc = 1
+        if s == 1 {
+            x = 5.5
+            fc = -1
+        }
+        var mv = Mv.idle
+        if sel_done[s] { mv = Mv.win }
+        menu_mech(c as Mech, mv, x, fc)
+    }
+    // the spec sheets
+    draw_spec(0, 4, 56)
+    if game != Game.Arcade { draw_spec(1, 218, 56) } else { draw_ladder_card(218, 56) }
+    // the roster cards
+    for c in 0..2 {
+        let x = SEL_CARD_X[c]
+        let y = SEL_CARD_Y
+        panel_card(x - 2, y - 2, 36, 44)
+        if card_ok(c) {
+            ui_sprite(mech_emblem(c as Mech), PAL_EMBLEM, x, y + 4, 0x808080, BLEND_NONE)
+        } else {
+            ui_sprite_sz(&UI_LOCK[0], PAL_LOGO, x, y, 32, 40, 0x808080, BLEND_NONE)
+        }
+    }
+    // the cursors
+    for s in 0..2 {
+        if s == 1 && game == Game.Arcade { continue }
+        let x = SEL_CARD_X[sel_cur[s]] - 4
+        let y = SEL_CARD_Y - 4 + s * 2
+        var col = C_RED
+        var lab = "1P"
+        if s == 1 {
+            col = C_BLUE
+            lab = who_label(1)
+        }
+        let blink = sel_done[s] || (tick >> 3) & 1 == 0
+        if blink {
+            rect_outline(x, y, 40, 48 - s * 4, col, BLEND_NONE)
+            rect_outline(x + 1, y + 1, 38, 46 - s * 4, col, BLEND_NONE)
+        }
+        var tx = x - 2
+        if s == 1 { tx = x + 22 }
+        tag(tx, y - 13, 18, lab, col, C_WHITE)
+    }
+    if game == Game.Versus && !sel_human2 && !sel_done[1] {
+        if (tick >> 4) & 1 == 0 { txt(FONT_LABEL, 268, 210, "2P: PRESS A TO JOIN", C_NAVY, ALIGN_CENTRE) }
+    }
+    draw_footer("LEFT / RIGHT CHOOSE  //  A CONFIRM  //  B BACK")
+}
+
+// Who plays side s: 1P, 2P, CPU or DUMMY.
+fn who_label(s: s32) -> *u8 {
+    if s == 0 { return "1P" }
+    if game == Game.Training { return "DUMMY" }
+    if game == Game.Versus && sel_human2 { return "2P" }
+    if st == St.Fight || st == St.Results || st == St.Vs {
+        if !p_cpu { return "2P" }
+    }
+    return "CPU"
+}
+
+// A catalogue spec sheet for the mech under side s's cursor, hung on a lanyard.
+private fn draw_spec(s: s32, x: s32, y: s32) {
+    let c = sel_cur[s]
+    var col = C_RED
+    if s == 1 { col = C_BLUE }
+    // the lanyard
+    line_ex(x + 30, 46, x + 44, y, 3, col, col, BLEND_NONE)
+    line_ex(x + 60, 46, x + 46, y, 3, col, col, BLEND_NONE)
+    panel_card(x, y, 98, 96)
+    rect_blend(x + 42, y - 3, 14, 6, C_SILVER, BLEND_NONE)
+    tag(x + 4, y + 6, 18, who_label(s), col, C_WHITE)
+    if !card_ok(c) {
+        txt(FONT_HEAD, x + 49, y + 30, "? ? ?", C_INK, ALIGN_CENTRE)
+        txt(FONT_LABEL, x + 49, y + 50, "CLASSIFIED", C_STEEL, ALIGN_CENTRE)
+        txt(FONT_LABEL, x + 49, y + 64, "CLEAR THE ARCADE", C_NAVY, ALIGN_CENTRE)
+        txt(FONT_LABEL, x + 49, y + 74, "AS THE HERO", C_NAVY, ALIGN_CENTRE)
+        return
+    }
+    let m = c as Mech
+    var model = "MR-01"
+    if m == Mech.Doubleblade { model = "UR-02" }
+    txt(FONT_LABEL, x + 94, y + 5, mech_booth(m), C_STEEL, ALIGN_RIGHT)
+    txt(FONT_HEAD, x + 5, y + 19, model, C_INK, ALIGN_LEFT)
+    txt(FONT_LABEL, x + 5, y + 34, mech_name(m), C_INK, ALIGN_LEFT)
+    txt(FONT_LABEL, x + 5, y + 44, mech_maker(m), mech_colour(m), ALIGN_LEFT)
+    rect_blend(x + 5, y + 56, 88, 1, C_STEEL, BLEND_NONE)
+    txt(FONT_LABEL, x + 5, y + 58, "POWER", C_STEEL, ALIGN_LEFT)
+    txt(FONT_LABEL, x + 94, y + 58, mech_power(m), C_INK, ALIGN_RIGHT)
+    txt(FONT_LABEL, x + 5, y + 69, "HEIGHT", C_STEEL, ALIGN_LEFT)
+    txt(FONT_LABEL, x + 94, y + 69, "12.0 M", C_INK, ALIGN_RIGHT)
+    if sel_done[s] { tag(x + 58, y + 82, 34, "READY", C_CYAN, C_INK) }
+    barcode(x + 5, y + 84, 9, 7, C_INK)
+}
+
+// The arcade's right-hand card: the ladder.
+private fn draw_ladder_card(x: s32, y: s32) {
+    line_ex(x + 30, 46, x + 44, y, 3, C_STEEL, C_STEEL, BLEND_NONE)
+    line_ex(x + 60, 46, x + 46, y, 3, C_STEEL, C_STEEL, BLEND_NONE)
+    panel_card(x, y, 98, 96)
+    txt(FONT_LABEL, x + 5, y + 6, "ARCADE LADDER", C_NAVY, ALIGN_LEFT)
+    let me = sel_cur[0] as Mech
+    for n in 0..LADDER_N {
+        let yy = y + 24 + n * 26
+        let b = sb()
+        str_append(b, 64, "DEMO ")
+        str_append_int(b, 64, n + 1, 0, false)
+        txt(FONT_LABEL, x + 5, yy, b, C_STEEL, ALIGN_LEFT)
+        if card_ok(sel_cur[0]) {
+            txt(FONT_LABEL, x + 5, yy + 9, mech_name(ladder_foe(me, n)), C_INK, ALIGN_LEFT)
+        } else {
+            txt(FONT_LABEL, x + 5, yy + 9, "?", C_INK, ALIGN_LEFT)
+        }
+    }
+}
+
+// ---- VS
+
+fn draw_vs() {
+    page_scroll()
+    let t = st_t
+    // the two halves slide in
+    let k = min(t, 16)
+    let off = (16 - k) * 12
+    quad_fill(-off, 30, 176 - off, 30, -off, 200, 144 - off, 200, mech_colour(p_mech[0]), BLEND_HALF)
+    quad_fill(176 + off, 30, 320 + off, 30, 144 + off, 200, 320 + off, 200, mech_colour(p_mech[1]), BLEND_HALF)
+    rect_blend(0, 30, 320, 2, C_WHITE, BLEND_NONE)
+    rect_blend(0, 198, 320, 2, C_WHITE, BLEND_NONE)
+    menu_camera(26.0, 186)
+    menu_mech(p_mech[0], Mv.intro, -9.0, 1)
+    menu_mech(p_mech[1], Mv.intro, 9.0, -1)
+    // names and makers
+    txt_sh(FONT_HEAD, 10 - off, 40, mech_name(p_mech[0]), C_WHITE, C_INK, 1, ALIGN_LEFT)
+    txt(FONT_LABEL, 10 - off, 56, mech_maker(p_mech[0]), C_SILVER, ALIGN_LEFT)
+    tag(10 - off, 70, 18, who_label(0), C_RED, C_WHITE)
+    txt_sh(FONT_HEAD, 310 + off, 168, mech_name(p_mech[1]), C_WHITE, C_INK, 1, ALIGN_RIGHT)
+    txt(FONT_LABEL, 310 + off, 184, mech_maker(p_mech[1]), C_SILVER, ALIGN_RIGHT)
+    tag(286 + off, 154, 18, who_label(1), C_BLUE, C_WHITE)
+    if t > 16 {
+        let s = 2 + max(0, 24 - t) / 4
+        txt_sh(FONT_TITLE, 160, 96 - s, "VS", C_YELLOW, C_INK, s, ALIGN_CENTRE)
+    }
+    // the header
+    rect_blend(0, 0, 320, 26, C_NAVY, BLEND_NONE)
+    if game == Game.Arcade {
+        let b = sb()
+        str_append(b, 64, "ARCADE // DEMONSTRATION ")
+        str_append_int(b, 64, ladder + 1, 0, false)
+        str_append(b, 64, " OF 2")
+        txt(FONT_HEAD, 160, 5, b, C_WHITE, ALIGN_CENTRE)
+    } else if game == Game.Versus {
+        txt(FONT_HEAD, 160, 5, "VERSUS // PRODUCT DEMONSTRATION", C_WHITE, ALIGN_CENTRE)
+    } else {
+        txt(FONT_HEAD, 160, 5, "TRAINING // FREE DEMONSTRATION", C_WHITE, ALIGN_CENTRE)
+    }
+    rect_blend(0, 214, 320, 26, C_NAVY, BLEND_NONE)
+    txt(FONT_LABEL, 160, 220, "UAPC DEFENCE TRIAL  //  DEMO HANGAR 1  //  LIVE", C_SKY, ALIGN_CENTRE)
+}
+
+// ---- the fight's overlays
+
+fn draw_fight_overlay() {
+    let f = fight_get()
+    let training = game == Game.Training
+    hud_draw(f, training, who_label(0), who_label(1))
+    let t = f.phase_t
+    match f.phase {
+        Intro => {
+            let b = sb()
+            if f.wins[0] == 1 && f.wins[1] == 1 {
+                str_append(b, 64, "FINAL ROUND")
+            } else {
+                str_append(b, 64, "ROUND ")
+                str_append_int(b, 64, f.round, 0, false)
+            }
+            if !training { hud_banner(b, "DEMONSTRATION IN PROGRESS", t, C_WHITE) }
+        }
+        Fight => {
+            if t < 50 && !training { hud_banner("FIGHT!", null, t, C_YELLOW) }
+        }
+        Ko => {
+            if f.timer <= 0 { hud_banner("TIME UP", null, t, C_TANGERINE) }
+            else { hud_banner("K.O.", null, t, C_WHITE) }
+        }
+        RoundOver => {
+            if f.round_winner == 0 || f.round_winner == 1 {
+                let b = sb()
+                str_append(b, 64, who_label(f.round_winner))
+                str_append(b, 64, " TAKES THE ROUND")
+                hud_banner(mech_short(f.f[f.round_winner].mech), b, t, C_WHITE)
+            } else {
+                hud_banner("DRAW", "NO DECISION", t, C_WHITE)
+            }
+        }
+        MatchOver => {
+            if f.winner == 0 || f.winner == 1 {
+                hud_banner(mech_short(f.f[f.winner].mech), "WINS THE DEMONSTRATION", t, C_YELLOW)
+            } else {
+                hud_banner("DRAW GAME", null, t, C_WHITE)
+            }
+        }
+    }
+    if training {
+        let b = sb()
+        str_append(b, 64, "TRAINING // DUMMY ")
+        str_append(b, 64, DUMMY_NAMES[train.dummy as s32])
+        overlay_label(b)
+    } else if cam_angled && f.phase == Phase.Fight {
+        overlay_label("CAMERA // ANGLED")
+    }
+}
+
+// A small label under the timer, on a dark pill (the hall behind it is busy).
+private fn overlay_label(s: *u8) {
+    let w = txt_w(FONT_LABEL, s) + 10
+    rect_blend(160 - w / 2, 38, w, 11, 0x2A1006, BLEND_NONE)
+    txt(FONT_LABEL, 160, 37, s, C_SILVER, ALIGN_CENTRE)
+}
+
+const DUMMY_NAMES: [5]*u8 = ["STAND", "CROUCH", "JUMP", "BLOCK ALL", "CPU"]
+
+// ---- pause
+
+fn draw_pause() {
+    rect_blend(0, 0, 320, 240, 0x301008, BLEND_HALF)
+    if pause_page == 1 {
+        draw_move_list()
+        return
+    }
+    var items: [8]s32
+    let n = pause_items(&items[0])
+    let h = 30 + n * 16
+    let y0 = 120 - h / 2
+    panel_solid(80, y0, 160, h)
+    txt(FONT_HEAD, 88, y0 + 6, "PAUSE", C_INK, ALIGN_LEFT)
+    txt(FONT_LABEL, 232, y0 + 6, "DEMO ON HOLD", C_STEEL, ALIGN_RIGHT)
+    for i in 0..n {
+        let y = y0 + 26 + i * 16
+        let on = i == pause_sel
+        if on { rect_blend(82, y - 1, 156, 14, C_NAVY, BLEND_NONE) }
+        var col = C_INK
+        if on { col = C_WHITE }
+        let it = items[i]
+        var name = "RESUME"
+        var val: *u8 = null
+        if it == PZ_CAMERA {
+            name = "CAMERA"
+            if cam_angled { val = "ANGLED" } else { val = "SIDE-ON" }
+        } else if it == PZ_DUMMY {
+            name = "DUMMY"
+            val = DUMMY_NAMES[train.dummy as s32]
+        } else if it == PZ_REFILL {
+            name = "REFILL"
+            if train.refill_health { val = "ON" } else { val = "OFF" }
+        } else if it == PZ_BOXES {
+            name = "HIT BOXES"
+            if show_boxes { val = "SHOW" } else { val = "HIDE" }
+        } else if it == PZ_MOVES {
+            name = "MOVE LIST"
+        } else if it == PZ_SELECT {
+            name = "CHARACTER SELECT"
+        } else if it == PZ_QUIT {
+            name = "QUIT TO TITLE"
+        }
+        txt(FONT_LABEL, 92, y, name, col, ALIGN_LEFT)
+        if val != null {
+            var vc = C_NAVY
+            if on { vc = C_CYAN }
+            txt(FONT_LABEL, 230, y, val, vc, ALIGN_RIGHT)
+        }
+    }
+}
+
+private fn draw_move_list() {
+    let m = p_mech[0]
+    let ml = fight_moves(m)
+    panel_solid(30, 14, 260, 214)
+    txt(FONT_HEAD, 38, 20, "MOVE LIST", C_INK, ALIGN_LEFT)
+    txt(FONT_LABEL, 282, 22, mech_name(m), mech_colour(m), ALIGN_RIGHT)
+    rect_blend(38, 38, 244, 1, C_STEEL, BLEND_NONE)
+    if ml.n == 0 {
+        txt(FONT_LABEL, 160, 110, "THE MOVE LIST IS NOT IN YET", C_STEEL, ALIGN_CENTRE)
+    }
+    for i in 0..min(ml.n, MOVES_MAX) {
+        let y = 41 + i * 11
+        txt(FONT_LABEL, 40, y, ml.e[i].name, C_INK, ALIGN_LEFT)
+        txt(FONT_LABEL, 280, y, ml.e[i].input, C_NAVY, ALIGN_RIGHT)
+    }
+    txt(FONT_LABEL, 282, 214, "B BACK", C_STEEL, ALIGN_RIGHT)
+}
+
+// ---- results
+
+fn draw_results() {
+    page_scroll()
+    let f = fight_get()
+    var w = f.winner
+    if w < 0 || w > 1 { w = 0 }
+    let wm = f.f[w].mech
+    draw_header("RESULTS", MODE_NAMES[game as s32])
+    menu_camera(22.0, 196)
+    if f.winner == 0 || f.winner == 1 {
+        menu_mech(wm, Mv.win, -7.0, 1)
+    }
+    panel_card(150, 60, 160, 120)
+    if f.winner == 2 {
+        txt(FONT_TITLE, 230, 70, "DRAW", C_INK, ALIGN_CENTRE)
+    } else {
+        txt(FONT_LABEL, 158, 66, "WINNER", C_STEEL, ALIGN_LEFT)
+        tag(282, 66, 18, who_label(w), mech_colour(wm), C_WHITE)
+        txt(FONT_HEAD, 158, 80, mech_name(wm), C_INK, ALIGN_LEFT)
+        txt(FONT_LABEL, 158, 96, mech_maker(wm), mech_colour(wm), ALIGN_LEFT)
+    }
+    rect_blend(158, 112, 144, 1, C_STEEL, BLEND_NONE)
+    let b = sb()
+    str_append(b, 64, "ROUNDS ")
+    str_append_int(b, 64, f.wins[0], 0, false)
+    str_append(b, 64, " - ")
+    str_append_int(b, 64, f.wins[1], 0, false)
+    txt(FONT_LABEL, 158, 116, b, C_INK, ALIGN_LEFT)
+    let hb = sb()
+    str_append(hb, 64, "UNIT INTEGRITY ")
+    str_append_int(hb, 64, max(f.f[w].health, 0) * 100 / max(f.f[w].health_max, 1), 0, false)
+    str_append(hb, 64, "%")
+    txt(FONT_LABEL, 158, 128, hb, C_INK, ALIGN_LEFT)
+    if game == Game.Arcade {
+        if !won {
+            txt(FONT_HEAD, 230, 146, "CONTINUE?", C_RED, ALIGN_CENTRE)
+            txt(FONT_LABEL, 230, 162, "A YES  //  B NO", C_INK, ALIGN_CENTRE)
+        } else if !cleared {
+            let nb = sb()
+            str_append(nb, 64, "NEXT: ")
+            str_append(nb, 64, mech_short(ladder_foe(p_mech[0], ladder + 1)))
+            txt(FONT_HEAD, 230, 146, nb, C_NAVY, ALIGN_CENTRE)
+            txt(FONT_LABEL, 230, 162, "A CONTINUE", C_INK, ALIGN_CENTRE)
+        } else {
+            txt(FONT_HEAD, 230, 146, "ARCADE CLEAR", C_NAVY, ALIGN_CENTRE)
+            txt(FONT_LABEL, 230, 162, "CONTRACT SHORTLISTED  //  A", C_INK, ALIGN_CENTRE)
+        }
+    } else {
+        const ITEMS: [3]*u8 = ["REMATCH", "CHARACTER SELECT", "TITLE"]
+        for i in 0..3 {
+            let y = 142 + i * 12
+            var col = C_INK
+            if i == res_sel {
+                rect_blend(152, y - 1, 156, 12, C_NAVY, BLEND_NONE)
+                col = C_WHITE
+            }
+            txt(FONT_LABEL, 160, y, ITEMS[i], col, ALIGN_LEFT)
+        }
+    }
+    draw_save_status(158, 184)
+    draw_footer("UAPC DEFENCE TRIAL  //  RESULTS FILED")
+}
+
+private fn draw_save_status(x: s32, y: s32) {
+    if save_writing {
+        if (tick >> 3) & 1 == 0 { txt(FONT_LABEL, x, y, "SAVING TO MEMORY CARD...", C_NAVY, ALIGN_LEFT) }
+    } else if save_result != -1 && save_shown < 240 {
+        if save_result == CARD_OK {
+            txt(FONT_LABEL, x, y, "SAVED TO MEMORY CARD", C_NAVY, ALIGN_LEFT)
+        } else if save_result == CARD_NO_CARD {
+            txt(FONT_LABEL, x, y, "NO MEMORY CARD // NOT SAVED", C_RED, ALIGN_LEFT)
+        } else if save_result == CARD_FULL {
+            txt(FONT_LABEL, x, y, "MEMORY CARD FULL // NOT SAVED", C_RED, ALIGN_LEFT)
+        } else {
+            txt(FONT_LABEL, x, y, "MEMORY CARD ERROR // NOT SAVED", C_RED, ALIGN_LEFT)
+        }
+    }
+}
+
+// ---- the unlock
+
+fn draw_unlock() {
+    page_scroll()
+    rect_grad(0, 0, 320, 80, 0x5A2810, 0x5A2810, BLEND_HALF)
+    menu_camera(22.0, 200)
+    menu_mech(Mech.Doubleblade, Mv.intro, 0.0, -1)
+    let t = st_t
+    if (t >> 2) & 1 == 0 || t > 40 {
+        txt_sh(FONT_HEAD, 160, 18, "NEW DEMO UNIT UNLOCKED", C_YELLOW, C_INK, 1, ALIGN_CENTRE)
+    }
+    txt_sh(FONT_TITLE, 160, 36, "DOUBLE-BLADE HERO", C_WHITE, C_INK, 2, ALIGN_CENTRE)
+    txt(FONT_LABEL, 160, 64, "UMBRAL RESEARCH  //  ANTIMATTER  //  BOOTH B-07", C_VIOLET, ALIGN_CENTRE)
+    draw_save_status(100, 210)
+    if t > 90 && !save_writing { txt(FONT_LABEL, 160, 224, "PRESS A", C_WHITE, ALIGN_CENTRE) }
+}

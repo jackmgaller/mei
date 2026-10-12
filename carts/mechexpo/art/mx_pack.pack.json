@@ -1,0 +1,5150 @@
+{
+  "format": "mei-asset-pack",
+  "version": 1,
+  "name": "mx_pack",
+  "assets": [
+    {
+      "name": "doubleblade_pelvis",
+      "mesh": "doubleblade_pelvis.bin",
+      "levels": [],
+      "vertices": 72,
+      "triangles": 120,
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              108,
+              120
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 56,
+          "faces": [
+            [
+              18,
+              28
+            ],
+            [
+              34,
+              44
+            ],
+            [
+              48,
+              60
+            ],
+            [
+              72,
+              84
+            ],
+            [
+              96,
+              108
+            ]
+          ]
+        },
+        "graphite": {
+          "color": "#8a83a4",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              16,
+              18
+            ],
+            [
+              28,
+              34
+            ],
+            [
+              44,
+              48
+            ],
+            [
+              66,
+              68
+            ],
+            [
+              70,
+              72
+            ],
+            [
+              90,
+              92
+            ],
+            [
+              94,
+              96
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              60,
+              66
+            ],
+            [
+              68,
+              70
+            ],
+            [
+              84,
+              90
+            ],
+            [
+              92,
+              94
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_torso",
+      "mesh": "doubleblade_torso.bin",
+      "levels": [],
+      "vertices": 140,
+      "triangles": 250,
+      "palette": {
+        "palettes": [
+          0
+        ],
+        "entries": [
+          {
+            "colour": 1,
+            "class": "emissive",
+            "color": "#c47cff",
+            "materials": [
+              "vglow"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 56,
+          "faces": [
+            [
+              46,
+              56
+            ],
+            [
+              58,
+              60
+            ],
+            [
+              66,
+              68
+            ],
+            [
+              74,
+              76
+            ],
+            [
+              80,
+              86
+            ],
+            [
+              90,
+              92
+            ],
+            [
+              178,
+              182
+            ],
+            [
+              186,
+              190
+            ],
+            [
+              194,
+              198
+            ],
+            [
+              202,
+              206
+            ],
+            [
+              210,
+              214
+            ],
+            [
+              218,
+              222
+            ],
+            [
+              226,
+              230
+            ],
+            [
+              234,
+              238
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 78,
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              32,
+              44
+            ],
+            [
+              108,
+              140
+            ],
+            [
+              156,
+              174
+            ]
+          ]
+        },
+        "graphite": {
+          "color": "#8a83a4",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 32,
+          "faces": [
+            [
+              60,
+              64
+            ],
+            [
+              70,
+              74
+            ],
+            [
+              76,
+              80
+            ],
+            [
+              86,
+              90
+            ],
+            [
+              140,
+              156
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 48,
+          "faces": [
+            [
+              16,
+              32
+            ],
+            [
+              92,
+              108
+            ],
+            [
+              174,
+              176
+            ],
+            [
+              182,
+              184
+            ],
+            [
+              190,
+              192
+            ],
+            [
+              198,
+              200
+            ],
+            [
+              206,
+              208
+            ],
+            [
+              214,
+              216
+            ],
+            [
+              222,
+              224
+            ],
+            [
+              230,
+              232
+            ]
+          ]
+        },
+        "vglow": {
+          "color": "#c47cff",
+          "class": "emissive",
+          "palette_colour": 1,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              238,
+              250
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              44,
+              46
+            ],
+            [
+              56,
+              58
+            ],
+            [
+              64,
+              66
+            ],
+            [
+              68,
+              70
+            ],
+            [
+              176,
+              178
+            ],
+            [
+              184,
+              186
+            ],
+            [
+              192,
+              194
+            ],
+            [
+              200,
+              202
+            ],
+            [
+              208,
+              210
+            ],
+            [
+              216,
+              218
+            ],
+            [
+              224,
+              226
+            ],
+            [
+              232,
+              234
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_head",
+      "mesh": "doubleblade_head.bin",
+      "levels": [],
+      "vertices": 124,
+      "triangles": 216,
+      "palette": {
+        "palettes": [
+          1
+        ],
+        "entries": [
+          {
+            "colour": 17,
+            "class": "emissive",
+            "color": "#c47cff",
+            "materials": [
+              "vglow"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 90,
+          "faces": [
+            [
+              14,
+              24
+            ],
+            [
+              28,
+              44
+            ],
+            [
+              46,
+              56
+            ],
+            [
+              60,
+              108
+            ],
+            [
+              114,
+              120
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#141219",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              12,
+              14
+            ],
+            [
+              24,
+              28
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              0,
+              12
+            ],
+            [
+              108,
+              114
+            ]
+          ]
+        },
+        "graphite": {
+          "color": "#8a83a4",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              120,
+              140
+            ],
+            [
+              172,
+              176
+            ],
+            [
+              184,
+              188
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 32,
+          "faces": [
+            [
+              140,
+              160
+            ],
+            [
+              196,
+              208
+            ]
+          ]
+        },
+        "vglow": {
+          "color": "#c47cff",
+          "class": "emissive",
+          "palette_colour": 17,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              44,
+              46
+            ],
+            [
+              56,
+              60
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              160,
+              172
+            ],
+            [
+              176,
+              184
+            ],
+            [
+              188,
+              196
+            ],
+            [
+              208,
+              216
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_pauldron_r",
+      "mesh": "doubleblade_pauldron_r.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 60,
+      "textures": [
+        {
+          "material": "emblem",
+          "tile": "30edac7f3cb51e4e",
+          "source": {
+            "texels": "64 x 32"
+          },
+          "width": 64,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#212129",
+            "#9c52f7",
+            "#e7bdff"
+          ],
+          "slot": 0,
+          "x": 152,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#212129": 1,
+            "#9c52f7": 2,
+            "#e7bdff": 3
+          },
+          "vram_bytes": 1089,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              2,
+              12
+            ],
+            [
+              14,
+              16
+            ],
+            [
+              22,
+              32
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        },
+        "emblem": {
+          "color": "#26232f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              48,
+              54
+            ]
+          ]
+        },
+        "graphite": {
+          "color": "#8a83a4",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              16,
+              18
+            ],
+            [
+              20,
+              22
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              2
+            ],
+            [
+              12,
+              14
+            ],
+            [
+              32,
+              48
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_upper_arm_r",
+      "mesh": "doubleblade_upper_arm_r.bin",
+      "levels": [],
+      "vertices": 28,
+      "triangles": 42,
+      "materials": {
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 42,
+          "faces": [
+            [
+              0,
+              42
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_forearm_r",
+      "mesh": "doubleblade_forearm_r.bin",
+      "levels": [],
+      "vertices": 44,
+      "triangles": 76,
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              24,
+              32
+            ],
+            [
+              34,
+              36
+            ],
+            [
+              38,
+              48
+            ],
+            [
+              50,
+              58
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              58,
+              64
+            ]
+          ]
+        },
+        "graphite": {
+          "color": "#8a83a4",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              22,
+              24
+            ],
+            [
+              64,
+              66
+            ],
+            [
+              68,
+              76
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              20,
+              22
+            ],
+            [
+              32,
+              34
+            ],
+            [
+              36,
+              38
+            ],
+            [
+              48,
+              50
+            ],
+            [
+              66,
+              68
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_hand_r",
+      "mesh": "doubleblade_hand_r.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 64,
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              40,
+              50
+            ],
+            [
+              52,
+              64
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#141219",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              32,
+              36
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              20,
+              32
+            ],
+            [
+              36,
+              40
+            ],
+            [
+              50,
+              52
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_dagger",
+      "mesh": "doubleblade_dagger.bin",
+      "levels": [],
+      "vertices": 44,
+      "triangles": 72,
+      "palette": {
+        "palettes": [
+          2
+        ],
+        "entries": [
+          {
+            "colour": 33,
+            "class": "emissive",
+            "color": "#e8c8ff",
+            "materials": [
+              "vedge"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              18,
+              42
+            ]
+          ]
+        },
+        "blade": {
+          "color": "#625a7e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              52,
+              54
+            ],
+            [
+              58,
+              60
+            ],
+            [
+              62,
+              66
+            ],
+            [
+              67,
+              68
+            ],
+            [
+              70,
+              71
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#141219",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              0,
+              12
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              12,
+              18
+            ]
+          ]
+        },
+        "vedge": {
+          "color": "#e8c8ff",
+          "class": "emissive",
+          "palette_colour": 33,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              50,
+              52
+            ],
+            [
+              54,
+              58
+            ],
+            [
+              60,
+              62
+            ],
+            [
+              66,
+              67
+            ],
+            [
+              68,
+              70
+            ],
+            [
+              71,
+              72
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              42,
+              50
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_pauldron_l",
+      "mesh": "doubleblade_pauldron_l.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 60,
+      "textures": [
+        {
+          "material": "emblem",
+          "tile": "30edac7f3cb51e4e",
+          "source": {
+            "texels": "64 x 32"
+          },
+          "width": 64,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#212129",
+            "#9c52f7",
+            "#e7bdff"
+          ],
+          "slot": 0,
+          "x": 152,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#212129": 1,
+            "#9c52f7": 2,
+            "#e7bdff": 3
+          },
+          "vram_bytes": 1089,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              2,
+              12
+            ],
+            [
+              14,
+              16
+            ],
+            [
+              22,
+              32
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        },
+        "emblem": {
+          "color": "#26232f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              48,
+              54
+            ]
+          ]
+        },
+        "graphite": {
+          "color": "#8a83a4",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              16,
+              18
+            ],
+            [
+              20,
+              22
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              2
+            ],
+            [
+              12,
+              14
+            ],
+            [
+              32,
+              48
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_upper_arm_l",
+      "mesh": "doubleblade_upper_arm_l.bin",
+      "levels": [],
+      "vertices": 28,
+      "triangles": 42,
+      "materials": {
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 42,
+          "faces": [
+            [
+              0,
+              42
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_forearm_l",
+      "mesh": "doubleblade_forearm_l.bin",
+      "levels": [],
+      "vertices": 44,
+      "triangles": 76,
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              24,
+              32
+            ],
+            [
+              34,
+              36
+            ],
+            [
+              38,
+              48
+            ],
+            [
+              50,
+              58
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              58,
+              64
+            ]
+          ]
+        },
+        "graphite": {
+          "color": "#8a83a4",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              22,
+              24
+            ],
+            [
+              64,
+              66
+            ],
+            [
+              68,
+              76
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              20,
+              22
+            ],
+            [
+              32,
+              34
+            ],
+            [
+              36,
+              38
+            ],
+            [
+              48,
+              50
+            ],
+            [
+              66,
+              68
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_hand_l",
+      "mesh": "doubleblade_hand_l.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 64,
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              40,
+              50
+            ],
+            [
+              52,
+              64
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#141219",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              32,
+              36
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              20,
+              32
+            ],
+            [
+              36,
+              40
+            ],
+            [
+              50,
+              52
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_thigh_r",
+      "mesh": "doubleblade_thigh_r.bin",
+      "levels": [],
+      "vertices": 52,
+      "triangles": 96,
+      "textures": [
+        {
+          "material": "serial",
+          "tile": "7c8fc4a81fc1ed82",
+          "source": {
+            "texels": "32 x 16"
+          },
+          "width": 32,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#736b8c",
+            "#101018"
+          ],
+          "slot": 0,
+          "x": 216,
+          "y": 40,
+          "gutter": 1,
+          "window": null,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#736b8c": 4,
+            "#101018": 5
+          },
+          "vram_bytes": 289,
+          "night": "per_colour",
+          "faces": [
+            [
+              38,
+              40
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 34,
+          "faces": [
+            [
+              22,
+              32
+            ],
+            [
+              34,
+              36
+            ],
+            [
+              40,
+              48
+            ],
+            [
+              50,
+              52
+            ],
+            [
+              54,
+              64
+            ],
+            [
+              66,
+              68
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              68,
+              96
+            ]
+          ]
+        },
+        "serial": {
+          "color": "#756e8e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              38,
+              40
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              20,
+              22
+            ],
+            [
+              32,
+              34
+            ],
+            [
+              36,
+              38
+            ],
+            [
+              48,
+              50
+            ],
+            [
+              52,
+              54
+            ],
+            [
+              64,
+              66
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_shin_r",
+      "mesh": "doubleblade_shin_r.bin",
+      "levels": [],
+      "vertices": 76,
+      "triangles": 132,
+      "palette": {
+        "palettes": [
+          3
+        ],
+        "entries": [
+          {
+            "colour": 49,
+            "class": "emissive",
+            "color": "#c47cff",
+            "materials": [
+              "vglow"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "hazard",
+          "tile": "5352ab71074c153b",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#9c52f7",
+            "#101018"
+          ],
+          "slot": 0,
+          "x": 240,
+          "y": 0,
+          "gutter": 0,
+          "window": 497,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#9c52f7": 2,
+            "#101018": 5
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              86,
+              88
+            ],
+            [
+              94,
+              96
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        497
+      ],
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              38,
+              48
+            ],
+            [
+              54,
+              64
+            ],
+            [
+              112,
+              116
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 44,
+          "faces": [
+            [
+              0,
+              20
+            ],
+            [
+              84,
+              86
+            ],
+            [
+              88,
+              94
+            ],
+            [
+              96,
+              112
+            ]
+          ]
+        },
+        "graphite": {
+          "color": "#8a83a4",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              22,
+              36
+            ],
+            [
+              50,
+              52
+            ],
+            [
+              66,
+              68
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              86,
+              88
+            ],
+            [
+              94,
+              96
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 21,
+          "faces": [
+            [
+              68,
+              84
+            ],
+            [
+              124,
+              129
+            ]
+          ]
+        },
+        "vglow": {
+          "color": "#c47cff",
+          "class": "emissive",
+          "palette_colour": 49,
+          "tag": null,
+          "triangles": 3,
+          "faces": [
+            [
+              129,
+              132
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              20,
+              22
+            ],
+            [
+              36,
+              38
+            ],
+            [
+              48,
+              50
+            ],
+            [
+              52,
+              54
+            ],
+            [
+              64,
+              66
+            ],
+            [
+              116,
+              124
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_foot_r",
+      "mesh": "doubleblade_foot_r.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 64,
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              20,
+              24
+            ],
+            [
+              34,
+              44
+            ],
+            [
+              58,
+              64
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#141219",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              30,
+              34
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "graphite": {
+          "color": "#8a83a4",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              24,
+              28
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              46,
+              56
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              28,
+              30
+            ],
+            [
+              44,
+              46
+            ],
+            [
+              56,
+              58
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_thigh_l",
+      "mesh": "doubleblade_thigh_l.bin",
+      "levels": [],
+      "vertices": 52,
+      "triangles": 96,
+      "textures": [
+        {
+          "material": "serial",
+          "tile": "7c8fc4a81fc1ed82",
+          "source": {
+            "texels": "32 x 16"
+          },
+          "width": 32,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#736b8c",
+            "#101018"
+          ],
+          "slot": 0,
+          "x": 216,
+          "y": 40,
+          "gutter": 1,
+          "window": null,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#736b8c": 4,
+            "#101018": 5
+          },
+          "vram_bytes": 289,
+          "night": "per_colour",
+          "faces": [
+            [
+              38,
+              40
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 34,
+          "faces": [
+            [
+              22,
+              32
+            ],
+            [
+              34,
+              36
+            ],
+            [
+              40,
+              48
+            ],
+            [
+              50,
+              52
+            ],
+            [
+              54,
+              64
+            ],
+            [
+              66,
+              68
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              68,
+              96
+            ]
+          ]
+        },
+        "serial": {
+          "color": "#756e8e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              38,
+              40
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              20,
+              22
+            ],
+            [
+              32,
+              34
+            ],
+            [
+              36,
+              38
+            ],
+            [
+              48,
+              50
+            ],
+            [
+              52,
+              54
+            ],
+            [
+              64,
+              66
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_shin_l",
+      "mesh": "doubleblade_shin_l.bin",
+      "levels": [],
+      "vertices": 76,
+      "triangles": 132,
+      "palette": {
+        "palettes": [
+          4
+        ],
+        "entries": [
+          {
+            "colour": 65,
+            "class": "emissive",
+            "color": "#c47cff",
+            "materials": [
+              "vglow"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "hazard",
+          "tile": "5352ab71074c153b",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#9c52f7",
+            "#101018"
+          ],
+          "slot": 0,
+          "x": 240,
+          "y": 0,
+          "gutter": 0,
+          "window": 497,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#9c52f7": 2,
+            "#101018": 5
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              86,
+              88
+            ],
+            [
+              94,
+              96
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        497
+      ],
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              38,
+              48
+            ],
+            [
+              54,
+              64
+            ],
+            [
+              112,
+              116
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 44,
+          "faces": [
+            [
+              0,
+              20
+            ],
+            [
+              84,
+              86
+            ],
+            [
+              88,
+              94
+            ],
+            [
+              96,
+              112
+            ]
+          ]
+        },
+        "graphite": {
+          "color": "#8a83a4",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              22,
+              36
+            ],
+            [
+              50,
+              52
+            ],
+            [
+              66,
+              68
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              86,
+              88
+            ],
+            [
+              94,
+              96
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 21,
+          "faces": [
+            [
+              68,
+              84
+            ],
+            [
+              124,
+              129
+            ]
+          ]
+        },
+        "vglow": {
+          "color": "#c47cff",
+          "class": "emissive",
+          "palette_colour": 65,
+          "tag": null,
+          "triangles": 3,
+          "faces": [
+            [
+              129,
+              132
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              20,
+              22
+            ],
+            [
+              36,
+              38
+            ],
+            [
+              48,
+              50
+            ],
+            [
+              52,
+              54
+            ],
+            [
+              64,
+              66
+            ],
+            [
+              116,
+              124
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "doubleblade_foot_l",
+      "mesh": "doubleblade_foot_l.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 64,
+      "materials": {
+        "black": {
+          "color": "#2a2733",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              20,
+              24
+            ],
+            [
+              34,
+              44
+            ],
+            [
+              58,
+              64
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#141219",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              30,
+              34
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#36333f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "graphite": {
+          "color": "#8a83a4",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              24,
+              28
+            ]
+          ]
+        },
+        "smoke": {
+          "color": "#8a80a8",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              46,
+              56
+            ]
+          ]
+        },
+        "violet": {
+          "color": "#9a52f5",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              28,
+              30
+            ],
+            [
+              44,
+              46
+            ],
+            [
+              56,
+              58
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "expo_banner",
+      "mesh": "expo_banner.bin",
+      "levels": [],
+      "vertices": 55,
+      "triangles": 78,
+      "textures": [
+        {
+          "material": "expo",
+          "tile": "af3e2d3cf9d46e33",
+          "source": {
+            "image": "art/banner_expo.png",
+            "sha256": "02fe8be5a7d7a608f652f258fe1073fdc58b5cb37f2cd5bead6d201513143211"
+          },
+          "width": 32,
+          "height": 112,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#1042ad",
+            "#f7ffff",
+            "#1852b5",
+            "#429ce7",
+            "#6bbdef",
+            "#cedef7",
+            "#297bce",
+            "#185abd",
+            "#216bc6",
+            "#318cde",
+            "#3194e7",
+            "#42a5ef"
+          ],
+          "slot": 0,
+          "x": 16,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 10,
+          "first_colour": 160,
+          "indices": {
+            "#1042ad": 1,
+            "#f7ffff": 2,
+            "#1852b5": 3,
+            "#429ce7": 4,
+            "#6bbdef": 5,
+            "#cedef7": 6,
+            "#297bce": 7,
+            "#185abd": 8,
+            "#216bc6": 9,
+            "#318cde": 10,
+            "#3194e7": 11,
+            "#42a5ef": 12
+          },
+          "vram_bytes": 1921,
+          "night": "per_colour",
+          "faces": [
+            [
+              54,
+              55
+            ],
+            [
+              56,
+              57
+            ]
+          ]
+        },
+        {
+          "material": "y2k",
+          "tile": "a3db120c73341757",
+          "source": {
+            "image": "art/banner_2000.png",
+            "sha256": "c73e5e437f7fffb2fe4b000221b7a172477f6ee743c7a6d4adc646180792f39d"
+          },
+          "width": 32,
+          "height": 112,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#1042ad",
+            "#f7ffff",
+            "#215abd",
+            "#7bc6ef",
+            "#e7efff",
+            "#216bc6",
+            "#3184d6",
+            "#297bd6",
+            "#1852b5",
+            "#399ce7",
+            "#42a5ef",
+            "#318cde"
+          ],
+          "slot": 0,
+          "x": 56,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 11,
+          "first_colour": 176,
+          "indices": {
+            "#1042ad": 1,
+            "#f7ffff": 2,
+            "#215abd": 3,
+            "#7bc6ef": 4,
+            "#e7efff": 5,
+            "#216bc6": 6,
+            "#3184d6": 7,
+            "#297bd6": 8,
+            "#1852b5": 9,
+            "#399ce7": 10,
+            "#42a5ef": 11,
+            "#318cde": 12
+          },
+          "vram_bytes": 1921,
+          "night": "per_colour",
+          "faces": [
+            [
+              66,
+              67
+            ],
+            [
+              68,
+              69
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "base": {
+          "color": "#3c4454",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              0,
+              10
+            ]
+          ]
+        },
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 44,
+          "faces": [
+            [
+              10,
+              54
+            ]
+          ]
+        },
+        "cloth": {
+          "color": "#1d4fb0",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              55,
+              56
+            ],
+            [
+              57,
+              66
+            ],
+            [
+              67,
+              68
+            ],
+            [
+              69,
+              78
+            ]
+          ]
+        },
+        "expo": {
+          "color": "#2f7fe0",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              54,
+              55
+            ],
+            [
+              56,
+              57
+            ]
+          ]
+        },
+        "y2k": {
+          "color": "#2f7fe0",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              66,
+              67
+            ],
+            [
+              68,
+              69
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hangar_wall_l",
+      "mesh": "hangar_wall_l.bin",
+      "levels": [],
+      "vertices": 84,
+      "triangles": 108,
+      "palette": {
+        "palettes": [
+          5
+        ],
+        "entries": [
+          {
+            "colour": 81,
+            "class": "emissive",
+            "color": "#f2f6ff",
+            "materials": [
+              "light"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "steel",
+          "tile": "bfa31fa35f052028",
+          "source": {
+            "pattern": "tile",
+            "params": {
+              "count": 2,
+              "grout": 1
+            }
+          },
+          "width": 16,
+          "height": 16,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#4a5a6b",
+            "#63738c",
+            "#6b7b94"
+          ],
+          "slot": 0,
+          "x": 224,
+          "y": 0,
+          "gutter": 0,
+          "window": 738,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#4a5a6b": 6,
+            "#63738c": 7,
+            "#6b7b94": 8
+          },
+          "vram_bytes": 128,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              8
+            ],
+            [
+              16,
+              18
+            ]
+          ]
+        },
+        {
+          "material": "sign",
+          "tile": "318461278c9459ca",
+          "source": {
+            "image": "art/wall_sign.png",
+            "sha256": "261025165f82064a76c9fbf021164669386b261c547c6c31e483cf59fdaa55a6"
+          },
+          "width": 48,
+          "height": 64,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#18397b",
+            "#f7f7f7",
+            "#315284",
+            "#21397b",
+            "#738484",
+            "#d6dede",
+            "#b5b57b",
+            "#f7c600"
+          ],
+          "slot": 0,
+          "x": 96,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 12,
+          "first_colour": 192,
+          "indices": {
+            "#18397b": 1,
+            "#f7f7f7": 2,
+            "#315284": 3,
+            "#21397b": 4,
+            "#738484": 5,
+            "#d6dede": 6,
+            "#b5b57b": 7,
+            "#f7c600": 8
+          },
+          "vram_bytes": 1625,
+          "night": "per_colour",
+          "faces": [
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        {
+          "material": "hazard",
+          "tile": "3d153667b7c05324",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#f7c600",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 248,
+          "y": 0,
+          "gutter": 0,
+          "window": 505,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#212129": 1,
+            "#f7c600": 9
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              24
+            ],
+            [
+              26,
+              28
+            ],
+            [
+              38,
+              46
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        738,
+        505
+      ],
+      "materials": {
+        "cap": {
+          "color": "#e8b800",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              66,
+              67
+            ],
+            [
+              68,
+              69
+            ],
+            [
+              72,
+              74
+            ],
+            [
+              76,
+              77
+            ],
+            [
+              78,
+              79
+            ],
+            [
+              82,
+              84
+            ]
+          ]
+        },
+        "girder": {
+          "color": "#55627a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 48,
+          "faces": [
+            [
+              10,
+              16
+            ],
+            [
+              24,
+              26
+            ],
+            [
+              28,
+              38
+            ],
+            [
+              46,
+              66
+            ],
+            [
+              86,
+              96
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#f2c200",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              18,
+              24
+            ],
+            [
+              26,
+              28
+            ],
+            [
+              38,
+              46
+            ]
+          ]
+        },
+        "lamp": {
+          "color": "#3a4150",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              96,
+              100
+            ],
+            [
+              102,
+              108
+            ]
+          ]
+        },
+        "light": {
+          "color": "#f2f6ff",
+          "class": "emissive",
+          "palette_colour": 81,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              100,
+              102
+            ]
+          ]
+        },
+        "rubber": {
+          "color": "#2d3139",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              67,
+              68
+            ],
+            [
+              69,
+              72
+            ],
+            [
+              74,
+              76
+            ],
+            [
+              77,
+              78
+            ],
+            [
+              79,
+              82
+            ],
+            [
+              84,
+              86
+            ]
+          ]
+        },
+        "sign": {
+          "color": "#1f3f78",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        "steel": {
+          "color": "#66758a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              0,
+              8
+            ],
+            [
+              16,
+              18
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hangar_wall_r",
+      "mesh": "hangar_wall_r.bin",
+      "levels": [],
+      "vertices": 84,
+      "triangles": 108,
+      "palette": {
+        "palettes": [
+          6
+        ],
+        "entries": [
+          {
+            "colour": 97,
+            "class": "emissive",
+            "color": "#f2f6ff",
+            "materials": [
+              "light"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "steel",
+          "tile": "bfa31fa35f052028",
+          "source": {
+            "pattern": "tile",
+            "params": {
+              "count": 2,
+              "grout": 1
+            }
+          },
+          "width": 16,
+          "height": 16,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#4a5a6b",
+            "#63738c",
+            "#6b7b94"
+          ],
+          "slot": 0,
+          "x": 224,
+          "y": 0,
+          "gutter": 0,
+          "window": 738,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#4a5a6b": 6,
+            "#63738c": 7,
+            "#6b7b94": 8
+          },
+          "vram_bytes": 128,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              8
+            ],
+            [
+              16,
+              18
+            ]
+          ]
+        },
+        {
+          "material": "sign",
+          "tile": "318461278c9459ca",
+          "source": {
+            "image": "art/wall_sign.png",
+            "sha256": "261025165f82064a76c9fbf021164669386b261c547c6c31e483cf59fdaa55a6"
+          },
+          "width": 48,
+          "height": 64,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#18397b",
+            "#f7f7f7",
+            "#315284",
+            "#21397b",
+            "#738484",
+            "#d6dede",
+            "#b5b57b",
+            "#f7c600"
+          ],
+          "slot": 0,
+          "x": 96,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 12,
+          "first_colour": 192,
+          "indices": {
+            "#18397b": 1,
+            "#f7f7f7": 2,
+            "#315284": 3,
+            "#21397b": 4,
+            "#738484": 5,
+            "#d6dede": 6,
+            "#b5b57b": 7,
+            "#f7c600": 8
+          },
+          "vram_bytes": 1625,
+          "night": "per_colour",
+          "faces": [
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        {
+          "material": "hazard",
+          "tile": "3d153667b7c05324",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#f7c600",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 248,
+          "y": 0,
+          "gutter": 0,
+          "window": 505,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#212129": 1,
+            "#f7c600": 9
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              24
+            ],
+            [
+              26,
+              28
+            ],
+            [
+              38,
+              46
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        738,
+        505
+      ],
+      "materials": {
+        "cap": {
+          "color": "#e8b800",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              66,
+              67
+            ],
+            [
+              68,
+              69
+            ],
+            [
+              72,
+              74
+            ],
+            [
+              76,
+              77
+            ],
+            [
+              78,
+              79
+            ],
+            [
+              82,
+              84
+            ]
+          ]
+        },
+        "girder": {
+          "color": "#55627a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 48,
+          "faces": [
+            [
+              10,
+              16
+            ],
+            [
+              24,
+              26
+            ],
+            [
+              28,
+              38
+            ],
+            [
+              46,
+              66
+            ],
+            [
+              86,
+              96
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#f2c200",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              18,
+              24
+            ],
+            [
+              26,
+              28
+            ],
+            [
+              38,
+              46
+            ]
+          ]
+        },
+        "lamp": {
+          "color": "#3a4150",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              96,
+              100
+            ],
+            [
+              102,
+              108
+            ]
+          ]
+        },
+        "light": {
+          "color": "#f2f6ff",
+          "class": "emissive",
+          "palette_colour": 97,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              100,
+              102
+            ]
+          ]
+        },
+        "rubber": {
+          "color": "#2d3139",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              67,
+              68
+            ],
+            [
+              69,
+              72
+            ],
+            [
+              74,
+              76
+            ],
+            [
+              77,
+              78
+            ],
+            [
+              79,
+              82
+            ],
+            [
+              84,
+              86
+            ]
+          ]
+        },
+        "sign": {
+          "color": "#1f3f78",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        "steel": {
+          "color": "#66758a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              0,
+              8
+            ],
+            [
+              16,
+              18
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_pelvis",
+      "mesh": "hero_pelvis.bin",
+      "levels": [],
+      "vertices": 72,
+      "triangles": 120,
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              60,
+              66
+            ],
+            [
+              68,
+              70
+            ],
+            [
+              84,
+              90
+            ],
+            [
+              92,
+              94
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 56,
+          "faces": [
+            [
+              18,
+              28
+            ],
+            [
+              34,
+              44
+            ],
+            [
+              48,
+              60
+            ],
+            [
+              72,
+              84
+            ],
+            [
+              96,
+              108
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              66,
+              68
+            ],
+            [
+              70,
+              72
+            ],
+            [
+              90,
+              92
+            ],
+            [
+              94,
+              96
+            ],
+            [
+              108,
+              120
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              16,
+              18
+            ],
+            [
+              28,
+              34
+            ],
+            [
+              44,
+              48
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_torso",
+      "mesh": "hero_torso.bin",
+      "levels": [],
+      "vertices": 132,
+      "triangles": 230,
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 48,
+          "faces": [
+            [
+              16,
+              32
+            ],
+            [
+              92,
+              108
+            ],
+            [
+              194,
+              210
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 98,
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              32,
+              44
+            ],
+            [
+              108,
+              140
+            ],
+            [
+              156,
+              174
+            ],
+            [
+              210,
+              230
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 60,
+          "faces": [
+            [
+              44,
+              60
+            ],
+            [
+              62,
+              72
+            ],
+            [
+              74,
+              76
+            ],
+            [
+              78,
+              88
+            ],
+            [
+              90,
+              92
+            ],
+            [
+              174,
+              194
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              60,
+              62
+            ],
+            [
+              72,
+              74
+            ],
+            [
+              76,
+              78
+            ],
+            [
+              88,
+              90
+            ],
+            [
+              140,
+              156
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_head",
+      "mesh": "hero_head.bin",
+      "levels": [],
+      "vertices": 116,
+      "triangles": 200,
+      "palette": {
+        "palettes": [
+          7
+        ],
+        "entries": [
+          {
+            "colour": 113,
+            "class": "emissive",
+            "color": "#8ff4ff",
+            "materials": [
+              "glow"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 52,
+          "faces": [
+            [
+              116,
+              136
+            ],
+            [
+              152,
+              160
+            ],
+            [
+              164,
+              188
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#262a33",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              20,
+              22
+            ],
+            [
+              32,
+              36
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 26,
+          "faces": [
+            [
+              0,
+              20
+            ],
+            [
+              84,
+              90
+            ]
+          ]
+        },
+        "glow": {
+          "color": "#8ff4ff",
+          "class": "emissive",
+          "palette_colour": 113,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              36,
+              38
+            ],
+            [
+              48,
+              52
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 44,
+          "faces": [
+            [
+              96,
+              116
+            ],
+            [
+              136,
+              148
+            ],
+            [
+              188,
+              200
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 66,
+          "faces": [
+            [
+              22,
+              32
+            ],
+            [
+              38,
+              48
+            ],
+            [
+              52,
+              84
+            ],
+            [
+              90,
+              96
+            ],
+            [
+              148,
+              152
+            ],
+            [
+              160,
+              164
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_pauldron_r",
+      "mesh": "hero_pauldron_r.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 60,
+      "textures": [
+        {
+          "material": "emblem",
+          "tile": "d84173e247c4f838",
+          "source": {
+            "texels": "56 x 32"
+          },
+          "width": 56,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#ef2129",
+            "#f7f7f7"
+          ],
+          "slot": 0,
+          "x": 152,
+          "y": 40,
+          "gutter": 1,
+          "window": null,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#ef2129": 10,
+            "#f7f7f7": 11
+          },
+          "vram_bytes": 957,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              32,
+              48
+            ]
+          ]
+        },
+        "emblem": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              48,
+              54
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              16,
+              18
+            ],
+            [
+              20,
+              32
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_upper_arm_r",
+      "mesh": "hero_upper_arm_r.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 50,
+      "materials": {
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 50,
+          "faces": [
+            [
+              0,
+              50
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_forearm_r",
+      "mesh": "hero_forearm_r.bin",
+      "levels": [],
+      "vertices": 52,
+      "triangles": 92,
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              0,
+              20
+            ],
+            [
+              52,
+              68
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              74,
+              80
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              20,
+              38
+            ],
+            [
+              40,
+              52
+            ],
+            [
+              68,
+              74
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              38,
+              40
+            ],
+            [
+              80,
+              92
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_hand_r",
+      "mesh": "hero_hand_r.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 64,
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#262a33",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              32,
+              36
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              20,
+              32
+            ],
+            [
+              36,
+              40
+            ],
+            [
+              50,
+              52
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              40,
+              50
+            ],
+            [
+              52,
+              64
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_sword",
+      "mesh": "hero_sword.bin",
+      "levels": [],
+      "vertices": 69,
+      "triangles": 118,
+      "palette": {
+        "palettes": [
+          8
+        ],
+        "entries": [
+          {
+            "colour": 129,
+            "class": "emissive",
+            "color": "#f4fcff",
+            "materials": [
+              "edge"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 32,
+          "faces": [
+            [
+              20,
+              32
+            ],
+            [
+              64,
+              84
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#262a33",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "edge": {
+          "color": "#f4fcff",
+          "class": "emissive",
+          "palette_colour": 129,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              84,
+              86
+            ],
+            [
+              88,
+              92
+            ],
+            [
+              94,
+              98
+            ],
+            [
+              100,
+              104
+            ],
+            [
+              106,
+              108
+            ],
+            [
+              112,
+              113
+            ],
+            [
+              114,
+              116
+            ],
+            [
+              117,
+              118
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              32,
+              56
+            ]
+          ]
+        },
+        "steel": {
+          "color": "#dfe8f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              86,
+              88
+            ],
+            [
+              92,
+              94
+            ],
+            [
+              98,
+              100
+            ],
+            [
+              104,
+              106
+            ],
+            [
+              108,
+              112
+            ],
+            [
+              113,
+              114
+            ],
+            [
+              116,
+              117
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              56,
+              64
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_pauldron_l",
+      "mesh": "hero_pauldron_l.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 60,
+      "textures": [
+        {
+          "material": "emblem",
+          "tile": "d84173e247c4f838",
+          "source": {
+            "texels": "56 x 32"
+          },
+          "width": 56,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#ef2129",
+            "#f7f7f7"
+          ],
+          "slot": 0,
+          "x": 152,
+          "y": 40,
+          "gutter": 1,
+          "window": null,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#ef2129": 10,
+            "#f7f7f7": 11
+          },
+          "vram_bytes": 957,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              32,
+              48
+            ]
+          ]
+        },
+        "emblem": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              48,
+              54
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              16,
+              18
+            ],
+            [
+              20,
+              32
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_upper_arm_l",
+      "mesh": "hero_upper_arm_l.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 50,
+      "materials": {
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 50,
+          "faces": [
+            [
+              0,
+              50
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_forearm_l",
+      "mesh": "hero_forearm_l.bin",
+      "levels": [],
+      "vertices": 52,
+      "triangles": 92,
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              0,
+              20
+            ],
+            [
+              52,
+              68
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              74,
+              80
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              20,
+              38
+            ],
+            [
+              40,
+              52
+            ],
+            [
+              68,
+              74
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              38,
+              40
+            ],
+            [
+              80,
+              92
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_hand_l",
+      "mesh": "hero_hand_l.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 64,
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#262a33",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              32,
+              36
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              20,
+              32
+            ],
+            [
+              36,
+              40
+            ],
+            [
+              50,
+              52
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              40,
+              50
+            ],
+            [
+              52,
+              64
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_thigh_r",
+      "mesh": "hero_thigh_r.bin",
+      "levels": [],
+      "vertices": 56,
+      "triangles": 104,
+      "textures": [
+        {
+          "material": "serial",
+          "tile": "0fa14c0fb1f291cd",
+          "source": {
+            "texels": "32 x 16"
+          },
+          "width": 32,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7f7f7",
+            "#212931"
+          ],
+          "slot": 0,
+          "x": 216,
+          "y": 64,
+          "gutter": 1,
+          "window": null,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#f7f7f7": 11,
+            "#212931": 12
+          },
+          "vram_bytes": 289,
+          "night": "per_colour",
+          "faces": [
+            [
+              46,
+              48
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              76,
+              104
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 46,
+          "faces": [
+            [
+              28,
+              46
+            ],
+            [
+              48,
+              76
+            ]
+          ]
+        },
+        "serial": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              46,
+              48
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_shin_r",
+      "mesh": "hero_shin_r.bin",
+      "levels": [],
+      "vertices": 66,
+      "triangles": 120,
+      "textures": [
+        {
+          "material": "hazard",
+          "tile": "3d153667b7c05324",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#f7c600",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 248,
+          "y": 0,
+          "gutter": 0,
+          "window": 505,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#212129": 1,
+            "#f7c600": 9
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              94,
+              96
+            ],
+            [
+              102,
+              104
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        505
+      ],
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              76,
+              92
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 52,
+          "faces": [
+            [
+              0,
+              28
+            ],
+            [
+              92,
+              94
+            ],
+            [
+              96,
+              102
+            ],
+            [
+              104,
+              120
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#f2c200",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              94,
+              96
+            ],
+            [
+              102,
+              104
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              46,
+              56
+            ],
+            [
+              62,
+              72
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              28,
+              46
+            ],
+            [
+              56,
+              62
+            ],
+            [
+              72,
+              76
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_foot_r",
+      "mesh": "hero_foot_r.bin",
+      "levels": [],
+      "vertices": 38,
+      "triangles": 64,
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              54,
+              64
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#262a33",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              38,
+              42
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              28,
+              32
+            ],
+            [
+              36,
+              38
+            ],
+            [
+              42,
+              52
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              32,
+              36
+            ],
+            [
+              52,
+              54
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_thigh_l",
+      "mesh": "hero_thigh_l.bin",
+      "levels": [],
+      "vertices": 56,
+      "triangles": 104,
+      "textures": [
+        {
+          "material": "serial",
+          "tile": "0fa14c0fb1f291cd",
+          "source": {
+            "texels": "32 x 16"
+          },
+          "width": 32,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7f7f7",
+            "#212931"
+          ],
+          "slot": 0,
+          "x": 216,
+          "y": 64,
+          "gutter": 1,
+          "window": null,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#f7f7f7": 11,
+            "#212931": 12
+          },
+          "vram_bytes": 289,
+          "night": "per_colour",
+          "faces": [
+            [
+              46,
+              48
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              76,
+              104
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 46,
+          "faces": [
+            [
+              28,
+              46
+            ],
+            [
+              48,
+              76
+            ]
+          ]
+        },
+        "serial": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              46,
+              48
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_shin_l",
+      "mesh": "hero_shin_l.bin",
+      "levels": [],
+      "vertices": 66,
+      "triangles": 120,
+      "textures": [
+        {
+          "material": "hazard",
+          "tile": "3d153667b7c05324",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#f7c600",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 248,
+          "y": 0,
+          "gutter": 0,
+          "window": 505,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#212129": 1,
+            "#f7c600": 9
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              94,
+              96
+            ],
+            [
+              102,
+              104
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        505
+      ],
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              76,
+              92
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 52,
+          "faces": [
+            [
+              0,
+              28
+            ],
+            [
+              92,
+              94
+            ],
+            [
+              96,
+              102
+            ],
+            [
+              104,
+              120
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#f2c200",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              94,
+              96
+            ],
+            [
+              102,
+              104
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              46,
+              56
+            ],
+            [
+              62,
+              72
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              28,
+              46
+            ],
+            [
+              56,
+              62
+            ],
+            [
+              72,
+              76
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "hero_foot_l",
+      "mesh": "hero_foot_l.bin",
+      "levels": [],
+      "vertices": 38,
+      "triangles": 64,
+      "materials": {
+        "chrome": {
+          "color": "#c6d0dc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              54,
+              64
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#262a33",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              38,
+              42
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4c5462",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        },
+        "red": {
+          "color": "#e8262c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              28,
+              32
+            ],
+            [
+              36,
+              38
+            ],
+            [
+              42,
+              52
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f6f6f2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              32,
+              36
+            ],
+            [
+              52,
+              54
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    }
+  ],
+  "textures": {
+    "slots": [
+      0
+    ],
+    "palettes": {
+      "file": "mx_pack.tpal",
+      "runs": [
+        {
+          "bits": 4,
+          "first_colour": 144,
+          "colours": 64,
+          "offset": 0
+        }
+      ]
+    },
+    "tiles": 10,
+    "vram_bytes": 8283,
+    "vram_bytes_allocated": 10688,
+    "palettes_4bit": [
+      9,
+      10,
+      11,
+      12
+    ],
+    "palettes_8bit": []
+  },
+  "swatch": {
+    "file": "mx_pack.swatch",
+    "slot": 0,
+    "row": 0,
+    "texels": 16
+  },
+  "palette": {
+    "file": "mx_pack.pal",
+    "runs": [
+      {
+        "first_colour": 0,
+        "colours": 16
+      },
+      {
+        "first_colour": 16,
+        "colours": 16
+      },
+      {
+        "first_colour": 32,
+        "colours": 16
+      },
+      {
+        "first_colour": 48,
+        "colours": 16
+      },
+      {
+        "first_colour": 64,
+        "colours": 16
+      },
+      {
+        "first_colour": 80,
+        "colours": 16
+      },
+      {
+        "first_colour": 96,
+        "colours": 16
+      },
+      {
+        "first_colour": 112,
+        "colours": 16
+      },
+      {
+        "first_colour": 128,
+        "colours": 16
+      }
+    ]
+  }
+}

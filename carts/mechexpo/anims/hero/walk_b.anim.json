@@ -1,0 +1,128 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Walk back: the walk forward reversed and more guarded, 48 frames for 2.88 m (0.060 m a frame): each foot lifts in front, swings back low and plants behind (the left on 0, the right on 24... see the step marks); the planted foot slides forward 0.060 m a frame against the root.",
+  "base": "_body.anim.json",
+  "length": 48,
+  "loop": true,
+  "marks": {"step": [0, 24]},
+  "keys": [
+    {
+      "at": 0,
+      "ease": "ease",
+      "offset": [-0.05, -0.75],
+      "pose": {
+        "pelvis": [0, -10, 0],
+        "torso": [-4, -17, 0],
+        "head": [-6, 15, 0],
+        "upper_arm_r": [29, 0, -14],
+        "forearm_r": [42, 0, 4],
+        "hand_r": [-22, 0, 0],
+        "upper_arm_l": [37, 0, 20],
+        "forearm_l": [78, 0, -6]
+      },
+      "reach": {"foot_r": [-1.01, 0.0], "foot_l": [0.43, 0.0]}
+    },
+    {"at": 1, "reach": {"foot_r": [-0.95, 0.0], "foot_l": [0.49, 0.0]}, "ease": "linear"},
+    {
+      "at": 4,
+      "ease": "out",
+      "offset": [-0.05, -0.95],
+      "pose": {
+        "pelvis": [-1, -10, 0],
+        "torso": [-6, -17, 0],
+        "head": [-3, 15, 0],
+        "upper_arm_r": [30, 0, -14],
+        "forearm_r": [41, 0, 4],
+        "hand_r": [-22, 0, 0],
+        "upper_arm_l": [37, 0, 20],
+        "forearm_l": [79, 0, -6]
+      },
+      "reach": {"foot_r": [-0.77, 0.0], "foot_l": [0.67, 0.0]}
+    },
+    {"at": 5, "reach": {"foot_r": [-0.71, 0.0], "foot_l": [0.73, 0.0]}, "ease": "linear"},
+    {"at": 8, "reach": {"foot_l": [0.91, 0.0]}, "ease": "linear"},
+    {"at": 10, "reach": {"foot_l": [0.827, 0.284]}, "ease": "linear"},
+    {"at": 12, "reach": {"foot_l": [0.61, 0.488]}, "ease": "linear"},
+    {
+      "at": 14,
+      "ease": "ease",
+      "offset": [-0.05, -0.56],
+      "pose": {
+        "pelvis": [1, -8, 0],
+        "torso": [-3, -15, 0],
+        "head": [-5, 13, 0],
+        "upper_arm_r": [28, 0, -14],
+        "forearm_r": [42, 0, 4],
+        "hand_r": [-22, 0, 0],
+        "upper_arm_l": [39, 0, 20],
+        "forearm_l": [77, 0, -6]
+      },
+      "reach": {"foot_r": [-0.17, 0.0], "foot_l": [0.302, 0.609]}
+    },
+    {"at": 15, "reach": {"foot_r": [-0.11, 0.0], "foot_l": [0.129, 0.64]}, "ease": "linear"},
+    {"at": 16, "reach": {"foot_l": [-0.05, 0.65]}, "ease": "linear"},
+    {"at": 18, "reach": {"foot_l": [-0.403, 0.609]}, "ease": "linear"},
+    {"at": 20, "reach": {"foot_l": [-0.71, 0.488]}, "ease": "linear"},
+    {"at": 22, "reach": {"foot_l": [-0.927, 0.284]}, "ease": "linear"},
+    {
+      "at": 24,
+      "ease": "ease",
+      "offset": [-0.05, -0.75],
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [-4, -14, 0],
+        "head": [-6, 12, 0],
+        "upper_arm_r": [29, 0, -14],
+        "forearm_r": [42, 0, 4],
+        "hand_r": [-22, 0, 0],
+        "upper_arm_l": [40, 0, 20],
+        "forearm_l": [78, 0, -6]
+      },
+      "reach": {"foot_r": [0.43, 0.0], "foot_l": [-1.01, 0.0]}
+    },
+    {"at": 25, "reach": {"foot_r": [0.49, 0.0], "foot_l": [-0.95, 0.0]}, "ease": "linear"},
+    {
+      "at": 28,
+      "ease": "out",
+      "offset": [-0.05, -0.95],
+      "pose": {
+        "pelvis": [-1, -6, 0],
+        "torso": [-6, -14, 0],
+        "head": [-3, 12, 0],
+        "upper_arm_r": [30, 0, -14],
+        "forearm_r": [41, 0, 4],
+        "hand_r": [-22, 0, 0],
+        "upper_arm_l": [40, 0, 20],
+        "forearm_l": [79, 0, -6]
+      },
+      "reach": {"foot_r": [0.67, 0.0], "foot_l": [-0.77, 0.0]}
+    },
+    {"at": 29, "reach": {"foot_r": [0.73, 0.0], "foot_l": [-0.71, 0.0]}, "ease": "linear"},
+    {"at": 32, "reach": {"foot_r": [0.91, 0.0]}, "ease": "linear"},
+    {"at": 34, "reach": {"foot_r": [0.827, 0.284]}, "ease": "linear"},
+    {"at": 36, "reach": {"foot_r": [0.61, 0.488]}, "ease": "linear"},
+    {
+      "at": 38,
+      "ease": "ease",
+      "offset": [-0.05, -0.56],
+      "pose": {
+        "pelvis": [1, -8, 0],
+        "torso": [-3, -15, 0],
+        "head": [-5, 13, 0],
+        "upper_arm_r": [28, 0, -14],
+        "forearm_r": [42, 0, 4],
+        "hand_r": [-22, 0, 0],
+        "upper_arm_l": [39, 0, 20],
+        "forearm_l": [77, 0, -6]
+      },
+      "reach": {"foot_r": [0.302, 0.609], "foot_l": [-0.17, 0.0]}
+    },
+    {"at": 39, "reach": {"foot_r": [0.129, 0.64], "foot_l": [-0.11, 0.0]}, "ease": "linear"},
+    {"at": 40, "reach": {"foot_r": [-0.05, 0.65]}, "ease": "linear"},
+    {"at": 42, "reach": {"foot_r": [-0.403, 0.609]}, "ease": "linear"},
+    {"at": 44, "reach": {"foot_r": [-0.71, 0.488]}, "ease": "linear"},
+    {"at": 46, "reach": {"foot_r": [-0.927, 0.284]}, "ease": "linear"},
+    {"at": 47, "reach": {"foot_r": [-0.988, 0.152], "foot_l": [0.37, 0.0]}, "ease": "linear"}
+  ]
+}

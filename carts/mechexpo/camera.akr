@@ -1,0 +1,98 @@
+// The fight's camera (D's): it follows both mechs and dollies back as they separate, from a
+// view CAM_W_MIN metres across the fight plane to CAM_W_MAX (48 m, where a 12 m mech is about
+// 80 px tall: the fight keeps them within FIGHT_MAX_SEP = 36 m of each other, so they fit with
+// a margin). The lens never changes: dollying, not zooming, so the floor and the hall keep
+// their perspective.
+//
+// Two framings (cam_angled): side-on (yaw 0, looking along +z at the fight plane), and turned
+// CAM_YAW off side-on, the camera standing to the front left and looking a little to the right,
+// so the mechs read less flat. Collision is 2D either way; only the view changes.
+//
+// The eye sits at mech-chest height (CAM_EYE_Y) with a slight downward pitch, and the picture
+// is shifted (camera_pan, an off-axis view) so the floor under the fight's centre stays at
+// screen row CAM_FEET_Y whatever the distance: the mechs stand low on the screen, under the
+// HUD, with room above them for jumps. A jump raises the framing a little (cam_lift).
+//
+// The fight's shake (metres) jitters the eye. cam_apply() sets camera_look() and the pan for
+// the frame; the stage's planes are worked out from the same matrix.
+
+const CAM_W_MIN: fixed = 25.0      // metres across the fight plane, the mechs close together
+const CAM_W_MAX: fixed = 48.0      // the widest (FIGHT_MAX_SEP + a margin each side)
+const CAM_MARGIN: fixed = 6.0      // beyond each mech's root
+const CAM_EYE_Y: fixed = 6.5
+const CAM_PITCH: fixed = -0.05
+const CAM_FEET_Y = 202             // the floor line under the mechs, screen row
+const CAM_YAW: fixed = 0.23        // the angled framing: 13 degrees
+const CAM_FX: fixed = 1.299        // the projection's x scale at the default 60 degrees (4:3)
+const CAM_WALL: fixed = 36.0       // the hangar's walls (FIGHT_WALL)
+const CAM_EASE = 6                 // 1/n of the way to the target a frame
+
+var cam_x: fixed                   // the fight plane's point under the screen's centre
+var cam_w: fixed = 30.0            // metres across the fight plane
+var cam_lift: fixed                // metres the framing is raised for a jump
+var cam_angled: bool
+var cam_shake: fixed
+var cam_eye: vec3
+var cam_yaw: fixed
+var cam_pan_y: s32
+
+fn cam_target_w(x0: fixed, x1: fixed) -> fixed {
+    return clamp(abs(x1 - x0) + 2.0 * CAM_MARGIN, CAM_W_MIN, CAM_W_MAX)
+}
+
+// The camera's x may go no further toward a wall than shows a metre beyond it.
+fn cam_clamp_x(x: fixed, w: fixed) -> fixed {
+    let lim = max(CAM_WALL + 1.0 - w / 2, 0.0)
+    return clamp(x, -lim, lim)
+}
+
+fn cam_reset(x0: fixed, x1: fixed) {
+    cam_w = cam_target_w(x0, x1)
+    cam_x = cam_clamp_x((x0 + x1) / 2, cam_w)
+    cam_lift = 0.0
+    cam_shake = 0.0
+}
+
+// Once a frame of the fight: follow fighters at (x0, y0) and (x1, y1).
+fn cam_follow(x0: fixed, y0: fixed, x1: fixed, y1: fixed, shake: fixed) {
+    let tw = cam_target_w(x0, x1)
+    cam_w += (tw - cam_w) / CAM_EASE
+    let tx = cam_clamp_x((x0 + x1) / 2, cam_w)
+    cam_x += (tx - cam_x) / CAM_EASE
+    let tl = max(y0, y1) * 0.45
+    cam_lift += (tl - cam_lift) / 10
+    cam_shake = shake
+}
+
+// Sets the camera for this frame (at frame t, for the shake's pattern).
+//
+// The view must show the span cam_x - cam_w / 2 .. cam_x + cam_w / 2 of the fight plane edge to
+// edge. Turned by the yaw, the near end is closer and spreads wider, so the distance d and the
+// point looked at (tx) are solved for: a point at offset a from tx is at screen x (NDC)
+// fx a cos(yaw) / (a sin(yaw) + d); setting the span's ends to -1 and +1 gives
+// d = w (fx^2 cos^2 - sin^2) / (2 fx cos) and tx = x0 + d / (fx cos + sin). Side-on that is
+// d = w fx / 2, tx = cam_x.
+fn cam_apply(t: s32) {
+    var yaw = 0.0
+    if cam_angled { yaw = CAM_YAW }
+    let c = cos(yaw)
+    let sn = sin(yaw)
+    let fxc = CAM_FX * c
+    let d = cam_w * (fxc * fxc - sn * sn) / (2 * fxc)
+    let tx = cam_x - cam_w / 2 + d / (fxc + sn)
+    let target = vec3(tx, CAM_EYE_Y + cam_lift, 0.0)
+    var eye = target - vec3(sn, 0.0, c) * d
+    if cam_shake > 0.0 {
+        let a = fixed(t) * 1.7
+        eye = eye + vec3(sin(a * 3) * cam_shake, cos(a * 5) * cam_shake * 0.7, 0.0)
+    }
+    cam_eye = eye
+    cam_yaw = yaw
+    camera_look(eye, yaw, CAM_PITCH)
+    let p = project_point(vec3(tx, cam_lift, 0.0))
+    cam_pan_y = CAM_FEET_Y - p.y
+    camera_pan(0, cam_pan_y)
+}
+
+// The screen pixels a metre at the fight plane (for effects sized in metres).
+fn cam_px_per_m() -> fixed { return 320.0 / cam_w }

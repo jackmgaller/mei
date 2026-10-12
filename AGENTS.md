@@ -14,7 +14,7 @@ in [README.md](README.md#documentation).
 | `carts/` | The carts, one folder each (`carts/NAME/NAME.akr`), with their binary assets in `art/` and `audio/`, their tests in `tests/`, and the worlds they use in `worlds.txt` |
 | `examples/` | Example recipes for the kits: `assets/` (Asset Kit) and `worlds/` (World Kit) |
 | `tests/` | C unit tests (`test_*.c`), language tests (`lang/`), the kits' Python suites (`test_*.py`) and their fixtures, the Reference Renderer (`reference_renderer/`), the depth mode's measurements (`depth/`) |
-| `tools/` | Generators, the kits and their shared core, the MeiNet gateway, the workboard, the language fuzzer, the web cart packer, the VS Code extension |
+| `tools/` | Generators, the kits (Asset Kit, World Kit, Animation Kit) and their shared core, the MeiNet gateway, the workboard, the language fuzzer, the web cart packer, the VS Code extension |
 | `web/` | The browser page (`shell.html`) |
 | `docs/` | The documentation and the spec |
 
@@ -36,11 +36,13 @@ tests/run_lang_tests.sh planes    # only the language tests whose name contains 
 
 `make test` runs the suites in this order: the C unit tests, `tests/run_lang_tests.sh`, the
 MeiNet gateway's tests, then `test_assetkit.py`, `test_worldpack.py`, `test_worldkit.py`,
-`test_mochi.py`, `test_worldverify.py`, `test_worldcache.py` and `test_workboard.py`, and last
+`test_mochi.py`, `test_worldverify.py`, `test_worldcache.py`, `test_workboard.py` and
+`test_animkit.py`, and last
 `tools/check_generated.sh` (what `make check-generated` runs: the generators that need only the standard library, and
 `gen_adpcm_vectors.py` when NumPy is there, into a temporary directory, compared with the
 committed files). `make test-carts` runs `carts/weather/tests/check.sh`,
-`carts/lantern/tests/check.sh`, `carts/fallline/tests/check.sh` and `test-world-carts`, which builds World Viewer and the
+`carts/lantern/tests/check.sh`, `carts/fallline/tests/check.sh`, `carts/mechexpo/tests/check.sh`,
+the Animation Kit's `carts/mechexpo/tests/anim/check.sh` and `test-world-carts`, which builds World Viewer and the
 movement garden (and so their worlds) first and runs both carts' `tests/check.sh`. A cart's scenarios are Akari files built by `tools/cart_scenario.sh` from
 the cart's `tests/harness.akr` and its game; `carts/*/tests/run.sh SCENARIO FRAMES OUT` runs one
 and writes `OUT.png`. Scenarios are debug builds (`meic --trap-fmul`: bounds and stack checks,
@@ -116,10 +118,10 @@ nothing it read has changed ([WORLDKIT.md](docs/WORLDKIT.md#quick-tools)).
   generator. **NumPy and Pillow** for the Reference Renderer. **Pillow** too for the generators
   that draw: `gen_boot_duet`, `gen_boot_eclipse`, `gen_shell_assets`, `gen_lantern_assets`,
   `gen_orbs_assets`, `gen_weather_assets`, `gen_fallline_plane`, `gen_fallline_assets` (the models'
-  textures) and `meifont`, and for the Asset Kit's textures read
+  textures), `gen_mechexpo_stage`, `gen_mechexpo_ui`, Mech Expo's wall and banner makers and `meifont`, and for the Asset Kit's textures read
   from PNG images and sheets (`examples/assets/stall`, the shrine world's assets, so `make`;
   recipes without images need it not).
-  **SciPy** too for `gen_boot_duet`, `gen_soundlab_assets`, `gen_fallline_audio` and the garden's
+  **SciPy** too for `gen_boot_duet`, `gen_soundlab_assets`, `gen_fallline_audio`, `gen_mechexpo_audio` and the garden's
   audio generators (`carts/garden/audio/gen_sounds.py`, `gen_music.py`).
 - The generators draw text with the OFL fonts in `tools/fonts/` (Figtree, Sofia Sans Condensed,
   Belleza, Gelasio, Noto Sans JP, Noto Serif JP, Zen Maru Gothic, M PLUS Rounded 1c), which
@@ -178,7 +180,8 @@ marked stale. `show ID` prints the record with any answers. Records live in `.gi
 
 - **Python packages** in subfolders of `tools/` (`tools/assetkit/`, `tools/worldkit/`,
   `tools/kitcore/` for what the kits share, `tools/meinet/`).
-- **A kit's entry point** at the top of `tools/` (`tools/mei_assets.py`, `tools/mei_world.py`).
+- **A kit's entry point** at the top of `tools/` (`tools/mei_assets.py`, `tools/mei_world.py`,
+  `tools/mei_anim.py`).
 - **Native probes** with their package (`tools/worldkit/scene_probe.c`), built by a `Makefile`
   rule into the build directory. (`tools/assetkit_probe.c` predates this.)
 - **Standard library functions** in the `stdlib/` file for their topic, by the table at the top
@@ -235,6 +238,10 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_fallline_plane.py` | `carts/fallline/art/plane_*` and `carts/fallline/plane_art.akr`: Fall Line's snow and ridge tiles |
 | `gen_fallline_assets.py` | `carts/fallline/art/` (the rest) and `carts/fallline/assets.akr`: the pack of `carts/fallline/models/*` |
 | `gen_fallline_audio.py` | `carts/fallline/audio/` and `carts/fallline/mu_data.akr`: Fall Line's music and sound effects |
+| `gen_mechexpo_assets.py` | `carts/mechexpo/art/` (all but `stage_*` and `ui_*`) and `carts/mechexpo/assets.akr`: the pack of `carts/mechexpo/models/*` |
+| `gen_mechexpo_stage.py` | `carts/mechexpo/art/stage_*` and `stage_art.akr`: Mech Expo's hall (BG1) and floor (BG2) (`--preview DIR`) |
+| `gen_mechexpo_ui.py` | `carts/mechexpo/art/ui_*` and `ui_art.akr`: Mech Expo's fonts, sprites, effects, HUD frame, menu page, palettes and save icon (`--preview DIR`) |
+| `gen_mechexpo_audio.py` | `carts/mechexpo/audio/` and `carts/mechexpo/mu_data.akr`: Mech Expo's music and sound effects (`--preview DIR`: a WAV of each piece) |
 | `fonts/make_fonts.py` | `tools/fonts/`: the generators' fonts as static weights cut to Latin, kana and the kanji in its `KANJI` list, and their licences (`OFL-*.txt`) |
 | `meinet/make_fixture.sh` | `tests/lang/data/broadcast.bin`, the canned broadcast the language tests replay (`meinet.py --fixture`) |
 | `carts/garden/shrinetown/art/water/draw_water.py` | The shrine town's water textures in `art/water/`: `water.png`, `pond_water.png`, `falls.png`, `water_ramps.akr` |
@@ -248,14 +255,21 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/garden/shrinetown/tools/frame.py --build-dir B --probes` | `carts/garden/tests/frame_probes.akr`, the frame scenarios' probes, from the built world (NumPy) |
 | `carts/garden/audio/gen_sounds.py` | The movement garden's sounds (the robot, the goals, the shrine town's beds, emitters, timers and life) in `carts/garden/audio/sounds.adp`, and `sound_data.akr`: the sounds' table and the zones, emitters and timers (`--preview DIR`: a WAV of every sound) |
 | `carts/garden/audio/gen_music.py` | "Momiji", the shrine town's music: `carts/garden/audio/music.adp` and `music_data.akr` (`--preview DIR`: a WAV of every sample) |
+| `carts/mechexpo/models/hero/make_hero.py` | The Hero Mech's recipes in its folder: `hero.asset.json`, `hero_rest`, `hero_flex`, `parts/hero_*.asset.json`, `hero.rig.json`, `cameras*.json`, `momentum_emblem.png` |
+| `carts/mechexpo/models/doubleblade/make_doubleblade.py` | The same for the Double-blade Hero (it imports `make_hero.py`), and `umbral_emblem.png` |
+| `carts/mechexpo/models/hangar_wall/make_hangar_wall.py` | `hangar_wall_r.asset.json`, `hangar_wall_l.asset.json`, `art/wall_sign.png`, `cameras.json` |
+| `carts/mechexpo/models/expo_banner/make_expo_banner.py` | `expo_banner.asset.json`, `art/banner_expo.png`, `art/banner_2000.png`, `cameras.json` |
 
-The last twelve are run by their path from the repository root, not as `tools/NAME.py`; the
-garden's two audio generators share `carts/garden/audio/garden_dsp.py`, which writes nothing.
+The last sixteen are run by their path from the repository root, not as `tools/NAME.py`; the
+garden's two audio generators share `carts/garden/audio/garden_dsp.py`, and Mech Expo's models
+`carts/mechexpo/models/hero/mxpaint.py`, which write nothing.
 
 Helpers the generators import, which write nothing themselves: `boot_audio.py`, `mei_adpcm.py`,
 `mei_icon.py` (memory card icons), `meshlib.py` (the native mesh format) and `weather_geo.py`.
 The kits' outputs (`mei_assets.py build`, `mei_world.py build`) are not in this table: they go
 wherever `-o` says (make's world rule: `build/worlds/`), and only the examples' recipes and the
-worlds' ID lock files are committed. `make check-generated` reruns `gen_faces_asm.py` (all three
+worlds' ID lock files are committed. The Animation Kit's `mei_anim.py export` writes
+`carts/mechexpo/anim_data.akr` and `carts/mechexpo/anims/anim_data.bin` from the cart's
+`anims/`, and both are committed. `make check-generated` reruns `gen_faces_asm.py` (all three
 outputs), `gen_stdlib_data.py`, `gen_reverb_tables.py` and, with NumPy, `gen_adpcm_vectors.py`
 and compares; the others are not rerun by any target.

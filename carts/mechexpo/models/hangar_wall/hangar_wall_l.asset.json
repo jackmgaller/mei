@@ -1,0 +1,339 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "hangar_wall_l",
+ "budget": {
+  "vertices": 512,
+  "triangles": 160
+ },
+ "lighting": {
+  "direction": [
+   0,
+   0.62,
+   -0.78
+  ],
+  "ambient": 0.66
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "steel": {
+   "color": "#66758a",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#66758a",
+     "#4b586a",
+     "#6e7d93"
+    ],
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "size": 16,
+    "projection": "box",
+    "scale": [
+     8,
+     8
+    ]
+   }
+  },
+  "girder": {
+   "color": "#55627a"
+  },
+  "rubber": {
+   "color": "#2d3139"
+  },
+  "cap": {
+   "color": "#e8b800"
+  },
+  "hazard": {
+   "color": "#f2c200",
+   "texture": {
+    "texels": [
+     "00001111",
+     "00011110",
+     "00111100",
+     "01111000",
+     "11110000",
+     "11100001",
+     "11000011",
+     "10000111"
+    ],
+    "colors": [
+     "#f2c200",
+     "#22242a"
+    ],
+    "projection": "box",
+    "scale": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "sign": {
+   "color": "#1f3f78",
+   "texture": {
+    "image": "art/wall_sign.png",
+    "projection": "fit"
+   }
+  },
+  "lamp": {
+   "color": "#3a4150"
+  },
+  "light": {
+   "color": "#f2f6ff",
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "mirrored",
+   "op": "group",
+   "children": [
+    {
+     "id": "pier",
+     "op": "box",
+     "size": [
+      8.0,
+      26.0,
+      20.0
+     ],
+     "material": "steel",
+     "transform": {
+      "translate": [
+       4.8,
+       13.0,
+       4.0
+      ]
+     },
+     "faces": {
+      "top": "girder",
+      "front": "girder",
+      "right": "girder"
+     },
+     "open": [
+      "bottom"
+     ],
+     "decals": [
+      {
+       "id": "hall_sign",
+       "face": "back",
+       "material": "sign",
+       "size": [
+        2.4,
+        3.2
+       ],
+       "at": [
+        0.6,
+        0.0
+       ]
+      }
+     ]
+    },
+    {
+     "id": "corner_post",
+     "op": "box",
+     "size": [
+      0.8,
+      12.0,
+      0.8
+     ],
+     "material": "hazard",
+     "transform": {
+      "translate": [
+       1.05,
+       6.0,
+       -5.75
+      ]
+     },
+     "faces": {
+      "top": "girder"
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "corner_post_top",
+     "op": "box",
+     "size": [
+      0.7,
+      13.6,
+      0.7
+     ],
+     "material": "girder",
+     "transform": {
+      "translate": [
+       1.05,
+       18.6,
+       -5.75
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "kick_plate",
+     "op": "box",
+     "size": [
+      6.8,
+      1.4,
+      0.5
+     ],
+     "material": "hazard",
+     "transform": {
+      "translate": [
+       5.1,
+       0.7,
+       -5.9
+      ]
+     },
+     "open": [
+      "bottom",
+      "front"
+     ]
+    },
+    {
+     "id": "rib_0",
+     "op": "box",
+     "size": [
+      7.9,
+      0.6,
+      0.6
+     ],
+     "material": "girder",
+     "transform": {
+      "translate": [
+       5.15,
+       9.0,
+       -5.9
+      ]
+     },
+     "open": [
+      "front"
+     ]
+    },
+    {
+     "id": "rib_1",
+     "op": "box",
+     "size": [
+      7.9,
+      0.6,
+      0.6
+     ],
+     "material": "girder",
+     "transform": {
+      "translate": [
+       5.15,
+       17.5,
+       -5.9
+      ]
+     },
+     "open": [
+      "front"
+     ]
+    },
+    {
+     "id": "buffer_0",
+     "op": "box",
+     "size": [
+      1.0,
+      2.6,
+      6.0
+     ],
+     "material": "rubber",
+     "transform": {
+      "translate": [
+       0.5,
+       3.2,
+       -2.0
+      ]
+     },
+     "faces": {
+      "top": "cap",
+      "back": "cap"
+     },
+     "open": [
+      "right"
+     ]
+    },
+    {
+     "id": "buffer_1",
+     "op": "box",
+     "size": [
+      1.0,
+      2.6,
+      6.0
+     ],
+     "material": "rubber",
+     "transform": {
+      "translate": [
+       0.5,
+       7.4,
+       -2.0
+      ]
+     },
+     "faces": {
+      "top": "cap",
+      "back": "cap"
+     },
+     "open": [
+      "right"
+     ]
+    },
+    {
+     "id": "lamp_arm",
+     "op": "box",
+     "size": [
+      4.4,
+      0.5,
+      0.6
+     ],
+     "material": "girder",
+     "transform": {
+      "translate": [
+       -0.8,
+       24.6,
+       -1.0
+      ]
+     },
+     "open": [
+      "right"
+     ]
+    },
+    {
+     "id": "lamp_head",
+     "op": "box",
+     "size": [
+      1.8,
+      1.0,
+      1.4
+     ],
+     "material": "lamp",
+     "transform": {
+      "translate": [
+       -2.6,
+       23.9,
+       -1.0
+      ]
+     },
+     "faces": {
+      "bottom": "light"
+     }
+    }
+   ],
+   "transform": {
+    "scale": [
+     -1,
+     1,
+     1
+    ]
+   }
+  }
+ ]
+}

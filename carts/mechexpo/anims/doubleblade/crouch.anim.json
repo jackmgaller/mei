@@ -1,0 +1,20 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Crouch: the Hero's kneel (base) on the Double-blade Hero's rig, 0.18 m higher for its finned shins: 8 frames down, the last held.",
+  "base": "../hero/crouch.anim.json",
+  "rig": "../../models/doubleblade/doubleblade.rig.json",
+  "allow": [
+    ["forearm_r", "weapon_r"],
+    ["forearm_l", "weapon_l"],
+    ["torso", "thigh_r"],
+    ["torso", "thigh_l"],
+    ["pelvis", "shin_r"]
+  ],
+  "keys": [
+    {"at": 0, "reach": {"foot_l": [-2.94, 0.0]}},
+    {"at": 4, "offset": [-0.45, -2.5]},
+    {"at": 7, "offset": [-0.42, -2.45]}
+  ],
+  "boxes": {"push": {"kind": "push", "rect": [-1.5, 0, 1.5, 7.5]}}
+}

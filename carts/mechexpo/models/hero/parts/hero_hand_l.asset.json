@@ -1,0 +1,266 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "hero_hand_l",
+ "budget": {
+  "vertices": 512,
+  "triangles": 400
+ },
+ "lighting": {
+  "direction": [
+   0,
+   0.62,
+   -0.78
+  ],
+  "ambient": 0.66
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "red": {
+   "color": "#e8262c"
+  },
+  "chrome": {
+   "color": "#c6d0dc",
+   "smooth": true
+  },
+  "frame": {
+   "color": "#4c5462"
+  },
+  "dark": {
+   "color": "#262a33"
+  }
+ },
+ "nodes": [
+  {
+   "id": "wrist",
+   "op": "cylinder",
+   "radius": 0.22,
+   "height": 0.48,
+   "segments": 6,
+   "material": "chrome",
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     90
+    ],
+    "translate": [
+     0,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "fist",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.31,
+     -0.22,
+     -0.29
+    ],
+    [
+     0.33,
+     -0.54,
+     -0.29
+    ],
+    [
+     0.17,
+     -0.69,
+     -0.29
+    ],
+    [
+     -0.27,
+     -0.59,
+     -0.29
+    ],
+    [
+     -0.27,
+     -0.26,
+     -0.29
+    ],
+    [
+     0.02,
+     -0.16,
+     -0.29
+    ],
+    [
+     0.2914,
+     -0.232,
+     0.25
+    ],
+    [
+     0.3102,
+     -0.5328,
+     0.25
+    ],
+    [
+     0.1598,
+     -0.6738,
+     0.25
+    ],
+    [
+     -0.2538,
+     -0.5798,
+     0.25
+    ],
+    [
+     -0.2538,
+     -0.2696,
+     0.25
+    ],
+    [
+     0.0188,
+     -0.1756,
+     0.25
+    ]
+   ],
+   "faces": [
+    [
+     7,
+     1,
+     0
+    ],
+    [
+     6,
+     7,
+     0
+    ],
+    [
+     8,
+     2,
+     1
+    ],
+    [
+     7,
+     8,
+     1
+    ],
+    [
+     9,
+     3,
+     2
+    ],
+    [
+     8,
+     9,
+     2
+    ],
+    [
+     10,
+     4,
+     3
+    ],
+    [
+     9,
+     10,
+     3
+    ],
+    [
+     11,
+     5,
+     4
+    ],
+    [
+     10,
+     11,
+     4
+    ],
+    [
+     6,
+     0,
+     5
+    ],
+    [
+     11,
+     6,
+     5
+    ],
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    [
+     11,
+     10,
+     9,
+     8,
+     7,
+     6
+    ]
+   ],
+   "face_materials": [
+    "frame",
+    "frame",
+    "frame",
+    "frame",
+    "frame",
+    "frame",
+    "frame",
+    "frame",
+    "frame",
+    "frame",
+    "frame",
+    "frame",
+    "dark",
+    "frame"
+   ]
+  },
+  {
+   "id": "back",
+   "op": "box",
+   "size": [
+    0.15,
+    0.64,
+    0.42
+   ],
+   "material": "red",
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     4
+    ],
+    "translate": [
+     0.37,
+     -0.27,
+     -0.01
+    ]
+   },
+   "faces": {
+    "left": "frame"
+   }
+  },
+  {
+   "id": "thumb",
+   "op": "box",
+   "size": [
+    0.2,
+    0.17,
+    0.3
+   ],
+   "material": "red",
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     -18
+    ],
+    "translate": [
+     -0.16,
+     -0.21999999999999997,
+     -0.24
+    ]
+   }
+  }
+ ]
+}

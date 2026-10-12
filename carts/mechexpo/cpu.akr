@@ -1,0 +1,275 @@
+// Mech Expo 2000: the CPU and the training dummy (C's). The CPU reads the fight as a player
+// would see it (the other mech's move, after a reaction time) and presses the pad; it never
+// touches the fight's state. Its dice are its own generator, seeded by fight_init(), so a match
+// replays exactly.
+//
+// Levels: 0 the training dummy's CPU (gentle), 1 the ladder's first fight, 2 the ladder's
+// second fight and Versus against the CPU, 3 hard.
+
+import "moves.akr"
+import "fighter.akr"
+import "fight.akr"
+
+struct CpuLevel {
+    react: s32              // frames before it reacts to what the other does
+    think: s32              // frames between decisions in neutral
+    block: s32              // per cent: blocks an attack it sees coming
+    aa: s32                 // anti-airs a jump it sees
+    punish: s32             // punishes a whiff it sees
+    chain: s32              // continues a chain on contact
+    brk: s32                // breaks a grab
+    poke: s32               // pokes at its range, per decision
+    grab: s32               // grabs a mech that blocks close up
+    jump: s32               // jumps in from mid range, per decision
+    guard: s32              // holds block a while in the other's range, per decision
+    special: s32            // uses its specials in neutral (the Parry, the slide, the wave)
+}
+
+const CPU_LEVELS: [4]CpuLevel = [
+    CpuLevel { react: 26, think: 14, block: 20, aa: 10, punish: 15, chain: 30, brk: 5, poke: 20, grab: 10, jump: 4, guard: 10, special: 3 },
+    CpuLevel { react: 20, think: 11, block: 40, aa: 30, punish: 35, chain: 55, brk: 15, poke: 30, grab: 20, jump: 6, guard: 20, special: 6 },
+    CpuLevel { react: 13, think: 8, block: 65, aa: 70, punish: 70, chain: 90, brk: 35, poke: 40, grab: 35, jump: 6, guard: 35, special: 10 },
+    CpuLevel { react: 9, think: 6, block: 80, aa: 85, punish: 85, chain: 100, brk: 50, poke: 45, grab: 45, jump: 5, guard: 45, special: 12 },
+]
+
+struct Cpu {
+    rng: u32
+    hold: u32               // directions and R held until hold_t runs out
+    hold_t: s32
+    think_t: s32
+    opp_mv: Mv              // the other's move as last seen, and whether its hit box was out
+    opp_t: s32
+    opp_active: bool
+    decided: bool           // a reaction to the other's current move was already rolled
+    punish_rolled: bool     // and the punish of its recovery
+    react_block: bool
+    chain_roll: bool        // this contact's chain was rolled
+    chain_go: bool
+    break_roll: bool
+    blocks_seen: s32        // the other's recent blocks (grab bait)
+}
+
+var cpu: [2]Cpu
+var cpu_tip: [2]fixed           // each mech's forward attack's reach, from the data
+
+fn cpu_init(seed: s32) {
+    cpu[0] = Cpu { rng: (seed as u32) * 2654435761 + 1 }
+    cpu[1] = Cpu { rng: (seed as u32) * 40503 + 977 }
+    for m in Mech { cpu_tip[m] = reach_of(m, Mv.atk_f) }
+}
+
+// The furthest a move's hit boxes reach ahead of the root, with its root motion.
+private fn reach_of(m: Mech, mv: Mv) -> fixed {
+    var bx: Boxes
+    var best = 0.0
+    var step = 0.0
+    let n = mv_len(m, mv)
+    for f in 0..n {
+        mv_boxes(m, mv, f, &bx)
+        for k in 0..bx.n {
+            if bx.b[k].kind == BOX_HIT { best = max(best, step + bx.b[k].x1) }
+        }
+        step += mv_root(m, mv, f).x
+    }
+    return best
+}
+
+private fn roll(c: *Cpu, pct: s32) -> bool {
+    c.rng = c.rng * 1103515245 + 12345
+    let r = ((c.rng >> 16) & 0x7FFF) as s32
+    return r % 100 < pct
+}
+
+private fn rnd_n(c: *Cpu, n: s32) -> s32 {
+    c.rng = c.rng * 1103515245 + 12345
+    return ((c.rng >> 16) & 0x7FFF) as s32 % n
+}
+
+// The pad bit for a world direction (1: +x).
+private fn dir_bit(world: s32) -> u32 {
+    if world > 0 { return RIGHT }
+    if world < 0 { return LEFT }
+    return 0
+}
+
+// How far apart the mechs may be for a mech's forward attack to touch the other (its tip,
+// plus the other's half width), a little short.
+private fn tip(m: Mech) -> fixed { return cpu_tip[m] + 1.0 }
+
+// The buttons the CPU playing side i presses this frame.
+fn cpu_pad(i: s32, level: s32) -> u32 {
+    let lv = &CPU_LEVELS[clamp(level, 0, 3)]
+    let c = &cpu[i]
+    let j = other(i)
+    let me = &fight.f[i]
+    let op = &fight.f[j]
+    let fwd = dir_bit(me.facing)
+    let back = dir_bit(-me.facing)
+    let dist = abs(op.x - me.x)
+    if fight.phase != Phase.Fight { return 0 }
+
+    // what the other is doing, as seen
+    let ot = fx[j].t
+    if op.mv != c.opp_mv || ot < c.opp_t {
+        c.opp_mv = op.mv
+        c.opp_active = false
+        c.decided = false
+        c.punish_rolled = false
+        if op.mv == Mv.block { c.blocks_seen += 1 }
+    }
+    c.opp_t = ot
+    if fx[j].had_hit { c.opp_active = true }
+    let seen = ot >= lv.react
+    if !fx[i].contact { c.chain_roll = false }
+
+    // thrown: break, maybe
+    if is_thrown(me.mv) {
+        if !c.break_roll {
+            c.break_roll = true
+            if roll(c, lv.brk) { return Y }
+        }
+        return 0
+    }
+    c.break_roll = false
+
+    // a chain on contact
+    if fx[i].contact && is_attack(me.mv) {
+        if !c.chain_roll {
+            c.chain_roll = true
+            c.chain_go = roll(c, lv.chain)
+        }
+        if c.chain_go && (cur_marks(i) & MARK_CANCEL) != 0 && fx[i].t % 2 == 0 {
+            if me.mv == Mv.atk_n {
+                if me.mech == Mech.Doubleblade && fx[i].chain == 0 { return A }
+                return fwd | A
+            }
+            if me.mv == Mv.atk_f {
+                if super_wise(i) && roll(c, 30) { return A | B }
+                return fwd | B
+            }
+        }
+        return 0
+    }
+    if !actionable(i) {
+        c.hold = 0
+        c.hold_t = 0
+        // in the air: the air attack on the way down near the other
+        if me.mv == Mv.jump && !fx[i].air_used && fx[i].vy < 0.0 && dist < 7.0 && me.y < 7.0 {
+            if roll(c, 50) { return A }
+        }
+        return 0
+    }
+
+    // reactions to the other's move, once it has been seen long enough
+    let opp_attacking = is_attack(op.mv) || op.mv == Mv.grab
+    if seen && !c.decided {
+        // a jump coming in
+        if (op.mv == Mv.jump || op.mv == Mv.atk_air) && dist < 13.0 {
+            c.decided = true
+            if roll(c, lv.aa) { return dir_bit(0) | UP | B }
+            if roll(c, lv.block) { return hold(c, R, 30) }
+        }
+        // an attack starting in range
+        if opp_attacking && !c.opp_active && dist < tip(op.mech) + 2.0 && op.mv != Mv.grab {
+            c.decided = true
+            if roll(c, lv.block) { return hold(c, R, 24) }
+        }
+    }
+    // a whiff, or a move left unsafe on block: punish the recovery
+    if seen && !c.punish_rolled && is_attack(op.mv) && c.opp_active && !fx[j].had_hit && grounded(j) {
+        c.punish_rolled = true
+        if roll(c, lv.punish) {
+            if super_wise(i) && dist < 12.0 && roll(c, 50) { return A | B }
+            if dist < 6.0 { return A }
+            if dist < tip(me.mech) - 0.5 { return fwd | A }
+            if dist < tip(me.mech) + 3.0 { return fwd | B }
+        }
+    }
+    // the wave on its way
+    let s = &fight.shot[j]
+    if s.on && abs(s.x - me.x) < 12.0 && sgn(me.x - s.x) == sgn(s.vx) {
+        if !c.decided || c.hold_t == 0 {
+            c.decided = true
+            if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
+            if roll(c, lv.aa / 2) { return fwd | X }
+            return hold(c, R, 20)
+        }
+    }
+
+    // keep holding what was decided
+    if c.hold_t > 0 {
+        c.hold_t -= 1
+        return c.hold
+    }
+    c.think_t -= 1
+    if c.think_t > 0 { return c.hold }
+    c.think_t = lv.think + rnd_n(c, lv.think)
+
+    // neutral: footsies around the tip of its forward attack
+    let range = tip(me.mech)
+    if dist < tip(op.mech) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
+    if dist < tip(op.mech) + 1.0 && roll(c, lv.special) {
+        if me.mech == Mech.Hero { return DOWN | B }             // the Parry, on a read
+        return DOWN | B                                         // the slide
+    }
+    if dist < 5.5 {
+        if c.blocks_seen >= 2 && roll(c, lv.grab) { c.blocks_seen = 0; return Y }
+        let r = rnd_n(c, 100)
+        if r < 30 { return A }
+        if r < 40 { return Y }
+        if r < 55 { return fwd | A }
+        if r < 75 { return hold(c, back, 12) }
+        return hold(c, R, 10)
+    }
+    // the Double-blade Hero outside its reach but inside the Hero's: get in
+    if me.mech == Mech.Doubleblade && dist >= range + 0.5 && dist < tip(op.mech) + 3.0 {
+        let r = rnd_n(c, 100)
+        if r < lv.special * 2 { return B }                      // the Void Step past the tip
+        if r < lv.special * 3 && dist < 10.5 { return DOWN | B } // the slide under it
+        if r < lv.special * 3 + lv.jump * 2 { return fwd | X }
+        return hold(c, fwd, 6 + rnd_n(c, 10))
+    }
+    if dist < range + 0.5 {
+        let r = rnd_n(c, 100)
+        if r < lv.poke { return fwd | A }
+        if r < lv.poke + 10 { return DOWN | A }
+        if r < lv.poke + 25 { return hold(c, back, 10) }
+        if r < lv.poke + 35 { return hold(c, R, 12) }
+        return hold(c, fwd, 8)
+    }
+    if dist < range + 6.0 && roll(c, lv.jump) { return fwd | X }
+    if me.mech == Mech.Hero && dist > 14.0 && !fight.shot[i].on && roll(c, 25) { return B }
+    if me.mech == Mech.Doubleblade && dist > 12.0 && roll(c, 12) { return B }
+    if super_wise(i) && me.meter >= METER_BAR && dist < 14.0 && roll(c, 3) { return A | B }
+    return hold(c, fwd, 10 + rnd_n(c, 20))
+}
+
+// Whether spending the super now is wise: always for kinetic; for antimatter only without
+// falling deep into debt, unless it would win the round.
+private fn super_wise(i: s32) -> bool {
+    let me = &fight.f[i]
+    if !me.super_ok { return false }
+    if meter_power(me.mech) == Power.Kinetic { return true }
+    return me.meter >= METER_BAR / 2 || fight.f[other(i)].health <= 320
+}
+
+private fn hold(c: *Cpu, pad: u32, n: s32) -> u32 {
+    c.hold = pad & (LEFT | RIGHT | UP | DOWN | R)
+    c.hold_t = n
+    c.think_t = 0
+    return pad
+}
+
+// The training dummy (side i): what fight_training() set.
+fn dummy_pad(i: s32) -> u32 {
+    match fight_opts.dummy {
+        Stand => return 0
+        Crouch => return DOWN
+        Jump => {
+            if fight.ticks % 2 == 0 { return X }
+            return 0
+        }
+        Block => return R
+        Cpu => return cpu_pad(i, 1)
+    }
+}

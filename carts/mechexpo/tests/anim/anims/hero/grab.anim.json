@@ -1,0 +1,24 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "A test grab (not the game's: anims/ is the animator's): the arms drawn back, then both thrown forward and closed round the opponent's chest, held.",
+  "base": "../../../../anims/hero/_body.anim.json",
+  "length": 32,
+  "phases": {"startup": 9, "active": 3, "recovery": 20},
+  "keys": [
+    {"at": 0, "from": "guard"},
+    {"at": 5, "offset": [-0.2, -0.8], "ease": "in",
+     "pose": {"upper_arm_r": [20, 0, -20], "forearm_r": [80, 0, 0], "upper_arm_l": [20, 0, 25], "forearm_l": [80, 0, 0],
+              "torso": [-2, -6, 0]}},
+    {"at": 9, "offset": [0.4, -1.15], "ease": "out",
+     "boxes": {"grab": {"kind": "hit", "rect": [2.0, 4.0, 6.2, 8.0]}},
+     "pose": {"pelvis": [-5, -4, 0], "torso": [-15, 0, 0], "head": [6, 0, 0],
+              "upper_arm_r": [86, 0, 10], "forearm_r": [12, 0, 0], "hand_r": [-10, 0, 0],
+              "upper_arm_l": [86, 0, -10], "forearm_l": [12, 0, 0], "hand_l": [0, 0, 0]}},
+    {"at": 12, "boxes": {"grab": null}},
+    {"at": 14, "ease": "ease",
+     "pose": {"forearm_r": [34, 0, 0], "forearm_l": [34, 0, 0], "upper_arm_r": [80, 0, 14], "upper_arm_l": [80, 0, -14]}},
+    {"at": 31, "pose": {}}
+  ],
+  "plant": {"foot_l": [[0, 31]], "foot_r": [[0, 31]]}
+}

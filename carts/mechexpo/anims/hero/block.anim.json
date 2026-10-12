@@ -1,0 +1,28 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Block: 4 frames to raise the guard, then the last frame is held (the fight shakes it in blockstun). The sword comes upright in front of the chest, its flat to the other mech, the left forearm braced up behind it; the body sinks onto bent knees and leans into the block.",
+  "base": "_body.anim.json",
+  "length": 4,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "reach": {"foot_r": [0.54, 0.0], "foot_l": [-2.51, 0.0]}},
+    {
+      "at": 3,
+      "offset": [-0.25, -1.15],
+      "reach": {"foot_r": [0.54, 0.0], "foot_l": [-2.51, 0.0]},
+      "pose": {
+        "pelvis": [-4, -10, 0],
+        "torso": [-8, -24, 0],
+        "head": [14, 18, 0],
+        "upper_arm_r": [18, 0, -10],
+        "forearm_r": [84, 0, 6],
+        "hand_r": [-14, 0, 0],
+        "upper_arm_l": [60, 0, 26],
+        "forearm_l": [86, 0, -10],
+        "hand_l": [0, 0, 0],
+        "pauldron_r": [6, 0, -6],
+        "pauldron_l": [22, 0, 10]
+      }
+    }
+  ]
+}

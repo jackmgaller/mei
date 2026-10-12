@@ -1,0 +1,104 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Guard Cut (MOVES.md): the fastest button. From the guard the elbow tucks back and the wrist lays the blade flat, pointing out to the right side (frames 0-6); then the wrist and shoulders snap it round in a flat, slightly rising sweep across the front of the chest (active 7-9: in from the right side, past the front between 8 and 9, out to the left), and it is pulled straight back into the guard. Little body motion: a short weight shift onto the front foot.",
+  "base": "_body.anim.json",
+  "length": 24,
+  "phases": {"startup": 7, "active": 3, "recovery": 14},
+  "design": {"hit": [2.0, 6.0, 7.2, 9.0], "tolerance": 0.5, "note": "MOVES.md, Guard Cut: x 2.0-7.2, y 6-9"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease", "reach": {"foot_r": [0.54, 0.0], "foot_l": [-2.51, 0.0]}},
+    {
+      "at": 2,
+      "ease": "ease",
+      "offset": [-0.08, -0.7],
+      "pose": {"torso": [-3, 0, 0], "upper_arm_r": [-10, 0, -14], "forearm_r": [100, 0, 0], "hand_r": [-60, 0, -90]}
+    },
+    {
+      "at": 5,
+      "ease": "in",
+      "offset": [-0.15, -0.78],
+      "pose": {
+        "pelvis": [0, 0, 0],
+        "torso": [-2, 8, 0],
+        "head": [-4, 4, 0],
+        "upper_arm_r": [-36, 0, -14],
+        "forearm_r": [104, 0, 0],
+        "hand_r": [-90, 0, -118],
+        "upper_arm_l": [32, 0, 22],
+        "forearm_l": [72, 0, -6],
+        "pauldron_r": [-2, 0, -10]
+      }
+    },
+    {
+      "at": 7,
+      "ease": "linear",
+      "offset": [0.0, -0.8],
+      "boxes": {
+        "blade": {"kind": "hit", "part": "weapon_r", "min": [-0.12, 0.5, -0.4], "max": [0.12, 7.3, 0.4], "split": 3},
+        "arm": {"kind": "hurt", "part": "weapon_r", "min": [-0.3, -0.8, -0.5], "max": [0.3, 1.0, 0.5]}
+      },
+      "pose": {
+        "pelvis": [0, -4, 0],
+        "torso": [-4, -2, 0],
+        "head": [-4, 10, 0],
+        "upper_arm_r": [-18, 0, -10],
+        "forearm_r": [110, 0, 0],
+        "hand_r": [-90, 0, -74],
+        "upper_arm_l": [36, 0, 22],
+        "forearm_l": [76, 0, -6],
+        "pauldron_r": [-2, 0, -8]
+      }
+    },
+    {
+      "at": 8,
+      "ease": "linear",
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [-4, -8, 0],
+        "upper_arm_r": [-28, 0, -10],
+        "forearm_r": [124, 0, 0],
+        "hand_r": [-90, 0, -54]
+      }
+    },
+    {
+      "at": 9,
+      "ease": "out",
+      "offset": [0.15, -0.82],
+      "pose": {
+        "pelvis": [-2, -10, 0],
+        "torso": [-6, -14, 0],
+        "head": [-4, 16, 0],
+        "upper_arm_r": [-18, 0, -8],
+        "forearm_r": [136, 0, 0],
+        "hand_r": [-90, 0, 34],
+        "pauldron_r": [4, 0, -8]
+      }
+    },
+    {"at": 10, "boxes": {"blade": null}},
+    {
+      "at": 12,
+      "ease": "ease",
+      "offset": [0.2, -0.84],
+      "pose": {
+        "pelvis": [-3, -12, 0],
+        "torso": [-7, -18, 0],
+        "head": [-4, 22, 0],
+        "upper_arm_r": [6, 0, -6],
+        "forearm_r": [128, 0, 0],
+        "hand_r": [-84, 0, 58],
+        "upper_arm_l": [40, 0, 20],
+        "forearm_l": [80, 0, -6]
+      }
+    },
+    {
+      "at": 16,
+      "ease": "ease",
+      "boxes": {"arm": null},
+      "pose": {"upper_arm_r": [8, 0, -10], "forearm_r": [100, 0, 2], "hand_r": [-60, 0, 20]}
+    },
+    {"at": 23, "from": "guard", "reach": {"foot_r": [0.54, 0.0], "foot_l": [-2.51, 0.0]}}
+  ],
+  "marks": {"cancel": [[7, 15]]},
+  "allow": [["forearm_r", "weapon_r"]]
+}

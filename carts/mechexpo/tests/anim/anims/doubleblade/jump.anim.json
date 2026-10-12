@@ -1,0 +1,19 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "A test jump (not the game's): tucked, both blades forward; the fight lifts the root.",
+  "base": "../../../../anims/doubleblade/_body.anim.json",
+  "length": 40,
+  "air": true,
+  "boxes": {"push": null},
+  "allow": [["pelvis", "shin_l"], ["pelvis", "shin_r"]],
+  "keys": [
+    {"at": 0, "from": "guard"},
+    {"at": 10, "offset": [0, 0.6], "ease": "ease",
+     "pose": {"pelvis": [-10, 0, 0], "torso": [-4, -8, 0],
+              "thigh_r": [84, 0, -12], "shin_r": [-120, 0, 0], "foot_r": [30, 0, 0],
+              "thigh_l": [70, 0, 10], "shin_l": [-115, 0, 0], "foot_l": [40, 0, 0],
+              "upper_arm_r": [62, 0, -20], "forearm_r": [60, 0, 0], "upper_arm_l": [40, 0, 24], "forearm_l": [80, 0, 0]}},
+    {"at": 39, "pose": {}}
+  ]
+}

@@ -1,0 +1,624 @@
+{
+ "format": "mei-rig",
+ "version": 1,
+ "name": "doubleblade",
+ "units": "metres; Y up; the mech faces -Z, +X is its left",
+ "rotation": "degrees, applied X then Y then Z, in the parent joint frame (the Asset Kit's order). Not mirrored between sides: on a hanging limb +X swings it forward; +Z swings a left limb out (+X) and a right limb in, so a mirrored pose negates Y and Z",
+ "root": "pelvis",
+ "root_note": "the root (fight origin) is on the floor under the pelvis; pelvis.offset is the rest-pose hip-axle height, a pose lowers it by its 'drop'",
+ "parts": [
+  {
+   "id": "pelvis",
+   "parent": null,
+   "offset": [
+    0,
+    5.95,
+    0
+   ],
+   "recipe": "parts/doubleblade_pelvis.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_PELVIS",
+   "triangles": 120,
+   "vertices": 72,
+   "bounds": {
+    "min": [
+     -1.7297,
+     -0.92,
+     -0.7
+    ],
+    "max": [
+     1.7297,
+     0.57,
+     0.992
+    ]
+   }
+  },
+  {
+   "id": "torso",
+   "parent": "pelvis",
+   "offset": [
+    0,
+    0.7,
+    0
+   ],
+   "recipe": "parts/doubleblade_torso.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_TORSO",
+   "triangles": 250,
+   "vertices": 140,
+   "bounds": {
+    "min": [
+     -2.1,
+     -0.2,
+     -1.24
+    ],
+    "max": [
+     2.1,
+     3.66,
+     2.8478
+    ]
+   }
+  },
+  {
+   "id": "head",
+   "parent": "torso",
+   "offset": [
+    0.0,
+    3.62,
+    -0.1
+   ],
+   "recipe": "parts/doubleblade_head.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_HEAD",
+   "triangles": 216,
+   "vertices": 124,
+   "bounds": {
+    "min": [
+     -0.9279,
+     -0.1,
+     -0.98
+    ],
+    "max": [
+     0.9279,
+     2.02,
+     1.1
+    ]
+   }
+  },
+  {
+   "id": "pauldron_r",
+   "parent": "torso",
+   "offset": [
+    -2.3,
+    2.85,
+    0.05
+   ],
+   "recipe": "parts/doubleblade_pauldron_r.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_PAULDRON_R",
+   "triangles": 60,
+   "vertices": 32,
+   "bounds": {
+    "min": [
+     -0.94,
+     -0.38,
+     -0.4
+    ],
+    "max": [
+     0.3,
+     0.72,
+     1.16
+    ]
+   }
+  },
+  {
+   "id": "upper_arm_r",
+   "parent": "torso",
+   "offset": [
+    -2.3,
+    2.85,
+    0.05
+   ],
+   "recipe": "parts/doubleblade_upper_arm_r.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_UPPER_ARM_R",
+   "triangles": 42,
+   "vertices": 28,
+   "bounds": {
+    "min": [
+     -0.36,
+     -1.95,
+     -0.4157
+    ],
+    "max": [
+     0.36,
+     0.48,
+     0.4157
+    ]
+   }
+  },
+  {
+   "id": "forearm_r",
+   "parent": "upper_arm_r",
+   "offset": [
+    0,
+    -2.2,
+    0
+   ],
+   "recipe": "parts/doubleblade_forearm_r.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_FOREARM_R",
+   "triangles": 76,
+   "vertices": 44,
+   "bounds": {
+    "min": [
+     -0.46,
+     -1.85,
+     -0.48
+    ],
+    "max": [
+     0.46,
+     0.42,
+     0.62
+    ]
+   }
+  },
+  {
+   "id": "hand_r",
+   "parent": "forearm_r",
+   "offset": [
+    0,
+    -2.0,
+    0
+   ],
+   "recipe": "parts/doubleblade_hand_r.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_HAND_R",
+   "triangles": 64,
+   "vertices": 40,
+   "bounds": {
+    "min": [
+     -0.4671,
+     -0.69,
+     -0.39
+    ],
+    "max": [
+     0.2814,
+     0.22,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "weapon_r",
+   "parent": "hand_r",
+   "offset": [
+    0,
+    -0.42,
+    0
+   ],
+   "rotate": [
+    -90,
+    0,
+    0
+   ],
+   "recipe": "parts/doubleblade_dagger.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_DAGGER",
+   "triangles": 72,
+   "vertices": 44,
+   "bounds": {
+    "min": [
+     -0.24,
+     -0.89,
+     -0.62
+    ],
+    "max": [
+     0.24,
+     3.3,
+     0.62
+    ]
+   }
+  },
+  {
+   "id": "pauldron_l",
+   "parent": "torso",
+   "offset": [
+    2.3,
+    2.85,
+    0.05
+   ],
+   "recipe": "parts/doubleblade_pauldron_l.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_PAULDRON_L",
+   "triangles": 60,
+   "vertices": 32,
+   "bounds": {
+    "min": [
+     -0.3,
+     -0.38,
+     -0.4
+    ],
+    "max": [
+     0.94,
+     0.72,
+     1.16
+    ]
+   }
+  },
+  {
+   "id": "upper_arm_l",
+   "parent": "torso",
+   "offset": [
+    2.3,
+    2.85,
+    0.05
+   ],
+   "recipe": "parts/doubleblade_upper_arm_l.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_UPPER_ARM_L",
+   "triangles": 42,
+   "vertices": 28,
+   "bounds": {
+    "min": [
+     -0.36,
+     -1.95,
+     -0.4157
+    ],
+    "max": [
+     0.36,
+     0.48,
+     0.4157
+    ]
+   }
+  },
+  {
+   "id": "forearm_l",
+   "parent": "upper_arm_l",
+   "offset": [
+    0,
+    -2.2,
+    0
+   ],
+   "recipe": "parts/doubleblade_forearm_l.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_FOREARM_L",
+   "triangles": 76,
+   "vertices": 44,
+   "bounds": {
+    "min": [
+     -0.46,
+     -1.85,
+     -0.48
+    ],
+    "max": [
+     0.46,
+     0.42,
+     0.62
+    ]
+   }
+  },
+  {
+   "id": "hand_l",
+   "parent": "forearm_l",
+   "offset": [
+    0,
+    -2.0,
+    0
+   ],
+   "recipe": "parts/doubleblade_hand_l.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_HAND_L",
+   "triangles": 64,
+   "vertices": 40,
+   "bounds": {
+    "min": [
+     -0.2814,
+     -0.69,
+     -0.39
+    ],
+    "max": [
+     0.4671,
+     0.22,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "weapon_l",
+   "parent": "hand_l",
+   "offset": [
+    0,
+    -0.42,
+    0
+   ],
+   "rotate": [
+    -90,
+    0,
+    0
+   ],
+   "recipe": "parts/doubleblade_dagger.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_DAGGER",
+   "triangles": 72,
+   "vertices": 44,
+   "bounds": {
+    "min": [
+     -0.24,
+     -0.89,
+     -0.62
+    ],
+    "max": [
+     0.24,
+     3.3,
+     0.62
+    ]
+   }
+  },
+  {
+   "id": "thigh_r",
+   "parent": "pelvis",
+   "offset": [
+    -1.05,
+    0,
+    0
+   ],
+   "recipe": "parts/doubleblade_thigh_r.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_THIGH_R",
+   "triangles": 96,
+   "vertices": 52,
+   "bounds": {
+    "min": [
+     -0.5,
+     -2.42,
+     -0.64
+    ],
+    "max": [
+     0.5,
+     0.48,
+     0.52
+    ]
+   }
+  },
+  {
+   "id": "shin_r",
+   "parent": "thigh_r",
+   "offset": [
+    0,
+    -2.6,
+    0
+   ],
+   "recipe": "parts/doubleblade_shin_r.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_SHIN_R",
+   "triangles": 132,
+   "vertices": 76,
+   "bounds": {
+    "min": [
+     -0.54,
+     -2.68,
+     -0.78
+    ],
+    "max": [
+     0.54,
+     0.78,
+     1.55
+    ]
+   }
+  },
+  {
+   "id": "foot_r",
+   "parent": "shin_r",
+   "offset": [
+    0,
+    -2.5,
+    0
+   ],
+   "recipe": "parts/doubleblade_foot_r.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_FOOT_R",
+   "triangles": 64,
+   "vertices": 40,
+   "bounds": {
+    "min": [
+     -0.56,
+     -0.86,
+     -2.0
+    ],
+    "max": [
+     0.56,
+     0.4,
+     1.25
+    ]
+   }
+  },
+  {
+   "id": "thigh_l",
+   "parent": "pelvis",
+   "offset": [
+    1.05,
+    0,
+    0
+   ],
+   "recipe": "parts/doubleblade_thigh_l.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_THIGH_L",
+   "triangles": 96,
+   "vertices": 52,
+   "bounds": {
+    "min": [
+     -0.5,
+     -2.42,
+     -0.64
+    ],
+    "max": [
+     0.5,
+     0.48,
+     0.52
+    ]
+   }
+  },
+  {
+   "id": "shin_l",
+   "parent": "thigh_l",
+   "offset": [
+    0,
+    -2.6,
+    0
+   ],
+   "recipe": "parts/doubleblade_shin_l.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_SHIN_L",
+   "triangles": 132,
+   "vertices": 76,
+   "bounds": {
+    "min": [
+     -0.54,
+     -2.68,
+     -0.78
+    ],
+    "max": [
+     0.54,
+     0.78,
+     1.55
+    ]
+   }
+  },
+  {
+   "id": "foot_l",
+   "parent": "shin_l",
+   "offset": [
+    0,
+    -2.5,
+    0
+   ],
+   "recipe": "parts/doubleblade_foot_l.asset.json",
+   "asset": "ASSET_DOUBLEBLADE_FOOT_L",
+   "triangles": 64,
+   "vertices": 40,
+   "bounds": {
+    "min": [
+     -0.56,
+     -0.86,
+     -2.0
+    ],
+    "max": [
+     0.56,
+     0.4,
+     1.25
+    ]
+   }
+  }
+ ],
+ "mounts": [
+  {
+   "id": "weapon_r",
+   "parent": "hand_r",
+   "offset": [
+    0,
+    -0.42,
+    0
+   ],
+   "rotate": [
+    -90,
+    0,
+    0
+   ],
+   "part": "weapon_r",
+   "note": "the grip's middle; the weapon's +Y points out of the fist's thumb side, its edge +Z"
+  },
+  {
+   "id": "weapon_l",
+   "parent": "hand_l",
+   "offset": [
+    0,
+    -0.42,
+    0
+   ],
+   "rotate": [
+    -90,
+    0,
+    0
+   ],
+   "part": "weapon_l",
+   "note": "the grip's middle; the weapon's +Y points out of the fist's thumb side, its edge +Z"
+  }
+ ],
+ "poses": {
+  "guard": {
+   "drop": 1.03,
+   "rotate": {
+    "pelvis": [
+     -8,
+     -6,
+     0
+    ],
+    "torso": [
+     -16,
+     -8,
+     0
+    ],
+    "head": [
+     18,
+     8,
+     0
+    ],
+    "thigh_r": [
+     40,
+     0,
+     -7
+    ],
+    "thigh_l": [
+     -12,
+     0,
+     7
+    ],
+    "upper_arm_r": [
+     42,
+     0,
+     -12
+    ],
+    "forearm_r": [
+     52,
+     0,
+     4
+    ],
+    "hand_r": [
+     -24,
+     0,
+     0
+    ],
+    "upper_arm_l": [
+     26,
+     0,
+     16
+    ],
+    "forearm_l": [
+     82,
+     0,
+     -6
+    ],
+    "hand_l": [
+     -34,
+     0,
+     0
+    ],
+    "pauldron_r": [
+     14.7,
+     0,
+     -6.0
+    ],
+    "pauldron_l": [
+     9.1,
+     0,
+     8.0
+    ],
+    "shin_r": [
+     -73.92,
+     0,
+     0
+    ],
+    "foot_r": [
+     41.92,
+     0,
+     7
+    ],
+    "shin_l": [
+     -29.48,
+     0,
+     0
+    ],
+    "foot_l": [
+     49.48,
+     0,
+     -7
+    ]
+   },
+   "note": "the fighting stance the sketch was built in: both soles on y = 0"
+  }
+ },
+ "triangles": 1798
+}

@@ -1,0 +1,57 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Crouch: 8 frames down onto one knee, then the last frame is held by the fight. The back knee drops to the floor (the shin flat behind, on its toes), the front foot stays planted, the body folds forward over the front knee and the sword comes down to a low guard. Push box 7.5 m tall (MOVES.md); the hurt boxes top out at about 8.5 m.",
+  "base": "_body.anim.json",
+  "length": 8,
+  "boxes": {"push": {"kind": "push", "rect": [-1.6, 0, 1.6, 7.5]}},
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "in",
+      "offset": [-0.05, -0.8],
+      "pose": {"pelvis": [-2, -8, 0], "torso": [-8, -16, 0], "head": [-2, 14, 0]},
+      "reach": {"foot_l": [-2.51, 0.0]}
+    },
+    {"at": 2, "ease": "ease", "offset": [-0.2, -1.6], "reach": {"foot_l": [-2.8, 0.35]}},
+    {"at": 3, "reach": {"foot_l": [-3.1, 0.25]}},
+    {
+      "at": 4,
+      "ease": "out",
+      "offset": [-0.45, -2.69],
+      "pose": {
+        "pelvis": [-10, -10, 0],
+        "torso": [-26, -18, 0],
+        "head": [28, 14, 0],
+        "thigh_l": [6, 0, 5],
+        "shin_l": [-96, 0, 0],
+        "foot_l": [-46, 0, -5],
+        "upper_arm_r": [40, 0, -18],
+        "forearm_r": [24, 0, 4],
+        "hand_r": [-14, 0, 0],
+        "upper_arm_l": [44, 0, 24],
+        "forearm_l": [76, 0, -6],
+        "pauldron_r": [16, 0, -8],
+        "pauldron_l": [20, 0, 10]
+      }
+    },
+    {
+      "at": 7,
+      "offset": [-0.42, -2.64],
+      "pose": {
+        "pelvis": [-10, -10, 0],
+        "torso": [-24, -18, 0],
+        "head": [27, 14, 0],
+        "thigh_l": [8, 0, 5],
+        "shin_l": [-94, 0, 0],
+        "foot_l": [-46, 0, -5],
+        "upper_arm_r": [42, 0, -18],
+        "forearm_r": [26, 0, 4],
+        "hand_r": [-16, 0, 0]
+      }
+    }
+  ],
+  "plant": {"foot_r": [[0, 7]]},
+  "allow": [["torso", "thigh_r"], ["torso", "thigh_l"]]
+}

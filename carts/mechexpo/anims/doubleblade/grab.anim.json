@@ -1,0 +1,12 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Grab: the Hero's (base: startup 5, the same reach), on the Double-blade Hero's rig.",
+  "base": "../hero/grab.anim.json",
+  "rig": "../../models/doubleblade/doubleblade.rig.json",
+  "keys": [
+    {"at": 0, "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}},
+    {"at": 5, "reach": {"foot_r": [0.9, 0.0], "foot_l": [-2.94, 0.0]}},
+    {"at": 6, "reach": {"foot_r": [0.9, 0.0], "foot_l": [-2.94, 0.0]}}
+  ]
+}

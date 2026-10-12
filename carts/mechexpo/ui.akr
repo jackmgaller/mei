@@ -1,0 +1,189 @@
+// What the HUD and the menus share (D's): the colours, the fonts (ui_art.akr, made by
+// tools/gen_mechexpo_ui.py from the OFL fonts in tools/fonts/), text and panel helpers, the
+// sprites in slots 9 and 10, and the mechs' names and makers.
+
+// 0xBBGGRR
+const C_WHITE: u32 = 0xFFFFFF
+const C_INK: u32 = 0x40200C        // navy ink, rgb(12, 32, 64)
+const C_NAVY: u32 = 0x9A3C1E       // UAPC blue, rgb(30, 60, 154)
+const C_BLUE: u32 = 0xD86A3A       // rgb(58, 106, 216)
+const C_SKY: u32 = 0xFFC8A8        // rgb(168, 200, 255)
+const C_CYAN: u32 = 0xF0D830       // rgb(48, 216, 240)
+const C_SILVER: u32 = 0xE2D4C8     // rgb(200, 212, 226)
+const C_STEEL: u32 = 0x9C7C6A      // rgb(106, 124, 156)
+const C_YELLOW: u32 = 0x19C4F0     // rgb(240, 196, 25)
+const C_RED: u32 = 0x281EC8        // Momentum red, rgb(200, 30, 40)
+const C_VIOLET: u32 = 0xE85A9A     // Umbral violet, rgb(154, 90, 232)
+const C_MAGENTA: u32 = 0xC040F0    // rgb(240, 64, 192)
+const C_TANGERINE: u32 = 0x208CFF  // rgb(255, 140, 32)
+const C_GLASS: u32 = 0x5A2810      // dark glass, rgb(16, 40, 90)
+
+var ui_buf: [64]u8
+
+fn ui_boot() {
+    load_texture(SLOT_FONTS, UI_FONTS_TEX, UI_FONTS_BYTES)
+    load_texture(SLOT_SPRITES, UI_SPRITES_TEX, UI_SPRITES_BYTES)
+    load_texture(SLOT_FX, UI_FX_TEX, UI_FX_BYTES)
+    load_palette(PAL_HUD * 16, &UI_PAL[0], 16 * 5)       // 250-254
+}
+
+fn sb() -> *u8 {
+    ui_buf[0] = 0
+    return &ui_buf[0]
+}
+
+// ---- text
+
+// Text in a font (FONT_TITLE, FONT_HEAD, FONT_LABEL, FONT_NUM), aligned to x. Returns the x
+// after it.
+fn txt(f: *Font, x: s32, y: s32, s: *u8, col: u32, align: s32) -> s32 {
+    font_use(f)
+    let r = font_text_align(x, y, s, col, align)
+    font_use(null)
+    return r
+}
+
+// With a drop shadow d pixels down and right.
+fn txt_sh(f: *Font, x: s32, y: s32, s: *u8, col: u32, sh: u32, d: s32, align: s32) -> s32 {
+    font_use(f)
+    font_text_align(x + d, y + d, s, sh, align)
+    let r = font_text_align(x, y, s, col, align)
+    font_use(null)
+    return r
+}
+
+fn txt_w(f: *Font, s: *u8) -> s32 {
+    font_use(f)
+    let w = text_width(s)
+    font_use(null)
+    return w
+}
+
+// ---- sprites
+
+fn ui_sprite(r: *s32, pal: s32, x: s32, y: s32, tint: u32, mode: s32) {
+    sprite_ex(tex_page(SLOT_SPRITES, pal, true), r[0], r[1], r[2], r[3], x, y, r[2], r[3], tint, mode)
+}
+
+fn ui_sprite_sz(r: *s32, pal: s32, x: s32, y: s32, w: s32, h: s32, tint: u32, mode: s32) {
+    sprite_ex(tex_page(SLOT_SPRITES, pal, true), r[0], r[1], r[2], r[3], x, y, w, h, tint, mode)
+}
+
+// An effect sprite (white, tinted) centred on (cx, cy), w x h; a negative w mirrors it.
+fn fx_sprite(r: *s32, cx: s32, cy: s32, w: s32, h: s32, col: u32, mode: s32) {
+    var tw = r[2]
+    var u = r[0]
+    var x = cx - w / 2
+    var ww = w
+    if w < 0 {
+        ww = -w
+        x = cx - ww / 2
+        tw = -r[2]
+    }
+    sprite_ex(tex_page(SLOT_FX, PAL_FX, true), u, r[1], tw, r[3], x, cy - h / 2, ww, h, col_tint(col), mode)
+}
+
+// ---- panels: the brochure's translucent panels and catalogue rules
+
+fn panel_glass(x: s32, y: s32, w: s32, h: s32) {
+    rect_blend(x, y, w, h, C_GLASS, BLEND_HALF)
+    rect_blend(x, y, w, 1, C_CYAN, BLEND_NONE)
+    rect_blend(x, y + h - 1, w / 3, 1, C_CYAN, BLEND_HALF)
+}
+
+// A white catalogue card: a half-white panel with a navy rule and a corner tab.
+fn panel_card(x: s32, y: s32, w: s32, h: s32) {
+    rect_blend(x + 3, y + 3, w, h, 0x402010, BLEND_SUB)
+    rect_blend(x, y, w, h, 0xFFFFFF, BLEND_HALF)
+    rect_blend(x, y, w, 2, C_NAVY, BLEND_NONE)
+    rect_blend(x, y + h - 1, w, 1, C_STEEL, BLEND_NONE)
+    rect_blend(x + w - 18, y, 18, 6, C_CYAN, BLEND_NONE)
+}
+
+// The same card, opaque (the pause menu and the move list, over the fight).
+fn panel_solid(x: s32, y: s32, w: s32, h: s32) {
+    rect_blend(x + 3, y + 3, w, h, 0x402010, BLEND_SUB)
+    rect_grad(x, y, w, h, 0xFAF4EE, 0xE6D8CA, BLEND_NONE)
+    rect_blend(x, y, w, 2, C_NAVY, BLEND_NONE)
+    rect_blend(x, y + h - 1, w, 1, C_STEEL, BLEND_NONE)
+    rect_blend(x + w - 18, y, 18, 6, C_CYAN, BLEND_NONE)
+}
+
+// A slanted tag with a label in it.
+fn tag(x: s32, y: s32, w: s32, s: *u8, bg: u32, fg: u32) {
+    quad_fill(x + 4, y, x + w + 4, y, x, y + 11, x + w, y + 11, bg, BLEND_NONE)
+    txt(FONT_LABEL, x + w / 2 + 2, y - 1, s, fg, ALIGN_CENTRE)
+}
+
+// A barcode, for the look.
+fn barcode(x: s32, y: s32, n: s32, h: s32, col: u32) {
+    for i in 0..n {
+        let w = 1 + ((i * 7 + i / 3) % 3)
+        rect_blend(x + i * 4, y, w, h, col, BLEND_NONE)
+    }
+}
+
+// ---- the mechs
+
+fn mech_name(m: Mech) -> *u8 {
+    match m {
+        Hero => return "HERO MECH"
+        Doubleblade => return "DOUBLE-BLADE HERO"
+    }
+}
+
+fn mech_short(m: Mech) -> *u8 {
+    match m {
+        Hero => return "HERO"
+        Doubleblade => return "DOUBLE-BLADE"
+    }
+}
+
+fn mech_maker(m: Mech) -> *u8 {
+    match m {
+        Hero => return "MOMENTUM ROBOTICS"
+        Doubleblade => return "UMBRAL RESEARCH"
+    }
+}
+
+fn mech_maker_short(m: Mech) -> *u8 {
+    match m {
+        Hero => return "MOMENTUM ROBO."
+        Doubleblade => return "UMBRAL RESEARCH"
+    }
+}
+
+fn mech_power(m: Mech) -> *u8 {
+    match m {
+        Hero => return "KINETIC"
+        Doubleblade => return "ANTIMATTER"
+    }
+}
+
+fn mech_booth(m: Mech) -> *u8 {
+    match m {
+        Hero => return "BOOTH A-12"
+        Doubleblade => return "BOOTH B-07"
+    }
+}
+
+fn mech_model(m: Mech) -> *u8 {
+    match m {
+        Hero => return "MR-01 \"HERO\""
+        Doubleblade => return "UR-02 \"DOUBLE-BLADE\""
+    }
+}
+
+fn mech_colour(m: Mech) -> u32 {
+    match m {
+        Hero => return C_RED
+        Doubleblade => return C_VIOLET
+    }
+}
+
+fn mech_kinetic(m: Mech) -> bool { return m == Mech.Hero }
+
+fn mech_emblem(m: Mech) -> *s32 {
+    if m == Mech.Hero { return &UI_EMBLEM_HERO[0] }
+    return &UI_EMBLEM_ECHO[0]
+}

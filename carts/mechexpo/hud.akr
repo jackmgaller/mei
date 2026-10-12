@@ -1,0 +1,289 @@
+// The fight's HUD (D's). The frame (chrome bezels around the health bars, the timer and the
+// meters) is BG0, drawn by tools/gen_mechexpo_ui.py, in front of the mechs; the fills, the
+// numbers and the names are polygons on the interface list (PH), in front of BG0.
+//
+// Health bars at the top, anchored at the timer: a damage trail (the health lost to the last
+// hits, held a moment, then drained) in tangerine behind the fill. Round wins as pips under the
+// names. The power meters at the bottom, each anchored at its source's icon, with its own fill:
+//   kinetic (the Hero): red into orange, with chevrons that run faster the fuller it is; full,
+//     it flashes white and says SUPER
+//   antimatter (the echo): the bar's outer third is the debt zone (hatched); the meter fills
+//     violet from the zero mark toward the timer, and in debt drains black-violet into the
+//     zone; at zero or above the super is there
+// Big banners: ROUND n, FIGHT!, K.O., TIME UP, the round's and the match's winner.
+
+const HUD_SLANT = 4
+const HUD_TRAIL_HOLD = 30           // frames the damage trail holds before it drains
+const HUD_DEBT_PX = 30              // the antimatter meter's debt zone, pixels
+
+var hud_trail: [2]s32               // the trail's health
+var hud_trail_t: [2]s32             // frames since the last damage
+var hud_last: [2]s32                // the health last frame
+var hud_tick: s32
+
+fn hud_show(on: bool) {
+    if on {
+        atlas_load(ATLAS_2, UI_HUD_TILES, UI_HUD_TILES_BYTES)
+        plane(BG0, ATLAS_2, MAP_BG0, 64, 32, 0, PAL_HUD)
+        map_load(BG0, UI_HUD_MAP)
+        plane_scroll(BG0, 0, 0)
+    } else {
+        plane_show(BG0, false)
+    }
+}
+
+fn hud_reset(f: *Fight) {
+    for s in 0..2 {
+        hud_trail[s] = f.f[s].health
+        hud_last[s] = f.f[s].health
+        hud_trail_t[s] = 0
+    }
+}
+
+fn hud_update(f: *Fight) {
+    hud_tick += 1
+    for s in 0..2 {
+        let h = f.f[s].health
+        if h < hud_last[s] { hud_trail_t[s] = 0 }
+        if h > hud_trail[s] { hud_trail[s] = h }
+        hud_trail_t[s] += 1
+        if hud_trail_t[s] > HUD_TRAIL_HOLD && hud_trail[s] > h {
+            hud_trail[s] = max(h, hud_trail[s] - max((hud_trail[s] - h) / 8, 4))
+        }
+        hud_last[s] = h
+    }
+}
+
+// ---- slanted spans inside a bezel
+//
+// A bezel's hole leans right on the left (P1) and left on the right (P2). A span is given as
+// offsets o0..o1 from the bar's outer end (pixels along its bottom edge, 0..w - slant) and drawn
+// as a parallelogram with the hole's slant.
+
+fn span_quad(side: s32, x0: s32, w: s32, y: s32, h: s32, o0: s32, o1: s32, top: u32, bot: u32, mode: s32) {
+    if o1 <= o0 { return }
+    let l = w - HUD_SLANT
+    var a = 0
+    var b = 0
+    var s = 0
+    if side == 0 {
+        a = x0 + o0
+        b = x0 + o1
+        s = HUD_SLANT
+    } else {
+        a = x0 + HUD_SLANT + l - o1
+        b = x0 + HUD_SLANT + l - o0
+        s = -HUD_SLANT
+    }
+    tri_grad(a + s, y, b + s, y, a, y + h, top, top, bot, mode)
+    tri_grad(b + s, y, b, y + h, a, y + h, top, bot, bot, mode)
+}
+
+fn bar_x(side: s32) -> s32 {
+    if side == 0 { return HUD_BAR_X0 }
+    return 320 - HUD_BAR_X0 - HUD_BAR_W
+}
+
+fn meter_x(side: s32) -> s32 {
+    if side == 0 { return HUD_METER_X0 }
+    return 320 - HUD_METER_X0 - HUD_METER_W
+}
+
+// ---- the HUD
+
+fn hud_draw(f: *Fight, training: bool, who0: *u8, who1: *u8) {
+    for s in 0..2 {
+        draw_health(f, s)
+        draw_meter(f, s)
+        draw_pips(f, s)
+    }
+    draw_name(f, 0, who0)
+    draw_name(f, 1, who1)
+    draw_timer(f, training)
+}
+
+private fn draw_health(f: *Fight, s: s32) {
+    let fi = &f.f[s]
+    let x0 = bar_x(s)
+    let l = HUD_BAR_W - HUD_SLANT
+    let y = HUD_BAR_Y
+    let h = HUD_BAR_H
+    let hm = max(fi.health_max, 1)
+    let hp = clamp(fi.health, 0, hm) * l / hm
+    let tr = clamp(hud_trail[s], 0, hm) * l / hm
+    // the empty bar: dark glass
+    span_quad(s, x0, HUD_BAR_W, y, h, 0, l, 0x301408, 0x100804, BLEND_HALF)
+    // the trail, then the health (anchored at the inner end: offsets l - hp .. l)
+    span_quad(s, x0, HUD_BAR_W, y, h, l - tr, l - hp, 0x40A0FF, 0x1850D0, BLEND_NONE)
+    var top: u32 = 0xC0FFFF
+    var bot: u32 = 0x10C8F0
+    if fi.health * 4 <= hm {
+        // low: tangerine, pulsing
+        if (hud_tick >> 3) & 1 == 0 { top = 0x60C0FF } else { top = 0x90E0FF }
+        bot = C_TANGERINE
+    }
+    if fi.flash > 0 && fi.flash & 2 != 0 {
+        top = C_WHITE
+        bot = C_WHITE
+    }
+    span_quad(s, x0, HUD_BAR_W, y, h, l - hp, l, top, bot, BLEND_NONE)
+    // a highlight line along the top
+    span_quad(s, x0, HUD_BAR_W, y, 2, l - hp, l, 0xFFFFFF, 0xFFFFFF, BLEND_QUARTER)
+}
+
+private fn draw_meter(f: *Fight, s: s32) {
+    let fi = &f.f[s]
+    let x0 = meter_x(s)
+    let w = HUD_METER_W
+    let l = w - HUD_SLANT
+    let y = HUD_METER_Y
+    let h = HUD_METER_H
+    // the icon
+    var ix = x0 - 21
+    if s == 1 { ix = x0 + w + 5 }
+    if mech_kinetic(fi.mech) {
+        ui_sprite(&UI_ICON_KINETIC[0], PAL_EMBLEM, ix, y - 4, 0x808080, BLEND_NONE)
+        draw_kinetic(fi, s, x0, w, l, y, h)
+    } else {
+        ui_sprite(&UI_ICON_ANTIMATTER[0], PAL_EMBLEM, ix, y - 4, 0x808080, BLEND_NONE)
+        draw_antimatter(fi, s, x0, w, l, y, h)
+    }
+}
+
+private fn draw_kinetic(fi: *Fighter, s: s32, x0: s32, w: s32, l: s32, y: s32, h: s32) {
+    span_quad(s, x0, w, y, h, 0, l, 0x301408, 0x100804, BLEND_HALF)
+    let n = clamp(fi.meter, 0, METER_BAR) * l / METER_BAR
+    let full = fi.meter >= METER_BAR
+    if full && (hud_tick >> 2) & 1 == 0 {
+        span_quad(s, x0, w, y, h, 0, l, 0xFFFFFF, 0x80E0FF, BLEND_NONE)
+    } else {
+        span_quad(s, x0, w, y, h, 0, n, 0x2A60FF, 0x1E1EC8, BLEND_NONE)
+        // the chevrons: dark slashes every 8 px, running toward the timer, faster when fuller
+        let speed = 1 + n / 24
+        let ph = (hud_tick * speed) % 8
+        var o = ph
+        while o + 3 < n {
+            span_quad(s, x0, w, y, h, o, o + 2, 0x0A0A50, 0x0A0A50, BLEND_HALF)
+            o += 8
+        }
+        if n > 2 { span_quad(s, x0, w, y, h, n - 2, n, 0xC0F0FF, 0xC0F0FF, BLEND_NONE) }
+    }
+    if full {
+        var lx = x0 + w + 4
+        var al = ALIGN_LEFT
+        if s == 1 {
+            lx = x0 - 4
+            al = ALIGN_RIGHT
+        }
+        txt(FONT_LABEL, lx, y - 13, "SUPER", C_YELLOW, al)
+    }
+}
+
+private fn draw_antimatter(fi: *Fighter, s: s32, x0: s32, w: s32, l: s32, y: s32, h: s32) {
+    let z = HUD_DEBT_PX
+    let pos = l - z
+    // the debt zone (hatched magenta), then the positive part
+    span_quad(s, x0, w, y, h, 0, z, 0x401050, 0x200828, BLEND_HALF)
+    var o = 2
+    while o + 2 < z {
+        span_quad(s, x0, w, y, h, o, o + 1, 0x6020A0, 0x6020A0, BLEND_NONE)
+        o += 5
+    }
+    span_quad(s, x0, w, y, h, z, l, 0x301408, 0x100804, BLEND_HALF)
+    let m = fi.meter
+    if m >= 0 {
+        let n = clamp(m, 0, METER_BAR) * pos / METER_BAR
+        span_quad(s, x0, w, y, h, z, z + n, 0xFF9AD0, 0x9A2A5A, BLEND_NONE)
+        // the particles: a few bright specks drifting through the fill
+        for k in 0..4 {
+            let sp = (hud_tick * (k + 2) + k * 37) % max(n, 1)
+            span_quad(s, x0, w, y + 1 + (k * 2) % (h - 2), 1, z + sp, z + sp + 1, 0xFFE0FF, 0xFFE0FF, BLEND_ADD)
+        }
+    } else {
+        // in debt: drains outward from the zero mark into the zone
+        let n = clamp(-m, 0, METER_BAR) * z / METER_BAR
+        var top: u32 = 0x3A0A2A
+        if (hud_tick >> 2) & 1 == 0 { top = 0x601040 }
+        span_quad(s, x0, w, y, h, z - n, z, top, 0x140410, BLEND_NONE)
+    }
+    // the zero mark
+    span_quad(s, x0, w, y - 2, h + 4, z, z + 1, 0xFFFFFF, 0xFFFFFF, BLEND_NONE)
+    if fi.super_ok || m >= 0 {
+        if (hud_tick >> 3) & 1 == 0 || m >= METER_BAR {
+            var lx = x0 + w + 4
+            var al = ALIGN_LEFT
+            if s == 1 {
+                lx = x0 - 4
+                al = ALIGN_RIGHT
+            }
+            txt(FONT_LABEL, lx, y - 13, "SUPER", C_VIOLET, al)
+        }
+    } else {
+        var lx = x0 + w + 4
+        var al = ALIGN_LEFT
+        if s == 1 {
+            lx = x0 - 4
+            al = ALIGN_RIGHT
+        }
+        txt(FONT_LABEL, lx, y - 13, "DEBT", C_MAGENTA, al)
+    }
+}
+
+// The name on its tab under the bar, and who plays it (1P, 2P, CPU, DUMMY).
+private fn draw_name(f: *Fight, s: s32, who: *u8) {
+    let ty = HUD_BAR_Y + HUD_BAR_H + 2
+    if s == 0 {
+        let x = txt(FONT_LABEL, HUD_BAR_X0 + 6, ty, who, C_RED, ALIGN_LEFT)
+        txt(FONT_LABEL, x + 4, ty, mech_short(f.f[0].mech), C_WHITE, ALIGN_LEFT)
+    } else {
+        let x1 = 320 - HUD_BAR_X0 - 6
+        txt(FONT_LABEL, x1, ty, who, C_SKY, ALIGN_RIGHT)
+        txt(FONT_LABEL, x1 - txt_w(FONT_LABEL, who) - 4, ty, mech_short(f.f[1].mech), C_WHITE, ALIGN_RIGHT)
+    }
+}
+
+private fn draw_pips(f: *Fight, s: s32) {
+    let y = HUD_BAR_Y + HUD_BAR_H + 4
+    for i in 0..2 {
+        var x = 126 - i * 11
+        if s == 1 { x = 184 + i * 11 }
+        if f.wins[s] > i {
+            ui_sprite(&UI_PIP_ON[0], PAL_LOGO, x, y, 0x808080, BLEND_NONE)
+        } else {
+            ui_sprite(&UI_PIP_OFF[0], PAL_LOGO, x, y, 0x808080, BLEND_NONE)
+        }
+    }
+}
+
+private fn draw_timer(f: *Fight, training: bool) {
+    let cx = HUD_TIMER_X + HUD_TIMER_W / 2
+    rect_grad(HUD_TIMER_X, HUD_TIMER_Y + 1, HUD_TIMER_W, HUD_TIMER_H - 2, 0x6A3418, 0x2A1006, BLEND_NONE)
+    if training {
+        txt(FONT_HEAD, cx, HUD_TIMER_Y + 6, "--", C_WHITE, ALIGN_CENTRE)
+        return
+    }
+    let secs = clamp((f.timer + 59) / 60, 0, 99)
+    let b = sb()
+    str_append_int(b, 64, secs, 2, true)
+    var col = C_WHITE
+    if secs <= 10 && (hud_tick >> 3) & 1 == 0 { col = C_TANGERINE }
+    txt(FONT_NUM, cx, HUD_TIMER_Y + 4, b, col, ALIGN_CENTRE)
+}
+
+// ---- banners
+
+// A banner across the middle: a dark band with cyan rules and big text; t frames since it
+// appeared (it opens over the first frames).
+fn hud_banner(s: *u8, sub: *u8, t: s32, col: u32) {
+    let open = min(t, 8)
+    let hh = 18 * open / 8
+    let cy = 96
+    if hh <= 0 { return }
+    rect_blend(0, cy - hh, 320, hh * 2, 0x200804, BLEND_HALF)
+    rect_blend(0, cy - hh, 320, 1, C_CYAN, BLEND_NONE)
+    rect_blend(0, cy + hh - 1, 320, 1, C_CYAN, BLEND_NONE)
+    if open < 8 { return }
+    let slide = max(0, 12 - t) * 24
+    txt_sh(FONT_TITLE, 160 - slide, cy - 13, s, col, 0x40200C, 2, ALIGN_CENTRE)
+    if sub != null { txt(FONT_LABEL, 160 + slide, cy + 20, sub, C_SILVER, ALIGN_CENTRE) }
+}

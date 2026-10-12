@@ -1,0 +1,15 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Block: the Hero's (base), on the Double-blade Hero's rig: both blades come up crossed in front of the chest.",
+  "base": "../hero/block.anim.json",
+  "rig": "../../models/doubleblade/doubleblade.rig.json",
+  "keys": [
+    {"at": 0, "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}},
+    {
+      "at": 3,
+      "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]},
+      "pose": {"upper_arm_l": [40, 0, 20], "forearm_l": [96, 0, -14], "hand_l": [-6, 0, 0]}
+    }
+  ]
+}

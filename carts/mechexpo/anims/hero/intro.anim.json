@@ -1,0 +1,94 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Intro (90 frames, the first round): standing powered down in its booth's spot 4.5 m behind its start mark, head bowed, sword hanging (0-18); it powers up, the head and the chest lift (18-30), walks out in three heavy steps (planting on 40, 50, 60; the body moves through the pelvis offset over feet placed relative to the root, so the fight's root stays on the mark) and sinks into the guard, the sword coming up (60-89).",
+  "base": "_body.anim.json",
+  "length": 90,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "hold",
+      "offset": [-4.5, -0.3],
+      "reach": {"foot_r": [-3.9, 0.0], "foot_l": [-5.1, 0.0]},
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [-6, -4, 0],
+        "head": [30, 0, 0],
+        "upper_arm_r": [6, 0, -10],
+        "forearm_r": [20, 0, 4],
+        "hand_r": [-46, 0, 0],
+        "upper_arm_l": [0, 0, 12],
+        "forearm_l": [16, 0, -6],
+        "pauldron_r": [0, 0, -4],
+        "pauldron_l": [0, 0, 6]
+      }
+    },
+    {"at": 18, "ease": "ease", "offset": [-4.5, -0.3]},
+    {
+      "at": 30,
+      "ease": "ease",
+      "offset": [-4.5, -0.45],
+      "reach": {"foot_r": [-3.9, 0.0], "foot_l": [-5.1, 0.0]},
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [2, -6, 0],
+        "head": [-8, 4, 0],
+        "upper_arm_r": [20, 0, -14],
+        "forearm_r": [40, 0, 4],
+        "hand_r": [-50, 0, 0],
+        "upper_arm_l": [14, 0, 16],
+        "forearm_l": [40, 0, -6]
+      }
+    },
+    {"at": 35, "reach": {"foot_l": [-4.1, 0.8]}},
+    {
+      "at": 40,
+      "ease": "ease",
+      "offset": [-3.4, -0.75],
+      "reach": {"foot_r": [-3.9, 0.0], "foot_l": [-2.6, 0.0]},
+      "pose": {"pelvis": [-2, -2, 0], "torso": [-4, -4, 0], "head": [0, 4, 0], "upper_arm_l": [-6, 0, 14]}
+    },
+    {"at": 45, "reach": {"foot_r": [-2.1, 0.8]}},
+    {
+      "at": 50,
+      "ease": "ease",
+      "offset": [-1.6, -0.75],
+      "reach": {"foot_r": [-0.6, 0.0], "foot_l": [-2.6, 0.0]},
+      "pose": {"pelvis": [-2, -10, 0], "torso": [-4, -8, 0], "upper_arm_l": [20, 0, 14]}
+    },
+    {"at": 55, "reach": {"foot_r": [0.0, 0.7]}},
+    {
+      "at": 60,
+      "ease": "ease",
+      "offset": [-0.1, -0.9],
+      "reach": {"foot_r": [0.54, 0.0], "foot_l": [-2.51, 0.0]},
+      "pose": {
+        "pelvis": [-2, -8, 0],
+        "torso": [-8, -14, 0],
+        "head": [2, 12, 0],
+        "upper_arm_r": [26, 0, -14],
+        "forearm_r": [46, 0, 4],
+        "hand_r": [-30, 0, 0],
+        "upper_arm_l": [32, 0, 20],
+        "forearm_l": [70, 0, -6]
+      }
+    },
+    {
+      "at": 72,
+      "ease": "ease",
+      "offset": [0.0, -0.66],
+      "pose": {
+        "pelvis": [0, -8, 0],
+        "torso": [-6, -16, 0],
+        "head": [-4, 14, 0],
+        "upper_arm_r": [30, 0, -14],
+        "forearm_r": [42, 0, 4],
+        "hand_r": [-22, 0, 0]
+      }
+    },
+    {"at": 89, "from": "guard", "reach": {"foot_r": [0.54, 0.0], "foot_l": [-2.51, 0.0]}}
+  ],
+  "marks": {"step": [40, 50, 60]},
+  "allow": [["forearm_r", "weapon_r"]]
+}

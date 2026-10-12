@@ -1,0 +1,7 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Thrown by the Vault Throw: the Hero's (base), on the Double-blade Hero's rig.",
+  "base": "../hero/thrown_vault.anim.json",
+  "rig": "../../models/doubleblade/doubleblade.rig.json"
+}

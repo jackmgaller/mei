@@ -1,0 +1,304 @@
+// The Animation Kit's test cart (carts/mechexpo/tests/anim/, run by run.sh): anim.akr drawing
+// both mechs from the kit's export, with the cart's moves and this folder's test moves
+// (anims/: a grab, being grabbed, a jump). SCENE (from run.sh's header) picks a scene:
+//
+//   1 boxes    the game's camera: the Hero's Tip Thrust (frame ANIM_F, default its first active
+//              frame) against the Double-blade in guard, boxes drawn
+//   2 grab     the Hero grabbing the Double-blade, overlapping, near (depth buffer)
+//   3 cross    the Double-blade jumping over the Hero, crossing it (depth buffer)
+//   4 cost     two posed mechs at the game's camera, the Tip Thrust played through; prints the
+//              CPU cycles of the two anim_draw() calls and of the frame, the worst of each
+//   5 check    the runtime's numbers against the kit's (prints them; asserts what it can)
+//   6 bench    what posing costs without drawing: anim_part() for every part of both mechs,
+//              and building the same matrices from angles at run time, as an interpolating
+//              runtime would
+//   7 near     scene 1 nearer (17 m)
+import "anim.akr"
+import "depth.akr"
+
+const GROUND_COL: u32 = 0x463C36        // 0xBBGGRR: the hangar floor's grey-blue
+const SKY: u32 = 0x5C4E44
+
+private struct Quad {
+    hdr: Mesh
+    v: [4]vec4
+    f: [1]Face
+}
+
+var floor_mesh: Quad
+var tick: s32
+var worst_anim: s32
+var worst_frame: s32
+var worst_tris: s32
+
+fn init() {
+    assets_load()
+    render_depth(true)
+    render_perspective(true)
+    let m = &floor_mesh
+    m.hdr.nverts = 4
+    m.hdr.nfaces = 1
+    m.hdr.verts = 16
+    m.hdr.faces = 16 + 4 * 16
+    m.v[0] = vec4(-60.0, 0.0, 30.0, 1.0)
+    m.v[1] = vec4(60.0, 0.0, 30.0, 1.0)
+    m.v[2] = vec4(-60.0, 0.0, -30.0, 1.0)
+    m.v[3] = vec4(60.0, 0.0, -30.0, 1.0)
+    let f = &m.f[0]
+    f.flags = (FACE_QUAD | FACE_DOUBLE) as u8
+    for j in 0..4 {
+        f.idx[j] = j as u16
+        f.col[j] = GROUND_COL
+    }
+}
+
+fn backdrop() {
+    cls(SKY)
+    mesh(&floor_mesh.hdr)
+}
+
+// The game's camera: side on from -Z, the mechs about 80 pixels tall at 31 m.
+fn game_camera(cx: fixed, dist: fixed) {
+    camera_at(cx, 5.8, dist)
+}
+
+fn camera_at(cx: fixed, cy: fixed, dist: fixed) {
+    camera_clip(0.5, 200.0)
+    camera(vec3(cx, cy, -dist), 0.0)
+}
+
+fn draw() {
+    match SCENE {
+        1 => scene_boxes(31.2)
+        7 => scene_boxes(17.0)
+        2 => scene_grab()
+        3 => scene_cross()
+        4 => scene_cost()
+        5 => scene_check()
+        6 => scene_bench()
+        else => text(8, 8, "no such scene", 0xFFFFFF)
+    }
+    tick += 1
+}
+
+fn scene_boxes(dist: fixed) {
+    let f = ANIM_F
+    backdrop()
+    game_camera(0.0, dist)
+    let hp = vec2(-6.0, 0.0)
+    let dp = vec2(7.0, 0.0)
+    anim_draw(Mech.Hero, Mv.atk_f, fixed(f), anim_place(hp, 1))
+    anim_draw(Mech.Doubleblade, Mv.idle, fixed(tick), anim_place(dp, -1))
+    anim_draw_boxes(Mech.Hero, Mv.atk_f, f, hp, 1)
+    anim_draw_boxes(Mech.Doubleblade, Mv.idle, tick, dp, -1)
+    text(4, 4, "TIP THRUST", 0xFFFFFF)
+    text_int(4, 14, f, 0xFFFFFF)
+}
+
+fn scene_grab() {
+    let f = ANIM_F
+    backdrop()
+    game_camera(0.0, 17.0)
+    anim_draw(Mech.Hero, Mv.grab, fixed(f), anim_place(vec2(-3.4, 0.0), 1))
+    anim_draw(Mech.Doubleblade, Mv.thrown, fixed(f), anim_place(vec2(3.0, 0.0), -1))
+    text(4, 4, "GRAB", 0xFFFFFF)
+}
+
+fn scene_cross() {
+    let f = ANIM_F
+    backdrop()
+    camera_at(0.0, 9.0, 21.0)
+    anim_draw(Mech.Hero, Mv.idle, fixed(f), anim_place(vec2(-1.0, 0.0), 1))
+    anim_draw(Mech.Doubleblade, Mv.jump, fixed(f), anim_place(vec2(0.5, 4.6), -1))
+    text(4, 4, "CROSS-UP", 0xFFFFFF)
+}
+
+fn scene_cost() {
+    let n = anim_len(Mech.Hero, Mv.atk_f)
+    let f = tick % n
+    backdrop()
+    game_camera(0.0, 31.2)
+    anim_draw(Mech.Hero, Mv.atk_f, fixed(f), anim_place(vec2(-6.0, 0.0), 1))
+    var c = anim_cpu
+    anim_draw(Mech.Doubleblade, Mv.idle, fixed(tick), anim_place(vec2(7.0, 0.0), -1))
+    c += anim_cpu
+    worst_anim = max(worst_anim, c)
+    // the frame so far (the previous frame's total is cpu_used() at the start of draw)
+    worst_frame = max(worst_frame, cpu_used())
+    text(4, 4, "COST", 0xFFFFFF)
+    text_int(4, 14, c, 0xFFFFFF)
+    if tick == n * 2 - 1 {
+        print("anim_draw x2 worst ")
+        print_int(worst_anim)
+        print(" frame worst ")
+        print_int(worst_frame)
+        println("")
+        println("OK cost")
+    }
+}
+
+// ---- 5: the numbers
+
+fn print_mat(m: mat4) {
+    for i in 0..3 {
+        print_fixed(m[i].x)
+        print(" ")
+        print_fixed(m[i].y)
+        print(" ")
+        print_fixed(m[i].z)
+        print(" ")
+        print_fixed(m[i].w)
+        print(" ")
+    }
+    println("")
+}
+
+fn scene_check() {
+    if tick != 0 { return }
+    // the parts' matrices relative to the root (anim_part with an identity root), frames 0, 13, 20
+    let fs: [3]s32 = [0, 13, 20]
+    for k in 0..3 {
+        for p in Part {
+            print("part ")
+            print_int(fs[k])
+            print(" ")
+            print_int(p as s32)
+            print(" ")
+            print_mat(anim_part(Mech.Hero, Mv.atk_f, fixed(fs[k]), mat4_identity(), p))
+        }
+    }
+    // a half frame: between 13 and 14
+    print("half 7 ")
+    print_mat(anim_part(Mech.Hero, Mv.atk_f, 13.5, mat4_identity(), Part.weapon_r))
+    // the boxes of every frame
+    var bx: Boxes
+    var total = vec2(0.0, 0.0)
+    let n = anim_len(Mech.Hero, Mv.atk_f)
+    for f in 0..n {
+        anim_boxes(Mech.Hero, Mv.atk_f, f, &bx)
+        for i in 0..bx.n {
+            let b = &bx.b[i]
+            print("box ")
+            print_int(f)
+            print(" ")
+            print_int(b.kind as s32)
+            print(" ")
+            print_int(b.part as s32)
+            print(" ")
+            print_fixed(b.x0)
+            print(" ")
+            print_fixed(b.y0)
+            print(" ")
+            print_fixed(b.x1)
+            print(" ")
+            print_fixed(b.y1)
+            println("")
+        }
+        print("marks ")
+        print_int(f)
+        print(" ")
+        print_int(anim_marks(Mech.Hero, Mv.atk_f, f) as s32)
+        println("")
+        total = total + anim_root(Mech.Hero, Mv.atk_f, f)
+    }
+    print("root ")
+    print_int(bits(total.x))
+    print(" ")
+    print_int(bits(total.y))
+    println("")
+    // what the cart can check alone: the length, the active frames, the cancel window, the
+    // root's travel adding up exactly to the motion's 1.2 m, a loop's wrapping
+    assert(n == 38)
+    assert(has_hit(12) == false)
+    assert(has_hit(13) && has_hit(16))
+    assert(has_hit(17) == false)
+    assert((anim_marks(Mech.Hero, Mv.atk_f, 13) & MARK_CANCEL) != 0)
+    assert(total.x == 1.2)
+    assert(anim_loops(Mech.Hero, Mv.idle))
+    // this folder's test moves always have files (the cart's moves fill in as the animator
+    // writes them, so which are stand-ins changes)
+    assert(anim_standin(Mech.Hero, Mv.grab) == false)
+    assert(anim_standin(Mech.Doubleblade, Mv.jump) == false)
+    assert(anim_standin(Mech.Hero, Mv.atk_f) == false)
+    let a = anim_part(Mech.Hero, Mv.idle, 3.0, mat4_identity(), Part.head)
+    let b = anim_part(Mech.Hero, Mv.idle, fixed(3 + anim_len(Mech.Hero, Mv.idle)), mat4_identity(), Part.head)
+    assert(a[1].w == b[1].w)
+    println("OK check")
+}
+
+fn has_hit(f: s32) -> bool {
+    var bx: Boxes
+    anim_boxes(Mech.Hero, Mv.atk_f, f, &bx)
+    for i in 0..bx.n {
+        if bx.b[i].kind == BOX_HIT { return true }
+    }
+    return false
+}
+
+// ---- 6: posing without drawing
+
+var bench_sink: fixed
+
+// A joint's matrix from angles (radians), X then Y then Z, at offset t: what a runtime that
+// interpolated keys would build every frame, a part at a time.
+fn euler_joint(parent: mat4, t: vec3, ax: fixed, ay: fixed, az: fixed) -> mat4 {
+    let cx = cos(ax)
+    let sx = sin(ax)
+    let cy = cos(ay)
+    let sy = sin(ay)
+    let cz = cos(az)
+    let sz = sin(az)
+    var m: mat4
+    m[0] = vec4(cz * cy, cz * sy * sx - sz * cx, cz * sy * cx + sz * sx, t.x)
+    m[1] = vec4(sz * cy, sz * sy * sx + cz * cx, sz * sy * cx - cz * sx, t.y)
+    m[2] = vec4(-sy, cy * sx, cy * cx, t.z)
+    m[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    return parent * m
+}
+
+fn scene_bench() {
+    if tick != 2 { return }
+    let root = anim_place(vec2(0.0, 0.0), 1)
+    // baked: what anim_draw does per part, without the mesh
+    var c0 = cycle_count()
+    for m in Mech {
+        for p in Part {
+            let x = anim_part(m, Mv.atk_f, 13.5, root, p)
+            bench_sink = bench_sink + x[0].w
+        }
+    }
+    let baked = cycle_count() - c0
+    c0 = cycle_count()
+    for m in Mech {
+        for p in Part {
+            let x = anim_part(m, Mv.atk_f, 13.0, root, p)
+            bench_sink = bench_sink + x[0].w
+        }
+    }
+    let whole = cycle_count() - c0
+    // interpolated: per part, three angles lerped between two keys, then a matrix from them
+    // and the product with the parent's
+    var mats: [len(Part)]mat4
+    c0 = cycle_count()
+    for m in Mech {
+        for p in Part {
+            let t = 0.4
+            let ax = 0.3 + (0.9 - 0.3) * t
+            let ay = 0.1 + (0.2 - 0.1) * t
+            let az = -0.2 + (0.1 + 0.2) * t
+            var parent = root
+            if (p as s32) > 0 { parent = mats[(p as s32) - 1] }
+            mats[p] = euler_joint(parent, vec3(0.0, -2.0, 0.0), ax, ay, az)
+            bench_sink = bench_sink + mats[p][0].w
+        }
+    }
+    let interp = cycle_count() - c0
+    print("pose both mechs baked, a whole frame ")
+    print_int(whole)
+    print(" between frames ")
+    print_int(baked)
+    print(" interpolated ")
+    print_int(interp)
+    println("")
+    println("OK bench")
+}

@@ -1,0 +1,12 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Grab whiff: the Hero's (base), on the Double-blade Hero's rig.",
+  "base": "../hero/grab_whiff.anim.json",
+  "rig": "../../models/doubleblade/doubleblade.rig.json",
+  "keys": [
+    {"at": 0, "reach": {"foot_r": [0.9, 0.0], "foot_l": [-2.94, 0.0]}},
+    {"at": 18, "reach": {"foot_l": [-2.94, 0.0]}},
+    {"at": 21, "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}}
+  ]
+}

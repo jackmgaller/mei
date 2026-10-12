@@ -1,0 +1,181 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "expo_banner",
+ "budget": {
+  "vertices": 256,
+  "triangles": 100
+ },
+ "lighting": {
+  "direction": [
+   0,
+   0.62,
+   -0.78
+  ],
+  "ambient": 0.66
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "chrome": {
+   "color": "#c6d0dc",
+   "smooth": true
+  },
+  "base": {
+   "color": "#3c4454"
+  },
+  "cloth": {
+   "color": "#1d4fb0"
+  },
+  "expo": {
+   "color": "#2f7fe0",
+   "class": "emissive",
+   "texture": {
+    "image": "art/banner_expo.png",
+    "projection": "fit"
+   }
+  },
+  "y2k": {
+   "color": "#2f7fe0",
+   "class": "emissive",
+   "texture": {
+    "image": "art/banner_2000.png",
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "base",
+   "op": "box",
+   "size": [
+    3.0,
+    0.4,
+    2.0
+   ],
+   "material": "base",
+   "transform": {
+    "translate": [
+     0,
+     0.2,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "pole",
+   "op": "box",
+   "size": [
+    0.36,
+    15.0,
+    0.36
+   ],
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     0,
+     7.85,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "finial",
+   "op": "cone",
+   "radius": 0.34,
+   "height": 0.8,
+   "segments": 6,
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     0,
+     15.65,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bar_top",
+   "op": "box",
+   "size": [
+    6.4,
+    0.24,
+    0.24
+   ],
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     0,
+     14.2,
+     -0.27999999999999997
+    ]
+   }
+  },
+  {
+   "id": "bar_low",
+   "op": "box",
+   "size": [
+    6.4,
+    0.2,
+    0.2
+   ],
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     0,
+     4.62,
+     -0.26
+    ]
+   }
+  },
+  {
+   "id": "banner_expo",
+   "op": "box",
+   "size": [
+    2.6,
+    9.4,
+    0.08
+   ],
+   "material": "cloth",
+   "transform": {
+    "translate": [
+     -1.62,
+     9.4,
+     -0.26
+    ]
+   },
+   "faces": {
+    "back": "expo"
+   }
+  },
+  {
+   "id": "banner_2000",
+   "op": "box",
+   "size": [
+    2.6,
+    9.4,
+    0.08
+   ],
+   "material": "cloth",
+   "transform": {
+    "translate": [
+     1.62,
+     9.4,
+     -0.26
+    ]
+   },
+   "faces": {
+    "back": "y2k"
+   }
+  }
+ ]
+}

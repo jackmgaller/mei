@@ -1,0 +1,128 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Walk forward: a slow, heavy crossing walk, 48 frames for 3.6 m (0.075 m a frame, the fight's walk speed: each planted foot slides back 0.075 m a frame against the root so it stays put on the floor). The right foot plants on 0, the left on 24 (step marks); the body drops 0.26 m into each plant and rises over the passing foot; the sword holds the guard.",
+  "base": "_body.anim.json",
+  "length": 48,
+  "loop": true,
+  "marks": {"step": [0, 24]},
+  "keys": [
+    {
+      "at": 0,
+      "ease": "ease",
+      "offset": [0.15, -0.72],
+      "pose": {
+        "pelvis": [-2, -12, 0],
+        "torso": [-8, -18, 0],
+        "head": [-6, 16, 0],
+        "upper_arm_r": [28, 0, -14],
+        "forearm_r": [42, 0, 4],
+        "hand_r": [-22, 0, 0],
+        "upper_arm_l": [34, 0, 20],
+        "forearm_l": [78, 0, -6]
+      },
+      "reach": {"foot_r": [1.3, 0.0], "foot_l": [-0.5, 0.0]}
+    },
+    {"at": 1, "reach": {"foot_r": [1.225, 0.0], "foot_l": [-0.575, 0.0]}, "ease": "linear"},
+    {
+      "at": 4,
+      "ease": "out",
+      "offset": [0.15, -0.98],
+      "pose": {
+        "pelvis": [-3, -12, 0],
+        "torso": [-10, -18, 0],
+        "head": [-3, 16, 0],
+        "upper_arm_r": [30, 0, -14],
+        "forearm_r": [40, 0, 4],
+        "hand_r": [-22, 0, 0],
+        "upper_arm_l": [33, 0, 20],
+        "forearm_l": [80, 0, -6]
+      },
+      "reach": {"foot_r": [1.0, 0.0], "foot_l": [-0.8, 0.0]}
+    },
+    {"at": 5, "reach": {"foot_r": [0.925, 0.0], "foot_l": [-0.875, 0.0]}, "ease": "linear"},
+    {"at": 8, "reach": {"foot_l": [-1.1, 0.0]}, "ease": "linear"},
+    {"at": 10, "reach": {"foot_l": [-0.997, 0.394]}, "ease": "linear"},
+    {"at": 12, "reach": {"foot_l": [-0.725, 0.675]}, "ease": "linear"},
+    {
+      "at": 14,
+      "ease": "ease",
+      "offset": [0.1, -0.5],
+      "pose": {
+        "pelvis": [0, -8, 0],
+        "torso": [-6, -14, 0],
+        "head": [-6, 12, 0],
+        "upper_arm_r": [27, 0, -14],
+        "forearm_r": [42, 0, 4],
+        "hand_r": [-21, 0, 0],
+        "upper_arm_l": [38, 0, 20],
+        "forearm_l": [76, 0, -6]
+      },
+      "reach": {"foot_r": [0.25, 0.0], "foot_l": [-0.341, 0.844]}
+    },
+    {"at": 15, "reach": {"foot_r": [0.175, 0.0], "foot_l": [-0.124, 0.886]}, "ease": "linear"},
+    {"at": 16, "reach": {"foot_l": [0.1, 0.9]}, "ease": "linear"},
+    {"at": 18, "reach": {"foot_l": [0.541, 0.844]}, "ease": "linear"},
+    {"at": 20, "reach": {"foot_l": [0.925, 0.675]}, "ease": "linear"},
+    {"at": 22, "reach": {"foot_l": [1.197, 0.394]}, "ease": "linear"},
+    {
+      "at": 24,
+      "ease": "ease",
+      "offset": [0.15, -0.72],
+      "pose": {
+        "pelvis": [-2, -4, 0],
+        "torso": [-8, -12, 0],
+        "head": [-6, 10, 0],
+        "upper_arm_r": [27, 0, -14],
+        "forearm_r": [42, 0, 4],
+        "hand_r": [-22, 0, 0],
+        "upper_arm_l": [42, 0, 20],
+        "forearm_l": [76, 0, -6]
+      },
+      "reach": {"foot_r": [-0.5, 0.0], "foot_l": [1.3, 0.0]}
+    },
+    {"at": 25, "reach": {"foot_r": [-0.575, 0.0], "foot_l": [1.225, 0.0]}, "ease": "linear"},
+    {
+      "at": 28,
+      "ease": "out",
+      "offset": [0.15, -0.98],
+      "pose": {
+        "pelvis": [-3, -4, 0],
+        "torso": [-10, -12, 0],
+        "head": [-3, 10, 0],
+        "upper_arm_r": [29, 0, -14],
+        "forearm_r": [40, 0, 4],
+        "hand_r": [-22, 0, 0],
+        "upper_arm_l": [43, 0, 20],
+        "forearm_l": [78, 0, -6]
+      },
+      "reach": {"foot_r": [-0.8, 0.0], "foot_l": [1.0, 0.0]}
+    },
+    {"at": 29, "reach": {"foot_r": [-0.875, 0.0], "foot_l": [0.925, 0.0]}, "ease": "linear"},
+    {"at": 32, "reach": {"foot_r": [-1.1, 0.0]}, "ease": "linear"},
+    {"at": 34, "reach": {"foot_r": [-0.997, 0.394]}, "ease": "linear"},
+    {"at": 36, "reach": {"foot_r": [-0.725, 0.675]}, "ease": "linear"},
+    {
+      "at": 38,
+      "ease": "ease",
+      "offset": [0.1, -0.5],
+      "pose": {
+        "pelvis": [0, -8, 0],
+        "torso": [-6, -14, 0],
+        "head": [-6, 12, 0],
+        "upper_arm_r": [27, 0, -14],
+        "forearm_r": [42, 0, 4],
+        "hand_r": [-21, 0, 0],
+        "upper_arm_l": [38, 0, 20],
+        "forearm_l": [76, 0, -6]
+      },
+      "reach": {"foot_r": [-0.341, 0.844], "foot_l": [0.25, 0.0]}
+    },
+    {"at": 39, "reach": {"foot_r": [-0.124, 0.886], "foot_l": [0.175, 0.0]}, "ease": "linear"},
+    {"at": 40, "reach": {"foot_r": [0.1, 0.9]}, "ease": "linear"},
+    {"at": 42, "reach": {"foot_r": [0.541, 0.844]}, "ease": "linear"},
+    {"at": 44, "reach": {"foot_r": [0.925, 0.675]}, "ease": "linear"},
+    {"at": 46, "reach": {"foot_r": [1.197, 0.394]}, "ease": "linear"},
+    {"at": 47, "reach": {"foot_r": [1.273, 0.211], "foot_l": [-0.425, 0.0]}, "ease": "linear"}
+  ]
+}

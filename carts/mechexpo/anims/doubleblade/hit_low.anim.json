@@ -1,0 +1,21 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Hit low: the Hero's (base), on the Double-blade Hero's rig, ending in its crouch.",
+  "base": "../hero/hit_low.anim.json",
+  "rig": "../../models/doubleblade/doubleblade.rig.json",
+  "allow": [
+    ["forearm_r", "weapon_r"],
+    ["forearm_l", "weapon_l"],
+    ["torso", "thigh_r"],
+    ["torso", "thigh_l"],
+    ["pelvis", "shin_r"]
+  ],
+  "keys": [
+    {"at": 0, "reach": {"foot_r": [-0.13, 0.0]}, "offset": [-0.6, -2.42]},
+    {"at": 3, "offset": [-0.75, -2.42]},
+    {"at": 11, "offset": [-0.5, -2.42]},
+    {"at": 19, "reach": {"foot_r": [-0.13, 0.0]}, "offset": [-0.42, -2.42]}
+  ],
+  "boxes": {"push": {"kind": "push", "rect": [-1.5, 0, 1.5, 7.5]}}
+}
