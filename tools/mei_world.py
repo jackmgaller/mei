@@ -11,7 +11,7 @@ from pathlib import Path
 import shutil
 import sys
 
-from kitcore import jsonio
+from kitcore import jsonio, settings as kitsettings
 from kitcore.cli import parser_class
 from assetkit.geometry import AssetError
 from worldkit.schema import WorldError, published
@@ -98,10 +98,29 @@ def floors(recipe, points, assets=None):
 
 def build_dir(args):
     """The build directory the quick tools take their native tools and cache from: --build-dir,
-    else $B (relative to the repository), else build/."""
-    if args.build_dir is not None: return Path(args.build_dir).resolve()
-    if os.environ.get('B'): return (ROOT/os.environ['B']).resolve()
-    return ROOT/'build'
+    else the settings file's build_dir, else $B (relative to the repository), else build/
+    (kitcore.settings.build_dir)."""
+    return kitsettings.build_dir(getattr(args,'build_dir',None),recipe_settings(args.recipe),root=ROOT)[0]
+
+
+def recipe_settings(path):
+    return kitsettings.find(path,ROOT,WorldError)
+
+
+TOOLS = (('compiler','MEIC','meic'),('runner','RUN','mei-headless'),('probe','PROBE','mei-asset-probe'))
+
+
+def build_tools(args):
+    """build's and preview's native tools, each from its option (--compiler, --runner, --probe),
+    else --build-dir if the command has it, else the settings file's build_dir, else build/
+    (the environment's MEIC, RUN, PROBE and B are not read here: make's world rule passes the
+    tools)."""
+    settings = recipe_settings(args.recipe)
+    out = {}
+    for key,_,executable in TOOLS:
+        out[key] = kitsettings.tool_path(executable,getattr(args,key),f'--{key}',None,getattr(args,'build_dir',None),
+                                         settings,{},ROOT)[0]
+    return out
 
 
 def quick_world(args):
@@ -277,9 +296,10 @@ def parser():
             cmd.add_argument('--world-checker',default='full',metavar='full|skip|N',
                              help='How the World Checker runs: full (the default), skip, or at most N sampled views. '
                                   'Recorded in report.json; refused for a world in enforce mode.')
-            cmd.add_argument('--compiler',type=Path,default=ROOT/'build'/'meic')
-            cmd.add_argument('--runner',type=Path,default=ROOT/'build'/'mei-headless')
-            cmd.add_argument('--probe',type=Path,default=ROOT/'build'/'mei-asset-probe')
+            cmd.add_argument('--compiler',type=Path,help='meic to use (default: BUILD_DIR/meic, BUILD_DIR being the '
+                             'settings file\'s build_dir, else build/).')
+            cmd.add_argument('--runner',type=Path,help='mei-headless to use (default BUILD_DIR/mei-headless).')
+            cmd.add_argument('--probe',type=Path,help='mei-asset-probe to use (default BUILD_DIR/mei-asset-probe).')
             cmd.add_argument('--cache',type=Path,help='Keep the Asset and World Checkers\' results in this directory '
                                                       'and reuse them while their inputs are unchanged.')
             cmd.add_argument('--crack-baseline',metavar='FILE|none',
@@ -305,18 +325,20 @@ def main(argv=None):
             else: print(text)
             return 0 if result['ok'] else 1
         elif args.command in ('build','preview'):
-            jsonio.output(build(args.recipe,args.output,args.compiler.resolve(),args.runner.resolve(),
-                                args.probe.resolve(),args.locked,args.assets,
+            tools = build_tools(args)
+            jsonio.output(build(args.recipe,args.output,tools['compiler'],tools['runner'],
+                                tools['probe'],args.locked,args.assets,
                                 args.command == 'preview' or args.preview,getattr(args,'cell',None),
                                 args.world_checker,args.cache,args.crack_baseline))
         else:
-            _,compiled = compile_source(args.recipe,args.assets)
+            source,compiled = compile_source(args.recipe,args.assets)
             report = compiled.report
             if args.command == 'validate':
                 report = {'ok':True,'name':report['name'],'cells':len(report['cells']),
                           'pack_bytes':report['pack']['bytes'],'ids':report['ids'],'warnings':report['warnings']}
             else:
                 report = summary(report,args.cell)
+                if source.settings.files: report = dict(report,settings=source.settings_report())
             jsonio.output(report)
         return 0
     except (WorldError,AssetError,OSError,ValueError,RecursionError) as error:

@@ -12,7 +12,7 @@ from pathlib import Path
 
 from assetkit.compiler import compile_recipe, collision_recipe, native_bytes, material_manifest
 from assetkit.geometry import AssetError
-from kitcore import jsonio
+from kitcore import jsonio, settings as kitsettings
 from .pack import mesh_triangles
 from .schema import WorldError
 
@@ -33,6 +33,7 @@ class Asset:
     mesh: object = None                  # textured assets: the compiled mesh, placed per region
     materials: dict = None
     declared: object = None              # its declared collision (recipe collision) as an Asset, once used
+    settings: object = None              # kitcore.settings.Settings of the recipe's folder
 
     @property
     def textured(self): return self.mesh is not None
@@ -46,8 +47,16 @@ class Asset:
         return light.get('mode','directional') == 'vertical' or light.get('bake',True) is False
 
     @property
+    def policy(self):
+        """The verification policy in effect: the recipe's own over the verification of the
+        settings file above it (mei-kit.json), key by key; None when neither gives one."""
+        own = self.recipe.get('verification')
+        default = self.settings.get('verification') if self.settings else None
+        return own if default is None else {**default,**(own or {})}
+
+    @property
     def policy_required(self):
-        policy = self.recipe.get('verification')
+        policy = self.policy
         return policy is not None and policy.get('required',True)
 
     def summary(self):
@@ -98,6 +107,7 @@ class Library:
         self.directories = [self.directory]+[Path(d) for d in more]
         self.base_path = base_path
         self.assets = {}
+        self.settings = {}               # folder -> kitcore.settings.Settings
 
     def source_of(self, name, path, file=None):
         """NAME.asset.json in the asset directories (the world's assets, then asset_dirs); a
@@ -113,11 +123,19 @@ class Library:
 
     @staticmethod
     def policy_recipe(asset, runtime):
-        """The recipe the Asset Checker runs: the asset's own, its policy given the world's
-        depth and perspective where it does not set them itself."""
-        extra = {k:True for k in ('depth','perspective') if (runtime or {}).get(k)
-                 and k not in asset.recipe['verification']}
-        return {**asset.recipe,'verification':{**asset.recipe['verification'],**extra}} if extra else asset.recipe
+        """The recipe the Asset Checker runs: the asset's own, with the policy in effect
+        (Asset.policy), given the world's depth and perspective where it does not set them."""
+        policy = asset.policy
+        extra = {k:True for k in ('depth','perspective') if (runtime or {}).get(k) and k not in policy}
+        if policy is asset.recipe.get('verification') and not extra: return asset.recipe
+        return {**asset.recipe,'verification':{**policy,**extra}}
+
+    def settings_of(self, folder):
+        """The settings files above an asset's folder, read once per folder."""
+        folder = Path(folder).resolve()
+        if folder not in self.settings:
+            self.settings[folder] = kitsettings.find_from(folder,error=WorldError)
+        return self.settings[folder]
 
     def collision(self, asset, path, file=None):
         """The asset's declared collision (its recipe's collision section) as an Asset of its
@@ -160,6 +178,14 @@ class Library:
             manifest = material_manifest(mesh,materials,recipe)
             tags = [materials[f.material].get('tag') for f in mesh.faces]
             self.assets[name] = Asset(name,str(source),recipe,binary,manifest,report,tags,relative(source,self.base_path))
+            self.assets[name].settings = self.settings_of(source.parent)
+            if self.assets[name].policy is not recipe.get('verification'):
+                from assetkit.schema import VERIFICATION, validate
+                try:
+                    validate(self.assets[name].policy,VERIFICATION,'/verification')
+                except AssetError as error:
+                    raise WorldError(path,f'Asset {name!r}: the verification in '
+                                     f'{self.assets[name].settings.where("verification")}: {error}',file) from error
             self.assets[name].levels = [native_bytes(m,materials,recipe.get('lighting',{})) for m,_ in mesh.levels or []]
             if mesh.textures:
                 # Placed per region later (worldkit/textures.py); binary is the asset's own

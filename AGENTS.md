@@ -72,6 +72,19 @@ Kit's `verify`, `preview` and `build` take `--build-dir build-mine`, or read `B=
 `MEIC`, `RUN` and `PROBE`) from the environment
 ([ASSETKIT-REFERENCE.md](docs/ASSETKIT-REFERENCE.md#native-tools)):
 `python3 tools/mei_assets.py preview model.asset.json -o build-mine/assets/model --build-dir build-mine --closeups`.
+To stop repeating it, put `{"build_dir": "build-mine"}` in `mei-kit.json` at the top of your own
+checkout or worktree (ignored by git); every kit command on a recipe below it then uses
+`build-mine/`, ahead of `MEIC`, `RUN`, `PROBE` and `B` but after `--build-dir`.
+
+**Settings files.** `mei-kit.json` in a recipe's folder or any folder above it (up to the
+repository's root) holds what the Asset Kit and World Kit commands are otherwise told every time:
+`runtime` (`depth`, `perspective`: how the game draws), `verification` (the assets' default
+policy), `build_dir` and `preview` (the look; `asset-preview.json` is still read). The nearest
+file giving a setting wins; a command-line option beats the recipe, the recipe the settings file,
+the settings file the environment. A world recipe's `runtime` and a settings file must agree.
+Reports say where each value came from (`settings`). The rules are in
+[ASSETKIT-REFERENCE.md](docs/ASSETKIT-REFERENCE.md#settings-file-mei-kitjson) and
+[WORLDKIT-REFERENCE.md](docs/WORLDKIT-REFERENCE.md#settings-file).
 
 Mei Demo, Sound Lab and World Viewer are built only on request (`make build/carts/demo.mei
 build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out. The

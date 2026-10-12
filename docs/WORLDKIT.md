@@ -231,7 +231,9 @@ are in [WORLDPACK.md](WORLDPACK.md#the-console-reader-stdlibworldpackakr).
 `make test-world` (also part of `make test`) runs `tests/test_worldkit.py`, which builds the
 examples and runs them on the console, and `tests/test_mochi.py`; `tests/test_worldverify.py`,
 `tests/test_worldpack.py` and `tests/test_worldcache.py` test the World Checker, the pack and the
-checkers' cache.
+checkers' cache. `test_worldkit.py`'s `SettingsFileTests` cover the settings
+file: the runtime from it, a contradicting one refused, an asset folder's default policy and the
+`settings_runtime` warning, the quick tools' cache noticing a new file, and the build directory.
 
 ## Where to look next
 

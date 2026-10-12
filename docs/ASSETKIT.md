@@ -39,11 +39,16 @@ build-mine/mei-headless build-mine/mei-asset-probe` once):
    `report.json` at `preview.cameras.views[i].cost` ([Camera
    views](ASSETKIT-REFERENCE.md#camera-views-at-world-scale)). With a required policy, `build` and
    `preview` stop before rendering on flush contacts. Give the views the game's sky and ground with
-   `--background` and `--ground`, or once for a cart's assets in an `asset-preview.json` ([The
+   `--background` and `--ground`, or once for a cart's assets in a settings file ([The
    look](ASSETKIT-REFERENCE.md#the-look-background-and-ground)).
 4. **`verify FILE --build-dir build-mine`** until `ok`; then the asset is done. Make the policy
    required in the recipe (`"verification": {"required": true, "depth": true, "perspective":
    true}` for a depth-mode game) so every later build checks it.
+
+A **settings file**, `mei-kit.json` in the recipe's folder or a folder above it, states once what
+these commands are otherwise told every time: the build directory (so `--build-dir` can go), how
+the game draws (`--depth`, `--perspective`), the default verification policy and the look
+([Settings file](ASSETKIT-REFERENCE.md#settings-file-mei-kitjson)).
 
 | Look up | Where |
 |---|---|

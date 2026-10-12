@@ -2361,5 +2361,97 @@ class OcclusionTests(unittest.TestCase):
         self.assertIn('occlusion_leak', [f['code'] for f in r['threshold_failures']])
 
 
+class SettingsFileTests(unittest.TestCase):
+    """mei-kit.json above a world recipe and its assets (docs/WORLDKIT-REFERENCE.md, "Settings file")."""
+
+    def test_the_runtime_comes_from_the_settings_file_when_the_recipe_has_none(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            (Path(tmp)/'mei-kit.json').write_text('{"runtime": {"depth": true, "perspective": true}}')
+            source, _ = compile_source(str(ex.world))
+            self.assertEqual(source.runtime, {'depth': True, 'perspective': True})
+            kit = str((Path(tmp)/'mei-kit.json').resolve())
+            self.assertEqual(source.runtime_from['depth'], {'value': True, 'from': kit})
+            code, report = cli('inspect', ex.world)
+            self.assertEqual(code, 0, report)
+            self.assertEqual(report['settings'], {'files': [kit], 'runtime': {'depth': {'value': True, 'from': kit},
+                                                                               'perspective': {'value': True, 'from': kit}}})
+            # the recipe's own runtime, where it agrees
+            ex.edit(lambda w: w.update(runtime={'depth': True}))
+            source, _ = compile_source(str(ex.world))
+            self.assertEqual(source.runtime_from['depth']['from'], 'recipe')
+            self.assertEqual(source.runtime_from['perspective']['from'], kit)
+
+    def test_a_runtime_the_settings_file_contradicts_is_an_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            ex.edit(lambda w: w.update(runtime={'depth': False}))
+            (Path(tmp)/'mei-kit.json').write_text('{"runtime": {"depth": true}}')
+            with self.assertRaises(WorldError) as caught:
+                ex.compile()
+            self.assertEqual(caught.exception.path, '/runtime/depth')
+            self.assertIn('mei-kit.json says true', str(caught.exception))
+            code, report = cli('validate', ex.world)
+            self.assertEqual((code, report['errors'][0]['path']), (1, '/runtime/depth'))
+
+    def test_without_a_settings_file_the_runtime_is_the_recipes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            source, _ = compile_source(str(ex.world))
+            self.assertEqual(source.runtime, {})
+            self.assertEqual(source.runtime_from['depth'], {'value': False, 'from': 'default'})
+            code, report = cli('inspect', ex.world)
+            self.assertNotIn('settings', report)
+
+    def test_an_asset_folders_settings_give_the_default_policy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            self.assertEqual(ex.compile().report['assets']['ramp']['verification'], 'none')
+            (ex.dir/'assets'/'mei-kit.json').write_text(
+                '{"verification": {"required": true, "depth": true}, "runtime": {"depth": true}}')
+            compiled = ex.compile()
+            self.assertEqual(compiled.report['assets']['ramp']['verification'], 'required')
+            ramp = compiled.library.assets['ramp']
+            self.assertEqual(compiled.library.policy_recipe(ramp, None)['verification'], {'required': True, 'depth': True})
+            self.assertNotIn('verification', ramp.recipe, 'the recipe itself is unchanged')
+            # coin's own policy over the settings file's, key by key
+            coin = compiled.library.assets['coin']
+            self.assertEqual(coin.policy['yaw_steps'], 24)
+            self.assertTrue(coin.policy['depth'])
+            # the asset folder says depth, the world does not: a warning
+            warning = [w for w in compiled.report['warnings'] if w['code'] == 'settings_runtime']
+            self.assertEqual(len(warning), 1)
+            self.assertIn('runtime.depth true', warning[0]['message'])
+            (ex.dir/'assets'/'mei-kit.json').write_text('{"verification": {"yaw_steps": 2}}')
+            with self.assertRaisesRegex(WorldError, 'mei-kit.json'):
+                ex.compile()
+
+    def test_the_quick_tools_notice_a_settings_file(self):
+        from worldkit.quick import load_world
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            cache = Path(tmp)/'cache'
+            self.assertFalse(load_world(str(ex.world), None, cache).cached)
+            self.assertTrue(load_world(str(ex.world), None, cache).cached)
+            (Path(tmp)/'mei-kit.json').write_text('{"runtime": {"depth": true}}')
+            world = load_world(str(ex.world), None, cache)
+            self.assertFalse(world.cached)
+            self.assertEqual(world.meta['settings']['runtime'], {'depth': True})
+
+    def test_the_build_directory_of_the_quick_tools(self):
+        import argparse
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            args = argparse.Namespace(recipe=str(ex.world), build_dir=None)
+            (Path(tmp)/'mei-kit.json').write_text('{"build_dir": "kit-build"}')
+            self.assertEqual(mei_world.build_dir(args), (Path(tmp)/'kit-build').resolve())
+            args.build_dir = Path(tmp)/'given'
+            self.assertEqual(mei_world.build_dir(args), (Path(tmp)/'given').resolve())
+            build = argparse.Namespace(recipe=str(ex.world), compiler=None, runner=Path('/x/run'), probe=None)
+            tools = mei_world.build_tools(build)
+            self.assertEqual(tools['compiler'], (Path(tmp)/'kit-build'/'meic').resolve())
+            self.assertEqual(tools['runner'], Path('/x/run').resolve())
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -196,15 +196,81 @@ Each is taken from the first of:
 1. its own option: `--compiler PATH`, `--runner PATH`, `--probe PATH`;
 2. `--build-dir DIR`: `DIR/meic`, `DIR/mei-headless`, `DIR/mei-asset-probe`, the directory
    `make B=DIR` builds into;
-3. its environment variable, `MEIC`, `RUN` or `PROBE` (as the test suites read them);
-4. the environment variable `B`, a build directory relative to the repository (as make's `B`);
-5. `build/`.
+3. `build_dir` in the nearest settings file ([Settings file](#settings-file-mei-kitjson)),
+   relative to that file's folder;
+4. its environment variable, `MEIC`, `RUN` or `PROBE` (as the test suites read them);
+5. the environment variable `B`, a build directory relative to the repository (as make's `B`);
+6. `build/`.
 
 A command checks the tools it needs before it starts (`verify`: compiler and probe; `preview`:
 compiler and runner, and the probe when the recipe requires the check or `--verify` is given). A
 missing tool is an error at `/arguments/tools` naming the file, the directory it looked in, which
 of the above chose it, the make command that builds it (`make B=build-mine build-mine/meic`) and
 how to point the kit elsewhere.
+
+### Settings file: mei-kit.json
+
+The same facts tend to be repeated on every command and in every recipe of a cart: the build
+directory, that the game draws with the depth buffer, the verification policy, the preview's sky
+and ground. A settings file states them once for the recipes in its folder and every folder
+below it:
+
+```json
+{
+  "runtime": {"depth": true, "perspective": true},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "build_dir": "build-mine",
+  "preview": {"background": ["#70d0f8", "#fffcf4"], "ground": "#eef5fc"}
+}
+```
+
+| Setting | Meaning |
+|---|---|
+| `runtime.depth`, `runtime.perspective` | The game draws with the depth buffer, and with perspective-correct texturing: what `--depth` and `--perspective` say for one run of `build` and `preview`. `verify` judges in depth mode by it where the policy does not set `depth` |
+| `verification` | The default verification policy ([Recipe contract](ASSETKIT.md#recipe-contract)) of the recipes below: a recipe's own `verification` is laid over it key by key, and a recipe without one gets it whole (so it is required, unless it says `"required": false`) |
+| `build_dir` | The build directory the native tools are taken from, relative to the settings file's folder ([Native tools](#native-tools)) |
+| `preview` | The look, `{"background", "ground"}` as in a look file ([The look](#the-look-background-and-ground)) |
+
+Every setting is optional; any other key is an error at `/settings/KEY` naming the file, and
+`verification` and `preview` are checked as a recipe's policy and a look file are.
+
+**Where it is found.** A command looks in the recipe's folder, then in each folder above it, up
+to the repository's root (this repository's, or the first folder holding `.git`). Each setting
+comes from the nearest file that gives it, so a cart can say `runtime` once at its top and a
+folder of its models a `preview` of its own: `runtime.depth` and `runtime.perspective` are taken
+separately, `verification`, `build_dir` and `preview` each whole. An `asset-preview.json` in a
+folder still gives that folder's `preview`; a folder with both it and a `mei-kit.json` that has a
+`preview` is an error. A recipe read from stdin (`-`) has no settings file. The World Kit reads
+the same files ([WORLDKIT.md](WORLDKIT-REFERENCE.md#settings-file)).
+
+**Precedence.** Where a value can also be given elsewhere, the first of these that gives it
+wins:
+
+| Value | Order |
+|---|---|
+| A native tool | `--compiler`/`--runner`/`--probe`; `--build-dir`; the settings file's `build_dir`; `MEIC`/`RUN`/`PROBE`; `B`; `build/` |
+| How the game draws (`build`, `preview`, and `verify` where the policy is silent) | `--depth`, `--perspective` (they can only turn it on); the settings file's `runtime`; off |
+| Each key of the verification policy | `verify`'s own options (`--depth`, `--yaw-steps`, ...); the recipe's `verification`; the settings file's `verification`; for `depth` and `perspective`, how the game draws (the row above); the built-in default |
+| Whether `build` and `preview` run the Asset Checker | `--verify`; the policy in effect's `required` (default true when there is a policy); not run |
+| The look | `--background` and `--ground`, each; `--look FILE` (or `none`); the nearest settings file's `preview`; none |
+
+That is: a command-line option, then the recipe, then the settings file, then the environment,
+then the built-in default. How the game draws is not a policy: in `build` and `preview` it fills
+the policy's `depth` and `perspective` only where neither the recipe nor the settings file's
+`verification` sets them, so an asset that says `"depth": false` is still checked without depth
+in a depth-mode cart (as in a world, [WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#depth-mode)).
+
+**Reports.** The output of `build`, `preview` and `verify` (`--json`) has `settings`: the files
+read (`files`), and where each value in effect came from, `{"value", "from"}`, `from` being a
+file, `recipe`, an option (`--depth`), `arguments` (`verify`'s options), `runtime: FILE` (a policy
+key filled from how the game draws) or `default`; the native tools with the reason each was
+chosen (`tools`). `inspect` and `report.json` have it only when a settings file applied, so a
+build without one writes the files it wrote before; the summaries add a `settings:` line then.
+The recipe copied to the output (`NAME.asset.json`) is always the recipe as written.
+
+No cart in this repository has a settings file yet: 310 of the recipes in
+`carts/garden/shrinetown/assets/` repeat `{"required": true, "depth": true, "perspective": true}`,
+which one file there could say once (their generators write it today).
 
 ### Camera views at world scale
 
@@ -316,10 +382,12 @@ the asset would otherwise preview without them. Seen from below y = 0 (a `--came
 everything above the ground is the part behind it. HUD text is dark on a light background
 (luma above 140).
 
-**A look file** sets the look once for a cart's assets: `asset-preview.json`, in the recipe's
-folder or any folder above it up to the repository's root (the nearest wins), applies to every
-preview of those recipes; `--background` and `--ground` override its values, `--look FILE` names
-another and `--look none` ignores it. A recipe read from stdin has none unless given. Fall Line's,
+**A look file** sets the look once for a cart's assets: the `preview` of a settings file
+(`mei-kit.json`, [Settings file](#settings-file-mei-kitjson)) or an `asset-preview.json` (the
+look alone, the older form), in the recipe's folder or any folder above it up to the
+repository's root (the nearest wins), applies to every preview of those recipes; `--background`
+and `--ground` override its values, `--look FILE` names another and `--look none` ignores it. A
+recipe read from stdin has none unless given. Fall Line's,
 `carts/fallline/models/asset-preview.json`, is its sky and snow:
 
 ```json
@@ -1342,7 +1410,9 @@ as in a depth-mode world; `depth_views` or `verify --depth-views N` sets how man
 below.) Both default to false, and an asset without them is
 checked exactly as before (the same verdict, counts and views). A world recipe with
 `"runtime": {"depth": true}` checks its assets so unless their policy says otherwise
-([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#depth-mode)). With `depth`:
+([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#depth-mode)), and so does a settings file's
+`runtime` or `verification` for the recipes below it ([Settings
+file](#settings-file-mei-kitjson)). With `depth`:
 
 - The verification cart imports `depth.akr` and calls `render_depth(true)` (and
   `render_perspective(true)`) before drawing; coverage and the expected face come from the same
@@ -2020,7 +2090,12 @@ and blend byte (on plain, palette-backed and textured faces), the material manif
 face ranges, the `.mtl` and glTF, and (with NumPy and the native tools) that the checker judges a
 core through its glass, fails a console drawing the glass opaque or leaving out a glass face, finds
 the ordering table's mistakes around the glass without the depth buffer, judges a blended cutout per
-texel, and that `preview` draws the glass blended. It also runs as part of `make test` when Python
+texel, and that `preview` draws the glass blended. `SettingsFileTests` checks `mei-kit.json`:
+the nearest file per setting, the legacy `asset-preview.json`, the walk stopping at a `.git`, bad
+files named in the error, the build directory's precedence, the recipe's policy over the file's,
+a required check and its tools coming from the file, `report.json` and `NAME.asset.json`
+unchanged without one, the look from it, and (with NumPy and the native tools) `verify` judging
+in depth mode by its `runtime`. It also runs as part of `make test` when Python
 is available. Pure Python tests can run independently; native render tests skip if the binaries are
 absent:
 

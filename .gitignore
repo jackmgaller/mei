@@ -2,6 +2,9 @@
 build/
 build-*/
 
+# A checkout's own kit settings (its build directory, say): tools/kitcore/settings.py
+/mei-kit.json
+
 # OS, editor and tooling
 .DS_Store
 __pycache__/

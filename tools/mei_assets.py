@@ -13,12 +13,12 @@ import re
 import shutil
 import sys
 
-from kitcore import jsonio, output as staged
+from kitcore import jsonio, output as staged, settings as kitsettings
 from kitcore.cli import parser_class
 from assetkit.compiler import (AssetError, compile_recipe, native_bytes,
                                editor_project, obj_text, import_obj, import_source,
                                material_manifest, palette_bytes, texture_outputs, SWATCH)
-from assetkit.preview import (source, render, parse_camera, cameras_file, ground_files, make_look, look_file, find_look,
+from assetkit.preview import (source, render, parse_camera, cameras_file, ground_files, make_look, look_file,
                               LOOK_FILE)
 from assetkit import summary
 from assetkit import gltf
@@ -44,9 +44,11 @@ def drawn_with(recipe, mesh, drawn=None):
     return bool(mesh.textures) and recipe.get('verification',{}).get('depth',False),None
 
 
-def artifacts(recipe, mesh, materials, report, drawn=None, look=None):
+def artifacts(recipe, mesh, materials, report, drawn=None, look=None, checked=None):
+    """checked: the recipe with the policy in effect (with_policy()), when it is not the recipe's
+    own; NAME.asset.json is always the recipe as written."""
     name = recipe['name']
-    depth,perspective = drawn_with(recipe,mesh,drawn)
+    depth,perspective = drawn_with(checked or recipe,mesh,drawn)
     binary = native_bytes(mesh,materials,recipe.get('lighting',{}))
     import hashlib
     report['mesh_sha256'] = hashlib.sha256(binary).hexdigest()
@@ -94,22 +96,67 @@ class VerificationFailure(AssetError):
 TOOLS = (('compiler','MEIC','meic'),('runner','RUN','mei-headless'),('probe','PROBE','mei-asset-probe'))
 
 
-def tool_paths(args, environ=None):
+def tool_paths(args, environ=None, settings=None):
     """{tool: (path, where it came from)} for the native tools a command takes, each from the
-    first of: its own option (--compiler, --runner, --probe), --build-dir DIR, its environment
-    variable (MEIC, RUN, PROBE, as the test suites read them), $B (make's build directory,
-    relative to the repository), build/."""
+    first of: its own option (--compiler, --runner, --probe), --build-dir DIR, the settings
+    file's build_dir, its environment variable (MEIC, RUN, PROBE, as the test suites read them),
+    $B (make's build directory, relative to the repository), build/ (kitcore.settings.tool_path)."""
     environ = os.environ if environ is None else environ
     out = {}
     for key,variable,executable in TOOLS:
         if not hasattr(args,key): continue
-        given,build_dir = getattr(args,key),getattr(args,'build_dir',None)
-        if given is not None: path,how = given,f'--{key} {given}'
-        elif build_dir is not None: path,how = Path(build_dir)/executable,f'--build-dir {build_dir}'
-        elif environ.get(variable): path,how = Path(environ[variable]),f'{variable}={environ[variable]}'
-        elif environ.get('B'): path,how = ROOT/environ['B']/executable,f'B={environ["B"]}'
-        else: path,how = ROOT/'build'/executable,'the default, build/'
-        out[key] = (path.resolve(),how)
+        out[key] = kitsettings.tool_path(executable,getattr(args,key),f'--{key}',variable,getattr(args,'build_dir',None),
+                                         settings,environ,ROOT)
+    return out
+
+
+def recipe_settings(path):
+    """The settings files that apply to the recipe at path (kitcore.settings.find)."""
+    return kitsettings.find(path,ROOT,AssetError)
+
+
+def policy(recipe, settings):
+    """(the verification policy in effect, {key: where it came from}): the recipe's own policy
+    over the settings file's verification, key by key; None when neither gives one. The settings'
+    policy is checked as a recipe's is."""
+    own = recipe.get('verification')
+    default = settings.get('verification') if settings else None
+    if default is None:
+        return own,{k:'recipe' for k in own or {}}
+    from assetkit.schema import VERIFICATION, validate
+    try:
+        validate(default,VERIFICATION,'/settings/verification')
+    except AssetError as error:
+        raise AssetError(error.path,f'{settings.where("verification")}: {error}') from error
+    merged = {**default,**(own or {})}
+    return merged,{k:('recipe' if k in (own or {}) else settings.where('verification')) for k in merged}
+
+
+def with_policy(recipe, effective):
+    """The recipe as the Asset Checker and the previews see it: its policy replaced by the policy
+    in effect (the recipe itself when that is its own)."""
+    if effective == recipe.get('verification'): return recipe
+    return {**recipe,'verification':effective}
+
+
+def runtime(args, settings):
+    """{'depth', 'perspective': {'value', 'from'}}: --depth and --perspective, else the settings
+    file's runtime, else false."""
+    return {k:kitsettings.pick((True if getattr(args,k,False) else None,f'--{k}'),
+                               (settings.get('runtime.'+k),settings.where('runtime.'+k)),default=False)
+            for k in kitsettings.RUNTIME}
+
+
+def settings_report(settings, drawn=None, effective=None, sources=None, tools=None, more=None):
+    """report['settings']: the settings files read, and where each value in effect came from.
+    more: {policy key: (value, where from)} that the command line or the runtime sets over the
+    policy (verify's options; depth and perspective from the runtime where the policy is silent)."""
+    out = {'files':settings.shown_files()}
+    if drawn is not None: out['runtime'] = drawn
+    if effective is not None or more:
+        out['verification'] = {k:{'value':v,'from':sources[k]} for k,v in (effective or {}).items()}
+        out['verification'].update({k:{'value':v,'from':how} for k,(v,how) in (more or {}).items()})
+    if tools: out['tools'] = {k:{'path':str(p),'from':how} for k,(p,how) in tools.items()}
     return out
 
 
@@ -265,8 +312,12 @@ def folder(input_path):
 
 
 def build(recipe, directory, preview=False, compiler=None, runner=None, input_path=None, verification=False, probe=None,
-          drawn=None, shots=None, flush_check=False):
-    """flush_check (the CLI's build and preview): check for flush contacts first (flush_contacts),
+          drawn=None, shots=None, flush_check=False, effective=None, settings=None):
+    """effective: the recipe with the verification policy in effect (with_policy(): the recipe's
+    own over the settings file's), which the checks and previews use; the recipe as written is
+    what NAME.asset.json holds. settings: report['settings'] (settings_report()), kept in
+    report.json only when a settings file applied.
+    flush_check (the CLI's build and preview): check for flush contacts first (flush_contacts),
     put them in the report, and stop before rendering or writing anything when the Asset Checker
     is to run and would fail them.
     drawn: {'depth': True, 'perspective': True} or part of it (build/preview --depth and
@@ -277,9 +328,11 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
     ground of every view). When verification fails and a preview was asked for, the
     previews are still rendered, marked as failing, into verification-failed/preview/."""
     mesh,materials,report = compile_recipe(recipe,folder(input_path))
+    seen = effective or recipe
+    if settings and settings['files']: report['settings'] = settings
     views = camera_views(shots,report) if preview else []     # named parts checked before any work
     if flush_check:
-        policy = recipe.get('verification')
+        policy = seen.get('verification')
         checking = verification or (policy is not None and policy.get('required',True))
         depth = (policy or {}).get('depth',bool((drawn or {}).get('depth')))
         flush = flush_contacts(mesh,depth)
@@ -294,7 +347,8 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
         if checking and (policy or {}).get('geometry','error') != 'warn' and flush.get('count'):
             raise FlushContacts(flush)
         report['flush_contacts'] = flush
-    files = artifacts(recipe,mesh,materials,report,drawn,(shots or {}).get('look') if preview else None)
+    files = artifacts(recipe,mesh,materials,report,drawn,(shots or {}).get('look') if preview else None,
+                      seen if seen is not recipe else None)
     directory = Path(directory).resolve()
     if input_path and input_path != '-':
         source_path = Path(input_path).resolve()
@@ -304,12 +358,12 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
     # Stage preview too, so compiler/render failures leave the previous build intact.
     with staged.staging(directory,'.mei-assets-') as stage:
         for name,data in files.items(): (stage/name).write_bytes(data)
-        policy=recipe.get('verification')
+        policy=seen.get('verification')
         if verification or (policy is not None and policy.get('required',True)):
             from assetkit.visibility import verify
-            policy=recipe.get('verification',{})
+            policy=seen.get('verification',{})
             profile={k:True for k in ('depth','perspective') if (drawn or {}).get(k) and k not in policy}
-            checked=verify(recipe,profile or None,directory=stage,compiler=compiler,probe=probe,folder=folder(input_path))
+            checked=verify(seen,profile or None,directory=stage,compiler=compiler,probe=probe,folder=folder(input_path))
             if not checked['ok']:
                 failure=directory/'verification.failed.json'
                 if input_path and input_path!='-' and Path(input_path).resolve()==failure:
@@ -327,7 +381,7 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
                     renders_dir=directory/'verification-failed'/'preview'
                     shutil.rmtree(renders_dir,ignore_errors=True)
                     try:
-                        shown=previews(stage,recipe,mesh,report,compiler,runner,drawn,shots,views,failing=True)
+                        shown=previews(stage,seen,mesh,report,compiler,runner,drawn,shots,views,failing=True)
                     except AssetError as error:
                         checked['preview']={'error':str(error)}
                     else:
@@ -344,7 +398,7 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
                 raise error
             report['verification']=checked
         if preview:
-            report['preview'] = previews(stage,recipe,mesh,report,compiler,runner,drawn,shots,views)
+            report['preview'] = previews(stage,seen,mesh,report,compiler,runner,drawn,shots,views)
             report['preview']['contact'] = str(directory/'contact.png')
             if 'cameras' in report['preview']:
                 report['preview']['cameras']['contact'] = str(directory/'cameras.png')
@@ -428,7 +482,8 @@ def parser():
         cmd.add_argument('--strict',action='store_true',help='Treat topology warnings as errors.')
         if name in ('build','preview','verify'):
             cmd.add_argument('--build-dir',type=Path,help='The Mei build directory with meic, mei-headless and mei-asset-probe '
-                             '(make B=DIR). Default: $MEIC, $RUN and $PROBE for each tool, else $B, else build/.')
+                             '(make B=DIR). Default: build_dir in mei-kit.json, else $MEIC, $RUN and $PROBE for each tool, else $B, '
+                             'else build/.')
             cmd.add_argument('--compiler',type=Path,help='meic to use (overrides --build-dir).')
             cmd.add_argument('--probe',type=Path,help='mei-asset-probe to use (overrides --build-dir).')
         if name in ('build','preview'):
@@ -444,14 +499,16 @@ def parser():
             cmd.add_argument('--part',action='append',default=[],metavar='ID',help='A world-scale view framing this part (an id in inspect\'s parts). Repeatable.')
             cmd.add_argument('--closeups',action='store_true',help='Automatic world-scale views: eye_level, and close-ups along a long asset.')
             cmd.add_argument('--upscale',type=int,default=2,choices=[1,2,3,4],help='Whole-number scale of the camera views\' images (default 2: 640 x 480).')
-            cmd.add_argument('--depth',action='store_true',help='The asset is drawn with the depth buffer, as in a world whose runtime says so: preview so, and verify in depth mode where the recipe\'s policy does not set depth.')
-            cmd.add_argument('--perspective',action='store_true',help='The asset is drawn with perspective-correct texturing (preview so; policy perspective where the recipe does not set it).')
+            cmd.add_argument('--depth',action='store_true',help='The asset is drawn with the depth buffer, as in a world whose runtime says so: preview so, and verify in depth mode where the policy does not set depth. '
+                             f'Default: the runtime in {kitsettings.FILE}, else off.')
+            cmd.add_argument('--perspective',action='store_true',help='The asset is drawn with perspective-correct texturing (preview so; policy perspective where the policy does not set it). Default: as --depth.')
             cmd.add_argument('--background',metavar='#RRGGBB[,#RRGGBB]',help='The views\' background: one colour, or two for a '
                              'vertical gradient, top then bottom. Default: the look file\'s, else dark grey.')
             cmd.add_argument('--ground',metavar='#RRGGBB|none',help='Draw the ground, y = 0, in this colour (a faint checker of '
                              'metre tiles); what lies below it shows through, tinted. Default: the look file\'s, else none.')
             cmd.add_argument('--look',metavar='FILE|none',help=f'A look file ({{"background", "ground"}}). Default: the nearest '
-                             f'{LOOK_FILE} in the recipe\'s folder or above it; none: no look file.')
+                             f'settings file\'s "preview" ({kitsettings.FILE}, or {LOOK_FILE}) in the recipe\'s folder or '
+                             'above it; none: no look file.')
             if name == 'preview':
                 cmd.add_argument('--json',action='store_true',help='Print the full report as JSON (default: a one-screen summary).')
         elif name=='verify':
@@ -504,23 +561,27 @@ def parser():
     return p
 
 
-def look_for(args):
+def look_for(args, settings=None):
     """The views' look (make_look()): --background and --ground over the look file's (--look FILE,
-    else the nearest LOOK_FILE above the recipe, unless --look none)."""
+    else the nearest settings file's preview: a mei-kit.json's "preview" or a LOOK_FILE, unless
+    --look none)."""
     given = {}
     path = None
     if args.look and args.look != 'none':
         path = Path(args.look)
-    elif not args.look:
-        path = find_look(args.recipe,ROOT)
-    if path:
         given = look_file(path)
+    elif not args.look:
+        settings = recipe_settings(args.recipe) if settings is None else settings
+        path = settings.file('preview')
+        given = settings.get('preview',{})
+    if path:
         try: path = path.resolve().relative_to(ROOT)
         except ValueError: path = path.resolve()
     background = args.background if args.background is not None else given.get('background')
     ground = args.ground if args.ground is not None else given.get('ground')
     source = ', '.join(([str(path)] if path else [])+(['arguments'] if args.background or args.ground else [])) or None
-    return make_look(background,ground,'/arguments' if not path else '/look',source)
+    where = '/arguments' if not path else '/settings/preview' if path.name == kitsettings.FILE else '/look'
+    return make_look(background,ground,where,source)
 
 
 def text_output(args):
@@ -624,21 +685,33 @@ def main(argv=None):
             if args.strict and report['warnings']:
                 output(dict(report,ok=False,errors=[{'path':'/nodes','message':'Topology warnings rejected by --strict.'}]))
                 return 1
+            settings = recipe_settings(args.recipe)
+            effective,sources = policy(recipe,settings)
+            seen = with_policy(recipe,effective)
             if args.command == 'inspect':
-                inspect_extras(recipe,mesh,report)
-            tools = tool_paths(args)
+                inspect_extras(seen,mesh,report)
+                if settings.files:
+                    report['settings'] = settings_report(settings,effective=effective,sources=sources)
+            tools = tool_paths(args,settings=settings)
             if args.command in ('build','preview'):
-                drawn = {k:True for k in ('depth','perspective') if getattr(args,k)}
+                given = runtime(args,settings)
+                drawn = {k:True for k,v in given.items() if v['value']}
                 preview = args.command == 'preview' or args.preview
-                policy = recipe.get('verification')
-                checking = args.verify or (policy is not None and policy.get('required',True))
+                checking = args.verify or (effective is not None and effective.get('required',True))
                 require_tools(tools,(['compiler','runner'] if preview else [])+(['compiler','probe'] if checking else []))
                 shots = {'cameras':[parse_camera(text,k) for k,text in enumerate(args.camera)],'parts':args.part,
-                         'closeups':args.closeups,'upscale':args.upscale,'look':look_for(args)}
+                         'closeups':args.closeups,'upscale':args.upscale,'look':look_for(args,settings)}
                 if args.cameras:
                     shots['cameras'] = cameras_file(load(str(args.cameras)))+shots['cameras']
+                used = {k:v for k,v in tools.items() if k in (['compiler','runner'] if preview else [])
+                        +(['compiler','probe'] if checking else [])}
+                filled = {k:(True,'runtime: '+v['from']) for k,v in given.items()
+                          if v['value'] and checking and k not in (effective or {})}
+                about = settings_report(settings,given,effective,sources,used,filled)
                 report = build(recipe,args.output,preview,tools['compiler'][0],tools['runner'][0],args.recipe,args.verify,
-                               tools['probe'][0],drawn,shots,flush_check=True)
+                               tools['probe'][0],drawn,shots,flush_check=True,effective=seen if seen is not recipe else None,
+                               settings=about)
+                report['settings'] = about
             elif args.command=='verify':
                 require_tools(tools,['compiler','probe'])
                 from assetkit.visibility import verify
@@ -654,9 +727,18 @@ def main(argv=None):
                 if args.yaw_range is not None:profile['yaw_range_degrees']=[float(n) for n in args.yaw_range.split(',')]
                 for key in ('pitches','distances'):
                     if getattr(args,key) is not None:profile[key]=[float(n) for n in getattr(args,key).split(',')]
+                # without the options, the settings file's runtime, where the policy does not say
+                given = runtime(args,settings)
+                more = {k:(v,'arguments') for k,v in profile.items()}
+                for k,v in given.items():
+                    if v['value'] and k not in profile and k not in (effective or {}):
+                        profile[k] = True
+                        more[k] = (True,'runtime: '+v['from'])
                 if args.output and args.recipe!='-' and (Path(args.output).resolve()/'verification.json')==Path(args.recipe).resolve():
                     raise AssetError('/output','Verification report would overwrite the source recipe.')
-                report=verify(recipe,profile,args.output,tools['compiler'][0],tools['probe'][0],folder(args.recipe))
+                report=verify(seen,profile,args.output,tools['compiler'][0],tools['probe'][0],folder(args.recipe))
+                report['settings']=settings_report(settings,given,effective,sources,
+                                                   {k:v for k,v in tools.items() if k in ('compiler','probe')},more)
             if text_output(args):
                 print(summary.preview_text(report) if args.command == 'preview' else
                       summary.verify_text(report,compiled,args.output))

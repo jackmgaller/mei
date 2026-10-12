@@ -50,10 +50,14 @@ def _inputs(source, compiled, assets_dir):
     from .build import lock_path
     from .cache import file_hash
     w = source.world
+    from kitcore.settings import candidates
     files = [source.world_path, source.game_path, lock_path(source)]
+    # the settings files the runtime may come from, present or not (one appearing is a change)
+    files += candidates(source.world_path) if source.world_path else []
     files += [Path(cs.file) for cs in source.cells if cs.file]
     for asset in compiled.library.assets.values():
         files.append(Path(asset.file))
+        files += candidates(asset.file)
         files += [Path(asset.file).parent/name for name in image_files(asset.recipe)]
     files += [Path(f) for f in compiled.terrain_files]
     for mat in w.get('terrain', {}).get('materials', {}).values():
@@ -163,7 +167,7 @@ def snapshot(source, compiled):
             'recipe': str(source.world_path) if source.world_path else None,
             'cell_size': w['grid']['cell_size'],
             'settings': {'verification': w.get('verification', {}),
-                         'runtime': {k: bool(v) for k, v in w.get('runtime', {}).items() if k in ('depth', 'perspective')},
+                         'runtime': {k: bool(v) for k, v in source.runtime.items()},
                          'probe': probe},
             'layers': [[name, bool(spec.get('on'))] for name, spec in w.get('layers', {}).items()],
             'regions': list(w['regions']), 'cells': cells, 'textures': textures}

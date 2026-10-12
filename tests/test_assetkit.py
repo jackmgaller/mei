@@ -3411,5 +3411,167 @@ class BlendTests(unittest.TestCase):
         self.assertLess(centre['half'][2],centre[None][2]-40)
 
 
+class SettingsFileTests(unittest.TestCase):
+    """mei-kit.json (tools/kitcore/settings.py; docs/ASSETKIT-REFERENCE.md, "Settings file"): found above the
+    recipe, the nearest file per setting, and each value's source in the report."""
+
+    def tree(self, tmp, files):
+        """files: {relative path: JSON value}; returns the root, resolved."""
+        root = Path(tmp).resolve()
+        for rel,value in files.items():
+            (root/rel).parent.mkdir(parents=True,exist_ok=True)
+            (root/rel).write_text(json.dumps(value) if not isinstance(value,str) else value)
+        return root
+
+    def run_cli(self, *args, env=None):
+        environ = {k:v for k,v in os.environ.items() if k not in ('MEIC','RUN','PROBE','B')}
+        result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),*map(str,args)],capture_output=True,text=True,
+                                env={**environ,**(env or {})})
+        self.assertNotIn('Traceback',result.stderr)
+        return result,json.loads(result.stdout)
+
+    def test_the_nearest_file_gives_each_setting(self):
+        from kitcore import settings as S
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp,{'mei-kit.json':{'runtime':{'depth':True,'perspective':True},'build_dir':'build-mine',
+                                                  'verification':{'required':True,'depth':True}},
+                                  'cart/models/mei-kit.json':{'runtime':{'perspective':False}},
+                                  'cart/models/asset-preview.json':{'ground':'#eef5fc'},
+                                  'cart/models/pine/pine.asset.json':'{}'})
+            s = S.find(root/'cart/models/pine/pine.asset.json',root)
+            self.assertEqual(s.files,[root/'cart/models/mei-kit.json',root/'cart/models/asset-preview.json',root/'mei-kit.json'])
+            self.assertEqual((s.get('runtime.depth'),s.where('runtime.depth')),(True,'mei-kit.json'))
+            self.assertEqual((s.get('runtime.perspective'),s.where('runtime.perspective')),(False,'cart/models/mei-kit.json'))
+            self.assertEqual(s.where('preview'),'cart/models/asset-preview.json','a legacy look file is read')
+            self.assertEqual(S.build_dir(None,s,{},root)[0],root/'build-mine','relative to the file\'s folder')
+            self.assertEqual(S.find('-',root).files,[],'stdin has no settings')
+            # the walk stops at the repository root (here: root/cart, as if it held .git)
+            (root/'cart'/'.git').mkdir()
+            self.assertEqual(S.find(root/'cart/models/pine/pine.asset.json',root).get('runtime.depth'),None)
+
+    def test_bad_settings_files_are_errors_naming_the_file(self):
+        from kitcore import settings as S
+        cases = [({'runtme':{}},'/settings/runtme'),({'runtime':{'depth':'yes'}},'/settings/runtime/depth'),
+                 ({'runtime':{'fog':True}},'/settings/runtime'),({'build_dir':''},'/settings/build_dir'),
+                 ({'preview':{'sky':'#000000'}},'/settings/preview'),([],'/settings')]
+        for value,path in cases:
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                root = self.tree(tmp,{'mei-kit.json':value,'a.asset.json':'{}'})
+                with self.assertRaises(AssetError) as caught:
+                    S.find(root/'a.asset.json',root,AssetError)
+                self.assertEqual(caught.exception.path,path)
+                self.assertIn('mei-kit.json',str(caught.exception))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp,{'mei-kit.json':{'preview':{'ground':'#ffffff'}},'asset-preview.json':{'ground':'#000000'},
+                                  'a.asset.json':'{}'})
+            with self.assertRaisesRegex(AssetError,'both give the preview look'):
+                S.find(root/'a.asset.json',root,AssetError)
+
+    def test_precedence_of_the_build_directory(self):
+        import argparse
+        from mei_assets import tool_paths
+        from kitcore import settings as S
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp,{'mei-kit.json':{'build_dir':'build-kit'},'a.asset.json':'{}'})
+            s = S.find(root/'a.asset.json',root)
+            args = lambda **k: argparse.Namespace(**{'compiler':None,'runner':None,'probe':None,'build_dir':None,**k})
+            env = {'B':'build-x','MEIC':'/tmp/a/meic'}
+            tools = tool_paths(args(),env,s)
+            self.assertEqual(tools['compiler'],(root/'build-kit/meic','build_dir build-kit in mei-kit.json'),
+                             'the settings file over the environment')
+            self.assertEqual(tool_paths(args(build_dir=Path('/tmp/b')),env,s)['probe'][0],Path('/tmp/b/mei-asset-probe').resolve())
+            self.assertEqual(tool_paths(args(compiler=Path('/tmp/c')),env,s)['compiler'][0],Path('/tmp/c').resolve())
+            self.assertEqual(tool_paths(args(),env,S.Settings())['compiler'][0],Path('/tmp/a/meic').resolve())
+
+    def test_the_default_policy_and_the_recipe_over_it(self):
+        from mei_assets import policy, with_policy
+        from kitcore import settings as S
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp,{'mei-kit.json':{'verification':{'required':True,'depth':True,'perspective':True}},
+                                  'a.asset.json':'{}'})
+            s = S.find(root/'a.asset.json',root)
+            r = recipe(verification={'required':False,'yaw_steps':8})
+            effective,sources = policy(r,s)
+            self.assertEqual(effective,{'required':False,'depth':True,'perspective':True,'yaw_steps':8})
+            self.assertEqual(sources,{'required':'recipe','depth':'mei-kit.json','perspective':'mei-kit.json',
+                                      'yaw_steps':'recipe'})
+            self.assertEqual(policy(recipe(),s)[0],{'required':True,'depth':True,'perspective':True})
+            # without a settings file, the recipe and its policy are untouched
+            plain = recipe(verification={'required':True})
+            effective,_ = policy(plain,S.Settings())
+            self.assertIs(with_policy(plain,effective),plain)
+            self.assertEqual(policy(recipe(),S.Settings()),(None,{}))
+            (root/'mei-kit.json').write_text('{"verification": {"yaw_steps": 2}}')
+            with self.assertRaisesRegex(AssetError,'mei-kit.json'):
+                policy(recipe(),S.find(root/'a.asset.json',root))
+
+    def test_the_settings_file_makes_the_check_required_and_reports_itself(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp,{'kit/mei-kit.json':{'verification':{'required':True,'depth':True},
+                                                      'runtime':{'depth':True},'build_dir':'nowhere'},
+                                  'kit/box/box.asset.json':recipe()})
+            path = root/'kit/box/box.asset.json'
+            # the policy from the settings file requires the Asset Checker: its tools are looked
+            # for in the settings file's build directory
+            result,report = self.run_cli('build',path,'-o',root/'out')
+            self.assertEqual(result.returncode,1)
+            self.assertEqual(report['errors'][0]['path'],'/arguments/tools')
+            self.assertIn(f'build_dir nowhere in {root/"kit/mei-kit.json"}',report['errors'][0]['message'])
+            # a recipe's own policy wins: not required, so build needs no tools
+            path.write_text(json.dumps(recipe(verification={'required':False})))
+            result,report = self.run_cli('build',path,'-o',root/'out')
+            self.assertEqual(result.returncode,0,report)
+            settings = report['settings']
+            self.assertEqual(settings['files'],[str(root/'kit/mei-kit.json')])
+            self.assertEqual(settings['runtime']['depth'],{'value':True,'from':str(root/'kit/mei-kit.json')})
+            self.assertEqual(settings['runtime']['perspective'],{'value':False,'from':'default'})
+            self.assertEqual(settings['verification']['required'],{'value':False,'from':'recipe'})
+            self.assertEqual(settings['verification']['depth'],{'value':True,'from':str(root/'kit/mei-kit.json')})
+            self.assertEqual(json.loads((root/'out/report.json').read_text())['settings']['files'],settings['files'])
+            self.assertEqual(json.loads((root/'out/test.asset.json').read_text()),recipe(verification={'required':False}),
+                             'the recipe as written, not the policy in effect')
+            # inspect reports them too
+            result,report = self.run_cli('inspect',path)
+            self.assertEqual(report['settings']['verification']['depth']['from'],str(root/'kit/mei-kit.json'))
+
+    def test_without_a_settings_file_nothing_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp,{'box.asset.json':recipe()})
+            result,report = self.run_cli('build',root/'box.asset.json','-o',root/'out')
+            self.assertEqual(result.returncode,0,report)
+            self.assertEqual(report['settings']['files'],[])
+            self.assertEqual(report['settings']['runtime']['depth'],{'value':False,'from':'default'})
+            self.assertNotIn('settings',json.loads((root/'out/report.json').read_text()),'report.json as before')
+            result,report = self.run_cli('build',root/'box.asset.json','-o',root/'out','--depth')
+            self.assertEqual(report['settings']['runtime']['depth'],{'value':True,'from':'--depth'})
+
+    def test_the_preview_look_from_the_settings_file(self):
+        import argparse
+        from mei_assets import look_for
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp,{'models/mei-kit.json':{'preview':{'background':['#70d0f8','#fffcf4'],'ground':'#eef5fc'}},
+                                  'models/pine/asset-preview.json':{'ground':'#000000'},
+                                  'models/pine/pine.asset.json':'{}','models/fir/fir.asset.json':'{}'})
+            args = lambda path, **k: argparse.Namespace(**{'recipe':str(path),'look':None,'background':None,'ground':None,**k})
+            look = look_for(args(root/'models/fir/fir.asset.json'))
+            self.assertEqual((look['ground'],look['from']),((238,245,252),str(root/'models/mei-kit.json')))
+            self.assertEqual(look_for(args(root/'models/pine/pine.asset.json'))['ground'],(0,0,0),'the nearest look')
+            (root/'models/mei-kit.json').write_text('{"preview": {"ground": "green"}}')
+            with self.assertRaises(AssetError) as caught:
+                look_for(args(root/'models/fir/fir.asset.json'))
+            self.assertEqual(caught.exception.path,'/settings/preview/ground')
+
+    @unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+    def test_verify_draws_as_the_settings_file_says(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp,{'mei-kit.json':{'runtime':{'depth':True,'perspective':True}},
+                                  'box.asset.json':recipe(verification={'required':True,'yaw_steps':4,'pitches':[0],
+                                                                        'distances':[1.5]})})
+            result,report = self.run_cli('verify',root/'box.asset.json','--json','--compiler',COMPILER,'--probe',PROBE)
+            self.assertTrue(report['ok'],report)
+            self.assertIn('depth_mode',report)
+            self.assertEqual(report['settings']['verification']['depth']['from'],'runtime: '+str(root/'mei-kit.json'))
+
+
 if __name__ == '__main__':
     unittest.main()
