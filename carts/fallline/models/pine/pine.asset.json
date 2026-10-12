@@ -1,0 +1,242 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "pine",
+  "budget": {
+    "vertices": 128,
+    "triangles": 100
+  },
+  "materials": {
+    "bark": {
+      "color": "#4a3328"
+    },
+    "needle_dark": {
+      "color": "#0f5a4a"
+    },
+    "needle_mid": {
+      "color": "#16765a"
+    },
+    "snow": {
+      "color": "#f4fbff"
+    },
+    "sensor": {
+      "color": "#b6ff2e",
+      "class": "emissive",
+      "palette": true,
+      "tag": "light"
+    }
+  },
+  "lighting": {
+    "direction": [
+      -0.4,
+      0.85,
+      -0.35
+    ],
+    "ambient": 0.5
+  },
+  "verification": {
+    "required": true,
+    "depth": true,
+    "perspective": true
+  },
+  "nodes": [
+    {
+      "id": "trunk",
+      "op": "cylinder",
+      "radius": 0.28,
+      "height": 4.2,
+      "segments": 6,
+      "caps": false,
+      "material": "bark",
+      "transform": {
+        "translate": [
+          0,
+          1.1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "tier_1",
+      "op": "cone",
+      "radius": 2.2,
+      "height": 2.0,
+      "segments": 7,
+      "material": "needle_dark",
+      "transform": {
+        "translate": [
+          0,
+          1.9,
+          0
+        ],
+        "rotate": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "tier_2",
+      "op": "cone",
+      "radius": 1.8,
+      "height": 1.9,
+      "segments": 7,
+      "material": "needle_mid",
+      "transform": {
+        "translate": [
+          0,
+          3.15,
+          0
+        ],
+        "rotate": [
+          0,
+          25,
+          0
+        ]
+      }
+    },
+    {
+      "id": "tier_3",
+      "op": "cone",
+      "radius": 1.4,
+      "height": 1.8,
+      "segments": 7,
+      "material": "needle_dark",
+      "transform": {
+        "translate": [
+          0,
+          4.3,
+          0
+        ],
+        "rotate": [
+          0,
+          0,
+          0
+        ]
+      },
+      "caps": false
+    },
+    {
+      "id": "tier_4",
+      "op": "cone",
+      "radius": 1.0,
+      "height": 1.7,
+      "segments": 7,
+      "material": "needle_mid",
+      "transform": {
+        "translate": [
+          0,
+          5.35,
+          0
+        ],
+        "rotate": [
+          0,
+          25,
+          0
+        ]
+      },
+      "caps": false
+    },
+    {
+      "id": "snow_1",
+      "op": "cone",
+      "radius": 1.419,
+      "height": 1.28,
+      "segments": 7,
+      "caps": false,
+      "material": "snow",
+      "transform": {
+        "translate": [
+          0,
+          2.3,
+          0
+        ],
+        "rotate": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "snow_2",
+      "op": "cone",
+      "radius": 1.161,
+      "height": 1.218,
+      "segments": 7,
+      "caps": false,
+      "material": "snow",
+      "transform": {
+        "translate": [
+          0,
+          3.531,
+          0
+        ],
+        "rotate": [
+          0,
+          25,
+          0
+        ]
+      }
+    },
+    {
+      "id": "snow_3",
+      "op": "cone",
+      "radius": 0.903,
+      "height": 1.156,
+      "segments": 7,
+      "caps": false,
+      "material": "snow",
+      "transform": {
+        "translate": [
+          0,
+          4.662,
+          0
+        ],
+        "rotate": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "snow_4",
+      "op": "cone",
+      "radius": 0.645,
+      "height": 1.094,
+      "segments": 7,
+      "caps": false,
+      "material": "snow",
+      "transform": {
+        "translate": [
+          0,
+          5.693,
+          0
+        ],
+        "rotate": [
+          0,
+          25,
+          0
+        ]
+      }
+    },
+    {
+      "id": "tip",
+      "op": "cone",
+      "radius": 0.16,
+      "height": 0.8,
+      "segments": 4,
+      "caps": false,
+      "material": "sensor",
+      "transform": {
+        "translate": [
+          0,
+          6.2,
+          0
+        ]
+      }
+    }
+  ]
+}

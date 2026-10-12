@@ -1,0 +1,159 @@
+// The Synergen Glacier Array: the course's side profile (README.md, "Coordinates and the
+// course"), its gates, hazards, split lines and finish. +z is downhill, y is up, both in metres.
+// Between profile points the snow is straight; every point's z is a multiple of 10.
+//
+// Three blind crests (z = 350, 800, 1050), each with a gate just before it, and run-outs after
+// the first and third. At 30 m/s a crest throws the sled for about 1.5 s (crest 1: grade change
+// 0.25), 1.5 s (crest 2: 0.25) and 2.5 s (crest 3: 0.37), landing on the steep pitch below it.
+
+struct ProfPt { z: fixed, y: fixed }
+
+const PROFILE_N = 14
+const PROFILE: [14]ProfPt = [
+    ProfPt { z: -100.0, y: 20.0 },      // above the start, for the camera: grade 0.20
+    ProfPt { z: 0.0, y: 0.0 },          // start, grade 0.20
+    ProfPt { z: 150.0, y: -30.0 },      // grade 0.30
+    ProfPt { z: 350.0, y: -90.0 },      // crest 1: grade 0.55
+    ProfPt { z: 470.0, y: -156.0 },     // run-out: grade 0.15
+    ProfPt { z: 600.0, y: -175.5 },     // grade 0.35
+    ProfPt { z: 800.0, y: -245.5 },     // crest 2: grade 0.60
+    ProfPt { z: 900.0, y: -305.5 },     // grade 0.25
+    ProfPt { z: 1050.0, y: -343.0 },    // crest 3: grade 0.62
+    ProfPt { z: 1160.0, y: -411.2 },    // run-out: grade 0.18
+    ProfPt { z: 1300.0, y: -436.4 },    // grade 0.30
+    ProfPt { z: 1600.0, y: -526.4 },    // finish flat: grade 0.08 (the arch at z = 1700)
+    ProfPt { z: 1760.0, y: -539.2 },    // grade 0.08 on past the finish, for the slide out
+    ProfPt { z: 2000.0, y: -558.4 },
+]
+
+const RUN_HALF = 20.0           // the run is x -20..20
+const START_Z = 4.0             // the sled's place at the start
+const FINISH_Z = 1700.0
+const FINISH_HALF = 12.0        // the arch spans x -12..12 (any x counts as finishing)
+
+// Split lines: the times at these z are the run's three splits.
+const SPLITS_N = 3
+const SPLIT_Z: [3]fixed = [450.0, 900.0, 1300.0]
+
+// ---- gates: posts at x ± GATE_POST from the centre
+
+struct Gate { z: fixed, x: fixed }
+
+const GATE_POST = 3.0           // a post's centre from the gate's centre
+const GATE_CLEAN = 2.75         // |x - centre| at most this is a clean pass (post radius 0.25)
+const GATES_N = 20
+const GATES: [20]Gate = [
+    Gate { z: 80.0, x: -4.0 },
+    Gate { z: 160.0, x: 6.0 },
+    Gate { z: 240.0, x: -6.0 },
+    Gate { z: 332.0, x: 7.0 },      // before crest 1: the trees below it are on the right
+    Gate { z: 440.0, x: -7.0 },
+    Gate { z: 520.0, x: 3.0 },
+    Gate { z: 590.0, x: -5.0 },
+    Gate { z: 670.0, x: 7.0 },
+    Gate { z: 740.0, x: -3.0 },
+    Gate { z: 786.0, x: 8.0 },      // before crest 2
+    Gate { z: 880.0, x: 0.0 },
+    Gate { z: 960.0, x: -9.0 },
+    Gate { z: 1036.0, x: -2.0 },    // before crest 3: land left of the pine at x 7
+    Gate { z: 1190.0, x: 6.0 },
+    Gate { z: 1260.0, x: -6.0 },
+    Gate { z: 1340.0, x: 5.0 },
+    Gate { z: 1420.0, x: -8.0 },
+    Gate { z: 1500.0, x: 4.0 },
+    Gate { z: 1580.0, x: -4.0 },
+    Gate { z: 1650.0, x: 2.0 },
+]
+
+// ---- hazards: circles on the snow (a hit knocks the sled down)
+
+const HZ_PINE = 0
+const HZ_PYLON = 1
+const HZ_MARKER = 2
+
+// Collision radius and height of each kind (the sled passes over a hazard it clears in the air).
+const HZ_RADIUS: [3]fixed = [1.4, 0.5, 0.4]
+const HZ_HEIGHT: [3]fixed = [6.0, 4.2, 1.6]
+
+struct Hazard { z: fixed, x: fixed, kind: s32 }
+
+// The edge markers stand just outside the run (the sled is held inside x ±19), as guides.
+const HAZARDS_N = 64
+const HAZARDS: [64]Hazard = [
+    Hazard { z: 50.0, x: -20.4, kind: HZ_MARKER },  Hazard { z: 50.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 120.0, x: 1.0, kind: HZ_PINE },
+    Hazard { z: 150.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 150.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 200.0, x: -14.0, kind: HZ_PINE },
+    Hazard { z: 205.0, x: 12.5, kind: HZ_PINE },
+    Hazard { z: 250.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 250.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 290.0, x: -4.0, kind: HZ_PYLON },
+    Hazard { z: 350.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 350.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 392.0, x: 12.0, kind: HZ_PINE },    // below crest 1, right: the trap
+    Hazard { z: 402.0, x: 7.5, kind: HZ_PINE },
+    Hazard { z: 410.0, x: 15.5, kind: HZ_PINE },
+    Hazard { z: 422.0, x: 10.5, kind: HZ_PINE },
+    Hazard { z: 450.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 450.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 480.0, x: -15.0, kind: HZ_PYLON },  // the lift line, left
+    Hazard { z: 545.0, x: -15.0, kind: HZ_PYLON },
+    Hazard { z: 550.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 550.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 560.0, x: 12.0, kind: HZ_PINE },
+    Hazard { z: 610.0, x: -15.0, kind: HZ_PYLON },
+    Hazard { z: 630.0, x: 2.0, kind: HZ_PINE },
+    Hazard { z: 650.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 650.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 675.0, x: -15.0, kind: HZ_PYLON },
+    Hazard { z: 705.0, x: 14.0, kind: HZ_PINE },
+    Hazard { z: 740.0, x: -15.0, kind: HZ_PYLON },
+    Hazard { z: 750.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 750.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 850.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 850.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 852.0, x: -7.0, kind: HZ_PINE },    // below crest 2
+    Hazard { z: 864.0, x: 13.0, kind: HZ_PINE },
+    Hazard { z: 905.0, x: -15.0, kind: HZ_PYLON },
+    Hazard { z: 920.0, x: 8.0, kind: HZ_PINE },
+    Hazard { z: 950.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 950.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 990.0, x: 4.0, kind: HZ_PYLON },
+    Hazard { z: 1050.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 1050.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 1112.0, x: 9.5, kind: HZ_PINE },    // below crest 3
+    Hazard { z: 1124.0, x: -11.0, kind: HZ_PINE },
+    Hazard { z: 1150.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 1150.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 1222.0, x: 14.0, kind: HZ_PINE },
+    Hazard { z: 1250.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 1250.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 1300.0, x: -14.0, kind: HZ_PINE },
+    Hazard { z: 1350.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 1350.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 1380.0, x: 12.0, kind: HZ_PYLON },
+    Hazard { z: 1450.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 1450.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 1470.0, x: -9.0, kind: HZ_PINE },
+    Hazard { z: 1540.0, x: 8.5, kind: HZ_PINE },
+    Hazard { z: 1550.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 1550.0, x: 20.4, kind: HZ_MARKER },
+    Hazard { z: 1612.0, x: -13.0, kind: HZ_PINE },
+    Hazard { z: 1630.0, x: 13.0, kind: HZ_PINE },
+    Hazard { z: 1650.0, x: -20.4, kind: HZ_MARKER }, Hazard { z: 1650.0, x: 20.4, kind: HZ_MARKER },
+]
+
+// ---- the profile as a function
+
+private var seg_hint: s32 = 1
+
+// The profile segment that holds z: PROFILE[i].z <= z < PROFILE[i + 1].z, clamped to the ends.
+fn course_seg(z: fixed) -> s32 {
+    var i = seg_hint
+    while i > 0 && z < PROFILE[i].z { i -= 1 }
+    while i < PROFILE_N - 2 && z >= PROFILE[i + 1].z { i += 1 }
+    seg_hint = i
+    return i
+}
+
+// dy/dz of the segment that holds z (negative downhill; at a point, the segment below it).
+fn course_grade(z: fixed) -> fixed {
+    let i = course_seg(z)
+    let a = PROFILE[i]
+    let b = PROFILE[i + 1]
+    return (b.y - a.y) / (b.z - a.z)
+}
+
+// The snow's height at z.
+fn course_y(z: fixed) -> fixed {
+    let i = course_seg(z)
+    let a = PROFILE[i]
+    let b = PROFILE[i + 1]
+    return a.y + (z - a.z) * ((b.y - a.y) / (b.z - a.z))
+}

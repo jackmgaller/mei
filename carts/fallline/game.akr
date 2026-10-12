@@ -1,0 +1,307 @@
+// Fall Line: the states (title, countdown, run, finish, results; pause during the run), the
+// frame loop, gates, splits and the finish. fallline.akr is the cart's entry point; tests import
+// this file with their own input (the weak hooks below).
+
+import "course.akr"
+import "physics.akr"
+import "camera.akr"
+import "rider.akr"
+import "scene.akr"
+import "ghost.akr"
+import "hud.akr"
+// The parts other agents deliver, and their stand-ins until then (README.md, "Folders and owners").
+import "slope.akr"
+import "assets.akr"
+import "music.akr"
+import "sfx.akr"
+
+// Input, replaced by the tests.
+weak fn input_pad() -> u32 { return PAD1 }
+weak fn input_stick() -> vec2 { return stick() }
+weak fn test_init() {}
+weak fn test_hook() {}
+
+enum St { Title, Countdown, Run, Finish, Results }
+
+const COUNT_STEP = 60           // frames per count of 3-2-1 (the run music's drop lands on GO)
+const GO_SHOW = 45              // frames "GO" stays up into the run
+const FINISH_HOLD = 100         // frames from the finish line to the results
+const PENALTY = 120             // a missed gate: 2.0 s
+const GATE_BUMP = 0.8           // m/s for a clean pass
+const MSG_FRAMES = 150
+
+enum Msg { None, Clean, Miss, Split, Crash }
+
+var st: St
+var st_t: s32                   // frames in this state
+var tick: s32                   // frames since boot (animation; stops while paused)
+var paused: bool
+var pad_now: u32
+var pad_prev: u32
+var stick_in: vec2
+
+var run_f: s32                  // frames since GO
+var pen_f: s32                  // penalty frames
+var gate_next: s32
+var gates_clean: s32
+var gates_missed: s32
+var split_n: s32
+var split_f: [3]s32             // this run's split times (penalties included)
+var finish_f: s32               // this run's time
+var new_record: bool
+var best_before: s32            // the best when this run started (for the deltas)
+var best_splits: [3]s32
+var msg: Msg
+var msg_t: s32
+var msg_v: s32                  // the message's number (a split delta)
+var air_peak: s32               // the longest airtime of this run, frames
+var ghost_f: s32                // the ghost's frame: run_f, and on through the finish
+
+fn held(b: u32) -> bool { return pad_now & b != 0 }
+fn pressed(b: u32) -> bool { return pad_now & ~pad_prev & b != 0 }
+
+fn init() {
+    slope_init()
+    assets_load()
+    ghost_mesh_make(ASSET_SLED)
+    scene_init()
+    hud_init()
+    ghost_boot()
+    rider_reset(0.0, START_Z)
+    cam_reset()
+    enter_title()
+    test_init()
+}
+
+fn enter(s: St) {
+    st = s
+    st_t = 0
+}
+
+fn enter_title() {
+    enter(St.Title)
+    paused = false
+    music_title()
+}
+
+fn enter_countdown() {
+    enter(St.Countdown)
+    paused = false
+    rider_reset(0.0, START_Z)
+    cam_reset()
+    run_f = 0
+    pen_f = 0
+    gate_next = 0
+    gates_clean = 0
+    gates_missed = 0
+    split_n = 0
+    finish_f = 0
+    new_record = false
+    msg = Msg.None
+    msg_t = 0
+    air_peak = 0
+    ghost_f = 0
+    best_before = best_frames()
+    for i in 0..SPLITS_N {
+        split_f[i] = 0
+        best_splits[i] = save.splits[i]
+    }
+    music_run()                 // its 3 s riser runs under the countdown
+    sfx_countdown(3)
+}
+
+fn start_run() {
+    enter(St.Run)
+    rider_push()
+    rec_start()
+    sfx_countdown(0)
+}
+
+// The carve from the stick, or the d-pad (which wins).
+fn carve_input() -> fixed {
+    if held(LEFT) { return -1.0 }
+    if held(RIGHT) { return 1.0 }
+    return clamp(stick_in.x, -1.0, 1.0)
+}
+
+fn update() {
+    pad_prev = pad_now
+    pad_now = input_pad()
+    stick_in = input_stick()
+    test_hook()
+    card_update()
+    if paused {
+        if pressed(START) {
+            paused = false
+            music_duck(false)
+            sfx_menu()
+        } else if pressed(SELECT) {
+            music_duck(false)
+            sfx_menu()
+            enter_title()
+        }
+        music_tick()
+        sfx_tick(0.0, 0.0, false, false)
+        return
+    }
+    tick += 1
+    st_t += 1
+    match st {
+        Title => {
+            cam_title(tick)
+            if pressed(START) {
+                sfx_menu()
+                enter_countdown()
+            }
+        }
+        Countdown => {
+            let n = 3 - st_t / COUNT_STEP
+            if st_t % COUNT_STEP == 0 && n > 0 { sfx_countdown(n) }
+            if st_t >= 3 * COUNT_STEP { start_run() }
+        }
+        Run => {
+            if pressed(START) {
+                paused = true
+                music_duck(true)
+                sfx_menu()
+            } else {
+                run_step()
+            }
+        }
+        Finish => {
+            ghost_f += 1
+            phys_step(0.0, false, false)
+            cam_follow()
+            if st_t >= FINISH_HOLD || pressed(START) { enter(St.Results) }
+        }
+        Results => {
+            ghost_f += 1
+            phys_step(0.0, false, false)
+            cam_follow()
+            if pressed(START) {
+                sfx_menu()
+                enter_countdown()
+            } else if pressed(SELECT) || pressed(B) {
+                sfx_menu()
+                enter_title()
+            }
+        }
+    }
+    if st == St.Run || st == St.Finish {
+        sfx_tick(rider_speed(), rd.carve, rd.air, rd.tuck)
+    } else {
+        sfx_tick(0.0, 0.0, false, false)
+    }
+    music_tick()
+    if msg_t > 0 { msg_t -= 1 }
+}
+
+fn run_step() {
+    phys_step(carve_input(), held(A), held(B))
+    run_f += 1
+    ghost_f += 1
+    if run_f & 1 == 0 { rec_sample() }
+    if ev_land {
+        sfx_land(rd.thump / 10.0)   // 0..1: 10 m/s into the snow is the hardest
+        cam_kick(rd.thump)
+    }
+    if ev_hit {
+        sfx_crash()
+        cam_kick(8.0)
+        show_msg(Msg.Crash, 0)
+    }
+    if ev_scrape { sfx_land(0.2) }
+    if rd.air && rd.air_t > air_peak { air_peak = rd.air_t }
+    gates_step()
+    splits_step()
+    cam_follow()
+    if rd.z >= FINISH_Z { finish_run() }
+}
+
+fn show_msg(m: Msg, v: s32) {
+    msg = m
+    msg_v = v
+    msg_t = MSG_FRAMES
+}
+
+// The x where the sled crossed z this step (it was at rd.pz before the step).
+fn crossing_x(z: fixed) -> fixed {
+    let dz = rd.z - rd.pz
+    if dz < 0.001 { return rd.x }
+    return rd.px + (rd.x - rd.px) * ((z - rd.pz) / dz)
+}
+
+fn gates_step() {
+    while gate_next < GATES_N && rd.z >= GATES[gate_next].z {
+        let g = GATES[gate_next]
+        let dx = crossing_x(g.z) - g.x
+        if abs(dx) <= GATE_CLEAN {
+            gates_clean += 1
+            if rd.air { rd.vz += GATE_BUMP } else { rd.spd += GATE_BUMP }
+            sfx_gate()
+            show_msg(Msg.Clean, gate_next)
+        } else {
+            gates_missed += 1
+            pen_f += PENALTY
+            sfx_miss()
+            show_msg(Msg.Miss, gate_next)
+        }
+        gate_next += 1
+    }
+}
+
+fn run_time() -> s32 { return run_f + pen_f }
+
+fn splits_step() {
+    if split_n < SPLITS_N && rd.z >= SPLIT_Z[split_n] {
+        split_f[split_n] = run_time()
+        var d = 0
+        if best_before != 0 { d = split_f[split_n] - best_splits[split_n] }
+        split_n += 1
+        show_msg(Msg.Split, d)
+    }
+}
+
+fn finish_run() {
+    finish_f = run_time()
+    rd.braking = true
+    new_record = rec_finish(finish_f, &split_f[0], gates_missed)
+    sfx_finish()
+    music_stop()
+    enter(St.Finish)
+}
+
+fn draw() {
+    match st {
+        Title => {
+            slope_frame(cam_eye, cam_pitch)
+            scene_draw(cam_eye.z)
+            draw_title()
+        }
+        else => {
+            slope_frame(cam_eye, cam_pitch)
+            scene_draw(cam_eye.z)
+            draw_ghost()
+            rider_draw(tick)
+            match st {
+                Countdown => draw_countdown()
+                Run => {
+                    draw_hud()
+                    draw_go()
+                }
+                Finish => {
+                    draw_hud()
+                    draw_finish()
+                }
+                Results => draw_results()
+                else => {}
+            }
+            if paused { draw_pause() }
+        }
+    }
+}
+
+fn draw_ghost() {
+    if new_record { return }                    // the best is this run now
+    if ghost_at(ghost_f) { ghost_draw(gh_pos, gh_hd, gh_pitch) }
+}

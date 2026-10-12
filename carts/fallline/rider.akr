@@ -1,0 +1,64 @@
+// Drawing the sled and the ghost. The model faces -Z (the Asset Kit's convention), so it is
+// turned half a turn to travel +z, then banked by the carve, pitched with the grade (or the
+// flight) and turned to the heading. The ghost is a copy of the sled's mesh in RAM with every
+// face semi-transparent and tinted toward ice blue.
+
+const GHOST_WORDS = 12288       // room for the ghost's copy of the sled (48 KB)
+const GHOST_TINT = 0xFFC850     // rgb(80, 200, 255)
+
+var ghost_buf: [12288]u32
+var ghost_mesh: *Mesh
+
+// The model matrix of a sled at p, heading hd, pitched and banked.
+fn sled_matrix(p: vec3, hd: fixed, pitch: fixed, bank: fixed) -> mat4 {
+    var m = mat4_translate(p) * mat4_rotate_y(hd)
+    m = m * mat4_rotate_x(pitch)
+    m = m * mat4_rotate_z(bank)
+    return m * mat4_rotate_y(PI)
+}
+
+fn rider_draw(t: s32) {
+    let bob = 0.04 * sin(frame_angle(t, 0.21))
+    let p = vec3(rd.x, rd.y + bob, rd.z)
+    let layer = slope_layer(p, 1.6)
+    if layer == 0 { return }
+    slope_draw_layer(layer)
+    var bank = rd.lean
+    if rd.down > 0 { bank = 0.5 }
+    mesh_xf(ASSET_SLED, sled_matrix(p, rd.hd + rd.spin, rd.pitch, bank))
+}
+
+// Makes the ghost's translucent copy of a mesh (call after assets_load()).
+fn ghost_mesh_make(src: *Mesh) {
+    var size = src.faces + src.nfaces as u32 * 36
+    if src.windows != 0 { size = max(size, src.windows + 14) }
+    if size > GHOST_WORDS * 4 {
+        println("ghost: the sled mesh is too big to copy")
+        ghost_mesh = null
+        return
+    }
+    memcpy(&ghost_buf[0] as *u8, src as *u8, size)
+    ghost_mesh = &ghost_buf[0] as *Mesh
+    let faces = (ghost_mesh as u32 + ghost_mesh.faces) as *Face
+    for i in 0..ghost_mesh.nfaces as s32 {
+        let f = &faces[i]
+        f.flags = f.flags | FACE_SEMI as u8
+        f.blend = 0                                 // half and half
+        let textured = f.flags & FACE_TEXTURED as u8 != 0
+        for k in 0..4 {
+            if textured {
+                f.col[k] = col_mix(f.col[k], col_tint(GHOST_TINT), 0.5)
+            } else {
+                f.col[k] = col_mix(f.col[k], GHOST_TINT, 0.6)
+            }
+        }
+    }
+}
+
+fn ghost_draw(p: vec3, hd: fixed, pitch: fixed) {
+    if ghost_mesh == null { return }
+    let layer = slope_layer(p, 1.6)
+    if layer == 0 { return }
+    slope_draw_layer(layer)
+    mesh_xf(ghost_mesh, sled_matrix(p, hd, pitch, 0.0))
+}

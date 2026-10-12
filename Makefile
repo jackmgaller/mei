@@ -168,6 +168,7 @@ test-world: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe
 test-carts: $(B)/meic $(B)/mei-headless
 	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/weather/tests/check.sh
 	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/lantern/tests/check.sh
+	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/fallline/tests/check.sh
 
 # The Reference Renderer (tests/reference_renderer/README.md): Mei's output against an
 # independent renderer in Python (NumPy, Pillow). Its carts, probes, images and reports are

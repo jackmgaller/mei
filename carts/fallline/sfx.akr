@@ -1,0 +1,113 @@
+// Fall Line's sound effects (tools/gen_fallline_audio.py synthesises them into mu_data.akr and
+// audio/sfx.adp). Channels 10-15: the wind on 10 and 11 (two different loops, one leaning left
+// and one right), the snow hiss on 12, and the one-shots on 13-15 (voice.akr's allocator: a
+// sound takes a free channel or the least important one playing).
+//
+// sfx_tick() is called once a frame while the sled moves; the loops follow it. Speed is in
+// metres a second: the wind starts at walking pace and is loudest and highest at SFX_TOP_SPEED;
+// tucking and flying make it a little louder and brighter. carve is -1..1 (its sign does not
+// matter); the hiss follows the carve and the speed and stops in the air. sfx_tick(0.0, 0.0,
+// false, false) fades both loops out within about a second and then stops them, so call it
+// (every frame) through the results screen and pauses too, or the loops keep their last level.
+
+import "mu_data.akr"
+
+const SFX_TOP_SPEED: fixed = 45.0      // m/s: the wind at its loudest and highest
+const SFX_CARVE_SPEED: fixed = 20.0    // m/s: the hiss at full for a full carve
+const SFX_CH_WIND = 10                 // and 11
+const SFX_CH_HISS = 12
+
+private var sx_ready: bool
+private var sx_voices: Voices
+private var sx_wind: fixed             // the wind's level, 0..1 (smoothed)
+private var sx_pitch: fixed = 0.62     // its pitch (smoothed)
+private var sx_hiss: fixed             // the hiss's level, 0..1
+
+private fn sx_init() {
+    if sx_ready { return }
+    sx_ready = true
+    voices_init(&sx_voices, 13, 15, 2)
+    if REVERB_CTRL != MU_REVERB as u32 {       // as music.akr does: whichever runs first sets it
+        reverb(MU_REVERB, MU_WET, MU_WET)
+        reverb_decay(MU_REV_DECAY)
+    }
+}
+
+// Keeps loop `id` playing on ch at level 0..1 (stopped at 0), with its pitch and pan.
+private fn sx_loop(ch: s32, id: s32, level: fixed, pitch: fixed, pan_l: s32, pan_r: s32) {
+    let e = id * 5
+    let v = (level * fixed(SFX[e + 3])) as s32
+    if v <= 0 {
+        if sound_playing(ch) { stop(ch) }
+        return
+    }
+    if !sound_playing(ch) {
+        play_sample(ch, SFX_BANK + SFX[e], SFX[e + 1] as u32, SFX[e + 2] as u32, pitch, 0, 0,
+                    (SND_ADPCM | SND_LOOP) as u32)
+    } else {
+        sound_pitch(ch, pitch)
+    }
+    sound_vol(ch, v * pan_l >> 8, v * pan_r >> 8)
+}
+
+fn sfx_tick(speed: fixed, carve: fixed, airborne: bool, tuck: bool) {
+    sx_init()
+    let s = clamp(speed / SFX_TOP_SPEED, 0.0, 1.0)
+    var w = s * (0.3 + 0.7 * s)
+    var p = 0.62 + 0.78 * s
+    if speed < 1.0 { w = 0.0 }
+    if tuck {
+        w = w * 1.15
+        p = p + 0.05
+    }
+    if airborne {
+        w = w * 1.2
+        p = p + 0.08
+    }
+    w = min(w, 1.0)
+    sx_wind += (w - sx_wind) * 0.1
+    sx_pitch += (p - sx_pitch) * 0.1
+    var h = 0.0
+    if !airborne && speed >= 1.0 {
+        h = clamp(speed / SFX_CARVE_SPEED, 0.0, 1.0) * (0.22 + 0.78 * clamp(abs(carve), 0.0, 1.0))
+    }
+    if h > sx_hiss {
+        sx_hiss += (h - sx_hiss) * 0.35
+    } else {
+        sx_hiss += (h - sx_hiss) * 0.25
+    }
+    sx_loop(SFX_CH_WIND, SFX_WIND_A, sx_wind, sx_pitch, 256, 110)
+    sx_loop(SFX_CH_WIND + 1, SFX_WIND_B, sx_wind, sx_pitch * 1.04, 110, 256)
+    sx_loop(SFX_CH_HISS, SFX_HISS, sx_hiss, 0.8 + 0.45 * s, 256, 256)
+}
+
+// One-shot `id` at its own volume x vol / 256, through the allocator (pri: higher wins).
+private fn sx_one(id: s32, pri: s32, vol: s32, pitch: fixed) {
+    sx_init()
+    let e = id * 5
+    var flags = SND_ADPCM
+    if SFX[e + 4] != 0 { flags = flags | SND_REVERB }
+    let v = clamp(SFX[e + 3] * vol >> 8, 0, 255)
+    voice_play(&sx_voices, id, pri, 1, SFX_BANK + SFX[e], SFX[e + 1] as u32, pitch, v, v, flags as u32)
+}
+
+fn sfx_gate() { sx_one(SFX_GATE, 3, 256, 1.0) }
+fn sfx_miss() { sx_one(SFX_MISS, 3, 256, 1.0) }
+fn sfx_crash() { sx_one(SFX_CRASH, 5, 256, 1.0) }
+fn sfx_finish() { sx_one(SFX_FINISH, 6, 256, 1.0) }
+fn sfx_menu() { sx_one(SFX_MENU, 1, 256, 1.0) }
+
+// force 0..1 (clamped): 0 a soft touch-down, 1 the hardest landing (louder and a little lower).
+fn sfx_land(force: fixed) {
+    let f = clamp(force, 0.0, 1.0)
+    sx_one(SFX_LAND, 2, 70 + (f * 186.0) as s32, 1.06 - f * 0.14)
+}
+
+// 3, 2, 1: a beep; 0: go.
+fn sfx_countdown(n: s32) {
+    if n > 0 {
+        sx_one(SFX_BEEP, 6, 256, 1.0)
+    } else {
+        sx_one(SFX_GO, 6, 256, 1.0)
+    }
+}

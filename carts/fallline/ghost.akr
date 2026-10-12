@@ -1,0 +1,142 @@
+// The ghost: the run is recorded every second frame (position, height above the snow and
+// heading), the best run is kept with its time and splits, played back beside the next runs,
+// and saved to the memory card (save 0), which is read at boot.
+
+struct GhostPt {
+    x: s16                      // x * 512
+    z: u16                      // z * 32
+    h: u8                       // height above the snow * 16
+    yaw: s8                     // heading * 64
+}
+
+const GHOST_MAX = 3600          // two minutes at one sample every 2 frames
+
+struct SaveData {
+    version: u32
+    best: s32                   // frames, penalties included; 0: none
+    splits: [3]s32
+    misses: s32
+    n: s32                      // samples in pts
+    pts: [3600]GhostPt
+}
+
+const SAVE_VERSION = 0x464C0001
+
+var save: SaveData              // the best run (and what the card holds)
+var rec: [3600]GhostPt          // the run being recorded
+var rec_n: s32
+var card_saving: bool
+var card_pending: bool
+var save_meta: SaveMeta
+
+fn ghost_boot() {
+    make_save_meta()
+    let n = card_load(0, &save as *u8, sizeof(SaveData))
+    if n != sizeof(SaveData) || save.version != SAVE_VERSION || save.n < 1 || save.n > GHOST_MAX {
+        save = SaveData {}
+    }
+}
+
+fn best_frames() -> s32 { return save.best }
+
+fn rec_start() {
+    rec_n = 0
+    rec_sample()
+}
+
+// One sample of the sled where it is now.
+fn rec_sample() {
+    if rec_n >= GHOST_MAX { return }
+    let p = &rec[rec_n]
+    p.x = (bits(rd.x) >> 7) as s16
+    p.z = (bits(max(rd.z, 0.0)) >> 11) as u16
+    p.h = clamp(bits(rider_height()) >> 12, 0, 255) as u8
+    p.yaw = clamp(bits(rd.hd) >> 10, -127, 127) as s8
+    rec_n += 1
+}
+
+// The run just finished in `total` frames: keep it if it is the best, and save it.
+fn rec_finish(total: s32, splits: *s32, misses: s32) -> bool {
+    if save.best != 0 && total >= save.best { return false }
+    if card_saving { return false }             // (cannot happen: a run takes a minute)
+    save.version = SAVE_VERSION
+    save.best = total
+    for i in 0..3 { save.splits[i] = splits[i] }
+    save.misses = misses
+    save.n = rec_n
+    memcpy(&save.pts[0] as *u8, &rec[0] as *u8, (rec_n * sizeof(GhostPt)) as u32)
+    card_pending = true
+    return true
+}
+
+// The card write, without stopping the game (it stays busy for about two seconds).
+fn card_update() {
+    if card_saving {
+        if !card_busy() { card_saving = false }
+    } else if card_pending && !card_busy() {
+        card_pending = false
+        var title: [32]u8
+        str_copy(&title[0], 32, "FALL LINE  BEST ")
+        str_append_run_time(&title[0], 32, save.best)
+        card_set_title(&save_meta, &title[0])
+        if card_save(0, &save as *u8, sizeof(SaveData), &save_meta) == CARD_OK { card_saving = true }
+    }
+}
+
+// Where the best run's sled was at run frame f: false once it has finished (or with no best).
+var gh_pos: vec3
+var gh_hd: fixed
+var gh_pitch: fixed
+
+fn ghost_at(f: s32) -> bool {
+    if save.best == 0 || save.n < 2 { return false }
+    let k = f >> 1
+    if k >= save.n - 1 { return false }
+    let a = save.pts[k]
+    let b = save.pts[k + 1]
+    var t = 0.0
+    if f & 1 != 0 { t = 0.5 }
+    let ax = from_bits((a.x as s32) << 7)
+    let az = from_bits((a.z as s32) << 11)
+    let ah = from_bits((a.h as s32) << 12)
+    let bx = from_bits((b.x as s32) << 7)
+    let bz = from_bits((b.z as s32) << 11)
+    let bh = from_bits((b.h as s32) << 12)
+    let z = lerp(az, bz, t)
+    let y = course_y(z) + lerp(ah, bh, t)
+    gh_pos = vec3(lerp(ax, bx, t), y, z)
+    gh_hd = lerp(from_bits((a.yaw as s32) << 10), from_bits((b.yaw as s32) << 10), t)
+    // pitch from the path itself
+    let dz = bz - az
+    let dy = (course_y(bz) + bh) - (course_y(az) + ah)
+    if dz > 0.01 { gh_pitch = atan2(dy, dz) } else { gh_pitch = 0.0 }
+    return true
+}
+
+// The save's title and icon: a 16x16 slope with a cyan sled, drawn here.
+private fn make_save_meta() {
+    save_meta = SaveMeta {}
+    card_set_title(&save_meta, "FALL LINE")
+    save_meta.frames = 1
+    save_meta.palette[1] = rgb15(rgb(110, 185, 250)) as u16     // sky
+    save_meta.palette[2] = rgb15(rgb(250, 252, 255)) as u16     // snow
+    save_meta.palette[3] = rgb15(rgb(20, 200, 255)) as u16      // sled
+    save_meta.palette[4] = rgb15(rgb(255, 40, 170)) as u16      // fins
+    save_meta.palette[5] = rgb15(rgb(180, 200, 235)) as u16     // snow shade
+    for y in 0..16 {
+        for x in 0..16 {
+            var c = 1
+            let edge = 3 + x / 2
+            if y >= edge { c = 2 }
+            if y >= edge + 5 && (x + y) & 3 == 0 { c = 5 }
+            if x >= 5 && x <= 10 && y >= edge - 2 && y < edge { c = 3 }
+            if (x == 4 || x == 5) && y == edge - 1 { c = 4 }
+            let i = y * 8 + x / 2
+            if x & 1 == 0 {
+                save_meta.pixels[i] = (save_meta.pixels[i] & 0xF0) | c as u8
+            } else {
+                save_meta.pixels[i] = (save_meta.pixels[i] & 0x0F) | (c << 4) as u8
+            }
+        }
+    }
+}

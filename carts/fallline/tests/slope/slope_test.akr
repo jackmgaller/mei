@@ -1,0 +1,235 @@
+// The slope engine's own test cart (Gate 1): flies the camera down the whole profile at racer
+// speed (20-35 m/s, faster on the steeper pitches), the eye about 3 m above the snow 7 m behind a
+// virtual rider, the pitch following the grade ahead smoothly, weaving across the run. Coloured
+// test boxes stand before and beyond each crest (and the run-outs) to show the occlusion; the
+// rider is a magenta box. Prints the slope engine's CPU cycles (mean and peak a second) and the
+// frames at which the rider passes each profile point.
+//
+//   build-fl-slope/meic carts/fallline/tests/slope/slope_test.akr -o build-fl-slope/slope_test.mei
+//   build-fl-slope/mei-headless build-fl-slope/slope_test.mei --frames 3900 --dump-every 4 out/f
+
+cart "Slope Test"
+
+import "../../slope.akr"
+
+const ALIGN = false             // draw the alignment decals (below)
+const START_FRAME = 0           // the rider starts at RIDER_Z0 on this frame
+const RIDER_Z0: fixed = 2.0
+const BACK: fixed = 7.0
+const UP: fixed = 3.0
+
+var rz: fixed = RIDER_Z0
+var rx: fixed
+var speed: fixed = 22.0
+var cam_y: fixed
+var cam_g: fixed
+var cam_x: fixed
+var tick: s32
+var cyc_sum: s32
+var cyc_max: s32
+var cpu_max: s32
+var gpu_max: s32
+var next_pt: s32 = 1
+
+// a box mesh: 1 x 3 m footprint scaled per draw, from 1 m below the snow to 2.5 m above it
+struct BoxMesh {
+    m: Mesh
+    v: [8]vec4
+    f: [6]Face
+}
+var boxes: [5]BoxMesh
+const BOX_COLS: [5]u32 = [0x2020F0, 0x20C0F0, 0x40E040, 0xF04020, 0xC020E0]
+
+struct TestBox { z: fixed, x: fixed, c: s32 }
+const BOXES_N = 22
+const BOXES: [22]TestBox = [
+    TestBox { z: 320.0, x: -6.0, c: 0 },     // crest 1 (z 350): before
+    TestBox { z: 345.0, x: 8.0, c: 1 },
+    TestBox { z: 365.0, x: -3.0, c: 2 },     // just beyond
+    TestBox { z: 390.0, x: 5.0, c: 3 },
+    TestBox { z: 430.0, x: -10.0, c: 0 },
+    TestBox { z: 500.0, x: 2.0, c: 1 },      // the run-out
+    TestBox { z: 770.0, x: 6.0, c: 0 },      // crest 2 (z 800)
+    TestBox { z: 795.0, x: -8.0, c: 1 },
+    TestBox { z: 812.0, x: 2.0, c: 2 },
+    TestBox { z: 835.0, x: -4.0, c: 3 },
+    TestBox { z: 870.0, x: 10.0, c: 0 },
+    TestBox { z: 1020.0, x: -5.0, c: 0 },    // crest 3 (z 1050)
+    TestBox { z: 1046.0, x: 7.0, c: 1 },
+    TestBox { z: 1062.0, x: -2.0, c: 2 },
+    TestBox { z: 1090.0, x: 4.0, c: 3 },
+    TestBox { z: 1130.0, x: -9.0, c: 0 },
+    TestBox { z: 1200.0, x: 3.0, c: 1 },     // the run-out
+    TestBox { z: 1450.0, x: -17.0, c: 3 },   // far ones on the finish flat
+    TestBox { z: 1600.0, x: 15.0, c: 2 },
+    TestBox { z: 1700.0, x: -12.0, c: 4 },   // the finish's posts
+    TestBox { z: 1700.0, x: 12.0, c: 4 },
+    TestBox { z: 160.0, x: 0.0, c: 2 },
+]
+
+// the alignment check: red decals lying on the snow exactly over band 0's grid lines: strips
+// along the centre line (x -1/16..1/16), 2 m long every 4 m from 6 m ahead of the eye, and bars
+// across the run (x -3..3) over the lines across it (every 4 m of arc length, 2 texels: 1/8 m of
+// arc). If the plane and the polygons agree, no grid line shows beside them near the camera.
+struct StripMesh {
+    m: Mesh
+    v: [64]vec4
+    f: [16]Face
+}
+var strips: StripMesh
+const STRIPS = 16
+
+fn strip_quad(i: s32, x0: fixed, x1: fixed, za: fixed, zb: fixed) {
+    let ya = slope_y(za)
+    let yb = slope_y(zb)
+    strips.v[i * 4] = vec4(x0, ya, za, 1.0)
+    strips.v[i * 4 + 1] = vec4(x1, ya, za, 1.0)
+    strips.v[i * 4 + 2] = vec4(x0, yb, zb, 1.0)
+    strips.v[i * 4 + 3] = vec4(x1, yb, zb, 1.0)
+    let f = &strips.f[i]
+    f.flags = (FACE_QUAD | FACE_DOUBLE) as u8
+    for k in 0..4 { f.idx[k] = (i * 4 + k) as u16 }
+    f.col[0] = 0x2020FF
+}
+
+fn strips_build(ez: fixed) {
+    strips.m.nverts = (STRIPS * 4) as u16
+    strips.m.nfaces = STRIPS as u16
+    strips.m.verts = 16
+    strips.m.faces = (16 + 64 * 16) as u32
+    strips.m.windows = 0
+    let z0 = fixed((((ez + 6.0) as s32) + 3) & ~3)
+    for i in 0..8 {
+        let za = z0 + fixed(i * 4)
+        strip_quad(i, -0.0625, 0.0625, za, za + 2.0)
+    }
+    // the lines across: arc length a multiple of 4 m (the next ones after 6 m ahead)
+    var z = ez + 6.0
+    for i in 8..STRIPS {
+        let s = slope_s(z)
+        let st = fixed(((s as s32) + 4) & ~3)
+        let k = sqrt(1.0 + slope_grade(z) * slope_grade(z))
+        let zt = z + (st - s) / k
+        strip_quad(i, -3.0, 3.0, zt, zt + 0.125 / k)
+        z = zt + 0.5
+    }
+}
+
+fn box_build(b: *BoxMesh, col: u32) {
+    b.m.nverts = 8
+    b.m.nfaces = 6
+    b.m.verts = 16
+    b.m.faces = (16 + 8 * 16) as u32
+    b.m.windows = 0
+    for i in 0..8 {
+        let x = fixed((i & 1) * 2 - 1) * 0.6
+        let y = fixed(((i >> 1) & 1) * 35 - 10) / 10       // -1.0 or 2.5
+        let z = fixed(((i >> 2) & 1) * 2 - 1) * 0.6
+        b.v[i] = vec4(x, y, z, 1.0)
+    }
+    // faces: -z, +z, -x, +x, +y, -y, each with its own shade (sun from the front-left)
+    let q: [24]s32 = [0, 1, 2, 3, 4, 5, 6, 7, 0, 2, 4, 6, 1, 3, 5, 7, 2, 3, 6, 7, 0, 1, 4, 5]
+    let sh: [6]s32 = [255, 150, 210, 170, 235, 90]
+    for f in 0..6 {
+        let fc = &b.f[f]
+        fc.flags = (FACE_QUAD | FACE_DOUBLE) as u8
+        for k in 0..4 { fc.idx[k] = q[f * 4 + k] as u16 }
+        let s = sh[f]
+        let r = ((col & 255) as s32) * s / 255
+        let g = (((col >> 8) & 255) as s32) * s / 255
+        let bl = (((col >> 16) & 255) as s32) * s / 255
+        fc.col[0] = rgb(r, g, bl)
+    }
+}
+
+fn init() {
+    slope_init()
+    for i in 0..5 { box_build(&boxes[i], BOX_COLS[i]) }
+    cam_y = slope_y(rz - BACK) + UP
+    cam_g = slope_grade(rz + 12.0)
+}
+
+fn update() {
+    tick += 1
+    if tick < START_FRAME { return }
+    // faster on the steeper pitches, 20-35 m/s, eased
+    let g = slope_grade(rz)
+    let want = clamp(18.0 - g * 30.0, 20.0, 35.0)
+    speed += (want - speed) / 40
+    rz += speed / 60
+    rx = 9.0 * sin(fixed(tick) * 0.011) + 4.0 * sin(fixed(tick) * 0.031)
+    while next_pt < PROFILE_N && rz >= PROFILE[next_pt].z {
+        print("point ")
+        print_int(next_pt)
+        print(" z ")
+        print_int(PROFILE[next_pt].z as s32)
+        print(" frame ")
+        print_int(tick)
+        println("")
+        next_pt += 1
+    }
+}
+
+fn draw() {
+    let ez = rz - BACK
+    // the eye: UP above the snow under it, eased (it lags over a crest, as a chase camera does),
+    // never below 1.5 m
+    let gy = slope_y(ez)
+    cam_y += (gy + UP - cam_y) / 6
+    cam_y = max(cam_y, gy + 1.5)
+    cam_x += (rx * 0.85 - cam_x) / 10
+    cam_g += (slope_grade(rz + 12.0) - cam_g) / 20
+    let pitch = atan2(cam_g, 1.0) - 0.10
+    slope_frame(vec3(cam_x, cam_y, ez), pitch)
+
+    for i in 0..BOXES_N {
+        let b = BOXES[i]
+        let p = vec3(b.x, slope_y(b.z), b.z)
+        let layer = slope_layer(p, 2.6)
+        if layer == 0 { continue }
+        slope_draw_layer(layer)
+        mesh_at(&boxes[b.c].m, p, 0.0)
+    }
+    // the alignment strips (decals: a depth offset keeps them above the snow's depth)
+    if ALIGN {
+        strips_build(ez)
+        depth_offset(6)
+        mesh(&strips.m)
+        depth_offset(0)
+    }
+    // the rider: a magenta box on the snow
+    let rp = vec3(rx, slope_y(rz), rz)
+    slope_draw_layer(slope_layer(rp, 2.6))
+    mesh_at(&boxes[4].m, rp, 0.0)
+
+    let c = slope_cycles()
+    cyc_sum += c
+    cyc_max = max(cyc_max, c)
+    cpu_max = max(cpu_max, cpu_used())
+    gpu_max = max(gpu_max, gpu_used())
+    if tick % 60 == 0 {
+        print("t ")
+        print_int(tick)
+        print(" z ")
+        print_int(rz as s32)
+        print(" v ")
+        print_int(speed as s32)
+        print(" slope mean ")
+        print_int(cyc_sum / 60)
+        print(" max ")
+        print_int(cyc_max)
+        print(" | frame cpu max ")
+        print_int(cpu_max)
+        print(" gpu max ")
+        print_int(gpu_max)
+        print(" top ")
+        print_int(slope_top())
+        print(" hz ")
+        print_int(slope_horizon())
+        println("")
+        cyc_sum = 0
+        cyc_max = 0
+        cpu_max = 0
+        gpu_max = 0
+    }
+}

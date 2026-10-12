@@ -1,0 +1,811 @@
+{
+  "format": "mei-asset-pack",
+  "version": 1,
+  "name": "fl_pack",
+  "assets": [
+    {
+      "name": "finish",
+      "mesh": "finish.bin",
+      "levels": [],
+      "vertices": 242,
+      "triangles": 428,
+      "palette": {
+        "palettes": [
+          0
+        ],
+        "entries": [
+          {
+            "colour": 1,
+            "class": "emissive",
+            "color": "#20d8ff",
+            "materials": [
+              "light"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "chrome",
+          "tile": "2ca8b427ad523495",
+          "source": {
+            "image": "art/chrome.png",
+            "sha256": "5e957dbce35630b2f9e0afd6f2e81c97ae0a68442e5698accb6e62e7feed89e5"
+          },
+          "width": 8,
+          "height": 32,
+          "bits": 4,
+          "projection": "planar",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#deefff",
+            "#cedef7",
+            "#9cd6ff",
+            "#73c6f7",
+            "#52a5ef",
+            "#3994e7",
+            "#296bb5",
+            "#214284",
+            "#182952",
+            "#425284",
+            "#6b7ba5",
+            "#849cbd",
+            "#9cb5ce",
+            "#b5c6de"
+          ],
+          "slot": 0,
+          "x": 128,
+          "y": 0,
+          "gutter": 0,
+          "window": 897,
+          "palette": 6,
+          "first_colour": 96,
+          "indices": {
+            "#deefff": 1,
+            "#cedef7": 2,
+            "#9cd6ff": 3,
+            "#73c6f7": 4,
+            "#52a5ef": 5,
+            "#3994e7": 6,
+            "#296bb5": 7,
+            "#214284": 8,
+            "#182952": 9,
+            "#425284": 10,
+            "#6b7ba5": 11,
+            "#849cbd": 12,
+            "#9cb5ce": 13,
+            "#b5c6de": 14
+          },
+          "vram_bytes": 128,
+          "night": "per_colour",
+          "faces": [
+            [
+              32,
+              48
+            ],
+            [
+              104,
+              120
+            ],
+            [
+              144,
+              148
+            ],
+            [
+              154,
+              164
+            ],
+            [
+              170,
+              180
+            ],
+            [
+              186,
+              196
+            ],
+            [
+              202,
+              212
+            ],
+            [
+              218,
+              228
+            ],
+            [
+              234,
+              244
+            ],
+            [
+              250,
+              260
+            ],
+            [
+              266,
+              276
+            ],
+            [
+              282,
+              292
+            ],
+            [
+              298,
+              308
+            ],
+            [
+              314,
+              324
+            ],
+            [
+              330,
+              340
+            ],
+            [
+              346,
+              356
+            ],
+            [
+              362,
+              372
+            ],
+            [
+              378,
+              388
+            ],
+            [
+              394,
+              400
+            ]
+          ]
+        },
+        {
+          "material": "board",
+          "tile": "788292b44f3aeb71",
+          "source": {
+            "image": "art/finish_banner.png",
+            "sha256": "eca18696603e835a75ae19d1650f805898ba0c23dd5baf212b11500878a751ac"
+          },
+          "width": 64,
+          "height": 20,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#ffffff",
+            "#101821",
+            "#0852ff",
+            "#739cff",
+            "#8cadff",
+            "#9cbdff",
+            "#a5c6ff",
+            "#2963ff",
+            "#a5bdff",
+            "#94b5ff",
+            "#84a5ff",
+            "#9cb5ff",
+            "#84adff",
+            "#7ba5ff",
+            "#7b9cff"
+          ],
+          "slot": 0,
+          "x": 136,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 7,
+          "first_colour": 112,
+          "indices": {
+            "#ffffff": 1,
+            "#101821": 2,
+            "#0852ff": 3,
+            "#739cff": 4,
+            "#8cadff": 5,
+            "#9cbdff": 6,
+            "#a5c6ff": 7,
+            "#2963ff": 8,
+            "#a5bdff": 9,
+            "#94b5ff": 10,
+            "#84a5ff": 11,
+            "#9cb5ff": 12,
+            "#84adff": 13,
+            "#7ba5ff": 14,
+            "#7b9cff": 15
+          },
+          "vram_bytes": 693,
+          "night": "per_colour",
+          "faces": [
+            [
+              408,
+              412
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        897
+      ]
+    },
+    {
+      "name": "gate",
+      "mesh": "gate.bin",
+      "levels": [],
+      "vertices": 90,
+      "triangles": 156,
+      "palette": {
+        "palettes": [
+          1
+        ],
+        "entries": [
+          {
+            "colour": 17,
+            "class": "emissive",
+            "color": "#20d8ff",
+            "materials": [
+              "light"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "chrome",
+          "tile": "2ca8b427ad523495",
+          "source": {
+            "image": "art/chrome.png",
+            "sha256": "5e957dbce35630b2f9e0afd6f2e81c97ae0a68442e5698accb6e62e7feed89e5"
+          },
+          "width": 8,
+          "height": 32,
+          "bits": 4,
+          "projection": "planar",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#deefff",
+            "#cedef7",
+            "#9cd6ff",
+            "#73c6f7",
+            "#52a5ef",
+            "#3994e7",
+            "#296bb5",
+            "#214284",
+            "#182952",
+            "#425284",
+            "#6b7ba5",
+            "#849cbd",
+            "#9cb5ce",
+            "#b5c6de"
+          ],
+          "slot": 0,
+          "x": 128,
+          "y": 0,
+          "gutter": 0,
+          "window": 897,
+          "palette": 6,
+          "first_colour": 96,
+          "indices": {
+            "#deefff": 1,
+            "#cedef7": 2,
+            "#9cd6ff": 3,
+            "#73c6f7": 4,
+            "#52a5ef": 5,
+            "#3994e7": 6,
+            "#296bb5": 7,
+            "#214284": 8,
+            "#182952": 9,
+            "#425284": 10,
+            "#6b7ba5": 11,
+            "#849cbd": 12,
+            "#9cb5ce": 13,
+            "#b5c6de": 14
+          },
+          "vram_bytes": 128,
+          "night": "per_colour",
+          "faces": [
+            [
+              32,
+              48
+            ],
+            [
+              104,
+              120
+            ]
+          ]
+        },
+        {
+          "material": "banner",
+          "tile": "e2f8e2d5c1c3716c",
+          "source": {
+            "image": "art/banner.png",
+            "sha256": "4bc657102ecf4a7d255305dcc34aa04c96e03e31878a7c49d87f6a4f392adc17"
+          },
+          "width": 64,
+          "height": 16,
+          "bits": 4,
+          "projection": "planar",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#105aff",
+            "#2163ff",
+            "#0852ff",
+            "#316bff",
+            "#94b5ff",
+            "#a5bdff",
+            "#84adff",
+            "#5a8cff",
+            "#dee7ff",
+            "#ffffff",
+            "#004aff",
+            "#0042ff",
+            "#4a8cc6",
+            "#94e742",
+            "#73bd73"
+          ],
+          "slot": 0,
+          "x": 136,
+          "y": 24,
+          "gutter": 0,
+          "window": 6796,
+          "palette": 8,
+          "first_colour": 128,
+          "indices": {
+            "#105aff": 1,
+            "#2163ff": 2,
+            "#0852ff": 3,
+            "#316bff": 4,
+            "#94b5ff": 5,
+            "#a5bdff": 6,
+            "#84adff": 7,
+            "#5a8cff": 8,
+            "#dee7ff": 9,
+            "#ffffff": 10,
+            "#004aff": 11,
+            "#0042ff": 12,
+            "#4a8cc6": 13,
+            "#94e742": 14,
+            "#73bd73": 15
+          },
+          "vram_bytes": 512,
+          "night": "per_colour",
+          "faces": [
+            [
+              152,
+              156
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        897,
+        6796
+      ]
+    },
+    {
+      "name": "marker",
+      "mesh": "marker.bin",
+      "levels": [],
+      "vertices": 21,
+      "triangles": 26,
+      "palette": {
+        "palettes": [
+          2
+        ],
+        "entries": [
+          {
+            "colour": 33,
+            "class": "emissive",
+            "color": "#ff3fa4",
+            "materials": [
+              "cap"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "board",
+          "tile": "2e5973053af58418",
+          "source": {
+            "texels": "32 x 24"
+          },
+          "width": 32,
+          "height": 24,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7ffff",
+            "#10215a",
+            "#ff8c21"
+          ],
+          "slot": 0,
+          "x": 88,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#f7ffff": 1,
+            "#10215a": 2,
+            "#ff8c21": 3
+          },
+          "vram_bytes": 425,
+          "night": "per_colour",
+          "faces": [
+            [
+              10,
+              22
+            ]
+          ]
+        }
+      ],
+      "windows": []
+    },
+    {
+      "name": "pine",
+      "mesh": "pine.bin",
+      "levels": [],
+      "vertices": 81,
+      "triangles": 82,
+      "palette": {
+        "palettes": [
+          3
+        ],
+        "entries": [
+          {
+            "colour": 49,
+            "class": "emissive",
+            "color": "#b6ff2e",
+            "materials": [
+              "sensor"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "pylon",
+      "mesh": "pylon.bin",
+      "levels": [],
+      "vertices": 48,
+      "triangles": 54,
+      "palette": {
+        "palettes": [
+          4
+        ],
+        "entries": [
+          {
+            "colour": 65,
+            "class": "emissive",
+            "color": "#3df2ff",
+            "materials": [
+              "beacon"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "mast",
+          "tile": "d492ce795f1f4057",
+          "source": {
+            "pattern": "stripes",
+            "params": {
+              "count": 2,
+              "axis": "v"
+            }
+          },
+          "width": 16,
+          "height": 16,
+          "bits": 4,
+          "projection": "cylindrical",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#ff7b18",
+            "#dee7ef"
+          ],
+          "slot": 0,
+          "x": 208,
+          "y": 0,
+          "gutter": 0,
+          "window": 722,
+          "palette": 9,
+          "first_colour": 144,
+          "indices": {
+            "#ff7b18": 4,
+            "#dee7ef": 5
+          },
+          "vram_bytes": 128,
+          "night": "per_colour",
+          "faces": [
+            [
+              10,
+              20
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        722
+      ]
+    },
+    {
+      "name": "sled",
+      "mesh": "sled.bin",
+      "levels": [],
+      "vertices": 258,
+      "triangles": 448,
+      "palette": {
+        "palettes": [
+          5
+        ],
+        "entries": [
+          {
+            "colour": 81,
+            "class": "emissive",
+            "color": "#40f0ff",
+            "materials": [
+              "thrust"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "chrome",
+          "tile": "2ca8b427ad523495",
+          "source": {
+            "image": "art/chrome.png",
+            "sha256": "5e957dbce35630b2f9e0afd6f2e81c97ae0a68442e5698accb6e62e7feed89e5"
+          },
+          "width": 8,
+          "height": 32,
+          "bits": 4,
+          "projection": "planar",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#deefff",
+            "#cedef7",
+            "#9cd6ff",
+            "#73c6f7",
+            "#52a5ef",
+            "#3994e7",
+            "#296bb5",
+            "#214284",
+            "#182952",
+            "#425284",
+            "#6b7ba5",
+            "#849cbd",
+            "#9cb5ce",
+            "#b5c6de"
+          ],
+          "slot": 0,
+          "x": 128,
+          "y": 0,
+          "gutter": 0,
+          "window": 897,
+          "palette": 6,
+          "first_colour": 96,
+          "indices": {
+            "#deefff": 1,
+            "#cedef7": 2,
+            "#9cd6ff": 3,
+            "#73c6f7": 4,
+            "#52a5ef": 5,
+            "#3994e7": 6,
+            "#296bb5": 7,
+            "#214284": 8,
+            "#182952": 9,
+            "#425284": 10,
+            "#6b7ba5": 11,
+            "#849cbd": 12,
+            "#9cb5ce": 13,
+            "#b5c6de": 14
+          },
+          "vram_bytes": 128,
+          "night": "per_colour",
+          "faces": [
+            [
+              2,
+              3
+            ],
+            [
+              6,
+              7
+            ],
+            [
+              14,
+              16
+            ],
+            [
+              22,
+              24
+            ],
+            [
+              34,
+              36
+            ],
+            [
+              42,
+              44
+            ],
+            [
+              54,
+              56
+            ],
+            [
+              62,
+              64
+            ],
+            [
+              74,
+              76
+            ],
+            [
+              82,
+              84
+            ],
+            [
+              94,
+              96
+            ],
+            [
+              102,
+              104
+            ],
+            [
+              114,
+              116
+            ],
+            [
+              122,
+              124
+            ],
+            [
+              272,
+              312
+            ],
+            [
+              334,
+              374
+            ]
+          ]
+        },
+        {
+          "material": "logo",
+          "tile": "3d62caccff5a142b",
+          "source": {
+            "image": "art/sled_logo.png",
+            "sha256": "8716089ed1e936e6d9d3d340822029985a976bda290e409ff368a0c755e76eac"
+          },
+          "width": 64,
+          "height": 24,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#105aff",
+            "#2163ff",
+            "#296bff",
+            "#4a84ff",
+            "#0852ff",
+            "#c6d6ff",
+            "#f7ffff",
+            "#004aff",
+            "#94b5ff",
+            "#0042ff",
+            "#084aff",
+            "#63a59c",
+            "#7bce63",
+            "#4284ce",
+            "#bdff10"
+          ],
+          "slot": 0,
+          "x": 16,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 10,
+          "first_colour": 160,
+          "indices": {
+            "#105aff": 1,
+            "#2163ff": 2,
+            "#296bff": 3,
+            "#4a84ff": 4,
+            "#0852ff": 5,
+            "#c6d6ff": 6,
+            "#f7ffff": 7,
+            "#004aff": 8,
+            "#94b5ff": 9,
+            "#0042ff": 10,
+            "#084aff": 11,
+            "#63a59c": 12,
+            "#7bce63": 13,
+            "#4284ce": 14,
+            "#bdff10": 15
+          },
+          "vram_bytes": 825,
+          "night": "per_colour",
+          "faces": [
+            [
+              130,
+              138
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        897
+      ]
+    }
+  ],
+  "textures": {
+    "slots": [
+      0
+    ],
+    "palettes": {
+      "file": "fl_pack.tpal",
+      "runs": [
+        {
+          "bits": 4,
+          "first_colour": 96,
+          "colours": 80,
+          "offset": 0
+        }
+      ]
+    },
+    "tiles": 6,
+    "vram_bytes": 2711,
+    "vram_bytes_allocated": 3424,
+    "palettes_4bit": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "palettes_8bit": []
+  },
+  "swatch": {
+    "file": "fl_pack.swatch",
+    "slot": 0,
+    "row": 0,
+    "texels": 16
+  },
+  "palette": {
+    "file": "fl_pack.pal",
+    "runs": [
+      {
+        "first_colour": 0,
+        "colours": 16
+      },
+      {
+        "first_colour": 16,
+        "colours": 16
+      },
+      {
+        "first_colour": 32,
+        "colours": 16
+      },
+      {
+        "first_colour": 48,
+        "colours": 16
+      },
+      {
+        "first_colour": 64,
+        "colours": 16
+      },
+      {
+        "first_colour": 80,
+        "colours": 16
+      }
+    ]
+  }
+}

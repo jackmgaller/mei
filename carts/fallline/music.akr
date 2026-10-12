@@ -1,0 +1,112 @@
+// Fall Line's music (tools/gen_fallline_audio.py composes and renders it into mu_data.akr and
+// audio/music.adp): "Synergen" on the title, 132 bpm big beat, and "Fall Line" for the run,
+// 172 bpm drum and bass.
+//
+// Each track is three ADPCM stems started together and looped by the console itself (the loop
+// is in the samples, so it never drifts and a late frame cannot make it stutter): the beat
+// (drums and bass, mono, dry) and the air (a stereo pair: pads, stabs, leads, cymbals, risers,
+// sent to the reverb). The run's three channels are 0-2 and the title's 3-5, so one can fade out
+// while the other starts. This file only starts the stems and sets their volumes: fades between
+// tracks and the duck. Channels 0-9 are the music's; it uses 0-5.
+//
+// music_run() starts the run from its three-second riser, whose drop lands three seconds later:
+// call it on the frame of sfx_countdown(3), with the countdown 60 frames a step, and the drop
+// comes on "go". music_title() keeps the title playing if it already is. music_stop() fades out
+// over a quarter of a second. music_tick() must be called once every frame, always.
+
+import "mu_data.akr"
+
+const MU_TITLE = 0
+const MU_RUN = 1
+const MU_FADE = 16               // per frame, of 256: a quarter-second fade out
+const MU_DUCK_LEVEL = 72         // the music's level while ducked, of 256 (about -11 dB)
+const MU_DUCK_STEP = 12          // per frame
+
+private var mu_want: s32 = -1    // the track that should be heard (-1: none)
+private var mu_on: [2]bool       // its stems are playing
+private var mu_lvl: [2]s32       // its fade level, 0..256
+private var mu_gain: s32 = 256   // the duck, 0..256
+private var mu_ducked: bool
+
+// The console reverb, shared with sfx.akr: set once, left alone after (a change of preset
+// clears its memory).
+private fn mu_reverb() {
+    if REVERB_CTRL != MU_REVERB as u32 {
+        reverb(MU_REVERB, MU_WET, MU_WET)
+        reverb_decay(MU_REV_DECAY)
+    }
+}
+
+private fn mu_volumes(k: s32) {
+    let g = mu_lvl[k] * mu_gain >> 8
+    for s in 0..MU_STEMS {
+        let e = (k * MU_STEMS + s) * 7
+        sound_vol(MU_STEM[e], MU_STEM[e + 4] * g >> 8, MU_STEM[e + 5] * g >> 8)
+    }
+}
+
+private fn mu_halt(k: s32) {
+    for s in 0..MU_STEMS { stop(MU_STEM[(k * MU_STEMS + s) * 7]) }
+    mu_on[k] = false
+    mu_lvl[k] = 0
+}
+
+// Starts track k from its beginning, at full level (the three stems in the same frame, so
+// they stay sample-locked).
+private fn mu_start(k: s32) {
+    mu_reverb()
+    if mu_on[k] { mu_halt(k) }
+    for s in 0..MU_STEMS {
+        let e = (k * MU_STEMS + s) * 7
+        var flags = SND_ADPCM | SND_LOOP
+        if MU_STEM[e + 6] != 0 { flags = flags | SND_REVERB }
+        play_sample(MU_STEM[e], MU_BANK + MU_STEM[e + 1], MU_STEM[e + 2] as u32, MU_STEM[e + 3] as u32,
+                    1.0, 0, 0, flags as u32)
+    }
+    mu_on[k] = true
+    mu_lvl[k] = 256
+    mu_want = k
+    mu_volumes(k)
+}
+
+// The title loop. Does nothing if it is already playing (and not fading out).
+fn music_title() {
+    if mu_want == MU_TITLE && mu_on[MU_TITLE] { return }
+    mu_start(MU_TITLE)
+}
+
+// The run, from its riser (see the top of the file).
+fn music_run() { mu_start(MU_RUN) }
+
+// Fades the music out (music_tick() does the fade).
+fn music_stop() { mu_want = -1 }
+
+// Pause: on brings the music down to about a quarter, off back up.
+fn music_duck(on: bool) { mu_ducked = on }
+
+// Once a frame: the fades and the duck.
+fn music_tick() {
+    var target = 256
+    if mu_ducked { target = MU_DUCK_LEVEL }
+    var changed = false
+    if mu_gain < target {
+        mu_gain = min(target, mu_gain + MU_DUCK_STEP)
+        changed = true
+    } else if mu_gain > target {
+        mu_gain = max(target, mu_gain - MU_DUCK_STEP)
+        changed = true
+    }
+    for k in 0..2 {
+        if !mu_on[k] { continue }
+        if k != mu_want {
+            mu_lvl[k] = max(0, mu_lvl[k] - MU_FADE)
+            if mu_lvl[k] == 0 {
+                mu_halt(k)
+            } else {
+                mu_volumes(k)
+            }
+        } else if changed {
+            mu_volumes(k)
+        }
+    }
+}

@@ -39,8 +39,8 @@ MeiNet gateway's tests, then `test_assetkit.py`, `test_worldpack.py`, `test_worl
 `test_mochi.py`, `test_worldverify.py` and `test_worldcache.py`, and last
 `tools/check_generated.sh` (what `make check-generated` runs: the generators that need only the standard library, and
 `gen_adpcm_vectors.py` when NumPy is there, into a temporary directory, compared with the
-committed files). `make test-carts` runs `carts/lantern/tests/check.sh`,
-`carts/weather/tests/check.sh` and `test-world-carts`, which builds World Viewer and the
+committed files). `make test-carts` runs `carts/weather/tests/check.sh`,
+`carts/lantern/tests/check.sh`, `carts/fallline/tests/check.sh` and `test-world-carts`, which builds World Viewer and the
 movement garden (and so their worlds) first and runs both carts' `tests/check.sh`. A cart's scenarios are Akari files built by `tools/cart_scenario.sh` from
 the cart's `tests/harness.akr` and its game; `carts/*/tests/run.sh SCENARIO FRAMES OUT` runs one
 and writes `OUT.png`.
@@ -98,10 +98,11 @@ details; `carts/worldview/` is the example.
   test-carts`; and for every other
   generator. **NumPy and Pillow** for the Reference Renderer. **Pillow** too for the generators
   that draw: `gen_boot_duet`, `gen_boot_eclipse`, `gen_shell_assets`, `gen_lantern_assets`,
-  `gen_orbs_assets`, `gen_weather_assets` and `meifont`, and for the Asset Kit's textures read
+  `gen_orbs_assets`, `gen_weather_assets`, `gen_fallline_plane`, `gen_fallline_assets` (the models'
+  textures) and `meifont`, and for the Asset Kit's textures read
   from PNG images and sheets (`examples/assets/stall`, the shrine world's assets, so `make`;
   recipes without images need it not).
-  **SciPy** too for `gen_boot_duet` and `gen_soundlab_assets`.
+  **SciPy** too for `gen_boot_duet`, `gen_soundlab_assets` and `gen_fallline_audio`.
 - The generators draw text with the OFL fonts in `tools/fonts/` (Figtree, Sofia Sans Condensed,
   Belleza, Gelasio, Noto Sans JP, Noto Serif JP, Zen Maru Gothic, M PLUS Rounded 1c), which
   `tools/fonts/make_fonts.py` makes from Google Fonts' repository; that script needs
@@ -183,6 +184,9 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_weather_assets.py` | `carts/weather/art/` and `carts/weather/art.akr` |
 | `gen_weather_audio.py` | `carts/weather/audio/` and `carts/weather/mu_data.akr` |
 | `gen_weather_tape.py` | `carts/weather/demo_tape.bin`, Mei Weather's sample broadcast |
+| `gen_fallline_plane.py` | `carts/fallline/art/plane_*` and `carts/fallline/plane_art.akr`: Fall Line's snow and ridge tiles |
+| `gen_fallline_assets.py` | `carts/fallline/art/` (the rest) and `carts/fallline/assets.akr`: the pack of `carts/fallline/models/*` |
+| `gen_fallline_audio.py` | `carts/fallline/audio/` and `carts/fallline/mu_data.akr`: Fall Line's music and sound effects |
 | `fonts/make_fonts.py` | `tools/fonts/`: the generators' fonts as static weights cut to Latin, kana and the kanji in its `KANJI` list, and their licences (`OFL-*.txt`) |
 | `meinet/make_fixture.sh` | `tests/lang/data/broadcast.bin`, the canned broadcast the language tests replay (`meinet.py --fixture`) |
 

@@ -1,0 +1,57 @@
+// The chase camera: behind and above the sled, looking straight down the fall line (yaw 0, no
+// roll, as the slope renderer requires). x follows the sled with a lag, the height with a little
+// more, the pitch follows the grade ahead (smoothed), and the eye never goes below the snow.
+
+const CAM_BACK = 4.8            // metres behind the sled, plus CAM_BACK_V a m/s of speed
+const CAM_BACK_V = 0.04
+const CAM_UP = 2.0              // above the sled
+const CAM_CLEAR = 1.4           // at least this above the snow under the eye
+const CAM_FOLLOW = 0.7          // the pitch follows this much of the grade's angle (all of it
+                                // puts the horizon above the screen on the steep pitches)
+const CAM_TILT = -0.04          // and this below it
+const CAM_AHEAD = 10.0          // the grade the pitch follows is this far ahead of the sled
+
+var cam_eye: vec3
+var cam_pitch: fixed
+var cam_g: fixed                // smoothed grade
+var cam_back: fixed
+var cam_dip: fixed              // a landing's or a hit's jolt, metres down, decaying
+var cam_y: fixed                // the eye's height before the jolt
+
+fn cam_reset() {
+    cam_back = CAM_BACK
+    cam_g = course_grade(rd.z + CAM_AHEAD)
+    cam_eye = vec3(rd.x, 0.0, rd.z - cam_back)
+    let gy = course_y(cam_eye.z)
+    cam_y = max(rd.y + CAM_UP, gy + CAM_CLEAR + 0.6)
+    cam_eye.y = cam_y
+    cam_pitch = atan2(cam_g, 1.0) * CAM_FOLLOW + CAM_TILT
+    cam_dip = 0.0
+}
+
+// A jolt of v m/s (a landing's thump, a hit).
+fn cam_kick(v: fixed) { cam_dip = -min(v * 0.05, 0.6) }
+
+fn cam_follow() {
+    let back_to = CAM_BACK + rider_speed() * CAM_BACK_V
+    cam_back += (back_to - cam_back) / 30
+    let ez = rd.z - cam_back
+    let ex = cam_eye.x + (rd.x * 0.9 - cam_eye.x) / 12
+    let gy = course_y(ez)
+    let y_to = max(rd.y + CAM_UP, gy + CAM_CLEAR + 0.6)
+    cam_y = max(cam_y + (y_to - cam_y) / 5, gy + CAM_CLEAR)
+    cam_dip = cam_dip * 0.8
+    cam_eye = vec3(ex, max(cam_y + cam_dip, gy + CAM_CLEAR - 0.3), ez)
+    cam_g += (course_grade(rd.z + CAM_AHEAD) - cam_g) / 24
+    cam_pitch = atan2(cam_g, 1.0) * CAM_FOLLOW + CAM_TILT
+}
+
+// The title's flyover: down the whole course at 20 m/s, weaving a little, then again.
+fn cam_title(t: s32) {
+    let z = fixed((t * 20 / 60) % 1720) - 20.0
+    let x = 9.0 * sin(frame_angle(t, 0.007))
+    let gy = course_y(z)
+    cam_eye = vec3(x, gy + 8.0, z)
+    let g = course_grade(z + 25.0)
+    cam_pitch = atan2(g, 1.0) * CAM_FOLLOW - 0.16
+}
