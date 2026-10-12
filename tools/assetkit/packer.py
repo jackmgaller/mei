@@ -7,7 +7,7 @@ assets for a cart")."""
 import json
 
 from kitcore.texpack import pack as pack_tiles
-from .compiler import compile_recipe, native_bytes, face_runs, window_order, SWATCH
+from .compiler import compile_recipe, native_bytes, face_runs, window_order, material_faces, SWATCH
 from .geometry import AssetError
 from . import texout
 
@@ -95,6 +95,10 @@ def pack(recipes, name, slots, first_palette=0, palette8=14, swatch=False):
         if mesh.textures:
             entry['textures'] = texout.texture_entries(mesh, packing, face_runs)
             entry['windows'] = [packing.placements[k].halfword() for k in window_order(mesh, packing)]
+        # each material's and tag's faces in the mesh (blend modes included), as the material manifest has them
+        entry.update(material_faces(mesh, materials))
+        if mesh.levels:
+            entry['level_materials'] = [material_faces(level, materials) for level, _ in mesh.levels]
         listing.append(entry)
 
     manifest = {'format': PACK_FORMAT, 'version': 1, 'name': name, 'assets': listing}

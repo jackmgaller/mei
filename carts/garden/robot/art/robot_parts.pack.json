@@ -8,56 +8,236 @@
       "mesh": "robot_arm.bin",
       "levels": [],
       "vertices": 8,
-      "triangles": 8
+      "triangles": 8,
+      "materials": {
+        "grey": {
+          "color": "#6c7682",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              0,
+              8
+            ]
+          ]
+        }
+      },
+      "tags": {}
     },
     {
       "name": "robot_foot",
       "mesh": "robot_foot.bin",
       "levels": [],
       "vertices": 16,
-      "triangles": 28
+      "triangles": 28,
+      "materials": {
+        "shell": {
+          "color": "#e65a3c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        }
+      },
+      "tags": {}
     },
     {
       "name": "robot_hand",
       "mesh": "robot_hand.bin",
       "levels": [],
       "vertices": 14,
-      "triangles": 24
+      "triangles": 24,
+      "materials": {
+        "cream": {
+          "color": "#f4ead2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              0,
+              24
+            ]
+          ]
+        }
+      },
+      "tags": {}
     },
     {
       "name": "robot_head",
       "mesh": "robot_head.bin",
       "levels": [],
       "vertices": 72,
-      "triangles": 110
+      "triangles": 110,
+      "materials": {
+        "cream": {
+          "color": "#f4ead2",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 44,
+          "faces": [
+            [
+              0,
+              44
+            ]
+          ]
+        },
+        "grey": {
+          "color": "#6c7682",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              102,
+              110
+            ]
+          ]
+        },
+        "shell": {
+          "color": "#e65a3c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              82,
+              102
+            ]
+          ]
+        },
+        "visor": {
+          "color": "#1d2433",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 38,
+          "faces": [
+            [
+              44,
+              82
+            ]
+          ]
+        }
+      },
+      "tags": {}
     },
     {
       "name": "robot_key",
       "mesh": "robot_key.bin",
       "levels": [],
       "vertices": 20,
-      "triangles": 28
+      "triangles": 28,
+      "materials": {
+        "gold": {
+          "color": "#ffd25a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        }
+      },
+      "tags": {}
     },
     {
       "name": "robot_leg",
       "mesh": "robot_leg.bin",
       "levels": [],
       "vertices": 8,
-      "triangles": 8
+      "triangles": 8,
+      "materials": {
+        "grey": {
+          "color": "#6c7682",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              0,
+              8
+            ]
+          ]
+        }
+      },
+      "tags": {}
     },
     {
       "name": "robot_prop",
       "mesh": "robot_prop.bin",
       "levels": [],
       "vertices": 34,
-      "triangles": 52
+      "triangles": 52,
+      "materials": {
+        "blade": {
+          "color": "#5ec8e6",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              16,
+              52
+            ]
+          ]
+        },
+        "gold": {
+          "color": "#ffd25a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              16
+            ]
+          ]
+        }
+      },
+      "tags": {}
     },
     {
       "name": "robot_torso",
       "mesh": "robot_torso.bin",
       "levels": [],
       "vertices": 35,
-      "triangles": 66
+      "triangles": 66,
+      "materials": {
+        "shell_s": {
+          "color": "#e65a3c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 66,
+          "faces": [
+            [
+              0,
+              66
+            ]
+          ]
+        }
+      },
+      "tags": {}
     }
   ]
 }

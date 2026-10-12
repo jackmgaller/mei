@@ -445,7 +445,8 @@ result in `report.json`. The report records recipe, mesh, compiler and probe has
    topology reports still cover open/nonmanifold surfaces; use `--strict` when those should fail.
 2. **Coverage and identity:** a temporary diagnostic mesh gives every exported triangle a
    unique RGB555 ID. It keeps vertex positions, winding, face order, double-sided and Gouraud
-   flags. Palette-backed and textured faces are checked untextured: see [Palette-backed
+   flags; semi-transparent faces add nothing to it and are judged apart ([Semi-transparent
+   faces](#semi-transparent-faces)). Palette-backed and textured faces are checked untextured: see [Palette-backed
    materials](#palette-backed-materials); faces with cutouts are judged per texel ([The Asset
    Checker and textures](#the-asset-checker-and-textures)). Dithering is disabled and no HUD is drawn. The real
    core renders the ID buffer; `mei-asset-probe` captures its projected integer vertices and
@@ -626,6 +627,63 @@ are too, but for `native_cpu_cycles` (above) and the probe's hash. What a depth-
 now: the probe drawing the 144 views (about 3 ms each), the reference judging 16 (10–50 ms each),
 the geometry audit and Python's start.
 
+### Semi-transparent faces
+
+Faces of a material with [`blend`](#semi-transparent-materials) hide nothing, and the checker
+judges them so, with and without depth:
+
+1. **They do not occlude.** In the ID buffer's mesh they stay semi-transparent (flag bit 3), in
+   blend mode `add` with colour 0: the console draws them where it would (in their buckets, or
+   after the opaque faces with the depth buffer), testing depth and writing none, and they change
+   no pixel. The reference leaves them out. So the opaque faces are judged exactly as if the
+   blended ones were absent: what is behind a pane of glass must be drawn, a blended face never
+   counts as covering a pixel, and it takes part in no `wrong_order` finding and no ordering
+   cycle. A console that drew them opaque fails (the glass would hide what the reference expects).
+2. **Where they show is judged in a second buffer, the blended layer.** A second check cart draws
+   the same cameras with every opaque face black (colour 0, still writing depth; a cutout face
+   through its mask) and every blended face adding its own ID (1 to N in face order, 5 bits a
+   channel). The reference expects at each pixel the sum, per channel and saturating at 31, of
+   the IDs of the blended faces covering it that are nearer than every opaque face covering it.
+   A pixel is judged when each blended face covering it is nearer, by more than the depth tie,
+   than every opaque face covering the pixel or within `edge_margin` of it, or farther than the
+   nearest one by more than the tie, and lies at least `edge_margin` inside its own outline; a
+   pixel no blended face covers must stay black. The tie is the same as for opaque faces (2 steps
+   of the depth key in depth mode, 2/65,536 units without). A judged pixel whose drawn sum differs
+   is a wrong pixel, and any fails the asset. Blended cutout faces are judged per texel, as
+   opaque ones are ([The Asset Checker and textures](#the-asset-checker-and-textures)).
+3. **The geometry audit is unchanged**: duplicates and coplanar overlaps fail with a blended face
+   as with an opaque one (a pane coplanar with a wall ties with it in the depth test, pixel by
+   pixel), crossings fail without the depth buffer and are allowed with it, and `close_faces`
+   warns as before.
+
+In depth mode the blended layer finds faults of the console (a blended face not drawn, or drawn
+where it is hidden): it should have no wrong pixel. Without the depth buffer it finds the
+ordering table's mistakes: an opaque face drawn over a blended face in front of it, or a blended
+face drawn over an opaque face in front of it. A red box inside a glass box (`blend: "half"`,
+`tests/test_assetkit.py`, `BlendTests`) passes in depth mode, while without depth the ordering
+table draws small faces of the box over the big glass faces in front of them: 598 wrong pixels in
+16 of the 144 views.
+
+**Not judged:** the order of blended faces among themselves (a sum does not depend on it), their
+colours and the blending itself (the IDs say which faces were drawn, not how they mixed), and
+pixels where the sums are ambiguous: two faces whose IDs add up to the same sum as another set,
+or a channel saturating at 31, can hide a missing or extra face there.
+
+In depth mode the views are chosen as before, the blended faces' pixels counted from the blended
+layer where a pixel holds one face's ID alone (a sum is attributed to no face, or to a wrong one:
+enough to choose by), so the judged views draw them too. The second cart costs a second compile
+and probe run, for assets with blended faces only: Fall Line's sled (448 triangles, 50 of them
+its canopy) checks in about 1.5 s, and its observed faces went from 351 to 437 when the canopy
+became see-through (the pilot is judged through it).
+
+The report adds, per view, `blend` (`tested_pixels`, `undecided_pixels`,
+`undecided_wrong_pixels`, `wrong_pixels`, and `issues`: `blend_wrong` with the blended faces
+expected to show there, those expected hidden behind an opaque face, the drawn and expected
+values and a sample pixel; a failing view's image is `visibility_NNNN_blend.png`), the same
+counts in `totals.blend`, and `blend` at the top: the blended faces, their modes, how many were
+seen, and the scope. `observed_faces` counts the blended faces expected to show in some judged
+view.
+
 ### Reports and repairs
 
 A verification report begins with its verdict:
@@ -746,8 +804,9 @@ Overrides on `verify` are exploratory; edit the recipe to change an enforced bui
 `--geometry warn` records geometric defects as warnings, but visibility and cycles still must
 pass. Use it explicitly for diagnosis, not to label intersecting geometry as clean.
 
-The gate currently covers opaque static meshes (untextured, palette-backed or textured faces,
-cutouts per texel in depth mode) and sampled fitted cameras. Near-plane or
+The gate currently covers static meshes (untextured, palette-backed or textured faces,
+cutouts per texel in depth mode; semi-transparent faces as [above](#semi-transparent-faces)) and
+sampled fitted cameras. Near-plane or
 guard-band clipping is rejected as unsupported, not treated as a pass. Animation, arbitrary
 camera translations/FOVs, other ordering-table ranges, exact real-number visibility before
 projection, fully enclosed internal components and unobserved faces are not certified.
@@ -828,7 +887,8 @@ a Boolean union. Overlapping copies may consequently produce topology warnings.
 
 ### Materials and lighting
 
-Materials have `color: "#RRGGBB"` and optional `smooth: false`, `double_sided: false`.
+Materials have `color: "#RRGGBB"` and optional `smooth: false`, `double_sided: false` and
+`blend` ([Semi-transparent materials](#semi-transparent-materials)).
 The implicit `default` material is `#c4cad4`. Flat shading is the default. Smooth shading uses
 area-weighted vertex normals within each named part and material; split parts to retain a
 hard boundary. Reflections and nonuniform scales are handled before normals are calculated.
@@ -851,6 +911,63 @@ all triangles produced from that polygon retain the material. This avoids overla
 panels that can cut through one another under Mei's triangle depth sorting. The robot example's
 head uses this approach, retaining a closed mesh with shared boundary vertices. Primitives do the
 same with `faces` (a material per side) and `decals` (rectangles baked into a face), below.
+
+### Semi-transparent materials
+
+`blend` makes a material's faces semi-transparent, in one of the GPU's four blend modes
+([RENDERING.md](RENDERING.md), `src/core/gpu.c`); without it a material is opaque:
+
+| `blend` | Mode (blend byte) | Each 5-bit channel of the pixel (B: what is behind, F: the face) | For |
+|---|---|---|---|
+| `"half"` | 0, `BLEND_HALF` | (B + F) / 2 | glass, water, a canopy |
+| `"add"` | 1, `BLEND_ADD` | B + F, at most 31 | glows, light shafts |
+| `"sub"` | 2, `BLEND_SUB` | B − F, at least 0 | shadows, darkening |
+| `"quarter"` | 3, `BLEND_QUARTER` | B + F / 4, at most 31 | faint glows |
+
+```json
+"materials": {"glass": {"color": "#38b8e8", "smooth": true, "blend": "half"}}
+```
+
+`build` and `pack` write every face of the material with flag bit 3 (`FACE_SEMI`) set and the
+mode in its blend byte (LANGUAGE.md, "Mesh format"); nothing else about the face changes. Such a
+face tests the depth buffer and writes none, so it hides nothing drawn after it. How it combines:
+
+- **Colour and lighting** are as for any face: F is the face's baked, shaded colour (with
+  `bake: false` its plain colour), so dark glass in `add` adds little.
+- **Textures:** each texel is blended. A texture with holes (a cutout) draws nothing on texel 0
+  and blends the rest; as for any cutout, the asset's policy must say `"depth": true`
+  ([Cutouts](#cutouts)).
+- **Palette-backed and emissive materials:** the palette entry's colour is blended, so
+  rewriting the palette still recolours the face; an emissive `add` material is a glow whose
+  strength is its palette entry (black adds nothing).
+- **`double_sided`:** both sides are drawn and blended, so where a closed double-sided shell's
+  front and back overlap on screen the face is blended twice.
+- **Fog** (`fog()`): in `add`, `sub` and `quarter` a fogged pixel fades toward black, so the
+  face's contribution fades out with distance; in `half` toward the fog colour.
+- **Cost:** a semi-transparent pixel costs the GPU twice an opaque one (LANGUAGE.md,
+  "Performance notes").
+
+**Drawing order.** Semi-transparent faces must be drawn after the opaque faces behind them, back
+to front: the blend reads what is already in the framebuffer, and they write no depth. `mesh*()`
+does this. With `render_depth(true)` it puts them in a table of their own (`stdlib/depth.akr`),
+drawn after every opaque face of the frame, farthest bucket first. Without the depth buffer every
+face goes into the ordering table by its average view depth and the table is drawn back to
+front, so a blended face is drawn after the opaque faces behind it only where the buckets order
+them so: a large blended face around small opaque ones (glass over a cockpit) can be drawn
+before a face it covers. The [Asset Checker](#semi-transparent-faces) finds those places; the
+depth buffer removes them. A cart that builds its own packets keeps the same order (RENDERING.md,
+"Drawing order"). The order of blended faces among themselves is their buckets': overlapping
+`half` faces look different in another order, and so do adding and subtracting faces together,
+while faces that all add (`add`, `quarter`) or all subtract (`sub`) do not.
+
+**Where the faces are.** The material manifest gives each material's `blend` and its faces
+(half-open ranges of the exported faces); `pack`'s `NAME.pack.json` gives each asset's
+materials and tags the same way ([Outputs and game integration](#outputs-and-game-integration)).
+`report.json` counts the semi-transparent triangles by mode (`blend`). The `.mtl` file gives a
+`half` material `d 0.5`; `export` makes it an alpha-blended glTF material
+([below](#viewing-an-asset-elsewhere-export)). Fall Line's sled canopy is the example
+(`carts/fallline/models/sled/make_sled.py`). The World Kit places such a mesh as built; the World
+Checker does not compare semi-transparent faces' pixels (its `unverifiable_faces` warning).
 
 ### Face materials and decals
 
@@ -1324,7 +1441,15 @@ game data. For the kiosk (abridged):
 ```
 
 `colour` is the global palette colour index (`palette × 16 + index`). Face ranges are half-open
-`[start, end)` indices into the exported mesh's faces. In `stool.bin`, a palette-backed face has
+`[start, end)` indices into the exported mesh's faces. A material with
+[`blend`](#semi-transparent-materials) has `"blend"` too (`"half"`, `"add"`, `"sub"` or
+`"quarter"`), so its ranges are the mesh's semi-transparent faces; Fall Line's sled:
+`"glass": {"color": "#38b8e8", "class": "surface", "palette_colour": null, "tag": "glass",
+"triangles": 50, "faces": [[138, 188]], "blend": "half"}`. `pack`'s `NAME.pack.json` gives each
+asset its `materials` and `tags` in this shape (with `palette_colour` where the pack put the
+entry), and an asset with levels of detail `level_materials`, one per level from 1, so a packer
+or a cart reads which faces are which from the manifest, not from the kit's internals. In
+`stool.bin`, a palette-backed face has
 flag bit 1 set, texture byte `slot | 16`, palette byte `palette`, and every texture coordinate
 `index | row << 8`; that is all a packer needs to move entries. `assetkit.compiler.relocate(binary,
 colours, slot, row)` does it: it maps old colour indices to new ones and moves the swatch,
@@ -1338,8 +1463,8 @@ colors and its global lighting toggle; it does not preserve procedural operation
 normals or a custom light direction when re-exported through that editor. Keep the recipe as
 the source of truth. The editor may impose additional object/coordinate limits on large recipes.
 
-Version 1 makes static meshes with solid colours, baked or palette-backed, and
-[textures](#textures). Boolean solids, skeletal animation, morph animation and automatic LOD
+Version 1 makes static meshes with solid colours, baked or palette-backed,
+[textures](#textures) and [semi-transparent materials](#semi-transparent-materials). Boolean solids, skeletal animation, morph animation and automatic LOD
 generation are not included, and the repository has no other tool for them.
 
 ### Viewing an asset elsewhere: `export`
@@ -1374,6 +1499,7 @@ looked up as the GPU does. So it carries:
 | Tiles drawn once | the tile and its gutter, `CLAMP_TO_EDGE` |
 | Cutouts (texel 0) | alpha 0, `alphaMode: MASK` |
 | `double_sided` | `doubleSided: true` |
+| `blend: "half"` | `alphaMode: BLEND`, base colour alpha 0.5; `add`, `sub` and `quarter` have no glTF equivalent and are exported opaque (a note says so). `extras.mei.blend` names the mode |
 | Emissive (never shaded) | unshaded `COLOR_0`; also `emissiveFactor` (and `emissiveTexture`) for viewers without the unlit extension |
 
 Not carried: animated textures beyond frame 0 (the result's `dropped_frames` and the material's
@@ -1561,7 +1687,9 @@ grid) draws nothing there and writes no depth: fences, grilles, railings, foliag
 Cutouts draw correctly only with the depth buffer, so they are allowed only in assets whose
 policy says `"depth": true` (`"verification": {"required": true, "depth": true, "perspective":
 true}`); any other asset using one fails with an error at its texture. Draw such an asset with
-`render_depth(true)`. Semi-transparency stays per face (glass), not per texel.
+`render_depth(true)`. Semi-transparency is per material, not per texel: a material with
+[`blend`](#semi-transparent-materials) blends every texel of its faces but the holes, in one mode;
+a texel has no alpha of its own.
 
 ### Animated textures
 
@@ -1609,7 +1737,9 @@ row 0 of the first slot, then the 4-bit textures' palettes, and 8-bit palettes f
 (`street.slotK.tex`), the palettes (`street.tpal` for textures, `street.pal` and
 `street.swatch` for palette-backed materials), animation frames (`street.frames`), one
 `street.akr` that embeds every mesh and defines `street_load()`, and the manifest
-`street.pack.json`. It does not run the Asset Checker; `build` or `verify` each asset for that.
+`street.pack.json` (per asset its files, counts, palette entries, textures, and each material's
+and tag's faces, blend modes included: [the material manifest](#outputs-and-game-integration)).
+It does not run the Asset Checker; `build` or `verify` each asset for that.
 
 ```
 import "street.akr"
@@ -1866,7 +1996,12 @@ counted); `DecalTests` that each decal adds 8 triangles and 4 vertices and keeps
 its corners and texture coordinates, `rotate`, no flush contacts or T-junctions (with NumPy), the
 errors, `mesh` polygons and modifiers' copies, `--part` framing a decal, and (with NumPy and the
 native tools) that a baked decal passes the Asset Checker with and without the depth buffer
-where a quad 3.5 cm proud fails without it. It also runs as part of `make test` when
+where a quad 3.5 cm proud fails without it. `BlendTests` checks `blend`: each mode's flag and
+blend byte (on plain, palette-backed and textured faces), the material manifest's and the pack's
+face ranges, the `.mtl` and glTF, and (with NumPy and the native tools) that the checker judges a
+core through its glass, fails a console drawing the glass opaque or leaving out a glass face, finds
+the ordering table's mistakes around the glass without the depth buffer, judges a blended cutout
+per texel, and that `preview` draws the glass blended. It also runs as part of `make test` when
 Python is available. Pure Python tests can run independently; native render tests skip if
 the binaries are absent:
 
