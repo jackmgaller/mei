@@ -368,10 +368,11 @@ pitches the torso forward and rocks the treads nose-down 8°.
   punishable by anything.
   On a catch the animation jumps to its **slam section** (frames 50–105, 56 frames, marked
   `riposte` on its first frame, as the Parry's riposte is): Tank hauls the other mech up by the
-  shoulders, swings it overhead (frames 50–64, the other's root lifted to 6.5 m above Tank's
-  head, Tank's fists at the other's shoulders), holds it there a moment while the reactor
-  flares (65–74), then slams it down in front (75–84) and lets go: `release` on frame 84, the
-  damage and the slam's hitstop (12). It ends with Tank straightening up (85–105). The other
+  shoulders, swings it overhead (frames 50–64, the other's root lifted 6.5 m off the floor
+  over Tank's head, Tank's fists at the other's shoulders), holds it there a moment while the reactor
+  flares (65–74), then slams it down in front (75–83) and lets go: `release` on frame 83 (the
+  slam section's 34th frame), the damage and the slam's hitstop (12). It ends with Tank
+  straightening up (84–105). The other
   plays `thrown_slam` (below) and lands knocked down, about 3.6 m in front.
 - **Smokestack Uppercut** (`sp_u`, the anti-air): **super armour on frames 1–15** (startup and
   active). Tank stays planted (no root motion: it is too heavy to leave the floor) and drives
@@ -413,7 +414,7 @@ in the air or knocked down. A miss: 40 frames of recovery (55–94), the arms cr
 on nothing and Tank skidding to a stop. On a catch the animation jumps to its slam section
 (frames 95–150, 56 frames, `riposte` on 95, the same timing as the Clinch's so the victim's
 `thrown_slam` serves both): lift overhead, the reactor going critical (the hold at 110–119 is
-where the flare peaks), the slam on frame 129 (`release`): 360 damage (scaled in a chain like
+where the flare peaks), the slam on frame 128 (`release`, the section's 34th frame): 360 damage (scaled in a chain like
 any hit), knockdown, the super's hitstop (20). Unblockable; no chip, since it is a grab. Grabs
 are not parried, so neither is this.
 
@@ -461,7 +462,7 @@ frames. The fight places the root (Tank's fists are at the victim's shoulders th
 
 | Frames | The victim |
 |---|---|
-| 1–14 | hauled up by the shoulders: the root rises from the floor to 6.5 m above Tank's fists' height, moving from 3.0 m in front of Tank to 0.8 m in front (over its head); the victim's legs dangle and kick, its arms flail at Tank's wrists |
+| 1–14 | hauled up by the shoulders: the root rises from the floor to 6.5 m, moving from 3.0 m in front of Tank to 0.8 m in front (over its head); the victim's legs dangle and kick, its arms flail at Tank's wrists |
 | 15–24 | held overhead, horizontal, face up (its body pitched back 90°), struggling |
 | 25–34 | slammed down in front: the root comes down to the floor 3.6 m in front of Tank, the body rotating back to land flat on its back on frame 34 (the slam, `release` on Tank's side) |
 | 35–56 | flat on its back, a bounce on 36–40, then still: the fight takes it into `knockdown` from here |
@@ -504,7 +505,7 @@ victim: dead weight, the treads hanging), `thrown_slam` 56.
   fight flashes Tank when a hit is absorbed; the animation needn't flinch.
 - **Marks:** `cancel` on `atk_n` (9–17) and `atk_f` (17–26); `armour` on `atk_f` (4–20), `sp_n`
   (1–17), `sp_u` (1–15); `riposte` on the first frame of the slam sections (`sp_f` 50, `super`
-  95); `release` on the slams (`sp_f` 84, `super` 129) and on `throw` 30; `invuln` on `super`
+  95); `release` on the slams (`sp_f` 83, `super` 128) and on `throw` 30; `invuln` on `super`
   1–46; `flash` on `super` 1–40. No `step` marks anywhere (frame numbers here count from 1, as
   the tables do; the animation files count from 0).
 - **The throws place the victim**: Tank's fists should meet the victim where the fight puts its
