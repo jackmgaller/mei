@@ -79,6 +79,11 @@ With a private build directory (`make B=build-mine`), give it once: `--build-dir
 `export B=build-mine` (or `MEIC`, `RUN` and `PROBE`, as the test suites read them) and every
 command finds its tools there ([Native tools](#native-tools)).
 
+A recipe with more than a few dozen parts, or one with levels of detail and a collision recipe
+made from the same measurements, is easier to write as a Python script that writes the JSON:
+`tools/assetkit/author.py` has the builders such scripts share ([Writing recipes from
+Python](#writing-recipes-from-python)).
+
 For an agent building a game:
 
 1. Establish the intended size in world units, facing direction, silhouette and triangle budget.
@@ -1461,6 +1466,61 @@ rim of one colour. 60 triangles with 16 segments.
 ]
 ```
 
+## Writing recipes from Python
+
+Most recipes in the repository are written by a generator script beside them (`make_NAME.py`),
+which keeps the measurements as named numbers and writes the drawn recipe, its levels of detail
+and its collision recipe from them. `tools/assetkit/author.py` holds the helpers those scripts
+otherwise define for themselves. Each builder returns a plain dict, so anything it does not
+cover is added by hand; the JSON stays the contract. Standard library only; it writes nothing
+itself.
+
+```python
+import sys
+from pathlib import Path
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parents[1] / 'tools'))      # from a script in examples/assets/
+from assetkit import author as A
+
+MATS = {'stone': {'color': '#a8a69e', 'palette': True}, 'wood': {'color': '#8a6446'}}
+near = [A.box('base', [2, 0.2, 2], [0, 0.1, 0], 'stone', open=['bottom']),
+        A.cylinder('post', 0.1, 1.8, [0, 1.1, 0], 'wood', segments=6, caps=False)]
+far = [A.box('post', [0.2, 1.8, 0.2], [0, 1.1, 0], 'wood', open=['bottom'])]
+A.write(HERE / 'lamp.asset.json',
+        A.recipe('lamp', MATS, near, budget=60, lod=A.lod([(20, far)], cull=60)))
+A.write(HERE / 'lamp_col.asset.json',
+        A.collision('lamp_col', [A.box_extents('base', -1, 1, 0, 0.2, -1, 1, open=['bottom'])]))
+```
+
+| Call | Makes |
+|---|---|
+| `box(id, size, at, material, open=, faces=, decals=, modifiers=, rotate=, scale=, pivot=)` | A box by size and centre |
+| `box_extents(id, x0, x1, y0, y1, z0, z1, material, ...)` | The same box by its extents |
+| `cylinder`, `cone(id, radius, height, at, material, segments=, caps=, ...)`; `sphere(id, radius, at, material, rings=, segments=)` | The round primitives |
+| `extrude(id, points, depth, material, at, ...)`; `lathe(id, profile, ...)`; `loft(id, [section(y, points), ...], ...)` | Outlines extruded (prisms), turned or joined |
+| `mesh(id, vertices, faces, material, face_materials=, uvs=)`; `quad(id, material, corners)`; `quad_x`, `quad_y`, `quad_z` | Explicit polygons; one rectangle in an axis plane, facing the way named |
+| `Mesh(id, share=False)`: `.face(material, pts, uvs=, out=)`, `.box(...)`, `.node()` | A `mesh` node built a face at a time, each with its material and UVs |
+| `group(id, children, at, ...)`, `instance(id, ref, at, ...)`, `decal(id, face, material, size, at)` | Parts, prototype copies, decals |
+| `mirror`, `array`, `radial`, `taper`, `twist`, `subdivide` | Modifiers |
+| `newell(pts)`, `wind(vertices, face, out)`, `outward(vertices, faces)`, `box_sides(...)` | Normals and winding |
+| `recipe(name, materials, nodes, budget=, sheets=, prototypes=, lighting=, verification=, lod=)` | The recipe; lighting and verification default to the depth-mode game's |
+| `level(distance, nodes)`, `lod(levels, cull=, band=)` | Levels of detail; a level may be a `(distance, nodes)` pair |
+| `collision(name, nodes, material='solid', color=None)` | A collision recipe: nodes and mesh faces without a material get `solid` (palette-backed white) |
+| `write(path, recipe)`, `dumps(recipe)`, `tidy(recipe)` | The text: keys in one order, floats rounded |
+
+Arguments left out (or None) leave their field out, so the kit's default applies. `write()`
+puts the keys in one order (the recipe's as `format`, `version`, `name`, `budget`, `sheets`,
+`materials`, `prototypes`, `lighting`, `verification`, `nodes`, `lod`; a node's as `id`, `op`,
+its own fields, `material`, `open`, `faces`, `decals`, `modifiers`, `transform`; a transform's
+as `pivot`, `scale`, `rotate`, `translate`, the order the kit applies them in), rounds every
+float to 4 places (0.1 mm; -0.0 is written 0.0, integers stay integers), indents by one space
+and checks the result against the schema, raising the kit's `AssetError` with the field's path
+before anything is written. Run `inspect` and `verify` on the result as on any recipe. Three
+generators use it: `carts/garden/shrinetown/assets/arch_wall_gate_bar/gen.py` (boxes, a level
+of detail and a collision box), `culvert_deck/make_culvert_deck.py` (`Mesh`) and
+`sports_tyre_steps/make_sports_tyre_steps.py` (`mesh` and `wind`); each writes the same bytes
+it wrote before.
+
 ## Outputs and game integration
 
 For an asset named `stool`, `build` produces:
@@ -2132,6 +2192,13 @@ the binaries are absent:
 ```sh
 python3 -m unittest discover -s tests -p test_assetkit.py -v
 ```
+
+`tests/test_author.py` (run by `make test` and `make test-assets`, Python only) checks the
+authoring module: each builder's fields and key order, the axis quads' and box sides' facing,
+`Mesh`, `wind` and `outward`, the recipe skeleton, levels of detail and `collision()`'s
+materials, `write()`'s rounding, key order and schema errors, that a recipe using every
+operation compiles and passes `mei_assets.py validate`, and that the three ported generators,
+run in a scratch copy, write their committed recipes byte for byte.
 
 Example recipes: [`robot`](../examples/assets/robot.asset.json),
 [`vessel`](../examples/assets/vessel.asset.json), [`cottage`](../examples/assets/cottage.asset.json),
