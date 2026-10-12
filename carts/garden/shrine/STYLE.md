@@ -1,11 +1,19 @@
 # The shrine's style sheet
 
-How the shrine slice's assets look and are built. The world lead owns this file; asset workers
-follow it. The level's design is [README.md](README.md); the tools are the Asset Kit
-([docs/ASSETKIT.md](../../../docs/ASSETKIT.md)) and the World Kit
-([docs/WORLDKIT.md](../../../docs/WORLDKIT.md)). The movement garden's sheet
-([../world/STYLE.md](../world/STYLE.md)) is the older sibling: its rules on hidden faces, slivers
-and collision floors hold here too.
+How the shrine slice's assets look and are built; the shrine town uses them
+([README.md](README.md)). The world lead owns this file; asset workers follow it. The tools are
+the Asset Kit ([docs/ASSETKIT.md](../../../docs/ASSETKIT.md)) and the World Kit
+([docs/WORLDKIT.md](../../../docs/WORLDKIT.md)). Four rules from the city block's sheet (the
+garden's first world, removed 2026-10-11) hold here too:
+
+- **No hidden faces.** Leave out every face nothing can see (bottoms on the ground, a body's top
+  under its roof, faces pressed together): a hidden face costs a face's cycles for nothing.
+- **Bands, not panels.** Windows, signs and stripes are bands of one `mesh`'s surface
+  (`face_materials`), never panels in front of it.
+- **Gaps, not slivers.** Two parts closer than 0.05 m fight in the depth buffer: touch exactly or
+  keep 0.1 m apart, and never put two faces in one plane over each other.
+- **Clean collision floors.** No long thin triangles (more than about 10 : 1) in a collision
+  floor: the World Checker's edge test misreads them.
 
 ## The place
 

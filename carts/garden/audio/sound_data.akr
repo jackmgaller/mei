@@ -174,12 +174,10 @@ const GA_LIFE_PIGEON = 16
 const GA_LIFE_BICYCLE = 32
 const GA_LIVES = 6
 
-// per world (garden, shrine, shrinetown): first zone, zones
-const GA_WORLD_ZONES: [6]s32 = [0, 1, 1, 1, 2, 28]
+// per world (shrinetown): first zone, zones
+const GA_WORLD_ZONES: [2]s32 = [0, 28]
 // per zone: x0, z0, x1, z1 (m), y0, y1 (m x 16), bed sound (-1: none), bed volume, mix, reverb preset, reverb wet, footstep material, life mask
-const GA_ZONES: [390]s32 = [-1000, -1000, 1000, 1000, -16000, 16000, 51, 110, 7, 1, 35, 0, 52,
-    -1000, -1000, 1000, 1000, -16000, 16000, 52, 120, 2, 3, 60, 1, 7,
-    204, 322, 224, 338, 192, 304, -1, 0, 6, 4, 150, 0, 0,
+const GA_ZONES: [364]s32 = [204, 322, 224, 338, 192, 304, -1, 0, 6, 4, 150, 0, 0,
     229, 103, 243, 119, -48, 10, -1, 0, 6, 4, 130, 6, 0,
     134, 2, 186, 14, -32, 128, 49, 90, 0, 3, 110, 0, 0,
     0, 0, 320, 16, 128, 480, 49, 120, 0, 1, 25, 0, 8,
@@ -207,9 +205,7 @@ const GA_ZONES: [390]s32 = [-1000, -1000, 1000, 1000, -16000, 16000, 51, 110, 7,
     0, 104, 320, 118, -800, 3200, 49, 130, 0, 1, 30, 0, 33,
     0, 0, 320, 64, -800, 3200, 49, 130, 0, 1, 40, 0, 48,
     -1000, -1000, 1000, 1000, -16000, 16000, 49, 110, 0, 1, 35, 0, 0]
-const GA_ZONE_NAMES: [30]*u8 = ["the garden",
-    "the shrine",
-    "cave behind the falls",
+const GA_ZONE_NAMES: [28]*u8 = ["cave behind the falls",
     "culvert",
     "station concourse",
     "platform and viaduct",
@@ -239,7 +235,7 @@ const GA_ZONE_NAMES: [30]*u8 = ["the garden",
     "the town"]
 
 // per world: first emitter, emitters
-const GA_WORLD_EMITTERS: [6]s32 = [0, 0, 0, 0, 0, 7]
+const GA_WORLD_EMITTERS: [2]s32 = [0, 7]
 // per emitter: sound, a (x, y, z), b (x, y, z) (m x 16), full volume within (m), silent beyond (m), volume, moving (placed by ga_emitter_move)
 const GA_EMITTERS: [77]s32 = [55, 3424, 736, 5216, 3424, 224, 5168, 12, 115, 190, 0,
     56, 3584, 192, 5088, 3776, 16, 2976, 4, 32, 170, 0,
@@ -258,7 +254,7 @@ const GA_EM_SHOP_MUSIC = 5          // shrinetown's
 const GA_EM_TRAIN = 6          // shrinetown's
 
 // per world: first timer, timers
-const GA_WORLD_TIMERS: [6]s32 = [0, 0, 0, 0, 0, 4]
+const GA_WORLD_TIMERS: [2]s32 = [0, 4]
 // per timer: sound, position (m x 16), full volume within (m), silent beyond (m), volume, period, jitter, first (frames)
 const GA_TIMERS: [40]s32 = [47, 3616, 10, 2752, 3, 50, 190, 540, 120, 180,
     44, 2560, 192, 128, 12, 110, 170, 2700, 900, 720,

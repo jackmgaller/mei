@@ -1,0 +1,206 @@
+// The play recorder: while the game runs (not the tests), what the player does is printed to the
+// debug output, which the desktop emulator writes to stdout and keeps in runs/mei-DATE-TIME.log
+// in its preferences folder (docs/OVERVIEW.md), so every session is recorded; read it with
+// carts/garden/record.py (names for the placements, entities and sounds; a CSV and
+// a summary). Each line starts with a letter and the frame (frame_n):
+//
+//   P f state x y z vx vy vz yaw fwd pad sx sy surf byte fy fi fj ftag     every 6 frames (10 a second)
+//       the feet (m), the velocity (m/s), the facing (rad), the speed along it (m/s), the pad
+//       (hex), the stick, the floor's mapped and raw surface bytes, and the floor under the feet
+//       (its height, the cell's i and j, the triangle's tag: its placement in that cell; -1: none)
+//   C f ex ey ez tx ty tz yaw pitch zone w reach squeeze                  every 6 frames
+//       the camera: the eye, what it looks at, its heading and pitch, the camera zone (-1: none)
+//       and its blend, the eye's distance from the head and how far a wall pulled it in
+//   E f FROM TO          the player's state changed (as seen at the end of a frame)
+//
+// States are St numbers (player.akr's ST_NAMES names them; record.py reads it).
+//   S f id               a sound started (GA_S_*); L f id: the robot's loop changed (-1: none)
+//   Z f name             the sound zone the feet are in changed
+//   G f region           the texture region entered
+//   K f coins red stars  the coins, red coins or stars taken changed
+//   W f dir dist ci cj tag    one of 8 rays at waist height, 12 m out (dir 0 north, clockwise
+//                        by 45 degrees), one every 3 frames: the first wall's distance and placement
+//                        (dist -1: nothing within 12 m)
+//   N f type number dist     each entity within 15 m of the feet, every 30 frames (GARDEN_TYPE_*,
+//                        the world's entity number; record.py names both)
+//
+// It costs about 20,000 CPU cycles a frame on a P frame and less on the others; the frame
+// budget's readout (SELECT) shows it.
+
+const REC_EVERY = 6
+const REC_RAY_EVERY = 3
+const REC_RAY_LEN: fixed = 12.0
+const REC_NEAR_EVERY = 30
+const REC_NEAR: fixed = 15.0
+
+var rec_started: bool
+var rec_st: St
+var rec_zone: s32 = -2
+var rec_loop: s32 = -2
+var rec_region: s32 = -2
+var rec_coins: s32 = -1
+var rec_reds: s32 = -1
+var rec_stars: s32 = -1
+var rec_dir: s32
+
+fn rec_f(v: fixed) {
+    print_char(' ')
+    print_fixed(v)
+}
+
+fn rec_i(v: s32) {
+    print_char(' ')
+    print_int(v)
+}
+
+fn rec_head(c: u32, f: s32) {
+    print_char(c)
+    rec_i(f)
+}
+
+// The cell (i, j) and tag of what the last world query hit, or -1s.
+fn rec_hit() {
+    if wp_hit.cell == null || wp_hit.tag == 0xFFFF {
+        print(" -1 -1 -1")
+        return
+    }
+    rec_i(wp_hit.cell.i as s32)
+    rec_i(wp_hit.cell.j as s32)
+    rec_i(wp_hit.tag)
+}
+
+fn rec_stars_taken() -> s32 {
+    var n = 0
+    for k in 0..star_n {
+        if prog_has(stars[k]) { n += 1 }
+    }
+    return n
+}
+
+fn record_frame(f: s32) {
+    if !rec_started {
+        rec_started = true
+        rec_st = pl.st
+        println("REC 1 movement garden, world shrinetown (carts/garden/record.akr)")
+        ga_log_n = 0
+    }
+    if pl.st != rec_st {
+        rec_head('E', f)
+        rec_i(rec_st as s32)
+        rec_i(pl.st as s32)
+        println("")
+        rec_st = pl.st
+    }
+    for k in 0..ga_log_n {
+        rec_head('S', f)
+        rec_i(ga_log[k])
+        println("")
+    }
+    ga_log_n = 0
+    let lp = ga_loop_now()
+    if lp != rec_loop {
+        rec_head('L', f)
+        rec_i(lp)
+        println("")
+        rec_loop = lp
+    }
+    if ga_zone != rec_zone {
+        rec_head('Z', f)
+        print_char(' ')
+        println(ga_zone_name())
+        rec_zone = ga_zone
+    }
+    if wp_region_loaded != rec_region {
+        rec_head('G', f)
+        print_char(' ')
+        if wp_region_loaded >= 0 { println(wp_region_name(wp_region_loaded)) } else { println("-") }
+        rec_region = wp_region_loaded
+    }
+    let st = rec_stars_taken()
+    if coins != rec_coins || red_coins != rec_reds || st != rec_stars {
+        rec_head('K', f)
+        rec_i(coins)
+        rec_i(red_coins)
+        rec_i(st)
+        println("")
+        rec_coins = coins
+        rec_reds = red_coins
+        rec_stars = st
+    }
+    if f % REC_EVERY == 0 {
+        rec_head('P', f)
+        rec_i(pl.st as s32)
+        rec_f(pl.pos.x)
+        rec_f(pl.pos.y)
+        rec_f(pl.pos.z)
+        rec_f(pl.vel.x * 60)
+        rec_f(pl.vel.y * 60)
+        rec_f(pl.vel.z * 60)
+        rec_f(pl.yaw)
+        rec_f(pl.fwd * 60)
+        print_char(' ')
+        print_hex(pad_now)
+        let s = input_stick(frame_n)
+        rec_f(s.x)
+        rec_f(s.y)
+        rec_i(pl.floor_surf)
+        rec_i(pl.floor_byte)
+        if wp_floor(pl.pos + vec3(0.0, 0.5, 0.0), 0.5) {
+            rec_f(wp_hit.y)
+            rec_hit()
+        } else {
+            print(" - -1 -1 -1")
+        }
+        println("")
+        rec_head('C', f)
+        rec_f(cam.eye.x)
+        rec_f(cam.eye.y)
+        rec_f(cam.eye.z)
+        rec_f(cam.target.x)
+        rec_f(cam.target.y)
+        rec_f(cam.target.z)
+        rec_f(cam.yaw)
+        rec_f(cam.pitch)
+        rec_i(cam.zone)
+        rec_f(cam.w)
+        rec_f(cam.reach)
+        rec_f(cam.squeeze)
+        println("")
+    }
+    if f % REC_RAY_EVERY == 0 {
+        let a = fixed(rec_dir) * (PI / 4)
+        let p = pl.pos + vec3(0.0, 0.8, 0.0)
+        rec_head('W', f)
+        rec_i(rec_dir)
+        if wp_ray(p, p + vec3(sin(a), 0.0, cos(a)) * REC_RAY_LEN) {
+            rec_f(wp_hit.t * REC_RAY_LEN)
+            rec_hit()
+        } else {
+            print(" -1 -1 -1 -1")
+        }
+        println("")
+        rec_dir = (rec_dir + 1) & 7
+    }
+    if f % REC_NEAR_EVERY == 0 {
+        let ci = wp_cell_index(pl.pos.x)
+        let cj = wp_cell_index(pl.pos.z)
+        for dj in -1..2 {
+            for di in -1..2 {
+                let c = wp_cell(ci + di, cj + dj)
+                if c == null { continue }
+                for k in 0..c.entity_count as s32 {
+                    let e = wp_cell_entity(c, k)
+                    let d = wp_entity_pos(e) - pl.pos
+                    if abs(d.x) > REC_NEAR || abs(d.z) > REC_NEAR { continue }
+                    let dist = length(d)
+                    if dist > REC_NEAR { continue }
+                    rec_head('N', f)
+                    rec_i(e.type_id as s32)
+                    rec_i(e.number as s32)
+                    rec_f(dist)
+                    println("")
+                }
+            }
+        }
+    }
+}

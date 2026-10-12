@@ -69,8 +69,8 @@ Kit's `verify`, `preview` and `build` take `--build-dir build-mine`, or read `B=
 
 Mei Demo, Sound Lab and World Viewer are built only on request (`make build/carts/demo.mei
 build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out. The
-movement garden is built by `make`, which therefore needs NumPy for its worlds, and Pillow for
-the shrine world's textures (`carts/garden/shrine`, whose assets read PNG sheets).
+movement garden is built by `make`, which therefore needs NumPy for its world (the shrine town),
+and Pillow for its textures (its assets and `carts/garden/shrine`'s read PNG sheets).
 The Reference Renderer
 ([tests/reference_renderer/README.md](tests/reference_renderer/README.md)) builds its carts,
 probes and reports into `$(B)/reference_renderer/` on each run; `make test` runs its two
@@ -121,7 +121,7 @@ nothing it read has changed ([WORLDKIT.md](docs/WORLDKIT.md#quick-tools)).
   Belleza, Gelasio, Noto Sans JP, Noto Serif JP, Zen Maru Gothic, M PLUS Rounded 1c), which
   `tools/fonts/make_fonts.py` makes from Google Fonts' repository; that script needs
   **fontTools** and network access. Scripts whose output is not shipped still draw with macOS
-  system fonts: the garden's `layout.py` sketches, `carts/weather/tests/contact.py` and the lab
+  system fonts: Electric Town's `layout.py` sketch, `carts/weather/tests/contact.py` and the lab
   scripts in `examples/assets/` (docs/LICENSING.md, section 3).
 
 ## Reporting status

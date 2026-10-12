@@ -580,8 +580,8 @@ block('hoarding_e', 319.6, 104.0, 320.0, 118.0, 0, 5.5, '#eceae4', '#e8782a', la
 # Doors (the garden cart's door entities, spec 7.3): the konbini's leads to the garden, as the
 # shrine's does; walking into the road works at the front road's west end leads back along the
 # road to the shrine (whose road's west end leads here).
-entity('door_garden', 'door', 196.0, 0.0, 33.0, {'world': 'garden', 'size': [3.0, 3.0, 1.2]})
-entity('door_shrine', 'door', 1.6, 0.0, 111.0, {'world': 'shrine', 'size': [2.0, 3.0, 13.0]})
+# (the doors to the garden's city block and the shrine slice, door_garden and door_shrine, went
+# with those worlds on 2026-10-11: DESIGN.md 12.11)
 
 # ------------------------------------------------------------------ floors under points
 def floor_at(x, z, below=99.0):

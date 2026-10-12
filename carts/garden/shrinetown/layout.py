@@ -288,7 +288,7 @@ RED_COINS = [(160, 78, 8.5), (102, 74, 15.2), (172, 8, 12.8), (78, 26, 20.8), (1
 RACE_SWITCH = (168, 342)
 POIS = [
     ('S', SPAWN[0], SPAWN[1], 'Spawn: station plaza'), (1, 160, 8, 'Station, platform 9 m'),
-    (2, 196, 25, 'Konbini (door to the garden)'), (3, 122, 24, 'Koban'), (4, 78, 26, 'Danchi 18.8 m, outside stair'),
+    (2, 196, 25, 'Konbini'), (3, 122, 24, 'Koban'), (4, 78, 26, 'Danchi 18.8 m, outside stair'),
     (5, 160, 74, 'Shotengai under the arcade'), (6, 100, 58, 'Back alleys'), (7, 102, 74, 'Fire tower 15.2 m'),
     (8, 48, 60, 'Canal (wading 0.8 m)'), (9, 19, 66, 'Sento, chimney 18.2 m'), (10, 193, 73, 'Building 18.3 m, fire escape'),
     (11, 273, 71, 'School 18.9 m'), (12, 226, 79, 'Gym 9 m'), (13, 262, 111, 'Overpass 7 m'),

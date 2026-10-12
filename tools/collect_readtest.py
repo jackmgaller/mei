@@ -28,6 +28,11 @@ in the same --period), written as OUTDIR/NAME_strip_SCENE_DISTm.png (the frames 
 .gif.
 
 Needs Pillow; make builds the worlds (NumPy) unless --no-make.
+
+Not runnable now: its scenes are in the shrine slice and the city block, which the movement garden
+no longer builds (it runs on the shrine town alone since 2026-10-11). Porting it means scenes in
+the shrine town, its two texture regions, and texture slots and palettes clear of the shrine
+town's (which uses slot 0 and palettes 0-253).
 """
 import argparse
 import json

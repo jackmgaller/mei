@@ -15,8 +15,8 @@ town needs) is [TEXTURES.md](TEXTURES.md).
 ## What is built
 
 **A grey box** (DESIGN.md, section 9, phase 1): every building and roof a box at its final
-footprint, height and collision, in flat colours, the trees boxes, the rails paths. It is the world `shrinetown`, the movement garden's third (`../world/garden.game.mochi`:
-`worlds garden, shrine, shrinetown`), on the garden's controller and camera.
+footprint, height and collision, in flat colours, the trees boxes, the rails paths. It is the world `shrinetown`, the movement garden's only one (`../garden.game.mochi`:
+`worlds shrinetown`), on the garden's controller and camera.
 
 **The game** (DESIGN.md, section 9, phase 2; 12.5): the five stars (the hanafuda moon card), the
 red coins releasing star 2, the stage bell, the last train (the omamori's 85 s clock, the train
@@ -24,13 +24,11 @@ on track 2, the platform), the shortcuts A–E (triggers that switch their layer
 ladders A and E held on their front. The entities are in `game.py`; how the cart plays them is
 `../README.md`, "Entities" and "Goals".
 
-**Getting in.** Walk into the road works at the west end of the shrine's road (the shrine is
-the garden's second world: the torii at the foot of the garden's shrine hill): the road goes on
-into the shrine town. The first time in a session the player arrives there by train, stepping
-off onto the island platform facing north (A or B skips it; DESIGN.md 12.10); later, and after a
-respawn, at the spawn in the station plaza. The shrine town's konbini door leads to
-the garden; its road works at the front road's west end lead back to the shrine. A picture
-without playing (the world is built with the garden cart):
+**Getting in.** The garden cart opens the shrine town at start-up. The first time in a session
+the player arrives by train, stepping off onto the island platform facing north (A or B skips it;
+DESIGN.md 12.10); after a respawn, at the spawn in the station plaza. There are no doors: the
+garden's other two worlds, the city block and the shrine slice, were removed on 2026-10-11
+(DESIGN.md 12.11). A picture without playing (the world is built with the garden cart):
 
 ```sh
 make B=build-mine build-mine/carts/garden.mei
@@ -78,7 +76,6 @@ seamless edge to downtown (DESIGN.md 7.1), road works until downtown exists.
 | 423 | The rope from the rope deck into the knot hole (8.9 s), the sill, down the hollow trunk to star 4 |
 | 424 | Rope ladder A: the shelf (24) to the ledge (44), 6.1 s up, let go and catch the lip |
 | 430 | All 105 coins and red coins: 79 on floors, 26 over rails, each taken there; the 8 red coins |
-| 431–433 | The doors: konbini → garden, road works → shrine, the shrine's road works → shrine town |
 | 440–446 | The views V1–V6 in the game, and turning round on the pagoda: no late frame |
 | 450 | The eighth red coin brings star 2 down onto the great torii's top beam; taken there |
 | 451 | The bell's rope (within 0.6 m) rings star 3 down onto the deck; taken |

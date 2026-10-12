@@ -1,6 +1,6 @@
-// The movement garden's game schema: a copy of carts/garden/world/garden.game.mochi with the
-// terrain examples (shrine_grounds, forest_mountain) added to `worlds`, so the garden's controller
-// can run on them. The two examples' copies are the same file, so one cart can hold both. The
+// The movement garden's game schema as it was when the terrain examples were made (the garden's
+// is now carts/garden/garden.game.mochi), with the terrain examples (shrine_grounds,
+// forest_mountain) added to `worlds`, so the garden's controller can run on them. The two examples' copies are the same file, so one cart can hold both. The
 // field names are the contract in carts/garden/README.md ("Entities").
 
 game garden

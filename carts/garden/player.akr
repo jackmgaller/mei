@@ -278,7 +278,7 @@ fn steep() -> bool {
 // ---- the tick
 
 // ---- wading: water slows the player on foot with its depth; from deep water it cannot jump.
-// There is no swimming (the shrine's pond: carts/garden/shrine/README.md).
+// There is no swimming (the shrine town's pond and canal: carts/garden/shrinetown/README.md).
 const WADE_FULL: fixed = 1.2           // at this depth (m) and deeper, the slowest
 const WADE_SLOW: fixed = 0.35          // the run speed kept there
 const WADE_NO_JUMP: fixed = 1.0        // no jump from deeper than this

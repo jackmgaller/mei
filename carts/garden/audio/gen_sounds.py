@@ -981,9 +981,7 @@ ZONES_TOWN = [
     ('the town', (-1000, -1000, 1000, 1000), (-1000, 1000), 'bed_town', 110, 'town', ROOM, 35, 'stone', []),
 ]
 # The garden (a park block in a town) and the shrine slice: one zone each until they are designed.
-ZONES_GARDEN = [('the garden', (-1000, -1000, 1000, 1000), (-1000, 1000), 'bed_precinct', 110, 'garden', ROOM, 35, 'stone', ['pigeon', 'bulbul', 'bicycle'])]
-ZONES_SHRINE = [('the shrine', (-1000, -1000, 1000, 1000), (-1000, 1000), 'bed_woods', 120, 'precinct', HALL, 60, 'gravel', ['higurashi', 'crow', 'bulbul'])]
-WORLDS = [ZONES_GARDEN, ZONES_SHRINE, ZONES_TOWN]      # garden.game.mochi's order: garden, shrine, shrinetown
+WORLDS = [ZONES_TOWN]      # garden.game.mochi's worlds: shrinetown
 
 # Positional loops: sound, segment end a and b (metres; a point when a == b), full volume
 # within r_full, silent beyond r_zero, volume. 'moving' ones are placed by the cart each frame.
@@ -996,7 +994,7 @@ EMITTERS_TOWN = [
     ('shop music', 'shop_music', (160, 7, 46), (160, 7, 102), 5, 36, 80, False),
     ('train', 'train', (160, 10, 8), (160, 10, 8), 10, 130, 190, True),
 ]
-EMITTERS = [[], [], EMITTERS_TOWN]
+EMITTERS = [EMITTERS_TOWN]
 
 # Sounds on a timer at a place: sound, position, r_full, r_zero, volume, period (s), jitter (s), first (s)
 TIMERS_TOWN = [
@@ -1005,7 +1003,7 @@ TIMERS_TOWN = [
     ('suzu', 'suzu', (160, 8.6, 214), 4, 55, 160, 30, 20, 8),
     ('five o\'clock chime', 'town_chime', (160, 40, 200), 1000, 1001, 200, 360, 0, 300),
 ]
-TIMERS = [[], [], TIMERS_TOWN]
+TIMERS = [TIMERS_TOWN]
 
 
 # ================================================================== build
@@ -1089,7 +1087,7 @@ def write(sounds):
             zones += [x0, z0, x1, z1, int(math.floor(y0 * 16)), int(math.ceil(y1 * 16)),
                       idx[bed] if bed else -1, bvol, MIX[mix], rev, wet, MAT[mat], mask]
             znames.append(nm)
-    arr('GA_WORLD_ZONES', zfirst, 'per world (garden, shrine, shrinetown): first zone, zones', 6)
+    arr('GA_WORLD_ZONES', zfirst, 'per world (shrinetown): first zone, zones', 6)
     arr('GA_ZONES', zones, 'per zone: x0, z0, x1, z1 (m), y0, y1 (m x 16), bed sound (-1: none), bed volume, '
         'mix, reverb preset, reverb wet, footstep material, life mask', 13)
     L.append('const GA_ZONE_NAMES: [%d]*u8 = [%s]' % (len(znames), ',\n    '.join('"%s"' % z for z in znames)))

@@ -247,7 +247,6 @@ COINS['red_canopy'] = (172.0, 13.47 + COIN_LIFT, 8.0)
 COINS['red_parapet'] = (48.0, PARAPET_Y + 1.1, 8.0 + HALF_STD)
 # the konbini's roof sign (red coin 5 on its top, 7.0): the middle of its foot on the roof's deck
 KONBINI_SIGN = (196.0, 4.7, 30.0)
-KONBINI_DOOR = (187.5, 0.0, 33.0)     # the door entity (3 m wide): street_konbini's door, x 186-189
 
 
 def _put(ns, cells_put, pid, asset, x, y, z, yaw=0.0, collision=None, layer=None, merge=False):
@@ -320,18 +319,11 @@ def town(ns):
     # the konbini's roof sign (red coin 5 on its top, 7.0), on the real roof's deck (4.7)
     _put(ns, put_town, 'konbini_sign', 'konbini_roof_sign', *KONBINI_SIGN)
 
-    # -- coins the real stairs, canopy and platform moved; the door to the garden on the real
-    # konbini's door (x 186-189 on its front, z 32), not the grey box's middle
-    door = None
+    # -- coins the real stairs, canopy and platform moved
     for c in cells.values():
         for e in c['entities']:
             if e['id'] in COINS:
                 e['position'] = [r3(v) for v in COINS[e['id']]]
-            elif e['id'] == 'door_garden':
-                door = e
-        c['entities'] = [e for e in c['entities'] if e is not door]
-    door['position'] = list(KONBINI_DOOR)                  # in cell c2_0 now, not c3_0
-    ns['cell'](*ns['cell_of'](KONBINI_DOOR[0], KONBINI_DOOR[2]))['entities'].append(door)
 
     # -- the deck's line and the parapet rails along the real parapets (the sweeps are gone)
     for name in ('parapet_s', 'parapet_n_w', 'parapet_n_e'):

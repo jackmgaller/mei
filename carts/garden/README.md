@@ -1,23 +1,26 @@
 # The movement garden
 
 The cart where the platformer's movement is tuned, and the first level built with the World Kit
-and the Asset Kit. The movement design is in [PLATFORMER.md](../../docs/PLATFORMER.md); this file
-is the **contract** between the teams building the garden. It changes only through the main
-session (the integration branch), never by one team on its own.
+and the Asset Kit. Its one world is the shrine town ([shrinetown/README.md](shrinetown/README.md)):
+the cart opens it at start-up. The movement design is in [PLATFORMER.md](../../docs/PLATFORMER.md);
+this file is the **contract** between the teams building the garden. It changes only through the
+main session (the integration branch), never by one team on its own.
 
-![Layout sketch](layout.png)
+![Over the precinct, north](shrinetown/screenshots/overview_north.png)
 
-`layout.png` is drawn by `layout.py` (`python3 carts/garden/layout.py`); the coordinates in its
-`D` list are the plan in metres. It is a sketch: the world lead owns the exact numbers in the
-recipe and keeps the sketch roughly in step.
+Until 2026-10-11 the cart had three worlds, joined by doors: a 128 m city block (`world/`, where
+the movement scenarios 1-38 ran), the shrine slice (`shrine/`) and the shrine town. The first two
+were removed; the shrine town took over their scenarios (`tests/harness.akr`), and the shrine
+slice's assets and style sheet stay in `shrine/` as source the shrine town's recipe reads. They
+are in git history before that date.
 
 ## Teams
 
 | Layer | Who | Owns | Reports to |
 |---|---|---|---|
 | 0 | Main session | This contract, merges, test runs, the owner | The owner |
-| 1 | World lead | `carts/garden/world/`: style sheet, world recipe, cells, placements, collision, entities, the game schema, World Checker results | Main session |
-| 2 | Asset workers (7) | Their families' recipes in `carts/garden/world/assets/` | World lead |
+| 1 | World lead | `carts/garden/shrinetown/`: design, world recipe, cells, placements, collision, entities, World Checker results; the game schema `garden.game.mochi` | Main session |
+| 2 | Asset workers | Their families' recipes in `carts/garden/shrinetown/assets/` (and `shrine/assets/`) | World lead |
 | 1 | Controller lead | `carts/garden/*.akr` and `carts/garden/tests/`: character, camera, tuning menu, timing readout | Main session |
 | 2 | Camera worker, attachments worker | Their parts of the cart, as the controller lead assigns | Controller lead |
 | 1 | Kit engineer | `tools/`, `stdlib/`, `docs/` for kit features the garden needs | Main session |
@@ -29,22 +32,18 @@ up, and the main session routes it.
 
 ```
 carts/garden/
-  README.md, layout.py, layout.png    this contract and the sketch
+  README.md                           this contract
   garden.akr, game.akr, ...           the cart (controller lead)
   goals.akr                           stars, triggers and flags, a challenge's clock, the saved progress
   art/                                the star's card, packed for slot 14 (see "Goals")
-  ground/ground.akr                   the only file that imports the world (the world's
-                                      generated garden.akr would clash with the cart's own)
-  worlds.txt                          the garden's world, the shrine's and the shrine town's
-  shrine/                             the shrine slice: its world, style sheet and assets
-  shrinetown/                         the shrine town's grey box: its world, design and generators
+  audio/                              the sounds and the music, their generators and sound.akr
+  ground/ground.akr                   the only file that imports the world
+  garden.game.mochi                   the game schema (world lead, to this contract)
+  worlds.txt                          the garden's world: the shrine town
+  shrinetown/                         the shrine town: its world recipe, cells, assets, design and tools
+  shrine/                             the shrine slice's assets and style sheet, which the shrine town uses
+  electric/                           Electric Town, a later area: the design and sketches, nothing built
   body.akr, robot/                    the player drawn: the wind-up robot, its parts and poses
-  world/
-    STYLE.md                          the style sheet (world lead)
-    garden.world.json, cells/         the world recipe (world lead)
-    garden.game.mochi                 the game schema (world lead, to this contract)
-    garden.ids.json                   the ID lock file, committed
-    assets/                           Asset Kit recipes (workers; collision companions *_col)
   tests/                              harness.akr, run.sh, check.sh (controller lead)
 ```
 
@@ -53,15 +52,13 @@ shell lists it as Movement Garden. Its `tests/check.sh` runs in `make test-carts
 
 ## World
 
-- **Units:** 1 unit = 1 metre; y is up. The block is 128 × 128 m: **four 64 m cells** (2 × 2), so
-  the crossroads lies on the corner where all four meet, which tests seams and cell selection.
-- **One region**, `garden`, with palette variants `day` and `night`. A second region is a later
-  stage, not the garden. The shrine town has two (`town`, `shrine`): the cart enters the region of
-  the cell the player stands in when it changes (`game.akr`, `follow_region()`;
-  [shrinetown/TEXTURES.md](shrinetown/TEXTURES.md)).
-- **Layers:** `festival` (the stalls and their goals), on at night only; the game switches it.
-- **Ground** is explicit Asset Kit meshes per cell until World Kit terrain exists.
-- **The grey box comes first:** the world lead builds the whole block from primitives with final
+- **Units:** 1 unit = 1 metre; y is up. The shrine town is 320 × 384 m, 30 cells of 64 m.
+- **Two regions**, `town` and `shrine`, split at z = 128, each with palette variants `day` and
+  `night`: the cart enters the region of the cell the player stands in when it changes
+  (`game.akr`, `follow_region()`; [shrinetown/TEXTURES.md](shrinetown/TEXTURES.md)).
+- **Ground** is a World Kit terrain heightfield with cliffs, water and paths
+  ([shrinetown/README.md](shrinetown/README.md), "The ground").
+- **The grey box comes first:** the world lead builds the level from primitives with final
   footprints, heights and collision before any detailed asset, so the controller has ground to
   run on in the first round. A detailed asset then replaces its grey box with the same footprint,
   height and collision.
@@ -101,28 +98,24 @@ are the world lead's choice. Positions are the entity's placement; offsets are r
 | Type | Fields | Meaning |
 |---|---|---|
 | `spawn` | `yaw` | Where the player starts |
-| `coin` (saved) | `time_window: any \| day \| night` | The collectible; five in the garden |
+| `coin` (saved) | `time_window: any \| day \| night` | The collectible: 97 in the shrine town |
 | `pole` | `height`, `front: bool` | A vertical pole from the placement up; a front pole (a ladder on a wall) is held on the side its yaw faces only, not grabbed from behind, not gone round |
 | `rail` | `path` (a World Kit path name) | Something to grind or hang from: overpass rail, wires, crane jib |
-| `mover` | `to` (offset) or `path`, `period` (ticks), `pause` (ticks), `mode: pingpong \| loop`, `start` (a flag), `delay` (ticks), collision asset | A moving platform: gondola, crane hook, the train. With `start` it is parked (not drawn, no collision) until the flag is set, waits `delay`, then runs; once the flag is cleared it parks when back at its placement (pingpong) or at its leg's end (loop), its first cycle (the delay included) always run to the end; the flag set again restarts its clock from 0 |
-| `camera_zone` | `size`, `mode: follow \| fixed \| rail`, `look` | Inside it the camera changes behaviour (the kick alley) |
-| `door` | `world` (a world of the game), `size` | Walking into the box (rising `size.y` from the placement) opens that world at its spawn: the garden's shrine torii leads to the shrine, the shrine's konbini door back |
-| `red_coin` (saved) | | Eight red coins in a level: the shrine's along its forest loop, the shrine town's over its roofs |
+| `mover` | `to` (offset) or `path`, `period` (ticks), `pause` (ticks), `mode: pingpong \| loop`, `start` (a flag), `delay` (ticks), collision asset | A moving platform: the trains. With `start` it is parked (not drawn, no collision) until the flag is set, waits `delay`, then runs; once the flag is cleared it parks when back at its placement (pingpong) or at its leg's end (loop), its first cycle (the delay included) always run to the end; the flag set again restarts its clock from 0 |
+| `camera_zone` | `size`, `mode: follow \| fixed \| rail`, `look` | Inside it the camera changes behaviour (the kick chimney, the kick pair) |
+| `red_coin` (saved) | | Eight red coins in a level: the shrine town's over its roofs |
 | `star` (saved) | `appear` (a flag) | The level's goal, the hanafuda moon card; with `appear`, there only while that flag is set (it comes down into place when it is); once taken it shows its back at its place whatever the flag |
 | `updraft` | `width`, `depth`, `base`, `cap`, `lift`, `look: steam \| mist \| smoke`, `puffs`, `lean` | Rising air (`updraft.akr`): a glide in the box (`width` by `depth`, centred on the placement moved by half of `lean`, from `base` to 2 m over `cap`, both metres over the placement) eases to 3.5 m/s and climbs at up to `lift` m/s, slowing to hold its feet at `cap`; a jump or a fall goes through. Drawn as `puffs` wisps (one camera-facing quad each, at most 24) rising from the placement to 3 m over the cap, leaning `lean` |
 | `trigger` (saved) | `size`, `how: touch \| press \| pound`, `flag`, `needs`, `keep`, `timer`, `ends`, `on`, `off`, `hide` | A box (its base centred on the placement) that sets `flag` when the body enters it, presses B standing in it (no dive then) or lands a ground pound in it, while `needs` is set and `flag` is not. `keep`: saved. `timer`: the flag is a challenge's, cleared that many ticks later (the clock on the screen). `ends`: a flag it clears (a challenge it ends is won). `on`/`off`: layers switched. `hide`: its mesh hidden while the flag is set |
 
-The game has three worlds (`worlds garden, shrine, shrinetown`): the garden, the shrine slice
-([shrine/README.md](shrine/README.md)) and the shrine town's grey box
-([shrinetown/README.md](shrinetown/README.md)), which use this schema and this cart's
-controller. `ground/ground.akr` opens any of them; water (the shrine's and the town's) slows the
-player with its depth, and from deeper than 1 m there is no jump. A world with more movers (8),
+The game has one world (`worlds shrinetown`), the shrine town
+([shrinetown/README.md](shrinetown/README.md)), which uses this schema and this cart's controller.
+`ground/ground.akr` opens it; water slows the player with its depth, and from deeper than 1 m there
+is no jump. A world with more movers (8),
 poles (128), rails (128), stars (16), triggers (32) or entities (256) than the cart holds stops at
 its load (`attach.akr`, `goals.akr`).
 
-Rails, wires and the train's route are **World Kit paths**, which the kit engineer builds first
-(they are reserved in [WORLDKIT.md](../../docs/WORLDKIT.md#terrain), not yet built). Until they
-land, the grey box places the poles and movers, and the rails come with the paths.
+Rails, wires and the trains' routes are **World Kit paths** (`paths` in the world recipe).
 
 The probe (`probe.radius`, `height`, `step`, `floor_max_degrees`) starts as in
 `examples/worlds/test_room/garden.game.mochi` (0.3, 1.6, 0.32, 40); the controller lead may ask
@@ -137,15 +130,17 @@ holds the body; the World Checker does not report such gaps
 
 `goals.akr`. **Flags** are names (`name` parameters); triggers set them, stars and movers wait for
 them, and the game sets `red_coins` when the open world's last red coin is taken. They belong to
-the world open now: opening a world clears them and sets again those of the triggers it keeps.
+the world open now: opening the world again clears them and sets again those of the triggers it
+keeps.
 A touch trigger fires on entering its box, not while the body stays in it.
 
-**Saved progress** is the worlds' saved bits as the World Kit numbers them (`NAME.ids.json`): a
-star taken, a kept trigger fired, 512 bits a world. Coins and red coins are not saved: they come
-back whenever a world opens. The progress is written to save 0 of the memory card in slot 1
+**Saved progress** is the world's saved bits as the World Kit numbers them
+(`shrinetown/shrinetown.ids.json`): a star taken, a kept trigger fired, 512 bits. Coins and red
+coins are not saved: they come back whenever the world opens. The save's version is 2; a version 1
+save (three worlds' bits, before 2026-10-11) is ignored. The progress is written to save 0 of the memory card in slot 1
 whenever it changes (the card stays busy a few frames; nothing waits for it), and read at
-start-up; without a card it lasts until the cart is reset. Opening a world again (a door, a
-reload) keeps it.
+start-up; without a card it lasts until the cart is reset. Opening the world again (the tests'
+`world_reopen()`) keeps it.
 
 **The star** is drawn by the cart, not the world: a world's entity meshes are drawn whichever
 texture region is loaded, so they stay untextured ([TEXTURES.md](shrinetown/TEXTURES.md)). The

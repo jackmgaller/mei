@@ -132,9 +132,17 @@ fn ga_sound(id: s32, vol: s32, p: s32, pitch: fixed, pri: s32) -> s32 {
     if id < 0 || id >= GA_SOUNDS { return -1 }
     let v = vol * ga_sfx_vol >> 8
     if v <= 0 { return -1 }
+    if ga_log_n < len(ga_log) {
+        ga_log[ga_log_n] = id
+        ga_log_n += 1
+    }
     return voice_play(&ga_sfx, id, pri, 2, snd_data(id), GA_SND[id * 6 + 1] as u32, snd_pitch(id) * pitch,
                       side_l(v, p), side_r(v, p), snd_flags(id, false))
 }
+
+// The sounds asked for since the play recorder last read them (../record.akr), oldest first.
+var ga_log: [16]s32
+var ga_log_n: s32
 
 // Sound id at its own volume, in the middle.
 fn ga_play(id: s32) {
@@ -227,6 +235,9 @@ fn ga_land(hard: bool, mat: s32) {
 
 // The robot's loop on channel 11: GA_S_GLIDE, GA_S_RAIL_GRIND, GA_S_WALL_SLIDE (-1: none),
 // at volume vol (0-255) and pitch (x its own). Call it every tick while it should sound.
+// The robot's loop playing now (-1: none), for the play recorder.
+fn ga_loop_now() -> s32 { return loop_id }
+
 fn ga_loop(id: s32, vol: s32, pitch: fixed) {
     if id < 0 {
         if loop_id >= 0 { stop(GA_CH_LOOP) }

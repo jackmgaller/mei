@@ -75,6 +75,10 @@ example), growing as the moves need. It is where movement is tuned, so it has:
 - a **frame-timing readout**;
 - **wall-kick shafts of several widths**, to tune the wall jump against.
 
+As built, it grew past that: the cart's one world is now the shrine town, a 320 × 384 m level
+(its first, a 128 m city block, and a shrine slice were removed on 2026-10-11;
+[carts/garden/README.md](../carts/garden/README.md)).
+
 The character and the collectible are drawn with the reader's `wp_draw_object()` (the
 character's bounds from `wp_mesh_bounds()` once, its feet as the base), not `mesh_at()`, so that
 the platform under them is not drawn over them ([WORLDPACK.md, "Objects"](WORLDPACK.md#objects)

@@ -139,7 +139,7 @@ var done = false
 
 fn init() {
     ga_init()
-    ga_world(2)
+    ga_world(0)
     pos = vec3(160.0, 0.0, 26.0)
 }
 
@@ -355,8 +355,8 @@ fn mz(z: s32) -> s32 { return MAP_Y + 192 - z / 2 }
 
 fn draw() {
     cls(rgb(18, 20, 28))
-    let first = GA_WORLD_ZONES[4]
-    let count = GA_WORLD_ZONES[5]
+    let first = GA_WORLD_ZONES[0]
+    let count = GA_WORLD_ZONES[1]
     for n in 0..count - 1 {
         let e = (first + n) * 13
         let x0 = clamp(GA_ZONES[e], 0, 320)

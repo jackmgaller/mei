@@ -2,7 +2,7 @@
  "format": "mei-world",
  "version": 1,
  "name": "shrinetown",
- "game": "../world/garden.game.mochi",
+ "game": "../garden.game.mochi",
  "assets": "assets/greybox/town",
  "asset_dirs": [
   "assets/greybox/core",

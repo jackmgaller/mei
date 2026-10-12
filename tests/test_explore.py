@@ -306,7 +306,7 @@ class HarnessTest(unittest.TestCase):
 
     def test_probe_table(self):
         q = C.Probe(find='x', p=(1, 2, 3), yaw=0.5, head=0.5, mode=3)
-        text = C.probes_akr([q, q], (0, 0, 64, 64), 'garden')
+        text = C.probes_akr([q, q], (0, 0, 64, 64), 'shrinetown')
         self.assertIn('const EX_PROBES: [2]ExProbe', text)
         self.assertEqual(text.count('ExProbe { p: vec3('), 2)
 
@@ -317,13 +317,13 @@ class HarnessTest(unittest.TestCase):
 
 
 @unittest.skipUnless(numpy_ready and scipy_ready, 'the reach map needs NumPy and SciPy')
-class GardenReachTest(unittest.TestCase):
-    """The reach map on the garden world (4 cells): the spawn's floor is reached, every coin is
-    reachable, and nothing leaves the frame by walking."""
+class ExampleReachTest(unittest.TestCase):
+    """The reach map on the shrine_grounds example (4 cells, the garden's schema): the spawn's
+    floor is reached, every coin is reachable, and nothing leaves the frame by walking."""
 
-    def test_garden(self):
+    def test_shrine_grounds(self):
         from explore import reach as R, finds as FD
-        e = R.Explorer(str(ROOT / 'carts/garden/world/garden.world.json'), BUILD, TN.load(), {},
+        e = R.Explorer(str(ROOT / 'examples/worlds/shrine_grounds/shrine_grounds.world.json'), BUILD, TN.load(), {},
                        opts=R.Options(lattice=8, kick_depth=1), log=lambda *a: None)
         e.run()
         import numpy as np
@@ -336,30 +336,35 @@ class GardenReachTest(unittest.TestCase):
         self.assertTrue(steps)
 
 
+FRAME = (0, 0, 320, 384)          # the shrine town's extent
+PLAZA = (160.0, 0.5, 26.0)        # the spawn in the station plaza; heading north (yaw 0)
+
+
 @unittest.skipUnless((BUILD / 'meic').exists() and (BUILD / 'mei-headless').exists()
                      and (BUILD / 'cart-worlds/garden').exists(), 'the confirmer needs meic, mei-headless and the worlds')
 class HeadlessTest(unittest.TestCase):
-    """One probe flown by the real cart: a running jump on the garden's lane comes down where the
-    controller's numbers say."""
+    """One probe flown by the real cart: a running jump across the shrine town's station plaza
+    comes down where the controller's numbers say."""
 
     def test_jump_on_the_lane(self):
-        r = C.Runner(BUILD, 'garden', (0, 0, 128, 128), log=lambda *a: None, processes=1)
-        got = r.run([C.Probe(find='t', p=(40.0, 0.5, 8.0), yaw=math.pi / 2, head=math.pi / 2, mode=3, t=90)], name='test')
+        r = C.Runner(BUILD, 'shrinetown', FRAME, log=lambda *a: None, processes=1)
+        got = r.run([C.Probe(find='t', p=PLAZA, yaw=0.0, head=0.0, mode=3, t=90)], name='test')
         self.assertEqual(len(got), 1)
         o = got[0]
         self.assertFalse(o.out)
         self.assertAlmostEqual(o.maxy, TN.load().summary()['jump_running'], delta=0.1)
 
     def test_written_case_runs_in_the_cart(self):
-        """A case as the explorer writes it, run in the real cart: a jump on the lane stays in the
-        level (the check passes, exit 0); one off the garden's south edge leaves it (exit 2)."""
+        """A case as the explorer writes it, run in the real cart: a jump across the plaza stays in
+        the level (the check passes, exit 0); one taken outside the level's south edge leaves it
+        (exit 2)."""
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
-            for name, p, head, want in (('stays', (40.0, 0.5, 8.0), math.pi / 2, 0),
-                                        ('leaves', (44.0, 0.5, 0.5), math.pi, 2)):
+            for name, p, head, want in (('stays', PLAZA, 0.0, 0),
+                                        ('leaves', (160.0, 0.5, -2.0), math.pi, 2)):
                 st = {'probe': C.asdict(C.Probe(find=name, p=p, yaw=head, head=head, mode=3, t=90)), 'seed': 1}
                 path = Path(tmp) / f'{name}.akr'
-                path.write_text(C.case_text('garden', 'escape', {'id': name}, st, (0, 0, 128, 128), -5.0))
+                path.write_text(C.case_text('shrinetown', 'escape', {'id': name}, st, FRAME, -5.0))
                 code, out = C.run_case(BUILD, path, draw=False)
                 self.assertEqual(code, want, out[-800:])
 

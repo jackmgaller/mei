@@ -614,7 +614,8 @@ failures, 0 wrong pixels); a *T-junction* (reported). A crack or T-junction in t
 which the console and the reference draw alike, is not a rendering fault; a gap shows as open
 edges in the topology report (`--strict` fails on them) and a T-junction as above.
 
-**Time.** The garden's 41 assets that require the check (`carts/garden/world/assets/`, 57 levels of
+**Time.** The garden's 41 assets that require the check (`carts/garden/world/assets/`, the city
+block's, removed 2026-10-11; 57 levels of
 detail), each checked on its own, two at a time, from cold (no cache), October 2026: in depth mode
 339.7 s before the one cart and the view selection, 16.3 s after (20.8 times faster; the median
 asset 24 times, `park_bench` 5.5 s to 0.18 s, `residential_car_park` 19.9 s to 1.6 s, `coin`, whose

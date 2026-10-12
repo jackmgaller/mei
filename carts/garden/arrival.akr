@@ -26,7 +26,7 @@
 //
 // The spawn stays the world's (the station plaza): a respawn (Y, or a fall) goes there, never
 // back onto the train, and so does every later opening of the shrine town in the session (the
-// doors from the shrine and the garden). The tests run with arr_auto off (their scenarios place
+// tests' world_reopen()). The tests run with arr_auto off (their scenarios place
 // the player themselves); the arrival's own scenarios (620-639) start it with arrival_begin().
 //
 // game.akr calls arrival_open() when a world opens, arrival_tick() each tick after attach_tick(),

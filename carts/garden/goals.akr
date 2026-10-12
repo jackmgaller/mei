@@ -78,20 +78,20 @@ fn flag_clear(nm: *u8) {
     flag_at[k] = flag_at[flag_n]
 }
 
-// ---- the progress: the worlds' saved bits
+// ---- the progress: the world's saved bits
 
-const PROG_WORLDS = 3
+const PROG_WORLDS = 1
 const PROG_WORDS = 16           // 512 saved bits a world
 const SAVE_MAGIC: u32 = 0x4E445247
-const SAVE_VERSION: u32 = 1
+const SAVE_VERSION: u32 = 2         // 1: three worlds' bits (the city block, the shrine, the shrine town)
 
 struct GardenSave {
     magic: u32
     version: u32
-    prog: [48]u32               // PROG_WORLDS * PROG_WORDS
+    prog: [16]u32               // PROG_WORLDS * PROG_WORDS
 }
 
-var prog: [48]u32
+var prog: [16]u32
 var prog_dirty: bool
 var save_buf: GardenSave
 var save_meta: SaveMeta

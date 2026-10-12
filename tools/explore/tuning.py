@@ -166,7 +166,7 @@ def load(cart=CART, game_schema=None):
     tune = cart / 'tuning.akr'
     player = cart / 'player.akr'
     attach = cart / 'attach.akr'
-    schema = Path(game_schema) if game_schema else cart / 'world' / 'garden.game.mochi'
+    schema = Path(game_schema) if game_schema else cart / 'garden.game.mochi'
     t = read_tune_table(tune)
     pc = read_consts(player, ['LEDGE_HANG', 'LEDGE_GRAB_TICKS', 'DIVE_MIN', 'SKID_ANGLE',
                               'WADE_NO_JUMP'])

@@ -8,7 +8,7 @@ The rest of this file is the plan it was wired from, written against 70178b4.
 
 The cart's side is `carts/garden/sound_hooks.akr` (moved from `cart_hooks.akr` here). The cart
 calls four functions; everything else is read from the cart's own state, so `collect_coins()`,
-`goals_collect()` and `world_switch()` are unchanged:
+`goals_collect()` and `world_reopen()` are unchanged:
 
 | Where | Call |
 |---|---|
@@ -152,7 +152,8 @@ frame: the train, its chime and melody, then `ga_frame`) and `sound_world()` (a 
 ```
 
 **5. `game.akr`, `world_switch()`**: `ga_play(GA_S_DOOR)` first, `sound_world()` after
-`cam_reset()`.
+`cam_reset()`. (The doors and `world_switch()` went with the garden's other worlds on 2026-10-11;
+`GA_S_DOOR` stays in the bank, unused.)
 
 **6. `goals.akr`**:
 - `goals_collect()`, after `note_star_at = sim_t`: `ga_star_get()`.
@@ -192,7 +193,6 @@ the feet's.
 | Challenge won, lost | `trig_fire()`, `goals_tick()` | `GA_S_WON`, `GA_S_LOST` |
 | The train | each frame, the mover with start flag `race5` | `ga_emitter_move(GA_EM_TRAIN, pos, live)` |
 | The train at the platform; about to leave | `chal_left` 900; 330 | `GA_S_STATION_CHIME`, `GA_S_DEPARTURE` at (160, 12, 8) |
-| A door | `world_switch()` | `GA_S_DOOR`, then `ga_world(k)` |
 
 ## Zones, reverb and footsteps: what is in the tables, and what the world could add
 
@@ -200,8 +200,7 @@ The zones are boxes in `gen_sounds.py` (`ZONES_TOWN`, after DESIGN.md's sections
 in metres with a height range; the first box holding the feet wins, so the cave, the culvert,
 the concourse, the platform, the stage, the torii tunnel and the arcade come before the large
 areas, and "town roofs" (z < 118, 5.5 m up) makes the roofs tile underfoot. 28 zones in the
-shrine town; the garden and the shrine have one each for now (a breeze, pigeons and the town
-mix; the woods' bed, the precinct mix and hall). No world change is needed for any of it.
+shrine town, the garden's only world. No world change is needed for any of it.
 
 When the world lead wants the zones in the world instead, a `sound_zone` entity (a box: `size`,
 and `bed`, `mix`, `reverb`, `wet`, `material`, `life` as names) would replace the table; the

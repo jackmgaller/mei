@@ -168,7 +168,42 @@ EM_JS(void, js_save_card, (int slot, const uint8_t *src, int len), {
 static char config_path[1024], card_path[2][1024];
 #endif
 
-static void debug_out(void *user, char c) { fputc(c, stdout); if (c == '\n') fflush(stdout); }
+#ifndef __EMSCRIPTEN__
+#include <time.h>
+
+/* Each run's debug output (what carts print) is also kept in a file, runs/mei-DATE-TIME.log in the
+   preferences folder, opened at the first character so a run that prints nothing leaves none. */
+static FILE *run_log;
+static int run_log_failed;
+
+static void run_log_char(char c) {
+    if (!run_log && !run_log_failed) {
+        run_log_failed = 1;
+        char *pref = SDL_GetPrefPath("gallerdude", "Mei");
+        if (!pref) return;
+        char dir[1024], path[1100], stamp[32];
+        snprintf(dir, sizeof dir, "%sruns", pref);
+        SDL_free(pref);
+        if (!SDL_CreateDirectory(dir)) return;
+        time_t now = time(NULL);
+        strftime(stamp, sizeof stamp, "%Y-%m-%d-%H%M%S", localtime(&now));
+        snprintf(path, sizeof path, "%s/mei-%s.log", dir, stamp);
+        run_log = fopen(path, "w");
+        if (!run_log) return;
+        run_log_failed = 0;
+        fprintf(stderr, "mei: debug output also in %s\n", path);
+    }
+    if (run_log) { fputc(c, run_log); if (c == '\n') fflush(run_log); }
+}
+#else
+static void run_log_char(char c) { (void)c; }
+#endif
+
+static void debug_out(void *user, char c) {
+    fputc(c, stdout);
+    if (c == '\n') fflush(stdout);
+    run_log_char(c);
+}
 
 static void set_title(void) {
     const char *t = mei_cart_title(app.mei);

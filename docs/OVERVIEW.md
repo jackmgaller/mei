@@ -70,6 +70,9 @@ Settings persist between sessions. Home (gamepad Guide button or F2) returns to 
 Games save to two virtual memory cards (`card1.mcd`, `card2.mcd`, 128 KB each; see
 [`docs/MEMCARD.md`](MEMCARD.md)), kept with the settings in
 `~/Library/Application Support/gallerdude/Mei/` (browser storage on the web).
+The desktop player also keeps each run's debug output (what carts print) in `runs/mei-DATE-TIME.log`
+there, as well as writing it to stdout; Movement Garden prints a play recording
+(`carts/garden/record.akr`, read with `carts/garden/record.py`).
 Carts can also tune in to **MeiNet**, a Teletext-style data broadcast of the time and US
 weather ([`docs/BROADCAST.md`](BROADCAST.md)). The desktop player starts the gateway,
 `tools/meinet/meinet.py`, by itself when none is running (it needs `python3`; `--no-gateway`

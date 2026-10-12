@@ -76,8 +76,7 @@ development scripts below.
   `streetcar`, `takoyaki_stall`, `tobacco_shop`, `traffic_mirror`, `uminoie`, `vegstand`,
   `watermill`, `yatai`. These have to be redrawn by a committed script.
 
-Development-only (draw sketches and contact sheets, not shipped): `carts/garden/layout.py`,
-`carts/garden/shrine/layout.py`, `carts/garden/electric/layout.py`,
+Development-only (draw sketches and contact sheets, not shipped): `carts/garden/electric/layout.py`,
 `carts/weather/tests/contact.py`, `examples/assets/console_lab/make_lineup.py`. They use Avenir
 Next or Futura; they need a fallback font, not a replacement.
 

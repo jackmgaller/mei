@@ -401,7 +401,8 @@ if wp_water(pl.pos, 0.0) { slow_by(wp_water_hit.depth) }
 ```
 
 A cart that opens a world without water after one with it calls `wp_water_close()` (the
-movement garden does, switching between the garden and the shrine). `wp_water()` tests every water
+movement garden did, switching between its city block and the shrine, before it ran on the
+shrine town alone). `wp_water()` tests every water
 triangle's bounds (about 12 cycles each; the example's 512 triangles, all of
 its water, cost about 6,000 cycles a query, and a game that queries once a frame from the feet
 can afford it). A material with `water` cannot be painted or used for a cliff's wall.

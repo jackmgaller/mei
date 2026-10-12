@@ -8,7 +8,7 @@ the updrafts (12.10).
 The region generators put these entities into their cells: each calls `cell_entities(rows)` and
 appends what it returns (notes/gen_town.py for rows 0-1, assets/greybox/core/gen_core.py for 2-3,
 assets/greybox/mountain/make_mountain.py for 4-5), so a region's generator still writes all of
-its cells. The entity types are the garden's game schema's (carts/garden/world/garden.game.mochi:
+its cells. The entity types are the garden's game schema's (carts/garden/garden.game.mochi:
 `star`, `trigger`, `mover`); what the game does with them is carts/garden/README.md, "Entities".
 Positions are the level's, in metres; where a number comes from a region generator's own
 constants, the comment says which. A trigger's position is the centre of its box's base, 5 cm

@@ -3,7 +3,7 @@
 //
 // - sound_init(): once, in init(), after cam_reset(): takes the 16 channels and the reverb,
 //   then sound_world().
-// - sound_world(): a world was opened (init() and world_switch()).
+// - sound_world(): the world was opened (init()).
 // - sound_tick(): each tick, after goals_tick(): the player's state changes, footsteps, loops,
 //   splash, bonk, pole and hang clicks, the challenge's clock and its end, the stars coming
 //   down, the last train's chime and departure melody.
@@ -46,9 +46,8 @@ fn sound_init() {
     sound_world()
 }
 
-// When world_k has been opened (init() and world_switch()).
+// When the world has been opened (init()).
 fn sound_world() {
-    if snd_world >= 0 && snd_world != world_k { ga_play(GA_S_DOOR) }
     snd_world = world_k
     ga_world(world_k)
     snd_prev = pl.st
@@ -57,10 +56,8 @@ fn sound_world() {
     for k in 0..16 { snd_star_was[k] = 0.0 }
     for k in 0..star_n { snd_star_was[k] = star_drop(stars[k]) }
     snd_train = -1
-    if world_k == GARDEN_WORLD_SHRINETOWN {
-        for k in 0..mover_n {
-            if movers[k].start != null && streq(movers[k].start, "race5") { snd_train = k }
-        }
+    for k in 0..mover_n {
+        if movers[k].start != null && streq(movers[k].start, "race5") { snd_train = k }
     }
     snd_train_mt = -1
 }
@@ -151,7 +148,7 @@ fn sound_trig(e: *WpEntity, p: *GardenTrigger) {
 fn sound_frame() {
     let c0 = cycle_count()
     if world_k != snd_world { sound_world() }
-    // coins (collect_coins() counts them; world_switch() sets them back to 0)
+    // coins (collect_coins() counts them; world_reopen() sets them back to 0)
     if coins > snd_coins { ga_play(GA_S_COIN) }
     if red_coins > snd_reds {
         if red_total > 0 && red_coins >= red_total { ga_play(GA_S_RED_ALL) } else { ga_red_coin(red_coins) }

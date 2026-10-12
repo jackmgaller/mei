@@ -810,8 +810,9 @@ From inside the grove the pagoda's top shows above the canopy behind you.
 ### 7.3 Conventional joins
 
 - **The station:** a `door` entity at the train's doors, live while a train stands at the
-  platform, opens the line's other levels. Until those exist, it opens the garden.
-- **The konbini:** its door leads back to the garden, as built.
+  platform, opens the line's other levels. Until those exist, there is none (12.11).
+- **The konbini:** its door led back to the garden's city block until that world was removed
+  (2026-10-11, 12.11); it is a shop front now.
 - **The front road west:** road-works barriers (`street_barrier`) and a detour sign at x 0 until
   the shopping-street level exists (it is the second candidate for a seamless edge: the road bends
   north-west behind the machiya).
@@ -1069,7 +1070,7 @@ present (`tools/views.py`): README.md, "What it costs".
 ### 12.5 Phase 2: the game features (2026-10-05)
 
 The stars, the triggers and the shortcuts are entities of the garden's game schema
-(`../world/garden.game.mochi`: `star`, `trigger`, a mover's `start` and `delay`, a pole's `front`;
+(`../garden.game.mochi`: `star`, `trigger`, a mover's `start` and `delay`, a pole's `front`;
 `../README.md`, "Entities" and "Goals"), listed in `game.py`, which the three region generators
 add to their cells. Scenarios 450–467 (`../tests/goals_cases.akr`) play them.
 
@@ -1877,7 +1878,7 @@ Screenshots: `carts/garden/shrinetown/screenshots/shadow_names/`.
 Rising air that lifts the glider: the sento's steam, the courtyard's leaf fire and the falls'
 mist. Only a glide rises; a jump or a fall goes through.
 
-**The entity** (`updraft` in `../world/garden.game.mochi`; `../updraft.akr`): a box (`width` by
+**The entity** (`updraft` in `../garden.game.mochi`; `../updraft.akr`): a box (`width` by
 `depth`, centred on the placement moved by half of `lean`, from `base` to 2 m over `cap`, both
 metres over the placement), a `lift` (m/s), a `look` (`steam`, `mist`, `smoke`), `puffs` and
 `lean`. In the box `st_glide()` (`../player.akr`) eases the glide's speed to 3.5 m/s (`UD_SPEED`:

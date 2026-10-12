@@ -1,42 +1,25 @@
-// The worlds the garden runs on, and everything about them that is not the same in every world:
-// which generated files to import, how to open each, where the player starts and what the
-// surface bytes mean. Nothing else in the cart names a world.
+// The world the garden runs on, the shrine town (carts/garden/shrinetown), and everything about
+// it the rest of the cart does not need to know: which generated files to import, how to open
+// it, where the player starts and what the surface bytes mean. Nothing else in the cart names a
+// world.
 //
-// This file is in a folder of its own on purpose: one world is named "garden", so the World
-// Kit generates garden.akr, and an import looks next to the importing file first. From
-// carts/garden/ that would find the cart's own garden.akr; from here it finds the world's (in
-// the build's cart-worlds directory, which make passes with -I).
-//
-// Three worlds: the movement garden (GARDEN_WORLD_GARDEN, the city block), the shrine
-// (GARDEN_WORLD_SHRINE, carts/garden/shrine) and the shrine town's grey box
-// (GARDEN_WORLD_SHRINETOWN, carts/garden/shrinetown). A door entity names the world it leads to.
-import "garden.akr"
-import "shrine.akr"
+// The file is in a folder of its own because the garden once had a world named "garden", whose
+// generated garden.akr an import from carts/garden/ would not have found (an import looks next to
+// the importing file first, and finds the cart's own garden.akr there).
 import "shrinetown.akr"
 import "../shrinetown/art/water/water_cycle.akr"     // the water's colour cycling (shrinetown/art/water/APPLY.md)
 
-var world_k: s32 = GARDEN_WORLD_GARDEN    // the world open now
+var world_k: s32 = GARDEN_WORLD_SHRINETOWN    // the world open now (the only one)
 var world_variant: s32 = 0                // the palette variant the regions are entered with (0: day)
 
-// Opens world k (a GARDEN_WORLD_ number). The shrine and the shrine town have water and a
-// backdrop; the garden has neither, so loading it closes theirs.
+// Opens the shrine town: its regions, water and backdrop.
 fn world_load() -> bool {
-    water_cycle_off()               // none cycling until a world that has the shrine town's water opens
-    gpu_fog_off()                   // only the shrine town's variants declare fog
-    if world_k == GARDEN_WORLD_SHRINE {
-        if !world_shrine_load() { return false }
-        wp_backdrop_show(0)        // the compositor erases each frame, since the cart draws no cls()
-        return true
-    }
-    if world_k == GARDEN_WORLD_SHRINETOWN {
-        if !world_shrinetown_load() { return false }
-        world_water_find()
-        world_region_entered(wp_region_loaded)
-        return true
-    }
-    wp_water_close()
-    wp_backdrop_hide()
-    return world_garden_load()
+    water_cycle_off()               // none cycling until the world's water palettes are found
+    gpu_fog_off()                   // the variants' fog is set when a region is entered
+    if !world_shrinetown_load() { return false }
+    world_water_find()
+    world_region_entered(wp_region_loaded)
+    return true
 }
 
 var water_find_cycles: s32     // what world_water_find() cost (the tests)
@@ -59,7 +42,6 @@ fn world_water_find() {
 // variant (the GPU's fog toward a colour: the day's haze toward the horizon, the night's dark; 8
 // GPU cycles a triangle, no CPU) and cycles the region's water (its palettes found at load).
 fn world_region_entered(k: s32) {
-    if world_k != GARDEN_WORLD_SHRINETOWN { return }
     wp_backdrop_show(k)
     wp_backdrop_variant(world_variant, world_variant, 0.0)
     world_shrinetown_fog(k, world_variant)
@@ -67,27 +49,25 @@ fn world_region_entered(k: s32) {
 }
 
 // Night (palette variant 1) or day (0), from the tuning menu's "night" row: the shrine town's
-// region loaded now takes the variant's palette, backdrop, fog and water; the other worlds have
-// no variants and only remember it.
+// region loaded now takes the variant's palette, backdrop, fog and water.
 fn world_set_variant(v: s32) {
     world_variant = v
-    if world_k != GARDEN_WORLD_SHRINETOWN || wp_region_loaded < 0 { return }
+    if wp_region_loaded < 0 { return }
     for r in 0..wp_region_count() { wp_variant_load(r, v) }     // the other region's stand-ins too
     world_region_entered(wp_region_loaded)
 }
 
 // Whether the open world draws a backdrop (then the cart draws no cls()).
-fn world_backdrop() -> bool { return world_k != GARDEN_WORLD_GARDEN }
+fn world_backdrop() -> bool { return true }
 
-// How deep the point is under water (0: not in water). The garden has none.
+// How deep the point is under water (0: not in water).
 fn world_water_depth(p: vec3) -> fixed {
-    if world_k == GARDEN_WORLD_GARDEN { return 0.0 }
     if wp_water(p, 0.0) { return max(wp_water_hit.depth, 0.0) }
     return 0.0
 }
 
 // Used only if the world has no spawn entity.
-const WORLD_SPAWN: vec3 = vec3(44.0, 0.0, 7.0)
+const WORLD_SPAWN: vec3 = vec3(160.0, 0.0, 26.0)      // the spawn entity's place in the station plaza
 const WORLD_SPAWN_YAW: fixed = 0.0
 fn world_spawn_type() -> s32 { return GARDEN_TYPE_SPAWN }
 
@@ -98,8 +78,8 @@ fn world_spawn_yaw(e: *WpEntity) -> fixed {
     return p.yaw * PI / 180
 }
 
-// The surface bytes as the controller reads them (carts/garden/README.md, "Surfaces"): both
-// worlds give bounce 1 and slide 2 (the shrine's water, 3, has no collision). The footsteps'
+// The surface bytes as the controller reads them (carts/garden/README.md, "Surfaces"): bounce 1
+// and slide 2 (the water, 3, is plain ground). The footsteps'
 // bytes, 4 wood to 8 metal, are plain ground to the controller: sound_hooks.akr reads them raw
 // (pl.floor_byte).
 const WORLD_SURFACES: [16]u8 = [0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -111,4 +91,3 @@ const BODY_STEP: fixed = GARDEN_PROBE_STEP
 const BODY_BRIDGE: fixed = GARDEN_PROBE_BRIDGE      // cracks the floor query steps across
 const COIN_TYPE = GARDEN_TYPE_COIN
 const RED_COIN_TYPE = GARDEN_TYPE_RED_COIN
-const DOOR_TYPE = GARDEN_TYPE_DOOR

@@ -220,8 +220,8 @@ finding matches are `fixed_findings`, with the three counts beside them and the 
 `summary.known_cracks` (world_cart.py's summary line prints it). A finding matches an entry with
 the same code and layers and either the same cell and tags or a point within 1 unit across and
 0.5 up (tags change when a cell's placements are renumbered). With a baseline the checker lists
-every new finding, not only the first `collision.findings`. The movement garden's three worlds
-have one each: the garden's and the shrine's empty, the shrine town's with 3 cracks.
+every new finding, not only the first `collision.findings`. The movement garden's world, the
+shrine town, has one (`shrinetown.cracks.json`, 2 cracks).
 
 ## Sampled views (check 2)
 
@@ -677,7 +677,8 @@ is on). In depth mode:
   were added to catch the ordering table's errors around small objects and are off by default.
   Set `sampling.entities` to turn them on. `edge_margin` stays 1: coverage still rounds the same.
 
-Measured on the movement garden (`carts/garden/world/garden.world.json`, built from a copy with
+Measured on the movement garden's city block (`carts/garden/world/garden.world.json`, removed
+2026-10-11; built from a copy with
 `"runtime": {"depth": true, "perspective": true}`; the garden's own recipe is unchanged), default
 settings, 600 views each, every one compared (before the ordering sample; `ordering.depth_views`
 `null` gives the same today):

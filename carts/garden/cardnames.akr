@@ -55,7 +55,7 @@ fn card_of_pos(p: vec3) -> s32 {
     return -1
 }
 
-fn cards_here() -> bool { return world_k == GARDEN_WORLD_SHRINETOWN }
+fn cards_here() -> bool { return true }     // the five cards are the shrine town's, the only world
 
 // Whether card k is taken (its star is in the saved progress).
 fn card_taken(k: s32) -> bool {

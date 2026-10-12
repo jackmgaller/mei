@@ -129,12 +129,12 @@ bulk.
 What the geometry cannot say: the sealed places (cylinders or a box, and the moves meant to enter
 them), the shortcuts (the trigger and the near end), and the cases file whose glides to measure.
 `worlds/shrinetown.json` has star 4's chamber (the chamber and shaft, and the knot hole's sill),
-shortcuts A to E and glides G1 to G9. The garden and the shrine have none.
+shortcuts A to E and glides G1 to G9.
 
 ## The confirmer (`confirm.py`)
 
 The probes run in a copy of the garden's scenario harness in the build directory
-(`BUILD/explore/WORLD/`): `carts/garden/tests/*.akr` copied, four hook lines added to the copy of
+(`BUILD/explore/WORLD/`): `carts/garden/tests/*.akr` copied, three hook lines added to the copy of
 `harness.akr`, the probes as `explore_cases.akr` (scenario 990), and a copy of `game.akr` whose
 `draw()` returns at once, so a probe costs the controller's ticks and not the renderer's (about
 1,300 ticks a second a process against 50 drawing). The cart's own files are imported through
@@ -174,7 +174,7 @@ does, and run `tests/run.sh 990 FRAMES out` (the frames are in its first lines).
 On the shrine town (30 cells, 2.77 million floor entries), on a shared 8-core machine with other
 builds running: the reach map 3 to 5 minutes (about 5.6 million flights, 70 % of it the first
 pass), the confirmer 4 to 7 minutes (about 1.8 million headless ticks: 2,000 drops, 189 glide
-probes, 400 to 800 route legs), 8 to 12 minutes in all. The garden: 35 s. Compiling a world into
+probes, 400 to 800 route legs), 8 to 12 minutes in all. Compiling a world into
 the kit cache the first time adds its compile (the shrine town about 6 minutes, once).
 `--no-confirm` stops after the reach map. `--deep` (half-metre launches, 16 headings, three kicks,
 denser drops, six tries) is the overnight mode: several times longer.
@@ -211,8 +211,9 @@ the controller's per-tick arithmetic (a running jump's ticks and distance, a led
 backflip grab a hop cannot make, leaving the frame, falling through a hole, the rail rules: a hang
 held clear of the floor, a `hang` rail not ground nor caught falling fast, a `catch`; a body pushed
 out of a wall not into the ground under a cliff); the harness hooks fit;
-the reach map on the garden world reaches every coin; one probe flown headless; a written case run
-in the real cart passes where the robot stays in the level and fails where it leaves.
+the reach map on the shrine_grounds example (4 cells, about 5 s) reaches every coin; one probe flown
+headless in the shrine town; a written case run in the real cart passes where the robot stays in
+the level and fails where it leaves.
 
 ```sh
 B=build-explore python3 -m unittest discover -s tests -p test_explore.py -v

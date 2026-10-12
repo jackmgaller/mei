@@ -18,6 +18,7 @@ import "cardnames.akr"
 import "hud.akr"
 import "sound_hooks.akr"       // the sound and music (audio/WIRING.md)
 import "arrival.akr"
+import "record.akr"          // the play recorder (the game only, not the tests)
 
 const MAX_CATCH_UP = 4         // ticks run at most in one update()
 
@@ -29,7 +30,6 @@ var last_frame: u32
 var coins: s32
 var red_coins: s32
 var coin_got: [8]u32           // a bit per entity number (of the world open now)
-var door_wait: bool            // standing in the door just come through: not taken again until left
 var region_cycles: s32         // the cost of the last region crossing (follow_region()), for the tests
 var region_entered_at: s32     // and the frame it was in (frame_n)
 var region_enters: s32         // crossings so far
@@ -42,7 +42,6 @@ fn init() {
     render_depth(true)
     render_perspective(true)
     progress_load()
-    world_k = start_world()
     assert(world_load())
     tune_defaults()
     for k in 0..16 { surface_map[k] = WORLD_SURFACES[k] }
@@ -126,12 +125,12 @@ fn update() {
     collect_coins()
     goals_collect()
     goals_frame()
-    use_doors()
     follow_region()
     cam_place()
     arrival_cam()
     sound_frame()
     test_hook(frame_n)
+    if TEST == 0 { record_frame(frame_n) }
     timing_frame()
     frame_n += 1
 }
@@ -176,13 +175,12 @@ fn follow_region() {
     }
 }
 
-// ---- doors (the world's door entities): walk into one to go to its world
+// ---- opening the world again (the tests: what is saved survives it)
 
-// Opens world k and starts the player at its spawn. Coins taken are the world's own, so they
-// start again; stars and the triggers kept are in the saved progress (goals.akr).
-fn world_switch(k: s32) {
-    world_k = k
-    wp_region_loaded = -1      // the last world's region: world_load() enters the new world's own
+// Opens the world again and starts the player at its spawn, as the cart's start does. Coins
+// taken start again; stars and the triggers kept are in the saved progress (goals.akr).
+fn world_reopen() {
+    wp_region_loaded = -1      // world_load() enters the spawn's region
     assert(world_load())
     for w in 0..8 { coin_got[w] = 0 }
     coins = 0
@@ -194,27 +192,6 @@ fn world_switch(k: s32) {
     cam_reset()
     cam_intro()
     arrival_open()
-    door_wait = true
-}
-
-fn use_doors() {
-    let c = wp_cell_at(pl.pos)
-    if c == null { return }
-    var inside = false
-    for k in 0..c.entity_count as s32 {
-        let e = wp_cell_entity(c, k)
-        if e.type_id as s32 != DOOR_TYPE { continue }
-        let p = wp_entity_params(e) as *GardenDoor
-        let d = pl.pos - wp_entity_pos(e)
-        if abs(d.x) < p.size.x / 2 && abs(d.z) < p.size.z / 2 && d.y > -0.5 && d.y < p.size.y {
-            inside = true
-            if !door_wait {
-                world_switch(p.world as s32)
-                return
-            }
-        }
-    }
-    if !inside { door_wait = false }
 }
 
 // ---- drawing

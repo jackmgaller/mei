@@ -141,7 +141,6 @@ assert BD['town'] == BD['shrine'], 'one backdrop for both regions (art/backdrop/
 # colours where the fog is still thin (100-200 units).
 HAZE = {'start': 20, 'end': 280, 'amount': 0.0, 'standins': 0.15, 'colors': dict(FOG_COLOUR)}
 
-shrine = json.loads((ST.parent / 'shrine' / 'shrine.world.json').read_text())
 
 # ---- texture regions (TEXTURES.md): the town (rows 0-1) and the shrine (rows 2-5). Since the alpha
 # fixes (DESIGN.md 12.9) their texture sets are in disjoint slots, the town's 13-1 and 16-18 (16
@@ -172,11 +171,7 @@ def sky(r):
 
 
 def variants(r):
-    v = json.loads(json.dumps(shrine['regions']['shrine']['variants']))
-    for spec in v.values():
-        spec.get('colors', {}).pop('water', None)
-        if 'colors' in spec and not spec['colors']:
-            del spec['colors']
+    v = {'day': {}, 'night': {'surface': {'multiply': '#4a5884'}}}     # the night's blue multiply
     for name, colours in BD[r].get('variants', {}).items():
         v[name]['backdrop'] = colours
     for name, (near, far) in FOG_RANGE.items():
@@ -213,7 +208,7 @@ FAR_GROUND = [{'distance': 36, 'grid': 8}, {'distance': 76, 'grid': 16}]
 
 world = {
     'format': 'mei-world', 'version': 1, 'name': 'shrinetown',
-    'game': '../world/garden.game.mochi',
+    'game': '../garden.game.mochi',
     'assets': 'assets/greybox/town',
     # the other regions' grey boxes; a folder per real asset (with assets/arch_pagoda, the pagoda's
     # climbing collision, and assets/game, game.py's train and omamori); the shrine's assets, which
