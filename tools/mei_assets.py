@@ -2,7 +2,8 @@
 """Mei Asset Kit: agent-first procedural 3D modeling and native render feedback.
 
 Run `python3 tools/mei_assets.py schema` for the complete recipe contract, or
-read docs/ASSETKIT.md. All command results and errors are JSON on stdout.
+read docs/ASSETKIT.md. Command results and errors are JSON on stdout, except that preview and
+verify print a one-screen summary (--json: the full report) and info and floors plain text.
 """
 import json
 import os
@@ -16,7 +17,9 @@ from kitcore.cli import parser_class
 from assetkit.compiler import (AssetError, compile_recipe, native_bytes,
                                editor_project, obj_text, import_obj, import_source,
                                material_manifest, palette_bytes, texture_outputs, SWATCH)
-from assetkit.preview import source, render, parse_camera, cameras_file
+from assetkit.preview import (source, render, parse_camera, cameras_file, ground_files, make_look, look_file, find_look,
+                              LOOK_FILE)
+from assetkit import summary
 from assetkit import gltf
 from assetkit.schema import SCHEMA
 
@@ -40,7 +43,7 @@ def drawn_with(recipe, mesh, drawn=None):
     return bool(mesh.textures) and recipe.get('verification',{}).get('depth',False),None
 
 
-def artifacts(recipe, mesh, materials, report, drawn=None):
+def artifacts(recipe, mesh, materials, report, drawn=None, look=None):
     name = recipe['name']
     depth,perspective = drawn_with(recipe,mesh,drawn)
     binary = native_bytes(mesh,materials,recipe.get('lighting',{}))
@@ -54,12 +57,14 @@ def artifacts(recipe, mesh, materials, report, drawn=None):
         name+'.obj':('mtllib '+name+'.mtl\n'+obj_text(mesh,materials)).encode(),
         name+'.mtl':''.join('newmtl '+key+'\nKd '+' '.join(f'{int(mat["color"][i:i+2],16)/255:.6f}' for i in (1,3,5))+'\n\n' for key,mat in sorted(materials.items())).encode(),
         'preview.akr':source(name,report['bounds'],load=bool(mesh.palette or mesh.textures),
-                             depth=depth,perspective=perspective).encode(),
+                             depth=depth,perspective=perspective,look=look).encode(),
         'report.json':(json.dumps(report,indent=2)+'\n').encode(),
     }
     # Every build has a manifest; only palette-backed meshes have palettes and a swatch, so
     # the files legacy recipes always had are unchanged.
     files[name+'.materials.json'] = (json.dumps(material_manifest(mesh,materials,recipe),indent=2)+'\n').encode()
+    # a look with a ground: the ground preview.akr draws
+    files.update(ground_files(look,report['bounds']))
     if mesh.palette:
         files[name+'.pal'] = palette_bytes(mesh)
         files[name+'.swatch'] = SWATCH
@@ -231,11 +236,12 @@ def camera_views(shots, report):
 
 def previews(directory, recipe, mesh, report, compiler, runner, drawn, shots, views, failing=False):
     """The six fitted views and contact sheet, and the world-scale camera views (camera_views()),
-    rendered in directory (which holds the built asset)."""
+    rendered in directory (which holds the built asset), in the look of shots['look'] if any."""
     from assetkit.preview import render_cameras
     load=bool(mesh.palette or mesh.textures)
     depth,perspective=drawn_with(recipe,mesh,drawn)
-    result=render(directory,recipe['name'],report['bounds'],compiler,runner,load,depth,perspective,failing)
+    look=(shots or {}).get('look')
+    result=render(directory,recipe['name'],report['bounds'],compiler,runner,load,depth,perspective,failing,look)
     if views:
         # camera views draw as a game does and the Asset Checker judges: with the depth buffer
         # also when only the recipe's policy says so (the six views keep their earlier files)
@@ -243,7 +249,7 @@ def previews(directory, recipe, mesh, report, compiler, runner, drawn, shots, vi
         result['cameras']=render_cameras(directory,recipe['name'],report['bounds'],views,compiler,runner,load,
                                          depth or policy.get('depth',False),
                                          perspective or policy.get('perspective',False) or None,
-                                         (shots or {}).get('upscale',2),failing)
+                                         (shots or {}).get('upscale',2),failing,look)
     return result
 
 
@@ -265,7 +271,8 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
     --perspective): the asset is drawn so, as in a world whose runtime says so. Its preview draws
     so, and the Asset Checker judges it so (where the recipe's policy does not set them).
     shots: the preview's world-scale views, {'cameras': [camera()...], 'parts': [ids],
-    'closeups': bool, 'upscale': n}. When verification fails and a preview was asked for, the
+    'closeups': bool, 'upscale': n}, and its look, 'look': make_look(...) (the background and
+    ground of every view). When verification fails and a preview was asked for, the
     previews are still rendered, marked as failing, into verification-failed/preview/."""
     mesh,materials,report = compile_recipe(recipe,folder(input_path))
     views = camera_views(shots,report) if preview else []     # named parts checked before any work
@@ -285,7 +292,7 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
         if checking and (policy or {}).get('geometry','error') != 'warn' and flush.get('count'):
             raise FlushContacts(flush)
         report['flush_contacts'] = flush
-    files = artifacts(recipe,mesh,materials,report,drawn)
+    files = artifacts(recipe,mesh,materials,report,drawn,(shots or {}).get('look') if preview else None)
     directory = Path(directory).resolve()
     if input_path and input_path != '-':
         source_path = Path(input_path).resolve()
@@ -330,7 +337,9 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
                         checked['preview']=shown
                         renders=shown['contact']+(' and '+shown['cameras']['contact'] if 'cameras' in shown else '')
                 failure.write_text(json.dumps(checked,indent=2)+'\n')
-                raise VerificationFailure(checked,renders)
+                error=VerificationFailure(checked,renders)
+                error.report_path=str(failure)
+                raise error
             report['verification']=checked
         if preview:
             report['preview'] = previews(stage,recipe,mesh,report,compiler,runner,drawn,shots,views)
@@ -435,6 +444,14 @@ def parser():
             cmd.add_argument('--upscale',type=int,default=2,choices=[1,2,3,4],help='Whole-number scale of the camera views\' images (default 2: 640 x 480).')
             cmd.add_argument('--depth',action='store_true',help='The asset is drawn with the depth buffer, as in a world whose runtime says so: preview so, and verify in depth mode where the recipe\'s policy does not set depth.')
             cmd.add_argument('--perspective',action='store_true',help='The asset is drawn with perspective-correct texturing (preview so; policy perspective where the recipe does not set it).')
+            cmd.add_argument('--background',metavar='#RRGGBB[,#RRGGBB]',help='The views\' background: one colour, or two for a '
+                             'vertical gradient, top then bottom. Default: the look file\'s, else dark grey.')
+            cmd.add_argument('--ground',metavar='#RRGGBB|none',help='Draw the ground, y = 0, in this colour (a faint checker of '
+                             'metre tiles); what lies below it shows through, tinted. Default: the look file\'s, else none.')
+            cmd.add_argument('--look',metavar='FILE|none',help=f'A look file ({{"background", "ground"}}). Default: the nearest '
+                             f'{LOOK_FILE} in the recipe\'s folder or above it; none: no look file.')
+            if name == 'preview':
+                cmd.add_argument('--json',action='store_true',help='Print the full report as JSON (default: a one-screen summary).')
         elif name=='verify':
             cmd.add_argument('-o','--output',help='Save verification.json and triangle-ID difference images.')
             cmd.add_argument('--yaw-steps',type=int)
@@ -448,6 +465,7 @@ def parser():
             cmd.add_argument('--depth',action='store_true',help='Judge the asset as drawn with the depth buffer (policy depth: true).')
             cmd.add_argument('--perspective',action='store_true',help='Draw it with perspective-correct texturing (policy perspective: true).')
             cmd.add_argument('--depth-views',type=int,help='With depth: the views of the sweep judged (default 16; more if needed to judge every face drawn).')
+            cmd.add_argument('--json',action='store_true',help='Print the full report as JSON (default: a one-screen summary).')
     for name,text in (('info','Bounds (drawn and collision), triangles per level of detail and switch distances, '
                                 'texture bytes per texture, palettes and texture windows.'),
                       ('floors','A grid of the collision\'s top floor heights, with walls and too-steep faces marked.')):
@@ -481,6 +499,30 @@ def parser():
     imp.add_argument('--name',default='imported')
     imp.add_argument('--force',action='store_true')
     return p
+
+
+def look_for(args):
+    """The views' look (make_look()): --background and --ground over the look file's (--look FILE,
+    else the nearest LOOK_FILE above the recipe, unless --look none)."""
+    given = {}
+    path = None
+    if args.look and args.look != 'none':
+        path = Path(args.look)
+    elif not args.look:
+        path = find_look(args.recipe,ROOT)
+    if path:
+        given = look_file(path)
+        try: path = path.resolve().relative_to(ROOT)
+        except ValueError: path = path.resolve()
+    background = args.background if args.background is not None else given.get('background')
+    ground = args.ground if args.ground is not None else given.get('ground')
+    source = ', '.join(([str(path)] if path else [])+(['arguments'] if args.background or args.ground else [])) or None
+    return make_look(background,ground,'/arguments' if not path else '/look',source)
+
+
+def text_output(args):
+    """Whether the command prints a summary (preview and verify without --json)."""
+    return args is not None and args.command in ('preview','verify') and not args.json
 
 
 def node_of(recipe, path):
@@ -530,6 +572,7 @@ def inspect_extras(recipe, mesh, report):
 
 def main(argv=None):
     recipe = None
+    args = None
     try:
         args = parser().parse_args(argv)
         if args.command == 'schema':
@@ -574,6 +617,7 @@ def main(argv=None):
             recipe = load(args.recipe)
             # inspect reports a recipe over its budgets in full, the breach a warning
             mesh,_,report = compile_recipe(recipe,folder(args.recipe),'warn' if args.command == 'inspect' else 'error')
+            compiled = report
             if args.strict and report['warnings']:
                 output(dict(report,ok=False,errors=[{'path':'/nodes','message':'Topology warnings rejected by --strict.'}]))
                 return 1
@@ -587,7 +631,7 @@ def main(argv=None):
                 checking = args.verify or (policy is not None and policy.get('required',True))
                 require_tools(tools,(['compiler','runner'] if preview else [])+(['compiler','probe'] if checking else []))
                 shots = {'cameras':[parse_camera(text,k) for k,text in enumerate(args.camera)],'parts':args.part,
-                         'closeups':args.closeups,'upscale':args.upscale}
+                         'closeups':args.closeups,'upscale':args.upscale,'look':look_for(args)}
                 if args.cameras:
                     shots['cameras'] = cameras_file(load(str(args.cameras)))+shots['cameras']
                 report = build(recipe,args.output,preview,tools['compiler'][0],tools['runner'][0],args.recipe,args.verify,
@@ -610,7 +654,11 @@ def main(argv=None):
                 if args.output and args.recipe!='-' and (Path(args.output).resolve()/'verification.json')==Path(args.recipe).resolve():
                     raise AssetError('/output','Verification report would overwrite the source recipe.')
                 report=verify(recipe,profile,args.output,tools['compiler'][0],tools['probe'][0],folder(args.recipe))
-            output(report)
+            if text_output(args):
+                print(summary.preview_text(report) if args.command == 'preview' else
+                      summary.verify_text(report,compiled,args.output))
+            else:
+                output(report)
             if not report['ok']:return 1
         return 0
     except (AssetError,OSError,ValueError,RecursionError) as error:
@@ -618,8 +666,11 @@ def main(argv=None):
         path = getattr(error,'path','/input')
         node = node_of(recipe,path)
         args_given = sys.argv[1:] if argv is None else list(argv)
-        if args_given and args_given[0] in ('info','floors') and '--json' not in args_given:
-            print(f'error at {path}' + (f' ({node})' if node else '') + f': {error}')
+        if (args_given and args_given[0] in ('info','floors') and '--json' not in args_given) or text_output(args):
+            if isinstance(error,VerificationFailure) and text_output(args):
+                print(summary.failure_text(error.report,error))
+            else:
+                print(f'error at {path}' + (f' ({node})' if node else '') + f': {error}')
             return 1
         output({'ok':False,'errors':[{'path':path,**({'node':node} if node else {}),'message':str(error)}],
                 **{k:v for k,v in getattr(error,'report',{}).items() if k not in ('ok','errors')}})

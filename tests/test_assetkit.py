@@ -1012,7 +1012,7 @@ class NativeVisibilityGateTests(unittest.TestCase):
             self.assertTrue((Path(tmp)/'verification.json').exists())
 
     def test_verify_cli_returns_failure_json_and_reports_profile(self):
-        result=subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'verify','-',
+        result=subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'verify','-','--json',
                                '--yaw-steps','4','--pitches=0','--distances=1',
                                '--compiler',str(COMPILER),'--probe',str(PROBE)],
                               input=json.dumps(self.overlap()),text=True,capture_output=True)
@@ -1911,7 +1911,7 @@ class CameraParsingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             env = {k:v for k,v in os.environ.items() if k not in ('MEIC','RUN','PROBE','B')}
             env['B'] = tmp
-            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'verify','-'],input=json.dumps(recipe()),
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'verify','-','--json'],input=json.dumps(recipe()),
                                     capture_output=True,text=True,env=env)
             self.assertEqual(result.returncode,1)
             error = json.loads(result.stdout)['errors'][0]
@@ -1987,7 +1987,7 @@ class CameraViewTests(unittest.TestCase):
             cams = Path(tmp)/'shots.json'
             cams.write_text(json.dumps([{'name':'low','eye':[0,.2,-4],'target':[0,0,0]}]))
             env = {k:v for k,v in os.environ.items() if k not in ('MEIC','RUN','PROBE','B')}
-            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'preview','-','-o',str(Path(tmp)/'out'),
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'preview','-','--json','-o',str(Path(tmp)/'out'),
                                      '--build-dir',str(COMPILER.parent),'--runner',str(RUNNER),'--cameras',str(cams),
                                      '--camera','high=0,4,-4@0,-45','--upscale','3'],
                                     input=json.dumps(recipe()),capture_output=True,text=True,env=env)
@@ -2030,7 +2030,7 @@ class FailedPreviewTests(unittest.TestCase):
             crossing = crossing_and_flush()
             crossing['nodes'].pop()
             crossing['verification'] = {'required':True,'yaw_steps':4,'pitches':[0],'distances':[1]}
-            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'preview','-','-o',tmp,
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'preview','-','--json','-o',tmp,
                                      '--compiler',str(COMPILER),'--runner',str(RUNNER),'--probe',str(PROBE)],
                                     input=json.dumps(crossing),capture_output=True,text=True)
             self.assertEqual(result.returncode,1)
@@ -2378,7 +2378,8 @@ class FeedbackTests(unittest.TestCase):
         r = stacked() | {'verification':{'required':True,'depth':True,'perspective':True}}
         with tempfile.TemporaryDirectory() as tmp:
             for command in ('build','preview'):
-                code,out = kit(command,'-','-o',tmp,'--compiler',COMPILER,'--runner',RUNNER,'--probe',PROBE,stdin=r)
+                code,out = kit(command,'-','-o',tmp,'--compiler',COMPILER,'--runner',RUNNER,'--probe',PROBE,
+                               *(['--json'] if command == 'preview' else []),stdin=r)
                 self.assertEqual(code,1)
                 self.assertEqual(list(out)[:3],['ok','errors','flush_contacts'])
                 message = out['errors'][0]['message']
@@ -2948,6 +2949,202 @@ class InfoFloorsTests(unittest.TestCase):
             result = run('floors',str(path),'--at','1,2')
             self.assertEqual(result.returncode,1)
             self.assertTrue(result.stdout.startswith('error at /arguments/at'),result.stdout)
+
+
+class LookTests(unittest.TestCase):
+    """preview's look: --background, --ground and asset-preview.json (docs/ASSETKIT.md, "The look")."""
+    def test_looks_parse_and_without_one_the_carts_are_as_before(self):
+        from assetkit.preview import make_look, source, camera_source, camera
+        self.assertIsNone(make_look())
+        self.assertIsNone(make_look(None,'none'))
+        look = make_look('#102030,#405060','#ffffff')
+        self.assertEqual(look['background'],[(16,32,48),(64,80,96)])
+        self.assertEqual(look['ground'],(255,255,255))
+        self.assertEqual(make_look(['#000000'])['ground'],None)
+        for bad in (('red',None),('#1,#2,#3',None),(None,'#12345'),(['#000000']*3,None)):
+            with self.assertRaises(AssetError): make_look(*bad)
+        bounds = {'min':[-1,-1,-1],'max':[1,2,1]}
+        plain = source('x',bounds)
+        self.assertIn('cls(rgb(24, 28, 36))',plain)
+        self.assertNotIn('GROUND',plain)
+        self.assertEqual(plain,source('x',bounds,look=None))
+        drawn = source('x',bounds,look=look)
+        self.assertIn('embed PREVIEW_GROUND: Mesh = "preview_ground.bin"',drawn)
+        self.assertIn('render_depth(true)',drawn,'a ground needs the depth buffer')
+        order = [drawn.index(t) for t in ('rect_grad(0, 0, 320, 240, rgb(16, 32, 48), rgb(64, 80, 96), -1)','ui_flush()',
+                                          'mesh_xf(PREVIEW_GROUND, model)','ot_flush()','GPU_ZCLEAR = 0','mesh_xf(ASSET_X, model)',
+                                          'mesh_xf(PREVIEW_GROUND_TINT, model)')]
+        self.assertEqual(order,sorted(order),'sky, ground, depth cleared, asset, then the tint')
+        self.assertIn('rgb(28, 34, 44)',source('x',bounds,look=make_look('#ffffff')),'dark text on a light background')
+        view = camera('c',[0,1,-3],[0,1,0])
+        self.assertNotIn('GROUND',camera_source('x',view,far=5.0))
+        self.assertIn('mesh(CAMERA_GROUND_TINT)',camera_source('x',view,far=5.0,look=look))
+
+    def test_ground_tiles_and_the_tint(self):
+        from assetkit.preview import ground_bytes, GROUND_TILES
+        def faces(data):
+            nverts,nfaces,_,at,_ = struct.unpack_from('<HHIII',data)
+            return [struct.unpack_from('<BB',data,at+36*k) for k in range(nfaces)]
+        small = faces(ground_bytes((0.3,0),2.5,(255,255,255)))
+        self.assertEqual(len(small),6*6,'1 m tiles aligned to the metres: -3 .. 3')
+        self.assertTrue(all(flags & 16 and not flags & 8 for flags,_ in small),'double-sided, opaque')
+        big = faces(ground_bytes((0,0),200,(255,255,255),True))
+        self.assertLessEqual(len(big),(GROUND_TILES+1)**2)
+        self.assertTrue(all(flags & 8 and blend == 0 for flags,blend in big),'half transparent, blend mode 0')
+
+    def test_look_files_are_found_above_the_recipe(self):
+        import argparse
+        from mei_assets import look_for
+        from assetkit.preview import find_look, look_file, make_look
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            (root/'models'/'pine').mkdir(parents=True)
+            (root/'models'/'asset-preview.json').write_text('{"background": ["#70d0f8", "#fffcf4"], "ground": "#eef5fc"}')
+            path = root/'models'/'pine'/'pine.asset.json'
+            path.write_text('{}')
+            self.assertEqual(find_look(path,root),root/'models'/'asset-preview.json')
+            self.assertIsNone(find_look('-',root))
+            args = lambda **k: argparse.Namespace(**{'recipe':str(path),'look':None,'background':None,'ground':None,**k})
+            look = look_for(args())
+            self.assertEqual((look['ground'],look['from']),((238,245,252),str((root/'models'/'asset-preview.json').resolve())))
+            self.assertEqual(look_for(args(ground='#000000'))['ground'],(0,0,0),'an option overrides the file')
+            self.assertIsNone(look_for(args(look='none')))
+            self.assertIsNone(look_for(args(look='none',ground='none')))
+            (root/'bad.json').write_text('{"sky": "#000000"}')
+            with self.assertRaises(AssetError): look_for(args(look=str(root/'bad.json')))
+        # Fall Line's look
+        fallline = ROOT/'carts/fallline/models/asset-preview.json'
+        self.assertEqual(find_look(ROOT/'carts/fallline/models/pine/pine.asset.json',ROOT),fallline)
+        self.assertIsNotNone(make_look(**look_file(fallline))['ground'])
+
+    def test_eye_level_shows_all_of_a_tall_asset_and_stands_on_the_ground(self):
+        from assetkit.preview import closeups, in_view
+        bounds = {'min':[-.5,-1,-.5],'max':[.5,11,.5]}       # a 12 m pylon sunk 1 m into the ground
+        eye = closeups(bounds)[0]
+        self.assertAlmostEqual(eye['eye'][1],1.6,msg='1.6 above the ground, y = 0, not the sunk base')
+        corners = [(x,y,z) for x in (-.5,.5) for y in (-1,11) for z in (-.5,.5)]
+        self.assertTrue(in_view(eye['eye'],eye['target'],corners))
+        self.assertFalse(in_view([0,1.6,-4],eye['target'],corners),'from 4 m the top is cropped')
+
+    def test_stripes_axis_and_lighting_direction(self):
+        from assetkit.compiler import compile_recipe, shading
+        stripes = {'pattern':'stripes','colors':['#ff0000','#0000ff'],'params':{'count':2},'projection':'box'}
+        mesh,_,_ = compile_recipe(recipe({'id':'b','op':'box','size':[1,1,1],'material':'m'},
+                                         materials={'m':{'color':'#ff0000','texture':stripes}}))
+        front = [f for f in mesh.faces if all(mesh.vertices[i][2] == -.5 for i in f.indices)][0]
+        corners = [(mesh.vertices[i],uv) for i,uv in zip(front.indices,front.uvf)]
+        # on the front face u grows along +X (to the right) and v along -Y (down): stripes across u are vertical
+        a,b = sorted(corners,key=lambda c:c[0][0])[0],sorted(corners,key=lambda c:c[0][0])[-1]
+        self.assertGreater(b[1][0],a[1][0])
+        self.assertEqual(len({round(uv[0],3) for p,uv in corners if p[0] == a[0][0]}),1,'u does not change up the face')
+        # direction points from the asset toward the light: a face whose normal it is is fully lit
+        shade = shading({'direction':[0,1,0],'ambient':.25})
+        self.assertEqual((shade((0,1,0)),shade((0,-1,0))),(1,.25))
+
+
+@unittest.skipUnless(COMPILER.exists() and RUNNER.exists(),'Needs meic and mei-headless.')
+class LookRenderTests(unittest.TestCase):
+    def test_ground_hides_nothing_and_tints_what_is_below_it(self):
+        """A red post from y = -1 to 2 on a white ground under a blue sky: in the front view the
+        post shows red above the ground and pink (half white) below it, and the sky and the
+        ground are their colours."""
+        from assetkit.preview import make_look
+        r = recipe({'id':'post','op':'box','size':[.5,3,.5],'material':'m','transform':{'translate':[0,.5,0]}},
+                   materials={'m':{'color':'#c03020'}},lighting={'bake':False})
+        with tempfile.TemporaryDirectory() as tmp:
+            look = make_look('#2050a0,#a0c0e0','#ffffff')
+            report = build(r,tmp,True,COMPILER,RUNNER,shots={'closeups':True,'look':look})
+            self.assertEqual(report['preview']['look'],{'background':['#2050a0','#a0c0e0'],'ground':'#ffffff'})
+            self.assertTrue((Path(tmp)/'preview_ground.bin').is_file())
+            self.assertIn('PREVIEW_GROUND',(Path(tmp)/'preview.akr').read_text())
+            width,height,pixels = png_pixels(Path(tmp)/'view_front.png')
+            at = lambda x,y: tuple(pixels[(y*width+x)*3:(y*width+x)*3+3])
+            near = lambda p,c,d=24: all(abs(a-b) <= d for a,b in zip(p,c))
+            column = [at(160,y) for y in range(240)]
+            self.assertTrue(near(at(300,2),(0x20,0x50,0xa0),12),at(300,2))
+            self.assertTrue(near(at(300,236),(255,255,255),16),at(300,236))
+            self.assertTrue(any(near(p,(0xc0,0x30,0x20)) for p in column),'the post above the ground')
+            pink = [y for y,p in enumerate(column) if near(p,((0xc0+255)//2,(0x30+255)//2,(0x20+255)//2))]
+            red = [y for y,p in enumerate(column) if near(p,(0xc0,0x30,0x20))]
+            self.assertTrue(pink and red and min(pink) > max(red),'the part below the ground is tinted, under the rest')
+            width,height,pixels = png_pixels(Path(tmp)/'camera_eye_level.png')
+            self.assertTrue(near(tuple(pixels[(2*width+2)*3:(2*width+2)*3+3]),(0x20,0x50,0xa0),12),'the camera views too')
+
+
+class SummaryTests(unittest.TestCase):
+    def test_faces_carry_their_position_and_findings_say_where(self):
+        from assetkit.compiler import compile_recipe
+        from assetkit.geometry_audit import face_ref, failure_summary
+        mesh,_,_ = compile_recipe(stacked())
+        ref = face_ref(mesh,0)
+        self.assertEqual(len(ref['at']),3)
+        if NUMPY:
+            from assetkit.geometry_audit import geometry_audit
+            line = geometry_audit(mesh)['summary'][0]
+            self.assertRegex(line,r'^coplanar_overlap: 4 between base and top \(faces [0-9/, ]+\) at \(-?[0-9.]+, 0\.50, -?[0-9.]+\)$')
+
+    def test_allowed_findings_collapse_to_counts_per_kind_and_pair(self):
+        from assetkit.summary import allowed_lines, counts_line
+        rows = [{'code':'surface_intersection','parts':[a,b],'count':n} for a,b,n in
+                (('a','b',3),('a','c',30),('b','b',5),('c','d',1),('d','e',2),('e','f',1))]
+        rows.append({'code':'t_junction','parts':['a','b'],'count':4})
+        lines = allowed_lines({'allowed':rows})
+        self.assertEqual(lines,['allowed surface_intersection: 42 (a/c 30, b 5, a/b 3, d/e 2, and 2 more pairs)',
+                                'allowed t_junction: 4 (a/b 4)'])
+        self.assertEqual(counts_line({'triangles':12,'vertices':8,'budget':{'triangles':100}}),
+                         'triangles 12 of 100, vertices 8, textures 0, VRAM 0 bytes')
+
+    @unittest.skipUnless(COMPILER.exists() and RUNNER.exists(),'Needs meic and mei-headless.')
+    def test_preview_prints_a_summary_and_writes_the_full_report(self):
+        r = recipe({'id':'post','op':'box','size':[.5,3,.5],'transform':{'translate':[0,.5,0]}})
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'preview','-','-o',tmp,
+                                     '--compiler',str(COMPILER),'--runner',str(RUNNER),'--ground','#ffffff'],
+                                    input=json.dumps(r),capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            lines = result.stdout.splitlines()
+            self.assertLess(len(lines),25)
+            self.assertTrue(lines[0].startswith('test: preview written to'),lines[0])
+            for text in ('verdict: not checked','triangles 12 of 2000, vertices 8 of 2048, textures 0, VRAM 0 bytes',
+                         'bounds: x -0.25 .. 0.25  y -1.00 .. 2.00','below y = 0: down to -1.00 (post)',
+                         'look: background #181c24, ground #ffffff (from arguments)','report.json (or run with --json)'):
+                self.assertIn(text,result.stdout)
+            self.assertEqual(json.loads((Path(tmp)/'report.json').read_text())['preview']['look']['ground'],'#ffffff')
+
+    @unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+    def test_verify_prints_failures_with_parts_and_positions(self):
+        r = crossing_and_flush() | {'verification':{'yaw_steps':4,'pitches':[0],'distances':[1]}}
+        result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'verify','-',
+                                 '--compiler',str(COMPILER),'--probe',str(PROBE)],input=json.dumps(r),capture_output=True,text=True)
+        self.assertEqual(result.returncode,1)
+        lines = result.stdout.splitlines()
+        self.assertTrue(lines[0].startswith('test: FAIL (ordering-table mode)'),lines[0])
+        self.assertLess(len(lines),25)
+        failing = [line for line in lines if line.startswith('  FAIL ')]
+        self.assertTrue(any('between body and cap' in line and ' at (' in line for line in failing),failing)
+        self.assertTrue(any(line.startswith('  FAIL views: ') and 'drawn over' in line for line in failing),failing)
+        self.assertIn('textures 0, VRAM 0 bytes',result.stdout)
+        self.assertIn('full report: run with --json',result.stdout)
+        # a tool missing: one line
+        result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'verify','-','--probe','/nonexistent/probe',
+                                 '--compiler',str(COMPILER)],input=json.dumps(r),capture_output=True,text=True)
+        self.assertTrue(result.stdout.startswith('error at /arguments/tools: Missing probe'),result.stdout)
+
+    @unittest.skipUnless(NUMPY and COMPILER.exists() and RUNNER.exists() and PROBE.exists(),
+                         'Needs NumPy, meic, mei-headless and mei-asset-probe.')
+    def test_fall_line_pine_previews_on_its_snow(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'preview',
+                                     str(ROOT/'carts/fallline/models/pine/pine.asset.json'),'-o',tmp,'--closeups',
+                                     '--compiler',str(COMPILER),'--runner',str(RUNNER),'--probe',str(PROBE)],
+                                    capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout)
+            self.assertIn('verdict: PASS (depth mode)',result.stdout)
+            self.assertIn('(from carts/fallline/models/asset-preview.json)',result.stdout)
+            self.assertIn('allowed surface_intersection: ',result.stdout)
+            width,height,pixels = png_pixels(Path(tmp)/'camera_eye_level.png')
+            bottom = pixels[((height-4)*width+4)*3:((height-4)*width+4)*3+3]
+            self.assertTrue(all(c > 200 for c in bottom),'snow under the eye')
 
 
 if __name__ == '__main__':
