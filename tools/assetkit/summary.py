@@ -30,6 +30,10 @@ def counts_line(report):
     if palette: line += f', palette entries {palette.get("entries",0)}'
     levels = report.get('lod',{}).get('levels') if isinstance(report.get('lod'),dict) else None
     if levels: line += ', levels of detail '+' / '.join(str(level.get('triangles','?')) for level in levels)
+    collision = report.get('collision')
+    if isinstance(collision,dict):
+        line += (f', collision {collision.get("triangles","?")} triangles ('
+                 +('its own nodes' if collision.get('source') == 'nodes' else f'level {collision.get("level")}')+')')
     return line
 
 

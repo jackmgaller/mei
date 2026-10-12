@@ -156,7 +156,7 @@ Conventions, each checked on native renders (`tests/test_assetkit.py`, `Conventi
 | `verify FILE [-o DIR] [--build-dir DIR] [--json]` | Geometry checks plus native triangle-ID visibility and ordering-graph checks; a [summary](#output-the-summary-and-the-full-report), or the full report with `--json` |
 | `build FILE -o DIR [--verify] [--preview] [--strict] [--depth] [--perspective] [--build-dir DIR]` | Native and exchange artifacts; optional or recipe-mandated verification gate |
 | `preview FILE -o DIR [--verify] [--strict] [--depth] [--perspective] [--build-dir DIR] [--closeups] [--camera SPEC]… [--cameras FILE] [--part ID]… [--upscale N] [--background C[,C]] [--ground C\|none] [--look FILE\|none] [--json]` | Build plus six native renders and contact sheet, and [camera views](#camera-views-at-world-scale), in [a look](#the-look-background-and-ground); a [summary](#output-the-summary-and-the-full-report), or the full report with `--json` |
-| `info FILE [--at X,Y,Z] [--yaw DEG] [--collision auto\|self\|none\|PATH] [--json]` | Bounds (drawn and collision, and placed), triangles per level of detail and switch distances, texture bytes per texture, palettes, texture windows ([Quick facts](#quick-facts-info-and-floors)) |
+| `info FILE [--at X,Y,Z] [--yaw DEG] [--collision auto\|asset\|self\|none\|PATH] [--json]` | Bounds (drawn and collision, and placed), triangles per level of detail and switch distances, texture bytes per texture, palettes, texture windows ([Quick facts](#quick-facts-info-and-floors)) |
 | `floors FILE [--step 0.25] [--at X,Y,Z] [--yaw DEG] [--below Y] [--area X0,Z0,X1,Z1] [--json]` | A grid of the collision's top floor heights, with walls and too-steep faces marked ([Quick facts](#quick-facts-info-and-floors)) |
 | `import-obj FILE -o RECIPE [--name NAME] [--force]` | Geometry-only OBJ import into an explicit `mesh` recipe |
 | `pack FILE... -o DIR [--name NAME] [--slots 14-0] [--palette 0] [--palette8 14]` | Several assets (or one) for a cart without a world: shared texture slots and palettes, one loader ([Placement](#placement-build-and-pack)) |
@@ -307,8 +307,11 @@ distance, `cull` and `band` (a world's `lod` may change the distances); the pale
 grid, what a world region's `textures.budget` counts), with the textures that are one tile
 (`same tile as`), each image or sheet several textures read, and the texture windows. `--at
 X,Y,Z --yaw DEG` adds the bounds where a world placement there puts them (yaw as `mesh_at()`:
-+Z toward +X). `--collision auto` (the default) takes `NAME_col.asset.json` beside the recipe
-when there is one, else the recipe itself; `self`, `none` or a recipe path say otherwise.
++Z toward +X). `--collision auto` (the default) takes the recipe's own
+[declared collision](#declared-collision) when it has one, else `NAME_col.asset.json` beside the
+recipe when there is one, else the recipe itself; `asset` (the declared collision, an error
+without one), `self`, `none` or a recipe path say otherwise. `floors` takes the same
+`--collision`, except `none`.
 `--floor-max DEG` is the steepest floor (default 45, the World Kit's; the game's probe may say
 less: the garden's is 40).
 
@@ -1280,6 +1283,46 @@ every level as an asset of its own with the same policy (pictures under `lodK/`)
 levels' results under `lod`, and fails if any level fails. Choosing the level is the consumer's:
 the World Kit stores the distances in the pack and the reader chooses per placement
 ([WORLDKIT.md](WORLDKIT.md#levels-of-detail)).
+
+### Declared collision
+
+`collision` gives the recipe its own collision geometry, so it needs no companion
+`NAME_col.asset.json`. It is never drawn; a world uses it where a placement (or an entity, or a
+scatter entry) says `"collision": "asset"` ([WORLDKIT.md](WORLDKIT.md#collision)). It is one of
+two forms:
+
+```json
+"collision": {"nodes": [
+  {"id": "deck", "op": "box", "size": [4, 0.2, 2], "material": "stone",
+   "transform": {"translate": [0, 2.9, 0]}},
+  {"id": "rail", "op": "instance", "ref": "rail", "material": "stone"}
+]}
+```
+
+```json
+"collision": {"lod": 2}
+```
+
+| Property | Meaning |
+|---|---|
+| `nodes` | 1–128 nodes of its own, in the node grammar, sharing the recipe's `materials` (their `tag`s are the collision's surfaces), `prototypes`, `sheets`, `lighting`, `palette_layout` and `budget` |
+| `lod` | A level of detail as the collision: 0 the recipe's own `nodes`, K `lod.levels[K - 1]` |
+
+Exactly one of the two: both or neither is an error at `/collision`, a level the recipe does
+not have at `/collision/lod`. The collision compiles as a recipe of its own
+(`collision_recipe()` in `tools/assetkit/compiler.py`): the recipe without `lod`,
+`verification` and `collision`, with the collision's nodes. So it builds exactly what a
+companion recipe with those keys builds, and the World Kit's pack is the same byte for byte
+(`tests/test_worldkit.py`, `DeclaredCollisionTests`). Errors in its nodes have paths under
+`/collision/nodes/...` and messages beginning `Collision:`; a collision over the recipe's
+budget fails at `/budget/...` (`inspect`: an `over_budget` warning with `"collision": true`).
+
+Every command that compiles the recipe compiles its collision too, and the report's
+`collision` gives its `source` (`nodes`, or `lod` with its `level`), `triangles`, `vertices`,
+`bounds` and `tags` (triangles per tag); the summary's counts line ends with
+`collision N triangles (its own nodes)` or `(level K)`. `build`, `verify`, `preview` and `export` neither write nor draw it.
+`info` and `floors` read it ([Quick facts](#quick-facts-info-and-floors)). A recipe without
+`collision` builds as before; the existing companions stay as they are.
 
 ### Impostors
 

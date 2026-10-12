@@ -475,9 +475,10 @@ def parser():
         cmd.add_argument('--json',action='store_true',help='The result as JSON (default: plain text).')
         cmd.add_argument('--at',metavar='X,Y,Z',help='Place it here (world units), as a world placement does.')
         cmd.add_argument('--yaw',type=float,default=0.0,help='Placement yaw in degrees (+Z toward +X, as mesh_at()).')
-        cmd.add_argument('--collision',default='auto',metavar='auto|self|none|PATH',
-                         help='The collision: auto (NAME_col.asset.json beside the recipe, else the recipe), self, none '
-                              '(info only) or a collision recipe path.')
+        cmd.add_argument('--collision',default='auto',metavar='auto|asset|self|none|PATH',
+                         help='The collision: auto (the recipe\'s declared collision, else NAME_col.asset.json beside the '
+                              'recipe, else the recipe), asset (the declared collision), self, none (info only) or a '
+                              'collision recipe path.')
         cmd.add_argument('--floor-max',type=float,default=45.0,metavar='DEG',
                          help='Steepest floor in degrees (default 45, the World Kit\'s; a game\'s probe may say less).')
         if name == 'floors':

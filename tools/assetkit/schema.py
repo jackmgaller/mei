@@ -125,6 +125,10 @@ LOD = dict(obj({
     'cull':dict(POS,description='Not drawn at all from this distance on. Default: never culled by distance.'),
     'band':dict(number(0,1000),description='Hysteresis (units): a level changes only once the distance is this far past its switch distance. Default 1.'),
 }),description='Levels of detail: simpler meshes for the same asset farther away. Generic; a consumer such as the World Kit chooses the level.')
+COLLISION = dict(obj({
+    'nodes':dict(array(ref('node'),1,128),description='Collision geometry of its own: the node grammar, with the recipe\'s materials (their tags are the surfaces), prototypes, sheets, lighting and budget. Never drawn.'),
+    'lod':dict(integer(0,7),description='A level of detail as the collision: 0 the recipe\'s own nodes, k lod.levels[k - 1].'),
+}),description='The asset\'s declared collision: nodes or lod, not both. A world uses it where a placement says collision "asset" (docs/ASSETKIT.md, "Declared collision").')
 SCHEMA = {
     '$schema':'https://json-schema.org/draft/2020-12/schema',
     'title':'Mei agent asset recipe v1',
@@ -141,6 +145,7 @@ SCHEMA = {
         'budget':obj({'vertices':integer(3,2048),'triangles':integer(1,4000)}),
         'verification':VERIFICATION,
         'lod':LOD,
+        'collision':COLLISION,
     }, ['format','version','name','nodes']),
     '$defs':{'node':NODE},
 }
