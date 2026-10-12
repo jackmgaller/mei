@@ -11,8 +11,8 @@ Asset Kit's own code). `preview` and the runtime tests need `meic` and `mei-head
 
 | Where | What |
 |---|---|
-| `tools/mei_anim.py` | the entry point: `verify`, `preview`, `export`, `info` |
-| `tools/animkit/` | `rig.py` (rigs, posing), `move.py` (the format, sampling, plants and reaches), `verify.py`, `preview.py`, `export.py`, `summary.py` |
+| `tools/mei_anim.py` | the entry point: `verify`, `preview`, `export`, `info`, `pose`, `fmt`, `check` |
+| `tools/animkit/` | `rig.py` (rigs, posing), `move.py` (the format, sampling, plants and reaches, aims), `verify.py`, `preview.py`, `export.py`, `pose.py`, `fmt.py`, `summary.py` |
 | `carts/mechexpo/anims/MECH/MOVE.anim.json` | the moves (the animator's); `_body.anim.json` per mech: the boxes every move starts from |
 | `carts/mechexpo/anim_data.akr`, `carts/mechexpo/anims/anim_data.bin` | the export (generated: do not edit) |
 | `carts/mechexpo/anim.akr` | the runtime |
@@ -28,15 +28,21 @@ once):
 python3 tools/mei_anim.py verify carts/mechexpo/anims/hero/atk_f.anim.json
 python3 tools/mei_anim.py preview carts/mechexpo/anims/hero/atk_f.anim.json -o build-mine/anim/atk_f --build-dir build-mine
 python3 tools/mei_anim.py info carts/mechexpo/anims/hero/atk_f.anim.json     # frame by frame: boxes, marks, motion
+python3 tools/mei_anim.py pose carts/mechexpo/anims/hero/atk_f.anim.json --frames 13   # joints, blade, boxes, lowest points
 python3 tools/mei_anim.py export                                              # every move into the cart's anim_data
+python3 tools/mei_anim.py fmt                                                 # every move file in the one style
+B=build-mine python3 tools/mei_anim.py check                                  # fmt, verify all, export, both suites
 ```
 
 1. **Write** the move: keys (poses and their timing), boxes, marks, motion, plants. Start from
-   `_body.anim.json` (`"base"`) so the hurt and push boxes are there.
-2. **`verify`** until it passes. It names the frames, the parts and by how much.
+   `_body.anim.json` (`"base"`) so the hurt and push boxes are there; aim blades with `"aim"`
+   and set the pelvis on the floor with `"floor"` rather than fitting angles by hand.
+2. **`pose`** to read where a frame puts the blade, the boxes and the lowest points, and
+   **`verify`** until it passes. It names the frames, the parts and by how much.
 3. **`preview`**, and look at `contact.png` (every key, the phases' edges, and about 24
    frames) and `frames/frame_NNN.png` (every frame).
-4. **`export`**, then build the cart. A move is done when `verify` passes and its contact sheet
+4. **`check`** (it checks the files' style, verifies every move, exports and runs the kit's
+   two suites), then build the cart. A move is done when `verify` passes and its contact sheet
    has been looked at (`carts/mechexpo/README.md`).
 
 ## Coordinates
@@ -64,6 +70,7 @@ A rig is `models/NAME/NAME.rig.json`, written by the model's generator (B's,
 | `parts[]` | parent first: `id`, `parent` (null for the root, the pelvis), `offset` (the joint from the parent's joint in the rest pose, m), `rotate` (a rest rotation; the weapons' `[-90, 0, 0]`), `recipe` (the part's Asset Kit recipe, origin at the joint, relative to the rig), `asset` (its `ASSET_*` name in the cart's pack), `bounds` (in the part's frame: the default extent of a box that follows the part) |
 | `mounts[]` | joints without a part of their own (the Hero's empty left weapon mount): they still get a matrix, for `anim_part()` |
 | `poses` | named poses: `drop` (the pelvis lowered from its rest height) and `rotate` per joint. `guard` is the pose a move starts from |
+| `allow` | pairs of parts every move of the rig may pass into each other (`verify`'s `parts` check); a move's `allow` adds to them. Both mechs': each forearm with its weapon (a bent wrist puts the grip in the cuff) and the torso with each thigh (a raised knee under the skirt) |
 
 A part's matrix relative to the root is parent × T(offset) × R(rest) × R(pose); the pelvis also
 takes the pose's `offset`. The runtime numbers parts one way for every mech (`enum Part` in
@@ -87,16 +94,17 @@ with `_` are not moves). Every path in a move is relative to its own file.
   "design": {"hit": [4.0, 6.5, 10.4, 8.5], "tolerance": 0.5},
   "keys": [
     {"at": 0, "from": "guard", "ease": "ease"},
-    {"at": 4, "offset": [-0.2, -0.85], "pose": {"upper_arm_r": [-15, 0, -14]}, "reach": {"foot_r": [0.54, 0.0]}},
-    {"at": 13, "ease": "out", "pose": {"upper_arm_r": [91, 0, -4]},
-     "boxes": {"blade": {"kind": "hit", "part": "weapon_r", "min": [-0.12, 0.5, -0.4], "max": [0.12, 7.3, 0.4], "split": 3}}},
+    {"at": 4, "offset": [-0.2, -0.85], "pose": {"upper_arm_r": [-15, 0, -14]}, "reach": {"foot_r": "guard"}},
+    {"at": 13, "ease": "out", "pose": {"upper_arm_r": [91, 0, -4]}, "aim": {"weapon_r": [3, -10]},
+     "boxes": {"blade": {"kind": "hit", "part": "weapon_r", "min": [-0.12, 0.5, -0.4], "max": [0.12, 7.3, 0.4],
+                         "split": 3}}},
     {"at": 17, "boxes": {"blade": null}},
     {"at": 37, "from": "guard"}
   ],
   "motion": [{"from": 4, "to": 13, "by": [1.2, 0], "ease": "ease"}],
   "plant": {"foot_r": [[0, 3], [9, 37]], "foot_l": [[0, 8], [13, 37]]},
   "marks": {"step": [9, 13], "cancel": [[13, 22]]},
-  "allow": [["forearm_r", "weapon_r"]]
+  "allow": [["head", "upper_arm_r"]]
 }
 ```
 
@@ -105,9 +113,11 @@ with `_` are not moves). Every path in a move is relative to its own file.
 | `format`, `version` | `"mei-anim"`, 1 |
 | `rig` | the rig (usually inherited from the base) |
 | `base` | a move to start from (below) |
-| `length` | frames, 1–600 |
+| `retime` | with `base`: `[[base frame, new frame], ...]`, the base's keys, motion, plants and marks moved to new frames (below) |
+| `length` | frames, 1–600 (with `retime` and no `length`: the base's last frame's new place + 1) |
 | `loop` | the move loops: after its last key it interpolates back to its first, at `length` (idle, walks). Default false |
 | `air` | an airborne move: no floor check, no push box needed, boxes may reach 4 m below the root (`atk_air`, `jump`) |
+| `travel` | metres a frame the fight moves the root forward (negative: back) while the move plays, up to 2: the walks' speeds (`moves.akr`'s `walk_f`, `walk_b`). Not exported (the fight moves the root itself); plants hold in the world through it and `verify` counts it when it looks for sliding feet |
 | `phases` | `startup`, `active`, `recovery` in frames; `verify` checks that they add up to `length` and that the frames with a hit box are exactly `startup` .. `startup + active − 1` (frames count from 0: startup 13 means the hit box is on frame 13, the 14th) |
 | `design` | the design's numbers: `hit` `[x0, y0, x1, y1]`, what the hit boxes should span over the active frames, within `tolerance` (default 0.5 m) |
 | `boxes` | the boxes from frame 0 (below) |
@@ -115,7 +125,7 @@ with `_` are not moves). Every path in a move is relative to its own file.
 | `motion` | root motion (below) |
 | `plant` | feet held in place (below) |
 | `marks` | per-frame flags (below) |
-| `allow` | pairs of parts (`["forearm_r", "weapon_r"]`, or `part/node` ids) that may pass into each other |
+| `allow` | pairs of parts (`["forearm_r", "weapon_r"]`, or `part/node` ids) that may pass into each other, added to the rig's `allow` and the base's |
 | `note` | free text: what the move is |
 
 ### Keys
@@ -127,8 +137,12 @@ A key is `{"at": frame, ...}`, frames 0 to `length − 1`, in order, the first a
 | `from` | start this key's pose from one of the rig's poses (`"guard"`) instead of the previous key's |
 | `pose` | `{"part": [x, y, z]}`: these joints' rotations; every joint not named keeps the previous key's (the first key's: the guard's) |
 | `offset` | `[forward, up]`: the pelvis moved from its rest place (fight-local m). The guard's is `[0, −drop]` |
+| `relative` | `true`: this key's `pose` angles and `offset` are added to the rig's guard rather than replacing the carried values: `{"torso": [-10, 4, 0]}` is the guard's torso leaned 10° more. A move written this way carries onto another rig's guard (below) |
+| `aim` | `{"weapon_r": [elevation, yaw]}`: the wrist (the part's parent) is solved so the part's +Y (the blade) points this way (below) |
+| `floor` | `true`: the offset's `up` is set so the lowest part touches the floor on this frame (feet, knees, a hand on the floor); keys that carry this offset carry the new one. `forward` is kept |
 | `ease` | how this key moves to the next: `linear`, `ease` (slow out and in, the default), `in` (slow start, fast end: into a strike), `out` (fast start, slow end: a follow-through), `hold` (stays, then snaps at the next key) |
-| `reach` | `{"foot_l": [forward, up]}`: where a joint at the end of a two-joint chain goes, from its place in the rest pose; `[x, 0]` puts a foot flat on the floor x m forward of its hip line. Reach keys make a track of their own per joint: between its first and last key the joint follows it (eased by the key's `ease`), solved every frame |
+| `reach` | `{"foot_l": [forward, up]}`: where a joint at the end of a two-joint chain goes, from its place in the rest pose; `[x, 0]` puts a foot flat on the floor x m forward of its hip line. `"guard"`: where the rig's guard puts it, to the centimetre (a foot's on the floor: the Hero's left foot `[-2.51, 0]`, the Double-blade's `[-2.94, 0]`). `null` ends the track (below). Reach keys make a track of their own per joint: between its first and last key the joint follows it, solved every frame |
+| `reach_ease` | how the reach tracks move from this key to their next: as `ease`; default the key's `ease`. A planted foot sliding at the walk's speed wants `linear` while the body eases |
 | `boxes` | box changes from this frame on: `{"name": box}` adds or replaces, `{"name": null}` removes |
 | `remove` | in a derived move: drop the base's key at this frame |
 
@@ -153,6 +167,23 @@ starts, give the reach the planted place relative to the root on that frame (the
 the planted place minus the root's travel), or the foot jumps; `verify` warns of a foot that
 slides along the floor.
 
+The root's travel is the move's root motion plus its `travel` (the speed the fight moves the
+root at, which is not exported). A walk keys the swinging foot with reaches and plants the
+standing one: the plant holds it in the world while the fight carries the root on, so the foot
+slides back against the root by exactly the walk's speed, and `verify` sees it standing still.
+`carts/mechexpo/anims/hero/walk_f.anim.json` is the example (`"travel": 0.075`, the right foot
+planted on 0–32, the left on 0–8 and 24–47).
+
+A reach track runs from its first key to its last. `null` ends it early: `{"at": 20, "reach":
+{"foot_l": null}}` holds the value of the key before it until frame 19, and from frame 20 the
+leg is posed by its keyed angles again; a later reach key starts a new track. A key's `ease`
+eases the reach tracks too unless it gives `reach_ease`.
+
+A reach or a plant turns the thigh and the shin about X; their Y and Z stay as keyed. `verify`
+warns (`legs`) when a pose key names a thigh or a shin whose X the track or plant solves on
+every frame the key reaches (from the pose key before it to the one after): that keyed bend
+never shows. End the reach before it (`null`) if the keyed knee is the one wanted.
+
 ### Boxes
 
 Boxes are 2D rectangles in fight-local metres, baked at export from the parts they follow, so
@@ -172,6 +203,24 @@ Boxes are rounded to 1/256 m. At most 16 a frame (`ANIM_MAX_BOXES`). Each mech's
 `_body.anim.json` holds its hurt boxes (head, torso, pelvis, forearms, sword hand, thighs,
 shins) and push box (1.6 m either side, 11.5 m tall); a move made from it keeps them and adds
 its own.
+
+### Aiming a blade
+
+`"aim": {"weapon_r": [elevation, yaw]}` on a key solves the wrist so the blade points that way
+in the root's frame, whatever the arm, the torso's twist and the pelvis do:
+
+- **elevation**: degrees above level, −90 (straight down) to 90 (straight up);
+- **yaw**: degrees round from straight ahead (fight-local +x), +90 to the mech's left (away
+  from the game's camera), −90 to its right (toward it), ±180 behind. A right-to-left cut
+  sweeps from negative yaw to positive.
+
+The wrist (`hand_r` for `weapon_r`) turns from the angles the key would otherwise give it (its
+own `pose` entry, or the carried one) by the smallest turn that points the blade, so the
+blade's roll follows the key; the angles are rounded to 0.01° and carry to the next keys like
+keyed ones (the aim does not: a later key that moves the arm moves the blade). `pose` and
+`info --joints` print what the wrist was solved to, and every frame's blade direction in the
+same terms, so a design box can be met by reading the numbers rather than by trial. A wrist
+turned more than 100° from straight is a warning (`aim`): turn the forearm toward the aim.
 
 ### Root motion
 
@@ -202,16 +251,32 @@ The fight moves the root; the animation's poses are relative to it.
 
 `"base": "PATH"` starts from another move (recursively). The derived file's top-level fields
 replace the base's (`rig`, `length`, `phases`, `design`, `loop`, ...; `"design": null` drops
-it); `boxes` and `marks` merge by name; `keys` merge by frame: a key at a frame the base has
-merges into it (`pose` and `boxes` by name, other fields replaced), a new frame is inserted,
-`"remove": true` drops the base's key. Joints keep carrying from key to key, so a derived key
-that sets one joint holds it until a later key sets it again.
+it); `boxes` and `marks` merge by name; `allow` lists add to the base's; `keys` merge by
+frame: a key at a frame the base has merges into it (`pose` and `boxes` by name, other fields
+replaced), a new frame is inserted, `"remove": true` drops the base's key. Joints keep
+carrying from key to key, so a derived key that sets one joint holds it until a later key sets
+it again.
+
+**`retime`** moves the base to new frames before the derived file's own fields and keys are
+merged: `"retime": [[0, 0], [3, 2], [6, 5], [9, 7], ..., [38, 34]]` maps each base frame
+between two pairs linearly (rounded to the nearest frame, halves up), and before the first or
+after the last pair one for one. It moves the base's keys, its motion's `from` and `to`, its
+plant ranges and its marks; the length becomes the base's last frame's new place + 1 unless the
+file gives one. `phases` and `design` are not moved: give them. Base keys that land on one
+frame merge, the later over the earlier; the derived file's keys then go by the new frames (a
+`remove` drops a retimed key). The Double-blade's Jump is the Hero's with nothing but a retime
+and its rig.
 
 The echo shares the Hero's skeleton, so a Double-blade move can be the Hero's with
 `"rig": "../../models/doubleblade/doubleblade.rig.json"` and the differences: `"from":
-"guard"` then means the Double-blade's guard. `carts/mechexpo/tests/anim/examples/
-doubleblade_thrust.anim.json` is the Hero's Tip Thrust retimed for the Double-blade with both
-blades.
+"guard"` then means the Double-blade's guard, and so do a reach's `"guard"` and a
+`"relative"` key's angles and offset: a Hero key written relative to the guard lands on the
+Double-blade's lower guard by itself, where an absolute one keeps the Hero's angles.
+`carts/mechexpo/anims/doubleblade/atk_d.anim.json` is the Hero's Low Sweep retimed, with the
+Double-blade's offsets and boxes; `carts/mechexpo/tests/anim/examples/doubleblade_thrust.anim.json`
+is the Hero's Tip Thrust re-keyed for the Double-blade with both blades, and
+`examples/aimed_lunge.anim.json` a Hero move written with `relative`, `aim`, `floor`, a
+`"guard"` reach, `reach_ease` and a reach ended by `null`.
 
 ## Commands
 
@@ -220,11 +285,14 @@ blades.
 | `verify MOVE... [--json] [--tolerance M]` | the checks below; exit 1 on a failure |
 | `preview MOVE -o DIR [--build-dir DIR] [--as MOVE] [--every N] [--columns N] [--distance M] [--no-boxes] [--json]` | every frame drawn by Mei and a contact sheet |
 | `export [-o DIR] [--anims DIR] [--extra DIR]... [--runtime] [--no-meshes]` | every move of both mechs into `DIR/anim_data.akr` and `DIR/anims/anim_data.bin` (default the cart) |
-| `info MOVE [--json]` | the move frame by frame: keys, boxes, hits, marks, root motion |
+| `info MOVE [--json] [--joints [--frames F]]` | the move frame by frame: keys, boxes, hits, marks, root motion; `--joints`: as `pose` |
+| `pose MOVE [--frames F] [--no-joints] [--json]` | where each frame puts things (below); `F` is `13`, `10-16,20` or `keys` (default every frame) |
+| `fmt [MOVE...] [--check]` | rewrite move files in the one compact style (default every file of the cart's `anims/`); `--check` lists the files that would change and exits 1 if any |
+| `check [--no-tests] [--fight] [--build-dir DIR]` | `fmt --check` on the cart's moves, `verify` on every move (the cart's, the test cart's, the examples), `export` into the cart, then `tests/test_animkit.py` and `carts/mechexpo/tests/anim/check.sh`; `--fight` adds the cart's fight scenarios (`carts/mechexpo/tests/check.sh`). Stops at the first failure, exit 1 |
 
-`verify` and `preview` print a summary (`--json`: the full report); `export` prints JSON. The
-native tools are found as the Asset Kit finds them: `--compiler`/`--runner`, else `--build-dir`,
-else `MEIC` and `RUN`, else `$B`, else `build/`.
+`verify`, `preview`, `pose` and `info` print a summary (`--json`: the full report); `export`
+prints JSON. The native tools are found as the Asset Kit finds them: `--compiler`/`--runner`,
+else `--build-dir`, else `MEIC` and `RUN`, else `$B`, else `build/`.
 
 ### verify
 
@@ -235,18 +303,55 @@ else `MEIC` and `RUN`, else `$B`, else `build/`.
 | `design` | the hit boxes' extent over the active frames is further than `design.tolerance` from `design.hit` on any side |
 | `boxes` | a frame has no hurt box (except `nopush` frames), more than 16 boxes, a box thinner than 0.1 m, more than 30 m from the root, or reaching more than 2 m below it (4 m on an `air` move, or on a frame whose root motion has lifted the root). A grounded frame without a push box is a warning |
 | `parts` | two parts pass into each other deeper than the rig's own poses (rest and guard) have them, plus `--tolerance` (0.12 m). Each part is fitted with a box per piece of its recipe (the recipe's top-level nodes), and the pairs are tested by the separating axis test on every frame. Parent and child, and two parts on one joint, are not tested; `allow` excuses a pair |
-| `floor` | anything below the floor by more than 0.03 m on a grounded move (the floor follows the root when motion lifts it); a plant the leg cannot hold |
+| `floor` | anything below the floor by more than 0.03 m on a grounded move (the floor follows the root when motion lifts it), with the offset `up` the pelvis needs on the worst frame (or key `"floor": true` there); a plant the leg cannot hold |
 
-Warnings: a foot on the floor that slides more than 0.04 m a frame (`slides`), a step mark with no
-foot down, a pose for a part the rig lacks, a looping move with root motion.
+Warnings: a foot on the floor that slides more than 0.04 m a frame in the world (the root's
+motion and `travel` counted: `slides`), a step mark with no foot down, a pose for a part the rig
+lacks, a looping move with root motion, a keyed knee or hip a reach or plant hides (`legs`), a
+wrist an `aim` bends more than 100° (`aim`), a `"floor"` key whose lowest part is held by a
+plant or a reach and so cannot be brought down (`floor`).
 
 ```
 atk_f: PASS
   file: carts/mechexpo/anims/hero/atk_f.anim.json
   38 frames, keys at 0, 4, 9, 13, 17, 27, 37; startup 13, active 4, recovery 21
-  hit boxes span x 3.61 to 10.42, y 6.77 to 8.18
-  active frames 13-16; lowest point -0.000 m; 1335 piece pairs checked; up to 15 boxes a frame
+  hit boxes span x 4.04 to 10.84, y 6.56 to 8.23
+  active frames 13-16; lowest point -0.000 m; 1307 piece pairs checked; up to 15 boxes a frame
+  warn slides: foot_l slides along the floor on frames 7 (up to 0.05 m a frame): "plant" it, or lift it.
 ```
+
+### pose
+
+Where each frame puts things, in fight-local metres (forward, up, from the root): the offset and
+the root's travel; every joint; each weapon's base (its grip) and tip, how far to the side each
+is (the model's +X, the mech's left: the near-side sword is at about −3 m) and the blade's
+`[elevation, yaw]` as `aim` takes them; the hit and hurt boxes; the lowest point of each part
+(the floor is 0); the top of the hurt boxes. The aims and `floor` keys the move solved are
+listed first. `--json` gives the same with every joint as `[forward, up, side]` and each
+frame's angles.
+
+```
+$ python3 tools/mei_anim.py pose carts/mechexpo/anims/hero/atk_f.anim.json --frames 13 --no-joints
+atk_f (hero): 38 frames; points are forward,up from the root (m)
+frame 13 KEY: offset -0.75,-1.30; root moved +1.20,+0.00
+  weapon_r base 3.59,7.43 side -3.18, tip 10.65,7.82 side -4.51; aim [3.1, -10.6]
+  hit  blade.0     x 4.04 to 6.34, y 7.05 to 7.99
+  ...
+  lowest   foot_r -0.00  foot_l -0.00  shin_l +0.19  shin_r +0.43  thigh_l +2.18  thigh_r +2.90
+           pelvis +3.69  hand_l +4.38  ...
+  hurt top 10.96
+```
+
+### fmt and check
+
+`fmt` writes every move file one way, so files from different animators diff cleanly: the
+top-level fields one a line in the order of the format's table (`format`, `version`, `note`,
+`base`, `rig`, `retime`, `length`, ... `allow`); keys, motions and the top-level boxes one a
+line, each key's fields in the order `at`, `remove`, `from`, `relative`, `ease`,
+`reach_ease`, `offset`, `floor`, `pose`, `aim`, `reach`, `boxes`, `note`; anything that does
+not fit in 100 columns filled into lines with the continuation aligned under its first entry.
+It checks that the values come back unchanged. `check` is the one command to run before
+committing moves (`make test` runs the Python suite, `make test-carts` the test cart's checks).
 
 ### preview
 
@@ -353,9 +458,14 @@ B=build-mine carts/mechexpo/tests/anim/run.sh 1 3 build-mine/anim-test/boxes    
 `tests/test_animkit.py`: the rotation convention against the Asset Kit's, the guard on the floor,
 the part and move lists against `anim.akr`, format errors and their paths, carrying and
 interpolating keys, loops, root motion adding up exactly, boxes following parts, a plant holding
-a foot through root motion, merging a base, each `verify` check failing when it should, the
-export's layout; and with `meic` and `mei-headless`, the runtime's matrices, boxes and marks
-against the kit's (the test cart's scene 5).
+a foot through root motion, merging a base; `retime` (keys, motion, plants, marks, the frame
+map), `relative` keys on the other rig's guard, the `"guard"` foot of each rig, `aim` within
+0.05° under a twisted torso, `travel` holding plants in the world and the slide warning, a reach
+ended by `null`, `reach_ease`, the `legs` warning, `floor` keys and the offset `verify` names,
+the rig's and the base's `allow`; `pose`'s blade and boxes, `fmt` keeping every file's values
+(and the cart's files in the style); each `verify` check failing when it should, the export's
+layout; and with `meic` and `mei-headless`, the runtime's matrices, boxes and marks against the
+kit's (the test cart's scene 5).
 
 The test cart's scenes: 1 the game's camera with boxes, 7 the same at 17 m, 2 a grab and 3 a
 jump crossing over (the two mechs overlapping, depth buffer), 4 the cost of two mechs, 5 the
@@ -366,9 +476,16 @@ runtime's numbers, 6 the cost of posing alone. `ANIM_F` picks the frame of scene
 - Rotations interpolate as Euler angles, per component: fine for the side-on swings of these
   moves; a joint turned far about two axes at once can take a curved path. Planned if needed:
   per-joint quaternion interpolation.
-- One `ease` per key for every joint; no per-joint curves.
+- One `ease` per key for every joint (and one `reach_ease` for its reach tracks); no per-joint
+  curves.
 - Plants and reaches solve two-joint chains (legs; an arm can be planted the same way) by
   turning both joints about X; they do not turn a leg sideways.
+- `aim` turns the wrist only: it does not move the arm, so an aim far from where the forearm
+  points bends the wrist far (a warning past 100°). It points the blade's axis; the edge's roll
+  follows the key's wrist.
+- A reach's `"guard"` is the guard's place forward to the centimetre, and a foot's flat on the
+  floor (the values the moves had keyed by hand), not the guard's exact place: the guard's feet
+  are tilted, their joints 1.5 cm (Hero) and 3.5 cm (Double-blade) above the level foot's.
 - The `parts` check fits boxes to recipe nodes, so a node with much empty space around it (a
   rotated wing) can report a near miss; `allow` excuses a pair that does not show.
 - The preview frames the mech from one side only; the other facing is the same animation turned.

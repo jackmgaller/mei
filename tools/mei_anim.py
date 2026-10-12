@@ -8,12 +8,17 @@ commands.
   preview MOVE -o DIR       every frame drawn by Mei with its boxes, and a contact sheet
   export [-o DIR]           every move of every mech baked into anim_data.akr (+ anims/anim_data.bin)
   info MOVE                 the move's keys, boxes, marks and phases, frame by frame
+  pose MOVE                 where each frame puts things: joints, blades (base, tip, aim),
+                            boxes, the lowest point of each part, the top of the hurt boxes
+  fmt [MOVE...]             rewrite move files in the one compact style (default: the cart's)
+  check                     fmt --check, verify every move, export, and run the kit's two suites
 
-verify and preview print a summary (--json: the full report); export prints its report.
+verify, preview, pose and info print a summary (--json: the full report); export prints its report.
 """
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 
 from kitcore import jsonio
@@ -23,6 +28,13 @@ from animkit import summary
 
 ROOT = Path(__file__).resolve().parents[1]
 CART = ROOT/'carts'/'mechexpo'
+TESTS = CART/'tests'/'anim'
+
+
+def all_moves():
+    """Every move file check verifies: the cart's, the test cart's and the examples."""
+    return (sorted(p for p in (CART/'anims').glob('*/*.anim.json') if not p.name.startswith('_')) +
+            sorted((TESTS/'anims').glob('*/*.anim.json')) + sorted((TESTS/'examples').glob('*.anim.json')))
 
 
 def tool_paths(args):
@@ -72,11 +84,75 @@ def parser():
     inf = sub.add_parser('info', help='The move frame by frame: keys, boxes, marks, motion.')
     inf.add_argument('move')
     inf.add_argument('--json', action='store_true')
-    for cmd in (pv,):
+    inf.add_argument('--joints', action='store_true', help='Where each frame puts things (as pose).')
+    inf.add_argument('--frames', help='With --joints: as pose\'s.')
+    po = sub.add_parser('pose', help='Where each frame puts the joints, the blades, the boxes and the lowest points.')
+    po.add_argument('move')
+    po.add_argument('--frames', help='Which frames: "13", "10-16,20", "keys" (default every frame).')
+    po.add_argument('--no-joints', action='store_true', help='Leave the joints out of the summary.')
+    po.add_argument('--json', action='store_true')
+    fm = sub.add_parser('fmt', help='Rewrite move files in the one compact style.')
+    fm.add_argument('moves', nargs='*', help='MOVE.anim.json files (default: every file of the cart\'s anims/).')
+    fm.add_argument('--check', action='store_true', help='Only list the files that would change; exit 1 if any.')
+    ck = sub.add_parser('check', help='fmt --check, verify every move, export into the cart, run the kit\'s suites.')
+    ck.add_argument('--no-tests', action='store_true', help='Stop after the export.')
+    ck.add_argument('--fight', action='store_true', help='Also run the cart\'s fight scenarios (tests/check.sh).')
+    ck.add_argument('--tolerance', type=float, default=0.12)
+    for cmd in (pv, ck):
         cmd.add_argument('--build-dir', help='The Mei build directory (make B=DIR) with meic and mei-headless.')
         cmd.add_argument('--compiler')
         cmd.add_argument('--runner')
     return p
+
+
+def check(args):
+    """The animator's one command before committing: every step prints a line; stops at the first
+    failure (exit 1)."""
+    from animkit.fmt import fmt
+    from animkit.verify import verify
+    from animkit.export import export
+    files = sorted((CART/'anims').glob('*/*.anim.json'))
+    unformatted = fmt(files, check=True)
+    if unformatted:
+        print('FAILED fmt: not in the compact style (run `mei_anim.py fmt`):\n  ' + '\n  '.join(unformatted))
+        return 1
+    print(f'fmt: {len(files)} files in the style')
+    moves = all_moves()
+    reports = [verify(m, args.tolerance) for m in moves]
+    bad = [r for r in reports if not r['ok']]
+    warned = sum(len(r['warnings']) for r in reports)
+    if bad:
+        print('\n\n'.join(summary.verify_text(r) for r in bad))
+        print(f'FAILED verify: {len(bad)} of {len(moves)} moves')
+        return 1
+    print(f'verify: {len(moves)} moves pass ({warned} warnings: `mei_anim.py verify MOVE` lists them)')
+    data = [CART/'anim_data.akr', CART/'anims'/'anim_data.bin']
+    before = [p.read_bytes() if p.is_file() else None for p in data]
+    report = export(CART/'anims', CART, CART)
+    after = [p.read_bytes() for p in data]
+    print(f'export: {len(report["moves"])} moves, {report["bytes"]:,} bytes; anim_data ' +
+          ('unchanged' if before == after else 'changed (commit it with the moves)'))
+    if args.no_tests:
+        return 0
+    tools = tool_paths(args)
+    env = dict(os.environ, MEIC=str(tools['compiler']), RUN=str(tools['runner']), PYTHONDONTWRITEBYTECODE='1')
+    if 'B' not in env:
+        env['B'] = os.path.relpath(tools['compiler'].parent, ROOT)
+    steps = [('tests/test_animkit.py', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-p',
+                                        'test_animkit.py']),
+             ('tests/anim/check.sh', [str(TESTS/'check.sh')])]
+    if args.fight:
+        steps.append(('tests/check.sh', [str(CART/'tests'/'check.sh')]))
+    for name, cmd in steps:
+        run = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True)
+        if run.returncode:
+            print((run.stdout+run.stderr)[-3000:])
+            print(f'FAILED {name}')
+            return 1
+        last = [l for l in (run.stdout+run.stderr).splitlines() if l.strip()]
+        print(f'{name}: ' + (last[-1] if last else 'ok'))
+    print('all checks passed')
+    return 0
 
 
 def main(argv=None):
@@ -116,6 +192,27 @@ def main(argv=None):
                           {'moves': [f'{m["mech"]}/{m["move"]}: {m["length"]} frames' + (' (stand-in)' if m['stand_in'] else '')
                                      for m in report['moves']]})
             return 0
+        if args.command == 'pose' or (args.command == 'info' and args.joints):
+            from animkit.move import Move
+            from animkit import pose
+            move = Move(args.move)
+            report = pose.report(move, pose.frames_arg(args.frames, move.length, [k[0] for k in move.pose_keys]))
+            if args.json:
+                jsonio.output(report)
+            else:
+                print(pose.text(report, not getattr(args, 'no_joints', False)))
+            return 0
+        if args.command == 'fmt':
+            from animkit.fmt import fmt
+            paths = args.moves or sorted((CART/'anims').glob('*/*.anim.json'))
+            changed = fmt(paths, args.check)
+            for c in changed:
+                print(('would change: ' if args.check else 'formatted: ')+c)
+            if not changed:
+                print(f'{len(paths)} files already in the style')
+            return 1 if args.check and changed else 0
+        if args.command == 'check':
+            return check(args)
         if args.command == 'info':
             from animkit.move import Move
             move = Move(args.move)
@@ -127,7 +224,8 @@ def main(argv=None):
             return 0
     except (AnimError, OSError, ValueError) as error:
         path = getattr(error, 'path', '/input')
-        if args is not None and not getattr(args, 'json', False) and args.command in ('verify', 'preview', 'info'):
+        if args is not None and not getattr(args, 'json', False) and args.command in ('verify', 'preview', 'info',
+                                                                                    'pose', 'fmt', 'check'):
             print(f'error at {path}: {error}')
         else:
             jsonio.output({'ok': False, 'errors': [{'path': path, 'message': str(error)}]})

@@ -3,10 +3,5 @@
   "version": 1,
   "note": "Intro: the Hero's walk out of the booth (base) on the Double-blade Hero's rig, settling into its own lower guard.",
   "base": "../hero/intro.anim.json",
-  "rig": "../../models/doubleblade/doubleblade.rig.json",
-  "allow": [["forearm_r", "weapon_r"], ["forearm_l", "weapon_l"], ["torso", "thigh_r"], ["torso", "thigh_l"]],
-  "keys": [
-    {"at": 60, "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}},
-    {"at": 89, "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}}
-  ]
+  "rig": "../../models/doubleblade/doubleblade.rig.json"
 }

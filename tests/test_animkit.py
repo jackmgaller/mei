@@ -1,6 +1,6 @@
 """The Animation Kit (tools/mei_anim.py, tools/animkit/): the move format, sampling, plants and
-reaches, the checks, the export's layout, and the runtime (carts/mechexpo/anim.akr) against the
-kit's numbers. Standard library only; the runtime test needs meic and mei-headless (MEIC and
+reaches, the authoring fields (retime, relative, aim, travel, floor, ...), the checks, pose and
+fmt, the export's layout, and the runtime (carts/mechexpo/anim.akr) against the kit's numbers. Standard library only; the runtime test needs meic and mei-headless (MEIC and
 RUN, else $B, else build/) and is skipped without them.
 
     python3 -m unittest discover -s tests -p test_animkit.py -v
@@ -239,6 +239,171 @@ class VerifyTests(Files, unittest.TestCase):
         r = verify(self.move(base=str(BODY), motion=[{'from': 0, 'to': 10, 'by': [6, 0]}],
                              plant={'foot_l': [[0, 19]]}))
         self.assertTrue(any('cannot be held' in f['message'] for f in r['failures']))
+
+
+def blade(mats, part='weapon_r'):
+    """[elevation, yaw] of a part's +Y, as "aim" gives them."""
+    m = mats[part]
+    return (math.degrees(math.asin(m[1][1])), math.degrees(math.atan2(m[0][1], -m[2][1])))
+
+
+class AuthoringTests(Files, unittest.TestCase):
+    """The fields that save the animator work: retime, relative, the guard's foot, aim, travel,
+    ending a reach, its own ease, floor, and the allow lists."""
+
+    def test_retime_moves_keys_motion_plants_and_marks(self):
+        base = self.move('b', length=40, keys=[{'at': 0, 'from': 'guard', 'ease': 'linear'},
+                                                {'at': 10, 'pose': {'head': [10, 0, 0]}},
+                                                {'at': 11, 'boxes': {}, 'note': 'merges into 10'},
+                                                {'at': 20, 'pose': {'head': [20, 0, 0]}},
+                                                {'at': 39, 'from': 'guard'}],
+                         motion=[{'from': 10, 'to': 20, 'by': [2, 0]}], plant={'foot_l': [[0, 10], [20, 39]]},
+                         marks={'step': [10, [20, 22]]})
+        m = Move(self.move('d', base=str(base), retime=[[0, 0], [10, 6], [20, 14]],
+                           keys=[{'at': 14, 'pose': {'torso': [5, 0, 0]}}]))
+        self.assertEqual(m.length, 34)                      # 39 -> 33 (shifted one for one after 20)
+        self.assertEqual([k[0] for k in m.pose_keys], [0, 6, 14, 33])
+        self.assertEqual(m.pose_keys[1][2]['head'], [10.0, 0.0, 0.0])
+        self.assertEqual(m.pose_keys[2][2]['torso'], [5.0, 0.0, 0.0])
+        self.assertEqual(m.pose_keys[2][2]['head'], [20.0, 0.0, 0.0])
+        self.assertEqual(m.motion, [(6, 14, [2, 0], 'linear')])
+        self.assertEqual(m.plants['foot_l'][2], [(0, 6), (14, 33)])
+        self.assertEqual([f for f in range(m.length) if m.marks[f]], [6, 14, 15, 16])
+        # the frame map: linear between pairs, halves up
+        from animkit.move import retime_map
+        f = retime_map([[0, 0], [3, 2], [6, 5]])
+        self.assertEqual([f(x) for x in range(8)], [0, 1, 1, 2, 3, 4, 5, 6])
+        e = None
+        try:
+            Move(self.move('e', base=str(base), retime=[[10, 0], [5, 3]]))
+        except AnimError as error:
+            e = error
+        self.assertEqual(e.path, '/retime/1')
+
+    def test_relative_keys_add_to_the_guard(self):
+        guard = load_rig(DB_RIG).poses['guard']
+        hero = self.move('h', keys=[{'at': 0, 'from': 'guard', 'relative': True,
+                                     'pose': {'torso': [-10, 4, 0]}, 'offset': [0.2, -0.5]}])
+        m = Move(self.move('d', base=str(hero), rig=str(DB_RIG)))
+        self.assertEqual(m.pose_keys[0][2]['torso'], [a+b for a, b in zip(guard['rotate']['torso'], [-10, 4, 0])])
+        self.assertEqual(m.pose_keys[0][3], [0.2, guard['offset'][1]-0.5])
+        self.assertEqual(m.pose_keys[0][2]['head'], guard['rotate']['head'])
+
+    def test_the_guard_foot(self):
+        for rig, want in ((HERO_RIG, -2.51), (DB_RIG, -2.94)):
+            m = Move(self.move(rig=str(rig), keys=[{'at': 0, 'from': 'guard', 'reach': {'foot_l': 'guard'}}]))
+            self.assertEqual(m.reach['foot_l'][0][2], [want, 0.0])
+
+    def test_aim_points_the_blade(self):
+        for torso in ([0, 0, 0], [-12, -40, 8]):
+            for aim in ([0, 0], [35, -25], [-70, 60], [10, 150]):
+                m = Move(self.move(length=2, keys=[{'at': 0, 'from': 'guard', 'aim': {'weapon_r': aim},
+                                                    'pose': {'torso': torso, 'upper_arm_r': [70, 10, -20]}}]))
+                e, y = blade(m.matrices(0))
+                self.assertLess(abs(e-aim[0]), 0.05, (torso, aim))
+                self.assertLess(abs((y-aim[1]+180) % 360-180), 0.05, (torso, aim))
+        # the wrist turns as little as it can: an aim where the blade already points keeps the guard's wrist
+        g = Move(self.move(length=2))
+        m = Move(self.move(length=2, keys=[{'at': 0, 'from': 'guard', 'aim': {'weapon_r': list(blade(g.matrices(0)))}}]))
+        for a, b in zip(m.pose_keys[0][2]['hand_r'], load_rig(HERO_RIG).poses['guard']['rotate']['hand_r']):
+            self.assertAlmostEqual(a, b, places=1)
+
+    def test_travel_holds_plants_in_the_world(self):
+        walk = dict(base=str(BODY), length=20, plant={'foot_r': [[0, 19]], 'foot_l': [[0, 19]]},
+                    keys=[{'at': 0, 'from': 'guard', 'reach': {'foot_r': 'guard', 'foot_l': 'guard'}}])
+        m = Move(self.move(travel=0.1, **walk))
+        self.assertEqual(m.motion_raw()[5], (0, 0))          # the fight moves the root, not the export
+        for f in (0, 10, 19):
+            self.assertAlmostEqual(-m.matrices(f)['foot_r'][2][3]+0.1*f, -m.matrices(0)['foot_r'][2][3], places=3)
+        r = verify(self.move(travel=0.1, **walk))
+        self.assertFalse(any(w['check'] == 'slides' for w in r['warnings']), r['warnings'])
+        # the same foot held relative to the root slides once the fight moves the root
+        r = verify(self.move(travel=0.1, base=str(BODY), length=20))
+        self.assertTrue(any(w['check'] == 'slides' for w in r['warnings']))
+
+    def test_a_reach_track_can_end(self):
+        m = Move(self.move(base=str(BODY), keys=[{'at': 0, 'from': 'guard', 'reach': {'foot_l': [-2.0, 0.0]}},
+                                                 {'at': 4, 'reach': {'foot_l': [-1.0, 1.0]}},
+                                                 {'at': 8, 'reach': {'foot_l': None}},
+                                                 {'at': 12, 'reach': {'foot_l': [-2.0, 0.0]}},
+                                                 {'at': 14, 'reach': {'foot_l': [-2.5, 0.0]}}]))
+        track = m.reach['foot_l']
+        rest = m.rest_joint('foot_l')
+        self.assertEqual(m._reach_at('foot_l', track, 6), (rest[1]+1.0, rest[2]+1.0))     # held until the null
+        self.assertIsNone(m._reach_at('foot_l', track, 8))
+        self.assertIsNone(m._reach_at('foot_l', track, 11))
+        self.assertIsNotNone(m._reach_at('foot_l', track, 13))
+        free = Move(self.move('f', base=str(BODY)))
+        self.assertEqual(m.matrices(10)['shin_l'], free.matrices(10)['shin_l'])
+
+    def test_reach_ease(self):
+        keys = [{'at': 0, 'from': 'guard', 'ease': 'in', 'reach': {'foot_l': [-2.0, 0.0]}},
+                {'at': 10, 'reach': {'foot_l': [-1.0, 0.0]}}]
+        m = Move(self.move(base=str(BODY), keys=keys))
+        self.assertAlmostEqual(m._reach_at('foot_l', m.reach['foot_l'], 5)[1], m.rest_joint('foot_l')[2]+2.0-0.25)
+        keys[0]['reach_ease'] = 'linear'
+        m = Move(self.move(base=str(BODY), keys=keys))
+        self.assertAlmostEqual(m._reach_at('foot_l', m.reach['foot_l'], 5)[1], m.rest_joint('foot_l')[2]+1.5)
+        self.assertEqual(m.pose_keys[0][1], 'in')
+
+    def test_a_reach_over_keyed_knees_warns(self):
+        knee = {'thigh_l': [40, 0, 5], 'shin_l': [-80, 0, 0]}
+        m = Move(self.move(base=str(BODY), keys=[{'at': 0, 'from': 'guard', 'reach': {'foot_l': [-2.5, 0.0]}},
+                                                 {'at': 5, 'pose': knee}, {'at': 10, 'pose': {'head': [0, 0, 0]}},
+                                                 {'at': 19, 'reach': {'foot_l': [-2.5, 0.0]}}]))
+        self.assertTrue(any(w['check'] == 'legs' and 'frame 5' in w['message'] for w in m.warnings), m.warnings)
+        # ended before the key's frames: the keyed knee shows, no warning
+        m = Move(self.move(base=str(BODY), keys=[{'at': 0, 'from': 'guard', 'reach': {'foot_l': [-2.5, 0.0]}},
+                                                 {'at': 1, 'reach': {'foot_l': None}},
+                                                 {'at': 5, 'pose': knee}, {'at': 10, 'pose': {'head': [0, 0, 0]}}]))
+        self.assertFalse(any(w['check'] == 'legs' for w in m.warnings), m.warnings)
+
+    def test_floor_sets_the_pelvis(self):
+        m = Move(self.move(base=str(BODY), keys=[{'at': 0, 'from': 'guard'},
+                                                 {'at': 10, 'offset': [0.2, 0.0], 'floor': True,
+                                                  'pose': {'thigh_l': [60, 0, 5], 'shin_l': [-100, 0, 0]}},
+                                                 {'at': 15, 'pose': {'head': [5, 0, 0]}}]))
+        self.assertLess(abs(m.lowest(10)[0]), 0.001)
+        self.assertEqual(m.pose_keys[1][3][0], 0.2)
+        self.assertEqual(m.pose_keys[2][3], m.pose_keys[1][3])          # the key after carries it
+        r = verify(self.move('s', base=str(BODY), keys=[{'at': 0, 'from': 'guard', 'offset': [0, -2.0]}]))
+        sunk = sorted((f for f in r['failures'] if f['check'] == 'floor'), key=lambda f: -f['depth'])
+        self.assertTrue(sunk and 'offset up of' in sunk[0]['message'])
+        g = load_rig(HERO_RIG).poses['guard']['offset'][1]
+        self.assertAlmostEqual(sunk[0]['offset_up'], g, delta=0.05)
+
+    def test_allow_comes_from_the_rig_and_merges(self):
+        rig = load_rig(HERO_RIG)
+        self.assertIn(frozenset(('forearm_r', 'weapon_r')), rig.allow)
+        base = self.move('b', allow=[['head', 'upper_arm_r']])
+        m = Move(self.move('d', base=str(base), allow=[['torso', 'forearm_l']]))
+        for pair in (('head', 'upper_arm_r'), ('torso', 'forearm_l'), ('forearm_r', 'weapon_r')):
+            self.assertIn(frozenset(pair), m.allow)
+
+
+class ToolTests(Files, unittest.TestCase):
+    def test_pose_reports_the_blade(self):
+        from animkit import pose
+        m = Move(ATK_F)
+        r = pose.report(m, [13])['frames'][0]
+        tip = r['weapons']['weapon_r']['tip']
+        hits = [b['rect'] for b in r['boxes'] if b['kind'] == 'hit']
+        self.assertTrue(any(x0 - 0.5 <= tip[0] <= x1 + 0.5 and y0 - 0.5 <= tip[1] <= y1 + 0.5
+                            for x0, y0, x1, y1 in hits), (tip, hits))
+        self.assertEqual(r['weapons']['weapon_r']['aim'], [round(v, 1) for v in blade(m.matrices(13))])
+        self.assertEqual(r['hurt_top'], max(b['rect'][3] for b in r['boxes'] if b['kind'] == 'hurt'))
+        self.assertLess(min(r['lowest'].values()), 0.05)
+        self.assertEqual(pose.frames_arg('3,10-12', 38, []), [3, 10, 11, 12])
+
+    def test_fmt_keeps_the_values(self):
+        from animkit.fmt import fmt, format_move
+        for path in sorted((CART/'anims').glob('*/*.anim.json'))+sorted((CART/'tests'/'anim').glob('**/*.anim.json')):
+            data = json.loads(path.read_text())
+            text = format_move(data)
+            self.assertEqual(json.loads(text), data, path)
+            self.assertEqual(format_move(json.loads(text)), text, path)
+        self.assertEqual(fmt(sorted((CART/'anims').glob('*/*.anim.json')), check=True), [],
+                         'the cart\'s moves are not in the compact style: python3 tools/mei_anim.py fmt')
 
 
 class ExportTests(Files, unittest.TestCase):

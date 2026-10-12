@@ -5,107 +5,45 @@
   "base": "_body.anim.json",
   "length": 28,
   "keys": [
-    {"at": 0, "from": "guard", "ease": "in", "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}},
-    {
-      "at": 5,
-      "ease": "linear",
-      "offset": [-0.2, -2.2],
-      "reach": {"foot_r": [-0.4, 0.0], "foot_l": [-2.6, 0.0]},
-      "pose": {
-        "pelvis": [-14, -4, 0],
-        "torso": [-30, -4, 0],
-        "head": [40, 4, 0],
-        "upper_arm_r": [50, 0, -6],
-        "forearm_r": [100, 0, 0],
-        "hand_r": [-10, 0, 0],
-        "upper_arm_l": [50, 0, 6],
-        "forearm_l": [100, 0, 0],
-        "hand_l": [-10, 0, 0],
-        "pauldron_r": [20, 0, -8],
-        "pauldron_l": [20, 0, 8]
-      }
-    },
-    {
-      "at": 6,
-      "boxes": {
-        "head": null,
-        "torso": null,
-        "pelvis": null,
-        "forearm_r": null,
-        "forearm_l": null,
-        "hand_r": null,
-        "thigh_r": null,
-        "thigh_l": null,
-        "shin_r": null,
-        "shin_l": null,
-        "push": null
-      }
-    },
-    {
-      "at": 17,
-      "ease": "ease",
-      "offset": [0.4, -2.3],
-      "reach": {"foot_r": [0.4, 0.0], "foot_l": [-2.4, 0.0]},
-      "pose": {
-        "pelvis": [-16, -6, 0],
-        "torso": [-26, -6, 0],
-        "head": [38, 6, 0],
-        "upper_arm_r": [30, 0, -24],
-        "forearm_r": [30, 0, 0],
-        "hand_r": [-40, 0, 0],
-        "upper_arm_l": [10, 0, 24],
-        "forearm_l": [40, 0, 0],
-        "hand_l": [-60, 0, 0]
-      }
-    },
-    {
-      "at": 18,
-      "boxes": {
-        "head": {"kind": "hurt", "part": "head"},
-        "torso": {"kind": "hurt", "part": "torso", "min": [-1.8, -0.2, -1.24], "max": [1.8, 3.66, 1.0]},
-        "pelvis": {"kind": "hurt", "part": "pelvis"},
-        "forearm_r": {"kind": "hurt", "part": "forearm_r"},
-        "forearm_l": {"kind": "hurt", "part": "forearm_l"},
-        "hand_r": {"kind": "hurt", "part": "hand_r"},
-        "thigh_r": {"kind": "hurt", "part": "thigh_r"},
-        "thigh_l": {"kind": "hurt", "part": "thigh_l"},
-        "shin_r": {"kind": "hurt", "part": "shin_r"},
-        "shin_l": {"kind": "hurt", "part": "shin_l"},
-        "push": {"kind": "push", "rect": [-1.5, 0, 1.5, 11.5]}
-      }
-    },
-    {
-      "at": 22,
-      "ease": "ease",
-      "offset": [0.2, -1.6],
-      "reach": {"foot_r": [0.2, 0.0], "foot_l": [-2.7, 0.0]},
-      "pose": {
-        "pelvis": [-12, -6, 0],
-        "torso": [-22, -8, 0],
-        "head": [28, 8, 0],
-        "upper_arm_r": [40, 0, -16],
-        "forearm_r": [46, 0, 4],
-        "hand_r": [-30, 0, 0],
-        "upper_arm_l": [20, 0, 18],
-        "forearm_l": [70, 0, -6],
-        "hand_l": [-40, 0, 0]
-      }
-    },
-    {"at": 27, "from": "guard", "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}}
+    {"at": 0, "from": "guard", "ease": "in", "reach": {"foot_r": "guard", "foot_l": "guard"}},
+    {"at": 5, "ease": "linear", "offset": [-0.2, -2.2],
+     "pose": {"pelvis": [-14, -4, 0], "torso": [-30, -4, 0], "head": [40, 4, 0],
+              "upper_arm_r": [50, 0, -6], "forearm_r": [100, 0, 0], "hand_r": [-10, 0, 0],
+              "upper_arm_l": [50, 0, 6], "forearm_l": [100, 0, 0], "hand_l": [-10, 0, 0],
+              "pauldron_r": [20, 0, -8], "pauldron_l": [20, 0, 8]},
+     "reach": {"foot_r": [-0.4, 0.0], "foot_l": [-2.6, 0.0]}},
+    {"at": 6,
+     "boxes": {"head": null, "torso": null, "pelvis": null, "forearm_r": null, "forearm_l": null,
+               "hand_r": null, "thigh_r": null, "thigh_l": null, "shin_r": null, "shin_l": null,
+               "push": null}},
+    {"at": 17, "ease": "ease", "offset": [0.4, -2.3],
+     "pose": {"pelvis": [-16, -6, 0], "torso": [-26, -6, 0], "head": [38, 6, 0],
+              "upper_arm_r": [30, 0, -24], "forearm_r": [30, 0, 0], "hand_r": [-40, 0, 0],
+              "upper_arm_l": [10, 0, 24], "forearm_l": [40, 0, 0], "hand_l": [-60, 0, 0]},
+     "reach": {"foot_r": [0.4, 0.0], "foot_l": [-2.4, 0.0]}},
+    {"at": 18,
+     "boxes": {"head": {"kind": "hurt", "part": "head"},
+               "torso": {"kind": "hurt", "part": "torso", "min": [-1.8, -0.2, -1.24],
+                         "max": [1.8, 3.66, 1.0]},
+               "pelvis": {"kind": "hurt", "part": "pelvis"},
+               "forearm_r": {"kind": "hurt", "part": "forearm_r"},
+               "forearm_l": {"kind": "hurt", "part": "forearm_l"},
+               "hand_r": {"kind": "hurt", "part": "hand_r"},
+               "thigh_r": {"kind": "hurt", "part": "thigh_r"},
+               "thigh_l": {"kind": "hurt", "part": "thigh_l"},
+               "shin_r": {"kind": "hurt", "part": "shin_r"},
+               "shin_l": {"kind": "hurt", "part": "shin_l"},
+               "push": {"kind": "push", "rect": [-1.5, 0, 1.5, 11.5]}}},
+    {"at": 22, "ease": "ease", "offset": [0.2, -1.6],
+     "pose": {"pelvis": [-12, -6, 0], "torso": [-22, -8, 0], "head": [28, 8, 0],
+              "upper_arm_r": [40, 0, -16], "forearm_r": [46, 0, 4], "hand_r": [-30, 0, 0],
+              "upper_arm_l": [20, 0, 18], "forearm_l": [70, 0, -6], "hand_l": [-40, 0, 0]},
+     "reach": {"foot_r": [0.2, 0.0], "foot_l": [-2.7, 0.0]}},
+    {"at": 27, "from": "guard", "reach": {"foot_r": "guard", "foot_l": "guard"}}
   ],
   "motion": [{"from": 6, "to": 18, "by": [9.0, 0], "ease": "linear"}],
   "marks": {"hide": [[6, 17]], "nopush": [[6, 17]], "invuln": [[6, 17]], "step": [18]},
-  "allow": [
-    ["forearm_r", "weapon_r"],
-    ["forearm_l", "weapon_l"],
-    ["weapon_r", "weapon_l"],
-    ["hand_r", "weapon_l"],
-    ["hand_l", "weapon_r"],
-    ["torso", "thigh_r"],
-    ["torso", "thigh_l"],
-    ["forearm_r", "forearm_l"],
-    ["hand_r", "hand_l"],
-    ["pelvis", "shin_r"],
-    ["pelvis", "shin_l"]
-  ]
+  "allow": [["weapon_r", "weapon_l"], ["hand_r", "weapon_l"], ["hand_l", "weapon_r"],
+            ["forearm_r", "forearm_l"], ["hand_r", "hand_l"], ["pelvis", "shin_r"],
+            ["pelvis", "shin_l"]]
 }

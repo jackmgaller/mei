@@ -1,0 +1,29 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "A kit example of the authoring fields: a lunging thrust for the Hero written as changes from the guard (\"relative\"), the blade aimed level and straight ahead on the active key (\"aim\"), the front foot stepping from and back to the guard's place (\"guard\") on its own linear ease (\"reach_ease\"), and the back foot lifted by a reach that ends (null) where the keyed knee takes over, until it comes down onto the floor (\"floor\" sets the pelvis for it on frame 16) and is planted again in the guard.",
+  "base": "../../../anims/hero/_body.anim.json",
+  "length": 30,
+  "phases": {"startup": 10, "active": 4, "recovery": 16},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in", "reach": {"foot_r": "guard", "foot_l": "guard"}},
+    {"at": 5, "relative": true, "ease": "in", "reach_ease": "linear", "offset": [-0.2, -0.3],
+     "pose": {"torso": [-4, 8, 0], "upper_arm_r": [-10, 0, 0], "forearm_r": [30, 0, 0]},
+     "aim": {"weapon_r": [15, 0]}, "reach": {"foot_r": [0.0, 0.6], "foot_l": [-2.62, 0.0]}},
+    {"at": 8, "reach": {"foot_l": [-2.2, 0.6]}},
+    {"at": 10, "relative": true, "ease": "out", "offset": [0.3, -0.7],
+     "pose": {"torso": [-10, -6, 0], "upper_arm_r": [55, 0, 10], "forearm_r": [-30, 0, 0],
+              "thigh_l": [-10, 0, 0], "shin_l": [-50, 0, 0]}, "aim": {"weapon_r": [0, 0]},
+     "reach": {"foot_r": "guard", "foot_l": null},
+     "boxes": {"tip": {"kind": "hit", "part": "weapon_r", "min": [-0.12, 0.5, -0.4],
+                       "max": [0.12, 7.3, 0.4], "split": 3}}},
+    {"at": 14, "boxes": {"tip": null}},
+    {"at": 16, "relative": true, "offset": [0.2, 0.0], "floor": true,
+     "pose": {"thigh_l": [-6, 0, 0], "shin_l": [-6, 0, 0]}},
+    {"at": 20, "from": "guard"},
+    {"at": 29, "from": "guard"}
+  ],
+  "motion": [{"from": 4, "to": 10, "by": [1.5, 0], "ease": "ease"}],
+  "plant": {"foot_r": [[0, 3], [10, 29]], "foot_l": [[0, 5], [20, 29]]},
+  "marks": {"step": [10, 20]}
+}

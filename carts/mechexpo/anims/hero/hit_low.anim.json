@@ -4,86 +4,33 @@
   "note": "Hit low (stretched to the hitstun): hit high's snap from the crouch. The body is knocked upright and back off its kneeling stance on frame 0, the head whips back a beat later, then it folds back down into the crouch's last pose (the fight returns a crouching mech to crouch). Push box 7.5 m tall.",
   "base": "crouch.anim.json",
   "length": 20,
-  "plant": {},
   "keys": [
     {"at": 0, "remove": true},
     {"at": 2, "remove": true},
     {"at": 3, "remove": true},
     {"at": 4, "remove": true},
     {"at": 7, "remove": true},
-    {
-      "at": 0,
-      "from": "guard",
-      "ease": "out",
-      "offset": [-0.6, -2.6],
-      "reach": {"foot_r": [0.54, 0.0]},
-      "pose": {
-        "pelvis": [-10, -10, 0],
-        "torso": [6, -22, 4],
-        "head": [6, 16, 0],
-        "thigh_l": [8, 0, 5],
-        "shin_l": [-94, 0, 0],
-        "foot_l": [-46, 0, -5],
-        "upper_arm_r": [50, 0, -26],
-        "forearm_r": [26, 0, 4],
-        "hand_r": [-26, 0, 0],
-        "upper_arm_l": [22, 0, 34],
-        "forearm_l": [52, 0, -6],
-        "pauldron_r": [16, 0, -10],
-        "pauldron_l": [8, 0, 14]
-      }
-    },
-    {
-      "at": 3,
-      "ease": "ease",
-      "offset": [-0.75, -2.6],
-      "pose": {
-        "pelvis": [-10, -12, 0],
-        "torso": [12, -24, 6],
-        "head": [24, 20, 0],
-        "upper_arm_r": [58, 0, -30],
-        "forearm_r": [22, 0, 4],
-        "hand_r": [-30, 0, 0],
-        "upper_arm_l": [14, 0, 38],
-        "forearm_l": [42, 0, -6]
-      }
-    },
-    {
-      "at": 11,
-      "ease": "ease",
-      "offset": [-0.5, -2.6],
-      "pose": {
-        "pelvis": [-10, -10, 0],
-        "torso": [-14, -19, 2],
-        "head": [20, 14, 0],
-        "upper_arm_r": [42, 0, -20],
-        "forearm_r": [28, 0, 4],
-        "hand_r": [-18, 0, 0],
-        "upper_arm_l": [40, 0, 26],
-        "forearm_l": [72, 0, -6],
-        "pauldron_r": [15, 0, -8],
-        "pauldron_l": [18, 0, 10]
-      }
-    },
-    {
-      "at": 19,
-      "offset": [-0.42, -2.6],
-      "reach": {"foot_r": [0.54, 0.0]},
-      "pose": {
-        "pelvis": [-10, -10, 0],
-        "torso": [-24, -18, 0],
-        "head": [27, 14, 0],
-        "thigh_l": [8, 0, 5],
-        "shin_l": [-94, 0, 0],
-        "foot_l": [-46, 0, -5],
-        "upper_arm_r": [42, 0, -18],
-        "forearm_r": [26, 0, 4],
-        "hand_r": [-16, 0, 0],
-        "upper_arm_l": [44, 0, 24],
-        "forearm_l": [76, 0, -6],
-        "pauldron_r": [16, 0, -8],
-        "pauldron_l": [20, 0, 10]
-      }
-    }
-  ]
+    {"at": 0, "from": "guard", "ease": "out", "offset": [-0.6, -2.6],
+     "pose": {"pelvis": [-10, -10, 0], "torso": [6, -22, 4], "head": [6, 16, 0],
+              "thigh_l": [8, 0, 5], "shin_l": [-94, 0, 0], "foot_l": [-46, 0, -5],
+              "upper_arm_r": [50, 0, -26], "forearm_r": [26, 0, 4], "hand_r": [-26, 0, 0],
+              "upper_arm_l": [22, 0, 34], "forearm_l": [52, 0, -6], "pauldron_r": [16, 0, -10],
+              "pauldron_l": [8, 0, 14]}, "reach": {"foot_r": "guard"}},
+    {"at": 3, "ease": "ease", "offset": [-0.75, -2.6],
+     "pose": {"pelvis": [-10, -12, 0], "torso": [12, -24, 6], "head": [24, 20, 0],
+              "upper_arm_r": [58, 0, -30], "forearm_r": [22, 0, 4], "hand_r": [-30, 0, 0],
+              "upper_arm_l": [14, 0, 38], "forearm_l": [42, 0, -6]}},
+    {"at": 11, "ease": "ease", "offset": [-0.5, -2.6],
+     "pose": {"pelvis": [-10, -10, 0], "torso": [-14, -19, 2], "head": [20, 14, 0],
+              "upper_arm_r": [42, 0, -20], "forearm_r": [28, 0, 4], "hand_r": [-18, 0, 0],
+              "upper_arm_l": [40, 0, 26], "forearm_l": [72, 0, -6], "pauldron_r": [15, 0, -8],
+              "pauldron_l": [18, 0, 10]}},
+    {"at": 19, "offset": [-0.42, -2.6],
+     "pose": {"pelvis": [-10, -10, 0], "torso": [-24, -18, 0], "head": [27, 14, 0],
+              "thigh_l": [8, 0, 5], "shin_l": [-94, 0, 0], "foot_l": [-46, 0, -5],
+              "upper_arm_r": [42, 0, -18], "forearm_r": [26, 0, 4], "hand_r": [-16, 0, 0],
+              "upper_arm_l": [44, 0, 24], "forearm_l": [76, 0, -6], "pauldron_r": [16, 0, -8],
+              "pauldron_l": [20, 0, 10]}, "reach": {"foot_r": "guard"}}
+  ],
+  "plant": {}
 }

@@ -7,20 +7,10 @@
   "loop": true,
   "keys": [
     {"at": 0, "from": "guard", "ease": "ease"},
-    {
-      "at": 30,
-      "ease": "ease",
-      "offset": [0.0, -0.74],
-      "pose": {
-        "torso": [-3, -15, 0],
-        "head": [-7, 13, 0],
-        "upper_arm_r": [26, 0, -14],
-        "forearm_r": [43, 0, 4],
-        "upper_arm_l": [36, 0, 21],
-        "pauldron_r": [8.8, 0, -7.5],
-        "pauldron_l": [12.3, 0, 10.5]
-      }
-    }
+    {"at": 30, "ease": "ease", "offset": [0.0, -0.74],
+     "pose": {"torso": [-3, -15, 0], "head": [-7, 13, 0], "upper_arm_r": [26, 0, -14],
+              "forearm_r": [43, 0, 4], "upper_arm_l": [36, 0, 21], "pauldron_r": [8.8, 0, -7.5],
+              "pauldron_l": [12.3, 0, 10.5]}}
   ],
   "plant": {"foot_r": [[0, 59]], "foot_l": [[0, 59]]}
 }

@@ -43,7 +43,7 @@ a stand-in in your own files until it lands. Each owner writes the interface fil
 
 | Path | What | Owner |
 |---|---|---|
-| `tools/mei_anim.py`, `tools/animkit/`, `tests/test_animkit.py`, `docs/ANIMKIT.md`, `anim.akr`, `tests/anim/` | The Animation Kit (format, `verify`, `preview`, `export`), the runtime that poses and draws a rig, and the kit's own test cart | **A, Animation Kit** |
+| `tools/mei_anim.py`, `tools/animkit/`, `tests/test_animkit.py`, `docs/ANIMKIT.md`, `anim.akr`, `tests/anim/` | The Animation Kit (format, `verify`, `preview`, `pose`, `export`, `fmt`, `check`), the runtime that poses and draws a rig, and the kit's own test cart | **A, Animation Kit** |
 | `anims/` (`anims/hero/*.anim.json`, `anims/doubleblade/*.anim.json`), the exported `anim_data.akr` | Every move's animation, timing and boxes. Until Gate 1, A writes the one proof move | **F, animator** (from Gate 1) |
 | `models/`, `tools/gen_mechexpo_assets.py`, `art/` (except `art/stage_*` and `art/ui_*`), `assets.akr` | The mechs' parts and rigs, the stage's polygon props, the emblems, and the pack of every model | **B, models** |
 | `fight.akr`, `fighter.akr`, `moves.akr`, `meter.akr`, `cpu.akr`, `MOVES.md`, `tests/harness.akr`, `tests/run.sh`, `tests/check.sh` | The fight: rules, frame data effects, input, meters, rounds, the CPU, the dummy, and the cart's test cases | **C, combat** |
@@ -176,4 +176,6 @@ make B=build-mx-A build-mx-A/carts/mechexpo.mei
 ```
 
 A model is done when `verify` passes and its preview has been looked at. An animation is done
-when the Animation Kit's `verify` passes and its contact sheet has been looked at.
+when the Animation Kit's `verify` passes and its contact sheet has been looked at. Run
+`mei_anim.py check` before committing moves: it checks the files' style, verifies every move,
+exports and runs the kit's two suites.
