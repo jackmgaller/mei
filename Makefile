@@ -143,6 +143,7 @@ test: $(TESTS) $(B)/meiasm $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe $(B)
 	@if [ -x tests/run_lang_tests.sh ]; then MEIC=$(B)/meic RUN=$(B)/mei-headless ./tests/run_lang_tests.sh; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tools/meinet/test_meinet.py"; PYTHONDONTWRITEBYTECODE=1 python3 tools/meinet/test_meinet.py; fi
 	@if command -v python3 >/dev/null 2>&1; then MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_assetkit.py; fi
+	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_author.py"; PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_author.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldpack.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldpack.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldkit.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldkit.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_mochi.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_mochi.py; fi
@@ -197,6 +198,7 @@ rendercheck-motion: $(B)/meic $(B)/mei-headless $(B)/libmeicore.a
 .PHONY: test-assets
 test-assets: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe
 	MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_assetkit.py -v
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_author.py -v
 
 $(B)/mei-asset-probe: tools/assetkit_probe.c $(B)/libmeicore.a
 	$(CC) $(CFLAGS) $^ -o $@
