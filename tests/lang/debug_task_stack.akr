@@ -1,0 +1,27 @@
+// meic -g: a task runs on a stack in the globals; the stack check accepts it there, and
+// catches a call that would go below the task's guard word.
+// flags: -g
+// exit: 2
+var small: [512]u8
+var t: Task
+
+fn dig(n: s32) -> s32 {
+    var junk: [16]s32
+    for k in 0..16 { junk[k] = n + k }
+    if n == 0 {
+        task_yield()
+        return 0
+    }
+    return dig(n - 1) + junk[3]
+}
+
+fn init() {
+    task_start(&t, &small[0], 512, fn() { print_int(dig(3)); println("") })
+    task_resume(&t)
+    println("yielded")            // expect: yielded
+    task_resume(&t)               // expect: 15
+    task_start(&t, &small[0], 512, fn() { dig(12) })
+    task_resume(&t)
+    println("not reached")
+}
+// expect: check failed: debug_task_stack.akr:8: stack overflow entering dig() (too deep a recursion, or too many locals: the stack ran into the global variables)

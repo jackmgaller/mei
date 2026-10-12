@@ -46,7 +46,8 @@ Asset Kit, world pack, World Kit, Mochi and World Checker suites (`tests/test_*.
 check-generated` (generated files match their generators); tests that need NumPy or a native
 tool that is missing are skipped. `make test-assets` and `make test-world` run the Asset Kit
 suite and the World Kit and Mochi suites alone, verbosely. `make test-carts` runs the carts'
-self-checking scenarios (`carts/*/tests/check.sh`). `make B=DIR` builds into `DIR` instead of
+self-checking scenarios (`carts/*/tests/check.sh`), built with fixed-point overflow traps
+(`TRAP=0` turns them off). `make B=DIR` builds into `DIR` instead of
 `build/`. [AGENTS.md](../AGENTS.md) has the details.
 
 **Python.** The emulator, the compilers, the system ROM and the carts build and run without

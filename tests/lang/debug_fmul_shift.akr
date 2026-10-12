@@ -1,0 +1,11 @@
+// meic --trap-fmul: a product by a power-of-two constant (compiled as a shift) is checked too.
+// flags: --trap-fmul
+// exit: 2
+fn quad(a: fixed) -> fixed { return a * 4.0 }
+
+fn init() {
+    print_fixed(quad(8000.0)); println("")           // expect: 32000.0
+    print_fixed(quad(-8192.0)); println("")          // expect: -32768.0
+    print_fixed(quad(9000.0)); println("")
+}
+// expect: check failed: debug_fmul_shift.akr:4: fixed-point multiply overflow

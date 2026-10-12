@@ -43,7 +43,11 @@ committed files). `make test-carts` runs `carts/weather/tests/check.sh`,
 `carts/lantern/tests/check.sh`, `carts/fallline/tests/check.sh` and `test-world-carts`, which builds World Viewer and the
 movement garden (and so their worlds) first and runs both carts' `tests/check.sh`. A cart's scenarios are Akari files built by `tools/cart_scenario.sh` from
 the cart's `tests/harness.akr` and its game; `carts/*/tests/run.sh SCENARIO FRAMES OUT` runs one
-and writes `OUT.png`.
+and writes `OUT.png`. Scenarios are debug builds (`meic --trap-fmul`: bounds and stack checks,
+and `fixed` products that overflow, which otherwise wrap silently); a failed check prints
+`check failed: FILE.akr:LINE: ...` and the run exits with status 2, and another fault prints the
+function it happened in. `TRAP=0` builds a scenario without the checks, as a release cart is
+(to compare, or when a scenario measures the CPU budget closely).
 
 A single Python suite, with the native tools it needs:
 
