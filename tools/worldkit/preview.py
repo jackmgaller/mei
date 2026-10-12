@@ -96,7 +96,7 @@ def render(stage, source, compiled, compiler, runner, cell=None):
     for label,c,region,variant,vname in views(source,compiled,cell):
         cart = stage/f'.preview_{label}.akr'
         rinfo = compiled.report['regions'][c['region']]
-        runtime = source.world.get('runtime',{})
+        runtime = source.runtime
         extra = ((runtime.get('depth',False),runtime.get('perspective',False),'backdrop' in rinfo)
                  if 'textures' in rinfo or 'backdrop' in rinfo else None)
         cart.write_text(source_for(name,c,size,region,variant,vname,extra))

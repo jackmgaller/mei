@@ -18,6 +18,18 @@ def more(shown, total, where):
     return [f'  ... and {total-shown} more ({where})'] if total > shown else []
 
 
+def settings_lines(report):
+    """'settings: carts/x/mei-kit.json; depth on (carts/x/mei-kit.json), ...': the settings files a
+    command read and the runtime it drew with, when a settings file applied (else nothing)."""
+    settings = report.get('settings') or {}
+    if not settings.get('files'): return []
+    line = 'settings: '+', '.join(settings['files'])
+    runtime = settings.get('runtime') or {}
+    if runtime:
+        line += '; '+', '.join(f'{k} {"on" if v["value"] else "off"} ({v["from"]})' for k,v in runtime.items())
+    return [line]
+
+
 def counts_line(report):
     """'triangles 82 of 100, vertices 81 of 128, textures 0, VRAM 0 bytes, palette entries 1':
     textures and VRAM always, even when zero."""
@@ -109,6 +121,7 @@ def preview_text(report, output=None):
         lines.append(f'flush contacts: {flush["count"]} (allowed by geometry warn)')
         lines += ['  '+line for line in flush.get('fixes',[])[:WARNINGS]]+more(WARNINGS,len(flush.get('fixes',[])),'flush_contacts')
     lines += warning_lines(report)
+    lines += settings_lines(report)
     preview = report.get('preview',{})
     look = preview.get('look')
     if look:
@@ -135,6 +148,7 @@ def verify_text(result, compiled=None, output=None):
     if compiled:
         lines.append(counts_line(compiled))
         lines += bounds_lines(compiled)
+    lines += settings_lines(result)
     lines.append(f'full report: {shown(Path(output)/"verification.json")} (or run with --json)' if output else
                  'full report: run with --json (or -o DIR to save it with difference images)')
     return '\n'.join(lines)

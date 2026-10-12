@@ -15,7 +15,7 @@ import math
 from pathlib import Path
 import struct
 
-from kitcore import jsonio
+from kitcore import jsonio, settings as kitsettings
 from kitcore.errors import pointer
 from kitcore.vector import yaw as turn
 from . import farground, ids, merge, quads
@@ -52,6 +52,28 @@ class Source:
     game_path: Path
     cells: list          # CellSource
     game_text: bytes = b''   # the game schema file as written (comments and layout kept)
+    settings: object = None  # kitcore.settings.Settings: the mei-kit.json files above the recipe
+
+    @property
+    def runtime_from(self):
+        """{'depth', 'perspective': {'value', 'from'}}: the recipe's runtime ('recipe'), else the
+        settings file's, else false ('default'). runtime_of() has refused a disagreement."""
+        own = self.world.get('runtime', {})
+        s = self.settings or kitsettings.Settings()
+        return {k: kitsettings.pick((own.get(k), 'recipe'), (s.get('runtime.'+k), s.where('runtime.'+k)), default=False)
+                for k in kitsettings.RUNTIME}
+
+    @property
+    def runtime(self):
+        """The world's runtime depth and perspective as the checkers use them: the keys the recipe
+        or a settings file gives, with their values (the recipe's as written, in its order)."""
+        given = self.runtime_from
+        order = [k for k in self.world.get('runtime', {}) if k in given]+[k for k in given if k not in self.world.get('runtime', {})]
+        return {k: given[k]['value'] for k in order if given[k]['from'] != 'default'}
+
+    def settings_report(self):
+        """report['settings']: the settings files read and where the runtime came from."""
+        return {'files': (self.settings or kitsettings.Settings()).shown_files(), 'runtime': self.runtime_from}
 
 
 def err(path, message, cell=None):
@@ -94,7 +116,21 @@ def load(path):
             if f.name != recipe['id'] + '.cell.json':
                 raise WorldError('/id', f'A cell file is named after its cell: {recipe["id"]}.cell.json.', str(f))
             cells.append(CellSource(recipe, str(f), ''))
-    return Source(world, world_path, base, game, game_path, cells, game_text)
+    settings = kitsettings.find(path, error=WorldError)
+    runtime_of(world, settings)
+    return Source(world, world_path, base, game, game_path, cells, game_text, settings)
+
+
+def runtime_of(world, settings):
+    """Refuses a world recipe whose runtime.depth or runtime.perspective a settings file gives
+    otherwise: the two would describe two different games."""
+    own = world.get('runtime', {})
+    for key in kitsettings.RUNTIME:
+        theirs = settings.get('runtime.'+key)
+        if key in own and theirs is not None and bool(own[key]) != theirs:
+            raise WorldError(f'/runtime/{key}', f'The recipe says runtime.{key} {str(bool(own[key])).lower()}, but '
+                             f'{settings.where("runtime."+key)} says {str(theirs).lower()}: they must agree. Change one, '
+                             f'or leave {key} out of one of them.')
 
 
 def load_game(path):
@@ -1155,6 +1191,18 @@ def compile_world(source, lock=None, assets_dir=None):
         warnings.append({'code': 'unmapped_tags', 'tags': sorted(unmapped),
                          'message': 'Collision faces with these material tags get the default surface byte. '
                                     'Map them in collision.surfaces.tags if the game should tell them apart.'})
+    # a settings file above an asset whose runtime is not the world's: the world's rules
+    runtime, told = source.runtime_from, set()
+    for folder, s in sorted(library.settings.items()):
+        for key in kitsettings.RUNTIME:
+            theirs = s.get('runtime.'+key)
+            if theirs is not None and theirs != bool(runtime[key]['value']) and (s.file('runtime.'+key), key) not in told:
+                told.add((s.file('runtime.'+key), key))
+                warnings.append({'code': 'settings_runtime', 'file': s.where('runtime.'+key),
+                                 'message': f'{s.where("runtime."+key)} says runtime.{key} {str(theirs).lower()}, but the '
+                                            f'world\'s is {str(bool(runtime[key]["value"])).lower()} (from '
+                                            f'{runtime[key]["from"]}): the world\'s assets are checked with the '
+                                            'world\'s. Make them agree.'})
 
     report = make_report(source, world, data, plans, library, region_palettes, variants_shown, encoded, warnings,
                          new_lock, changes, merged_report, number_of, pad)

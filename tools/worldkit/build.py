@@ -123,7 +123,8 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
         raise WorldError('/cells',f'The ID lock file would change ({compiled.lock_changes}); --locked forbids it. '
                          'Build without --locked and commit NAME.ids.json.')
     # Every asset's own verification policy must pass before anything is written.
-    runtime = {k:v for k,v in source.world.get('runtime',{}).items() if k in ('depth','perspective') and v}
+    # the recipe's runtime, else the settings file's (Source.runtime)
+    runtime = {k:v for k,v in source.runtime.items() if v}
     compiled.library.verify(compiler,probe,cache,runtime)
     for asset_name,asset in compiled.library.assets.items():
         compiled.report['assets'][asset_name] = asset.summary()
@@ -182,11 +183,14 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
         if preview:
             from .preview import render
             compiled.report['preview'] = render(stage,source,compiled,compiler,runner,cell)
+        # where the runtime came from: in report.json when a settings file applied
+        if source.settings and source.settings.files: compiled.report['settings'] = source.settings_report()
         (stage/'report.json').write_text(jsonio.pretty(compiled.report))
         generated = staged.commit(stage,directory)
     # The lock beside the recipe changes only once the build that needs it has been published.
     if compiled.lock_changes or not lock_path(source).exists():
         lock_path(source).write_text(jsonio.pretty(compiled.lock))
-    result = dict(compiled.report,output=str(directory),files=generated,lock=str(lock_path(source)))
+    result = dict(compiled.report,output=str(directory),files=generated,lock=str(lock_path(source)),
+                  settings=source.settings_report())
     if timing: result['verification_timing'] = timing
     return result
