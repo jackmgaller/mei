@@ -1,0 +1,82 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "tank_thigh_r",
+ "budget": {
+  "vertices": 512,
+  "triangles": 400
+ },
+ "lighting": {
+  "direction": [
+   0,
+   0.62,
+   -0.78
+  ],
+  "ambient": 0.66
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "primer": {
+   "color": "#9d9c92"
+  },
+  "gun": {
+   "color": "#4d5153"
+  }
+ },
+ "nodes": [
+  {
+   "id": "mirrored",
+   "op": "group",
+   "children": [
+    {
+     "id": "strut",
+     "op": "box",
+     "size": [
+      0.55,
+      1.25,
+      0.8
+     ],
+     "material": "gun",
+     "transform": {
+      "translate": [
+       0,
+       -0.45,
+       0.1
+      ]
+     }
+    },
+    {
+     "id": "damper",
+     "op": "cylinder",
+     "radius": 0.2,
+     "height": 0.9,
+     "segments": 6,
+     "material": "primer",
+     "transform": {
+      "rotate": [
+       -8,
+       0,
+       0
+      ],
+      "translate": [
+       0.0,
+       -0.5,
+       -0.55
+      ]
+     }
+    }
+   ],
+   "transform": {
+    "scale": [
+     -1,
+     1,
+     1
+    ]
+   }
+  }
+ ]
+}

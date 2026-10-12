@@ -257,10 +257,11 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/garden/audio/gen_music.py` | "Momiji", the shrine town's music: `carts/garden/audio/music.adp` and `music_data.akr` (`--preview DIR`: a WAV of every sample) |
 | `carts/mechexpo/models/hero/make_hero.py` | The Hero Mech's recipes in its folder: `hero.asset.json`, `hero_rest`, `hero_flex`, `parts/hero_*.asset.json`, `hero.rig.json`, `cameras*.json`, `momentum_emblem.png` |
 | `carts/mechexpo/models/doubleblade/make_doubleblade.py` | The same for the Double-blade Hero (it imports `make_hero.py`), and `umbral_emblem.png` |
+| `carts/mechexpo/models/tank/make_tank.py` | Tank's recipes in its folder: `tank.asset.json`, `tank_rest`, `tank_flex`, `parts/tank_*.asset.json`, `tank.rig.json`, `cameras*.json`, `heartland_emblem.png` (it imports `make_hero.py`'s helpers) |
 | `carts/mechexpo/models/hangar_wall/make_hangar_wall.py` | `hangar_wall_r.asset.json`, `hangar_wall_l.asset.json`, `art/wall_sign.png`, `cameras.json` |
 | `carts/mechexpo/models/expo_banner/make_expo_banner.py` | `expo_banner.asset.json`, `art/banner_expo.png`, `art/banner_2000.png`, `cameras.json` |
 
-The last sixteen are run by their path from the repository root, not as `tools/NAME.py`; the
+The last seventeen are run by their path from the repository root, not as `tools/NAME.py`; the
 garden's two audio generators share `carts/garden/audio/garden_dsp.py`, and Mech Expo's models
 `carts/mechexpo/models/hero/mxpaint.py`, which write nothing.
 

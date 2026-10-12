@@ -581,8 +581,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#212129": 1,
             "#9c52f7": 2,
@@ -1068,8 +1068,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#212129": 1,
             "#9c52f7": 2,
@@ -1415,8 +1415,8 @@
           "y": 40,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#736b8c": 4,
             "#101018": 5
@@ -1584,8 +1584,8 @@
           "y": 0,
           "gutter": 0,
           "window": 497,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#9c52f7": 2,
             "#101018": 5
@@ -1890,8 +1890,8 @@
           "y": 40,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#736b8c": 4,
             "#101018": 5
@@ -2059,8 +2059,8 @@
           "y": 0,
           "gutter": 0,
           "window": 497,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#9c52f7": 2,
             "#101018": 5
@@ -2376,8 +2376,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 10,
-          "first_colour": 160,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
             "#1042ad": 1,
             "#f7ffff": 2,
@@ -2437,8 +2437,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 11,
-          "first_colour": 176,
+          "palette": 13,
+          "first_colour": 208,
           "indices": {
             "#1042ad": 1,
             "#f7ffff": 2,
@@ -2605,8 +2605,8 @@
           "y": 0,
           "gutter": 0,
           "window": 738,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#4a5a6b": 6,
             "#63738c": 7,
@@ -2653,8 +2653,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 12,
-          "first_colour": 192,
+          "palette": 14,
+          "first_colour": 224,
           "indices": {
             "#18397b": 1,
             "#f7f7f7": 2,
@@ -2695,8 +2695,8 @@
           "y": 0,
           "gutter": 0,
           "window": 505,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#212129": 1,
             "#f7c600": 9
@@ -2951,8 +2951,8 @@
           "y": 0,
           "gutter": 0,
           "window": 738,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#4a5a6b": 6,
             "#63738c": 7,
@@ -2999,8 +2999,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 12,
-          "first_colour": 192,
+          "palette": 14,
+          "first_colour": 224,
           "indices": {
             "#18397b": 1,
             "#f7f7f7": 2,
@@ -3041,8 +3041,8 @@
           "y": 0,
           "gutter": 0,
           "window": 505,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#212129": 1,
             "#f7c600": 9
@@ -3668,8 +3668,8 @@
           "y": 40,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#ef2129": 10,
             "#f7f7f7": 11
@@ -4124,8 +4124,8 @@
           "y": 40,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#ef2129": 10,
             "#f7f7f7": 11
@@ -4421,8 +4421,8 @@
           "y": 64,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#f7f7f7": 11,
             "#212931": 12
@@ -4526,8 +4526,8 @@
           "y": 0,
           "gutter": 0,
           "window": 505,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#212129": 1,
             "#f7c600": 9
@@ -4761,8 +4761,8 @@
           "y": 64,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#f7f7f7": 11,
             "#212931": 12
@@ -4866,8 +4866,8 @@
           "y": 0,
           "gutter": 0,
           "window": 505,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 11,
+          "first_colour": 176,
           "indices": {
             "#212129": 1,
             "#f7c600": 9
@@ -5072,6 +5072,1980 @@
         }
       },
       "tags": {}
+    },
+    {
+      "name": "tank_pelvis",
+      "mesh": "tank_pelvis.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 72,
+      "textures": [
+        {
+          "material": "hazard",
+          "tile": "6ac96115818bd546",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#d6ad42",
+            "#292921"
+          ],
+          "slot": 0,
+          "x": 0,
+          "y": 8,
+          "gutter": 0,
+          "window": 2305,
+          "palette": 11,
+          "first_colour": 176,
+          "indices": {
+            "#d6ad42": 13,
+            "#292921": 14
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              14,
+              16
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        2305
+      ],
+      "materials": {
+        "green": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              16,
+              22
+            ],
+            [
+              24,
+              32
+            ]
+          ]
+        },
+        "green_dk": {
+          "color": "#3f5238",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              0,
+              14
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 42,
+          "faces": [
+            [
+              22,
+              24
+            ],
+            [
+              32,
+              72
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#d4ad40",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              14,
+              16
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_torso",
+      "mesh": "tank_torso.bin",
+      "levels": [],
+      "vertices": 168,
+      "triangles": 264,
+      "palette": {
+        "palettes": [
+          9
+        ],
+        "entries": [
+          {
+            "colour": 145,
+            "class": "emissive",
+            "color": "#8cff6e",
+            "materials": [
+              "glow"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "hazard",
+          "tile": "6ac96115818bd546",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#d6ad42",
+            "#292921"
+          ],
+          "slot": 0,
+          "x": 0,
+          "y": 8,
+          "gutter": 0,
+          "window": 2305,
+          "palette": 11,
+          "first_colour": 176,
+          "indices": {
+            "#d6ad42": 13,
+            "#292921": 14
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              48,
+              50
+            ],
+            [
+              60,
+              62
+            ]
+          ]
+        },
+        {
+          "material": "slats",
+          "tile": "71662771a2986a61",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#212129",
+            "#4a5252"
+          ],
+          "slot": 0,
+          "x": 8,
+          "y": 8,
+          "gutter": 0,
+          "window": 2313,
+          "palette": 11,
+          "first_colour": 176,
+          "indices": {
+            "#212129": 1,
+            "#4a5252": 15
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              200,
+              224
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        2305,
+        2313
+      ],
+      "materials": {
+        "dark": {
+          "color": "#232528",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              240,
+              244
+            ],
+            [
+              260,
+              264
+            ]
+          ]
+        },
+        "glow": {
+          "color": "#8cff6e",
+          "class": "emissive",
+          "palette_colour": 145,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              144,
+              156
+            ],
+            [
+              184,
+              200
+            ]
+          ]
+        },
+        "green": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 26,
+          "faces": [
+            [
+              32,
+              38
+            ],
+            [
+              40,
+              48
+            ],
+            [
+              50,
+              60
+            ],
+            [
+              62,
+              64
+            ]
+          ]
+        },
+        "green_dk": {
+          "color": "#3f5238",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              16,
+              32
+            ],
+            [
+              38,
+              40
+            ],
+            [
+              78,
+              80
+            ],
+            [
+              156,
+              172
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 114,
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              64,
+              78
+            ],
+            [
+              80,
+              120
+            ],
+            [
+              172,
+              184
+            ],
+            [
+              224,
+              240
+            ],
+            [
+              244,
+              260
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#d4ad40",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              48,
+              50
+            ],
+            [
+              60,
+              62
+            ]
+          ]
+        },
+        "primer": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              120,
+              132
+            ]
+          ]
+        },
+        "slats": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              200,
+              224
+            ]
+          ]
+        },
+        "weld": {
+          "color": "#c2ad7e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              132,
+              144
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_head",
+      "mesh": "tank_head.bin",
+      "levels": [],
+      "vertices": 92,
+      "triangles": 156,
+      "palette": {
+        "palettes": [
+          10
+        ],
+        "entries": [
+          {
+            "colour": 161,
+            "class": "emissive",
+            "color": "#8cff6e",
+            "materials": [
+              "glow"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "slats",
+          "tile": "71662771a2986a61",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#212129",
+            "#4a5252"
+          ],
+          "slot": 0,
+          "x": 8,
+          "y": 8,
+          "gutter": 0,
+          "window": 2313,
+          "palette": 11,
+          "first_colour": 176,
+          "indices": {
+            "#212129": 1,
+            "#4a5252": 15
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              132,
+              144
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        2313
+      ],
+      "materials": {
+        "glow": {
+          "color": "#8cff6e",
+          "class": "emissive",
+          "palette_colour": 161,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              80,
+              86
+            ],
+            [
+              108,
+              114
+            ]
+          ]
+        },
+        "green": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 30,
+          "faces": [
+            [
+              20,
+              34
+            ],
+            [
+              36,
+              52
+            ]
+          ]
+        },
+        "green_dk": {
+          "color": "#3f5238",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              58,
+              64
+            ],
+            [
+              120,
+              132
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 84,
+          "faces": [
+            [
+              0,
+              20
+            ],
+            [
+              34,
+              36
+            ],
+            [
+              52,
+              58
+            ],
+            [
+              64,
+              80
+            ],
+            [
+              86,
+              108
+            ],
+            [
+              114,
+              120
+            ],
+            [
+              144,
+              156
+            ]
+          ]
+        },
+        "slats": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              132,
+              144
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_pauldron_r",
+      "mesh": "tank_pauldron_r.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 60,
+      "textures": [
+        {
+          "material": "emblem",
+          "tile": "e5dc4adfb70b8aa8",
+          "source": {
+            "texels": "56 x 32"
+          },
+          "width": 56,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#5a7352",
+            "#e7dec6",
+            "#395239",
+            "#8cff6b"
+          ],
+          "slot": 0,
+          "x": 96,
+          "y": 80,
+          "gutter": 1,
+          "window": null,
+          "palette": 14,
+          "first_colour": 224,
+          "indices": {
+            "#5a7352": 9,
+            "#e7dec6": 10,
+            "#395239": 11,
+            "#8cff6b": 12
+          },
+          "vram_bytes": 957,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "emblem": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        "green": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 32,
+          "faces": [
+            [
+              2,
+              14
+            ],
+            [
+              16,
+              18
+            ],
+            [
+              20,
+              32
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              32,
+              54
+            ]
+          ]
+        },
+        "primer": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              0,
+              2
+            ],
+            [
+              14,
+              16
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_upper_arm_r",
+      "mesh": "tank_upper_arm_r.bin",
+      "levels": [],
+      "vertices": 44,
+      "triangles": 70,
+      "materials": {
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 50,
+          "faces": [
+            [
+              0,
+              50
+            ]
+          ]
+        },
+        "primer": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              50,
+              70
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_forearm_r",
+      "mesh": "tank_forearm_r.bin",
+      "levels": [],
+      "vertices": 56,
+      "triangles": 100,
+      "textures": [
+        {
+          "material": "hazard",
+          "tile": "6ac96115818bd546",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#d6ad42",
+            "#292921"
+          ],
+          "slot": 0,
+          "x": 0,
+          "y": 8,
+          "gutter": 0,
+          "window": 2305,
+          "palette": 11,
+          "first_colour": 176,
+          "indices": {
+            "#d6ad42": 13,
+            "#292921": 14
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              60,
+              76
+            ]
+          ]
+        },
+        {
+          "material": "slats",
+          "tile": "71662771a2986a61",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#212129",
+            "#4a5252"
+          ],
+          "slot": 0,
+          "x": 8,
+          "y": 8,
+          "gutter": 0,
+          "window": 2313,
+          "palette": 11,
+          "first_colour": 176,
+          "indices": {
+            "#212129": 1,
+            "#4a5252": 15
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              94,
+              96
+            ],
+            [
+              98,
+              100
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        2305,
+        2313
+      ],
+      "materials": {
+        "green": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 30,
+          "faces": [
+            [
+              28,
+              34
+            ],
+            [
+              36,
+              60
+            ]
+          ]
+        },
+        "green_dk": {
+          "color": "#3f5238",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              34,
+              36
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 48,
+          "faces": [
+            [
+              0,
+              28
+            ],
+            [
+              76,
+              94
+            ],
+            [
+              96,
+              98
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#d4ad40",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              60,
+              76
+            ]
+          ]
+        },
+        "slats": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              94,
+              96
+            ],
+            [
+              98,
+              100
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_hand_r",
+      "mesh": "tank_hand_r.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 64,
+      "materials": {
+        "dark": {
+          "color": "#232528",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              32,
+              36
+            ]
+          ]
+        },
+        "green": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              40,
+              50
+            ]
+          ]
+        },
+        "green_dk": {
+          "color": "#3f5238",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              52,
+              64
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 38,
+          "faces": [
+            [
+              0,
+              32
+            ],
+            [
+              36,
+              40
+            ],
+            [
+              50,
+              52
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_pauldron_l",
+      "mesh": "tank_pauldron_l.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 60,
+      "textures": [
+        {
+          "material": "emblem",
+          "tile": "e5dc4adfb70b8aa8",
+          "source": {
+            "texels": "56 x 32"
+          },
+          "width": 56,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#5a7352",
+            "#e7dec6",
+            "#395239",
+            "#8cff6b"
+          ],
+          "slot": 0,
+          "x": 96,
+          "y": 80,
+          "gutter": 1,
+          "window": null,
+          "palette": 14,
+          "first_colour": 224,
+          "indices": {
+            "#5a7352": 9,
+            "#e7dec6": 10,
+            "#395239": 11,
+            "#8cff6b": 12
+          },
+          "vram_bytes": 957,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "emblem": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        "green": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 32,
+          "faces": [
+            [
+              2,
+              14
+            ],
+            [
+              16,
+              18
+            ],
+            [
+              20,
+              32
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              32,
+              54
+            ]
+          ]
+        },
+        "primer": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              0,
+              2
+            ],
+            [
+              14,
+              16
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_upper_arm_l",
+      "mesh": "tank_upper_arm_l.bin",
+      "levels": [],
+      "vertices": 44,
+      "triangles": 70,
+      "materials": {
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 50,
+          "faces": [
+            [
+              0,
+              50
+            ]
+          ]
+        },
+        "primer": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              50,
+              70
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_forearm_l",
+      "mesh": "tank_forearm_l.bin",
+      "levels": [],
+      "vertices": 56,
+      "triangles": 100,
+      "textures": [
+        {
+          "material": "hazard",
+          "tile": "6ac96115818bd546",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#d6ad42",
+            "#292921"
+          ],
+          "slot": 0,
+          "x": 0,
+          "y": 8,
+          "gutter": 0,
+          "window": 2305,
+          "palette": 11,
+          "first_colour": 176,
+          "indices": {
+            "#d6ad42": 13,
+            "#292921": 14
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              60,
+              76
+            ]
+          ]
+        },
+        {
+          "material": "slats",
+          "tile": "71662771a2986a61",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#212129",
+            "#4a5252"
+          ],
+          "slot": 0,
+          "x": 8,
+          "y": 8,
+          "gutter": 0,
+          "window": 2313,
+          "palette": 11,
+          "first_colour": 176,
+          "indices": {
+            "#212129": 1,
+            "#4a5252": 15
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              94,
+              96
+            ],
+            [
+              98,
+              100
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        2305,
+        2313
+      ],
+      "materials": {
+        "green": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 30,
+          "faces": [
+            [
+              28,
+              34
+            ],
+            [
+              36,
+              60
+            ]
+          ]
+        },
+        "green_dk": {
+          "color": "#3f5238",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              34,
+              36
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 48,
+          "faces": [
+            [
+              0,
+              28
+            ],
+            [
+              76,
+              94
+            ],
+            [
+              96,
+              98
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#d4ad40",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              60,
+              76
+            ]
+          ]
+        },
+        "slats": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              94,
+              96
+            ],
+            [
+              98,
+              100
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_hand_l",
+      "mesh": "tank_hand_l.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 64,
+      "materials": {
+        "dark": {
+          "color": "#232528",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              32,
+              36
+            ]
+          ]
+        },
+        "green": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              40,
+              50
+            ]
+          ]
+        },
+        "green_dk": {
+          "color": "#3f5238",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              52,
+              64
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 38,
+          "faces": [
+            [
+              0,
+              32
+            ],
+            [
+              36,
+              40
+            ],
+            [
+              50,
+              52
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_thigh_r",
+      "mesh": "tank_thigh_r.bin",
+      "levels": [],
+      "vertices": 20,
+      "triangles": 32,
+      "materials": {
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              0,
+              12
+            ]
+          ]
+        },
+        "primer": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              12,
+              32
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_shin_r",
+      "mesh": "tank_shin_r.bin",
+      "levels": [],
+      "vertices": 106,
+      "triangles": 172,
+      "textures": [
+        {
+          "material": "track",
+          "tile": "ca3d6f8cabe4eb5e",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#4a5252",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 240,
+          "y": 8,
+          "gutter": 0,
+          "window": 2545,
+          "palette": 11,
+          "first_colour": 176,
+          "indices": {
+            "#212129": 1,
+            "#4a5252": 15
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              18
+            ]
+          ]
+        },
+        {
+          "material": "serial",
+          "tile": "fe06548e2a207e9d",
+          "source": {
+            "texels": "32 x 16"
+          },
+          "width": 32,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#9c9c94",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 160,
+          "y": 80,
+          "gutter": 1,
+          "window": null,
+          "palette": 12,
+          "first_colour": 192,
+          "indices": {
+            "#9c9c94": 13,
+            "#212129": 14
+          },
+          "vram_bytes": 289,
+          "night": "per_colour",
+          "faces": [
+            [
+              130,
+              132
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        2545
+      ],
+      "materials": {
+        "dark": {
+          "color": "#232528",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 32,
+          "faces": [
+            [
+              44,
+              52
+            ],
+            [
+              64,
+              72
+            ],
+            [
+              84,
+              92
+            ],
+            [
+              104,
+              112
+            ]
+          ]
+        },
+        "green": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              112,
+              120
+            ]
+          ]
+        },
+        "green_dk": {
+          "color": "#3f5238",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              120,
+              124
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 74,
+          "faces": [
+            [
+              18,
+              44
+            ],
+            [
+              52,
+              64
+            ],
+            [
+              72,
+              84
+            ],
+            [
+              92,
+              104
+            ],
+            [
+              160,
+              172
+            ]
+          ]
+        },
+        "primer": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              124,
+              130
+            ],
+            [
+              132,
+              148
+            ]
+          ]
+        },
+        "serial": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              130,
+              132
+            ]
+          ]
+        },
+        "track": {
+          "color": "#232528",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              0,
+              18
+            ]
+          ]
+        },
+        "weld": {
+          "color": "#c2ad7e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              148,
+              160
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_foot_r",
+      "mesh": "tank_foot_r.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 52,
+      "materials": {
+        "green_dk": {
+          "color": "#3f5238",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              16,
+              28
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              16
+            ]
+          ]
+        },
+        "primer": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              28,
+              52
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_thigh_l",
+      "mesh": "tank_thigh_l.bin",
+      "levels": [],
+      "vertices": 20,
+      "triangles": 32,
+      "materials": {
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              0,
+              12
+            ]
+          ]
+        },
+        "primer": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              12,
+              32
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_shin_l",
+      "mesh": "tank_shin_l.bin",
+      "levels": [],
+      "vertices": 106,
+      "triangles": 172,
+      "textures": [
+        {
+          "material": "track",
+          "tile": "ca3d6f8cabe4eb5e",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#4a5252",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 240,
+          "y": 8,
+          "gutter": 0,
+          "window": 2545,
+          "palette": 11,
+          "first_colour": 176,
+          "indices": {
+            "#212129": 1,
+            "#4a5252": 15
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              18
+            ]
+          ]
+        },
+        {
+          "material": "serial",
+          "tile": "fe06548e2a207e9d",
+          "source": {
+            "texels": "32 x 16"
+          },
+          "width": 32,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#9c9c94",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 160,
+          "y": 80,
+          "gutter": 1,
+          "window": null,
+          "palette": 12,
+          "first_colour": 192,
+          "indices": {
+            "#9c9c94": 13,
+            "#212129": 14
+          },
+          "vram_bytes": 289,
+          "night": "per_colour",
+          "faces": [
+            [
+              130,
+              132
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        2545
+      ],
+      "materials": {
+        "dark": {
+          "color": "#232528",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 32,
+          "faces": [
+            [
+              44,
+              52
+            ],
+            [
+              64,
+              72
+            ],
+            [
+              84,
+              92
+            ],
+            [
+              104,
+              112
+            ]
+          ]
+        },
+        "green": {
+          "color": "#5b7350",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              112,
+              120
+            ]
+          ]
+        },
+        "green_dk": {
+          "color": "#3f5238",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              120,
+              124
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 74,
+          "faces": [
+            [
+              18,
+              44
+            ],
+            [
+              52,
+              64
+            ],
+            [
+              72,
+              84
+            ],
+            [
+              92,
+              104
+            ],
+            [
+              160,
+              172
+            ]
+          ]
+        },
+        "primer": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              124,
+              130
+            ],
+            [
+              132,
+              148
+            ]
+          ]
+        },
+        "serial": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              130,
+              132
+            ]
+          ]
+        },
+        "track": {
+          "color": "#232528",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              0,
+              18
+            ]
+          ]
+        },
+        "weld": {
+          "color": "#c2ad7e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              148,
+              160
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "tank_foot_l",
+      "mesh": "tank_foot_l.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 52,
+      "materials": {
+        "green_dk": {
+          "color": "#3f5238",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              16,
+              28
+            ]
+          ]
+        },
+        "gun": {
+          "color": "#4d5153",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              16
+            ]
+          ]
+        },
+        "primer": {
+          "color": "#9d9c92",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              28,
+              52
+            ]
+          ]
+        }
+      },
+      "tags": {}
     }
   ],
   "textures": {
@@ -5083,20 +7057,20 @@
       "runs": [
         {
           "bits": 4,
-          "first_colour": 144,
+          "first_colour": 176,
           "colours": 64,
           "offset": 0
         }
       ]
     },
-    "tiles": 10,
-    "vram_bytes": 8283,
-    "vram_bytes_allocated": 10688,
+    "tiles": 15,
+    "vram_bytes": 9625,
+    "vram_bytes_allocated": 12544,
     "palettes_4bit": [
-      9,
-      10,
       11,
-      12
+      12,
+      13,
+      14
     ],
     "palettes_8bit": []
   },
@@ -5143,6 +7117,14 @@
       },
       {
         "first_colour": 128,
+        "colours": 16
+      },
+      {
+        "first_colour": 144,
+        "colours": 16
+      },
+      {
+        "first_colour": 160,
         "colours": 16
       }
     ]

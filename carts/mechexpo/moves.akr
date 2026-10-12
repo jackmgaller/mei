@@ -13,7 +13,7 @@ fn use_standin(m: Mech, mv: Mv) -> bool { return STANDIN_ALL || anim_standin(m, 
 
 // The marks the fight reads are anim.akr's MARK_*; the stand-in below sets them too.
 
-enum Power { Kinetic, Antimatter }
+enum Power { Kinetic, Antimatter, Nuclear }
 
 struct Stats {
     health: s32
@@ -29,11 +29,14 @@ struct Stats {
     power: Power
 }
 
-const STATS: [2]Stats = [
+const STATS: [len(Mech)]Stats = [
     Stats { health: 1000, walk_f: 0.075, walk_b: 0.060, pre: 4, jv: 0.68421, grav: 0.036011,
             jvx: 0.16, land: 5, land_air: 8, push: 1.6, power: Power.Kinetic },
     Stats { health: 950, walk_f: 0.095, walk_b: 0.075, pre: 3, jv: 0.647059, grav: 0.038062,
             jvx: 0.19, land: 4, land_air: 7, push: 1.5, power: Power.Antimatter },
+    // Tank (MOVES.md, "Tank"): the jump is 6 frames' crouch, 34 in the air, 4.5 m high
+    Stats { health: 1100, walk_f: 0.055, walk_b: 0.045, pre: 6, jv: 0.529412, grav: 0.031142,
+            jvx: 0.13, land: 7, land_air: 10, push: 2.4, power: Power.Nuclear },
 ]
 
 // ---- what a hit does

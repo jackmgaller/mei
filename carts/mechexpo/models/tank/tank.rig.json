@@ -1,0 +1,563 @@
+{
+ "format": "mei-rig",
+ "version": 1,
+ "name": "tank",
+ "units": "metres; Y up; the mech faces -Z, +X is its left",
+ "rotation": "degrees, applied X then Y then Z, in the parent joint frame (the Asset Kit's order). Not mirrored between sides: on a hanging limb +X swings it forward; +Z swings a left limb out (+X) and a right limb in, so a mirrored pose negates Y and Z",
+ "root": "pelvis",
+ "root_note": "the root (fight origin) is on the floor under the pelvis; pelvis.offset is the rest-pose hip-axle height. Tank has no knees: the treads stay on the floor, so a pose's 'drop' is 0 and the body dips by pitching the torso",
+ "parts": [
+  {
+   "id": "pelvis",
+   "parent": null,
+   "offset": [
+    0,
+    3.3,
+    0
+   ],
+   "recipe": "parts/tank_pelvis.asset.json",
+   "asset": "ASSET_TANK_PELVIS",
+   "triangles": 72,
+   "vertices": 40,
+   "bounds": {
+    "min": [
+     -1.8,
+     -1.85,
+     -1.75
+    ],
+    "max": [
+     1.8,
+     0.45,
+     1.75
+    ]
+   },
+   "role": "the lower hull; the hip axle",
+   "range": "x -10..10 (keep the treads flat: pitch the torso instead), y -30..30, z -6..6"
+  },
+  {
+   "id": "torso",
+   "parent": "pelvis",
+   "offset": [
+    0,
+    0.55,
+    0
+   ],
+   "recipe": "parts/tank_torso.asset.json",
+   "asset": "ASSET_TANK_TORSO",
+   "triangles": 264,
+   "vertices": 168,
+   "bounds": {
+    "min": [
+     -2.5,
+     -0.25,
+     -1.8339
+    ],
+    "max": [
+     2.5,
+     5.8197,
+     3.1229
+    ]
+   },
+   "role": "the barrel chest and the reactor",
+   "range": "x -40..25, y -60..60, z -15..15"
+  },
+  {
+   "id": "head",
+   "parent": "torso",
+   "offset": [
+    0.0,
+    4.05,
+    -0.5
+   ],
+   "recipe": "parts/tank_head.asset.json",
+   "asset": "ASSET_TANK_HEAD",
+   "triangles": 156,
+   "vertices": 92,
+   "bounds": {
+    "min": [
+     -0.875,
+     -0.1,
+     -0.9381
+    ],
+    "max": [
+     0.875,
+     2.3953,
+     0.78
+    ]
+   },
+   "role": "the cab head, sunk in the shoulders",
+   "range": "x -20..25, y -45..45, z -10..10"
+  },
+  {
+   "id": "pauldron_r",
+   "parent": "torso",
+   "offset": [
+    -2.85,
+    3.55,
+    0.1
+   ],
+   "recipe": "parts/tank_pauldron_r.asset.json",
+   "asset": "ASSET_TANK_PAULDRON_R",
+   "triangles": 60,
+   "vertices": 32,
+   "bounds": {
+    "min": [
+     -1.45,
+     -0.82,
+     -1.15
+    ],
+    "max": [
+     0.55,
+     1.0,
+     1.15
+    ]
+   },
+   "role": "the shoulder dome; follows the upper arm part way",
+   "range": "about 0.35 of the upper arm's x and 0.5 of its z"
+  },
+  {
+   "id": "upper_arm_r",
+   "parent": "torso",
+   "offset": [
+    -2.85,
+    3.55,
+    0.1
+   ],
+   "recipe": "parts/tank_upper_arm_r.asset.json",
+   "asset": "ASSET_TANK_UPPER_ARM_R",
+   "triangles": 70,
+   "vertices": 44,
+   "bounds": {
+    "min": [
+     -0.45,
+     -2.0,
+     -0.6386
+    ],
+    "max": [
+     0.45,
+     0.6,
+     0.6
+    ]
+   },
+   "role": "the shoulder drum and the arm",
+   "range": "x -60..190, y -40..40, z: out -100..in 25 (sign by side)"
+  },
+  {
+   "id": "forearm_r",
+   "parent": "upper_arm_r",
+   "offset": [
+    0,
+    -2.2,
+    0
+   ],
+   "recipe": "parts/tank_forearm_r.asset.json",
+   "asset": "ASSET_TANK_FOREARM_R",
+   "triangles": 100,
+   "vertices": 56,
+   "bounds": {
+    "min": [
+     -1.1,
+     -2.35,
+     -0.92
+    ],
+    "max": [
+     0.86,
+     0.5,
+     0.84
+    ]
+   },
+   "role": "the big forearm",
+   "range": "x 0..140 (forward only: the elbow), y -30..30"
+  },
+  {
+   "id": "hand_r",
+   "parent": "forearm_r",
+   "offset": [
+    0,
+    -2.3,
+    0
+   ],
+   "recipe": "parts/tank_hand_r.asset.json",
+   "asset": "ASSET_TANK_HAND_R",
+   "triangles": 64,
+   "vertices": 40,
+   "bounds": {
+    "min": [
+     -0.6929,
+     -1.14,
+     -0.64
+    ],
+    "max": [
+     0.4228,
+     0.34,
+     0.42
+    ]
+   },
+   "role": "the clamp fist",
+   "range": "x -70..70, y -40..40, z -35..35"
+  },
+  {
+   "id": "pauldron_l",
+   "parent": "torso",
+   "offset": [
+    2.85,
+    3.55,
+    0.1
+   ],
+   "recipe": "parts/tank_pauldron_l.asset.json",
+   "asset": "ASSET_TANK_PAULDRON_L",
+   "triangles": 60,
+   "vertices": 32,
+   "bounds": {
+    "min": [
+     -0.55,
+     -0.82,
+     -1.15
+    ],
+    "max": [
+     1.45,
+     1.0,
+     1.15
+    ]
+   },
+   "role": "the shoulder dome; follows the upper arm part way",
+   "range": "about 0.35 of the upper arm's x and 0.5 of its z"
+  },
+  {
+   "id": "upper_arm_l",
+   "parent": "torso",
+   "offset": [
+    2.85,
+    3.55,
+    0.1
+   ],
+   "recipe": "parts/tank_upper_arm_l.asset.json",
+   "asset": "ASSET_TANK_UPPER_ARM_L",
+   "triangles": 70,
+   "vertices": 44,
+   "bounds": {
+    "min": [
+     -0.45,
+     -2.0,
+     -0.6386
+    ],
+    "max": [
+     0.45,
+     0.6,
+     0.6
+    ]
+   },
+   "role": "the shoulder drum and the arm",
+   "range": "x -60..190, y -40..40, z: out -100..in 25 (sign by side)"
+  },
+  {
+   "id": "forearm_l",
+   "parent": "upper_arm_l",
+   "offset": [
+    0,
+    -2.2,
+    0
+   ],
+   "recipe": "parts/tank_forearm_l.asset.json",
+   "asset": "ASSET_TANK_FOREARM_L",
+   "triangles": 100,
+   "vertices": 56,
+   "bounds": {
+    "min": [
+     -0.86,
+     -2.35,
+     -0.92
+    ],
+    "max": [
+     1.1,
+     0.5,
+     0.84
+    ]
+   },
+   "role": "the big forearm",
+   "range": "x 0..140 (forward only: the elbow), y -30..30"
+  },
+  {
+   "id": "hand_l",
+   "parent": "forearm_l",
+   "offset": [
+    0,
+    -2.3,
+    0
+   ],
+   "recipe": "parts/tank_hand_l.asset.json",
+   "asset": "ASSET_TANK_HAND_L",
+   "triangles": 64,
+   "vertices": 40,
+   "bounds": {
+    "min": [
+     -0.4228,
+     -1.14,
+     -0.64
+    ],
+    "max": [
+     0.6929,
+     0.34,
+     0.42
+    ]
+   },
+   "role": "the clamp fist",
+   "range": "x -70..70, y -40..40, z -35..35"
+  },
+  {
+   "id": "thigh_r",
+   "parent": "pelvis",
+   "offset": [
+    -1.55,
+    0,
+    0
+   ],
+   "recipe": "parts/tank_thigh_r.asset.json",
+   "asset": "ASSET_TANK_THIGH_R",
+   "triangles": 32,
+   "vertices": 20,
+   "bounds": {
+    "min": [
+     -0.275,
+     -1.075,
+     -0.7841
+    ],
+    "max": [
+     0.275,
+     0.175,
+     0.5
+    ]
+   },
+   "role": "the suspension strut",
+   "range": "x -15..15, z -8..8 (small: it carries the tread)"
+  },
+  {
+   "id": "shin_r",
+   "parent": "thigh_r",
+   "offset": [
+    0,
+    -0.95,
+    0
+   ],
+   "recipe": "parts/tank_shin_r.asset.json",
+   "asset": "ASSET_TANK_SHIN_R",
+   "triangles": 172,
+   "vertices": 106,
+   "bounds": {
+    "min": [
+     -0.855,
+     -2.35,
+     -2.72
+    ],
+    "max": [
+     0.6,
+     -0.14,
+     2.68
+    ]
+   },
+   "role": "the tread unit; pivot at its top",
+   "range": "x -14..14 (rock fore and aft), z -6..6; the track must stay on the floor in ground moves"
+  },
+  {
+   "id": "foot_r",
+   "parent": "shin_r",
+   "offset": [
+    0.0,
+    -1.45,
+    1.75
+   ],
+   "recipe": "parts/tank_foot_r.asset.json",
+   "asset": "ASSET_TANK_FOOT_R",
+   "triangles": 52,
+   "vertices": 32,
+   "bounds": {
+    "min": [
+     -0.855,
+     -0.78,
+     -0.78
+    ],
+    "max": [
+     -0.57,
+     0.78,
+     0.78
+    ]
+   },
+   "role": "the drive sprocket",
+   "range": "x any (spins: about 4 degrees a frame in walk_f, -3.3 in walk_b, 30 in the Clinch and the Bulldozer, 55 in the super's dash), y and z 0"
+  },
+  {
+   "id": "thigh_l",
+   "parent": "pelvis",
+   "offset": [
+    1.55,
+    0,
+    0
+   ],
+   "recipe": "parts/tank_thigh_l.asset.json",
+   "asset": "ASSET_TANK_THIGH_L",
+   "triangles": 32,
+   "vertices": 20,
+   "bounds": {
+    "min": [
+     -0.275,
+     -1.075,
+     -0.7841
+    ],
+    "max": [
+     0.275,
+     0.175,
+     0.5
+    ]
+   },
+   "role": "the suspension strut",
+   "range": "x -15..15, z -8..8 (small: it carries the tread)"
+  },
+  {
+   "id": "shin_l",
+   "parent": "thigh_l",
+   "offset": [
+    0,
+    -0.95,
+    0
+   ],
+   "recipe": "parts/tank_shin_l.asset.json",
+   "asset": "ASSET_TANK_SHIN_L",
+   "triangles": 172,
+   "vertices": 106,
+   "bounds": {
+    "min": [
+     -0.6,
+     -2.35,
+     -2.72
+    ],
+    "max": [
+     0.855,
+     -0.14,
+     2.68
+    ]
+   },
+   "role": "the tread unit; pivot at its top",
+   "range": "x -14..14 (rock fore and aft), z -6..6; the track must stay on the floor in ground moves"
+  },
+  {
+   "id": "foot_l",
+   "parent": "shin_l",
+   "offset": [
+    0.0,
+    -1.45,
+    1.75
+   ],
+   "recipe": "parts/tank_foot_l.asset.json",
+   "asset": "ASSET_TANK_FOOT_L",
+   "triangles": 52,
+   "vertices": 32,
+   "bounds": {
+    "min": [
+     0.57,
+     -0.78,
+     -0.78
+    ],
+    "max": [
+     0.855,
+     0.78,
+     0.78
+    ]
+   },
+   "role": "the drive sprocket",
+   "range": "x any (spins: about 4 degrees a frame in walk_f, -3.3 in walk_b, 30 in the Clinch and the Bulldozer, 55 in the super's dash), y and z 0"
+  }
+ ],
+ "mounts": [
+  {
+   "id": "weapon_r",
+   "parent": "hand_r",
+   "offset": [
+    0,
+    -0.72,
+    0
+   ],
+   "rotate": [
+    -90,
+    0,
+    0
+   ],
+   "part": null,
+   "note": "empty: the middle of the clamp fist (a held mech's shoulder goes here)"
+  },
+  {
+   "id": "weapon_l",
+   "parent": "hand_l",
+   "offset": [
+    0,
+    -0.72,
+    0
+   ],
+   "rotate": [
+    -90,
+    0,
+    0
+   ],
+   "part": null,
+   "note": "empty: the middle of the clamp fist (a held mech's shoulder goes here)"
+  }
+ ],
+ "poses": {
+  "guard": {
+   "drop": 0.0,
+   "rotate": {
+    "torso": [
+     -10,
+     -14,
+     0
+    ],
+    "head": [
+     12,
+     10,
+     0
+    ],
+    "upper_arm_r": [
+     24,
+     0,
+     -16
+    ],
+    "forearm_r": [
+     76,
+     0,
+     0
+    ],
+    "hand_r": [
+     -14,
+     0,
+     0
+    ],
+    "upper_arm_l": [
+     18,
+     0,
+     18
+    ],
+    "forearm_l": [
+     82,
+     0,
+     0
+    ],
+    "hand_l": [
+     -18,
+     0,
+     0
+    ],
+    "pauldron_r": [
+     8.4,
+     0,
+     -8.0
+    ],
+    "pauldron_l": [
+     6.3,
+     0,
+     9.0
+    ]
+   },
+   "note": "the grappler's guard: hunched forward, the big fists low and out in front, both treads flat on y = 0"
+  }
+ },
+ "triangles": 1592
+}

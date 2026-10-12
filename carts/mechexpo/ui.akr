@@ -16,6 +16,7 @@ const C_RED: u32 = 0x281EC8        // Momentum red, rgb(200, 30, 40)
 const C_VIOLET: u32 = 0xE85A9A     // Umbral violet, rgb(154, 90, 232)
 const C_MAGENTA: u32 = 0xC040F0    // rgb(240, 64, 192)
 const C_TANGERINE: u32 = 0x208CFF  // rgb(255, 140, 32)
+const C_FOREST: u32 = 0x507348     // Heartland green, rgb(72, 115, 80)
 const C_GLASS: u32 = 0x5A2810      // dark glass, rgb(16, 40, 90)
 
 var ui_buf: [64]u8
@@ -129,6 +130,7 @@ fn mech_name(m: Mech) -> *u8 {
     match m {
         Hero => return "HERO MECH"
         Doubleblade => return "DOUBLE-BLADE HERO"
+        Tank => return "TANK"                   // product name open (MOVES.md)
     }
 }
 
@@ -136,6 +138,7 @@ fn mech_short(m: Mech) -> *u8 {
     match m {
         Hero => return "HERO"
         Doubleblade => return "DOUBLE-BLADE"
+        Tank => return "TANK"
     }
 }
 
@@ -143,6 +146,7 @@ fn mech_maker(m: Mech) -> *u8 {
     match m {
         Hero => return "MOMENTUM ROBOTICS"
         Doubleblade => return "UMBRAL RESEARCH"
+        Tank => return "HEARTLAND ATOMIC CO."
     }
 }
 
@@ -150,6 +154,7 @@ fn mech_maker_short(m: Mech) -> *u8 {
     match m {
         Hero => return "MOMENTUM ROBO."
         Doubleblade => return "UMBRAL RESEARCH"
+        Tank => return "HEARTLAND ATOMIC"
     }
 }
 
@@ -157,6 +162,7 @@ fn mech_power(m: Mech) -> *u8 {
     match m {
         Hero => return "KINETIC"
         Doubleblade => return "ANTIMATTER"
+        Tank => return "NUCLEAR"
     }
 }
 
@@ -164,6 +170,7 @@ fn mech_booth(m: Mech) -> *u8 {
     match m {
         Hero => return "BOOTH A-12"
         Doubleblade => return "BOOTH B-07"
+        Tank => return "BOOTH D-57"
     }
 }
 
@@ -171,6 +178,7 @@ fn mech_model(m: Mech) -> *u8 {
     match m {
         Hero => return "MR-01 \"HERO\""
         Doubleblade => return "UR-02 \"DOUBLE-BLADE\""
+        Tank => return "HA-57 \"TANK\""
     }
 }
 
@@ -178,6 +186,7 @@ fn mech_colour(m: Mech) -> u32 {
     match m {
         Hero => return C_RED
         Doubleblade => return C_VIOLET
+        Tank => return C_FOREST
     }
 }
 
