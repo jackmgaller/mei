@@ -529,6 +529,40 @@ class MaterialExtensionTests(unittest.TestCase):
             self.assertEqual(after[4:12],before[4:12])
         with self.assertRaises(AssetError): relocate(binary,{1:16*70})
 
+    def test_relocate_into_the_second_megabyte(self):
+        # VRAM at 2 MB (DECISIONS.md): palettes 256-511 and slots 16-31 set flag bits 7 and 6
+        from assetkit.compiler import relocate
+        mesh,mats,_ = compile_recipe(palette_recipe())
+        binary = native_bytes(mesh,mats,{'mode':'vertical'})
+        moved = relocate(binary,{1:16*300+3,2:16*511+9},slot=20,row=7)
+        for before,after in zip(faces_of(binary),faces_of(moved)):
+            colour = 16*300+3 if before[12]&255 == 1 else 16*511+9
+            self.assertEqual((after[0]&0xC0,after[2],after[3],after[12]),(0xC0,4|16,(colour//16)%256,colour%16|7<<8))
+            self.assertEqual(after[0]&0x3F,before[0])
+        back = relocate(moved,{16*300+3:16*2+3,16*511+9:16*3+9},slot=14,row=0)
+        for before,after in zip(faces_of(binary),faces_of(back)):
+            self.assertEqual(after[0],before[0])                  # the bank bits are cleared again
+        with self.assertRaisesRegex(AssetError,'outside palettes'): relocate(binary,{1:16*255+3})
+        with self.assertRaisesRegex(AssetError,'outside palettes'): relocate(binary,{1:16*512+3})
+
+    def test_meshlib_banks(self):
+        import meshlib
+        self.assertEqual(meshlib.tex_fields(3,True,40),(0,3|16,40))          # as before
+        self.assertEqual(meshlib.tex_fields(19,True,300,window=2),(64|128,3|16|2<<5,44))
+        self.assertEqual(meshlib.tex_fields(30,False,17),(64|128,14,1))
+        for slot,four,pal in [(0,True,0),(15,False,14),(16,True,255),(31,True,511),(20,False,31),(7,False,16)]:
+            flags,tex,byte = meshlib.tex_fields(slot,four,pal)
+            self.assertEqual((meshlib.face_slot(flags,tex),meshlib.face_palette(flags,tex,byte)),(slot,pal))
+        self.assertEqual(meshlib.face_colour(128,16,4,7),(256+4)*16+7)
+        self.assertEqual(meshlib.face_colour(128,0,1,7),17*256+7)
+        for bad in [(32,True,0),(0,True,512),(0,False,32)]:
+            with self.assertRaises(AssertionError): meshlib.tex_fields(*bad)
+        m = meshlib.Mesh()
+        a,b,c = (m.vertex(*v) for v in [(0,0,0),(1,0,0),(0,1,0)])
+        m.tri([a,b,c],[0x808080]*3,[(0,0)]*3,slot=17,four_bit=True,palette=258)
+        flags,_,tex,pal = struct.unpack_from('<BBBB',m.pack(),16+3*16)
+        self.assertEqual((flags&0xC0,tex,pal),(0xC0,1|16,2))
+
     def test_identity_mesh_accepts_only_swatch_faces(self):
         from assetkit.visibility import identity_mesh
         mesh,mats,_ = compile_recipe(palette_recipe())
@@ -1330,10 +1364,13 @@ class TextureProjectionTests(unittest.TestCase):
             'lod':{'levels':[{'distance':10,'nodes':[{'id':'b','op':'box','size':[1,1,1],'material':'brick','open':['bottom']}]}]}}
         mesh,_,_ = compile_recipe(r)
         self.assertIs(mesh.levels[0][0].textures['packing'],mesh.textures['packing'])
+        # a texture only a level draws (a far card's second drawing, an impostor's pictures) is the
+        # asset's too: level 0 loads and places it, and the level shares that placement
         r['lod']['levels'][0]['nodes'][0]['material'] = 'other'
-        with self.assertRaisesRegex(AssetError,'level 0') as error:
-            compile_recipe(r)
-        self.assertEqual(error.exception.path,'/lod/levels/0/nodes')
+        mesh,_,_ = compile_recipe(r)
+        self.assertIn('other',mesh.textures['textures'])
+        self.assertIs(mesh.levels[0][0].textures['packing'],mesh.textures['packing'])
+        self.assertIn(mesh.textures['textures']['other'].tile.key,mesh.textures['packing'].placements)
 
 
 class TexturePackingTests(unittest.TestCase):
@@ -1358,6 +1395,31 @@ class TexturePackingTests(unittest.TestCase):
         self.assertEqual(data[row:row+3],bytes([0x33,0x33,0x33]))
         with self.assertRaisesRegex(Exception,'slot 15'):
             pack(tiles,slots=[15])
+
+    def test_second_megabyte_slots_and_palette_banks(self):
+        # VRAM at 2 MB: slots 16-31, 4-bit palettes 256-511 (never across 255), 8-bit 16-31
+        from kitcore.errors import KitError
+        from kitcore.texpack import pack
+        tiles = [self.tile(128,128,k+1,bits=8,window=True) for k in range(3)]   # two to an 8-bit slot
+        packing = pack(tiles,slots=[13,16,31],palette8=31)
+        self.assertEqual(packing.slot_bits,{13:8,16:8})
+        self.assertEqual(sorted(packing.palettes),[(8,31)])
+        four = [self.tile(8,8,k+1) for k in range(40)]                 # 40 colours: three palettes
+        self.assertEqual(sorted(p for b,p in pack(four,slots=[20],first_palette=300).palettes),[300,301,302])
+        with self.assertRaisesRegex(KitError,'palettes from 253'):
+            pack(four,slots=[20],first_palette=253)                     # 253, 254, then 255: the fonts'
+        with self.assertRaisesRegex(KitError,'not 255'):
+            pack(four,slots=[20],first_palette=255)
+        with self.assertRaisesRegex(KitError,'0-31'):
+            pack(four,slots=[32])
+        with self.assertRaisesRegex(KitError,'8-bit palettes'):
+            pack(tiles,slots=[16],palette8=15)
+        # 8-bit palettes from 17 down stop at 16: they never take 15 (the fonts' colours)
+        many8 = [Tile8 for Tile8 in (__import__('kitcore.texpack',fromlist=['Tile']).Tile(8,8,8,[[[k*8+j+1 for j in range(8)]]*8],name=f't{k}') for k in range(80))]
+        with self.assertRaisesRegex(KitError,'8-bit textures need'):
+            pack(many8,slots=[16,17,18,19],palette8=17)
+        # 4-bit palettes stop below an 8-bit palette above them
+        self.assertEqual(sorted(p for b,p in pack(tiles+four[:20],slots=[16,17,18],first_palette=480,palette8=31).palettes if b == 4),[480,481])
 
     def test_overflow_is_a_clear_error(self):
         from kitcore.errors import KitError
@@ -1411,6 +1473,30 @@ class TexturePackingTests(unittest.TestCase):
                                      '--slots','14'],capture_output=True,text=True)
             self.assertEqual(result.returncode,1)
             self.assertIn('do not fit',json.loads(result.stdout)['errors'][0]['message'])
+
+    def test_pack_swatch_keeps_a_worlds_swatch_block(self):
+        # a textured asset with no palette-backed material: --swatch keeps row 0's block free and
+        # writes the swatch after the textures, so the pack can share slot 14 with a world's swatch
+        r = textured({'pattern':'checker','colors':['#202020','#e0e0e0'],'size':32},quad(2,2))
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp,'card.asset.json').write_text(json.dumps(r|{'name':'card'}))
+            def run(out, *extra):
+                result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'pack',str(Path(tmp,'card.asset.json')),
+                                         '-o',str(Path(tmp,out)),'--name','moon','--slots','14','--palette','254',*extra],
+                                        capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stdout)
+                return json.loads(Path(tmp,out,'moon.pack.json').read_text())
+            plain = run('plain')
+            self.assertNotIn('swatch',plain)
+            kept = run('kept','--swatch')
+            self.assertEqual(kept['swatch'],{'file':'moon.swatch','slot':14,'row':0,'texels':16})
+            self.assertEqual(kept['textures']['palettes_4bit'],[254])
+            for t in kept['assets'][0]['textures']:
+                self.assertFalse(t['x'] < 16 and t['y'] < 8,'the swatch block is reserved')
+            akr = Path(tmp,'kept/moon.akr').read_text()
+            load = akr[akr.index('fn moon_load()'):]
+            self.assertLess(load.index('MOON_TEX14'),load.index('MOON_SWATCH'),'textures load before the swatch')
+            self.assertNotIn('MOON_PALETTE',akr)
 
     def test_build_writes_texture_files_manifest_and_loader(self):
         r = recipe(**{'materials':{'default':{'color':'#a0522d','tag':'wall','texture':{'pattern':'brick','colors':['#a0522d','#d8d0c0']}},
@@ -1775,6 +1861,14 @@ class CameraParsingTests(unittest.TestCase):
         for bad in ('x=1,2:3,4,5','x=1,2,3','Bad=1,2,3:4,5,6','x=0,0,0:0,0,0','x=1,2,3@0,120'):
             with self.subTest(bad=bad), self.assertRaises(AssetError):
                 parse_camera(bad,0)
+        # each error says what is wrong: a bad name is not reported as a bad form
+        with self.assertRaises(AssetError) as cm:
+            parse_camera('A=1,2,3@0,0',0)
+        self.assertIn("Camera name 'A'",str(cm.exception))
+        self.assertIn('lowercase',str(cm.exception))
+        with self.assertRaises(AssetError) as cm:
+            parse_camera('a=1,2,x@0,0',0)
+        self.assertIn('give NAME=',str(cm.exception))
         with self.assertRaises(AssetError):
             cameras_file([{'eye':[0,1,-3],'look':[0,0,0]}])
 
@@ -1931,12 +2025,17 @@ class FailedPreviewTests(unittest.TestCase):
             width,height,pixels = png_pixels(renders/'view_front.png')
             banner = [pixels[(y*width+x)*3:(y*width+x)*3+3] for y in range(18,30) for x in range(8,160)]
             self.assertTrue(any(p[0] > 200 and p[1] < 100 and p[2] < 100 for p in banner),'the VERIFICATION FAILED banner')
-            # the CLI leads its failure output with the errors
+            # the CLI leads its failure output with the errors. (It stops this recipe before rendering, for
+            # its flush cap: FeedbackTests. Crossing parts without the depth buffer fail in the views.)
+            crossing = crossing_and_flush()
+            crossing['nodes'].pop()
+            crossing['verification'] = {'required':True,'yaw_steps':4,'pitches':[0],'distances':[1]}
             result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'preview','-','-o',tmp,
                                      '--compiler',str(COMPILER),'--runner',str(RUNNER),'--probe',str(PROBE)],
-                                    input=json.dumps(r),capture_output=True,text=True)
+                                    input=json.dumps(crossing),capture_output=True,text=True)
             self.assertEqual(result.returncode,1)
             self.assertEqual(list(json.loads(result.stdout))[:3],['ok','errors','verdict'])
+            self.assertTrue((renders/'contact.png').is_file())
 
 
 @unittest.skipUnless(COMPILER.exists() and RUNNER.exists(),'Needs meic and mei-headless.')
@@ -2248,6 +2347,607 @@ class GltfExportTests(unittest.TestCase):
             uri = text['buffers'][0].pop('uri')
             self.assertEqual(base64.b64decode(uri.split(',',1)[1]),blob)
             self.assertEqual(text,document)
+
+
+# Feedback from agents who built models with the kit: the flush check in build and preview, close
+# parallel faces, more in inspect, clearer errors, axis names for open sides
+# (docs/ASSETKIT.md, "Quick reference", "Authoring rules", "Commands")
+
+def kit(*args, stdin=None):
+    """(exit code, JSON result) of tools/mei_assets.py."""
+    result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),*map(str,args)],
+                            input=json.dumps(stdin) if stdin is not None else None,capture_output=True,text=True)
+    return result.returncode,json.loads(result.stdout)
+
+
+def stacked():
+    """A box standing flush on a larger one: a coplanar overlap, back to back."""
+    return recipe() | {'nodes':[{'id':'base','op':'box','size':[2,1,2]},
+                                {'id':'top','op':'box','size':[1,1,1],'transform':{'translate':[0,1,0]}}]}
+
+
+def sign_on_board(gap):
+    """A sign panel whose front face stands gap in front of its board's (both face -Z)."""
+    return recipe() | {'nodes':[{'id':'board','op':'box','size':[2,1,.1]},
+                                {'id':'panel','op':'box','size':[1.6,.7,.02],'transform':{'translate':[0,0,-.05-gap+.01]}}]}
+
+
+class FeedbackTests(unittest.TestCase):
+    @unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+    def test_build_and_preview_stop_before_rendering_on_flush_contacts_when_checked(self):
+        r = stacked() | {'verification':{'required':True,'depth':True,'perspective':True}}
+        with tempfile.TemporaryDirectory() as tmp:
+            for command in ('build','preview'):
+                code,out = kit(command,'-','-o',tmp,'--compiler',COMPILER,'--runner',RUNNER,'--probe',PROBE,stdin=r)
+                self.assertEqual(code,1)
+                self.assertEqual(list(out)[:3],['ok','errors','flush_contacts'])
+                message = out['errors'][0]['message']
+                self.assertEqual(out['errors'][0]['path'],'/verification')
+                self.assertTrue(message.startswith('Stopped before rendering: '),message)
+                self.assertIn('coplanar_overlap: 4 between base and top',message)
+                # the smaller part, which way and about how far
+                self.assertIn('sink top about 0.02 along -Y into base',message)
+                self.assertIn('"open": ["bottom"]',message)
+                self.assertEqual(list(Path(tmp).iterdir()),[],'nothing written, nothing rendered')
+            # without the depth buffer sinking would make the parts cross: open the face instead
+            r['verification'] = {'required':True}
+            code,out = kit('build','-','-o',tmp,'--compiler',COMPILER,'--probe',PROBE,stdin=r)
+            self.assertIn('which fails without the depth buffer',out['errors'][0]['message'])
+
+    @unittest.skipUnless(NUMPY,'Needs NumPy.')
+    def test_build_reports_flush_contacts_when_not_checked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code,out = kit('build','-','-o',tmp,stdin=stacked())
+            self.assertEqual(code,0,out)
+            self.assertEqual(out['flush_contacts']['count'],4)
+            self.assertEqual(json.loads((Path(tmp)/'report.json').read_text())['flush_contacts'],out['flush_contacts'])
+            r = stacked() | {'nodes':stacked()['nodes'][:1]}
+            code,out = kit('build','-','-o',tmp,stdin=r)
+            self.assertEqual(out['flush_contacts']['count'],0)
+
+    @unittest.skipUnless(NUMPY,'Needs NumPy.')
+    def test_close_parallel_faces_are_a_warning(self):
+        from assetkit.geometry_audit import close_faces, CLOSE_GAP
+        self.assertEqual(CLOSE_GAP,.03)
+        close = close_faces(compile_recipe(sign_on_board(.01))[0])
+        self.assertEqual(close['count'],4)                          # 2 x 2 triangles of the two front faces
+        self.assertEqual((close['pairs'][0]['front'],close['pairs'][0]['behind']),('panel','board'))
+        self.assertAlmostEqual(close['pairs'][0]['gap_min'],.01,places=4)
+        self.assertTrue(close['summary'][0].startswith('close_faces: 4 between panel and board: panel\'s faces 10.0 mm in front of'),
+                        close['summary'][0])
+        self.assertAlmostEqual(close['pairs'][0]['fights_from']['grazing'],2.9,places=1)
+        self.assertEqual(close_faces(compile_recipe(sign_on_board(.04))[0])['count'],0,'4 cm is clear')
+        # in one plane is a coplanar overlap, not this; back to back (a plate under a box) neither
+        flush = recipe() | {'nodes':[{'id':'board','op':'box','size':[2,1,.1]},
+                                     {'id':'panel','op':'box','size':[1,.5,.05],'transform':{'translate':[0,0,-.025]}}]}
+        self.assertEqual(close_faces(compile_recipe(flush)[0])['count'],0)
+        under = recipe() | {'nodes':[{'id':'box','op':'box','size':[1,1,1]},
+                                     {'id':'plate','op':'box','size':[1,.01,1],'open':['-y','-x','+x','-z','+z'],
+                                      'transform':{'translate':[0,-.51,0]}}]}
+        self.assertEqual(close_faces(compile_recipe(under)[0])['count'],0)
+        code,out = kit('inspect','-',stdin=sign_on_board(.01))
+        self.assertEqual((code,out['ok'],out['close_faces']['count']),(0,True,4))
+        self.assertIn('3 cm proud',out['close_faces']['hint'])
+
+    @unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+    def test_verify_warns_of_close_parallel_faces_and_passes(self):
+        from assetkit.visibility import verify
+        report = verify(sign_on_board(.01),{'yaw_steps':4,'pitches':[0],'distances':[1],'depth':True,'perspective':True},
+                        compiler=COMPILER,probe=PROBE)
+        self.assertTrue(report['ok'],report['failures'])
+        self.assertEqual(list(report)[:5],['ok','verdict','failures','allowed','warnings'])
+        self.assertTrue(report['warnings'][0].startswith('close_faces: 4 between panel and board'))
+        self.assertEqual(report['geometry']['close_faces']['count'],4)
+
+    def test_inspect_reports_in_full_over_budget(self):
+        r = recipe({'id':'ball','op':'sphere','radius':1,'rings':8,'segments':16},budget={'triangles':100,'vertices':50})
+        with self.assertRaises(AssetError):
+            compile_recipe(r)
+        code,out = kit('inspect','-',stdin=r)
+        self.assertEqual((code,out['ok']),(0,True))
+        breaches = [w for w in out['warnings'] if w['code'] == 'over_budget']
+        self.assertEqual([(w['key'],w['count'],w['budget']) for w in breaches],[('vertices',114,50),('triangles',224,100)])
+        self.assertEqual(out['parts'][0]['triangles'],224)
+        self.assertEqual(kit('build','-','-o',tempfile.gettempdir()+'/never-written',stdin=r)[1]['errors'][0]['path'],
+                         '/budget/vertices')
+
+    def test_inspect_lists_texture_windows_and_names_them_when_over_seven(self):
+        def material(k):
+            return {'color':'#808080','texture':{'pattern':'checker','colors':['#000000',f'#{k:02x}{k:02x}{k:02x}']}}
+        r = recipe() | {'materials':{f'm{k}':material(k*16) for k in range(8)} | {'twin':material(0)},
+                        'nodes':[{'id':f'b{k}','op':'box','size':[1,1,1],'material':f'm{k}',
+                                  'transform':{'translate':[2*k,0,0]}} for k in range(7)] +
+                                [{'id':'twin','op':'box','size':[1,1,1],'material':'twin','transform':{'translate':[0,2,0]}}]}
+        code,out = kit('inspect','-',stdin=r)
+        windows = out['texture_windows']
+        self.assertEqual((windows['used'],windows['max']),(7,7))
+        self.assertEqual(windows['windows'][0],{'window':1,'texture':"pattern 'checker'",'size':[16,16],'bits':4,
+                                                'materials':['m0','twin']},'one tile, one window, both materials')
+        r['nodes'].append({'id':'b7','op':'box','size':[1,1,1],'material':'m7','transform':{'translate':[0,4,0]}})
+        code,out = kit('inspect','-',stdin=r)
+        message = out['errors'][0]['message']
+        self.assertIn('8 different repeating textures',message)
+        self.assertIn("1: pattern 'checker' 16 x 16 (m0, twin)",message)
+        self.assertIn('8: pattern \'checker\' 16 x 16 (m7)',message)
+
+    def test_inspect_warns_of_mirror_copies_and_parts_below_ground(self):
+        def warnings(r):
+            return {w['code']:w for w in kit('inspect','-',stdin=r)[1]['warnings']}
+        centred = recipe({'id':'post','op':'box','size':[.2,1,.2],'modifiers':[{'op':'mirror','axis':'x'}]})
+        w = warnings(centred)
+        self.assertEqual(w['mirror_coincides']['part'],'post')
+        self.assertEqual(w['mirror_coincides']['path'],'/nodes/0/modifiers/0')
+        self.assertIn('below_ground',w)
+        self.assertEqual(w['below_ground']['parts'],['post'])
+        across = recipe({'id':'arm','op':'box','size':[1,1,1],'transform':{'translate':[0,.5,0]},
+                         'modifiers':[{'op':'mirror','axis':'x','offset':.2}]})
+        w = warnings(across)
+        self.assertIn('mirror_overlaps',w)
+        self.assertNotIn('below_ground',w,'the transform lifts it after the modifier')
+        touching = recipe({'id':'wing','op':'group','children':[
+            {'id':'half','op':'box','size':[1,.2,1],'transform':{'translate':[.5,1,0]}}],
+            'modifiers':[{'op':'mirror','axis':'x'}]})
+        w = warnings(touching)
+        self.assertEqual(w['mirror_touches']['count'],2)
+        self.assertEqual(w['mirror_touches']['part'],'wing')
+        touching['nodes'][0]['children'][0]['open'] = ['-x']
+        self.assertEqual(set(warnings(touching)),set(),'the two open halves close each other')
+        # these are inspect's: build's report and --strict are as before
+        _,_,report = compile_recipe(centred)
+        self.assertNotIn('mirror_coincides',{w['code'] for w in report['warnings']})
+
+    def test_texture_splits_no_longer_collapse_and_the_error_says_why(self):
+        from assetkit import textures
+        wall = recipe({'id':'wall','op':'mesh','material':'brick','faces':[[3,2,1,0]],
+                       'vertices':[[-3.3,0,0],[-2.1,0,0],[-2.1,2,0],[-3.3,2,0]]},
+                      materials={'brick':{'color':'#884422','texture':{'pattern':'brick','colors':['#884422','#dddddd'],
+                                                                      'projection':'planar','scale':[.1,.1]}}})
+        mesh,_,report = compile_recipe(wall)            # a corner 2e-13 texels off a cut line made a sliver
+        self.assertGreater(report['textures']['split_faces'],0)
+        saved = textures.ON_LINE
+        textures.ON_LINE = -1                           # as before: cut there
+        try:
+            with self.assertRaises(AssetError) as caught:
+                compile_recipe(wall)
+        finally:
+            textures.ON_LINE = saved
+        self.assertEqual(caught.exception.path,'/materials/brick/texture/scale')
+        for text in ("material 'brick'","pattern 'brick'",'16 x 16 texels','scale [0.1, 0.1]','power-of-two'):
+            self.assertIn(text,str(caught.exception))
+
+    def test_planarity_error_states_deviation_and_tolerance(self):
+        bent = recipe({'id':'leaf','op':'mesh','vertices':[[0,0,0],[1,0,0],[1,1,.1],[0,1,0]],'faces':[[0,1,2,3]]})
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(bent)
+        message = str(caught.exception)
+        self.assertIn('0.0499 units off the plane',message)
+        self.assertIn('the tolerance is 1.42e-06 units',message)
+
+    def test_errors_name_the_nodes_on_their_path(self):
+        from mei_assets import node_of
+        r = recipe() | {'nodes':[{'id':'body','op':'box','size':[1,1,1]},
+                                 {'op':'group','children':[{'id':'arm','op':'box','size':[1,1,0]}]}],
+                        'prototypes':{'wheel':{'id':'rim','op':'box','size':[1,1,1]}},
+                        'lod':{'levels':[{'distance':10,'nodes':[{'id':'lump','op':'box','size':[1,1,1]}]}]}}
+        self.assertEqual(node_of(r,'/nodes/1/children/0/size/2'),'group_1/arm')
+        self.assertEqual(node_of(r,'/prototypes/wheel/size'),'prototype wheel: rim')
+        self.assertEqual(node_of(r,'/lod/levels/0/nodes/0/size'),'lod level 1: lump')
+        self.assertIsNone(node_of(r,'/budget/triangles'))
+        code,out = kit('validate','-',stdin=r)
+        self.assertEqual(out['errors'][0]['path'],'/nodes/1/children/0/size/2')
+        self.assertEqual(out['errors'][0]['node'],'group_1/arm')
+
+    def test_open_sides_by_axis(self):
+        names = ['back','top','left']
+        for axes in (['-z','+y','-x'],['back','+y','-x']):
+            a = native_bytes(*compile_recipe(recipe({'id':'b','op':'box','size':[1,2,3],'open':names}))[:2],{})
+            b = native_bytes(*compile_recipe(recipe({'id':'b','op':'box','size':[1,2,3],'open':axes}))[:2],{})
+            self.assertEqual(a,b)
+        for side,axis in (('front','+z'),('right','+x'),('bottom','-y')):
+            a = native_bytes(*compile_recipe(recipe({'id':'b','op':'box','size':[1,2,3],'open':[side]}))[:2],{})
+            b = native_bytes(*compile_recipe(recipe({'id':'b','op':'box','size':[1,2,3],'open':[axis]}))[:2],{})
+            self.assertEqual(a,b)
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(recipe({'id':'b','op':'box','size':[1,1,1],'open':['back','-z']}))
+        self.assertIn('Name each side once',str(caught.exception))
+        with self.assertRaises(AssetError):
+            compile_recipe(recipe({'id':'b','op':'box','size':[1,1,1],'open':['z']}))
+
+
+FD_MATERIALS = {'wall':{'color':'#c8b8a0'},'sign':{'color':'#d04030'},'roof':{'color':'#404040'},
+                'poster':{'color':'#2040d0','texture':{'projection':'fit','colors':['#000000','#ffffff'],
+                                                       'texels':['0111','0000']}}}
+
+
+def fd_recipe(*nodes, **extra):
+    return recipe(**{'materials':dict(FD_MATERIALS),**extra}) | {'nodes':list(nodes)}
+
+
+def side_materials(mesh):
+    """{(axis, sign) of the face normal: set of materials}."""
+    out = {}
+    for f in mesh.faces:
+        a,b,c = (mesh.vertices[i] for i in f.indices)
+        n = cross(sub(b,a),sub(c,a))
+        k = max(range(3),key=lambda i: abs(n[i]))
+        out.setdefault((k,1 if n[k] > 0 else -1),set()).add(f.material)
+    return out
+
+
+class FaceMaterialTests(unittest.TestCase):
+    def test_box_faces_by_name_and_axis_add_no_triangles(self):
+        plain,_,base = compile_recipe(fd_recipe({'id':'b','op':'box','size':[2,1,1],'material':'wall'}))
+        for faces in ({'top':'roof','back':'sign'},{'+y':'roof','-z':'sign'}):
+            mesh,_,rep = compile_recipe(fd_recipe({'id':'b','op':'box','size':[2,1,1],'material':'wall','faces':faces}))
+            self.assertEqual((rep['triangles'],rep['vertices']),(base['triangles'],base['vertices']))
+            sides = side_materials(mesh)
+            self.assertEqual(sides[(1,1)],{'roof'})
+            self.assertEqual(sides[(2,-1)],{'sign'})
+            self.assertEqual(sides[(0,1)],{'wall'})
+            self.assertEqual(rep['face_maps'],[{'part':'b','path':'/nodes/0','sides':{'back':'sign','top':'roof'},
+                                                'triangles':{'back':2,'top':2}}])
+            self.assertEqual(rep['parts'][0]['boundary_edges'],0)
+        self.assertNotIn('face_maps',base)
+
+    def test_caps_and_sides(self):
+        for op,extra in (('cylinder',{'radius':.5,'height':1}),('lathe',{'profile':[[.5,0],[.4,1]]}),
+                         ('loft',{'sections':[{'y':0,'points':[[-1,-1],[1,-1],[1,1],[-1,1]]},
+                                              {'y':1,'points':[[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]]}]})):
+            with self.subTest(op=op):
+                node = {'id':'c','op':op,'material':'wall','faces':{'top':'roof','-y':'sign'},**extra}
+                mesh,_,rep = compile_recipe(fd_recipe(node))
+                _,_,base = compile_recipe(fd_recipe({k:v for k,v in node.items() if k != 'faces'}))
+                self.assertEqual(rep['triangles'],base['triangles'])
+                sides = side_materials(mesh)
+                self.assertEqual(sides[(1,1)],{'roof'})
+                self.assertEqual(sides[(1,-1)],{'sign'})
+        mesh,_,_ = compile_recipe(fd_recipe({'id':'c','op':'cone','radius':.5,'height':1,'faces':{'side':'sign','bottom':'roof'}}))
+        self.assertEqual({f.material for f in mesh.faces},{'sign','roof'})
+        mesh,_,_ = compile_recipe(fd_recipe({'id':'e','op':'extrude','points':[[0,0],[1,0],[0,1]],'depth':1,
+                                             'material':'wall','faces':{'+z':'sign'}}))
+        self.assertEqual(side_materials(mesh)[(2,1)],{'sign'})
+        self.assertEqual(side_materials(mesh)[(2,-1)],{'wall'})
+
+    def test_errors_name_the_side_and_why(self):
+        cases = [
+            ({'op':'box','size':[1,1,1],'open':['front'],'faces':{'+z':'sign'}},'/nodes/0/faces/+z','is open'),
+            ({'op':'box','size':[1,1,1],'faces':{'top':'sign','+y':'roof'}},'/nodes/0/faces/+y','named twice'),
+            ({'op':'box','size':[1,1,1],'faces':{'top':'nope'}},'/nodes/0/faces/top',"Unknown material 'nope'"),
+            ({'op':'cone','radius':1,'height':1,'faces':{'top':'sign'}},'/nodes/0/faces/top','A cone has no top cap'),
+            ({'op':'cylinder','radius':1,'height':1,'caps':False,'faces':{'bottom':'sign'}},'/nodes/0/faces/bottom','caps is false'),
+            ({'op':'lathe','profile':[[1,0],[0,1]],'faces':{'top':'sign'}},'/nodes/0/faces/top','ends in a point'),
+        ]
+        for node,path,text in cases:
+            with self.subTest(text=text):
+                with self.assertRaises(AssetError) as caught:
+                    compile_recipe(fd_recipe(node))
+                self.assertEqual(caught.exception.path,path)
+                self.assertIn(text,str(caught.exception))
+        with self.assertRaises(AssetError) as caught:      # schema: a sphere has no sides
+            compile_recipe(fd_recipe({'op':'sphere','radius':1,'faces':{'top':'sign'}}))
+        self.assertEqual(caught.exception.path,'/nodes/0/faces')
+
+    def test_instance_material_keeps_face_maps_and_decals(self):
+        r = fd_recipe({'id':'one','op':'instance','ref':'stall','material':'wall'},
+                      prototypes={'stall':{'op':'box','size':[2,1,1],'material':'roof','faces':{'back':'sign'},
+                                           'decals':[{'face':'left','material':'poster','size':[.4,.4]}]}})
+        mesh,_,_ = compile_recipe(r)
+        sides = side_materials(mesh)
+        self.assertEqual(sides[(2,-1)],{'sign'})
+        self.assertEqual(sides[(0,-1)],{'wall','poster'})
+        self.assertEqual(sides[(1,1)],{'wall'})
+
+    def test_texture_windows_count_face_materials(self):
+        mats = {f'm{k}':{'color':'#808080','texture':{'pattern':'checker','colors':['#000000',f'#{32*k+16:02x}0000']}}
+                for k in range(8)}
+        node = {'id':'b','op':'box','size':[1,1,1],'material':'m0',
+                'faces':dict(zip(('top','bottom','left','right','back'),('m1','m2','m3','m4','m5')))}
+        r = recipe(node,materials=mats)
+        code,out = kit('inspect','-',stdin=r)
+        self.assertEqual(code,0,out)
+        self.assertEqual(out['texture_windows']['used'],6)
+        r['nodes'] = [node,{'id':'c','op':'box','size':[1,1,1],'material':'m6','faces':{'top':'m7'},
+                            'transform':{'translate':[2,0,0]}}]
+        code,out = kit('inspect','-',stdin=r)
+        self.assertEqual(code,1)
+        self.assertIn('8 different repeating textures',out['errors'][0]['message'])
+
+
+class DecalTests(unittest.TestCase):
+    def wall(self, *decals, **extra):
+        return fd_recipe({'id':'wall','op':'box','size':[4,3,.2],'material':'wall','open':['bottom'],
+                          'decals':list(decals),**extra})
+
+    def test_each_decal_adds_8_triangles_and_4_vertices_and_keeps_the_part_closed(self):
+        _,_,base = compile_recipe(fd_recipe({'id':'b','op':'box','size':[4,3,1]}))
+        for count in (1,2,5):
+            decals = [{'face':'back','material':'poster','size':[.5,.5],'at':[-1.6+.8*k,0]} for k in range(count)]
+            mesh,_,rep = compile_recipe(fd_recipe({'id':'b','op':'box','size':[4,3,1],'decals':decals}))
+            self.assertEqual(rep['triangles'],base['triangles']+8*count)
+            self.assertEqual(rep['vertices'],base['vertices']+4*count)
+            part = rep['parts'][0]
+            self.assertEqual((part['boundary_edges'],part['nonmanifold_edges'],part['inconsistent_edges']),(0,0,0))
+            self.assertGreater(volume(mesh),0)
+            self.assertEqual([d['added_triangles'] for d in rep['decals']],[8]*count)
+        for node in ({'op':'cylinder','radius':1,'height':1,'segments':16},
+                     {'op':'extrude','points':[[0,0],[2,0],[2,1],[1,1],[1,2],[0,2]],'depth':.5},
+                     {'op':'lathe','profile':[[1,0],[.6,1]]}):
+            with self.subTest(op=node['op']):
+                face = 'back' if node['op'] == 'extrude' else 'top'
+                at = [.5,1.4] if node['op'] == 'extrude' else [0,0]
+                _,_,a = compile_recipe(fd_recipe(node))
+                _,_,b = compile_recipe(fd_recipe({**node,'decals':[{'face':face,'material':'poster','size':[.4,.3],'at':at}]}))
+                self.assertEqual(b['triangles'],a['triangles']+8)
+                self.assertEqual(b['parts'][0]['boundary_edges'],0)
+
+    def test_decal_lies_in_the_face_with_its_texture_once_over_it(self):
+        mesh,_,rep = compile_recipe(self.wall({'id':'poster','face':'-z','material':'poster','size':[.8,1.2],'at':[.8,.1]}))
+        faces = [f for f in mesh.faces if f.decal == 'wall/poster']
+        self.assertEqual(len(faces),2)
+        self.assertTrue(all(f.material == 'poster' for f in faces))
+        points = {tuple(round(c,4) for c in mesh.vertices[i]) for f in faces for i in f.indices}
+        # the wall's back face is at z -0.1; "right" on it is +X, up +Y, from the box's centre
+        self.assertEqual(points,{(x,y,-.1) for x in (.4,1.2) for y in (-.5,.7)})
+        # u runs right, v down, the whole texture (4 x 2 texels) once
+        uv = {tuple(round(c,4) for c in mesh.vertices[i]):t for f in faces for i,t in zip(f.indices,f.texcoords)}
+        self.assertEqual(uv[(.4,.7,-.1)],(0,0))
+        self.assertEqual(uv[(1.2,.7,-.1)],(4,0))
+        self.assertEqual(uv[(1.2,-.5,-.1)],(4,2))
+        decal = rep['decals'][0]
+        self.assertEqual((decal['id'],decal['part'],decal['face'],decal['material'],decal['triangles']),
+                         ('wall/poster','wall','back','poster',2))
+        self.assertEqual(decal['normal'],[0,0,-1])
+        self.assertEqual(decal['path'],'/nodes/0/decals/0')
+
+    def test_texture_rotate_applies_to_a_decal(self):
+        r = self.wall({'id':'p','face':'back','material':'poster','size':[1,2]})
+        r['materials']['poster'] = {'color':'#000000','texture':{**FD_MATERIALS['poster']['texture'],'rotate':90}}
+        mesh,_,_ = compile_recipe(r)
+        uv = {tuple(round(c,4) for c in mesh.vertices[i]):t for f in mesh.faces if f.decal for i,t in zip(f.indices,f.texcoords)}
+        self.assertEqual(set(uv.values()),{(0,0),(4,0),(0,2),(4,2)})
+        self.assertEqual(uv[(-.5,1,-.1)],(0,2))         # top-left shows the texture's bottom-left
+
+    @unittest.skipUnless(NUMPY,'The geometry audit needs NumPy.')
+    def test_no_flush_contacts_or_t_junctions(self):
+        from assetkit.geometry_audit import geometry_audit
+        r = self.wall(*[{'face':'back','material':'poster','size':[.6,.6],'at':[x,y]} for x in (-1,0,1) for y in (-.6,.6)],
+                      {'face':'left','material':'sign','size':[.1,.5]})
+        mesh,_,_ = compile_recipe(r)
+        audit = geometry_audit(mesh,t_junctions=True)
+        self.assertTrue(audit['ok'],audit['summary'])
+        code,out = kit('inspect','-',stdin=r)
+        self.assertEqual(code,0)
+        self.assertEqual(out['flush_contacts']['count'],0)
+        self.assertEqual(out['close_faces']['pairs'],[])
+        self.assertEqual(len(out['decals']),7)
+
+    def test_errors_name_the_decal_and_why(self):
+        cases = [
+            ({'face':'back','material':'poster','size':[1,1],'at':[1.8,0]},'/nodes/0/decals/0',
+             "its right edge is 0.3 past the face's right edge"),
+            ({'face':'back','material':'poster','size':[4,1]},'/nodes/0/decals/0','within 0.001 of the face'),
+            ({'face':'bottom','material':'poster','size':[1,.1]},'/nodes/0/decals/0/face','is open'),
+            ({'face':'back','material':'nope','size':[1,1]},'/nodes/0/decals/0/material',"Unknown material 'nope'"),
+            ({'face':'back','material':'sign','size':[1,1]},None,None),
+            ({'face':2,'material':'sign','size':[1,1]},'/nodes/0/decals/0/face','Name the side'),
+            ({'face':'z','material':'sign','size':[1,1]},'/nodes/0/decals/0/face',"A box has no side 'z'"),
+        ]
+        for decal,path,text in cases:
+            with self.subTest(decal=decal):
+                if path is None:
+                    compile_recipe(self.wall(decal))
+                    continue
+                with self.assertRaises(AssetError) as caught:
+                    compile_recipe(self.wall(decal))
+                self.assertEqual(caught.exception.path,path)
+                self.assertIn(text,str(caught.exception))
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(self.wall({'face':'back','material':'sign','size':[1,1]},
+                                     {'face':'back','material':'sign','size':[1,1],'at':[.5,.5]}))
+        self.assertEqual(caught.exception.path,'/nodes/0/decals/1')
+        self.assertIn("overlaps decal 'decal_0'",str(caught.exception))
+        r = self.wall({'face':'back','material':'checks','size':[1,1]})
+        r['materials']['checks'] = {'color':'#000000','texture':{'pattern':'checker','colors':['#000000','#ffffff']}}
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(r)
+        self.assertIn('"projection": "fit"',str(caught.exception))
+        for node,text in (({'op':'cylinder','radius':1,'height':1},'curved'),
+                          ({'op':'extrude','points':[[0,0],[1,0],[0,1]],'depth':1},'several faces')):
+            with self.assertRaises(AssetError) as caught:
+                compile_recipe(fd_recipe({**node,'decals':[{'face':'side','material':'sign','size':[.1,.1]}]}))
+            self.assertIn(text,str(caught.exception))
+        # an L-shaped outline: the decal must not cross its notch
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(fd_recipe({'op':'extrude','points':[[0,0],[2,0],[2,1],[1,1],[1,2],[0,2]],'depth':1,
+                                      'decals':[{'face':'back','material':'sign','size':[.6,.6],'at':[1.3,1.3]}]}))
+        self.assertIn("crosses the face's outline",str(caught.exception))
+
+    def test_mesh_polygon_decal_and_modifiers_copy_it(self):
+        node = {'id':'m','op':'mesh','vertices':[[0,0,0],[0,1,0],[1,1,0],[1,0,0]],'faces':[[0,1,2,3]],
+                'decals':[{'id':'d','face':0,'material':'sign','size':[.5,.5],'at':[.5,.5]}]}
+        _,_,rep = compile_recipe(fd_recipe(node))
+        self.assertEqual(rep['triangles'],10)
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(fd_recipe({**node,'decals':[{'face':1,'material':'sign','size':[.5,.5]}]}))
+        self.assertIn('polygon by its index, 0-0',str(caught.exception))
+        node = {'id':'b','op':'box','size':[1,1,1],'decals':[{'id':'d','face':'back','material':'sign','size':[.4,.4]}],
+                'modifiers':[{'op':'array','count':3,'step':[2,0,0]}]}
+        _,_,rep = compile_recipe(fd_recipe(node))
+        self.assertEqual(rep['triangles'],3*20)
+        self.assertEqual((rep['decals'][0]['triangles'],rep['decals'][0]['added_triangles']),(6,24))
+        self.assertAlmostEqual(rep['decals'][0]['bounds']['min'][0],-.2,4)
+        self.assertAlmostEqual(rep['decals'][0]['bounds']['max'][0],4.2,4)
+
+    def test_ring_around_a_decal_keeps_a_mesh_polygons_hand_uvs_and_material(self):
+        # a 2 x 1 quad facing -Z with hand UVs u = 1.5 (x + 1), v = 0.5 - y: three repeats across,
+        # not what the tile's box projection (one repeat a unit) would give
+        r = fd_recipe({**quad(2,1,uvs=[[0,1],[3,1],[3,0],[0,0]]),'material':'wall','face_materials':['tile'],
+                       'decals':[{'id':'d','face':0,'material':'poster','size':[.4,.4],'at':[.3,.1]}]})
+        r['materials']['tile'] = {'color':'#808080','texture':{'pattern':'checker','colors':['#000000','#ffffff']}}
+        mesh,_,_ = compile_recipe(r)
+        ring = [f for f in mesh.faces if f.decal is None]
+        self.assertEqual(len(ring),8)
+        for f in ring:
+            self.assertEqual(f.material,'tile')
+            self.assertIsNotNone(f.uv)
+            for i,uv in zip(f.indices,f.uv):
+                x,y,_ = mesh.vertices[i]
+                self.assertAlmostEqual(uv[0],1.5*(x+1),4)
+                self.assertAlmostEqual(uv[1],.5-y,4)
+        # the decal keeps its own texture once over its rectangle
+        decal = {tuple(round(c,4) for c in mesh.vertices[i]):uv for f in mesh.faces if f.decal for i,uv in zip(f.indices,f.uv)}
+        self.assertEqual(decal[(.1,.3,0)],(0,0))
+        self.assertEqual(decal[(.5,-.1,0)],(1,1))
+
+    def test_ring_interpolates_hand_uvs_over_each_triangle_of_the_polygon(self):
+        # an L-shaped polygon facing -Z whose hand UVs are not one affine map (the corner at (1, 2)
+        # is pulled out): each new corner takes the UVs of the polygon's triangle it lies in
+        verts = [[0,0,0],[2,0,0],[2,1,0],[1,1,0],[1,2,0],[0,2,0]]
+        uvs = [[0,2],[2,2],[2,1],[1,1],[1.5,-.5],[0,0]]
+        node = {'id':'l','op':'mesh','vertices':verts,'faces':[[5,4,3,2,1,0]],'uvs':uvs,'material':'tile'}
+        materials = {**FD_MATERIALS,'tile':{'color':'#808080','texture':{'pattern':'checker','colors':['#000000','#ffffff']}}}
+        before,_,_ = compile_recipe(fd_recipe(node) | {'materials':materials})
+        mesh,_,_ = compile_recipe(fd_recipe({**node,'decals':[{'face':0,'material':'sign','size':[.2,.2],'at':[.5,1.5]}]})
+                                  | {'materials':materials})
+
+        def lookup(p):
+            # the hand UVs at p, from the undecorated polygon's own triangles
+            for f in before.faces:
+                a,b,c = ((before.vertices[i][0],before.vertices[i][1]) for i in f.indices)
+                d = (b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0])
+                s = ((p[0]-a[0])*(c[1]-a[1])-(p[1]-a[1])*(c[0]-a[0]))/d
+                t = ((b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0]))/d
+                if min(s,t,1-s-t) > -1e-9:
+                    ua,ub,uc = f.uv
+                    return tuple(ua[k]+s*(ub[k]-ua[k])+t*(uc[k]-ua[k]) for k in (0,1))
+            self.fail(f'{p} is outside the polygon')
+        ring = [f for f in mesh.faces if f.decal is None]
+        self.assertEqual(len(ring),10)
+        for f in ring:
+            self.assertIsNotNone(f.uv)
+            for i,uv in zip(f.indices,f.uv):
+                want = lookup(mesh.vertices[i])
+                self.assertAlmostEqual(uv[0],want[0],4)
+                self.assertAlmostEqual(uv[1],want[1],4)
+
+    def test_preview_part_frames_a_decal_face_on(self):
+        from assetkit.preview import part_camera
+        _,_,rep = compile_recipe(self.wall({'id':'poster','face':'back','material':'poster','size':[.8,1.2],'at':[.8,.1]},
+                                           transform={'translate':[0,1.5,0]}))
+        view = part_camera(rep['parts'],'wall/poster',rep['decals'])
+        self.assertTrue(view['name'].startswith('decal_wall_poster'))
+        self.assertLess(view['eye'][2],-1)                 # on the -Z side, looking at the face
+        self.assertAlmostEqual(view['eye'][0],.8,3)
+        self.assertAlmostEqual(view['eye'][1],1.6,3)
+        with self.assertRaises(AssetError) as caught:
+            part_camera(rep['parts'],'wall/nope',rep['decals'])
+        self.assertIn('Decals: wall/poster',str(caught.exception))
+
+    @unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+    def test_baked_decal_passes_both_modes_where_a_proud_quad_fails_without_depth(self):
+        from assetkit.visibility import verify
+        profile = {'yaw_steps':8,'pitches':[-.35,0],'distances':[1]}
+        baked = fd_recipe({'id':'wall','op':'box','size':[4,3,.2],'material':'wall','open':['bottom'],
+                           'decals':[{'id':'poster','face':'back','material':'sign','size':[.8,1.2],'at':[.8,.1]}]})
+        proud = fd_recipe({'id':'wall','op':'box','size':[4,3,.2],'material':'wall','open':['bottom']},
+                          {'id':'poster','op':'mesh','material':'sign','vertices':[[-.4,.6,0],[.4,.6,0],[.4,-.6,0],[-.4,-.6,0]],
+                           'faces':[[0,1,2,3]],'transform':{'translate':[.8,.1,-.135]}})
+        for depth in (False,True):
+            report = verify(baked,{**profile,'depth':depth},compiler=COMPILER,probe=PROBE)
+            self.assertTrue(report['ok'],report['failures'])
+            self.assertEqual(report['geometry']['counts'],{})
+        report = verify(proud,profile,compiler=COMPILER,probe=PROBE)
+        self.assertFalse(report['ok'])
+        self.assertGreater(report['totals']['wrong_pixels'],0)
+
+
+class InfoFloorsTests(unittest.TestCase):
+    """mei_assets.py info and floors (assetkit/info.py): read-only facts from the recipe."""
+
+    def platform(self):
+        # a slab 4 x 1 x 2 standing on y = 0, and a ramp up the east end too steep to stand on
+        return recipe({'id':'slab','op':'box','size':[4,1,2],'transform':{'translate':[0,0.5,0]}},
+                      lod={'levels':[{'distance':20,'nodes':[{'id':'slab','op':'box','size':[4,1,2],
+                                                               'transform':{'translate':[0,0.5,0]}}]}]})
+
+    def test_info_bounds_levels_and_collision(self):
+        from assetkit import info as I
+        r = I.info(self.platform(),None,'self',[10,0,5],90)
+        self.assertEqual(r['bounds'],{'min':[-2,0,-1],'max':[2,1,1]})
+        self.assertEqual(r['placed']['bounds'],{'min':[9,0,3],'max':[11,1,7]})     # yaw 90: +Z toward +X
+        self.assertEqual([(l['level'],l['distance']) for l in r['lod']['levels']],[(0,0),(1,20)])
+        c = r['collision']
+        self.assertEqual((c['floors'],c['ceilings'],c['walls'],c['triangles']),(2,2,8,12))
+        self.assertEqual((c['top_floor'],c['placed_top_floor']),(1.0,1.0))
+        self.assertIsNone(r['textures'])
+        self.assertEqual(I.info(self.platform(),None,'none')['collision'],{'source':'none'})
+
+    def test_kinds_are_the_world_kits(self):
+        # the floors, walls and ceilings info counts are the ones the World Kit's collision files
+        from assetkit import info as I
+        from worldkit import pack as P
+        r = recipe({'id':'wedge','op':'extrude','depth':2,'points':[[0,0],[3,0],[3,1],[1.5,1],[0,5]]})
+        mesh,materials,_ = compile_recipe(r)
+        cos = math.cos(math.radians(45))
+        world = [P.classify(P.front_normal(*[tuple(float(c) for c in v) for v in t]),cos,cos)
+                 for t in P.mesh_triangles(native_bytes(mesh,materials,{}))]
+        mine = I.kinds(I.triangles(mesh),45)
+        names = {P.KIND_FLOOR:'floor',P.KIND_CEILING:'ceiling',P.KIND_WALL:'wall'}
+        self.assertEqual([names[k] for k in world],['wall' if k == 'steep' else k for k in mine])
+        self.assertIn('steep',mine)
+
+    def test_floors_grid(self):
+        from assetkit import info as I
+        r = I.floors(self.platform(),None,1.0,'self')
+        self.assertEqual((r['x'],r['z']),([-2,-1,0,1,2],[-1,0,1]))
+        self.assertEqual(r['heights'][1],[1.0]*5)
+        self.assertEqual(r['marks'][0][0],'wall')            # the slab's corner: its sides pass there
+        self.assertEqual(r['floor_heights'],[1.0])
+        self.assertEqual(r['stacks'][1][2],[1.0])
+        under = I.floors(self.platform(),None,1.0,'self',below=0.5)
+        self.assertTrue(all(h is None for row in under['heights'] for h in row))
+        placed = I.floors(self.platform(),None,1.0,'self',[0,2,0],0)
+        self.assertEqual(placed['heights'][1][2],3.0)
+
+    def test_collision_beside_the_recipe(self):
+        from assetkit import info as I
+        with tempfile.TemporaryDirectory() as tmp:
+            col = recipe({'id':'deck','op':'box','size':[4,0.2,2],'transform':{'translate':[0,2.9,0]}})
+            col['name'] = 'test_col'
+            Path(tmp,'test_col.asset.json').write_text(json.dumps(col))
+            r = I.info(self.platform(),tmp)
+            self.assertIn('test_col.asset.json',r['collision']['source'])
+            self.assertEqual(r['collision']['top_floor'],3.0)
+            self.assertEqual(I.info(self.platform(),tmp,'self')['collision']['top_floor'],1.0)
+
+    @unittest.skipUnless(PILLOW,'The stall example reads a PNG sheet (Pillow).')
+    def test_info_textures(self):
+        from assetkit import info as I
+        stall = ROOT/'examples/assets/stall.asset.json'
+        r = json.loads(stall.read_text())
+        mesh,_,report = compile_recipe(r,stall.parent)
+        t = I.info(r,stall.parent)['textures']
+        self.assertEqual(t['tiles'],report['textures']['tiles'])
+        self.assertEqual(t['stored'],report['textures']['vram_bytes'])
+        self.assertEqual(len(t['textures']),len(mesh.textures['textures']))
+        self.assertEqual(t['windows']['used'],report['textures']['windows'])
+        shared = [im for im in t['images'] if len(im['materials']) > 1]
+        self.assertTrue(shared)                              # the sheet's cells share one image
+
+    def test_cli(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp,'test.asset.json')
+            path.write_text(json.dumps(self.platform()))
+            run = lambda *a: subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),*a],capture_output=True,text=True)
+            result = run('info',str(path),'--json','--at','1,2,3','--yaw','90')
+            self.assertEqual(result.returncode,0,result.stdout)
+            self.assertEqual(json.loads(result.stdout)['placed']['at'],[1,2,3])
+            result = run('floors',str(path),'--step','0.5')
+            self.assertEqual(result.returncode,0,result.stdout)
+            self.assertIn('heights',result.stdout)
+            result = run('floors',str(path),'--at','1,2')
+            self.assertEqual(result.returncode,1)
+            self.assertTrue(result.stdout.startswith('error at /arguments/at'),result.stdout)
 
 
 if __name__ == '__main__':

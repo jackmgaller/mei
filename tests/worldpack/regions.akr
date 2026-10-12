@@ -48,6 +48,18 @@ fn init() {
     wp_animate(16)
     let t2 = cycle_count()
     show("cost", t1 - t0, t2 - t1, 0)
+    // entering again: the animation wrote into slot 3 (frame 1 at t 16), so its texture is
+    // copied again and frame 0 is back
+    wp_region_enter(0, 0)
+    show("again", vram8(3 * 32768 + 128 * 8), 0, 0)
+    // a slot that still holds its texture is not copied again: a byte written by hand stays...
+    ((VRAM_TEXTURES + 3 * 32768) as *u8)[0] = 99
+    wp_region_enter(0, 0)
+    let kept = vram8(3 * 32768)
+    // ...until wp_textures_forget()
+    wp_textures_forget()
+    wp_region_enter(0, 0)
+    show("cache", kept, vram8(3 * 32768), 0)
     println("done")
 }
 

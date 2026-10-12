@@ -17,7 +17,7 @@ A 3D fantasy console modelled on PlayStation-era hardware, implemented from
   plane and a backdrop colour per line, composited with Prism's polygons at no CPU or GPU cost
   ([`PLANES.md`](PLANES.md))
 - 22,050 Hz audio: 16 channels, ADPCM, reverb; two controllers, 2 MB RAM, up to 64 MB cart ROM
-  (read in place), 1 MB VRAM
+  (read in place), 2 MB VRAM (32 texture slots, 8,192 palette colours)
 
 The look comes from those rules (texture warp, vertex wobble, sorting glitches, dither),
 not from post-processing, and everything is deterministic fixed-point.

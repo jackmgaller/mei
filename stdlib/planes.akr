@@ -129,7 +129,7 @@ fn plane(bg: s32, atlas: u32, map: u32, w: s32, h: s32, flags: u32, palette: s32
 }
 
 // The atlas address of texture slot n (a texture is also a tile atlas).
-fn tex_atlas(slot: s32) -> u32 { return (VRAM_TEXTURES + (slot & 15) * TEXTURE_SLOT_SIZE) as u32 }
+fn tex_atlas(slot: s32) -> u32 { return (VRAM_TEXTURES + (slot & 31) * TEXTURE_SLOT_SIZE) as u32 }
 
 fn plane_show(bg: s32, on: bool) {
     let b = (1 as u32) << (bg as u32)
@@ -186,7 +186,7 @@ fn tile(t: s32, palette: s32, flags: u32) -> u32 {
 
 fn __map_w(r: *u32) -> s32 { return 32 << min((r[0] & 3) as s32, 2) }
 fn __map_h(r: *u32) -> s32 { return 32 << min(((r[0] >> 2) & 3) as s32, 2) }
-fn __map_ptr(r: *u32) -> *u16 { return (0x400000 | (r[2] & 0xFF800)) as *u16 }
+fn __map_ptr(r: *u32) -> *u16 { return (0x400000 | (r[2] & 0x1FF800)) as *u16 }
 
 // Sets the entry at (x, y) of plane bg's map (wrapped into the map).
 fn map_set(bg: s32, x: s32, y: s32, entry: u32) {

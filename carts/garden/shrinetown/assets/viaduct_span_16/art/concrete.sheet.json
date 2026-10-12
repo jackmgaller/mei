@@ -1,0 +1,12 @@
+{"format": "mei-sheet", "version": 1,
+ "cells": {
+  "wall": [0, 0, 32, 32],
+  "soffit": [0, 32, 32, 32],
+  "fascia": [32, 0, 32, 32],
+  "track": [64, 0, 16, 64],
+  "trough": [80, 0, 16, 16],
+  "pier_plate": [80, 16, 16, 8],
+  "name_plate": [0, 64, 64, 16],
+  "poster_a": [96, 0, 16, 24],
+  "poster_b": [112, 0, 16, 24]
+ }}

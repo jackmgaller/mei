@@ -1,0 +1,82 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "arch_omikuji_rack_col",
+ "budget": {
+  "triangles": 40
+ },
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "post_w",
+   "op": "box",
+   "size": [
+    0.2,
+    1.8,
+    0.3
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -0.8,
+     0.9,
+     0
+    ]
+   }
+  },
+  {
+   "id": "post_e",
+   "op": "box",
+   "size": [
+    0.2,
+    1.8,
+    0.3
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.8,
+     0.9,
+     0
+    ]
+   }
+  },
+  {
+   "id": "beam",
+   "op": "box",
+   "size": [
+    1.9,
+    0.2,
+    0.4
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     1.85,
+     0
+    ]
+   }
+  }
+ ]
+}

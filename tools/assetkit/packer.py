@@ -14,8 +14,10 @@ from . import texout
 PACK_FORMAT = 'mei-asset-pack'
 
 
-def pack(recipes, name, slots, first_palette=0, palette8=14):
-    """recipes: [(recipe, folder)]. Returns (files, manifest)."""
+def pack(recipes, name, slots, first_palette=0, palette8=14, swatch=False):
+    """recipes: [(recipe, folder)]. Returns (files, manifest). swatch: keep the swatch block at row 0
+    of the first slot and write the swatch there even when no material is palette-backed, so the
+    textures can share a slot with a world's swatch (a world's is the same 16 texels)."""
     assets, seen = [], set()
     for k, (recipe, folder) in enumerate(recipes):
         try:
@@ -36,6 +38,8 @@ def pack(recipes, name, slots, first_palette=0, palette8=14):
         if not mesh.palette:
             continue
         old = mesh.palette
+        if palette <= 255 < palette+len(old['palettes']):
+            palette = 256           # an asset's palettes never cross 255, the fonts'
         shift = palette-old['palettes'][0]
         entries = [dict(e, palette=e['palette']+shift, colour=e['colour']+16*shift) for e in old['entries']]
         new = {'layout': {'slot': swatch_slot, 'row': 0, 'first': palette},
@@ -48,15 +52,17 @@ def pack(recipes, name, slots, first_palette=0, palette8=14):
         palette_files += b''.join(w.to_bytes(2, 'little') for w in words)
         colours.append((palette*16, 16*len(new['palettes'])))
         palette += len(new['palettes'])
-    if palette > 255:
-        raise AssetError('/assets', f'The palette-backed materials need {palette-first_palette} palettes from {first_palette}; palette 255 holds the fonts.')
+    if palette > 512:
+        raise AssetError('/assets', f'The palette-backed materials need {palette-first_palette} palettes from {first_palette}; there are 512 '
+                                    '(0-511), and palette 255 holds the fonts.')
 
     tiles = [t.tile for _, mesh, _, _ in assets if mesh.textures for t in mesh.textures['textures'].values()]
-    reserved = [(swatch_slot, 0, 0, 16, 8)] if relocated else []
-    packing = pack_tiles(tiles, slots=slots, first_palette=palette, palette8=palette8, reserved=reserved,
-                         path='/assets') if tiles else None
+    keep_swatch = bool(relocated) or swatch
+    reserved = [(swatch_slot, 0, 0, 16, 8)] if keep_swatch else []
+    packing = pack_tiles(tiles, slots=slots, first_palette=palette+(palette == 255), palette8=palette8,
+                         reserved=reserved, path='/assets') if tiles else None
     eight = [p for b, p in packing.palettes if b == 8] if packing else []
-    if eight and palette > 16*min(eight):
+    if any(first_palette < 16*p+16 and 16*p < palette for p in eight):
         raise AssetError('/assets', f'8-bit palette {min(eight)} covers 4-bit palettes {16*min(eight)}-{16*min(eight)+15}, '
                                     'which the palette-backed materials use. Pass a higher --palette8 or a lower --palette.')
 
@@ -108,14 +114,17 @@ def pack(recipes, name, slots, first_palette=0, palette8=14):
         manifest['textures'] = {**section, **packing.summary()}
     if relocated:
         files[name+'.pal'] = palette_files
+        lines += [f'embed {upper}_PALETTE: u16 = "{name}.pal"']
+    if keep_swatch:
         files[name+'.swatch'] = SWATCH
-        lines += [f'embed {upper}_PALETTE: u16 = "{name}.pal"', f'embed {upper}_SWATCH: u8 = "{name}.swatch"']
+        lines += [f'embed {upper}_SWATCH: u8 = "{name}.swatch"']
         body.append(f'    memcpy((VRAM_TEXTURES + {swatch_slot} * TEXTURE_SLOT_SIZE) as *u8, {upper}_SWATCH, {len(SWATCH)})')
+        manifest['swatch'] = {'file': name+'.swatch', 'slot': swatch_slot, 'row': 0, 'texels': 16}
+    if relocated:
         offset = 0
         for first, count in colours:
             body.append(f'    load_palette({first}, &{upper}_PALETTE[{offset}], {count})')
             offset += count
-        manifest['swatch'] = {'file': name+'.swatch', 'slot': swatch_slot, 'row': 0, 'texels': 16}
         manifest['palette'] = {'file': name+'.pal', 'runs': [{'first_colour': f, 'colours': c} for f, c in colours]}
     lines += ['', '// Copies the textures, the swatch and the palettes into VRAM.', f'fn {name}_load() {{', *body, '}', '']
     files[name+'.akr'] = '\n'.join(lines).encode()

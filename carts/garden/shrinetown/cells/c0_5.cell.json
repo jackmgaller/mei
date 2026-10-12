@@ -1,0 +1,33 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_5",
+ "at": [
+  0,
+  5
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "edge_rock_w320",
+   "asset": "edge_rock_w320",
+   "position": [
+    1.0,
+    29.0,
+    350.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "edge_rock_n0",
+   "asset": "edge_rock_n0",
+   "position": [
+    32.0,
+    8.0,
+    382.0
+   ],
+   "collision": "self"
+  }
+ ]
+}

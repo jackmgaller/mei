@@ -1,0 +1,344 @@
+// The shrine town's street, east and canal routes (numbered 480-499), from the alpha fix round:
+// each proves a route or a collision fix stays fixed. check.sh runs the ones town_route_cases.sh
+// lists. Coordinates are the level's (carts/garden/shrinetown/layout.py, DESIGN.md 12.9).
+
+var tr_ph: s32
+var tr_t: s32
+var tr_k: s32
+var tr_i: s32
+var tr_slow: s32
+var tr_last: vec3
+var tr_p: vec3
+
+fn route_case_init() -> bool {
+    match SCENARIO {
+        480 => { name = "shrine town: ladder E, the street up the ladder onto the fire escape and up it to the roof" }
+        481 => { name = "shrine town: the fire tower's ladder is held on its front; let go at the top onto the roof" }
+        482 => { name = "shrine town: the arcade's north gate has a top: walked onto from the arcade roof" }
+        483 => { name = "shrine town: the back awnings bounce clear of the shops' eaves from their middle too" }
+        484 => { name = "shrine town: the sento chimney's ladder onto the chimney top, red coin 7 and G3's take-off" }
+        485 => { name = "shrine town: the road wires pass over the overpass; a hop from its deck catches nothing" }
+        486 => { name = "shrine town: the collision of the road works' barriers, the school's bars and the fronts" }
+        487 => { name = "shrine town: the lane and konbini wires end on the road line" }
+        else => { return false }
+    }
+    cam.lock = false
+    tr_ph = 0
+    tr_t = 0
+    tr_k = 0
+    tr_i = 0
+    return true
+}
+
+fn route_case(f: s32) {
+    match SCENARIO {
+        480 => tr_ladder_e(f)
+        481 => tr_tower(f)
+        482 => tr_gate(f)
+        483 => tr_awnings(f)
+        484 => tr_chimney(f)
+        485 => tr_overpass(f)
+        486 => tr_collision(f)
+        487 => tr_wire_ends(f)
+        else => {}
+    }
+}
+
+// ---- helpers
+
+fn tr_layer(nm: *u8, on: bool) { wp_layer_set(wp_layer_find(nm), on) }
+
+fn tr_finish() {
+    done()
+    tr_ph = 99
+}
+
+// The body's centre stopped by a wall walking from (x, z) on the floor toward yaw for 2 s:
+// where it ended.
+fn tr_walk_to_wall(x: fixed, z: fixed, from: fixed, yaw: fixed) -> vec3 {
+    place(vec3(x, sh_floor(x, z, from), z), yaw)
+    var p = pl.pos
+    for k in 0..240 {
+        let q = p + fwd_dir(yaw) * 0.05
+        let r = wp_push(vec3(q.x, p.y + 0.5, q.z), BODY_RADIUS)
+        p = vec3(r.x, p.y, r.z)
+    }
+    return p
+}
+
+// A pole climbed from the floor at (x, z) facing yaw: jump at it, climb to the top. Returns
+// true once the body holds the top (tr_ph moves to 2).
+fn tr_climb(f: s32, x: fixed, z: fixed, from: fixed, yaw: fixed) -> bool {
+    if tr_ph == 0 {
+        if f == 0 { place(vec3(x, sh_floor(x, z, from), z), yaw); pl.spawn = vec3(x, -60.0, z) }
+        stick_v = cc_stick(yaw, 1.0)
+        if f >= 4 && f < 14 { pad_v = A }
+        if pl.st == St.Pole { tr_ph = 1; tr_t = f; note("grabbed the pole at y", pl.pos.y) }
+        if f > 150 { expect(false, "grabbed the pole", pl.pos.y) }
+        return false
+    }
+    if tr_ph == 1 {
+        stick_v = FWD
+        let p = &poles[pole_k]
+        if pl.st == St.Pole && pl.pos.y >= p.top - tv[T.PoleTop] - 0.02 {
+            tr_ph = 2
+            tr_t = f
+            note("at the pole's top, feet y", pl.pos.y)
+            return true
+        }
+        if pl.st != St.Pole && f >= tr_t + 2 { expect(false, "still on the pole", pl.pos.y) }
+        if f > tr_t + 1200 { expect(false, "climbed the pole", pl.pos.y) }
+        return false
+    }
+    return true
+}
+
+// After tr_climb: let go and push toward yaw (a ledge hang climbs); true when the body has
+// come to rest on a floor.
+fn tr_let_go(f: s32, yaw: fixed) -> bool {
+    stick_v = cc_stick(yaw, 1.0)
+    if f == tr_t + 2 { pad_v = R }
+    if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+    return f > tr_t + 6 && pl.st == St.Ground
+}
+
+// Walks waypoints (x, z) at stick m, the next when within tol on the ground; a hop when stuck.
+// True when the last is reached.
+fn tr_route(f: s32, pts: *vec2, n: s32, m: fixed, tol: fixed) -> bool {
+    if tr_i >= n { return true }
+    let w = vec3(pts[tr_i].x, 0.0, pts[tr_i].y)
+    if tw_hdist(pl.pos, w) < tol && pl.st == St.Ground {
+        tr_i += 1
+        tr_t = f
+        if tr_i >= n { return true }
+        return false
+    }
+    stick_v = cc_stick(sh_heading(w), m)
+    if (f - tr_t) % 30 == 29 {
+        if pl.st == St.Ground && tw_hdist(pl.pos, tr_last) < 0.5 { tr_slow = 16 }
+        tr_last = pl.pos
+    }
+    if tr_slow > 0 { pad_v = A; tr_slow -= 1 }
+    if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+    if f > tr_t + 600 { expect(false, "reached the waypoint", fixed(tr_i)) }
+    return false
+}
+
+// ---- 480: ladder E (shortcut E's ladder, kicked down): from the front road up the ladder, let
+// go and push south onto the escape's lowest landing (7.6), then up its five flights and over
+// the parapet onto the building's roof (15.2).
+
+const ESCAPE_UP: [10]vec2 = [vec2(195.0, 103.35), vec2(194.6, 103.0), vec2(194.6, 102.5),
+    vec2(198.3, 102.5), vec2(198.5, 103.25), vec2(194.6, 103.25), vec2(194.6, 102.4),
+    vec2(198.3, 102.4), vec2(198.5, 103.25), vec2(194.7, 103.35)]
+
+fn tr_ladder_e(f: s32) {
+    if tr_ph == 99 { return }
+    if f == 0 {
+        tr_layer("ladder_e_up", false)
+        tr_layer("ladder_e", true)
+        attach_init()
+    }
+    if tr_ph < 2 {
+        let _ = tr_climb(f, 198.5, 106.0, 2.0, 3.1416)
+        return
+    }
+    if tr_ph == 2 {
+        if tr_let_go(f, 3.1416) {
+            note("let go: at rest at y", pl.pos.y)
+            expect(pl.pos.y > 7.5 && pl.pos.y < 7.8 && pl.pos.z < 104.0, "on the escape's lowest landing, y", pl.pos.y)
+            tr_ph = 3
+            tr_t = f
+            tr_i = 0
+        }
+        if f > tr_t + 300 { expect(false, "came to rest", pl.pos.y) }
+        return
+    }
+    if tr_ph == 3 {
+        if tr_route(f, &ESCAPE_UP[0], len(ESCAPE_UP) as s32, 0.4, 0.3) {
+            expect(near(pl.pos.y, 15.2, 0.05), "on the escape's top landing, y", pl.pos.y)
+            tr_ph = 4
+            tr_t = f
+        }
+        return
+    }
+    // over the parapet (0.8): a running jump south from the top landing onto the roof
+    stick_v = cc_stick(3.1416, 1.0)
+    if f >= tr_t + 4 && f < tr_t + 20 { pad_v = A }
+    if f > tr_t + 30 && pl.st == St.Ground {
+        expect(pl.pos.y > 15.1 && pl.pos.z < 101.8, "on the building's roof, y", pl.pos.y)
+        tr_finish()
+    }
+    if f > tr_t + 300 { expect(false, "came to rest", pl.pos.y) }
+}
+
+// ---- 481: the fire tower's ladder, a front pole held from the south (the alley): sideways on
+// the stick does not take the body round into the tower; let go at the top and push north: a
+// ledge hang on the eave, onto the lookout's roof.
+
+fn tr_tower(f: s32) {
+    if tr_ph == 99 { return }
+    if tr_ph < 2 {
+        if tr_climb(f, 102.0, 71.2, 2.0, NORTH) {
+            expect(poles[pole_k].front, "a front pole", 0.0)
+        }
+        return
+    }
+    if tr_ph == 2 {
+        stick_v = cc_stick(EAST, 1.0)
+        if f == tr_t + 90 {
+            expect(near(pole_ang, PI, 0.01) || near(pole_ang, -PI, 0.01), "still on its south face", pole_ang)
+            tr_ph = 3
+            tr_t = f
+        }
+        return
+    }
+    if tr_let_go(f, NORTH) {
+        expect(pl.pos.y > 14.3 && was(St.LedgeHang), "onto the roof by a ledge hang, y", pl.pos.y)
+        tr_finish()
+    }
+    if f > tr_t + 400 { expect(false, "came to rest", pl.pos.y) }
+}
+
+// ---- 482: the arcade's north gate (z 94): its crest and its name board's top are floors; a
+// walk north off the arcade roof's end (8.5) steps onto the crest, not through it to the road
+// (then on over its far side, 0.3 m on: the gate is a thin wall's top).
+
+fn tr_gate(f: s32) {
+    if tr_ph == 99 { return }
+    if f == 0 {
+        expect(wp_floor(vec3(160.0, 9.0, 94.0), 0.0) && wp_hit.y > 7.8, "the crest's top is a floor, y", wp_hit.y)
+        expect(wp_floor(vec3(156.0, 9.0, 94.0), 0.0) && wp_hit.y > 6.6, "the board's top is a floor, y", wp_hit.y)
+        expect(!wp_floor(vec3(160.0, 6.4, 94.0), 0.0) || wp_hit.y < 0.5, "under the board, nothing to G8's height", wp_hit.y)
+        place(vec3(160.0, sh_floor(160.0, 91.5, 9.0), 91.5), NORTH)
+    }
+    if f < 60 { stick_v = cc_stick(NORTH, 0.4) }
+    if pl.st == St.Ground && pl.pos.z > 93.7 && pl.pos.y > 7.5 && tr_k == 0 {
+        tr_k = 1
+        note("walked onto the gate's top, y", pl.pos.y)
+    }
+    if f == 90 {
+        expect(tr_k == 1, "walked off the arcade roof onto the gate's top", pl.pos.z)
+        tr_finish()
+    }
+}
+
+// ---- 483: the back awnings (w2b, w4b, e3b): a body dropped on the canvas's middle, steering at
+// the shop's roof from the start, is moved out from under the eave and bounces onto the roof (it
+// struck the eave at 4.0: alpha review r08 #8).
+
+const AWNING_IN: [3]vec3 = [vec3(139.25, 3.3, 69.0), vec3(139.25, 3.3, 89.0), vec3(180.75, 3.3, 79.0)]
+const AWNING_TO: [3]fixed = [1.5708, 1.5708, -1.5708]
+
+fn tr_awnings(f: s32) {
+    if tr_ph == 99 { return }
+    if tr_ph == 0 {
+        let p = AWNING_IN[tr_k]
+        place_air(p, AWNING_TO[tr_k])
+        pl.spawn = vec3(p.x, -60.0, p.z)
+        mark()
+        tr_ph = 1
+        tr_t = f
+        return
+    }
+    if pl.st == St.Bounce && tr_ph == 1 { tr_ph = 2 }
+    if f >= tr_t + 4 { stick_v = cc_stick(AWNING_TO[tr_k], 1.0) }
+    if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+    if f > tr_t + 6 && pl.st == St.Ground {
+        note("awning", fixed(tr_k))
+        expect(tr_ph == 2 && apex > 6.5, "bounced clear of the eave, apex", apex)
+        expect(pl.pos.y > 4.5, "came down on a roof, y", pl.pos.y)
+        tr_k += 1
+        tr_ph = 0
+        if tr_k == 3 { tr_finish() }
+        return
+    }
+    if f > tr_t + 400 { expect(false, "came to rest", pl.pos.y) }
+}
+
+// ---- 484: red coin 7 and G3's take-off: from the sento's boiler roof (5.0) up the chimney's iron
+// ladder, let go at its top and push north onto the chimney's top (18.2); the coin is taken.
+
+fn tr_chimney(f: s32) {
+    if tr_ph == 99 { return }
+    if f == 0 { tr_k = tw_coin_near(vec3(30.5, 18.9, 67.5)) }
+    if tr_ph < 2 {
+        let _ = tr_climb(f, 30.5, 65.6, 6.0, NORTH)
+        return
+    }
+    if tr_let_go(f, NORTH) {
+        note("at rest at y", pl.pos.y)
+        expect(pl.pos.y > 18.0 && tw_hdist(pl.pos, vec3(30.5, 0.0, 67.5)) < 1.6, "on the chimney's top (G3's take-off), y", pl.pos.y)
+        expect(tr_k >= 0 && coin_taken(tr_k), "red coin 7 taken", fixed(tr_k))
+        tr_finish()
+    }
+    if f > tr_t + 300 { expect(false, "came to rest", pl.pos.y) }
+}
+
+// ---- 485: the overpass (deck 7.0, x 260.5-263.5): the road wires pass at least 2.5 m over it,
+// and a hop from the deck catches no wire.
+
+const ROAD_WIRES: [2]*u8 = ["wire_road_a", "wire_road_b"]
+
+fn tr_overpass(f: s32) {
+    if tr_ph == 99 { return }
+    if f == 0 {
+        for j in 0..2 {
+            let k = rail_named(ROAD_WIRES[j])
+            var low = 99.0
+            var x = 258.0
+            while x <= 266.0 {
+                if wp_path_nearest(rails[k], vec3(x, 9.0, 106.0), 3.0) { low = min(low, wp_near.pos.y) }
+                x += 0.5
+            }
+            expect(low >= 9.5, "a road wire over the deck, lowest y", low)
+        }
+        place(vec3(262.0, sh_floor(262.0, 106.0, 8.0), 106.0), EAST)
+        expect(near(pl.pos.y, 7.0, 0.05), "on the deck", pl.pos.y)
+    }
+    if f >= 4 && f < 24 { pad_v = A }
+    if pl.st == St.Rail || pl.st == St.Hang { expect(false, "no wire caught", pl.pos.y) }
+    if f == 120 {
+        expect(pl.st == St.Ground && near(pl.pos.y, 7.0, 0.1), "back on the deck", pl.pos.y)
+        tr_finish()
+    }
+}
+
+// ---- 486: collision where the reviews found it off its drawing.
+
+fn tr_collision(f: s32) {
+    if f != 0 { return }
+    // the road works' barriers (drawn to 1.26): no invisible top
+    expect(wp_floor(vec3(1.0, 6.0, 107.5), 0.0) && wp_hit.y < 1.4, "barrier 0's top, y", wp_hit.y)
+    expect(wp_floor(vec3(1.0, 6.0, 114.5), 0.0) && wp_hit.y < 1.4, "barrier 1's top, y", wp_hit.y)
+    // the schoolhouse's horizontal bars (x 274.5-279.25, z 59): a wall, not walked through
+    let s = tr_walk_to_wall(277.0, 50.0, 2.0, NORTH)
+    expect(s.z < 59.0, "the school's bars stop a walk north, z", s.z)
+    // the machiya's fronts (the inuyarai guards, their feet at x 17.9 and 24.1): the body stops
+    // outside them (with the front alone it stopped 0.5 m into them, at 17.70 and 24.30)
+    let mw = tr_walk_to_wall(21.0, 37.0, 2.0, WEST)
+    expect(mw.x > 17.95, "the west machiya's front stops the body at x", mw.x)
+    let me = tr_walk_to_wall(21.0, 22.0, 2.0, EAST)
+    expect(me.x < 24.05, "the east machiya's front stops the body at x", me.x)
+    // the shops' glass fronts (recessed): walked up to, not stopped in the air before them
+    let se = tr_walk_to_wall(160.0, 59.0, 2.0, EAST)
+    expect(se.x > 166.5 - BODY_RADIUS - 0.15, "an east shop's front stops the body at x", se.x)
+    let sw = tr_walk_to_wall(160.0, 59.0, 2.0, WEST)
+    expect(sw.x < 153.5 + BODY_RADIUS + 0.15, "a west shop's front stops the body at x", sw.x)
+    done()
+}
+
+// ---- 487: the service lane's wire ridden north ends over the road line, at the road's wires.
+
+const END_WIRES: [6]*u8 = ["wire_lane_w_a", "wire_lane_w_b", "wire_lane_e_a", "wire_lane_e_b", "wire_konbini_a",
+    "wire_konbini_b"]
+
+fn tr_wire_ends(f: s32) {
+    if f != 0 { return }
+    for j in 0..6 {
+        let k = rail_named(END_WIRES[j])
+        let e = wp_path_at(rails[k], wp_path_length(rails[k]))
+        expect(e.z > 105.0 && e.z < 107.0, "ends on the road line, z", e.z)
+    }
+    done()
+}

@@ -1,0 +1,8 @@
+{
+  "format": "mei-sheet",
+  "version": 1,
+  "cells": {
+    "zelkova": [0, 0, 64, 64],
+    "zelkova_far": [66, 0, 96, 96]
+  }
+}

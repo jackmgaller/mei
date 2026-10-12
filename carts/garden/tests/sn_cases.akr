@@ -1,0 +1,283 @@
+// The blob shadow's and the card names' scenarios (numbered 600-619), in the shrine town:
+// shadow.akr (a disc under the robot on the ground, on a deck, fading with height, by day and by
+// night) and cardnames.akr (the banner on a scenario's start and a card taken, the pause menu's
+// page of the five cards). check.sh runs the ones sn_cases.sh lists. Scenarios 618 and 619 only
+// stand somewhere for a picture (SHOT=1 hides the test overlay).
+
+var sn_t: s32
+var sn_cpu_on: s32
+var sn_gpu_on: s32
+var sn_k: s32
+var sn_cpu_off: s32
+var sn_gpu_off: s32
+var sn_y: fixed
+
+fn sn_case_init() -> bool {
+    match SCENARIO {
+        600 => { name = "shadow: on the ground, under the robot's feet" }
+        601 => { name = "shadow: on the stage's deck, 60 m up, not on the ground below" }
+        602 => { name = "shadow: smaller and fainter with height, gone when high above" }
+        603 => { name = "shadow: its cost to the CPU and GPU, drawn and not" }
+        604 => { name = "shadow: by night it takes less off than by day" }
+        605 => { name = "shadow: on a mover (the train)" }
+        610 => { name = "cards: the banner when card 3 is taken" }
+        611 => { name = "cards: the banner at the first red coin and at the omamori, clear of the clock" }
+        612 => { name = "cards: the pause page lists the five, taken or not" }
+        618 => { name = "picture: the shadow by day on the stage's deck" }
+        619 => { name = "picture: the shadow by night on the shotengai" }
+        617 => { name = "picture: a banner by night on the plaza" }
+        else => { return false }
+    }
+    cam.lock = false
+    tw_phase = 0
+    sn_t = 0
+    return true
+}
+
+fn sn_case(f: s32) {
+    match SCENARIO {
+        600 => sn_ground(f)
+        601 => sn_deck(f)
+        602 => sn_height(f)
+        603 => sn_cost(f)
+        604 => sn_night(f)
+        605 => sn_mover(f)
+        610 => sn_taken(f)
+        611 => sn_start(f)
+        612 => sn_page(f)
+        618 => sn_pic_day(f)
+        619 => sn_pic_night(f)
+        617 => sn_pic_banner_night(f)
+        else => {}
+    }
+}
+
+fn sn_plaza() { gc_place(160.0, 40.0, 20.0, NORTH) }
+
+fn sn_ground(f: s32) {
+    if f == 0 { sn_plaza() }
+    if f == 20 {
+        expect(shadow_drawn, "the shadow is drawn", 0.0)
+        expect(shadow_h >= 0.0 && shadow_h < 0.1, "the feet on the floor, height", shadow_h)
+        expect(near(shadow_floor_y, pl.pos.y, 0.1), "it lies on the floor under the feet, y", shadow_floor_y)
+        expect(shadow_cycles > 0 && shadow_cycles < 9000, "its CPU cycles", fixed(shadow_cycles))
+        done()
+    }
+}
+
+fn sn_deck(f: s32) {
+    if f == 0 { gc_place(154.0, 344.15, 61.0, NORTH) }
+    if f == 20 {
+        expect(near(pl.pos.y, 60.0, 0.1), "standing on the stage's deck, y", pl.pos.y)
+        expect(shadow_drawn, "the shadow is drawn", 0.0)
+        expect(near(shadow_floor_y, 60.0, 0.1), "it lies on the deck, not on the ground below, y", shadow_floor_y)
+        done()
+    }
+}
+
+fn sn_height(f: s32) {
+    if f == 0 {
+        sn_plaza()
+        sn_y = sh_floor(160.0, 40.0, 20.0)
+    }
+    if f == 5 { place_air(vec3(160.0, sn_y + 1.0, 40.0), NORTH) }
+    if f == 6 { expect(shadow_drawn && near(shadow_h, 1.0, 0.3), "1 m up: the shadow, height", shadow_h) }
+    if f == 7 { place_air(vec3(160.0, sn_y + 5.0, 40.0), NORTH) }
+    if f == 8 { expect(shadow_drawn && shadow_h > 3.5, "5 m up: still a shadow, height", shadow_h) }
+    if f == 9 { place_air(vec3(160.0, sn_y + 14.0, 40.0), NORTH) }
+    if f == 10 { expect(!shadow_drawn && shadow_h < 0.0, "14 m up: none", shadow_h) }
+    if f == 11 { done() }
+}
+
+fn sn_cost(f: s32) {
+    if f == 0 { sn_plaza() }
+    // from frame 40 the shadow is switched on and off every frame; timing holds the frame two before (it is read before the frame is drawn)
+    if f > 40 && f < 100 {
+        if f % 2 == 0 {
+            sn_cpu_on += timing.cpu
+            sn_gpu_on += timing.gpu
+            sn_t += 1
+        } else {
+            sn_cpu_off += timing.cpu
+            sn_gpu_off += timing.gpu
+            sn_k += 1
+        }
+    }
+    if f >= 40 { shadow_on = f % 2 == 0 }
+    if f == 100 {
+        let n = sn_t
+        let k = sn_k
+        let dc = sn_cpu_on / n - sn_cpu_off / k
+        let dg = sn_gpu_on / n - sn_gpu_off / k
+        note("frame cpu cycles with the shadow, mean", fixed(sn_cpu_on / n))
+        note("frame cpu cycles without, mean", fixed(sn_cpu_off / k))
+        note("frame gpu cycles with the shadow, mean", fixed(sn_gpu_on / n))
+        note("frame gpu cycles without, mean", fixed(sn_gpu_off / k))
+        expect(dc < 8000, "CPU cost of the shadow, cycles a frame", fixed(dc))
+        expect(dg < 8000, "GPU cost of the shadow, cycles a frame", fixed(dg))
+        shadow_on = true
+        done()
+    }
+}
+
+fn sn_night(f: s32) {
+    if f == 0 { sn_plaza() }
+    if f == 10 {
+        let day = shadow_colour(1.0)
+        tv[T.Night] = 1.0
+        world_set_variant(1)
+        let night = shadow_colour(1.0)
+        expect((night & 255) < (day & 255), "night takes less off (red)", fixed(night & 255))
+        expect(((night >> 8) & 255) < ((day >> 8) & 255), "night takes less off (green)", fixed((night >> 8) & 255))
+    }
+    if f == 20 {
+        expect(shadow_drawn, "drawn by night", 0.0)
+        done()
+    }
+}
+
+// The train (a mover) carries the robot: the shadow lies on its floor, which moves.
+fn sn_mover(f: s32) {
+    if f == 0 {
+        sn_plaza()
+        flag_set("race5")          // the train's start flag
+    }
+    if f == 1 { gc_train().mt = gc_train().delay + 300 }       // 5 s after it came in
+    if f == 4 {
+        let m = gc_train()
+        expect(mover_live(m), "the train is live", 0.0)
+        place_air(vec3(m.pos.x, m.pos.y + 7.0, m.pos.z), NORTH)
+    }
+    if f == 6 {
+        let m = gc_train()
+        note("the train at x", m.pos.x)
+        expect(shadow_drawn, "a shadow over the train", shadow_h)
+        expect(shadow_floor_y > m.pos.y + 0.5, "it lies on the train's roof, above its track, y", shadow_floor_y)
+        done()
+    }
+}
+
+// ---- 610: card 3 taken: the banner
+
+fn sn_taken(f: s32) {
+    if f == 0 {
+        flag_set("bell")
+        tw_star = tw_star_near(vec3(154.0, 61.0, 344.75))
+        gc_place(154.0, 338.0, 61.0, NORTH)
+        expect(!card_banner_shown(), "no banner yet", 0.0)
+    }
+    if f == STAR_DROP + 5 {
+        let c = wp_entity_pos(wp_entity(tw_star))
+        gc_place(c.x, c.z, 62.0, NORTH)
+        sn_t = f
+    }
+    if sn_t > 0 && f == sn_t + 4 {
+        expect(star_taken(tw_star), "star 3 taken", 0.0)
+        expect(card_banner_shown(), "the banner shows", 0.0)
+        expect(banner_card == 2 && banner_taken, "it is card 3, taken", fixed(banner_card))
+        expect(streq(CARD_NAMES[banner_card], "The stage bell"), "named The stage bell", 0.0)
+    }
+    if sn_t > 0 && f == sn_t + 4 + CARD_BANNER_TICKS - 10 { expect(card_banner_shown(), "still there near the end", 0.0) }
+    if sn_t > 0 && f == sn_t + 4 + CARD_BANNER_TICKS + 5 {
+        expect(!card_banner_shown(), "gone after a few seconds", 0.0)
+        done()
+    }
+}
+
+// ---- 611: a scenario's start
+
+fn sn_start(f: s32) {
+    if f == 0 {
+        // the layout: the banner's panel starts under the clock (y 38-50) and the note (52-60)
+        expect(CARD_BANNER_Y - 4 >= 62, "the banner's top is under the clock and the note, y", fixed(CARD_BANNER_Y - 4))
+        for k in 0..CARD_COUNT {
+            expect(card_len(CARD_NAMES[k]) * 8 + 40 <= 316, "a name fits the screen", fixed(card_len(CARD_NAMES[k])))
+            expect(card_len(CARD_HINTS[k]) * 8 + 40 <= 316, "a hint fits the page", fixed(card_len(CARD_HINTS[k])))
+        }
+        let n = gc_next_red(0)
+        let c = wp_entity_pos(wp_entity(n))
+        assert(wp_floor(c, 0.0))
+        place(vec3(c.x, wp_hit.y, c.z), NORTH)
+        expect(!card_banner_shown(), "no banner before the first red coin", 0.0)
+    }
+    if tw_phase == 0 && f == 6 {
+        expect(red_coins >= 1, "a red coin taken", fixed(red_coins))
+        expect(card_banner_shown() && banner_card == 1 && !banner_taken, "the banner: scenario 2 begins", fixed(banner_card))
+        tw_phase = 1
+        gc_take_omamori()
+    }
+    if tw_phase == 1 { stick_v = cc_stick(3.1416, 1.0) }
+    if tw_phase == 1 && flag_on("race5") {
+        expect(card_banner_shown() && banner_card == 4 && !banner_taken, "the banner: scenario 5 begins", fixed(banner_card))
+        expect(streq(CARD_NAMES[4], "The last train"), "named The last train", 0.0)
+        done()
+        tw_phase = 9
+    }
+    if f > 80 && tw_phase != 9 { expect(false, "the omamori taken", 0.0) }
+}
+
+// ---- 612: the pause page
+
+fn sn_page(f: s32) {
+    if f == 0 {
+        sn_plaza()
+        flag_set("bell")
+        tw_star = tw_star_near(vec3(154.0, 61.0, 344.75))
+    }
+    if f == 5 {
+        var got = 0
+        for k in 0..CARD_COUNT { if card_taken(k) { got += 1 } }
+        expect(got == 0, "none taken yet", fixed(got))
+        pad_v = START
+    }
+    if f == 6 {
+        expect(menu_open && menu_page == 0, "the menu is open on the tuning", 0.0)
+        pad_v = SELECT
+    }
+    if f == 7 {
+        expect(menu_open && menu_page == 1, "SELECT turns to the cards", fixed(menu_page))
+        expect(readout == 2, "and the readout is left alone", fixed(readout))
+    }
+    if f == 8 { pad_v = DOWN }       // the page does not change a tuning number
+    if f == 9 { pad_v = RIGHT }
+    if f == 10 { expect(menu_sel == 0 && tv[T.RunSpeed] == TUNE[T.RunSpeed].def, "the d-pad does not tune on this page", tv[T.RunSpeed]) }
+    if f == 12 {
+        prog_put(wp_entity(tw_star))
+        count_stars()
+    }
+    if f == 14 {
+        expect(card_taken(2) && !card_taken(0) && !card_taken(1) && !card_taken(3) && !card_taken(4), "card 3 only is shown taken", 0.0)
+        pad_v = SELECT
+    }
+    if f == 16 {
+        expect(menu_page == 0, "SELECT turns back to the tuning", fixed(menu_page))
+        pad_v = SELECT
+    }
+    if f == 18 {
+        expect(menu_page == 1, "and to the cards again", fixed(menu_page))
+        done()
+    }
+}
+
+// ---- pictures
+
+fn sn_pic_banner_night(f: s32) {
+    if f == 0 {
+        tv[T.Night] = 1.0
+        world_set_variant(1)
+        gc_place(160.0, 60.0, 20.0, NORTH)
+    }
+    if f == 4 { card_banner_start(1) }
+}
+
+fn sn_pic_day(f: s32) {
+    if f == 0 { gc_place(154.0, 344.15, 61.0, WEST) }
+}
+
+fn sn_pic_night(f: s32) {
+    if f == 0 {
+        tv[T.Night] = 1.0
+        world_set_variant(1)
+        gc_place(160.0, 60.0, 20.0, NORTH)
+    }
+}

@@ -1,0 +1,178 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c3_5",
+ "at": [
+  3,
+  5
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "sh_falls",
+   "asset": "water_falls",
+   "position": [
+    214.0,
+    12.0,
+    330.0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "sh_falls_cave",
+   "asset": "forest_falls_cave",
+   "position": [
+    214.0,
+    12.0,
+    330.0
+   ],
+   "collision": "forest_falls_cave_col"
+  },
+  {
+   "id": "sh_falls_cliff",
+   "asset": "shrine_falls_cliff",
+   "position": [
+    214.0,
+    12.0,
+    330.0
+   ],
+   "collision": "shrine_falls_cliff_col"
+  },
+  {
+   "id": "sh_kick_chimney",
+   "asset": "shrine_kick_chimney",
+   "position": [
+    196.5,
+    16.0,
+    327.0
+   ],
+   "collision": "shrine_kick_chimney_col"
+  },
+  {
+   "id": "sh_path_out_torii",
+   "asset": "forest_fox_torii",
+   "position": [
+    252.0,
+    378.0
+   ],
+   "collision": "forest_fox_torii_col",
+   "yaw": 20
+  },
+  {
+   "id": "sh_path_out_jizo",
+   "asset": "jizo",
+   "position": [
+    255.2,
+    376.6
+   ],
+   "collision": "jizo_col",
+   "yaw": -160
+  },
+  {
+   "id": "edge_rock_n192",
+   "asset": "edge_rock_n192",
+   "position": [
+    224.0,
+    67.0,
+    382.0
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "camera_chimney",
+   "type": "camera_zone",
+   "position": [
+    196.5,
+    16.0,
+    326.0
+   ],
+   "params": {
+    "size": [
+     3,
+     31,
+     10
+    ],
+    "mode": "fixed",
+    "look": [
+     0,
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "coin_cave_1",
+   "type": "coin",
+   "position": [
+    209.6,
+    15.0,
+    332.2
+   ]
+  },
+  {
+   "id": "coin_cave_2",
+   "type": "coin",
+   "position": [
+    211.8,
+    15.0,
+    332.2
+   ]
+  },
+  {
+   "id": "coin_cave_3",
+   "type": "coin",
+   "position": [
+    214.0,
+    15.0,
+    332.2
+   ]
+  },
+  {
+   "id": "coin_cave_4",
+   "type": "coin",
+   "position": [
+    210.7,
+    15.0,
+    334.6
+   ]
+  },
+  {
+   "id": "coin_cave_5",
+   "type": "coin",
+   "position": [
+    212.9,
+    15.0,
+    334.6
+   ]
+  },
+  {
+   "id": "coin_cave_6",
+   "type": "coin",
+   "position": [
+    215.1,
+    15.0,
+    334.6
+   ]
+  },
+  {
+   "id": "ud_falls",
+   "type": "updraft",
+   "position": [
+    214.0,
+    11.2,
+    320.0
+   ],
+   "params": {
+    "width": 12.0,
+    "depth": 14.0,
+    "base": 1.5,
+    "cap": 18.8,
+    "lift": 5.0,
+    "look": "mist",
+    "puffs": 20
+   }
+  }
+ ]
+}

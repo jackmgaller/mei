@@ -1,0 +1,109 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "shrine_kick_chimney_col",
+ "budget": {
+  "triangles": 60
+ },
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "west",
+   "op": "box",
+   "size": [
+    6.0,
+    30.5,
+    11.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -4.5,
+     14.75,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "east",
+   "op": "box",
+   "size": [
+    6.0,
+    30.5,
+    11.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     4.5,
+     14.75,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "back",
+   "op": "box",
+   "size": [
+    3.0,
+    30.48,
+    2.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     14.74,
+     5.5
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "rest",
+   "op": "box",
+   "size": [
+    3.04,
+    0.6,
+    1.22
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     14.7,
+     3.91
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "back"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,547 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c1_0",
+ "at": [
+  1,
+  0
+ ],
+ "region": "town",
+ "placements": [
+  {
+   "id": "edge_s2",
+   "asset": "edge_fence_64",
+   "position": [
+    96.0,
+    0,
+    0.05
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "neighbour_s2",
+   "asset": "edge_neighbour_s2",
+   "position": [
+    80.0,
+    0,
+    0.2
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "neighbour_s3",
+   "asset": "edge_neighbour_s3",
+   "position": [
+    116.0,
+    0,
+    0.2
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "viaduct_4",
+   "asset": "viaduct_span_16",
+   "position": [
+    64.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_5",
+   "asset": "viaduct_span_16",
+   "position": [
+    80.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_6",
+   "asset": "viaduct_span_16",
+   "position": [
+    96.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_7",
+   "asset": "viaduct_span_16",
+   "position": [
+    112.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "danchi",
+   "asset": "danchi",
+   "position": [
+    78.0,
+    0.0,
+    26.0
+   ],
+   "collision": "danchi_col"
+  },
+  {
+   "id": "pachinko",
+   "asset": "pachinko_parlour",
+   "position": [
+    100.5,
+    0.0,
+    26.0
+   ],
+   "yaw": 270.0,
+   "collision": "pachinko_parlour_col"
+  },
+  {
+   "id": "koban",
+   "asset": "koban",
+   "position": [
+    122.0,
+    0.0,
+    24.0
+   ],
+   "yaw": 270.0,
+   "collision": "koban_col"
+  },
+  {
+   "id": "phone_booth",
+   "asset": "phone_booth",
+   "position": [
+    114.5,
+    0.0,
+    36.0
+   ],
+   "yaw": 270.0,
+   "collision": "phone_booth_col"
+  },
+  {
+   "id": "bench_0",
+   "asset": "town_bench",
+   "position": [
+    126.0,
+    0.0,
+    38.5
+   ],
+   "collision": "town_bench_col"
+  },
+  {
+   "id": "planters_koban",
+   "asset": "town_potted_plants",
+   "position": [
+    122.0,
+    0.0,
+    27.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "alley_66_44",
+   "asset": "town_alley_house_b",
+   "position": [
+    70.75,
+    0.0,
+    48.25
+   ],
+   "collision": "town_alley_house_b_col"
+  },
+  {
+   "id": "alley_78_44",
+   "asset": "town_alley_house_a",
+   "position": [
+    82.75,
+    0.0,
+    48.25
+   ],
+   "collision": "town_alley_house_a_col"
+  },
+  {
+   "id": "alley_78_55",
+   "asset": "town_alley_house_b",
+   "position": [
+    82.75,
+    0.0,
+    59.25
+   ],
+   "collision": "town_alley_house_b_col"
+  },
+  {
+   "id": "alley_90_44",
+   "asset": "town_alley_house_a",
+   "position": [
+    94.75,
+    0.0,
+    48.25
+   ],
+   "collision": "town_alley_house_a_col"
+  },
+  {
+   "id": "alley_90_55",
+   "asset": "town_alley_house_c",
+   "position": [
+    94.75,
+    0.0,
+    59.25
+   ],
+   "yaw": 180,
+   "collision": "town_alley_house_c_col"
+  },
+  {
+   "id": "alley_102_44",
+   "asset": "town_alley_house_c",
+   "position": [
+    106.75,
+    0.0,
+    48.25
+   ],
+   "collision": "town_alley_house_c_col"
+  },
+  {
+   "id": "alley_102_55",
+   "asset": "town_alley_house_a",
+   "position": [
+    106.75,
+    0.0,
+    59.25
+   ],
+   "collision": "town_alley_house_a_col"
+  },
+  {
+   "id": "alley_114_44",
+   "asset": "town_alley_house_a",
+   "position": [
+    118.75,
+    0.0,
+    48.25
+   ],
+   "collision": "town_alley_house_a_col"
+  },
+  {
+   "id": "alley_114_55",
+   "asset": "town_alley_house_c",
+   "position": [
+    118.75,
+    0.0,
+    59.25
+   ],
+   "yaw": 180,
+   "collision": "town_alley_house_c_col"
+  },
+  {
+   "id": "gacha_0",
+   "asset": "gachapon",
+   "position": [
+    126.6,
+    0.0,
+    43.55
+   ],
+   "collision": "gachapon_col"
+  },
+  {
+   "id": "jizo_dagashi",
+   "asset": "jizo",
+   "position": [
+    124.3,
+    0.0,
+    44.6
+   ],
+   "collision": "jizo_col"
+  },
+  {
+   "id": "pole_lane_w0",
+   "asset": "town_utility_pole_transformer",
+   "position": [
+    112.75,
+    0.0,
+    44.0
+   ],
+   "collision": "town_utility_pole_transformer_col"
+  },
+  {
+   "id": "aircon_0",
+   "asset": "town_aircon_pipes",
+   "position": [
+    81.0,
+    0.0,
+    52.75
+   ],
+   "yaw": 180,
+   "collision": "none"
+  },
+  {
+   "id": "plants_0",
+   "asset": "town_potted_plants",
+   "position": [
+    73.0,
+    0.0,
+    43.7
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "plants_1",
+   "asset": "town_potted_plants",
+   "position": [
+    85.0,
+    0.0,
+    54.7
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "laundry_yard_a",
+   "asset": "town_laundry_pole",
+   "position": [
+    73.5,
+    0.0,
+    62.4
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "kei_yard_a",
+   "asset": "kei_truck",
+   "position": [
+    70.75,
+    0.0,
+    59.25
+   ],
+   "yaw": 90,
+   "collision": "kei_truck_col"
+  },
+  {
+   "id": "alley_lamp_0",
+   "asset": "town_wall_lamp",
+   "position": [
+    87.5,
+    0.0,
+    58.75
+   ],
+   "yaw": 270,
+   "collision": "none"
+  },
+  {
+   "id": "alley_lamp_2",
+   "asset": "town_wall_lamp",
+   "position": [
+    99.5,
+    0.0,
+    47.5
+   ],
+   "yaw": 270,
+   "collision": "none"
+  },
+  {
+   "id": "alley_lamp_3",
+   "asset": "town_wall_lamp",
+   "position": [
+    111.5,
+    0.0,
+    58.75
+   ],
+   "yaw": 270,
+   "collision": "none"
+  },
+  {
+   "id": "alley_lamp_7",
+   "asset": "town_wall_lamp",
+   "position": [
+    82.0,
+    0.0,
+    55.0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "plants_lane_1",
+   "asset": "town_potted_plants",
+   "position": [
+    101.4,
+    0.0,
+    52.9
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "bike_lane_0",
+   "asset": "mamachari",
+   "position": [
+    124.6,
+    0.0,
+    60.0
+   ],
+   "yaw": 5,
+   "collision": "none"
+  }
+ ],
+ "entities": [
+  {
+   "id": "cam_alley_ew0",
+   "type": "camera_zone",
+   "position": [
+    100.75,
+    0,
+    53.75
+   ],
+   "params": {
+    "size": [
+     69.5,
+     12,
+     2.5
+    ],
+    "mode": "rail",
+    "look": [
+     1,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "pole_lane_w0",
+   "type": "pole",
+   "position": [
+    112.75,
+    0.0,
+    44.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "red_danchi",
+   "type": "red_coin",
+   "position": [
+    78,
+    21.5,
+    26
+   ],
+   "asset": "gbt_coin_red"
+  },
+  {
+   "id": "coin_alley5",
+   "type": "coin",
+   "position": [
+    88,
+    0.7,
+    58
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_alley6",
+   "type": "coin",
+   "position": [
+    80,
+    6.104,
+    48
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_alley7",
+   "type": "coin",
+   "position": [
+    78,
+    0.7,
+    40
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_parapet1",
+   "type": "coin",
+   "position": [
+    70,
+    10.9,
+    13.85
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_parapet2",
+   "type": "coin",
+   "position": [
+    80,
+    10.9,
+    13.85
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_parapet3",
+   "type": "coin",
+   "position": [
+    90,
+    10.9,
+    13.85
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_parapet4",
+   "type": "coin",
+   "position": [
+    100,
+    10.9,
+    13.85
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_parapet5",
+   "type": "coin",
+   "position": [
+    110,
+    10.9,
+    13.85
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_parapet6",
+   "type": "coin",
+   "position": [
+    120,
+    10.9,
+    13.85
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "rail_wire_lane_w_a",
+   "type": "rail",
+   "position": [
+    111.95,
+    8.0,
+    44.0
+   ],
+   "params": {
+    "path": "wire_lane_w_a"
+   }
+  },
+  {
+   "id": "rail_wire_lane_w_b",
+   "type": "rail",
+   "position": [
+    113.55,
+    8.0,
+    44.0
+   ],
+   "params": {
+    "path": "wire_lane_w_b"
+   }
+  }
+ ]
+}

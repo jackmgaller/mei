@@ -1,0 +1,57 @@
+{
+ "alley_houses": 24,
+ "machiya": 10,
+ "poles": 22,
+ "rails": 20,
+ "placements": 285,
+ "placements_per_cell": {
+  "c0_0": 30,
+  "c0_1": 21,
+  "c1_0": 36,
+  "c1_1": 47,
+  "c2_0": 49,
+  "c2_1": 36,
+  "c3_0": 15,
+  "c3_1": 16,
+  "c4_0": 18,
+  "c4_1": 17
+ },
+ "recipes": 4,
+ "glides": {
+  "G1 building roof -> east side hall (11.6)": {
+   "distance": 24.0,
+   "arrives": 15.7
+  },
+  "G2 danchi roof -> canal lane (0)": {
+   "distance": 51.0,
+   "arrives": 9.5
+  },
+  "G3 sento chimney (moved) -> park (0.6)": {
+   "distance": 71.0,
+   "arrives": 3.8
+  },
+  "G4 fire tower -> courtyard west (0.6)": {
+   "distance": 63.8,
+   "arrives": 2.7
+  },
+  "G9 school roof -> cemetery terrace 2-3": {
+   "distance": 64.1,
+   "arrives": 6.3
+  }
+ },
+ "steps": {
+  "awning 2.6 + bounce 4.5 vs shop roof 6.5": 0.6,
+  "shop roof 6.5 -> 9.5 (double jump 3.4)": 0.4,
+  "vending 1.9 -> konbini roof 5.6 (double + grab 5.15)": 1.45,
+  "platform 9.0 -> canopy 12.8 (double + grab)": 1.35,
+  "deck 9.0 -> parapet 10.2 (jump)": 1.0,
+  "ground -> sento boiler 5.0 (double + grab)": 0.15,
+  "boiler 5.0 -> sento roof 8.0 (double)": 0.4,
+  "danchi roof 18.8 -> tank 20.8 (jump)": 0.2,
+  "arcade eave over shop roof 6.5 -> 7.0 (jump)": 1.7
+ },
+ "alley_roof_neighbours": {
+  "largest gap": 2.5,
+  "largest rise": 2
+ }
+}

@@ -1,0 +1,443 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_0",
+ "at": [
+  0,
+  0
+ ],
+ "region": "town",
+ "placements": [
+  {
+   "id": "edge_s0",
+   "asset": "edge_fence_44",
+   "position": [
+    22.0,
+    0,
+    0.05
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "edge_s1",
+   "asset": "edge_fence_12",
+   "position": [
+    58.0,
+    0,
+    0.05
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "edge_w0",
+   "asset": "edge_fence_64",
+   "position": [
+    0.05,
+    0,
+    32.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "neighbour_s0",
+   "asset": "edge_neighbour_s0",
+   "position": [
+    16.0,
+    0,
+    0.2
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "neighbour_s1",
+   "asset": "edge_neighbour_s1",
+   "position": [
+    48.0,
+    0,
+    0.2
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "neighbour_w0",
+   "asset": "edge_neighbour_w0",
+   "position": [
+    0.2,
+    0,
+    18.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "neighbour_w1",
+   "asset": "edge_neighbour_w1",
+   "position": [
+    0.2,
+    0,
+    54.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "viaduct_0",
+   "asset": "viaduct_span_16",
+   "position": [
+    0.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_1",
+   "asset": "viaduct_span_16",
+   "position": [
+    16.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_2",
+   "asset": "viaduct_span_16",
+   "position": [
+    32.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_3",
+   "asset": "viaduct_span_16",
+   "position": [
+    48.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "signal_gantry_0",
+   "asset": "signal_gantry",
+   "position": [
+    20.0,
+    9.0,
+    8.0
+   ],
+   "collision": "signal_gantry_col"
+  },
+  {
+   "id": "machiya_w18",
+   "asset": "town_machiya_a",
+   "position": [
+    10.7,
+    0.0,
+    23.0
+   ],
+   "yaw": 270,
+   "collision": "town_machiya_a_col"
+  },
+  {
+   "id": "machiya_e18",
+   "asset": "town_machiya_b",
+   "position": [
+    31.3,
+    0.0,
+    23.0
+   ],
+   "yaw": 90,
+   "collision": "town_machiya_b_col"
+  },
+  {
+   "id": "machiya_w30",
+   "asset": "town_machiya_a",
+   "position": [
+    10.7,
+    0.0,
+    35.0
+   ],
+   "yaw": 270,
+   "collision": "town_machiya_a_col"
+  },
+  {
+   "id": "machiya_e30",
+   "asset": "town_machiya_b",
+   "position": [
+    31.3,
+    0.0,
+    35.0
+   ],
+   "yaw": 90,
+   "collision": "town_machiya_b_col"
+  },
+  {
+   "id": "machiya_w42",
+   "asset": "town_machiya_a",
+   "position": [
+    10.7,
+    0.0,
+    47.0
+   ],
+   "yaw": 270,
+   "collision": "town_machiya_a_col"
+  },
+  {
+   "id": "machiya_e42",
+   "asset": "town_machiya_b",
+   "position": [
+    31.3,
+    0.0,
+    47.0
+   ],
+   "yaw": 90,
+   "collision": "town_machiya_b_col"
+  },
+  {
+   "id": "sento",
+   "asset": "sento_front",
+   "position": [
+    21.7,
+    0.0,
+    63.25
+   ],
+   "collision": "sento_front_col"
+  },
+  {
+   "id": "canal_footbridge",
+   "asset": "canal_footbridge",
+   "position": [
+    48.0,
+    0.0,
+    60.25
+   ],
+   "collision": "canal_footbridge_col"
+  },
+  {
+   "id": "canal_grille",
+   "asset": "canal_grille",
+   "position": [
+    48.0,
+    0.0,
+    1.0
+   ],
+   "yaw": 180,
+   "collision": "canal_grille_col"
+  },
+  {
+   "id": "canal_pots_w18",
+   "asset": "town_potted_plants",
+   "position": [
+    18.4,
+    0,
+    21.0
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_pots_w42",
+   "asset": "town_potted_plants",
+   "position": [
+    18.4,
+    0,
+    45.5
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_pots_e30",
+   "asset": "town_potted_plants",
+   "position": [
+    23.6,
+    0,
+    33.0
+   ],
+   "yaw": 90,
+   "collision": "self"
+  },
+  {
+   "id": "canal_bike_w30",
+   "asset": "mamachari",
+   "position": [
+    18.9,
+    0,
+    38.0
+   ],
+   "yaw": 10,
+   "collision": "mamachari_col"
+  },
+  {
+   "id": "canal_bike_e18",
+   "asset": "mamachari",
+   "position": [
+    23.1,
+    0,
+    25.5
+   ],
+   "yaw": 185,
+   "collision": "mamachari_col"
+  },
+  {
+   "id": "canal_laundry_e42",
+   "asset": "town_laundry_pole",
+   "position": [
+    23.5,
+    0,
+    44.0
+   ],
+   "yaw": 90,
+   "collision": "self"
+  },
+  {
+   "id": "canal_aircon_e30",
+   "asset": "town_aircon_pipes",
+   "position": [
+    38.5,
+    0,
+    36.0
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_bins_lane52",
+   "asset": "town_crates_bins",
+   "position": [
+    18.6,
+    0,
+    54.0
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_hokora_footbridge",
+   "asset": "hokora",
+   "position": [
+    41.6,
+    0,
+    56.4
+   ],
+   "yaw": 270,
+   "collision": "hokora_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "red_parapet",
+   "type": "red_coin",
+   "position": [
+    48.0,
+    11.3,
+    13.875
+   ],
+   "asset": "gbt_coin_red"
+  },
+  {
+   "id": "train_5",
+   "type": "mover",
+   "position": [
+    24.0,
+    9.0,
+    10.0
+   ],
+   "asset": "train_emu_pair",
+   "collision": "train_emu_pair_col",
+   "params": {
+    "path": "race_track2",
+    "period": 600,
+    "pause": 2700,
+    "start": "race5",
+    "delay": 1800
+   }
+  },
+  {
+   "id": "coin_canal0",
+   "type": "coin",
+   "position": [
+    48,
+    0.1,
+    20
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_canal1",
+   "type": "coin",
+   "position": [
+    48,
+    0.1,
+    36
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_canal2",
+   "type": "coin",
+   "position": [
+    48,
+    0.1,
+    52
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_parapet0",
+   "type": "coin",
+   "position": [
+    60,
+    10.9,
+    13.85
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "pole_gantry_0",
+   "type": "pole",
+   "position": [
+    19.55,
+    9.2,
+    13.3
+   ],
+   "yaw": 270.0,
+   "params": {
+    "height": 4.25,
+    "front": true
+   }
+  },
+  {
+   "id": "rail_parapet_s",
+   "type": "rail",
+   "position": [
+    0.5,
+    10.2,
+    2.125
+   ],
+   "params": {
+    "path": "parapet_s"
+   }
+  },
+  {
+   "id": "rail_parapet_n_w",
+   "type": "rail",
+   "position": [
+    0.5,
+    10.2,
+    13.875
+   ],
+   "params": {
+    "path": "parapet_n_w"
+   }
+  }
+ ]
+}

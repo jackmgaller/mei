@@ -66,6 +66,42 @@ class SettingsTests(unittest.TestCase):
             V.merge_settings({'runtime': {'entity_drawing': 'billboard'}})
         self.assertIsNone(V.merge_settings({'sampling': {'entities': None}})['sampling']['entities'])
 
+    def test_yaws_and_vantage_points(self):
+        # 8 yaws a position by default; a vantage point with yaws looks that many ways round from
+        # its yaw, and vantage views are kept on top of max_views
+        pack = decode(encode(F.good_world()))
+        cfg = V.merge_settings({'vantage_points': [{'name': 'mid', 'position': [16.0, 3.0, 16.0], 'yaw': 10.0,
+                                                    'pitch': -5.0, 'yaws': 8}]})
+        self.assertEqual(cfg['sampling']['yaws'], 8)
+        cams = V.sample_views(pack, ST.world_triangles(pack), cfg)
+        van = [c for c in cams if c['kind'] == 'vantage']
+        self.assertEqual(sorted(round(math.degrees(c['yaw'])) for c in van), [10, 55, 100, 145, 190, 235, 280, 325])
+        self.assertTrue(all(c['name'] == 'mid' and c['vantage'] == 0 for c in van))
+        eyes = {}
+        for c in cams:
+            if c['kind'] == 'eye':
+                eyes.setdefault(tuple(c['eye']), set()).add(c['yaw'])
+        self.assertTrue(eyes and all(len(y) == 8 for y in eyes.values()))
+        kept = V.thin(cams, 20)
+        self.assertEqual(sum(1 for c in kept if c['kind'] == 'vantage'), 8)
+        self.assertEqual(sum(1 for c in kept if c['kind'] != 'vantage'), 20)
+
+    def test_layer_sets_only_where_they_draw(self):
+        # four plaza cells in a row; a layer's lamp in the first. Its layer set is sampled from a
+        # camera within the near pass's far depth (48) and overhang (8) of that cell, not beyond
+        from worldkit.pack import Layer
+        cells = [F.plaza(i, 0, boxes=[]) for i in range(4)]
+        cells[0].layers = ['lamp']
+        cells[0].placements.append(Placement(F.box_mesh((-0.2, 0, -0.2), (0.2, 3, 0.2), 0xFFFFFF), (20, 0, 20),
+                                             layer='lamp', tag=92))
+        pack = decode(encode(World(cells=cells, cell_shift=5, layers=[Layer('lamp')])))
+        combos = V.layer_combinations(pack, V.merge_settings(None))
+        cams = [{'kind': 'vantage', 'eye': [x, 1.5, 16.0], 'yaw': 0.0, 'pitch': 0.0, 'cell': [x // 32, 0]}
+                for x in (40.0, 85.0, 120.0)]
+        views = V.layer_views(pack, cams, combos, 48.0)
+        self.assertEqual([(v['eye'][0], v['layer_set']) for v in views],
+                         [(40.0, 'none'), (40.0, 'lamp'), (85.0, 'none'), (85.0, 'lamp'), (120.0, 'none')])
+
     def test_bad_pack_is_a_hard_failure(self):
         r = V.verify(b'MEIX' + bytes(60))
         self.assertFalse(r['ok'])
@@ -119,6 +155,43 @@ class StaticTests(unittest.TestCase):
         found, _ = self.check_static(w, settings={'probe': {'radius': 0.05, 'height': 1.6, 'step': 0.32}})
         self.assertEqual([f for f in found if f['code'] == 'crack'], [])
 
+    def test_drop_through_a_steep_crease(self):
+        # a body dropped into the gully is pushed back and forth by its two walls and sinks
+        # through: hard failures, in every mode
+        cfg = V.merge_settings(None)
+        pack = decode(encode(F.crease_world()))
+        found, n, made = ST.drop_check(pack, frozenset(), cfg['probe'], cfg['collision']['drop'], 50)
+        self.assertGreater(made, 50)
+        self.assertTrue(found)
+        for f in found:
+            self.assertEqual((f['code'], f['cell']), ('drop_through', [0, 0]))
+            self.assertIn(f['tag'], (70, 71))
+            self.assertTrue(22 <= f['at'][0] <= 30 and 22 <= f['at'][2] <= 30, f)
+            self.assertLess(f['ended'][1], 0.0)         # below the gully's bottom
+        self.assertEqual(len(found), n)
+        self.assertGreater(sum(f['points'] for f in found), n)     # nearby points are counted in one
+        # slide floors (pack.Tri's slide_floor_degrees, a heightfield's slide_floor_degrees):
+        # the faces are floors as well as walls, and the body lands
+        pack = decode(encode(F.crease_world(slide=70)))
+        self.assertEqual(ST.drop_check(pack, frozenset(), cfg['probe'], cfg['collision']['drop'], 50)[0], [])
+        kinds = sorted(t.kind for t in ST.world_triangles(pack) if t.tag in (70, 71))
+        self.assertEqual(kinds, [0, 0, 0, 0, 1, 1, 1, 1])      # four floors and the same four walls
+        # nothing to drop onto in the good plaza: its tops are floors
+        pack = decode(encode(F.good_world()))
+        self.assertEqual(ST.drop_check(pack, frozenset(), cfg['probe'], cfg['collision']['drop'], 50), ([], 0, 0))
+
+    def test_reader_push(self):
+        # wp_push() as the checker does it: a point 0.1 inside the probe radius of the first
+        # box's west side (x 4) is pushed out along x to the radius; one clear of it is not moved
+        pack = decode(encode(F.good_world()))
+        r = round(0.3 * 65536)
+        x, z, n = ST.reader_push(pack, round(3.9 * 65536), 2 * 65536, 6 * 65536, r, frozenset())
+        self.assertEqual(n, 1)
+        self.assertAlmostEqual(x / 65536, 3.7, places=3)
+        self.assertEqual(z, 6 * 65536)
+        self.assertEqual(ST.reader_push(pack, 3 * 65536, 2 * 65536, 6 * 65536, r, frozenset()),
+                         (3 * 65536, 6 * 65536, 0))
+
     def test_mismatched_edges_across_a_seam(self):
         found, _ = self.check_static(F.seam_world())
         mism = [f for f in found if f['code'] == 'edge_mismatch']
@@ -147,6 +220,65 @@ class StaticTests(unittest.TestCase):
         found, _ = self.check_static(quad(2, 50, dz=0.05))
         self.assertEqual({(f['code'], f['floor_tag'], f['beyond_tag']) for f in found}, {('crack', 1, 2), ('crack', 2, 1)})
 
+    def test_bridged_cracks_are_not_cracks(self):
+        """A probe with a bridge leaves out the cracks and mismatched edges the game's floor query
+        (wp_floor_across) steps across, and keeps those wider than it (WORLDKIT.md, "Cracks")."""
+        bridge = {'radius': 0.3, 'height': 1.6, 'step': 0.32, 'bridge': 0.4375}
+        found, _ = self.check_static(F.crack_world(), settings={'probe': bridge})
+        self.assertEqual(found, [])
+        found, _ = self.check_static(F.seam_world(), settings={'probe': bridge})
+        self.assertEqual(found, [])
+        # one step of 1/16 bridges nothing: the crack is found as without a bridge
+        found, _ = self.check_static(F.crack_world(), settings={'probe': dict(bridge, bridge=0.0625)})
+        self.assertEqual({(f['floor_tag'], f['beyond_tag']) for f in found if f['code'] == 'crack'}, {(30, 31), (31, 30)})
+        # a 0.5 gap is wider than the span: a crack for a probe of radius 0.8, bridge or not
+        w = F.crack_world()
+        w.cells[0].collision = [t for t in w.cells[0].collision if t.tag != 31]
+        m = F.box_mesh((0, 0, 0), (3.5, 0.25, 4), F.GREY)
+        w.cells[0].collision += F.placed_tris(m, (26.5, 1.75, 24), 3, tag=31)
+        wide = dict(bridge, radius=0.8)
+        for probe in (wide, dict(wide, bridge=0.0)):
+            found, _ = self.check_static(w, settings={'probe': probe})
+            cracks = [f for f in found if f['code'] == 'crack']
+            self.assertEqual({(f['floor_tag'], f['beyond_tag']) for f in cracks}, {(30, 31), (31, 30)}, probe)
+            self.assertTrue(all(0.5 <= f['width'] <= 0.5625 for f in cracks), cracks)
+        # the query itself: across the 0.1 gap, at a ledge, over the 0.5 gap
+        pack = decode(encode(F.crack_world()))
+        y, step = 2 * 65536, round(0.32 * 65536)
+        n = ST.across_steps(0.4375)
+        self.assertEqual(n, 7)
+        mid = ST.reader_floor_across(pack, round(26.05 * 65536), y, 26 * 65536, set(), step, step, n)
+        self.assertEqual(mid[0], y)
+        self.assertIn(mid[1], (30, 31))
+        self.assertTrue(ST.bridged(pack, round(26.05 * 65536), 2.0, 26 * 65536, set(), bridge))
+        ledge = ST.reader_floor_across(pack, round(21.95 * 65536), y, 26 * 65536, set(), step, step, n)
+        self.assertEqual(ledge[1], F.TAG_GROUND)                  # the ground below: no floor at the slab's height
+        self.assertFalse(ST.bridged(pack, round(21.95 * 65536), 2.0, 26 * 65536, set(), bridge))
+        pack = decode(encode(w))
+        self.assertFalse(ST.bridged(pack, round(26.25 * 65536), 2.0, 26 * 65536, set(), bridge))
+
+    def test_crack_baseline(self):
+        """Findings in the baseline are known, others new, entries nothing matches fixed; a
+        renumbered tag still matches by its point."""
+        found, _ = self.check_static(F.crack_world())
+        base = [ST.baseline_entry(dict(f, layers=[])) for f in found]
+        for f in found:
+            f['layers'] = []
+        new, known, fixed = ST.against_baseline(found, base)
+        self.assertEqual((len(new), len(known), fixed), (0, len(found), []))
+        moved = [dict(found[0], floor_tag=77)] + [dict(f, at=[f['at'][0] + 5, f['at'][1], f['at'][2]]) for f in found[1:]]
+        new, known, fixed = ST.against_baseline(moved, base[:1])
+        self.assertEqual((len(new), len(known), len(fixed)), (len(found) - 1, 1, 0))
+        new, known, fixed = ST.against_baseline([], base)
+        self.assertEqual(len(fixed), len(base))
+        # the checker: a baseline's cracks are known, not hard failures
+        r = V.verify(encode(F.crack_world()), {'collision': {'crack_baseline': base},
+                                               'sampling': {'max_views': 1}}, tools=F.tools()) if F.tools_built() else None
+        if r is not None:
+            self.assertFalse([f for f in r['hard_failures'] if f.get('check') == 'collision'])
+            self.assertEqual(r['static']['crack_baseline']['known'], len(found))
+            self.assertEqual(r['summary']['known_cracks'], len(found))
+
     def test_entity_in_a_wall(self):
         _, ents = self.check_static(F.entity_wall_world())
         self.assertEqual(len(ents), 1)
@@ -172,8 +304,9 @@ class ViewTests(unittest.TestCase):
     def test_good_world_passes_strict(self):
         # Without the cameras aimed at its coin: one of them, at eye height on the ground 4 units
         # from the coin, sees a ground tile drawn over the foot of a building (6 pixels; the
-        # plaza's ground is not flagged ground). The plaza is known-good from the other kinds.
-        r = self.run_check(F.good_world(), {'mode': 'strict', 'sampling': {'entities': None}})
+        # plaza's ground is not flagged ground). The plaza is known-good from the other kinds, at
+        # 4 yaws (the default's 8 find eye views where a ground tile sorts over a building's foot).
+        r = self.run_check(F.good_world(), {'mode': 'strict', 'sampling': {'entities': None, 'yaws': 4}})
         if VERBOSE:
             print('\n  good world:', json.dumps(r['summary']), json.dumps(r['timing']))
         self.assertTrue(r['ok'], json.dumps(r['hard_failures'] + r['threshold_failures'])[:2000])
@@ -764,6 +897,26 @@ class DepthSampleTests(unittest.TestCase):
 @needs_tools
 @needs_tools
 @unittest.skipUnless(importlib.util.find_spec('PIL'), 'the night market\'s sheets need Pillow')
+class IdentityMeshBankTests(unittest.TestCase):
+    def test_bank_flags(self):
+        # VRAM at 2 MB: a face in slots 16-31 and palette bank 1 (flags bits 6 and 7). A cutout face
+        # keeps its slot but must read palette 0 of bank 0 (the verification cart's white); a face
+        # drawn untextured keeps neither bit.
+        import meshlib
+        m = meshlib.Mesh()
+        a, b, c = (m.vertex(*v) for v in [(0, 0, 0), (1, 0, 0), (0, 1, 0)])
+        for _ in range(2):
+            m.tri([a, b, c], [0x808080] * 3, [(1, 2), (30, 2), (1, 40)], slot=20, four_bit=True, palette=300)
+        data = m.pack()
+        mesh = dataclasses.make_dataclass('M', ['size'])(len(data))
+        out = V.RD.identity_mesh(data, 0, mesh, 5, cutouts={0})
+        fo = struct.unpack_from('<I', out, 8)[0]
+        cut, plain = out[fo:fo + 36], out[fo + 36:fo + 72]
+        self.assertEqual((cut[0] & 0xC0, cut[2] & 15, cut[3]), (meshlib.SLOT_HI, 4, 0))
+        self.assertEqual(meshlib.face_slot(cut[0], cut[2]), 20)
+        self.assertEqual((plain[0] & 0xC2, plain[2], plain[3]), (0, 0, 0))
+
+
 class TextureViewTests(unittest.TestCase):
     """A world with region texture sets (examples/worlds/night_market, depth and perspective):
     each view enters its camera cell's region, textured faces without holes are judged whole and

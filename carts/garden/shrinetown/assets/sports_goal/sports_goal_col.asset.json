@@ -1,0 +1,81 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "sports_goal_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "post_w",
+   "op": "box",
+   "size": [
+    0.2,
+    2.17,
+    0.16
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -2.55,
+     1.085,
+     -0.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "post_e",
+   "op": "box",
+   "size": [
+    0.2,
+    2.17,
+    0.16
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     2.55,
+     1.085,
+     -0.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "crossbar",
+   "op": "box",
+   "size": [
+    5.4,
+    0.2,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     2.15,
+     -0.95
+    ]
+   }
+  }
+ ]
+}

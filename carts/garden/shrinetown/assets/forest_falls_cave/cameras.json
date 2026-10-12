@@ -1,0 +1,8 @@
+[
+ {"name": "from_pool", "eye": [1.5, 1.6, -11], "target": [0, 4, 0]},
+ {"name": "on_ledge", "eye": [-6.5, 2.6, -1.8], "target": [0, 3.2, 1.5]},
+ {"name": "inside_out", "eye": [0.5, 3.6, 4.5], "target": [0, 3.0, -6]},
+ {"name": "inside_west", "eye": [1.5, 3.6, 3.0], "target": [-8, 3.2, 1.9]},
+ {"name": "from_terrace", "eye": [-14, 5.6, 2.0], "target": [-5, 3.2, 2.0]},
+ {"name": "from_above", "eye": [-4, 22, -16], "target": [0, 6, 3]}
+]

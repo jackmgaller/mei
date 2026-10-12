@@ -1,0 +1,7 @@
+[
+ {"name": "player_front", "eye": [-1.0, 1.6, -4.0], "target": [0.3, 0.4, 0]},
+ {"name": "along_row", "eye": [-5.0, 1.7, -1.6], "target": [1.0, 0.4, 0]},
+ {"name": "on_tyre_3", "eye": [-0.47, 2.1, -2.2], "target": [1.2, 0.5, 0.3]},
+ {"name": "behind_high", "eye": [3.0, 4.0, 5.0], "target": [0, 0.3, 0]},
+ {"name": "far_12m", "eye": [-6.0, 2.5, -10.5], "target": [0, 0.4, 0]}
+]

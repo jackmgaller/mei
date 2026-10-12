@@ -280,6 +280,7 @@ A **field** is a grid of height samples `spacing` units apart over the rectangle
 | `lod` | `{"distance", "tolerance" (default 0.25), "band" (default 2)}`: a coarser level of every tile, drawn from that distance |
 | `shading` | `smooth` (default: each corner shaded by the field's normal at that sample, so shading runs on across seams) or `flat` |
 | `ground`, `collision` | Drawn in the ground pass; its faces are collision. Both default true |
+| `slide_floor_degrees` | Faces steeper than the game's `probe.floor_max_degrees`, up to this slope, are floors as well as walls, so a falling body lands on steep ground and slides down instead of sinking through a crease ([Steep ground](#steep-ground)). Default: none, walls only |
 
 Fields may not overlap or touch: make one field, or leave a gap. **The heights file** is text, one
 line per row of samples from z = `min` to `max`, each row's samples from x = `min` to `max`
@@ -362,7 +363,9 @@ top, then leans out to the moved edge, so the top band juts over the face: a wat
 ledge that hides the wall from above. The walls are steep faces of the wall material (collision
 walls by `floor_max_degrees`) and share their points with both sheets' tiles, so there are no
 cracks between wall and ground. A cliff's area follows quad edges, so its outline is stepped at
-the spacing seen from above: a polygon traced at an angle gives a stair-stepped wall line.
+the spacing seen from above: a polygon traced at an angle gives a stair-stepped wall line. A face
+looks out over the lower of its two sheets, also where operations after the cliffs leave the sheet
+at the higher offset lower (flats cut into a slope as sheets of small offsets, then `set`).
 `report.json`'s field entry has `cliff_triangles`.
 
 ### Water
@@ -727,7 +730,7 @@ and `mesh()` draws a `*Mesh` that points into ROM (LANGUAGE.md, "Memory" and "Me
 "Streaming" here means three things only:
 
 1. choosing which cells to draw, and at what detail, and which to collide with;
-2. swapping textures and palettes in the 1 MB of VRAM when the player crosses into a region;
+2. swapping textures and palettes in the 2 MB of VRAM when the player crosses into a region;
 3. spawning and retiring entities as their cells become active and inactive.
 
 Cells are position-independent blobs behind an index: every reference inside a pack is an
@@ -756,28 +759,37 @@ backdrop. VRAM cannot hold two regions' textures at once, so there is a shared c
 one set per region, and swaps happen at natural seams: underpasses, covered arcades, station
 concourses.
 
-VRAM is 1,024 KB (spec p. 11, PLANES.md "Memory map"):
+VRAM is 2,048 KB since 2026-10-05 ([DECISIONS.md](DECISIONS.md#vram-at-2-mb); it was 1,024 KB,
+spec p. 11; PLANES.md "Memory map"):
 
 | Use | Size | Note |
 |---|---|---|
 | framebuffers A and B | 300 KB | 2 × 153,600 bytes |
 | spare | 4 KB | |
-| palette memory | 8 KB | 4,096 colours; palette 255 (colours 4080–4095) is the font's |
+| palette bank 0 | 8 KB | colours 0–4095 (4-bit palettes 0–255); palette 255 (colours 4080–4095) is the font's |
 | Horizon Engine line tables | 8 KB | convention |
 | Horizon Engine pages 10–15 | 192 KB | maps and atlases for backdrops |
 | texture slots 0–15 | 512 KB | 32 KB each (one 4-bit 256×256 texture; an 8-bit one takes two) |
+| texture slots 16–31 | 512 KB | the second megabyte, `0x500000`–`0x57FFFF` |
+| palette bank 1 | 8 KB | colours 4096–8191 (4-bit palettes 256–511, 8-bit 16–31); polygons only |
+| free | 504 KB | pages 49–63 and the rest of page 48: plane atlases and maps, or a cart's own use |
 
-300 + 4 + 8 + 8 + 192 + 512 = 1,024. Slot 15 holds the fonts (rows 0–66), so 15 whole slots are
-free for polygons.
+300 + 4 + 8 + 8 + 192 + 512 + 512 + 8 + 504 = 2,048. Slot 15 holds the fonts (rows 0–66), so 31
+whole slots are free for polygons, 30 of them for regions by default (slot 14 holds the world's
+swatch row and, in the garden, the star).
 
-*Placeholder split:* slots 0–5 common, slots 6–13 region (8 slots, 256 KB), slot 14 effects and
-HUD, slot 15 fonts. Palettes as 4-bit palettes of 16: 0–63 common (1,024 colours), 64–191 region
-(2,048 colours), 192–254 backdrop, HUD and effects, 255 font. The kit enforces whatever split the
-world recipe declares and reports use per region.
+*The kit's default split:* every region may use slots 13–0 and then 16–31 (30 slots, 983,040
+bytes) and 4-bit palettes 0–254 and 256–511; slot 14 the swatch and effects, slot 15 and palette
+255 the fonts. Regions' palettes are disjoint ([Palettes per region](#palettes-per-region)); their
+texture sets share the slots and are swapped. The kit enforces whatever split the world recipe
+declares and reports use per region.
+
+*The first placeholder split* (with 1 MB, never built): slots 0–5 common, 6–13 region, 14 effects
+and HUD, 15 fonts; palettes 0–63 common, 64–191 region, 192–254 backdrop, HUD and effects.
 
 Swap cost: filling all 16 slots costs about 900,000 cycles (spec p. 11), so about 56,000 a slot
 (PLANES.md gives the same for a 32 KB atlas). A region's 8 slots are about 450,000 cycles, nearly
-half a frame's 1,000,000. *Proposal:* swap one slot a frame (about 6% of the CPU) over 8 frames,
+half a frame's 1,000,000; all 30 a region may have are about 1,700,000, nearly two frames. *Proposal:* swap one slot a frame (about 6% of the CPU) over 8 frames,
 plus the region's palettes, while the player is inside a seam. During those frames nothing on
 screen may use region textures, which the kit can check (see [Verification](#verification)).
 
@@ -787,7 +799,9 @@ common set and common palettes, so any cell's stand-in can be drawn whichever re
 and a cell in a region that is not loaded is always drawn as its stand-in, even when near. Region
 boundaries that the player can approach without passing a seam then show stand-ins at close
 range; the layout should avoid that (a viaduct, a wall of buildings, a river), and the kit can
-report where it happens.
+report where it happens. Built: the kit's stand-ins draw far colours (palette entries of their
+region, every region's palettes being loaded at once) and, for cutouts, the stand-ins' own
+texture set, which every region's set holds ([Stand-ins made by the kit](#stand-ins-made-by-the-kit)).
 
 ## Sight lines and stand-ins
 
@@ -874,13 +888,163 @@ detail](#levels-of-detail)) is made again for it without the skirts between the 
 tiles, which meet exactly. So when the cell moves from the far ring to the near ring, what was
 drawn as its stand-in is drawn again as its placements, at their levels for that distance.
 
-The merged mesh keeps its faces' textures, so the world must have one region (a stand-in is
-drawn whichever region is loaded); a world with more is refused. Faces with repeating textures
-lose their window in the merge (a merged mesh has no window table; the warning
-`standin_windows` names the cells). A cell more than one mesh holds from that distance (2,048
+In a world with one region the merged mesh keeps its faces' textures. Faces with repeating
+textures lose their window in the merge (a merged mesh has no window table; the warning
+`standin_windows` names the cells). A stand-in is drawn whichever region is loaded, so in a world
+with several regions (built 2026-10-05) every face that samples the region's texture set is drawn
+instead in its tile's **far colour**, the mean of its texels (as a textured field's coarse level
+is): a palette-backed face of the world's swatch. A region's far colours are reduced to at most 30
+surface and 15 emissive ones (the Asset Kit's median cut), each a palette entry of the region,
+shared like any entries and listed in its palette as `far.ASSET.MATERIAL`; a variant tints them by
+class. A cutout face (foliage) is drawn solid in its colour, unless the stand-ins have a texture
+set of their own (below). A cell more than one mesh holds from that distance (2,048
 vertices, 4,000 faces) is an error at `/standins/distance`. `report.json`'s `standins` lists per
-cell the placements and triangles. The shrine's stand-ins are 81–302 triangles (with
-[quads](#quads)); the World Checker's `standin_triangles` threshold applies as to any stand-in.
+cell the pieces merged (`placements`), the pieces a cap left out (`left_out`) and the triangles as
+drawn (a quad is two), with the cell's `cap` and `ground` when it has them. The shrine's stand-ins
+are 81–302 triangles (with [quads](#quads)); the World Checker's `standin_triangles` threshold
+applies as to any stand-in.
+
+```json
+"standins": {"distance": 128, "triangles": 90, "ground": 32,
+             "cells": {"c2_4": {"triangles": 140}}}
+```
+
+Two options keep stand-ins small where a cell holds much more than its far view needs:
+
+- `triangles` (1–4,000) caps each stand-in's triangles as drawn. The cell's ground goes in first,
+  always: its field tiles and water, its `ground` placements and, with `"sweeps": true`, its
+  ground sweeps ([Ground](#ground)). Then the rest goes in largest first, each piece whole or not
+  at all, skipping what does not fit and trying the next. A piece's size is its bounding box's
+  height times its longer horizontal side (as placed, with a scatter prop's thinning `scale`), so
+  tall and wide things, the silhouette, go before low and small ones; ties go to the larger
+  footprint, then to the placements' order. A scatter chunk goes in prop by prop, the props of
+  equal size in a seeded order (by each prop's ID, as `thin` chooses), so a cap keeps a
+  spread-out share of a wood rather than one corner of it. A sweep that is not ground (raised, or
+  `"ground": false`) is a piece like the others. If the ground alone is over the cap, the
+  stand-in is the ground alone and the warning `standin_over_cap` names the cell, its ground's
+  triangles and the cap.
+- `ground` (4, 8, 16, 32 or 64 units) resamples the cell's field tiles on one grid of that many
+  units over the whole cell, as the far ground levels do ([Levels of detail](#levels-of-detail)),
+  in place of the level they draw at `distance`: on a 64-unit cell, `32` is 8 triangles where the
+  ground is flat, plus skirts on the cell's border where a straight edge stands above the ground
+  beside it. Where the grid cannot be laid over the whole cell (a grid point with no field under
+  it, or more tiles than one mesh holds), each tile is resampled on its own (`nx = round(tile /
+  grid)`, at least one square), and a tile that cannot be keeps its own coarsest level. Each grid
+  point takes the highest ground under it, so a cliff becomes a slope one grid square wide whose
+  top edge may move by up to a square, and its overhang is gone. A field's water is a piece of
+  its own and is kept as it is, over the resampled bed; where the coarser bed rises above the
+  water's surface (a narrow stream between banks), the water is hidden there.
+
+`cells` overrides `triangles` and `ground` per cell ID (a cell not in the world is an error). A
+world without these options builds as before, byte for byte. In the shrine town's grey box
+(64-unit cells, far ground at 16, built as its three strip worlds), `{"distance": 128, "sweeps":
+true}` gives stand-ins of 90–540 triangles; adding `"triangles": 90, "ground": 32` gives 28–90,
+except cell `c3_2`, whose ground alone is 103, 85 of them its water, which `ground` does not
+resample (`standin_over_cap`).
+
+**The stand-ins' own texture set** (built 2026-10-05; the common set proposed in [Regions and the
+VRAM split](#regions-and-the-vram-split), for cutouts only). Drawn solid in a far colour, a
+tree's two crossed cards are two dark slabs, and a fence or a lattice a wall:
+
+```json
+"standins": {"distance": 128, "textures": {"slots": "0", "budget": 32768}}
+```
+
+With `textures`, every 4-bit cutout texture (one with holes, not animated) of the levels the
+stand-ins draw (each placement's and scatter prop's level at `distance`, not culled by then, not
+in a layer) is packed once into these slots (default `"0"`, budget their 32,768 bytes a slot) and
+left out of the regions' own sets. Its slots are taken out of every region's slot list, and every
+region's set holds the same image of them, so the cards are in VRAM whichever region was entered
+last. Each region
+holds its own copies of the palettes of the cards it draws, after its texture palettes, so its
+variants tint them as its own. A stand-in then keeps those faces textured, cut out as near; with
+[haze](#haze) it draws them through a second copy of those palettes that the variants haze. Over
+the budget, the build fails at `/standins/textures` naming each texture and its bytes.
+`report.json`'s `standins.textures` gives the set's slots, budget, bytes (as `vram_bytes` and
+`vram_bytes_allocated` on the 8-texel grid), tiles, palettes and bytes per `ASSET.MATERIAL`; each
+region's `textures` counts its own tiles only. In a world with one region nothing changes: its
+stand-ins keep every texture already.
+
+**Loaded once** (2026-10-06). The pack stores a texture that several regions' sets hold, byte for
+byte, once: every region's record of the common slots points at the same data (the encoder pools
+identical texture blobs; `decode()` gives each `Texture` its `offset`). The reader remembers, per
+slot, the data it copied there since `wp_open()`, and `wp_texture_load()` (so `wp_region_enter()`)
+skips a slot that already holds the texture it would copy: the common slots are copied on the
+first region entry only. A slot an animated texture wrote into (`wp_animate()`) is copied again;
+a game that writes a world's slot itself calls `wp_textures_forget()`, and the next entry copies
+every slot. Each region's set is still whole in the pack, so the World Checker judges it as
+before. The slots' images run from row 0 to the last row a tile uses.
+
+In the shrine town (two regions, `"slots": "0,31"`): 27 tiles, 48,518 bytes (56,736 on the grid)
+of the 65,536: the far cards of the cedar (two drawings), giant cedar, hollow sacred cedar, ginkgo
+(two), maple and small maple (two), and zelkova (5,408 for each 96 × 96 card, 2,720 for a cedar's
+32 × 128), the hollow cedar's leaf cluster, the impostors of the temple, pagoda, gate and station
+concourse ([ASSETKIT.md](ASSETKIT.md#impostors), 1,600–5,120 bytes each), and the lattices,
+grilles and railings of the fire tower, the canal grille, the arched bridge, the pool fence, the
+watermill's wheel, the platforms and the ramen shop's treads. Each region's set carries slot 0 (256
+rows) and slot 31 (227 rows): 61,824 bytes, about 58,000 cycles at the 0.94 cycles a byte of
+`wp_region_enter()`, which were copied again on every crossing and stored once per region before
+the set was loaded once. Its palettes: 12 in the set, copied twice into each
+region that draws them (as drawn near, and hazed). The full check's peaks did not move with the
+first version of the set (15 tiles in slot 0: GPU 908,916 to 909,169 cycles).
+
+### Occlusion
+
+Mei has no occlusion culling: whatever is in the view volume is transformed and sorted, and in a
+town most of it stands behind walls. A recipe may declare **occluders** and **camera zones**, and
+the kit works out, for each zone, the placements and stand-ins that no point of the zone can see
+past one of its occluders: a potentially visible set per zone, which the pack stores
+([WORLDPACK.md](WORLDPACK.md#occlusion-zones), 1.5) and the reader skips while the eye is in the
+zone (`tools/worldkit/occlusion.py`).
+
+```json
+"occlusion": {
+  "occluders": {
+    "hall_wall": {"box": [[136.1, 0.05, 14.71], [155.9, 4.55, 14.95]]},
+    "kura":      {"box": [[90.3, 0.2, 70.3], [96.7, 4.6, 73.7]], "yaw": 30},
+    "awning":    {"quad": [[0, 3, 0], [4, 3, 0], [4, 3, 2], [0, 3, 2]], "layer": "festival"}
+  },
+  "zones": {
+    "ticket_hall": {"box": [[150.5, 0.3, 5], [169.5, 3.2, 11]], "occluders": ["hall_wall"]},
+    "fair":        {"box": [[0, 0, 0], [8, 5, 8]], "layer": "festival"}
+  }
+}
+```
+
+- An **occluder** is a box (`[[x0, y0, z0], [x1, y1, z1]]` in world coordinates, optionally
+  turned by `yaw` degrees about its centre) or a flat convex quad (four corners in order). It
+  stands for solid geometry: a box inside a building's walls, a floor slab, a quad on a wall. The
+  kit uses only its shape; that what is drawn there truly hides what lies behind it, from every
+  point of the zones that use it, is the author's claim, which the World Checker tests
+  ([WORLDCHECKER.md](WORLDCHECKER.md#occlusion)). A `layer` occluder exists only while its layer
+  is on, so only zones of that layer use it.
+- A **zone** is an axis-aligned box the eye (the game's camera, not the player) can be in. The
+  reader uses the first zone, in recipe order, whose box holds the eye and whose `layer` (if any)
+  is on. `occluders` lists the occluders it uses; by default every occluder without a layer and
+  those of its own layer. A zone is cut at cell seams: each piece is stored in its cell and its
+  set is worked out from that piece alone.
+- **What is hidden.** A placement is hidden from a zone when every corner of its box (the box,
+  in its asset's frame, of the vertices of every level it can draw, turned by its yaw, grown by
+  0.01) lies in one occluder's shadow from every corner of the zone (shrunk by 0.01). A shadow from
+  a point is the occluder's silhouette cone beyond its faces that look at the point, a convex
+  set, so a box inside it holds the mesh; and a point hidden from two eyes is hidden from every
+  eye between them, so the zone's corners stand for all of it. Stand-ins of the cells within 3
+  are hidden the same way. Shadows of two occluders are not joined (no occluder fusion), so one
+  occluder must hide a placement whole: long placements (a 20-unit train car, a 48-unit
+  concourse) are hidden only by occluders larger than their shadows need.
+- **Warnings:** `zone_hides_nothing` (the zone is left out of the pack), `zone_meets_occluder` (a
+  zone piece overlaps an occluder's box or a corner lies on its plane; the occluder is not used
+  there). `report.json`'s `occlusion` lists each zone's cells, the placements, faces and
+  stand-ins it hides, and `hidden_by`, how many each occluder hides first.
+- **A world without `occlusion`** builds the same pack as before (1.3 or 1.4).
+
+At run time a zone costs the reader a box test per zone looked at in the eye's cell (about 40
+cycles) and a bit test per placement looked at in a near cell the zone has a mask for (about 11),
+WORLDPACK.md, "Costs": a zone pays only where what it hides is often in view. The shrine town's
+measurements (`carts/garden/shrinetown/DESIGN.md`, 12.9) are the cautionary example: in
+streets, what stands behind a row of buildings is mostly beside the view, and 640 zones over the
+town cost more than they saved. Why a set per zone rather than a screen-space test per frame is
+in WORLDPACK.md, "Occlusion zones".
 
 ## Game data and stable IDs
 
@@ -939,10 +1103,12 @@ the type numbers, an Akari `struct` per type with parameters and an `enum` per e
 `GAME.game.akr`, which every world of the game imports. `saved` asks the kit for a persistent bit
 per entity of that type. `probe` describes the player's body: the kit classifies collision by
 `floor_max_degrees` (and `ceiling_max_degrees`, default 45) and copies walls `radius` past cell
-edges; the World Checker samples cameras with its `radius`, `height` and `step`. `GAME.game.akr`
-exports it as `GAME_PROBE_RADIUS` and `_FLOOR_MAX_DEGREES`, `_HEIGHT` and `_STEP` when the
-schema gives them, and `_CEILING_MAX_DEGREES` (always: the angle the kit used), so a cart moves
-the same body the level was checked for. It is geometry, not movement rules.
+edges; the World Checker samples cameras with its `radius`, `height` and `step`, and does not
+report a crack that the game's floor query bridges with its `bridge` ([Cracks](#cracks)).
+`GAME.game.akr` exports it as `GAME_PROBE_RADIUS` and `_FLOOR_MAX_DEGREES`, `_HEIGHT`, `_STEP`
+and `_BRIDGE` when the schema gives them, and `_CEILING_MAX_DEGREES` (always: the angle the kit
+used), so a cart moves the same body the level was checked for. It is geometry, not movement
+rules.
 Everything else (what `night` means, whether a coin respawns) is the game's. Entity IDs are
 world-wide, so a `ref` and a saved bit can name any entity.
 
@@ -972,8 +1138,8 @@ vec3 defaults are `[x, y, z]`; `true` and `false` are bool defaults; names, enum
 names are bare and follow the kit's name rule, `^[a-z][a-z0-9_]{0,47}$`. There are no reserved
 words, so an enum value may be `u8` (`kind: u8 | s16`, where the `|` makes it an enum) and a field
 may be called `world`. `game` comes first; `probe`, `worlds` and types follow in any order. The
-probe requires `radius` and `floor_max_degrees`; `height`, `step` and `ceiling_max_degrees` are
-optional. `convert` writes the canonical style shown above (probe values and field types aligned,
+probe requires `radius` and `floor_max_degrees`; `height`, `step`, `ceiling_max_degrees` and
+`bridge` are optional. `convert` writes the canonical style shown above (probe values and field types aligned,
 a blank line between statements); it drops `"saved": false`, empty `params` and `"required":
 false`, which mean the same as leaving them out.
 
@@ -1099,17 +1265,18 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | Property | Meaning |
 |---|---|
 | `game`, `assets`, `cell_dir` | Paths relative to the world file: the game schema, the Asset Kit recipes (`NAME.asset.json`), the cell files |
+| `asset_dirs` | More directories of Asset Kit recipes, searched with `assets` (a level whose grey boxes and real assets live in folders of their own), at most 256; an entry ending in `/*` is every immediate subfolder of its folder, in name order (`"assets/*"` once for a folder per asset; a glob with no subfolders is an error), and a directory named twice is searched once. A name found in two of them is an error that names both files |
 | `grid.cell_size` | 16, 32, 64 or 128 units: the pack's `cell_shift`. Cell (*i*, *j*) (`at`) covers *x* in [*i S*, (*i*+1) *S*) and *z* likewise |
 | `overhang` | How far a placement may reach past its cell (default 8, at most half a cell) |
 | `collision.pad` | How far walls are copied past a cell's edge: at least, and by default, the probe radius |
 | `collision.surfaces` | Material `tag` to surface byte; untagged faces and unmapped tags get `default` (unmapped tags are listed in the warnings) |
-| `palette` | `swatch_slot` and `swatch_row` (default 14, 0): where the world's swatch row lives in VRAM; `first`: the first 4-bit palette regions are given (default 0); `first8`: the first 8-bit palette 8-bit textures take, regions taking them downward (default 14) |
-| `textures` | Every region's texture `slots` (a range `"13-6"` in order of preference, or a list `"14,12"`; default `"13-0"`) and VRAM `budget` (bytes; default the slots'), unless the region gives its own ([Textures per region](#textures-per-region)) |
+| `palette` | `swatch_slot` and `swatch_row` (default 14, 0): where the world's swatch row lives in VRAM; `first`: the first 4-bit palette regions are given (default 0); `first8`: the first 8-bit palette 8-bit textures take, regions taking them downward (default 31, the top of palette bank 1); `reserved`: 4-bit palettes the game keeps for itself (a collectible's colours), which no region, texture palette, 8-bit palette or backdrop silhouette may take: the build fails at `/palette/reserved` if one would, and a silhouette placed in bank 0 skips them |
+| `textures` | Every region's texture `slots` 0–31 (a range `"13-6"` in order of preference, or a list `"14,12,16-31"`; default `"13-0,16-31"`) and VRAM `budget` (bytes; default the slots', 983,040 for the default 30), unless the region gives its own ([Textures per region](#textures-per-region)) |
 | `regions` | Named regions in order (the pack's region numbers): optional `palettes` (`first`, `count`), `variants` (with `texels` and `backdrop` colours for textures and the silhouette), `textures` and `backdrop` ([Backdrops](#backdrops)). `audio` is reserved and rejected for now |
 | `layers` | World-wide layer names in order (the pack's layer ids), each with an optional exclusive `group` and `on` (at start) |
 | `paths` | Named polylines in world coordinates, in order (the pack's path numbers): [Paths](#paths) |
 | `lod` | The switch distances of assets with levels of detail: `scale`, and per asset `distances`, `cull`, `band`, `off`; far levels of the fields' tiles (`ground`) and cull distances for sweeps (`sweeps`) ([Levels of detail](#levels-of-detail)) |
-| `standins` | Stand-ins made by the kit from each cell's own contents, for every cell that names none ([Stand-ins made by the kit](#stand-ins-made-by-the-kit)) |
+| `standins` | Stand-ins made by the kit from each cell's own contents, for every cell that names none: `distance`, `sweeps`, a cap on `triangles`, a `ground` grid, and per-cell `cells` overrides ([Stand-ins made by the kit](#stand-ins-made-by-the-kit)) |
 | `meshes.quads` | Pack pairs of triangles as quads: the same pictures, fewer faces ([Quads](#quads)) |
 | `runtime.near_far` | The near pass's far depth the pack asks the reader for (units; default 1.5 cells). `wp_open()` sets `wp_near_far` to it and the World Checker measures with it |
 | `runtime.depth`, `runtime.perspective` | The game draws the world with the depth buffer, and with perspective-correct texturing (`render_depth(true)`, `render_perspective(true)`; default false). Not stored in the pack: the checkers judge the world and its assets so ([Depth mode](#depth-mode)) |
@@ -1148,7 +1315,10 @@ emissive range on its own curve. Each asset's palette faces are then rewritten w
 drawn in two regions is stored twice (the pack pools identical bytes).
 
 **Regions get disjoint palettes** (by default consecutively from `palette.first`; an explicit
-`palettes.first` may place them, and overlaps are errors). That departs from the placeholder split
+`palettes.first` may place them, and overlaps are errors). There are 512 4-bit palettes, 0–511 in
+two banks; a region's range never includes 255 (the fonts'), so a region that does not fit below
+it starts at 256, in palette bank 1, and its main run is loaded there (`load_palette()` and
+`palette_lerp()` address colours 4096–8191 in bank 1). That departs from the placeholder split
 in [Regions and the VRAM split](#regions-and-the-vram-split), which shared one range among regions
 and swapped it: with flat-colour materials a region needs tens of colours, not hundreds, so every
 region's palettes can be loaded at once, and a far cell's stand-in is coloured correctly whichever
@@ -1161,6 +1331,14 @@ variant starts from the entries' own colours, multiplies surface and emissive en
 of every asset drawn in the region) or `ASSET.MATERIAL`. A name that matches nothing is an error;
 two names giving one shared entry two colours is an error that suggests `share: false`; recolouring
 an entry another material shares is a warning. The kit attaches no meaning to the names.
+
+**Fog per variant** (the GPU's fog toward a colour: [DECISIONS.md](DECISIONS.md#fog-toward-a-colour)).
+A variant may declare `"fog": {"color": "#c6cec8", "near": 48, "far": 300}` (near 0–4,095 units,
+far at least near + 1): a day haze, or night darkness. When any variant does, `NAME.akr` gets
+`world_NAME_fog(region, variant)`, which calls `gpu_fog()` with that variant's fog, or
+`gpu_fog_off()` for a variant without it; the game calls it with `wp_region_enter(k, v)`. A world
+without fog generates what it always did. The World Checker does not draw fog (it costs the GPU 8
+cycles a triangle and nothing a pixel).
 
 ### Textures per region
 
@@ -1176,8 +1354,10 @@ packer (`kitcore/texpack.py`, as `mei_assets.py pack` does):
   differently; a tile used by both classes is tinted as emissive, with a warning);
 - **window-aligned tiles**: every tile at a multiple of 8 texels, repeating tiles reached through
   texture windows;
-- **slots** from the region's `textures.slots` (else the world's, else `"13-0"`), in that order
-  of preference, never 15 (the fonts). Slot 14 holds the world's swatch row by default; a region
+- **slots** from the region's `textures.slots` (else the world's, else `"13-0,16-31"`), in that
+  order of preference, never 15 (the fonts). A set that fits in 13–0 packs exactly as it did
+  before slots 16–31 existed; a face in slots 16–31 has bit 6 of its flags set
+  ([LANGUAGE.md](LANGUAGE.md#mesh-format)), and one with a palette in bank 1 bit 7. Slot 14 holds the world's swatch row by default; a region
   may still use it: the packer keeps the swatch's 16 × 1 texels free and the region's slot image
   carries the swatch bytes.
 
@@ -1190,8 +1370,8 @@ before, byte for byte.
 its own range (`palettes.first`, `count`; still disjoint from every other region's), so its main
 colour run covers them and palette variants recolour them entry by entry. 8-bit texture palettes
 (256 colours each, 8-bit palette *p* is colours 256 *p* ..) are taken from `palette.first8`
-(default 14) downward, region after region, and stored as extra runs; the build fails if one
-would overlap a 4-bit palette a region uses.
+(default 31, the top of palette bank 1; it was 14) downward, region after region, never 15, and
+stored as extra runs; the build fails if one would overlap a 4-bit palette a region uses.
 
 **VRAM budget.** A region may use its slots' 32,768 bytes each, or `textures.budget` bytes (tiles
 counted on the 8-texel grid, gutters included). Over it, or when the tiles do not fit in the
@@ -1221,9 +1401,10 @@ reader loads or blends them like any other variant (`wp_variant_load()`, `wp_var
 has its frames in the pack in the tile's own layout; the reader copies a frame into the tile
 when it changes (`wp_animate(t)`, every placement in step). The texture set holds frame 0.
 
-**What is refused.** A stand-in with textures (a stand-in is drawn whichever region is loaded,
-so it cannot use a region's set), and a merged placement whose mesh has repeating textures (a
-merged mesh keeps no window table). Textured terrain's tiles join the region's set as one more
+**What is refused.** An authored stand-in with textures (a stand-in is drawn whichever region is
+loaded, so it cannot use a region's set; in a world with several regions the kit's own stand-ins
+draw far colours instead: [Stand-ins made by the kit](#stand-ins-made-by-the-kit)), and a merged
+placement whose mesh has repeating textures (a merged mesh keeps no window table). Textured terrain's tiles join the region's set as one more
 asset's ([Textured terrain](#textured-terrain)).
 
 **Cost** (the night market's market region, measured on the console, `tests/worldkit/market.akr`):
@@ -1261,7 +1442,11 @@ plane chip erasing the frame to holes the GPU's 38,400-cycle `cls()` goes too.
   (`MAP_BG1`), both copied by `wp_region_enter()`. `horizon` gives the rows below the horizon
   line (default 0: it stands on the horizon). Its colours are one 4-bit palette in the region's
   range, so variants recolour it: the surface tint, then exact colours in the variant's
-  `backdrop` (the skyline's windows lit at night).
+  `backdrop` (the skyline's windows lit at night). A plane reads palette bank 0 only, so a
+  region whose palettes are in bank 1 (from 256) has its silhouette's palette in bank 0 instead,
+  the first after every bank-0 palette taken, loaded with each variant as a run of its own
+  (`wp_variant_load()`). Before 2026-10-05 it stayed in the region's range and the plane drew it
+  with the bank-0 palette 256 below: another region's colours.
 
 **How it moves with the camera** (`stdlib/wpbackdrop.akr`, `wp_backdrop_draw(yaw, pitch)`): the
 camera has no roll, so the horizon is a screen line, 120 + *F* tan(pitch) with *F* = 207.8
@@ -1316,6 +1501,14 @@ it draws beyond its vertices and faces (WORLDPACK.md, "Costs"), so eight bollard
 placement instead of eight; the price is ROM (each copy's vertices are stored) and coarser
 culling (one sphere). Collision is unchanged: each merged prop keeps its own. The pack needs no
 new record. `report.json` lists what was merged per cell.
+
+A merged mesh keeps its props' cull distance (2026-10-06): when every prop merged into a mesh has
+one (the recipe's `lod.cull`, or the world's `lod.assets`), the mesh is culled from the largest of
+them plus that prop's distance from the mesh's centre (`merge.shared_cull()`; the reader measures
+from the mesh's centre, so no prop goes before its own cull would take it), and the cell's
+`merged` entry in `report.json` gives it as `cull`. When only some have one, the mesh is drawn at
+every distance and the build warns (`cull_merged`, naming the placements whose cull is lost).
+Levels of detail are still lost (`lod_merged`).
 
 ### Ground
 
@@ -1391,7 +1584,8 @@ the asset's recipe and, for one world, in the world file:
 Distances must increase by more than twice the band and stay within 1,400 units; an error points
 at the asset's entry (or at `/lod/scale`). Naming an asset without `lod`, or one nothing draws, is
 a warning (`lod_unused`). A merged placement (`"merge": true`) draws its level 0 only: merged
-meshes have no levels (`lod_merged`). `report.json` lists, per asset with levels, the distances,
+meshes have no levels (`lod_merged`); they keep a cull shared by every prop in them ([Merged
+scatter](#merged-scatter)), else warn (`cull_merged`). `report.json` lists, per asset with levels, the distances,
 cull and band the pack holds and each level's triangles (`lod`), and the asset summaries carry the
 recipe's per-level report.
 
@@ -1447,6 +1641,89 @@ and a placement in a near cell beyond `near_far` is culled although no stand-in 
 A near cell reaches up to two cells from the eye (three on the diagonal), so a depth-mode world
 that draws its distance can set `near_far` past that and let each placement's levels and cull
 decide: the shrine uses 192 (three of its 64-unit cells).
+
+**A level bias that follows the measured cost** (*proposal*, not built). The switch distances are
+set for a world's worst views, so every other view draws coarser than it could: in the shrine
+town the full check's median view is about 310,000 draw CPU cycles of the 600,000 budget. The
+reader could scale the distances it compares by a bias *b* (0.75–1.5), kept per frame from what
+the last frames cost:
+
+- the cart measures the world's draw with `CYCLES` around `wp_draw()` (the reader can do it in
+  `wp_draw()` itself) and keeps a short average *c* of the last 4 frames;
+- with a target *T* (say 80% of the world's share, 480,000 of 600,000), *b* moves toward
+  *b* · (*T* / *c*) by at most 2% a frame, clamped to the range, so a view that grows heavier is
+  drawn coarser within a few frames, and a light view draws finer;
+- the comparison is `d < D · b` for each switch distance *D*, and the hysteresis band is scaled
+  with it, so placements at a switch distance still do not flicker; cull distances and stand-ins
+  are not biased (what pops in at the near ring's edge stays where the World Checker saw it);
+- the bias is one `fixed` the reader multiplies into the eye distance it already computes per
+  placement (`__wp_lod_mesh()`): about 10 cycles a placement, under 4,000 a frame.
+
+The World Checker would keep judging the levels at *b* = 1 (and, to bound the worst case, at the
+range's top). Levels then become a quality floor rather than a budget, and the zones' sooner
+levels (DESIGN.md 12.6) could go back to the recipes' own, the bias pulling them in only where a
+view needs it. What it cannot fix: a single frame's spike (a region entered, cells loaded), and
+GPU-bound views, which a CPU measurement does not see (the GPU's `GPU_CYCLES` could be averaged the
+same way).
+
+### Haze
+
+Built (2026-10-05). Far geometry fades toward the colour of the sky at the horizon (aerial
+perspective), so it recedes instead of reading as dark blocks:
+
+```json
+"haze": {"start": 20, "end": 280, "amount": 0.55, "standins": 0.38}
+```
+
+| Property | Meaning |
+|---|---|
+| `start`, `end` | The amount grows linearly from 0 at `start` (default 0) to `amount` at `end` (units from the eye) |
+| `amount` | How far a colour moves toward the haze colour at `end` and beyond, 0–1 |
+| `standins` | The amount for stand-ins; default the amount at 1.5 times the stand-in distance |
+| `emissive` | Emissive faces (lit windows, lamps, signs) are hazed by this times the amount; default 0.5 |
+| `elevation` | Where on each region's backdrop sky the haze colour is read, degrees above the horizon; default 2 |
+| `colors` | The haze colour per palette variant name, instead of the sky's |
+
+Nothing is computed at run time (`tools/worldkit/haze.py`): what is drawn far off is separate
+data already, so the kit bakes the haze into it.
+
+- **Levels of detail** after level 0 (assets', scatter chunks', terrain tiles' and the far ground
+  levels): each level is hazed by the amount at the distance it switches in, through its faces'
+  vertex colours. An untextured face's colour is mixed exactly. A palette-backed face's colour is
+  its palette entry times its vertex tint (128 is unchanged, 255 at most), so the tint is set to
+  turn the entry's colour into the hazed one: t' = t (1 − a) + 128 a S / b per channel, b the
+  entry's colour, S the haze colour. A textured face's tint applies to all its texels, so b is the
+  tile's mean brightness, as grey: the texture brightens toward the haze with a cast of its colour
+  and keeps its own hues (a per-channel tint for a card's mean green turned its brown trunk pink).
+  The tint is the first variant's haze colour; at night the variant's palette darkens under the
+  same tint, so a far level is a little lighter at night than exact haze toward the night sky
+  would make it.
+- **Stand-ins**, at `standins`: in a world with several regions their faces are drawn in far
+  colours ([Stand-ins made by the kit](#stand-ins-made-by-the-kit)), and with haze those become
+  entries of their own (palette-backed faces' colours join the tiles' means in the reduction),
+  which only stand-ins draw: every palette variant hazes them exactly toward its own haze colour.
+  Their cut-out cards (the stand-ins' texture set) are drawn through a second copy of the cards'
+  palettes, hazed the same way. Everything else in a stand-in (and every stand-in in a world with
+  one region) is tinted as the levels are.
+
+Level 0 is never hazed, and an asset without levels is drawn unhazed to the end of the near pass.
+A level's haze is the amount where it starts, so it steps up a little at each switch. ROM grows by
+the levels whose bytes no longer pool with another copy; palettes by the far colours' entries
+(about 3 palettes a region) and the cards' second copies. `report.json`'s `haze` gives the
+settings, each region's colour per variant and the number of levels hazed. A world without
+`haze` builds as before, byte for byte.
+
+**With the GPU's fog** ([Fog per variant](#palettes-per-region), DECISIONS.md "Fog toward a colour"), which
+fades every surface with depth by its own depth, textured ones included, at 8 GPU cycles a
+triangle, the baked haze is mostly redundant: hazing the levels as well fades them twice. A world
+with fog sets `amount` 0 (the levels are left as they are; at() is 0 everywhere) and keeps a
+little for `standins`, whose flat far colours read better moved toward the sky where the fog is
+still thin. Fog is not drawn by the World Checker; the haze, being data, is.
+
+The shrine town had `{"start": 20, "end": 280, "amount": 0.55, "standins": 0.38}` (2,246 levels
+hazed, the pack 24,280 bytes larger) until fog came; with fog from 30 to 380 units by day and 16
+to 220 by night, it has `{"amount": 0.0, "standins": 0.15, "elevation": 1}`: the stand-ins only,
+toward the same colour as the fog (shrinetown/DESIGN.md 12.7 has the views, before and after).
 
 ### Quads
 
@@ -1591,6 +1868,73 @@ sets how far walls are copied past a cell's edge (the pack's `pad`). Moving obje
 are entities with a collision asset in their own frame; the game moves them and the runtime tests
 queries in that frame.
 
+### Cracks
+
+**Decided (2026-10-05): the floor query bridges small cracks, and the World Checker agrees.** A
+crack is a small horizontal gap between walkable floors: where two assets' collision meshes meet,
+inside an asset's own collision, at a bridge's or platform's joints. A point query falls through
+one, or snags in it. The shrine town had about 50 findings of 0.016 to 0.25 units, so the
+checker's report drowned the real problems in them. A game whose probe gives `bridge` (units;
+the movement garden's is 0.4375) stands its body with `wp_floor_across(p, above, below, bridge)`
+(`stdlib/worldpack.akr`) instead of `wp_floor(p, above)` (the garden's `col_stand()` asks it
+only where its own query, movers included, finds nothing within reach):
+
+- Where `wp_floor()` finds a floor at or above `p.y - below`, that is the answer, unchanged. On
+  whole floors the two queries are the same, bit for bit.
+- Otherwise it steps out from `p` along x, z and the two diagonals, 1/16 unit a step (181/4096 in
+  x and z on the diagonals, exact in fixed point), to the nearest floor within `p.y - below ..
+  p.y + above` on each side. A direction with one on both sides, `a + b` steps apart with `a + b`
+  at most `bridge × 16`, bridges the gap: the higher of the two floors is the answer. With none,
+  `wp_floor()`'s answer stands.
+
+So a gap is bridged when it is narrower than `bridge - 1/8` across its line, and narrower than
+0.92 (`bridge - 1/8`) at any angle (the nearest direction is at most 22.5° off): 0.31 and 0.29
+units for 0.4375. A gap wider than `bridge` is never bridged, at any point, nor is an edge with no
+floor beyond it (a ledge), nor a gap whose far side is out of the window (a step down into a
+trench is a fall). What it does give is a fillet in a floor's concave corners: a point in the
+corner of a hole's outline, less than `bridge` from both edges along a diagonal, is held (a
+triangle about 0.3 units on a side in a right-angled corner). The real gaps the shrine town means
+to be fallen through are 0.5 units and wider.
+
+The cost, measured by `tests/worldpack/bench.akr` (cycles; `wp_floor` 448 there): 512 where
+`wp_floor()` finds a floor in the window, and 11,478 where it does not and nothing is bridged
+(every step of every direction: 6 out along each of the 4, plus the first query), which is the
+body in the air over far ground, once a tick, about 1.1 % of a frame.
+
+The World Checker's crack check uses the same rule, through `verify_static.reader_floor_across()`
+(bit for bit `wp_floor_across()`, which `tests/test_worldpack.py` compares on 2,160 points near
+gaps of 0.016 to 0.6 units at six angles, across a cell seam): a gap whose every point the game's
+query bridges, for a body at the edge's height with the probe's step above and below, is not a
+crack, and a mismatched edge whose sliver is bridged is not reported. What remains is listed by
+`mei_world.py cracks` and kept in the world's crack baseline ([WORLDCHECKER.md](WORLDCHECKER.md#crack-baseline)).
+A game without `bridge` (or with 0) is checked as before.
+
+### Steep ground
+
+**Built (2026-10-06).** Collision steeper than the game's `probe.floor_max_degrees` is a wall, and
+a wall pushes a body out along its horizontal normal only. A body walking into steep ground is
+held back, as it should be, but one falling onto it has nothing to stand on: on a single slope the
+pushes keep it at the surface while it creeps down, but in a crease, where two steep faces meet
+in a V, one face pushes it one way and the other back, and it sinks through the ground. In the
+shrine town bodies fell through the world this way on 45–48° banks (the stage's west stair, the
+falls' top, the bank under the precinct's north wall).
+
+A heightfield's `slide_floor_degrees` (70 clears the shrine town: [WORLDCHECKER.md](WORLDCHECKER.md#drops)) makes its faces steeper than the game's limit, up
+to that slope, floors as well as walls: the encoder writes each such triangle twice, as a wall
+record and as a floor record (`pack.Tri`'s `slide_floor_degrees`; the quads' splits judge kinds
+by it too). The wall still stops a body moving into the slope; the floor catches a falling body,
+which the game slides down (the garden slides on floors steeper than its slide angle, 30°). A
+body walking into such a slope is pushed out by the wall to where the floor is within its step,
+so it steps onto the slope and slides back down instead of standing against it: up to about 63°
+with the garden's body (radius 0.3, step 0.32, lowest wall sample 0.36 up); steeper slide floors
+still stop it. Making faces floors moves the crack check's findings: in the shrine town at 70,
+one known crack goes and one terrain crack of 0.125 appears at (102.1, 40.9, 334.1), so the
+world's crack baseline is written again with the change. Faces steeper than
+`slide_floor_degrees` stay walls only, so cliffs still stop the body and can be kicked off.
+
+The World Checker's drop check ([WORLDCHECKER.md](WORLDCHECKER.md#drops)) finds where a falling
+body goes through the ground.
+
 ## Build outputs and the runtime contract
 
 For a world named `city` of a game named `game`, `build` produces:
@@ -1670,7 +2014,13 @@ nothing on thresholds. Switching a world to enforcing is an explicit edit of its
 
 **Built.** [WORLDCHECKER.md](WORLDCHECKER.md) is the reference: what fails in each mode, the
 settings and their defaults, the static collision checks, how views are sampled, the ordering
-check and its evidence, timings and limits. Every `build` runs it through `run_gate()` ([Build
+check and its evidence, timings and limits.
+
+A world names the views it knows to be heavy in `verification.vantage_points`: cameras the
+checker always runs, on top of its sample, each `{"name", "position": [x, y, z], "yaw", "pitch",
+"yaws"}` (degrees; `yaws`: that many directions evenly round from `yaw`). The build passes them
+to the checker ([WORLDCHECKER.md](WORLDCHECKER.md#vantage-points)); the quick check
+(`mei_world.py check`) runs only its own `--camera`s. Every `build` runs it through `run_gate()` ([Build
 outputs](#build-outputs-and-the-runtime-contract)); `tools/worldkit/verify.py` runs it on any
 pack.
 
@@ -1702,9 +2052,13 @@ contract](#build-outputs-and-the-runtime-contract)).
 | `init DIR [--example room\|city\|terrain] [--force]` | Copies an example world (world file, cells, game schema, asset recipes) into a new directory |
 | `validate FILE` | Every static check: schemas, references, game data, IDs, palettes, that every asset compiles and that the pack can hold the world; the ID changes a build would make |
 | `inspect FILE [--cell ID]` | The same, with the full report: per cell and per region costs, palettes and variants, entity numbers, asset hashes, warnings |
-| `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam |
+| `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N] [--crack-baseline FILE\|none]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam (with `NAME.cracks.json` beside the recipe as its crack baseline, when there is one) |
 | `preview FILE -o DIR [--cell ID] [--locked] [--world-checker full\|skip\|N]` | `build`, plus native renders of a cell per region and palette variant (`--cell` picks the cell) |
 | `floor FILE X Z [X Z ...]` | The highest floor under each point, from the world's collision as the kit builds it: `{"at", "y", "from"}`, `from` being `terrain`, `sweep` or a placement's ID (`y` null: none). For setting placements and entities on the ground |
+| `check FILE [--cells I,J[;I,J...]] [--camera SPEC]... [--cameras FILE] [--max-views 200] [-o DIR]` | The World Checker on a few cells and cameras, in seconds ([Quick tools](#quick-tools)) |
+| `floors FILE --area X0,Z0,X1,Z1 [--step 1] [--layers A,B] [--below Y]` | The pack's floor heights over an area as `wp_floor()` finds them, what each belongs to, holes and cracks ([Quick tools](#quick-tools)) |
+| `textures FILE [--region R] [--cells ...] [--add REGION:ASSET,...]` | Texture VRAM per region, by asset and by image, against the region's budget ([Quick tools](#quick-tools)) |
+| `cracks FILE [--routes FILE] [--near 3] [--baseline [FILE]] [--write-baseline]` | Every collision crack the game's floor query does not bridge, on routes first, the widest first; compared with or written to the crack baseline ([Quick tools](#quick-tools)) |
 
 `--world-checker` is for quick builds, such as the World Kit's own tests: `full` (the default)
 runs the World Checker with the world's settings; `skip` does not run it, and `report.json`
@@ -1721,6 +2075,95 @@ PACK -o DIR` ([WORLDCHECKER.md](WORLDCHECKER.md)). *Proposals, not built:* `veri
 FILE --cell ID -o RECIPE` (an Asset Kit recipe of boxes from the cell's placement bounds, for an
 agent to edit; the Asset Kit then builds it like any other, so the World Kit still models
 nothing).
+
+### Quick tools
+
+Built (2026-10-05). Four read-only commands for placing things in a world, each in seconds
+once the world has been compiled (`tools/worldkit/quick.py`; `cracks` takes minutes on a large
+world, and with `--write-baseline` writes the crack baseline). They print plain text; `--json`
+gives the result as JSON (and errors as the other commands give them; plain `error at PATH:
+message` without it). Exit 1 when the result fails (a check that fails, a region over its
+budget).
+
+**The compiled world is cached.** Each needs the world compiled (pack, placements, texture
+sets), which takes about 30 s for the shrine town (30 cells, 7 MB). The tools keep it in
+`BUILD_DIR/kit-cache/quick/` (`--build-dir DIR`, else `$B`, else `build/`; `--cache DIR`,
+`--no-cache`, `--refresh`) with a manifest of everything the compile read: the world file, the
+cell files and the cell folder's listing, the game schema, the ID lock file, every asset recipe
+used and the images and sheets its textures read, each asset directory's listing (and a `/*`
+entry's subfolders), the terrain's heights files and images, and the hash of the kit's code
+(`worldkit/cache.py`'s `code_hash`). While all of it is unchanged the next run loads the
+compiled world in about 0.6 s; after any change it compiles again and keeps the new one. Nothing
+a build writes is touched: the ID lock file is never written.
+
+**`check FILE --cells ... --camera ...`** runs the World Checker (`verify()` with a `focus`,
+[WORLDCHECKER.md](WORLDCHECKER.md#the-quick-check)) with the world's own settings: mode,
+thresholds, runtime (depth, perspective) and the game's probe. For the cells (`I,J` as a cell's
+`at`, or a cell ID; separated by `;` or the option repeated) it runs the static collision
+checks for what lies in them (cracks and mismatched floor edges, entities in solid, the cells'
+budgets) and the views sampled from them (at most `--max-views`, default 200; the full check
+samples 600 over the whole world); each camera (`--camera NAME=EX,EY,EZ:TX,TY,TZ` or
+`NAME=EX,EY,EZ@YAW,PITCH`, or a `--cameras` file, as the Asset Kit's
+[camera views](ASSETKIT.md#camera-views-at-world-scale) take them) is a vantage point, once per
+layer set. Every view lists its heaviest placements, named. The text lists the cells' budgets,
+the cameras and the worst sampled views (`--rows`), each with triangles, draw CPU and GPU cycles
+and stand-ins, against the limits:
+
+```
+$ python3 tools/mei_world.py check carts/garden/shrinetown/shrinetown.world.json --camera v5_spawn=160,1.6,26@0,0 --build-dir build-mine
+shrinetown: World Checker on 1 camera (report mode; compiled world cached, 0.6 s; check 3.5 s)
+Views: 5 (5 from 1 camera x 5 layer sets); limits 4,000 triangles, 600,000 draw CPU, 1,600,000 GPU cycles
+  view                           tris  draw CPU       GPU stand-ins  heaviest placements (faces, level)
+  v5_spawn                        995   341,884   329,076        10  station_concourse 579 L0, station_platform 410 L0, arcade_roof 130 L1
+                               eye [160.0, 1.6, 26.0] yaw 0.0 pitch 0.0
+  ...
+ok: 0 hard failures, 0 over thresholds
+```
+
+On the shrine town (Apple-silicon Mac): one or two cells about 10 s, a camera 2.5–5 s, plus
+0.4–0.6 s to load the cached world (22–30 s to compile it after a change); the full build
+with the World Checker takes about 160 s (the checker 113 s of it, its static checks 87). A
+cell's collision findings are the full check's in that cell (`tests/test_worldkit.py` compares
+them).
+
+**`floors FILE --area X0,Z0,X1,Z1 [--step 1]`** reads the built pack's collision with the
+reader's own floor query (`verify_static.reader_floor()`, bit for bit `wp_floor()`): at each
+grid point the highest floor (or the highest at or below `--below Y`, as a body there finds it),
+with the layers on at the start (`--layers A,B` for others, `""` for none). It prints the
+heights, north up, then a letter per point for what the floor belongs to (a placement, by cell
+and ID with its asset, or `terrain`, `sweep`, `scatter`), with a legend; `!` marks a hole (no
+floor where the four neighbours have floors within the probe's step) and the World Checker's
+crack findings in the area are listed. A placement's collision copied into a neighbouring cell
+keeps its own cell's tag; the name is taken from the nearest placement with that tag. Unlike
+`floor`, which tests the kit's collision before packing in floating point, a point exactly on a
+face's edge is decided as the console decides it.
+
+**`cracks FILE`** runs the World Checker's crack and mismatched-edge checks over the whole world
+(every layer off and each alone, as the full check does), with the game's floor query's bridging
+([Cracks](#cracks)), and lists every finding that remains, not only the full check's first 50:
+those within `--near` units (default 3) of a `--routes` polyline first, then the widest first,
+each with both floors named. `--baseline` compares with the crack baseline (exit 1 when one is
+new) and `--write-baseline` writes it ([WORLDCHECKER.md](WORLDCHECKER.md#crack-baseline)). On the
+shrine town (about 3 minutes, a minute of it compiling the world when it is not cached; the
+routes from `layout.py`'s `R_*` lines):
+
+```
+$ python3 tools/mei_world.py cracks carts/garden/shrinetown/shrinetown.world.json --build-dir build-mine --routes routes.json
+shrinetown: 3 cracks and mismatched floor edges the floor query does not bridge (probe radius 0.3, step 0.32, bridge 0.4375: 7 steps of 1/16), 2 on a route
+crack         0.188 at (220.094, 2.267, 155.938) cell [3, 2]: sweep | terrain on BRIDGE (0.11)
+crack         0.125 at (171.884, 52.7147, 343.962) cell [2, 5]: terrain | terrain on R_ROPEBRIDGE (2.96)
+crack         0.250 at (320.125, 10.2, 156.467) cell [4, 2]: viaduct_27 | terrain
+```
+
+**`textures FILE`** gives each region's texture VRAM as the kit packs it: every distinct tile
+once, on the 8-texel grid, against `textures.budget` (the numbers of `report.json`'s
+`regions.R.textures`), then per asset its bytes, its own (tiles no other asset of the region
+uses) and shared ones and whom it shares with, per image or sheet the bytes and the assets that
+read it, and the tiles assets share. `--region R` shows one; `--cells` the assets drawn in those
+cells, with their bytes and the bytes no other asset of the region uses; `--add
+REGION:ASSET[,ASSET...]` counts assets as if placed there (names in the world's asset
+directories, or recipe paths), to check a budget before placing. The shrine town's
+`tools/textures.py` adds its zones and allowances on top.
 
 ### Using the tool
 
@@ -1892,7 +2335,7 @@ storage per placement or entity; WORLDPACK.md, "The console reader"). *Recommend
 units until stage 2 measures. Alternatives considered: a quadtree or irregular cells for
 districts of very different density, and a precomputed potentially-visible set per cell, which
 the kit could produce offline from the same renders it verifies with; in a dense city, buildings
-hide most cells.
+hide most cells. (Built since, per hand-placed zone rather than per cell: [Occlusion](#occlusion).)
 
 ### 3. The runtime
 

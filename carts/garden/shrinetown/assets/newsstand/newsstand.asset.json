@@ -1,0 +1,1225 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "newsstand",
+ "budget": {
+  "triangles": 250
+ },
+ "sheets": {
+  "art": {
+   "image": "art/newsstand_sheet.png"
+  },
+  "concrete": {
+   "image": "../viaduct_span_16/art/concrete.png"
+  },
+  "town_common": {
+   "image": "../town_alley_house_a/art/town_common.png"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "enamel": {
+   "color": "#2a6cb4",
+   "tag": "wall",
+   "texture": {
+    "pattern": "tile",
+    "size": 16,
+    "colors": [
+     "#2f72bc",
+     "#1f5590"
+    ],
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "projection": "box",
+    "scale": [
+     0.8,
+     0.8
+    ]
+   }
+  },
+  "concrete": {
+   "color": "#b4b0a6",
+   "tag": "floor",
+   "texture": {
+    "sheet": "concrete",
+    "cell": "wall",
+    "projection": "box",
+    "scale": [
+     4.0,
+     2.0
+    ]
+   }
+  },
+  "tin": {
+   "color": "#8a9098",
+   "tag": "roof",
+   "texture": {
+    "sheet": "town_common",
+    "cell": "tin",
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "roof_edge": {
+   "color": "#7a8088",
+   "palette": true
+  },
+  "laminate": {
+   "color": "#b8895a",
+   "tag": "counter",
+   "texture": {
+    "pattern": "grain",
+    "size": 16,
+    "colors": [
+     "#c49a68",
+     "#a87a4c",
+     "#b78856"
+    ],
+    "params": {
+     "rings": 3,
+     "waves": 1
+    },
+    "projection": "box",
+    "scale": [
+     0.8,
+     0.8
+    ]
+   }
+  },
+  "news": {
+   "color": "#dcd8cc",
+   "texture": {
+    "pattern": "stripes",
+    "size": 16,
+    "colors": [
+     "#e6e2d6",
+     "#b9b5aa",
+     "#d4d0c4"
+    ],
+    "params": {
+     "count": 8,
+     "axis": "v"
+    },
+    "projection": "box",
+    "scale": [
+     0.25,
+     0.25
+    ]
+   }
+  },
+  "sweets": {
+   "color": "#d84a3a",
+   "palette": true
+  },
+  "cream": {
+   "color": "#e8e2d0",
+   "palette": true
+  },
+  "shutter": {
+   "color": "#8a9aa8",
+   "palette": true
+  },
+  "wood": {
+   "color": "#8a6a48",
+   "palette": true,
+   "double_sided": true
+  },
+  "metal": {
+   "color": "#a0a4a8",
+   "palette": true
+  },
+  "red": {
+   "color": "#c0392b",
+   "palette": true
+  },
+  "sign": {
+   "color": "#2a6cb4",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "art",
+    "cell": "sign",
+    "projection": "fit"
+   }
+  },
+  "goods": {
+   "color": "#4a382c",
+   "texture": {
+    "sheet": "art",
+    "cell": "goods",
+    "projection": "fit"
+   }
+  },
+  "mags": {
+   "color": "#c8c8d0",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "mags",
+    "projection": "fit"
+   }
+  },
+  "hang": {
+   "color": "#c8c8d0",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "hang",
+    "projection": "fit"
+   }
+  },
+  "valance": {
+   "color": "#2a6cb4",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "valance",
+    "projection": "fit"
+   }
+  },
+  "board": {
+   "color": "#ece2be",
+   "texture": {
+    "sheet": "art",
+    "cell": "board",
+    "projection": "fit"
+   }
+  },
+  "door": {
+   "color": "#8c6c4e",
+   "tag": "door",
+   "texture": {
+    "sheet": "art",
+    "cell": "door",
+    "projection": "fit"
+   }
+  },
+  "tobacco": {
+   "color": "#d8402f",
+   "texture": {
+    "sheet": "art",
+    "cell": "tobacco",
+    "projection": "fit"
+   }
+  },
+  "card": {
+   "color": "#f0c43c",
+   "texture": {
+    "sheet": "art",
+    "cell": "card",
+    "projection": "fit"
+   }
+  },
+  "side_l": {
+   "color": "#2a6cb4",
+   "tag": "wall",
+   "texture": {
+    "sheet": "art",
+    "cell": "side_l",
+    "projection": "fit"
+   }
+  },
+  "side_r": {
+   "color": "#2a6cb4",
+   "tag": "wall",
+   "texture": {
+    "sheet": "art",
+    "cell": "side_r",
+    "projection": "fit"
+   }
+  },
+  "cat": {
+   "color": "#f4f0e6",
+   "palette": true,
+   "smooth": true
+  },
+  "cat_head": {
+   "color": "#f4f0e6",
+   "smooth": true,
+   "texture": {
+    "image": "art/cat_face.png",
+    "projection": "cylindrical",
+    "scale": [
+     0.5341,
+     0.2
+    ],
+    "offset": [
+     0.25,
+     0.5
+    ]
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "plinth",
+   "op": "box",
+   "size": [
+    3.1,
+    0.1,
+    1.9
+   ],
+   "material": "concrete",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     0.05,
+     -0.1
+    ]
+   }
+  },
+  {
+   "id": "wall_w",
+   "op": "box",
+   "size": [
+    0.08,
+    2.35,
+    1.5
+   ],
+   "material": "enamel",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "faces": {
+    "left": "side_l",
+    "back": "cream"
+   },
+   "transform": {
+    "translate": [
+     -1.34,
+     1.275,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "wall_e",
+   "op": "box",
+   "size": [
+    0.08,
+    2.35,
+    1.5
+   ],
+   "material": "enamel",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "faces": {
+    "right": "side_r",
+    "back": "cream"
+   },
+   "transform": {
+    "translate": [
+     1.34,
+     1.275,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "shelf_wall",
+   "op": "box",
+   "size": [
+    2.6,
+    2.35,
+    0.55
+   ],
+   "material": "enamel",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right"
+   ],
+   "decals": [
+    {
+     "id": "goods",
+     "face": "back",
+     "material": "goods",
+     "size": [
+      2.5,
+      0.92
+     ],
+     "at": [
+      0,
+      0.225
+     ]
+    },
+    {
+     "id": "door",
+     "face": "front",
+     "material": "door",
+     "size": [
+      0.5,
+      1.0
+     ],
+     "at": [
+      -0.5,
+      -0.655
+     ]
+    }
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     1.275,
+     0.475
+    ]
+   }
+  },
+  {
+   "id": "counter",
+   "op": "box",
+   "size": [
+    2.6,
+    0.92,
+    0.95
+   ],
+   "material": "enamel",
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "faces": {
+    "top": "laminate"
+   },
+   "transform": {
+    "translate": [
+     0.0,
+     0.56,
+     -0.275
+    ]
+   },
+   "decals": [
+    {
+     "id": "plate_tobacco",
+     "face": "back",
+     "material": "tobacco",
+     "size": [
+      0.4,
+      0.16
+     ],
+     "at": [
+      -1.05,
+      0.33
+     ]
+    },
+    {
+     "id": "plate_card",
+     "face": "back",
+     "material": "card",
+     "size": [
+      0.4,
+      0.16
+     ],
+     "at": [
+      1.05,
+      0.33
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fascia",
+   "op": "box",
+   "size": [
+    2.9,
+    0.48,
+    0.18
+   ],
+   "material": "enamel",
+   "open": [
+    "top"
+   ],
+   "faces": {
+    "back": "sign"
+   },
+   "transform": {
+    "translate": [
+     0.0,
+     2.21,
+     -0.79
+    ]
+   }
+  },
+  {
+   "id": "roof",
+   "op": "box",
+   "size": [
+    3.3,
+    0.1,
+    2.1
+   ],
+   "material": "roof_edge",
+   "faces": {
+    "top": "tin"
+   },
+   "transform": {
+    "translate": [
+     0.0,
+     2.5,
+     -0.1
+    ]
+   }
+  },
+  {
+   "id": "shutter_box",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 2.58,
+   "segments": 5,
+   "material": "shutter",
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     90
+    ],
+    "translate": [
+     0,
+     1.895,
+     -0.62
+    ]
+   },
+   "caps": false
+  },
+  {
+   "id": "valance",
+   "op": "mesh",
+   "material": "valance",
+   "vertices": [
+    [
+     -1.64,
+     2.45,
+     -1.13
+    ],
+    [
+     1.64,
+     2.45,
+     -1.13
+    ],
+    [
+     1.64,
+     2.25,
+     -1.13
+    ],
+    [
+     -1.64,
+     2.25,
+     -1.13
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "hang",
+   "op": "mesh",
+   "material": "hang",
+   "vertices": [
+    [
+     -1.2,
+     1.84,
+     -0.66
+    ],
+    [
+     1.2,
+     1.84,
+     -0.66
+    ],
+    [
+     1.2,
+     1.46,
+     -0.66
+    ],
+    [
+     -1.2,
+     1.46,
+     -0.66
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "news",
+   "op": "box",
+   "size": [
+    0.5,
+    0.12,
+    0.36
+   ],
+   "material": "news",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     6,
+     0
+    ],
+    "translate": [
+     -0.88,
+     1.08,
+     -0.5
+    ]
+   }
+  },
+  {
+   "id": "sweets",
+   "op": "box",
+   "size": [
+    0.5,
+    0.14,
+    0.3
+   ],
+   "material": "sweets",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "news"
+   },
+   "transform": {
+    "translate": [
+     0.85,
+     1.09,
+     -0.55
+    ]
+   }
+  },
+  {
+   "id": "cat_body",
+   "op": "sphere",
+   "radius": 0.1,
+   "rings": 3,
+   "segments": 4,
+   "material": "cat",
+   "transform": {
+    "rotate": [
+     0,
+     45,
+     0
+    ],
+    "scale": [
+     1,
+     1.1,
+     0.9
+    ],
+    "translate": [
+     0.25,
+     1.135,
+     -0.5
+    ]
+   }
+  },
+  {
+   "id": "cat_head",
+   "op": "sphere",
+   "radius": 0.085,
+   "rings": 3,
+   "segments": 5,
+   "material": "cat_head",
+   "transform": {
+    "translate": [
+     0.25,
+     1.31,
+     -0.52
+    ]
+   }
+  },
+  {
+   "id": "cat_ears",
+   "op": "group",
+   "children": [
+    {
+     "id": "cat_ear",
+     "op": "cone",
+     "radius": 0.028,
+     "height": 0.05,
+     "segments": 3,
+     "material": "cat",
+     "transform": {
+      "translate": [
+       0.055,
+       1.3900000000000001,
+       -0.52
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x",
+     "offset": 0.25
+    }
+   ]
+  },
+  {
+   "id": "cat_paw",
+   "op": "box",
+   "size": [
+    0.04,
+    0.09,
+    0.04
+   ],
+   "material": "cat",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     -15
+    ],
+    "translate": [
+     0.355,
+     1.27,
+     -0.56
+    ]
+   }
+  },
+  {
+   "id": "racks",
+   "op": "group",
+   "children": [
+    {
+     "id": "rack",
+     "op": "mesh",
+     "material": "mags",
+     "vertices": [
+      [
+       0.22,
+       0.82,
+       -0.79
+      ],
+      [
+       1.22,
+       0.82,
+       -0.79
+      ],
+      [
+       1.22,
+       0.18,
+       -0.92
+      ],
+      [
+       0.22,
+       0.18,
+       -0.92
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "board_front",
+   "op": "mesh",
+   "material": "board",
+   "vertices": [
+    [
+     -1.23,
+     0.74,
+     -1.43
+    ],
+    [
+     -0.77,
+     0.74,
+     -1.43
+    ],
+    [
+     -0.77,
+     0.0,
+     -1.56
+    ],
+    [
+     -1.23,
+     0.0,
+     -1.56
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "board_back",
+   "op": "mesh",
+   "material": "wood",
+   "vertices": [
+    [
+     -1.23,
+     0.74,
+     -1.41
+    ],
+    [
+     -0.77,
+     0.74,
+     -1.41
+    ],
+    [
+     -0.77,
+     0.0,
+     -1.28
+    ],
+    [
+     -1.23,
+     0.0,
+     -1.28
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "ash_pole",
+   "op": "cylinder",
+   "radius": 0.018,
+   "height": 0.8,
+   "segments": 3,
+   "material": "red",
+   "transform": {
+    "translate": [
+     1.25,
+     0.4,
+     -1.4
+    ]
+   },
+   "caps": false
+  },
+  {
+   "id": "ash_bowl",
+   "op": "cylinder",
+   "radius": 0.1,
+   "height": 0.1,
+   "segments": 5,
+   "material": "red",
+   "transform": {
+    "translate": [
+     1.25,
+     0.85,
+     -1.4
+    ]
+   }
+  },
+  {
+   "id": "stool_seat",
+   "op": "cylinder",
+   "radius": 0.15,
+   "height": 0.05,
+   "segments": 5,
+   "material": "red",
+   "transform": {
+    "translate": [
+     0.35,
+     0.405,
+     -1.25
+    ]
+   }
+  },
+  {
+   "id": "stool_leg",
+   "op": "cylinder",
+   "radius": 0.02,
+   "height": 0.38,
+   "segments": 3,
+   "material": "metal",
+   "transform": {
+    "translate": [
+     0.35,
+     0.19,
+     -1.25
+    ]
+   },
+   "caps": false
+  },
+  {
+   "id": "vent_pipe",
+   "op": "cylinder",
+   "radius": 0.1,
+   "height": 0.16,
+   "segments": 4,
+   "material": "shutter",
+   "transform": {
+    "translate": [
+     0.9,
+     2.63,
+     0.3
+    ]
+   },
+   "caps": false
+  },
+  {
+   "id": "vent_cap",
+   "op": "cone",
+   "radius": 0.17,
+   "height": 0.1,
+   "segments": 4,
+   "material": "shutter",
+   "transform": {
+    "translate": [
+     0.9,
+     2.76,
+     0.3
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "wall_w",
+      "op": "box",
+      "size": [
+       0.08,
+       2.35,
+       1.5
+      ],
+      "material": "enamel",
+      "open": [
+       "top",
+       "bottom"
+      ],
+      "faces": {
+       "left": "side_l",
+       "back": "cream"
+      },
+      "transform": {
+       "translate": [
+        -1.34,
+        1.275,
+        0.0
+       ]
+      }
+     },
+     {
+      "id": "wall_e",
+      "op": "box",
+      "size": [
+       0.08,
+       2.35,
+       1.5
+      ],
+      "material": "enamel",
+      "open": [
+       "top",
+       "bottom"
+      ],
+      "faces": {
+       "right": "side_r",
+       "back": "cream"
+      },
+      "transform": {
+       "translate": [
+        1.34,
+        1.275,
+        0.0
+       ]
+      }
+     },
+     {
+      "id": "shelf_wall",
+      "op": "box",
+      "size": [
+       2.6,
+       2.35,
+       0.55
+      ],
+      "material": "enamel",
+      "open": [
+       "top",
+       "bottom",
+       "left",
+       "right"
+      ],
+      "decals": [
+       {
+        "id": "goods",
+        "face": "back",
+        "material": "goods",
+        "size": [
+         2.5,
+         0.92
+        ],
+        "at": [
+         0,
+         0.225
+        ]
+       },
+       {
+        "id": "door",
+        "face": "front",
+        "material": "door",
+        "size": [
+         0.5,
+         1.0
+        ],
+        "at": [
+         -0.5,
+         -0.655
+        ]
+       }
+      ],
+      "transform": {
+       "translate": [
+        0.0,
+        1.275,
+        0.475
+       ]
+      }
+     },
+     {
+      "id": "counter",
+      "op": "box",
+      "size": [
+       2.6,
+       0.92,
+       0.95
+      ],
+      "material": "enamel",
+      "open": [
+       "bottom",
+       "left",
+       "right",
+       "front"
+      ],
+      "faces": {
+       "top": "laminate"
+      },
+      "transform": {
+       "translate": [
+        0.0,
+        0.56,
+        -0.275
+       ]
+      }
+     },
+     {
+      "id": "fascia",
+      "op": "box",
+      "size": [
+       2.9,
+       0.48,
+       0.18
+      ],
+      "material": "enamel",
+      "open": [
+       "top"
+      ],
+      "faces": {
+       "back": "sign"
+      },
+      "transform": {
+       "translate": [
+        0.0,
+        2.21,
+        -0.79
+       ]
+      }
+     },
+     {
+      "id": "roof",
+      "op": "box",
+      "size": [
+       3.3,
+       0.1,
+       2.1
+      ],
+      "material": "roof_edge",
+      "faces": {
+       "top": "tin"
+      },
+      "transform": {
+       "translate": [
+        0.0,
+        2.5,
+        -0.1
+       ]
+      }
+     },
+     {
+      "id": "board_front",
+      "op": "mesh",
+      "material": "board",
+      "vertices": [
+       [
+        -1.23,
+        0.74,
+        -1.43
+       ],
+       [
+        -0.77,
+        0.74,
+        -1.43
+       ],
+       [
+        -0.77,
+        0.0,
+        -1.56
+       ],
+       [
+        -1.23,
+        0.0,
+        -1.56
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     }
+    ]
+   },
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "body",
+      "op": "box",
+      "size": [
+       2.76,
+       2.45,
+       1.5
+      ],
+      "material": "enamel",
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "faces": {
+       "left": "side_l",
+       "right": "side_r"
+      },
+      "decals": [
+       {
+        "id": "goods",
+        "face": "back",
+        "material": "goods",
+        "size": [
+         2.5,
+         0.92
+        ],
+        "at": [
+         0,
+         0.27
+        ]
+       },
+       {
+        "id": "sign",
+        "face": "back",
+        "material": "sign",
+        "size": [
+         2.7,
+         0.4
+        ],
+        "at": [
+         0,
+         1.005
+        ]
+       }
+      ],
+      "transform": {
+       "translate": [
+        0.0,
+        1.225,
+        0.0
+       ]
+      }
+     },
+     {
+      "id": "roof",
+      "op": "box",
+      "size": [
+       3.3,
+       0.1,
+       2.1
+      ],
+      "material": "roof_edge",
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "top": "tin"
+      },
+      "transform": {
+       "translate": [
+        0.0,
+        2.5,
+        -0.1
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 120,
+  "band": 2
+ }
+}

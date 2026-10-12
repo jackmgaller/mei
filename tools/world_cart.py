@@ -8,8 +8,8 @@
         so that a rebuild checks only what changed (tools/worldkit/cache.py). Prints a two-line
         summary, or the kit's errors one per line; exits 0 or 1. On success it writes build.json
         there (the kit's result, make's target) and build.d (make's dependencies: the recipe, its
-        cells, game schema, ID lock file and asset recipes, and the cell and asset folders, so an
-        added file counts too).
+        cells, game schema, ID lock file, crack baseline and asset recipes, and the cell and asset
+        folders, so an added file counts too).
 
     world_cart.py link IMPORT_DIR BUILD_DIR RECIPE...
         Fills IMPORT_DIR, which make passes to meic with -I, with symbolic links to each built
@@ -68,8 +68,10 @@ def summary(recipe, out, result):
     else:
         s = v.get('summary', {})
         peak = lambda key: s.get(key, {}).get('value', 0)
+        known = (f' (and {s["known_cracks"]} known cracks, {Path(v["crack_baseline_file"]).name})'
+                 if 'known_cracks' in s and v.get('crack_baseline_file') else '')
         check = (f'  World Checker ({v.get("mode")}): {s.get("views", 0)} views, '
-                 f'{s.get("hard_failures", 0)} hard failures, {s.get("threshold_failures", 0)} over thresholds; '
+                 f'{s.get("hard_failures", 0)} hard failures{known}, {s.get("threshold_failures", 0)} over thresholds; '
                  f'peaks {peak("max_triangles")} tris, CPU {peak("max_draw_cpu_cycles"):,}, '
                  f'GPU {peak("max_gpu_cycles"):,} cycles; {out}/verification/world-check.json')
     return line+'\n'+check
@@ -79,16 +81,20 @@ def depfile(recipe, out):
     """The sources the build read, as a make dependency file with an empty rule for each, so a
     deleted source makes the world rebuild instead of stopping make."""
     from worldkit.world import load
-    from worldkit.build import lock_path
+    from worldkit.build import lock_path, cracks_path
     source = load(recipe)
-    deps = [source.world_path, source.game_path, lock_path(source)]
+    deps = [source.world_path, source.game_path, lock_path(source), cracks_path(source)]
     deps += [cs.file for cs in source.cells if cs.file]
     if 'cell_dir' in source.world:
         deps.append(source.base/source.world['cell_dir'])
-    assets = (source.base/source.world['assets']).resolve()
-    deps.append(assets)
-    if assets.is_dir():
-        deps += sorted(p for p in assets.iterdir() if p.is_file() and p.name.endswith('.asset.json'))
+    from worldkit.assets import asset_directories
+    for d in source.world.get('asset_dirs', []):
+        if d == '*' or d.endswith('/*'):
+            deps.append((source.base/d[:-1]).resolve())     # an added subfolder counts too
+    for assets in asset_directories(source.world, source.base):
+        deps.append(assets)
+        if assets.is_dir():
+            deps += sorted(p for p in assets.iterdir() if p.is_file() and p.name.endswith('.asset.json'))
     for spec in source.world.get('terrain', {}).get('fields', {}).values():
         if 'heights' in spec:
             deps.append((source.base/spec['heights']).resolve())

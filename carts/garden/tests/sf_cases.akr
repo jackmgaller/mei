@@ -1,0 +1,137 @@
+// The footsteps' surfaces (README.md, "Surfaces": 4 wood, 5 gravel, 6 earth, 7 tile, 8 metal;
+// shrinetown/DESIGN.md 12.10), scenarios 560-579: 560-574 in the shrine town, 575 in the garden,
+// 576-579 in the shrine. Each spot: the body stands there, the floor's raw byte is the tag's
+// (pl.floor_byte, col_byte) while the controller's byte stays 0 (pl.floor_surf, col_surf), and a
+// jump in place lands with a footstep of the tag's material (ga_step_mat), whatever the zone's.
+// check.sh runs the ones sf_cases.sh lists. Helpers are prefixed sf_.
+
+var sf_steps: s32
+var sf_bad: s32
+var sf_n: s32
+
+fn sf_case_init() -> bool {
+    match SCENARIO {
+        560 => { name = "surfaces: the stage's deck over the falls is wood" }
+        561 => { name = "surfaces: the temple courtyard's gravel" }
+        562 => { name = "surfaces: the trail's shoulder is earth" }
+        563 => { name = "surfaces: the temple's ridge is tile" }
+        564 => { name = "surfaces: the fire tower's platform is metal" }
+        565 => { name = "surfaces: the canal's arched bridge is wood" }
+        566 => { name = "surfaces: the station plaza's paving is untagged: the zone's stone" }
+        567 => { name = "surfaces: walking the courtyard, every footstep is gravel" }
+        568 => { name = "surfaces: the controller's map is unchanged, and the lookup's cost" }
+        569 => { name = "surfaces: the station's canopy is metal" }
+        570 => { name = "surfaces: the shotengai arcade's roof is metal" }
+        571 => { name = "surfaces: the sakagura's roof is tile" }
+        575 => { name = "surfaces: the garden's bounce and slide bytes reach the controller as before" }
+        576 => { name = "surfaces: the shrine's summit stage is wood" }
+        577 => { name = "surfaces: the shrine courtyard's gravel" }
+        578 => { name = "surfaces: the shrine's forest path is earth" }
+        else => { return false }
+    }
+    cam.lock = false
+    sf_steps = 0
+    sf_bad = 0
+    sf_n = 0
+    return true
+}
+
+fn sf_case(f: s32) {
+    match SCENARIO {
+        560 => sf_spot(f, 154.0, 344.15, 61.0, 4, GA_MAT_WOOD)
+        561 => sf_spot(f, 140.0, 150.0, 3.0, 5, GA_MAT_GRAVEL)
+        562 => sf_spot(f, 288.0, 256.0, 60.0, 6, GA_MAT_EARTH)
+        563 => sf_spot(f, 160.0, 221.75, 28.0, 7, GA_MAT_TILE)
+        564 => sf_spot(f, 102.0, 74.0, 40.0, 8, GA_MAT_METAL)
+        565 => sf_spot(f, 48.0, 160.0, 10.0, 4, GA_MAT_WOOD)
+        566 => sf_spot(f, 160.0, 40.0, 20.0, 0, GA_MAT_STONE)
+        567 => sf_walk(f)
+        568 => sf_map(f)
+        569 => sf_spot(f, 150.0, 8.0, 16.0, 8, GA_MAT_METAL)
+        570 => sf_spot(f, 157.0, 72.0, 15.0, 8, GA_MAT_METAL)
+        571 => sf_spot(f, 15.0, 218.0, 30.0, 7, GA_MAT_TILE)
+        575 => sf_garden(f)
+        576 => sf_spot(f, 72.0, 262.6, 90.0, 4, GA_MAT_WOOD)
+        577 => sf_spot(f, 120.0, 100.0, 40.0, 5, GA_MAT_GRAVEL)
+        578 => sf_spot(f, 20.0, 120.0, 40.0, 6, GA_MAT_EARTH)
+        else => {}
+    }
+}
+
+// The floor under (x, z) from y from: its raw byte in col_byte, the controller's in col_surf.
+fn sf_query(x: fixed, z: fixed, from: fixed) -> bool { return col_floor(vec3(x, from, z), 0.0) }
+
+// Stand at (x, z) on the floor under from, check the bytes, jump in place, check the landing's
+// footstep.
+fn sf_spot(f: s32, x: fixed, z: fixed, from: fixed, byte: s32, mat: s32) {
+    if f == 0 { gc_place(x, z, from, NORTH) }
+    if f == 20 {
+        expect(pl.st == St.Ground, "standing", pl.pos.y)
+        expect(pl.floor_byte == byte, "the floor's raw byte", fixed(pl.floor_byte))
+        expect(pl.floor_surf == SURF_NORMAL, "the controller's byte is normal ground", fixed(pl.floor_surf))
+        expect(sf_query(pl.pos.x, pl.pos.z, pl.pos.y + 0.3), "a floor under the feet", col_y)
+        expect(col_byte == byte && col_surf == SURF_NORMAL, "col_byte the tag's, col_surf 0", fixed(col_byte))
+        note("the zone's material (GA_MAT_*)", fixed(ga_material(0, false)))
+        sf_steps = ga_steps
+    }
+    if f == 22 { pad_v = A }
+    if f == 100 {
+        expect(ga_steps > sf_steps, "the landing's footstep", fixed(ga_steps - sf_steps))
+        expect(ga_step_mat == mat, "its material (GA_MAT_*)", fixed(ga_step_mat))
+        expect(pl.st == St.Ground && pl.floor_byte == byte, "landed on the same floor", fixed(pl.floor_byte))
+        done()
+    }
+}
+
+// Walk north across the courtyard: every footstep is gravel.
+fn sf_walk(f: s32) {
+    if f == 0 {
+        gc_place(140.0, 134.0, 3.0, NORTH)
+        sf_steps = ga_steps
+    }
+    if f >= 10 && f < 60 { stick_v = FWD }
+    if f > 10 && ga_steps != sf_steps {
+        sf_n += ga_steps - sf_steps
+        sf_steps = ga_steps
+        if ga_step_mat != GA_MAT_GRAVEL || pl.floor_byte != 5 { sf_bad += 1 }
+    }
+    if f == 90 {
+        expect(sf_n >= 4, "footsteps walking", fixed(sf_n))
+        expect(sf_bad == 0, "footsteps not on gravel", fixed(sf_bad))
+        expect(pl.floor_surf == SURF_NORMAL, "the controller's byte is normal ground", fixed(pl.floor_surf))
+        done()
+    }
+}
+
+// surface_map: 1 and 2 themselves, the rest 0; the footstep lookup's cost.
+fn sf_map(f: s32) {
+    if f == 0 { gc_place(140.0, 150.0, 3.0, NORTH) }
+    if f == 20 {
+        var other = 0
+        for k in 0..16 {
+            if k != SURF_BOUNCE && k != SURF_SLIDE && surface_map[k] != 0 { other += 1 }
+        }
+        expect(surface_map[SURF_BOUNCE] == 1 && surface_map[SURF_SLIDE] == 2, "bounce 1 and slide 2", 0.0)
+        expect(other == 0, "every other byte is normal ground", fixed(other))
+        // the footstep's material from the raw byte, as sound_tick() asks for it each tick
+        let c0 = cycle_count()
+        var m = 0
+        for k in 0..100 { m += ga_material(pl.floor_byte, false) }
+        let per = (cycle_count() - c0) / 100
+        expect(m == 100 * GA_MAT_GRAVEL, "gravel each time", fixed(m))
+        note("ga_material() CPU cycles a call", fixed(per))
+        expect(per < 200, "ga_material() CPU cycles a call", fixed(per))
+        done()
+    }
+}
+
+// The garden's bounce surface (scenario 24's) and slide surface (23's): raw and mapped alike.
+fn sf_garden(f: s32) {
+    if f == 0 { place(vec3(31.0, 0.0, LANE_Z), EAST) }
+    if f == 10 {
+        expect(sf_query(38.0, 12.0, 10.0) && col_byte == 1 && col_surf == SURF_BOUNCE, "the bounce surface: 1 and 1", fixed(col_byte))
+        expect(sf_query(51.0, 25.0, 5.5) && col_byte == 2 && col_surf == SURF_SLIDE, "the slide surface: 2 and 2", fixed(col_byte))
+        expect(sf_query(31.0, LANE_Z, 1.0) && col_byte == 0 && col_surf == SURF_NORMAL, "the lane: 0 and 0", fixed(col_byte))
+        done()
+    }
+}

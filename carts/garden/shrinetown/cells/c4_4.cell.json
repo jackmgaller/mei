@@ -1,0 +1,68 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c4_4",
+ "at": [
+  4,
+  4
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "sh_dead_cedar_up",
+   "asset": "forest_dead_cedar",
+   "position": [
+    256.0,
+    34.7,
+    306.0
+   ],
+   "collision": "forest_dead_cedar_col",
+   "yaw": 111.801,
+   "layer": "cedar_c_up"
+  },
+  {
+   "id": "sh_dead_cedar_down",
+   "asset": "forest_dead_cedar_fallen",
+   "position": [
+    256.0,
+    34.7,
+    306.0
+   ],
+   "collision": "forest_dead_cedar_fallen_col",
+   "yaw": 111.801,
+   "layer": "cedar_c_down"
+  },
+  {
+   "id": "edge_rock_e256",
+   "asset": "edge_rock_e256",
+   "position": [
+    319.0,
+    27.0,
+    288.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  }
+ ],
+ "entities": [
+  {
+   "id": "shortcut_c",
+   "type": "trigger",
+   "position": [
+    257.5,
+    33.4,
+    305.0
+   ],
+   "params": {
+    "size": [
+     4.0,
+     4.0,
+     4.0
+    ],
+    "how": "pound",
+    "flag": "shortcut_c",
+    "on": "cedar_c_down"
+   }
+  }
+ ]
+}

@@ -1,0 +1,695 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "shrine_crown_ladder",
+ "budget": {
+  "triangles": 200
+ },
+ "materials": {
+  "wood": {
+   "color": "#8a6446",
+   "palette": true
+  },
+  "wood_dark": {
+   "color": "#5a3e2c",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "rail_w",
+   "op": "box",
+   "size": [
+    0.08,
+    13.0,
+    0.08
+   ],
+   "material": "wood_dark",
+   "transform": {
+    "translate": [
+     -0.25,
+     6.5,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "rail_e",
+   "op": "box",
+   "size": [
+    0.08,
+    13.0,
+    0.08
+   ],
+   "material": "wood_dark",
+   "transform": {
+    "translate": [
+     0.25,
+     6.5,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "rung_0",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     0.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_1",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     0.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_2",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     1.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_3",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     1.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_4",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     2.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_5",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     2.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_6",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     3.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_7",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     3.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_8",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     4.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_9",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     4.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_10",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     5.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_11",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     5.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_12",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     6.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_13",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     6.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_14",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     7.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_15",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     7.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_16",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     8.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_17",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     8.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_18",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     9.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_19",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     9.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_20",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     10.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_21",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     10.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_22",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     11.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_23",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     11.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_24",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     12.35,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rung_25",
+   "op": "box",
+   "size": [
+    0.42,
+    0.06,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     12.85,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 30,
+    "nodes": [
+     {
+      "id": "rail_w",
+      "op": "box",
+      "size": [
+       0.08,
+       13.0,
+       0.08
+      ],
+      "material": "wood_dark",
+      "transform": {
+       "translate": [
+        -0.25,
+        6.5,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ]
+     },
+     {
+      "id": "rail_e",
+      "op": "box",
+      "size": [
+       0.08,
+       13.0,
+       0.08
+      ],
+      "material": "wood_dark",
+      "transform": {
+       "translate": [
+        0.25,
+        6.5,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ]
+     }
+    ]
+   }
+  ],
+  "cull": 120
+ }
+}

@@ -1,0 +1,159 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c1_2",
+ "at": [
+  1,
+  2
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "sh_zelkova_0",
+   "asset": "tree_zelkova",
+   "position": [
+    114.0,
+    131.0
+   ],
+   "collision": "tree_zelkova_col",
+   "yaw": 40
+  },
+  {
+   "id": "sh_zelkova_1",
+   "asset": "tree_zelkova",
+   "position": [
+    115.0,
+    157.0
+   ],
+   "collision": "tree_zelkova_col",
+   "yaw": 117
+  },
+  {
+   "id": "sh_wall_x168_1220",
+   "asset": "arch_wall_8",
+   "position": [
+    122.0,
+    5.0,
+    168.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_z117_1730",
+   "asset": "arch_wall_8",
+   "position": [
+    117.6,
+    5.0,
+    173.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z117_1810",
+   "asset": "arch_wall_8",
+   "position": [
+    117.6,
+    5.0,
+    181.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z117_1890",
+   "asset": "arch_wall_8",
+   "position": [
+    117.6,
+    5.0,
+    189.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_corner_0",
+   "asset": "arch_wall_corner",
+   "position": [
+    117.6,
+    5.0,
+    168.6
+   ],
+   "collision": "arch_wall_corner_col",
+   "merge": true
+  },
+  {
+   "id": "sh_boulder_w0",
+   "asset": "forest_boulder_big",
+   "position": [
+    110.5,
+    184.0
+   ],
+   "collision": "self",
+   "yaw": 20
+  },
+  {
+   "id": "sh_deck_tree_0",
+   "asset": "tree_cedar_giant",
+   "position": [
+    94,
+    152
+   ],
+   "collision": "tree_cedar_giant_col"
+  },
+  {
+   "id": "sh_deck_0",
+   "asset": "forest_platform",
+   "position": [
+    94,
+    9,
+    152
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 72
+  },
+  {
+   "id": "sh_deck_tree_1",
+   "asset": "tree_cedar_giant",
+   "position": [
+    82,
+    180
+   ],
+   "collision": "tree_cedar_giant_col",
+   "yaw": 37
+  },
+  {
+   "id": "sh_deck_1",
+   "asset": "forest_platform",
+   "position": [
+    82,
+    12,
+    180
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 76
+  }
+ ],
+ "entities": [
+  {
+   "id": "core_coin_deck_0",
+   "type": "coin",
+   "position": [
+    95.5,
+    10.0,
+    153.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_deck_1",
+   "type": "coin",
+   "position": [
+    83.5,
+    13.0,
+    181.5
+   ],
+   "asset": "gbc_coin"
+  }
+ ]
+}

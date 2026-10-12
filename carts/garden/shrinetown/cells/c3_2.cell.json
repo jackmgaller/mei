@@ -1,0 +1,484 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c3_2",
+ "at": [
+  3,
+  2
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "sh_side_hall_e",
+   "asset": "arch_side_hall",
+   "position": [
+    192.0,
+    0.6,
+    144.0
+   ],
+   "collision": "arch_side_hall_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_zelkova_2",
+   "asset": "tree_zelkova",
+   "position": [
+    205.0,
+    131.0
+   ],
+   "collision": "tree_zelkova_col",
+   "yaw": -166
+  },
+  {
+   "id": "sh_zelkova_3",
+   "asset": "tree_zelkova",
+   "position": [
+    205.5,
+    158.0
+   ],
+   "collision": "tree_zelkova_col",
+   "yaw": -89
+  },
+  {
+   "id": "sh_corridor_e",
+   "asset": "arch_corridor_hall",
+   "position": [
+    192.0,
+    5.0,
+    188.0
+   ],
+   "collision": "arch_corridor_hall_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_x168_1980",
+   "asset": "arch_wall_8",
+   "position": [
+    198.0,
+    5.0,
+    168.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_x168_2060",
+   "asset": "arch_wall_8",
+   "position": [
+    206.0,
+    5.0,
+    168.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_z210_1730",
+   "asset": "arch_wall_8",
+   "position": [
+    210.4,
+    5.0,
+    173.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z210_1810",
+   "asset": "arch_wall_8",
+   "position": [
+    210.4,
+    5.0,
+    181.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z210_1870",
+   "asset": "arch_wall_4",
+   "position": [
+    210.4,
+    5.0,
+    187.0
+   ],
+   "collision": "arch_wall_4_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_corner_1",
+   "asset": "arch_wall_corner",
+   "position": [
+    210.4,
+    5.0,
+    168.6
+   ],
+   "collision": "arch_wall_corner_col",
+   "merge": true
+  },
+  {
+   "id": "sh_pond_stone_0",
+   "asset": "water_stepping_stone_a",
+   "position": [
+    227.0,
+    -1.3,
+    132.5
+   ],
+   "collision": "water_stepping_stone_a_col"
+  },
+  {
+   "id": "sh_pond_stone_1",
+   "asset": "water_stepping_stone_b",
+   "position": [
+    228.0,
+    -1.3,
+    136.0
+   ],
+   "collision": "water_stepping_stone_b_col",
+   "yaw": 47
+  },
+  {
+   "id": "sh_pond_stone_2",
+   "asset": "water_stepping_stone_c",
+   "position": [
+    229.0,
+    -1.3,
+    139.5
+   ],
+   "collision": "water_stepping_stone_c_col",
+   "yaw": 94
+  },
+  {
+   "id": "sh_pond_stone_3",
+   "asset": "water_stepping_stone_a",
+   "position": [
+    230.0,
+    -1.3,
+    143.0
+   ],
+   "collision": "water_stepping_stone_a_col",
+   "yaw": 141
+  },
+  {
+   "id": "sh_pond_stone_4",
+   "asset": "water_stepping_stone_b",
+   "position": [
+    231.0,
+    -1.3,
+    146.5
+   ],
+   "collision": "water_stepping_stone_b_col",
+   "yaw": -172
+  },
+  {
+   "id": "sh_pond_stone_5",
+   "asset": "water_stepping_stone_c",
+   "position": [
+    232.0,
+    -1.3,
+    150.0
+   ],
+   "collision": "water_stepping_stone_c_col",
+   "yaw": -125
+  },
+  {
+   "id": "sh_pond_stone_6",
+   "asset": "water_stepping_stone_a",
+   "position": [
+    232.5,
+    -1.3,
+    153.6
+   ],
+   "collision": "water_stepping_stone_a_col",
+   "yaw": -78
+  },
+  {
+   "id": "sh_pond_stone_7",
+   "asset": "water_stepping_stone_b",
+   "position": [
+    233.0,
+    -1.3,
+    157.2
+   ],
+   "collision": "water_stepping_stone_b_col",
+   "yaw": -31
+  },
+  {
+   "id": "sh_pond_stone_8",
+   "asset": "water_stepping_stone_c",
+   "position": [
+    233.5,
+    -1.3,
+    160.9
+   ],
+   "collision": "water_stepping_stone_c_col",
+   "yaw": 16
+  },
+  {
+   "id": "sh_pond_stone_9",
+   "asset": "water_stepping_stone_a",
+   "position": [
+    234.0,
+    -1.3,
+    164.5
+   ],
+   "collision": "water_stepping_stone_a_col",
+   "yaw": 63
+  },
+  {
+   "id": "sh_pond_stone_10",
+   "asset": "water_stepping_stone_b",
+   "position": [
+    234.5,
+    -1.3,
+    168.1
+   ],
+   "collision": "water_stepping_stone_b_col",
+   "yaw": 110
+  },
+  {
+   "id": "sh_pond_stone_11",
+   "asset": "water_stepping_stone_c",
+   "position": [
+    235.0,
+    -1.3,
+    171.8
+   ],
+   "collision": "water_stepping_stone_c_col",
+   "yaw": 157
+  },
+  {
+   "id": "sh_pond_stone_12",
+   "asset": "water_stepping_stone_a",
+   "position": [
+    235.5,
+    -1.3,
+    175.4
+   ],
+   "collision": "water_stepping_stone_a_col",
+   "yaw": -156
+  },
+  {
+   "id": "sh_pond_stone_13",
+   "asset": "water_stepping_stone_b",
+   "position": [
+    236.0,
+    -1.3,
+    179.0
+   ],
+   "collision": "water_stepping_stone_b_col",
+   "yaw": -109
+  },
+  {
+   "id": "sh_lily_0",
+   "asset": "water_lily_pad",
+   "position": [
+    228.5,
+    0.0,
+    158.0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "sh_lily_1",
+   "asset": "water_lily_pad_flower",
+   "position": [
+    240.5,
+    0.0,
+    171.0
+   ],
+   "collision": "none",
+   "yaw": 70
+  },
+  {
+   "id": "sh_lily_2",
+   "asset": "water_lily_pad",
+   "position": [
+    243.0,
+    0.0,
+    136.0
+   ],
+   "collision": "none",
+   "yaw": 140
+  },
+  {
+   "id": "sh_lily_3",
+   "asset": "water_lily_pad_flower",
+   "position": [
+    229.5,
+    0.0,
+    176.5
+   ],
+   "collision": "none",
+   "yaw": -150
+  },
+  {
+   "id": "sh_lily_4",
+   "asset": "water_lily_pad",
+   "position": [
+    244.5,
+    0.0,
+    160.5
+   ],
+   "collision": "none",
+   "yaw": -80
+  },
+  {
+   "id": "sh_koi_0",
+   "asset": "life_koi",
+   "position": [
+    237.0,
+    -0.15,
+    146.0
+   ],
+   "collision": "none",
+   "yaw": 30
+  },
+  {
+   "id": "sh_koi_1",
+   "asset": "life_koi",
+   "position": [
+    239.5,
+    -0.15,
+    150.0
+   ],
+   "collision": "none",
+   "yaw": -160
+  },
+  {
+   "id": "sh_koi_2",
+   "asset": "life_koi",
+   "position": [
+    233.0,
+    -0.15,
+    168.0
+   ],
+   "collision": "none",
+   "yaw": 110
+  },
+  {
+   "id": "sh_koi_3",
+   "asset": "life_koi",
+   "position": [
+    238.0,
+    -0.15,
+    172.5
+   ],
+   "collision": "none",
+   "yaw": -60
+  },
+  {
+   "id": "sh_koi_4",
+   "asset": "life_koi",
+   "position": [
+    241.5,
+    -0.15,
+    140.5
+   ],
+   "collision": "none",
+   "yaw": 160
+  },
+  {
+   "id": "sh_cem_zelkova_0",
+   "asset": "tree_zelkova",
+   "position": [
+    253.0,
+    133.0
+   ],
+   "collision": "tree_zelkova_col",
+   "yaw": 120
+  },
+  {
+   "id": "sh_cem_zelkova_1",
+   "asset": "tree_zelkova",
+   "position": [
+    252.5,
+    166.0
+   ],
+   "collision": "tree_zelkova_col",
+   "yaw": -150
+  }
+ ],
+ "entities": [
+  {
+   "id": "core_coin_side_hall_e",
+   "type": "coin",
+   "position": [
+    192.0,
+    11.9,
+    144.0
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_corridor_e",
+   "type": "coin",
+   "position": [
+    192.0,
+    15.3,
+    188.0
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_pond_0",
+   "type": "coin",
+   "position": [
+    227.0,
+    1.3,
+    132.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_pond_1",
+   "type": "coin",
+   "position": [
+    229.0,
+    1.3,
+    139.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_pond_2",
+   "type": "coin",
+   "position": [
+    231.0,
+    1.3,
+    146.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_pond_3",
+   "type": "coin",
+   "position": [
+    232.5,
+    1.3,
+    153.6
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_pond_4",
+   "type": "coin",
+   "position": [
+    233.5,
+    1.3,
+    160.9
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_rail_string_torii_e",
+   "type": "rail",
+   "position": [
+    192.0,
+    11.0,
+    158.6
+   ],
+   "params": {
+    "path": "core_string_torii_e"
+   }
+  }
+ ]
+}

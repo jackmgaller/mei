@@ -2,12 +2,26 @@
 // (spec p. 11). Drawing with them is in draw.akr (sprite(), sprite_ex() and tex_page()) and
 // gfx.akr (mesh()); changing palette colours in place is in colour.akr.
 
-// Copies texture data into a slot (bytes laid out as the GPU expects, spec p.11).
+// Copies texture data into slot 0-31 (bytes laid out as the GPU expects, spec p.11). Slots
+// 16-31 are VRAM's second megabyte, right after slot 15.
 fn load_texture(slot: s32, src: *u8, bytes: u32) {
-    memcpy((VRAM_TEXTURES + (slot & 15) * TEXTURE_SLOT_SIZE) as *u8, src, bytes)
+    memcpy((VRAM_TEXTURES + (slot & 31) * TEXTURE_SLOT_SIZE) as *u8, src, bytes)
 }
 
-// Copies `count` 15-bit colours into palette memory starting at colour `index`.
+// Palette colour `index` (0-8191) in VRAM: colours 0-4095 are bank 0 at VRAM_PALETTE, 4096-8191
+// bank 1 at VRAM_PALETTE_HI.
+fn palette_ptr(index: s32) -> *u16 {
+    if index >= PALETTE_BANK_COLOURS { return (VRAM_PALETTE_HI + (index - PALETTE_BANK_COLOURS) * 2) as *u16 }
+    return (VRAM_PALETTE + index * 2) as *u16
+}
+
+// Copies `count` 15-bit colours into palette memory starting at colour `index` (0-8191); a run
+// that crosses colour 4096 continues at the start of bank 1.
 fn load_palette(index: s32, src: *u16, count: s32) {
-    memcpy((VRAM_PALETTE + index * 2) as *u8, src as *u8, (count * 2) as u32)
+    var n = count
+    if index < PALETTE_BANK_COLOURS && index + count > PALETTE_BANK_COLOURS {
+        n = PALETTE_BANK_COLOURS - index
+        memcpy(VRAM_PALETTE_HI as *u8, (src + n) as *u8, ((count - n) * 2) as u32)
+    }
+    memcpy(palette_ptr(index) as *u8, src as *u8, (n * 2) as u32)
 }

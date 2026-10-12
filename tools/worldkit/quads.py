@@ -29,15 +29,25 @@ SEMI = 8
 DOUBLE = 16
 KEYED = 32
 FLAT_COS = math.cos(math.radians(1.0))      # how flat a pair must be (its triangles' normals)
+SLIVER = 0.001                              # area / longest edge^2 under which a triangle never pairs
 
 
 def _normal(v, idx):
+    """The triangle's unit normal, or None for a sliver: a triangle whose area is under SLIVER
+    times its longest edge squared (height under 2 SLIVER of that edge). A sliver's facing is
+    noise once its corners are projected and rounded, and the reader turns a quad away by its
+    first triangle alone, so a sliver paired first hid its partner, a whole wall piece
+    (edge_neighbour_s6's facade in the shrine town, whose texture split leaves slivers)."""
     a, b, c = (v[i] for i in idx)
     u = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
     w = (c[0] - a[0], c[1] - a[1], c[2] - a[2])
     n = (u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0])
     ln = math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2])
-    return (n[0] / ln, n[1] / ln, n[2] / ln) if ln else None
+    e = (u, w, (c[0] - b[0], c[1] - b[1], c[2] - b[2]))
+    longest = max(x[0] * x[0] + x[1] * x[1] + x[2] * x[2] for x in e)
+    if not ln or ln < 2 * SLIVER * longest:
+        return None
+    return (n[0] / ln, n[1] / ln, n[2] / ln)
 
 
 def _convex(ring, n):

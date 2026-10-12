@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mei Workboard</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">Mei workboard</div>
+  <nav class="tabs" id="tabs">
+    <button data-view="board" class="on">Board</button>
+    <button data-view="assets">Assets</button>
+    <button data-view="level">Level</button>
+    <button data-view="questions">Questions <span class="count" id="qcount"></span></button>
+    <button data-view="stats">Stats</button>
+  </nav>
+  <div class="tools">
+    <input id="filter" type="search" placeholder="Filter: branch, title, kind, model">
+    <select id="group"><option value="">All batches</option></select>
+    <label class="check"><input type="checkbox" id="showOld"> Older finished work</label>
+    <span id="clock" class="muted"></span>
+  </div>
+</header>
+<div id="summary" class="summary"></div>
+<main id="view"></main>
+<aside id="drawer" class="drawer" hidden>
+  <button class="close" id="drawerClose" aria-label="Close">&times;</button>
+  <div id="drawerBody"></div>
+</aside>
+<div id="lightbox" class="lightbox" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

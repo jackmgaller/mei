@@ -1,0 +1,9 @@
+[
+  {"name": "lane_12m", "eye": [9, 1.6, -10], "target": [0, 0.8, 0]},
+  {"name": "on_walk", "eye": [-8, 1.6, -0.3], "target": [0, 1.2, 0]},
+  {"name": "plates", "eye": [-3.2, 1.6, 0.2], "target": [-4.75, 0.8, -0.85]},
+  {"name": "wading", "eye": [0, 0.0, -9], "target": [0, 0.3, 0]},
+  {"name": "parapet_top", "eye": [-4.3, 3.15, -1.1], "target": [3, 1.4, -1.1]},
+  {"name": "lane_30m", "eye": [16, 1.6, -26], "target": [0, 0.6, 0]},
+  {"name": "roof_above", "eye": [-14, 8.5, -10], "target": [0, 0.5, 0]}
+]

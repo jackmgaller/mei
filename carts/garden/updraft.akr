@@ -1,0 +1,194 @@
+// Updrafts: rising air over a chimney's steam, a waterfall's mist or a fire's smoke (the game
+// schema's `updraft`, carts/garden/README.md "Entities"). game.akr calls updraft_init() when a
+// world opens and updraft_draw() each frame; player.akr's st_glide() asks updraft_at() and
+// updraft_vy() each tick.
+//
+// The physics: only a glide rises. In an updraft's box the glide's targets change: its speed
+// eases to UD_SPEED (slow enough to circle in the column: the glider's turn, 2 r/s, makes a circle
+// about 3.5 m across), and its vertical speed eases to the column's: up at `lift` far under the
+// cap, slowing as the feet come up to it (UD_HOLD a second for each metre under it), down at the
+// glide's own sink over it. So a glide held in the column rises to the cap and stays there; let go
+// of A and the body falls as from any glide. The easing is the glide's own (T.GlideEase).
+//
+// The look: each updraft is a column of wisps rising from the placement to 3 m over the cap,
+// leaning with the wind: untextured diamonds facing the camera, half over what is behind them,
+// growing as they rise and thinning away at the top; the wisps of one updraft in one mesh() call,
+// one quad a wisp. Drawn within UD_SEE of the camera, half of them beyond UD_HALF; nothing behind
+// the camera.
+
+const UD_MAX = 16
+const UD_SPEED: fixed = 3.5            // m/s: the glide's speed in a column
+const UD_HOLD: fixed = 2.0             // /s: the climb's target speed is this times the metres under the cap
+const UD_TOP: fixed = 2.0              // the box reaches this far over the cap
+const UD_SEE: fixed = 120.0            // the plumes drawn within this (m, either axis)
+const UD_HALF: fixed = 50.0            // and half their wisps beyond this
+const UD_RISE: fixed = 3.0             // m/s: how fast the wisps rise
+
+struct Updraft {
+    src: vec3          // the placement: where the plume starts
+    lo: vec3           // the box
+    hi: vec3
+    cap: fixed         // the height (world y) the glide levels off at
+    lift: fixed        // metres a tick
+    look: s32          // GardenUpdraftLook as s32
+    puffs: s32
+    lean: vec3         // the plume's top this far from src (x, z) at the cap
+}
+
+var uds: [UD_MAX]Updraft
+var ud_n: s32
+var ud_in: s32 = -1                    // the updraft the glide was in on its last tick (-1: none): the tests
+var ud_cycles: s32                     // updraft_draw()'s cost last frame: the tests
+var ud_wisps: s32                      // wisps drawn last frame
+
+fn updraft_init() {
+    ud_n = 0
+    ud_in = -1
+    ud_faces()
+    for n in 0..wp_pack.entity_count as s32 {
+        let e = wp_entity(n)
+        if e.type_id as s32 != GARDEN_TYPE_UPDRAFT { continue }
+        assert(ud_n < UD_MAX)          // a world with more updrafts than the cart holds stops here
+        let p = wp_entity_params(e) as *GardenUpdraft
+        let s = wp_entity_pos(e)
+        let c = s + vec3(p.lean.x / 2, 0.0, p.lean.z / 2)
+        let h = vec3(p.width / 2, 0.0, p.depth / 2)
+        uds[ud_n] = Updraft {
+            src: s,
+            lo: vec3(c.x - h.x, s.y + p.base, c.z - h.z),
+            hi: vec3(c.x + h.x, s.y + p.cap + UD_TOP, c.z + h.z),
+            cap: s.y + p.cap,
+            lift: p.lift / 60,
+            look: p.look as s32,
+            puffs: clamp(p.puffs as s32, 0, UD_WISPS),
+            lean: vec3(p.lean.x, 0.0, p.lean.z),
+        }
+        ud_n += 1
+    }
+}
+
+// The updraft whose box holds the feet at p, or -1.
+fn updraft_at(p: vec3) -> s32 {
+    for k in 0..ud_n {
+        let u = &uds[k]
+        if p.x >= u.lo.x && p.x <= u.hi.x && p.z >= u.lo.z && p.z <= u.hi.z && p.y >= u.lo.y && p.y <= u.hi.y {
+            return k
+        }
+    }
+    return -1
+}
+
+// The vertical speed (metres a tick) a glide with its feet at y eases to in updraft k.
+fn updraft_vy(k: s32, y: fixed) -> fixed {
+    let u = &uds[k]
+    return clamp((u.cap - y) * UD_HOLD / 60, -mps(T.GlideSink), u.lift)
+}
+
+// ---- drawing
+
+const UD_WISPS = 24                    // at most, a plume
+private const UD_V = 96                // 4 vertices a wisp
+private struct UdMesh { hdr: Mesh, v: [96]vec4, f: [24]Face }
+private var udm: UdMesh
+
+// The looks' colours (0xBBGGRR), each wisp half over what is behind it: steam near white, mist a
+// cool white, smoke a warm grey with every third wisp a spark of the fire's orange (added).
+const UD_COLOUR: [3]u32 = [0xe4e4e4, 0xf4e8e0, 0xb4bcc4]
+const UD_SPARK: u32 = 0x1c60e0
+// The wisps' size (m, the diamond's half diagonal) at the source and at the top, by look.
+const UD_SIZE0: [3]fixed = [0.6, 1.2, 0.5]
+const UD_SIZE1: [3]fixed = [2.6, 3.0, 2.6]
+// Each wisp's own direction round the column (sin and cos of 2.4 radians, the golden angle, times
+// its number), turned together by the frame's angle: one rotation a wisp, no trigonometry.
+const UD_SIN: [24]fixed = [0.0, 0.6755, -0.9962, 0.7937, -0.1743, -0.5366, 0.9657, -0.8876, 0.3433, 0.3813,
+                           -0.9056, 0.9543, -0.5018, -0.2143, 0.8178, -0.9918, 0.6449, 0.0407, -0.7049, 0.9989,
+                           -0.7683, 0.1341, 0.5705, -0.9754]
+const UD_COS: [24]fixed = [1.0, -0.7374, 0.0875, 0.6084, -0.9847, 0.8439, -0.2598, -0.4607, 0.9392, -0.9245,
+                           0.4242, 0.2989, -0.8650, 0.9768, -0.5756, -0.1280, 0.7643, -0.9992, 0.7093, -0.0469,
+                           -0.6401, 0.9910, -0.8213, 0.2203]
+
+// The wisps' faces, one flat quad each (a diamond facing the camera), fixed once; each frame
+// writes only the vertices, the colour and the blend (sparks are added).
+private fn ud_faces() {
+    for w in 0..UD_WISPS {
+        let f = &udm.f[w]
+        f.flags = (FACE_SEMI | FACE_QUAD | FACE_DOUBLE) as u8
+        f.blend = BLEND_HALF as u8
+        f.idx[0] = (w * 4 + 1) as u16          // the strip: up, right, left, down
+        f.idx[1] = (w * 4) as u16
+        f.idx[2] = (w * 4 + 3) as u16
+        f.idx[3] = (w * 4 + 2) as u16
+    }
+    udm.hdr.verts = 16
+    udm.hdr.faces = (16 + 16 * UD_V) as u32
+    udm.hdr.windows = 0
+}
+
+fn updraft_draw() {
+    let c0 = cycle_count()
+    ud_wisps = 0
+    let fx = __vp[0]
+    let fy = __vp[1]
+    let right = vec3(fx.x, fx.y, fx.z) / __fx
+    let up = vec3(fy.x, fy.y, fy.z) / __fy
+    let o = wp_view_origin()
+    let g = frame_angle(sim_t, 0.01)
+    let sg = sin(g)
+    let cg = cos(g)
+    for k in 0..ud_n {
+        let u = &uds[k]
+        let dx = abs(u.src.x - cam.eye.x)
+        let dz = abs(u.src.z - cam.eye.z)
+        if dx > UD_SEE || dz > UD_SEE || u.puffs <= 0 { continue }
+        let top = u.cap - u.src.y + 3.0                    // the plume's height over its source
+        let mid = u.src - o + vec3(u.lean.x / 2, top / 2, u.lean.z / 2)
+        if view_depth(mid) < -top { continue }             // wholly behind the camera
+        var every = 1
+        if dx > UD_HALF || dz > UD_HALF { every = 2 }
+        let period = max((top / UD_RISE * 60) as s32, 60)
+        let n = u.puffs
+        let look = clamp(u.look, 0, 2)
+        let col = UD_COLOUR[look]
+        let s0 = UD_SIZE0[look]
+        let ds = UD_SIZE1[look] - s0
+        let spread = min(u.hi.x - u.lo.x, u.hi.z - u.lo.z) / 5
+        let lean = u.lean / max(top - 3.0, 1.0)            // per metre up
+        let base = u.src - o
+        var w = 0
+        for i in 0..n {
+            if i % every != 0 { continue }
+            let life = frame_phase(sim_t + i * period / n, period)
+            let h = life * top
+            let sa = UD_SIN[i] * cg + UD_COS[i] * sg      // the wisp's direction, turned by g
+            let ca = UD_COS[i] * cg - UD_SIN[i] * sg
+            let r = spread * (0.25 + 0.75 * life)
+            let p = base + vec3(lean.x * h + sa * r, h, lean.z * h + ca * r)
+            // it grows as it rises and thins away over its last quarter
+            var size = (s0 + ds * life) * min((1.0 - life) * 4, 1.0)
+            var c = col
+            var b = BLEND_HALF
+            if look == 2 && i % 3 == 0 {                    // a spark: small and bright
+                size = 0.15
+                c = UD_SPARK
+                b = BLEND_ADD
+            }
+            let sx = right * (ca * size) + up * (sa * size)
+            let sy = up * (ca * size) - right * (sa * size)
+            let v = w * 4
+            udm.v[v] = vec4(p + sx, 1.0)
+            udm.v[v + 1] = vec4(p + sy, 1.0)
+            udm.v[v + 2] = vec4(p - sy, 1.0)
+            udm.v[v + 3] = vec4(p - sx, 1.0)
+            let f = &udm.f[w]
+            f.col[0] = c
+            f.blend = b as u8
+            w += 1
+        }
+        if w == 0 { continue }
+        udm.hdr.nverts = (w * 4) as u16
+        udm.hdr.nfaces = w as u16
+        mesh(&udm.hdr)
+        ud_wisps += w
+    }
+    ud_cycles = cycle_count() - c0
+}

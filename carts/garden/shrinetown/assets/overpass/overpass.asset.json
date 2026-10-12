@@ -1,0 +1,2104 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "overpass",
+ "budget": {
+  "vertices": 600,
+  "triangles": 600
+ },
+ "sheets": {
+  "art": {
+   "image": "art/overpass_sheet.png"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "paint": {
+   "color": "#86b8c4",
+   "palette": true
+  },
+  "under": {
+   "color": "#5f8a96",
+   "palette": true
+  },
+  "fascia": {
+   "color": "#86b8c4",
+   "texture": {
+    "texels": [
+     "2222222222222222",
+     "2222222222222222",
+     "1111111111111111",
+     "1113111111131111",
+     "1111111111111111",
+     "1111111111111111",
+     "1111111111111111",
+     "1111111111111111",
+     "1111111111111111",
+     "1111111111111111",
+     "1111111111111111",
+     "1111111111111111",
+     "1113111111131111",
+     "1111111111111111",
+     "0000000000000000",
+     "0000000000000000"
+    ],
+    "colors": [
+     "#5f8a96",
+     "#86b8c4",
+     "#a8d0da",
+     "#6a96a2"
+    ],
+    "projection": "box",
+    "scale": [
+     1.0,
+     0.6
+    ],
+    "offset": [
+     0,
+     0.5
+    ]
+   }
+  },
+  "walk": {
+   "color": "#6f8a6a",
+   "tag": "floor",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#6f8a6a",
+     "#5f7a5c",
+     "#83a07c"
+    ],
+    "params": {
+     "density": 0.3
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "tread": {
+   "color": "#6f8a6a",
+   "tag": "stairs",
+   "texture": {
+    "texels": [
+     "11111111",
+     "00000000",
+     "00000000",
+     "02000200",
+     "00000000",
+     "00000000",
+     "00020002",
+     "33333333",
+     "11111111",
+     "00000000",
+     "00000000",
+     "02000200",
+     "00000000",
+     "00000000",
+     "00020002",
+     "33333333"
+    ],
+    "colors": [
+     "#6f8a6a",
+     "#c8d0c0",
+     "#5f7a5c",
+     "#465a46"
+    ],
+    "projection": "box",
+    "scale": [
+     1.0,
+     0.625
+    ]
+   }
+  },
+  "ramp": {
+   "color": "#9aa49a",
+   "palette": true
+  },
+  "bars": {
+   "color": "#86b8c4",
+   "double_sided": true,
+   "texture": {
+    "texels": [
+     "11000000",
+     "11000000",
+     "11000000",
+     "11000000",
+     "11000000",
+     "11000000",
+     "11000000",
+     "11000000"
+    ],
+    "colors": [
+     "#000000",
+     "#86b8c4"
+    ],
+    "clear": "#000000",
+    "projection": "box",
+    "scale": [
+     0.2,
+     0.2
+    ]
+   }
+  },
+  "sign": {
+   "color": "#1f4f9c",
+   "texture": {
+    "sheet": "art",
+    "cell": "sign",
+    "projection": "fit"
+   }
+  },
+  "sign_back": {
+   "color": "#8a9094",
+   "palette": true
+  },
+  "plate": {
+   "color": "#ece8d8",
+   "texture": {
+    "sheet": "art",
+    "cell": "plate",
+    "projection": "fit"
+   }
+  },
+  "banner": {
+   "color": "#f4f4ee",
+   "texture": {
+    "sheet": "art",
+    "cell": "banner",
+    "projection": "fit"
+   }
+  },
+  "cat": {
+   "color": "#e39a4a",
+   "palette": true
+  },
+  "cat_stripe": {
+   "color": "#b8702e",
+   "palette": true
+  }
+ },
+ "nodes": [
+  {
+   "id": "deck",
+   "op": "box",
+   "size": [
+    30.0,
+    0.6,
+    3.0
+   ],
+   "material": "fascia",
+   "transform": {
+    "translate": [
+     0,
+     6.7,
+     0
+    ]
+   },
+   "faces": {
+    "top": "walk",
+    "bottom": "under"
+   },
+   "decals": [
+    {
+     "id": "plate_f",
+     "face": "back",
+     "material": "plate",
+     "size": [
+      0.9,
+      0.24
+     ],
+     "at": [
+      8.0,
+      0.0
+     ]
+    },
+    {
+     "id": "plate_b",
+     "face": "front",
+     "material": "plate",
+     "size": [
+      0.9,
+      0.24
+     ],
+     "at": [
+      8.0,
+      0.0
+     ]
+    },
+    {
+     "id": "banner",
+     "face": "front",
+     "material": "banner",
+     "size": [
+      2.0,
+      0.45
+     ],
+     "at": [
+      0.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pier_wf",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 6.45,
+   "segments": 6,
+   "caps": false,
+   "material": "paint",
+   "transform": {
+    "translate": [
+     -10.0,
+     3.225,
+     -0.9
+    ]
+   }
+  },
+  {
+   "id": "pier_wb",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 6.45,
+   "segments": 6,
+   "caps": false,
+   "material": "paint",
+   "transform": {
+    "translate": [
+     -10.0,
+     3.225,
+     0.9
+    ]
+   }
+  },
+  {
+   "id": "pier_ef",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 6.45,
+   "segments": 6,
+   "caps": false,
+   "material": "paint",
+   "transform": {
+    "translate": [
+     10.0,
+     3.225,
+     -0.9
+    ]
+   }
+  },
+  {
+   "id": "pier_eb",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 6.45,
+   "segments": 6,
+   "caps": false,
+   "material": "paint",
+   "transform": {
+    "translate": [
+     10.0,
+     3.225,
+     0.9
+    ]
+   }
+  },
+  {
+   "id": "stair_post",
+   "op": "cylinder",
+   "radius": 0.18,
+   "height": 3.15,
+   "segments": 6,
+   "caps": false,
+   "material": "paint",
+   "transform": {
+    "translate": [
+     13.5,
+     1.575,
+     -8.75
+    ]
+   }
+  },
+  {
+   "id": "sign",
+   "op": "box",
+   "size": [
+    4.0,
+    1.8,
+    0.06
+   ],
+   "material": "sign_back",
+   "transform": {
+    "translate": [
+     0,
+     6.65,
+     -1.7
+    ]
+   },
+   "faces": {
+    "back": "sign"
+   }
+  },
+  {
+   "id": "bracket_l",
+   "op": "box",
+   "size": [
+    0.1,
+    0.1,
+    0.2
+   ],
+   "material": "sign_back",
+   "transform": {
+    "translate": [
+     -1.5,
+     6.05,
+     -1.58
+    ]
+   }
+  },
+  {
+   "id": "bracket_r",
+   "op": "box",
+   "size": [
+    0.1,
+    0.1,
+    0.2
+   ],
+   "material": "sign_back",
+   "transform": {
+    "translate": [
+     1.5,
+     6.05,
+     -1.58
+    ]
+   }
+  },
+  {
+   "id": "cat",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     20,
+     0
+    ],
+    "translate": [
+     -4.0,
+     6.98,
+     -0.9
+    ]
+   },
+   "children": [
+    {
+     "id": "body",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 3,
+     "segments": 6,
+     "material": "cat",
+     "transform": {
+      "scale": [
+       0.13,
+       0.1,
+       0.19
+      ],
+      "translate": [
+       0,
+       0.09,
+       0
+      ]
+     }
+    },
+    {
+     "id": "head",
+     "op": "sphere",
+     "radius": 0.08,
+     "rings": 3,
+     "segments": 5,
+     "material": "cat",
+     "transform": {
+      "translate": [
+       0,
+       0.15,
+       -0.17
+      ]
+     }
+    },
+    {
+     "id": "ears",
+     "op": "group",
+     "modifiers": [
+      {
+       "op": "mirror",
+       "axis": "x"
+      }
+     ],
+     "children": [
+      {
+       "id": "ear",
+       "op": "cone",
+       "radius": 0.03,
+       "height": 0.06,
+       "segments": 3,
+       "material": "cat",
+       "transform": {
+        "rotate": [
+         0,
+         0,
+         -15
+        ],
+        "translate": [
+         0.045,
+         0.23,
+         -0.17
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "id": "tail",
+     "op": "box",
+     "size": [
+      0.035,
+      0.035,
+      0.24
+     ],
+     "material": "cat_stripe",
+     "transform": {
+      "rotate": [
+       0,
+       35,
+       0
+      ],
+      "translate": [
+       0.1,
+       0.06,
+       0.12
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "stair",
+   "op": "mesh",
+   "vertices": [
+    [
+     12.0,
+     7.0,
+     -1.5
+    ],
+    [
+     12.0,
+     0.0,
+     -16.0
+    ],
+    [
+     12.0,
+     0.0,
+     -15.1714
+    ],
+    [
+     12.0,
+     6.6,
+     -1.5
+    ],
+    [
+     15.0,
+     7.0,
+     -1.5
+    ],
+    [
+     15.0,
+     0.0,
+     -16.0
+    ],
+    [
+     15.0,
+     0.0,
+     -15.1714
+    ],
+    [
+     15.0,
+     6.6,
+     -1.5
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     7,
+     6,
+     5,
+     4
+    ]
+   ],
+   "face_materials": [
+    "tread",
+    "under",
+    "paint",
+    "paint"
+   ]
+  },
+  {
+   "id": "bike_ramp",
+   "op": "mesh",
+   "vertices": [
+    [
+     14.68,
+     7.06,
+     -1.55
+    ],
+    [
+     14.68,
+     0.1566,
+     -15.8
+    ],
+    [
+     14.68,
+     0.0566,
+     -15.8
+    ],
+    [
+     14.68,
+     6.96,
+     -1.55
+    ],
+    [
+     14.9,
+     7.06,
+     -1.55
+    ],
+    [
+     14.9,
+     0.1566,
+     -15.8
+    ],
+    [
+     14.9,
+     0.0566,
+     -15.8
+    ],
+    [
+     14.9,
+     6.96,
+     -1.55
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     7,
+     6,
+     5,
+     4
+    ]
+   ],
+   "face_materials": [
+    "ramp",
+    "ramp",
+    "ramp",
+    "ramp"
+   ]
+  },
+  {
+   "id": "rail_front",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     -15.0,
+     8.1,
+     -1.45
+    ],
+    [
+     12.0,
+     8.1,
+     -1.45
+    ],
+    [
+     12.0,
+     7.0,
+     -1.45
+    ],
+    [
+     -15.0,
+     7.0,
+     -1.45
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "rail_end",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     14.95,
+     8.1,
+     -1.5
+    ],
+    [
+     14.95,
+     8.1,
+     1.5
+    ],
+    [
+     14.95,
+     7.0,
+     1.5
+    ],
+    [
+     14.95,
+     7.0,
+     -1.5
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "rail_stair_in",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     12.05,
+     1.2448,
+     -15.7
+    ],
+    [
+     12.05,
+     8.1,
+     -1.5
+    ],
+    [
+     12.05,
+     7.0,
+     -1.5
+    ],
+    [
+     12.05,
+     0.1448,
+     -15.7
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "rail_stair_out",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     14.95,
+     1.2448,
+     -15.7
+    ],
+    [
+     14.95,
+     8.1,
+     -1.5
+    ],
+    [
+     14.95,
+     7.0,
+     -1.5
+    ],
+    [
+     14.95,
+     0.1448,
+     -15.7
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "hand_front",
+   "op": "cylinder",
+   "radius": 0.045,
+   "height": 27.0,
+   "segments": 4,
+   "caps": false,
+   "material": "paint",
+   "transform": {
+    "rotate": [
+     90.0,
+     90.0,
+     0
+    ],
+    "translate": [
+     -1.5,
+     8.12,
+     -1.45
+    ]
+   }
+  },
+  {
+   "id": "hand_end",
+   "op": "cylinder",
+   "radius": 0.045,
+   "height": 3.0,
+   "segments": 4,
+   "caps": false,
+   "material": "paint",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0
+    ],
+    "translate": [
+     14.95,
+     8.12,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "hand_stair_in",
+   "op": "cylinder",
+   "radius": 0.045,
+   "height": 15.7681,
+   "segments": 4,
+   "caps": false,
+   "material": "paint",
+   "transform": {
+    "rotate": [
+     115.7693,
+     180.0,
+     0
+    ],
+    "translate": [
+     12.05,
+     4.6924,
+     -8.6
+    ]
+   }
+  },
+  {
+   "id": "hand_stair_out",
+   "op": "cylinder",
+   "radius": 0.045,
+   "height": 15.7681,
+   "segments": 4,
+   "caps": false,
+   "material": "paint",
+   "transform": {
+    "rotate": [
+     115.7693,
+     180.0,
+     0
+    ],
+    "translate": [
+     14.95,
+     4.6924,
+     -8.6
+    ]
+   }
+  },
+  {
+   "id": "stair_b",
+   "op": "mesh",
+   "vertices": [
+    [
+     12.0,
+     7.0,
+     -1.5
+    ],
+    [
+     12.0,
+     0.0,
+     -16.0
+    ],
+    [
+     12.0,
+     0.0,
+     -15.1714
+    ],
+    [
+     12.0,
+     6.6,
+     -1.5
+    ],
+    [
+     15.0,
+     7.0,
+     -1.5
+    ],
+    [
+     15.0,
+     0.0,
+     -16.0
+    ],
+    [
+     15.0,
+     0.0,
+     -15.1714
+    ],
+    [
+     15.0,
+     6.6,
+     -1.5
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     7,
+     6,
+     5,
+     4
+    ]
+   ],
+   "face_materials": [
+    "tread",
+    "under",
+    "paint",
+    "paint"
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     180,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bike_ramp_b",
+   "op": "mesh",
+   "vertices": [
+    [
+     14.68,
+     7.06,
+     -1.55
+    ],
+    [
+     14.68,
+     0.1566,
+     -15.8
+    ],
+    [
+     14.68,
+     0.0566,
+     -15.8
+    ],
+    [
+     14.68,
+     6.96,
+     -1.55
+    ],
+    [
+     14.9,
+     7.06,
+     -1.55
+    ],
+    [
+     14.9,
+     0.1566,
+     -15.8
+    ],
+    [
+     14.9,
+     0.0566,
+     -15.8
+    ],
+    [
+     14.9,
+     6.96,
+     -1.55
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     7,
+     6,
+     5,
+     4
+    ]
+   ],
+   "face_materials": [
+    "ramp",
+    "ramp",
+    "ramp",
+    "ramp"
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     180,
+     0
+    ]
+   }
+  },
+  {
+   "id": "rail_front_b",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     -15.0,
+     8.1,
+     -1.45
+    ],
+    [
+     12.0,
+     8.1,
+     -1.45
+    ],
+    [
+     12.0,
+     7.0,
+     -1.45
+    ],
+    [
+     -15.0,
+     7.0,
+     -1.45
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     180,
+     0
+    ]
+   }
+  },
+  {
+   "id": "rail_end_b",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     14.95,
+     8.1,
+     -1.5
+    ],
+    [
+     14.95,
+     8.1,
+     1.5
+    ],
+    [
+     14.95,
+     7.0,
+     1.5
+    ],
+    [
+     14.95,
+     7.0,
+     -1.5
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     180,
+     0
+    ]
+   }
+  },
+  {
+   "id": "rail_stair_in_b",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     12.05,
+     1.2448,
+     -15.7
+    ],
+    [
+     12.05,
+     8.1,
+     -1.5
+    ],
+    [
+     12.05,
+     7.0,
+     -1.5
+    ],
+    [
+     12.05,
+     0.1448,
+     -15.7
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     180,
+     0
+    ]
+   }
+  },
+  {
+   "id": "rail_stair_out_b",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     14.95,
+     1.2448,
+     -15.7
+    ],
+    [
+     14.95,
+     8.1,
+     -1.5
+    ],
+    [
+     14.95,
+     7.0,
+     -1.5
+    ],
+    [
+     14.95,
+     0.1448,
+     -15.7
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     180,
+     0
+    ]
+   }
+  },
+  {
+   "id": "hand_front_b",
+   "op": "group",
+   "children": [
+    {
+     "id": "hand_front",
+     "op": "cylinder",
+     "radius": 0.045,
+     "height": 27.0,
+     "segments": 4,
+     "caps": false,
+     "material": "paint",
+     "transform": {
+      "rotate": [
+       90.0,
+       90.0,
+       0
+      ],
+      "translate": [
+       -1.5,
+       8.12,
+       -1.45
+      ]
+     }
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     180,
+     0
+    ]
+   }
+  },
+  {
+   "id": "hand_end_b",
+   "op": "group",
+   "children": [
+    {
+     "id": "hand_end",
+     "op": "cylinder",
+     "radius": 0.045,
+     "height": 3.0,
+     "segments": 4,
+     "caps": false,
+     "material": "paint",
+     "transform": {
+      "rotate": [
+       90.0,
+       0.0,
+       0
+      ],
+      "translate": [
+       14.95,
+       8.12,
+       0.0
+      ]
+     }
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     180,
+     0
+    ]
+   }
+  },
+  {
+   "id": "hand_stair_in_b",
+   "op": "group",
+   "children": [
+    {
+     "id": "hand_stair_in",
+     "op": "cylinder",
+     "radius": 0.045,
+     "height": 15.7681,
+     "segments": 4,
+     "caps": false,
+     "material": "paint",
+     "transform": {
+      "rotate": [
+       115.7693,
+       180.0,
+       0
+      ],
+      "translate": [
+       12.05,
+       4.6924,
+       -8.6
+      ]
+     }
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     180,
+     0
+    ]
+   }
+  },
+  {
+   "id": "hand_stair_out_b",
+   "op": "group",
+   "children": [
+    {
+     "id": "hand_stair_out",
+     "op": "cylinder",
+     "radius": 0.045,
+     "height": 15.7681,
+     "segments": 4,
+     "caps": false,
+     "material": "paint",
+     "transform": {
+      "rotate": [
+       115.7693,
+       180.0,
+       0
+      ],
+      "translate": [
+       14.95,
+       4.6924,
+       -8.6
+      ]
+     }
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     180,
+     0
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "deck",
+      "op": "box",
+      "size": [
+       30.0,
+       0.6,
+       3.0
+      ],
+      "material": "fascia",
+      "transform": {
+       "translate": [
+        0,
+        6.7,
+        0
+       ]
+      },
+      "faces": {
+       "top": "walk",
+       "bottom": "under"
+      }
+     },
+     {
+      "id": "stair",
+      "op": "mesh",
+      "vertices": [
+       [
+        12.0,
+        7.0,
+        -1.5
+       ],
+       [
+        12.0,
+        0.0,
+        -16.0
+       ],
+       [
+        12.0,
+        0.0,
+        -15.1714
+       ],
+       [
+        12.0,
+        6.6,
+        -1.5
+       ],
+       [
+        15.0,
+        7.0,
+        -1.5
+       ],
+       [
+        15.0,
+        0.0,
+        -16.0
+       ],
+       [
+        15.0,
+        0.0,
+        -15.1714
+       ],
+       [
+        15.0,
+        6.6,
+        -1.5
+       ]
+      ],
+      "faces": [
+       [
+        4,
+        5,
+        1,
+        0
+       ],
+       [
+        6,
+        7,
+        3,
+        2
+       ],
+       [
+        0,
+        1,
+        2,
+        3
+       ],
+       [
+        7,
+        6,
+        5,
+        4
+       ]
+      ],
+      "face_materials": [
+       "tread",
+       "under",
+       "paint",
+       "paint"
+      ]
+     },
+     {
+      "id": "rail_front",
+      "op": "mesh",
+      "material": "bars",
+      "vertices": [
+       [
+        -15.0,
+        8.1,
+        -1.45
+       ],
+       [
+        12.0,
+        8.1,
+        -1.45
+       ],
+       [
+        12.0,
+        7.0,
+        -1.45
+       ],
+       [
+        -15.0,
+        7.0,
+        -1.45
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "rail_end",
+      "op": "mesh",
+      "material": "bars",
+      "vertices": [
+       [
+        14.95,
+        8.1,
+        -1.5
+       ],
+       [
+        14.95,
+        8.1,
+        1.5
+       ],
+       [
+        14.95,
+        7.0,
+        1.5
+       ],
+       [
+        14.95,
+        7.0,
+        -1.5
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "rail_stair_in",
+      "op": "mesh",
+      "material": "bars",
+      "vertices": [
+       [
+        12.05,
+        1.2448,
+        -15.7
+       ],
+       [
+        12.05,
+        8.1,
+        -1.5
+       ],
+       [
+        12.05,
+        7.0,
+        -1.5
+       ],
+       [
+        12.05,
+        0.1448,
+        -15.7
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "rail_stair_out",
+      "op": "mesh",
+      "material": "bars",
+      "vertices": [
+       [
+        14.95,
+        1.2448,
+        -15.7
+       ],
+       [
+        14.95,
+        8.1,
+        -1.5
+       ],
+       [
+        14.95,
+        7.0,
+        -1.5
+       ],
+       [
+        14.95,
+        0.1448,
+        -15.7
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "stair_b",
+      "op": "mesh",
+      "vertices": [
+       [
+        12.0,
+        7.0,
+        -1.5
+       ],
+       [
+        12.0,
+        0.0,
+        -16.0
+       ],
+       [
+        12.0,
+        0.0,
+        -15.1714
+       ],
+       [
+        12.0,
+        6.6,
+        -1.5
+       ],
+       [
+        15.0,
+        7.0,
+        -1.5
+       ],
+       [
+        15.0,
+        0.0,
+        -16.0
+       ],
+       [
+        15.0,
+        0.0,
+        -15.1714
+       ],
+       [
+        15.0,
+        6.6,
+        -1.5
+       ]
+      ],
+      "faces": [
+       [
+        4,
+        5,
+        1,
+        0
+       ],
+       [
+        6,
+        7,
+        3,
+        2
+       ],
+       [
+        0,
+        1,
+        2,
+        3
+       ],
+       [
+        7,
+        6,
+        5,
+        4
+       ]
+      ],
+      "face_materials": [
+       "tread",
+       "under",
+       "paint",
+       "paint"
+      ],
+      "transform": {
+       "rotate": [
+        0,
+        180,
+        0
+       ]
+      }
+     },
+     {
+      "id": "rail_front_b",
+      "op": "mesh",
+      "material": "bars",
+      "vertices": [
+       [
+        -15.0,
+        8.1,
+        -1.45
+       ],
+       [
+        12.0,
+        8.1,
+        -1.45
+       ],
+       [
+        12.0,
+        7.0,
+        -1.45
+       ],
+       [
+        -15.0,
+        7.0,
+        -1.45
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "transform": {
+       "rotate": [
+        0,
+        180,
+        0
+       ]
+      }
+     },
+     {
+      "id": "rail_end_b",
+      "op": "mesh",
+      "material": "bars",
+      "vertices": [
+       [
+        14.95,
+        8.1,
+        -1.5
+       ],
+       [
+        14.95,
+        8.1,
+        1.5
+       ],
+       [
+        14.95,
+        7.0,
+        1.5
+       ],
+       [
+        14.95,
+        7.0,
+        -1.5
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "transform": {
+       "rotate": [
+        0,
+        180,
+        0
+       ]
+      }
+     },
+     {
+      "id": "rail_stair_in_b",
+      "op": "mesh",
+      "material": "bars",
+      "vertices": [
+       [
+        12.05,
+        1.2448,
+        -15.7
+       ],
+       [
+        12.05,
+        8.1,
+        -1.5
+       ],
+       [
+        12.05,
+        7.0,
+        -1.5
+       ],
+       [
+        12.05,
+        0.1448,
+        -15.7
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "transform": {
+       "rotate": [
+        0,
+        180,
+        0
+       ]
+      }
+     },
+     {
+      "id": "rail_stair_out_b",
+      "op": "mesh",
+      "material": "bars",
+      "vertices": [
+       [
+        14.95,
+        1.2448,
+        -15.7
+       ],
+       [
+        14.95,
+        8.1,
+        -1.5
+       ],
+       [
+        14.95,
+        7.0,
+        -1.5
+       ],
+       [
+        14.95,
+        0.1448,
+        -15.7
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "transform": {
+       "rotate": [
+        0,
+        180,
+        0
+       ]
+      }
+     },
+     {
+      "id": "pier_0",
+      "op": "box",
+      "size": [
+       0.4,
+       6.45,
+       2.2
+      ],
+      "material": "paint",
+      "transform": {
+       "translate": [
+        -10.0,
+        3.225,
+        0
+       ]
+      },
+      "open": [
+       "top",
+       "bottom"
+      ]
+     },
+     {
+      "id": "pier_1",
+      "op": "box",
+      "size": [
+       0.4,
+       6.45,
+       2.2
+      ],
+      "material": "paint",
+      "transform": {
+       "translate": [
+        10.0,
+        3.225,
+        0
+       ]
+      },
+      "open": [
+       "top",
+       "bottom"
+      ]
+     },
+     {
+      "id": "sign",
+      "op": "box",
+      "size": [
+       4.0,
+       1.8,
+       0.06
+      ],
+      "material": "sign_back",
+      "transform": {
+       "translate": [
+        0,
+        6.65,
+        -1.7
+       ]
+      },
+      "faces": {
+       "back": "sign"
+      }
+     }
+    ]
+   },
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "deck",
+      "op": "box",
+      "size": [
+       30.0,
+       1.7,
+       3.0
+      ],
+      "material": "paint",
+      "transform": {
+       "translate": [
+        0,
+        7.25,
+        0
+       ]
+      },
+      "faces": {
+       "bottom": "under"
+      }
+     },
+     {
+      "id": "stair",
+      "op": "mesh",
+      "vertices": [
+       [
+        12.0,
+        8.1,
+        -1.5
+       ],
+       [
+        12.0,
+        0.0,
+        -16.0
+       ],
+       [
+        12.0,
+        0.0,
+        -15.1714
+       ],
+       [
+        12.0,
+        6.6,
+        -1.5
+       ],
+       [
+        15.0,
+        8.1,
+        -1.5
+       ],
+       [
+        15.0,
+        0.0,
+        -16.0
+       ],
+       [
+        15.0,
+        0.0,
+        -15.1714
+       ],
+       [
+        15.0,
+        6.6,
+        -1.5
+       ]
+      ],
+      "faces": [
+       [
+        4,
+        5,
+        1,
+        0
+       ],
+       [
+        6,
+        7,
+        3,
+        2
+       ],
+       [
+        0,
+        1,
+        2,
+        3
+       ],
+       [
+        7,
+        6,
+        5,
+        4
+       ]
+      ],
+      "face_materials": [
+       "paint",
+       "under",
+       "paint",
+       "paint"
+      ]
+     },
+     {
+      "id": "stair_b",
+      "op": "mesh",
+      "vertices": [
+       [
+        12.0,
+        8.1,
+        -1.5
+       ],
+       [
+        12.0,
+        0.0,
+        -16.0
+       ],
+       [
+        12.0,
+        0.0,
+        -15.1714
+       ],
+       [
+        12.0,
+        6.6,
+        -1.5
+       ],
+       [
+        15.0,
+        8.1,
+        -1.5
+       ],
+       [
+        15.0,
+        0.0,
+        -16.0
+       ],
+       [
+        15.0,
+        0.0,
+        -15.1714
+       ],
+       [
+        15.0,
+        6.6,
+        -1.5
+       ]
+      ],
+      "faces": [
+       [
+        4,
+        5,
+        1,
+        0
+       ],
+       [
+        6,
+        7,
+        3,
+        2
+       ],
+       [
+        0,
+        1,
+        2,
+        3
+       ],
+       [
+        7,
+        6,
+        5,
+        4
+       ]
+      ],
+      "face_materials": [
+       "paint",
+       "under",
+       "paint",
+       "paint"
+      ],
+      "transform": {
+       "rotate": [
+        0,
+        180,
+        0
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 200,
+  "band": 2
+ }
+}

@@ -17,7 +17,7 @@ from .schema import WorldError
 KINDS = {'bool':'bool','u8':'u8','s16':'s16','s32':'s32','fixed':'fixed','vec3':'vec3','name':'name',
          'world':'world_ref','ref':'entity_ref'}
 SPELLING = {v:k for k,v in KINDS.items()}
-PROBE = ('radius','height','step','floor_max_degrees','ceiling_max_degrees')
+PROBE = ('radius','height','step','floor_max_degrees','ceiling_max_degrees','bridge')
 STATEMENTS = ('type','saved','probe','worlds')
 NAME = re.compile(r'[a-z][a-z0-9_]{0,47}')
 NUMBER = re.compile(r'-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?')
@@ -34,7 +34,7 @@ HINTS = {
 GRAMMAR = [
     "file   := 'game' NAME stmt*                          game first; then any order, types in order",
     "stmt   := probe | worlds | type",
-    "probe  := 'probe' '{' (PROBEKEY '=' NUMBER)* '}'      radius, floor_max_degrees required; height, step, ceiling_max_degrees optional",
+    "probe  := 'probe' '{' (PROBEKEY '=' NUMBER)* '}'      radius, floor_max_degrees required; height, step, ceiling_max_degrees, bridge optional",
     "worlds := 'worlds' NAME (',' NAME)*",
     "type   := ['saved'] 'type' NAME ['{' field* '}']",
     "field  := NAME ':' kind ['=' value]",

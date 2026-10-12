@@ -1,0 +1,289 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c1_3",
+ "at": [
+  1,
+  3
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "sh_wall_x237_1220",
+   "asset": "arch_wall_8",
+   "position": [
+    122.0,
+    6.0,
+    237.4
+   ],
+   "collision": "shrine_wall_coping_8_col"
+  },
+  {
+   "id": "sh_wall_x237_1220_plinth",
+   "asset": "shrine_wall_plinth_8",
+   "position": [
+    122.0,
+    5.0,
+    237.4
+   ],
+   "collision": "shrine_wall_plinth_8_col",
+   "merge": true
+  },
+  {
+   "id": "sh_wall_z117_1950",
+   "asset": "arch_wall_4",
+   "position": [
+    117.6,
+    5.0,
+    195.0
+   ],
+   "collision": "arch_wall_4_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z117_2090",
+   "asset": "arch_wall_8",
+   "position": [
+    117.6,
+    5.0,
+    209.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z117_2170",
+   "asset": "arch_wall_8",
+   "position": [
+    117.6,
+    5.0,
+    217.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z117_2250",
+   "asset": "arch_wall_8",
+   "position": [
+    117.6,
+    5.0,
+    225.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z117_2330",
+   "asset": "arch_wall_8",
+   "position": [
+    117.6,
+    5.0,
+    233.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_corner_2",
+   "asset": "arch_wall_corner",
+   "position": [
+    117.6,
+    6.0,
+    237.4
+   ],
+   "collision": "shrine_wall_coping_corner_col",
+   "merge": true
+  },
+  {
+   "id": "sh_wall_corner_2_plinth",
+   "asset": "shrine_wall_plinth_corner",
+   "position": [
+    117.6,
+    5.0,
+    237.4
+   ],
+   "collision": "shrine_wall_plinth_corner_col",
+   "merge": true
+  },
+  {
+   "id": "sh_gate_w",
+   "asset": "arch_wall_gate",
+   "position": [
+    117.6,
+    5.0,
+    201.0
+   ],
+   "collision": "arch_wall_gate_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_boulder_w1",
+   "asset": "forest_boulder_big",
+   "position": [
+    110.5,
+    214.0
+   ],
+   "collision": "self",
+   "yaw": -160
+  },
+  {
+   "id": "sh_deck_tree_2",
+   "asset": "tree_cedar_giant",
+   "position": [
+    80,
+    208
+   ],
+   "collision": "tree_cedar_giant_col",
+   "yaw": 74
+  },
+  {
+   "id": "sh_deck_2",
+   "asset": "forest_platform",
+   "position": [
+    80,
+    15,
+    208
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 23
+  },
+  {
+   "id": "sh_deck_tree_3",
+   "asset": "tree_cedar_giant",
+   "position": [
+    88,
+    234
+   ],
+   "collision": "tree_cedar_giant_col",
+   "yaw": 111
+  },
+  {
+   "id": "sh_deck_3",
+   "asset": "forest_platform",
+   "position": [
+    88,
+    18,
+    234
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 27
+  },
+  {
+   "id": "sh_deck_tree_4",
+   "asset": "tree_cedar_giant",
+   "position": [
+    102,
+    252
+   ],
+   "collision": "tree_cedar_giant_col",
+   "yaw": 148
+  },
+  {
+   "id": "sh_deck_4",
+   "asset": "forest_platform",
+   "position": [
+    102,
+    21,
+    252
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 41
+  },
+  {
+   "id": "sh_deck_tree_crown",
+   "asset": "tree_cedar_giant",
+   "position": [
+    70,
+    220
+   ],
+   "collision": "tree_cedar_giant_col",
+   "yaw": -110
+  },
+  {
+   "id": "sh_deck_crown",
+   "asset": "forest_platform",
+   "position": [
+    70,
+    28,
+    220
+   ],
+   "collision": "forest_platform_col"
+  },
+  {
+   "id": "sh_deck_crown_landing",
+   "asset": "forest_platform",
+   "position": [
+    70,
+    15.0,
+    220
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 50
+  },
+  {
+   "id": "sh_crown_ladder",
+   "asset": "shrine_crown_ladder",
+   "position": [
+    70,
+    15.0,
+    216.6
+   ],
+   "collision": "none"
+  }
+ ],
+ "entities": [
+  {
+   "id": "core_pole_crown",
+   "type": "pole",
+   "position": [
+    70,
+    15.0,
+    216.6
+   ],
+   "params": {
+    "height": 13.0
+   }
+  },
+  {
+   "id": "core_coin_deck_2",
+   "type": "coin",
+   "position": [
+    81.5,
+    16.0,
+    209.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_deck_3",
+   "type": "coin",
+   "position": [
+    89.5,
+    19.0,
+    235.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_deck_4",
+   "type": "coin",
+   "position": [
+    103.5,
+    22.0,
+    253.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_crown",
+   "type": "coin",
+   "position": [
+    71.5,
+    29.0,
+    221.5
+   ],
+   "asset": "gbc_coin"
+  }
+ ]
+}

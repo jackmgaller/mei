@@ -1,0 +1,136 @@
+{
+  "format": "mei-asset-pack",
+  "version": 1,
+  "name": "moon",
+  "assets": [
+    {
+      "name": "hanafuda_moon",
+      "mesh": "hanafuda_moon.bin",
+      "levels": [],
+      "vertices": 96,
+      "triangles": 188,
+      "textures": [
+        {
+          "material": "face",
+          "tile": "5b0c2f06f67e13eb",
+          "source": {
+            "image": "art/face.png",
+            "sha256": "f89dacaf3a954533a026e85442fab4dfe9a39ba6ff305f1626fe0d89c3404939"
+          },
+          "width": 64,
+          "height": 104,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#efbd39",
+            "#9c6b18",
+            "#101018",
+            "#ad1821",
+            "#fff7de",
+            "#de2929",
+            "#ded6bd",
+            "#8c847b"
+          ],
+          "slot": 14,
+          "x": 16,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 254,
+          "first_colour": 4064,
+          "indices": {
+            "#efbd39": 1,
+            "#9c6b18": 2,
+            "#101018": 3,
+            "#ad1821": 4,
+            "#fff7de": 5,
+            "#de2929": 6,
+            "#ded6bd": 7,
+            "#8c847b": 8
+          },
+          "vram_bytes": 3465,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              14
+            ]
+          ]
+        },
+        {
+          "material": "back",
+          "tile": "37e416f8628c77d0",
+          "source": {
+            "image": "art/back.png",
+            "sha256": "8e21c143bc9ddcbd7d51a62115a36d5dbf9c1e1eb74f7c40e3c22636d75a2dbe"
+          },
+          "width": 64,
+          "height": 104,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#efbd39",
+            "#9c6b18",
+            "#101018",
+            "#ad1821"
+          ],
+          "slot": 14,
+          "x": 88,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 254,
+          "first_colour": 4064,
+          "indices": {
+            "#efbd39": 1,
+            "#9c6b18": 2,
+            "#101018": 3,
+            "#ad1821": 4
+          },
+          "vram_bytes": 3465,
+          "night": "per_colour",
+          "faces": [
+            [
+              14,
+              28
+            ]
+          ]
+        }
+      ],
+      "windows": []
+    }
+  ],
+  "textures": {
+    "slots": [
+      14
+    ],
+    "palettes": {
+      "file": "moon.tpal",
+      "runs": [
+        {
+          "bits": 4,
+          "first_colour": 4064,
+          "colours": 16,
+          "offset": 0
+        }
+      ]
+    },
+    "tiles": 2,
+    "vram_bytes": 6930,
+    "vram_bytes_allocated": 8064,
+    "palettes_4bit": [
+      254
+    ],
+    "palettes_8bit": []
+  },
+  "swatch": {
+    "file": "moon.swatch",
+    "slot": 14,
+    "row": 0,
+    "texels": 16
+  }
+}

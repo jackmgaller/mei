@@ -1,0 +1,164 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "bike_rack_col",
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "solid": {
+   "color": "#c8c4b8",
+   "palette": true
+  }
+ },
+ "nodes": [
+  {
+   "id": "pad",
+   "op": "box",
+   "size": [
+    3.2,
+    0.3,
+    2.1
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     -0.05,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "stands",
+   "op": "box",
+   "size": [
+    3.1,
+    0.42,
+    0.6
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     0.29,
+     -0.5
+    ]
+   }
+  },
+  {
+   "id": "post_front_w",
+   "op": "box",
+   "size": [
+    0.2,
+    2.1629,
+    0.2
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -1.48,
+     1.1615,
+     -0.93
+    ]
+   }
+  },
+  {
+   "id": "post_front_e",
+   "op": "box",
+   "size": [
+    0.2,
+    2.1629,
+    0.2
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     1.48,
+     1.1615,
+     -0.93
+    ]
+   }
+  },
+  {
+   "id": "post_back_w",
+   "op": "box",
+   "size": [
+    0.2,
+    1.8959,
+    0.2
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -1.48,
+     1.0279,
+     0.93
+    ]
+   }
+  },
+  {
+   "id": "post_back_e",
+   "op": "box",
+   "size": [
+    0.2,
+    1.8959,
+    0.2
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     1.48,
+     1.0279,
+     0.93
+    ]
+   }
+  },
+  {
+   "id": "roof",
+   "op": "box",
+   "size": [
+    3.4,
+    0.2,
+    2.3
+   ],
+   "material": "solid",
+   "transform": {
+    "rotate": [
+     8.0,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     2.04,
+     0
+    ]
+   }
+  }
+ ]
+}

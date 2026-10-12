@@ -216,6 +216,36 @@ def slope_world(ridge=False):
 VANTAGE_RIDGE = {'position': [16.0, 1.0, 8.0], 'yaw': 0.0, 'pitch': 0.0}
 
 
+def _up_tri(a, b, c, tag, slide=None):
+    """A collision Tri of corners a, b, c wound to face up (pack.front_normal's y positive)."""
+    u = [c[k] - a[k] for k in range(3)]
+    w = [b[k] - a[k] for k in range(3)]
+    if u[2] * w[0] - u[0] * w[2] < 0:
+        b, c = c, b
+    return Tri(a, b, c, tag=tag, slide_floor_degrees=slide)
+
+
+def crease_world(slide=None):
+    """The plaza with a steep V-shaped gully (tags 70 and 71) where its ground is left out, x 22..30
+    and z 22..30: a 60-degree face from y 7 at x 22 down to y 0 at x 26, and a 63-degree face up
+    to y 8 at x 30. Both are walls to the default probe (floors up to 45 degrees) and nothing is
+    under them: a body dropped into the gully is pushed one way by one face and back by the
+    other, and sinks through. slide makes them slide floors up to that slope as well (pack.Tri's
+    slide_floor_degrees)."""
+    w = good_world()
+    c = w.cells[0]
+    skip = {(a, b) for a in range(11, 15) for b in range(11, 15)}
+    g = grid_mesh(-16, -16, 16, 16, 2.0, SAND, skip=skip | {(a, b) for bx, bz, wd, d, h in BOXES
+                                                            for a in range(bx // 2, (bx + wd) // 2)
+                                                            for b in range(bz // 2, (bz + d) // 2)})
+    c.placements[0] = Placement(g, (16, 0, 16), tag=TAG_GROUND)
+    c.collision = [t for t in c.collision if t.tag != TAG_GROUND] + placed_tris(g, (16, 0, 16), 1, tag=TAG_GROUND)
+    for tag, (x0, y0), (x1, y1) in ((70, (22, 7), (26, 0)), (71, (26, 0), (30, 8))):
+        p, q, r, s = (x0, y0, 22), (x1, y1, 22), (x0, y0, 30), (x1, y1, 30)
+        c.collision += [_up_tri(p, q, r, tag, slide), _up_tri(q, s, r, tag, slide)]
+    return w
+
+
 def overdraw_world():
     """The plaza with twelve screen-filling panels (tag 60) stacked in front of VANTAGE_OVERDRAW,
     farthest first in depth: about 12 screens of fill, over the GPU threshold."""

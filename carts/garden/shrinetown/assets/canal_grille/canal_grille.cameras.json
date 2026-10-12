@@ -1,0 +1,8 @@
+[
+  {"name": "wading_8m", "eye": [0.8, -0.4, -9], "target": [0, -0.6, 0]},
+  {"name": "at_screen", "eye": [-1.5, -0.2, -2.6], "target": [0, -0.8, -0.8]},
+  {"name": "bank_lane", "eye": [8, 1.6, -9], "target": [0, 0, 0]},
+  {"name": "on_slab", "eye": [-3.5, 1.6, 0], "target": [3, 0.8, 0]},
+  {"name": "canal_40m", "eye": [3, 1.6, -40], "target": [0, 0, 0]},
+  {"name": "from_viaduct", "eye": [-6, 10.2, 6], "target": [0, 0, -2]}
+]

@@ -31,10 +31,13 @@ up, and the main session routes it.
 carts/garden/
   README.md, layout.py, layout.png    this contract and the sketch
   garden.akr, game.akr, ...           the cart (controller lead)
+  goals.akr                           stars, triggers and flags, a challenge's clock, the saved progress
+  art/                                the star's card, packed for slot 14 (see "Goals")
   ground/ground.akr                   the only file that imports the world (the world's
                                       generated garden.akr would clash with the cart's own)
-  worlds.txt                          the garden's world and the shrine's (shrine/)
+  worlds.txt                          the garden's world, the shrine's and the shrine town's
   shrine/                             the shrine slice: its world, style sheet and assets
+  shrinetown/                         the shrine town's grey box: its world, design and generators
   body.akr, robot/                    the player drawn: the wind-up robot, its parts and poses
   world/
     STYLE.md                          the style sheet (world lead)
@@ -53,7 +56,9 @@ shell lists it as Movement Garden. Its `tests/check.sh` runs in `make test-carts
 - **Units:** 1 unit = 1 metre; y is up. The block is 128 × 128 m: **four 64 m cells** (2 × 2), so
   the crossroads lies on the corner where all four meet, which tests seams and cell selection.
 - **One region**, `garden`, with palette variants `day` and `night`. A second region is a later
-  stage, not the garden.
+  stage, not the garden. The shrine town has two (`town`, `shrine`): the cart enters the region of
+  the cell the player stands in when it changes (`game.akr`, `follow_region()`;
+  [shrinetown/TEXTURES.md](shrinetown/TEXTURES.md)).
 - **Layers:** `festival` (the stalls and their goals), on at night only; the game switches it.
 - **Ground** is explicit Asset Kit meshes per cell until World Kit terrain exists.
 - **The grey box comes first:** the world lead builds the whole block from primitives with final
@@ -72,6 +77,19 @@ Collision triangles carry a surface byte from their material's `tag`
 | 0 | (default) | Normal ground or wall; every wall can be kicked off |
 | 1 | `bounce` | Landing launches the player (awning, park trampoline) |
 | 2 | `slide` | Cannot be stood on; the player slides down (playground slide) |
+| 3 | `water` | Plain ground; footsteps on water (the worlds' water tags it; wading sounds as water too) |
+| 4 | `wood` | Plain ground; footsteps on wood (decks, walkways, bridges) |
+| 5 | `gravel` | Plain ground; footsteps on gravel |
+| 6 | `earth` | Plain ground; footsteps on earth (soil, moss, paths, grass) |
+| 7 | `tile` | Plain ground; footsteps on roof tiles |
+| 8 | `metal` | Plain ground; footsteps on metal (the fire tower, the overpass, fire escapes) |
+
+The controller reads a byte through `surface_map` (16 entries, from `WORLD_SURFACES` in
+`ground/ground.akr`): 1 and 2 are themselves, every other byte is 0, normal ground, so bytes 3-8
+change no movement. `col_surf` and `pl.floor_surf` hold the mapped byte; `col_byte` and
+`pl.floor_byte` the raw one (its low 4 bits), which `sound_hooks.akr` gives the footsteps
+(`ga_material()` in `audio/sound.akr`). A floor with no footstep byte sounds as its zone's
+material. Which materials and assets carry 4-8 is in `shrinetown/DESIGN.md` 12.10.
 
 New bytes are added here first.
 
@@ -84,17 +102,23 @@ are the world lead's choice. Positions are the entity's placement; offsets are r
 |---|---|---|
 | `spawn` | `yaw` | Where the player starts |
 | `coin` (saved) | `time_window: any \| day \| night` | The collectible; five in the garden |
-| `pole` | `height` | A vertical pole from the placement up |
+| `pole` | `height`, `front: bool` | A vertical pole from the placement up; a front pole (a ladder on a wall) is held on the side its yaw faces only, not grabbed from behind, not gone round |
 | `rail` | `path` (a World Kit path name) | Something to grind or hang from: overpass rail, wires, crane jib |
-| `mover` | `to` (offset) or `path`, `period` (ticks), `pause` (ticks), `mode: pingpong \| loop`, collision asset | A moving platform: gondola, crane hook, the train |
+| `mover` | `to` (offset) or `path`, `period` (ticks), `pause` (ticks), `mode: pingpong \| loop`, `start` (a flag), `delay` (ticks), collision asset | A moving platform: gondola, crane hook, the train. With `start` it is parked (not drawn, no collision) until the flag is set, waits `delay`, then runs; once the flag is cleared it parks when back at its placement (pingpong) or at its leg's end (loop), its first cycle (the delay included) always run to the end; the flag set again restarts its clock from 0 |
 | `camera_zone` | `size`, `mode: follow \| fixed \| rail`, `look` | Inside it the camera changes behaviour (the kick alley) |
 | `door` | `world` (a world of the game), `size` | Walking into the box (rising `size.y` from the placement) opens that world at its spawn: the garden's shrine torii leads to the shrine, the shrine's konbini door back |
-| `red_coin` (saved) | | The shrine's eight red coins along its forest loop |
+| `red_coin` (saved) | | Eight red coins in a level: the shrine's along its forest loop, the shrine town's over its roofs |
+| `star` (saved) | `appear` (a flag) | The level's goal, the hanafuda moon card; with `appear`, there only while that flag is set (it comes down into place when it is); once taken it shows its back at its place whatever the flag |
+| `updraft` | `width`, `depth`, `base`, `cap`, `lift`, `look: steam \| mist \| smoke`, `puffs`, `lean` | Rising air (`updraft.akr`): a glide in the box (`width` by `depth`, centred on the placement moved by half of `lean`, from `base` to 2 m over `cap`, both metres over the placement) eases to 3.5 m/s and climbs at up to `lift` m/s, slowing to hold its feet at `cap`; a jump or a fall goes through. Drawn as `puffs` wisps (one camera-facing quad each, at most 24) rising from the placement to 3 m over the cap, leaning `lean` |
+| `trigger` (saved) | `size`, `how: touch \| press \| pound`, `flag`, `needs`, `keep`, `timer`, `ends`, `on`, `off`, `hide` | A box (its base centred on the placement) that sets `flag` when the body enters it, presses B standing in it (no dive then) or lands a ground pound in it, while `needs` is set and `flag` is not. `keep`: saved. `timer`: the flag is a challenge's, cleared that many ticks later (the clock on the screen). `ends`: a flag it clears (a challenge it ends is won). `on`/`off`: layers switched. `hide`: its mesh hidden while the flag is set |
 
-The game has two worlds (`worlds garden, shrine`): the garden and the shrine slice
-([shrine/README.md](shrine/README.md)), which uses this schema and this cart's controller.
-`ground/ground.akr` opens either; water (the shrine's) slows the player with its depth, and
-from deeper than 1 m there is no jump.
+The game has three worlds (`worlds garden, shrine, shrinetown`): the garden, the shrine slice
+([shrine/README.md](shrine/README.md)) and the shrine town's grey box
+([shrinetown/README.md](shrinetown/README.md)), which use this schema and this cart's
+controller. `ground/ground.akr` opens any of them; water (the shrine's and the town's) slows the
+player with its depth, and from deeper than 1 m there is no jump. A world with more movers (8),
+poles (128), rails (128), stars (16), triggers (32) or entities (256) than the cart holds stops at
+its load (`attach.akr`, `goals.akr`).
 
 Rails, wires and the train's route are **World Kit paths**, which the kit engineer builds first
 (they are reserved in [WORLDKIT.md](../../docs/WORLDKIT.md#terrain), not yet built). Until they
@@ -102,7 +126,44 @@ land, the grey box places the poles and movers, and the rails come with the path
 
 The probe (`probe.radius`, `height`, `step`, `floor_max_degrees`) starts as in
 `examples/worlds/test_room/garden.game.mochi` (0.3, 1.6, 0.32, 40); the controller lead may ask
-for other numbers through the main session.
+for other numbers through the main session. Its `bridge` (0.4375) is the cracks the body steps
+across: `col_stand()` (`player.akr`), which stands the body and lands it, asks `col_floor()` as
+before, and only where that finds no floor (the world's or a mover's) within reach asks
+`wp_floor_across()`, so a gap of up to about 0.3 m between two floors within a step of the feet
+holds the body; the World Checker does not report such gaps
+([WORLDKIT.md](../../docs/WORLDKIT.md#cracks)).
+
+## Goals
+
+`goals.akr`. **Flags** are names (`name` parameters); triggers set them, stars and movers wait for
+them, and the game sets `red_coins` when the open world's last red coin is taken. They belong to
+the world open now: opening a world clears them and sets again those of the triggers it keeps.
+A touch trigger fires on entering its box, not while the body stays in it.
+
+**Saved progress** is the worlds' saved bits as the World Kit numbers them (`NAME.ids.json`): a
+star taken, a kept trigger fired, 512 bits a world. Coins and red coins are not saved: they come
+back whenever a world opens. The progress is written to save 0 of the memory card in slot 1
+whenever it changes (the card stays busy a few frames; nothing waits for it), and read at
+start-up; without a card it lasts until the cart is reset. Opening a world again (a door, a
+reload) keeps it.
+
+**The star** is drawn by the cart, not the world: a world's entity meshes are drawn whichever
+texture region is loaded, so they stay untextured ([TEXTURES.md](shrinetown/TEXTURES.md)). The
+card (`examples/assets/collect/hanafuda_moon`) is packed into `art/` for texture slot 14, which no
+world region uses (it holds the worlds' swatch row, which the pack keeps), and 4-bit palette 254,
+above every world's; `moon_load()` copies it once at start-up (8 KB of slot 14, one palette):
+
+```sh
+python3 tools/mei_assets.py pack examples/assets/collect/hanafuda_moon/hanafuda_moon.asset.json \
+    -o carts/garden/art --name moon --slots 14 --palette 254 --swatch
+```
+
+A star turns in its glint (`glint.akr`, `GLINT_MOON`) and is drawn within 160 m of the camera; a
+star taken shows its back, still, and touching it again does nothing. The screen shows the
+world's stars taken (`moon 2/5`), the red coins once one is taken, and a challenge's clock.
+
+**Worlds may use** texture slots 13–0 and 16–31 and 4-bit palettes 0–253 and 256–511 (VRAM at
+2 MB): slot 14 (beyond the swatch row) and palette 254 are the star's.
 
 ## Gates
 

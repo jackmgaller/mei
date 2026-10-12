@@ -1,0 +1,139 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "vegstand_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "posts",
+   "op": "group",
+   "children": [
+    {
+     "id": "post",
+     "op": "box",
+     "size": [
+      0.2,
+      1.6,
+      0.2
+     ],
+     "open": [
+      "bottom"
+     ],
+     "material": "solid",
+     "transform": {
+      "translate": [
+       0.73,
+       0.82,
+       -0.27
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "back",
+   "op": "box",
+   "size": [
+    1.6,
+    1.45,
+    0.2
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     0.725,
+     0.3
+    ]
+   }
+  },
+  {
+   "id": "shelf_low",
+   "op": "box",
+   "size": [
+    1.44,
+    0.22,
+    0.56
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     0.39,
+     -0.02
+    ]
+   }
+  },
+  {
+   "id": "shelf_high",
+   "op": "box",
+   "size": [
+    1.44,
+    0.2,
+    0.56
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     0.85,
+     -0.02
+    ]
+   }
+  },
+  {
+   "id": "roof",
+   "op": "box",
+   "size": [
+    1.72,
+    0.2,
+    0.84
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     1.47,
+     -0.01
+    ],
+    "rotate": [
+     15.5,
+     0,
+     0
+    ]
+   }
+  }
+ ]
+}

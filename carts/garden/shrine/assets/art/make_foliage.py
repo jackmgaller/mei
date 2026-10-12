@@ -198,19 +198,24 @@ def crown_cards(part, rng, centre, radii, count, size, mat, depth=0.7, ymin=-1.0
 FAR2 = 64      # the trees' second far level: the crossed cards alone, without the flat one
 
 
-def cross_only(w, h, turn):
+FAR_CARDS = ('far', 'far_b')   # the two crossed cards' materials: two drawings of the tree
+
+
+def cross_only(w, h, turn, mats=FAR_CARDS):
     """A tree's second far level: its far level's two crossed cards, without the card over the
     crown (from far off the crossed cards carry the tree, at two faces)."""
     part = Part('far', uvs=True)
-    cross_cards(part, [0, 0, 0], w, h, 'far', yaw=turn, quad=True)
+    cross_cards(part, [0, 0, 0], w, h, mats, yaw=turn, quad=True)
     return part
 
 
 def cross_cards(part, base, w, h, mat, count=2, yaw=0.0, uv=(0, 0, 1, 1), quad=False):
-    """count vertical cards crossing at base's vertical axis, bottom edge at base."""
+    """count vertical cards crossing at base's vertical axis, bottom edge at base. mat: one material,
+    or one per card (the far cards' variants: each card a different drawing)."""
     for k in range(count):
         a = yaw + math.pi * k / count
-        card(part, base, [math.cos(a), 0, math.sin(a)], w, h, mat, uv=uv, lift=1.0, quad=quad)
+        m = mat if isinstance(mat, str) else mat[k % len(mat)]
+        card(part, base, [math.cos(a), 0, math.sin(a)], w, h, m, uv=uv, lift=1.0, quad=quad)
 
 
 def flat_card(part, c, size, mat, yaw=0.0, uv=(0, 0, 1, 1), quad=False):
@@ -271,7 +276,8 @@ def collision_prism(name, stations, sides, phase=0.0):
 def maple(name, seed, height, crown_r, crown_h, trunk_h, trunk_r, limbs, cards, budget, far_at):
     """A Japanese maple: a short trunk forking into limbs under a broad dome of red cards."""
     rng = random.Random(seed)
-    mats = {'bark': pal('#5a4a3e'), 'leaves': tex('maple', '#c8301e'), 'far': tex('maple_far', '#c8301e')}
+    mats = {'bark': pal('#5a4a3e'), 'leaves': tex('maple', '#c8301e'), 'far': tex('maple_far', '#c8301e'),
+            'far_b': tex('maple_far_b', '#c8301e')}
     wood = Part('trunk')
     tube(wood, [([0, 0, 0], trunk_r), ([0, trunk_h, 0], trunk_r * 0.75)], 5, 'bark')
     fork = [0, trunk_h * 0.92, 0]
@@ -295,14 +301,15 @@ def maple(name, seed, height, crown_r, crown_h, trunk_h, trunk_r, limbs, cards, 
     far = Part('far', uvs=True)
     w = height  # maple_far is square: the tree's height across
     turn = rng.uniform(0, 1)
-    cross_cards(far, [0, 0, 0], w, w, 'far', yaw=turn, quad=True)
+    cross_cards(far, [0, 0, 0], w, w, FAR_CARDS, yaw=turn, quad=True)
     flat_card(far, [0, height * 0.66, 0], crown_r * 1.7, 'leaves', yaw=rng.uniform(0, 6), quad=True)
     return recipe(name, budget, mats, [wood, crown], [(far_at, [far]), (FAR2, [cross_only(w, w, turn)])])
 
 
 def ginkgo(name, seed, budget, far_at):
     rng = random.Random(seed)
-    mats = {'bark': pal('#8a8278'), 'leaves': tex('ginkgo', '#f0c030'), 'far': tex('ginkgo_far', '#f0c030')}
+    mats = {'bark': pal('#8a8278'), 'leaves': tex('ginkgo', '#f0c030'), 'far': tex('ginkgo_far', '#f0c030'),
+            'far_b': tex('ginkgo_far_b', '#f0c030')}
     height = 14.0
     wood = Part('trunk')
     tube(wood, [([0, 0, 0], 0.32), ([0, 4.5, 0], 0.26), ([0, 11.5, 0], 0.1)], 5, 'bark', quads=True)
@@ -320,7 +327,7 @@ def ginkgo(name, seed, budget, far_at):
     crown_cards(crown, rng, centre, radii, 24, 2.9, 'leaves', depth=0.95, tilt=0.3)
     far = Part('far', uvs=True)
     turn = rng.uniform(0, 1)
-    cross_cards(far, [0, 0, 0], height / 2, height, 'far', yaw=turn, quad=True)
+    cross_cards(far, [0, 0, 0], height / 2, height, FAR_CARDS, yaw=turn, quad=True)
     flat_card(far, [0, 9.0, 0], 4.6, 'leaves', yaw=rng.uniform(0, 6), quad=True)
     return recipe(name, budget, mats, [wood, crown], [(far_at, [far]), (FAR2, [cross_only(height / 2, height, turn)])])
 
@@ -346,7 +353,8 @@ def cedar(name, seed, budget, far_at):
     rng = random.Random(seed)
     height = 25.0
     mats = {'bark': tex('cedar_bark', '#6a4632', double=False), 'wood': pal('#4a3a2e'),
-            'leaves': tex('cedar', '#2e4a2e'), 'far': tex('cedar_far', '#2e4a2e')}
+            'leaves': tex('cedar', '#2e4a2e'), 'far': tex('cedar_far', '#2e4a2e'),
+            'far_b': tex('cedar_far_b', '#2e4a2e'), 'far_c': tex('cedar_far_c', '#2e4a2e')}
     bark = Part('trunk', uvs=True)
     tube(bark, [([0, 0, 0], 0.4), ([0, 8.6, 0], 0.3)], 5, 'bark')
     wood = Part('core')
@@ -360,9 +368,11 @@ def cedar(name, seed, budget, far_at):
              uv=(0, 0, 1, 1 - v0 + 0.0), lift=1.0)
     cedar_crown(crown, rng, 8.6, 23.6, 2.7, 2.9, 20, 'leaves')
     far = Part('far', uvs=True)
-    cross_cards(far, [0, 0, 0], height * 24 / 96, height, 'far', yaw=0.3, quad=True)
+    cards = ('far_b', 'far_c')     # the far levels: a slimmer and a fuller spire (cedar_far_b, _c)
+    cross_cards(far, [0, 0, 0], height * 24 / 96, height, cards, yaw=0.3, quad=True)
     flat_card(far, [0, 13.0, 0], 3.6, 'leaves', yaw=rng.uniform(0, 6), quad=True)
-    return recipe(name, budget, mats, [bark, wood, crown], [(far_at, [far]), (FAR2, [cross_only(height * 24 / 96, height, 0.3)])])
+    return recipe(name, budget, mats, [bark, wood, crown],
+                  [(far_at, [far]), (FAR2, [cross_only(height * 24 / 96, height, 0.3, cards)])])
 
 
 # ---------------------------------------------------------------- the big cedars

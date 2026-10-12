@@ -1,0 +1,159 @@
+// The far plain: the ground past the shrine town's drawn edge, painted on the Horizon Engine's
+// affine plane BG2 as a Mode 7 floor (docs/PLANES.md), behind every polygon and in front of the
+// backdrop's sky; the backdrop's silhouette (BG1) stands in front of it. No triangles and no GPU
+// cycles: the plane shows only in the holes the polygons leave, which past the far ring is
+// everything below the horizon.
+//
+//     import "plain.akr"
+//
+//     // once the world is open (wp_backdrop_show() has turned the compositor on):
+//     plain_show()
+//     // after the region's fog is set (world_shrinetown_fog()) and whenever the variant changes:
+//     plain_variant(variant)              // 0 day, 1 night
+//     // every frame, right after wp_draw() (which leaves the frame's camera set):
+//     plain_draw(eye, pitch)
+//     // when another world opens:
+//     plain_hide()
+//
+// Fog. The GPU fogs polygons by their view depth, linearly from near to far (gpu_fog()). On the
+// plane every screen line is at one view depth (the camera has no roll), so the plane is fogged
+// per line: PLAIN_LEVELS copies of its palette, each a step nearer the fog colour, and a line
+// table (channel PLAIN_CHANNEL, BG2's mode word) that picks one for each line. The fog's colour
+// and range are read back from GPU_FOG and GPU_FOG_RANGE, so the plane follows whatever fog the
+// cart sets, and at the world's edge it meets the last drawn ground at the same fog. Past the
+// depth where the fog reaches plain_cap, the plane goes on fogging over plain_tail more units
+// instead (plain_cap 1.0: exactly the GPU's fog, full at its far depth).
+//
+// VRAM: the atlas in plane page 13 (ATLAS_1, 32 KB), the map at MAP_BG2 (32 KB), the affine
+// table (LT_AFFINE, 3,840 bytes) and the palette table (LT_FREE, 960 bytes). Palettes:
+// PLAIN_LEVELS 4-bit palettes of bank 0 from plain_palette. Line channels 7 (plane_floor()) and
+// PLAIN_CHANNEL.
+
+import "wpbackdrop.akr"
+import "plain_data.akr"
+
+const PLAIN_ATLAS_AT: u32 = 0x468000     // ATLAS_1: plane page 13 (the silhouette is in page 12)
+const PLAIN_LEVELS = 16                  // fog steps: palette L is L / 15 of the way to the fog
+const PLAIN_CHANNEL = 3                  // the line channel that sets BG2's palette per line
+const PLAIN_FAR: fixed = 3000.0          // the farthest line drawn (units of view depth)
+const PLAIN_MODE: u32 = 0xA              // BG2_MODE: a 128 x 128 map of 8 x 8 4-bit tiles, wrapping
+
+var plain_palette: s32 = 232             // the first of the PLAIN_LEVELS palettes (bank 0)
+var plain_y: fixed = 0.0                 // the plain's height (the town's streets are at 0)
+var plain_cap: fixed = 0.85              // see Fog above (1.0: exactly the GPU's fog)
+var plain_tail: fixed = 900.0
+var plain_min_eye: fixed = 10.0          // below this eye height the plain is not drawn: from the
+                                         // streets it shows only at the horizon, in full fog
+var plain_cycles: s32                    // CPU cycles plain_draw() took last (with __pl_rebuild)
+
+var __pl_on: bool
+var __pl_variant: s32
+var __pl_fog: u32 = 0xFFFFFFFF           // GPU_FOG and GPU_FOG_RANGE the palettes were built for
+var __pl_range: u32
+var __pl_near: fixed
+var __pl_span: fixed                     // far - near; 0: no fog
+var __pl_ys: [16]s32
+
+// Loads the plain's tiles and map into VRAM (about 62,000 cycles: two 32 KB copies) and shows BG2.
+fn plain_show() {
+    atlas_load(PLAIN_ATLAS_AT, PLAIN_ATLAS, 32768)
+    memcpy(MAP_BG2 as *u8, PLAIN_MAP as *u8, 32768)
+    plane(BG2, PLAIN_ATLAS_AT, MAP_BG2, 128, 128, PLANE_WRAP, plain_palette)
+    plane_window(BG2, 0, 240, 320, 240)      // nothing until the first plain_draw()
+    __pl_on = true
+    __pl_fog = 0xFFFFFFFF
+}
+
+// Hides the plain: BG2 off and its two line channels off.
+fn plain_hide() {
+    if !__pl_on { return }
+    plane_show(BG2, false)
+    line_off(7)
+    line_off(PLAIN_CHANNEL)
+    __pl_on = false
+}
+
+// The plain's colours for palette variant v (0 day, 1 night): rebuilt at the next plain_draw().
+fn plain_variant(v: s32) {
+    __pl_variant = clamp(v, 0, 1)
+    __pl_fog = 0xFFFFFFFF
+}
+
+// The fog palettes, when the fog or the variant changed: PLAIN_LEVELS x 15 colours (about 8,600
+// cycles, only then).
+fn __pl_rebuild() {
+    let fog = GPU_FOG
+    let range = GPU_FOG_RANGE
+    if fog == __pl_fog && range == __pl_range { return }
+    __pl_fog = fog
+    __pl_range = range
+    let on = fog & 0x1000000 != 0
+    let fc = fog & 0xFFFFFF
+    __pl_span = 0.0
+    if on {
+        __pl_near = from_bits(((range & 0xFFFF) << 12) as s32)
+        __pl_span = 1.0 / from_bits((range >> 16) as s32)
+    }
+    let base = &PLAIN_COLOURS[__pl_variant * 16]
+    let pal = (VRAM_PALETTE + plain_palette * 32) as *u16
+    for l in 0..PLAIN_LEVELS {
+        var a = fixed(l) / (PLAIN_LEVELS - 1)
+        if !on { a = 0.0 }
+        for i in 1..16 { pal[l * 16 + i] = rgb15(clerp(base[i], fc, a)) as u16 }
+    }
+}
+
+// The view depth at which the plane's fog reaches amount a (0..1).
+fn __pl_depth(a: fixed) -> fixed {
+    if a <= plain_cap || plain_cap >= 1.0 { return __pl_near + a * __pl_span }
+    return __pl_near + plain_cap * __pl_span + (a - plain_cap) / (1.0 - plain_cap) * plain_tail
+}
+
+// Sets the plain for this frame's camera: call right after wp_draw(eye, yaw, pitch), which
+// leaves the camera set relative to wp_view_origin(). Measured 17,900-20,200 cycles from the high
+// points (preview_plain.py): plane_floor() at about 100 a line below the horizon, and the fog table.
+fn plain_draw(eye: vec3, pitch: fixed) {
+    if !__pl_on { return }
+    let c0 = CYCLES
+    if eye.y - plain_y < plain_min_eye {
+        plane_window(BG2, 0, 240, 320, 240)
+        plain_cycles = c0 - CYCLES
+        return
+    }
+    __pl_rebuild()
+    let o = wp_view_origin()
+    let top = plane_floor(plain_y - o.y, PLAIN_TEXELS, PLAIN_UOFF + PLAIN_TEXELS * o.x,
+                          PLAIN_VOFF + PLAIN_TEXELS * o.z, PLAIN_FAR)
+    let mode = PLAIN_MODE | ((plain_palette as u32 & 255) << 8)
+    let h = eye.y - plain_y
+    if __pl_span <= 0.0 || top >= 240 || h <= 0.0 {
+        line_off(PLAIN_CHANNEL)
+        __bg_regs(BG2)[0] = mode
+        plain_cycles = c0 - CYCLES
+        return
+    }
+    // the line where the fog crosses each step's midpoint: lines above y_k have level > k
+    let f = wp_backdrop_focal
+    let sp = sin(pitch)
+    let cp = cos(pitch)
+    for k in 0..PLAIN_LEVELS - 1 {
+        let t = __pl_depth((fixed(k) + 0.5) / (PLAIN_LEVELS - 1))
+        let sy = (h / t + sp) / cp
+        __pl_ys[k] = clamp(120 + (f * sy) as s32, 0, 240)
+    }
+    let tbl = LT_FREE as *u32
+    var y = 0
+    var l = PLAIN_LEVELS - 1
+    while l >= 0 {
+        var y1 = 240
+        if l > 0 { y1 = max(__pl_ys[l - 1], y) }
+        let w = mode + ((l as u32) << 8)
+        while y < y1 {
+            tbl[y] = w
+            y += 1
+        }
+        l -= 1
+    }
+    line_channel(PLAIN_CHANNEL, lc_mode(BG2), 1, LT_FREE)
+    plain_cycles = c0 - CYCLES
+}

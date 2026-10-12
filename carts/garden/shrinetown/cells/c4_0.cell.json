@@ -1,0 +1,279 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c4_0",
+ "at": [
+  4,
+  0
+ ],
+ "region": "town",
+ "placements": [
+  {
+   "id": "edge_s5",
+   "asset": "edge_fence_34",
+   "position": [
+    273.0,
+    0,
+    0.05
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "edge_e0",
+   "asset": "edge_fence_64",
+   "position": [
+    319.95,
+    0,
+    32.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "neighbour_s7",
+   "asset": "edge_neighbour_s7",
+   "position": [
+    272.0,
+    0,
+    0.2
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "neighbour_s8",
+   "asset": "edge_neighbour_s8",
+   "position": [
+    304.0,
+    0,
+    0.2
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "neighbour_e0",
+   "asset": "edge_neighbour_e0",
+   "position": [
+    319.8,
+    0,
+    18.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "neighbour_e1",
+   "asset": "edge_neighbour_e1",
+   "position": [
+    319.8,
+    0,
+    54.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "viaduct_16",
+   "asset": "viaduct_span_16",
+   "position": [
+    256.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_17",
+   "asset": "viaduct_span_16",
+   "position": [
+    272.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_18",
+   "asset": "viaduct_curve_16",
+   "position": [
+    287.9089,
+    0.0,
+    9.0412
+   ],
+   "yaw": 345.0,
+   "collision": "viaduct_curve_16_col"
+  },
+  {
+   "id": "viaduct_19",
+   "asset": "viaduct_curve_16",
+   "position": [
+    301.6076,
+    0.0,
+    16.9502
+   ],
+   "yaw": 315.0,
+   "collision": "viaduct_curve_16_col"
+  },
+  {
+   "id": "viaduct_20",
+   "asset": "viaduct_curve_16",
+   "position": [
+    309.5165,
+    0.0,
+    30.6488
+   ],
+   "yaw": 285.0,
+   "collision": "viaduct_curve_16_col"
+  },
+  {
+   "id": "viaduct_21",
+   "asset": "viaduct_span_16",
+   "position": [
+    310.5577,
+    0.0,
+    46.5577
+   ],
+   "yaw": 270.0,
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_22",
+   "asset": "viaduct_span_16",
+   "position": [
+    310.5577,
+    0.0,
+    62.5577
+   ],
+   "yaw": 270.0,
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "goal_1",
+   "asset": "sports_goal",
+   "position": [
+    289.0,
+    0.0,
+    35.0
+   ],
+   "yaw": 90,
+   "collision": "sports_goal_col"
+  },
+  {
+   "id": "climbing_frame",
+   "asset": "sports_climbing_frame",
+   "position": [
+    269.0,
+    0.0,
+    33.0
+   ],
+   "collision": "sports_climbing_frame_col"
+  },
+  {
+   "id": "bench_ground0",
+   "asset": "town_bench",
+   "position": [
+    256.0,
+    0.0,
+    53.5
+   ],
+   "collision": "town_bench_col"
+  },
+  {
+   "id": "bench_ground1",
+   "asset": "town_bench",
+   "position": [
+    262.0,
+    0.0,
+    53.5
+   ],
+   "collision": "town_bench_col"
+  },
+  {
+   "id": "maple_school",
+   "asset": "tree_maple_small",
+   "position": [
+    278.5,
+    0.0,
+    63.5
+   ],
+   "yaw": 40,
+   "collision": "tree_maple_small_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "rail_goal_1_bar",
+   "type": "rail",
+   "position": [
+    288.05,
+    2.25,
+    37.5
+   ],
+   "params": {
+    "path": "goal_1_bar"
+   }
+  },
+  {
+   "id": "pole_frame_0",
+   "type": "pole",
+   "position": [
+    266.8,
+    0.0,
+    35.0
+   ],
+   "params": {
+    "height": 4.38
+   }
+  },
+  {
+   "id": "pole_frame_1",
+   "type": "pole",
+   "position": [
+    267.9,
+    0.0,
+    35.0
+   ],
+   "params": {
+    "height": 4.38
+   }
+  },
+  {
+   "id": "pole_frame_2",
+   "type": "pole",
+   "position": [
+    270.1,
+    0.0,
+    35.0
+   ],
+   "params": {
+    "height": 4.38
+   }
+  },
+  {
+   "id": "pole_frame_3",
+   "type": "pole",
+   "position": [
+    271.2,
+    0.0,
+    35.0
+   ],
+   "params": {
+    "height": 4.38
+   }
+  },
+  {
+   "id": "rail_frame_ladder",
+   "type": "rail",
+   "position": [
+    269.0,
+    2.2,
+    30.8
+   ],
+   "params": {
+    "path": "frame_ladder"
+   }
+  }
+ ]
+}

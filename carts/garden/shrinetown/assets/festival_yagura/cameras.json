@@ -1,0 +1,8 @@
+[
+ {"name": "dance_ground", "eye": [-3.0, 1.6, -13.0], "target": [0, 3.5, 0]},
+ {"name": "at_foot", "eye": [4.5, 1.6, -5.5], "target": [0, 3.0, 0]},
+ {"name": "back_ladder", "eye": [3.5, 1.6, 7.5], "target": [0.6, 2.6, 2.5]},
+ {"name": "lower_deck", "eye": [2.6, 4.05, -2.6], "target": [0.0, 6.2, 0.0]},
+ {"name": "from_above", "eye": [9.0, 13.0, -12.0], "target": [0, 4.5, 0]},
+ {"name": "far", "eye": [14.0, 5.0, -40.0], "target": [0, 4.0, 0]}
+]

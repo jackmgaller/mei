@@ -1,0 +1,385 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c4_3",
+ "at": [
+  4,
+  3
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "sh_graves_6_0",
+   "asset": "cemetery_grave_row",
+   "position": [
+    263.0,
+    10.8,
+    195.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_graves_6_1",
+   "asset": "cemetery_grave_row",
+   "position": [
+    275.0,
+    10.8,
+    195.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_graves_6_2",
+   "asset": "cemetery_grave_row",
+   "position": [
+    297.0,
+    10.8,
+    195.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_graves_6_3",
+   "asset": "cemetery_grave_row",
+   "position": [
+    309.0,
+    10.8,
+    195.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_sotoba_6",
+   "asset": "cemetery_sotoba_rack",
+   "position": [
+    296.0,
+    10.8,
+    196.75
+   ],
+   "collision": "cemetery_sotoba_rack_col"
+  },
+  {
+   "id": "sh_cem_wall_7_262",
+   "asset": "cemetery_terrace_wall_12",
+   "position": [
+    262.0,
+    10.8,
+    201.5
+   ],
+   "collision": "cemetery_terrace_wall_12_col"
+  },
+  {
+   "id": "sh_cem_wall_7_274",
+   "asset": "cemetery_terrace_wall_12",
+   "position": [
+    274.0,
+    10.8,
+    201.5
+   ],
+   "collision": "cemetery_terrace_wall_12_col"
+  },
+  {
+   "id": "sh_cem_wall_7_298",
+   "asset": "cemetery_terrace_wall_12",
+   "position": [
+    298.0,
+    10.8,
+    201.5
+   ],
+   "collision": "cemetery_terrace_wall_12_col"
+  },
+  {
+   "id": "sh_cem_wall_7_310",
+   "asset": "cemetery_terrace_wall_12",
+   "position": [
+    310.0,
+    10.8,
+    201.5
+   ],
+   "collision": "cemetery_terrace_wall_12_col"
+  },
+  {
+   "id": "sh_graves_7_0",
+   "asset": "cemetery_grave_row",
+   "position": [
+    264.0,
+    12.6,
+    207.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_graves_7_1",
+   "asset": "cemetery_grave_row",
+   "position": [
+    274.0,
+    12.6,
+    207.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_graves_7_2",
+   "asset": "cemetery_grave_row",
+   "position": [
+    298.0,
+    12.6,
+    207.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_graves_7_3",
+   "asset": "cemetery_grave_row",
+   "position": [
+    308.0,
+    12.6,
+    207.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_sotoba_7",
+   "asset": "cemetery_sotoba_rack",
+   "position": [
+    310.0,
+    12.6,
+    208.75
+   ],
+   "collision": "cemetery_sotoba_rack_col"
+  },
+  {
+   "id": "sh_cem_wall_8_262",
+   "asset": "cemetery_terrace_wall_12",
+   "position": [
+    262.0,
+    12.6,
+    213.5
+   ],
+   "collision": "cemetery_terrace_wall_12_col"
+  },
+  {
+   "id": "sh_cem_wall_8_274",
+   "asset": "cemetery_terrace_wall_12",
+   "position": [
+    274.0,
+    12.6,
+    213.5
+   ],
+   "collision": "cemetery_terrace_wall_12_col"
+  },
+  {
+   "id": "sh_cem_wall_8_298",
+   "asset": "cemetery_terrace_wall_12",
+   "position": [
+    298.0,
+    12.6,
+    213.5
+   ],
+   "collision": "cemetery_terrace_wall_12_col"
+  },
+  {
+   "id": "sh_cem_wall_8_310",
+   "asset": "cemetery_terrace_wall_12",
+   "position": [
+    310.0,
+    12.6,
+    213.5
+   ],
+   "collision": "cemetery_terrace_wall_12_col"
+  },
+  {
+   "id": "sh_graves_8_0",
+   "asset": "cemetery_grave_row",
+   "position": [
+    264.0,
+    14.4,
+    219.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_graves_8_1",
+   "asset": "cemetery_grave_row",
+   "position": [
+    274.0,
+    14.4,
+    219.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_graves_8_2",
+   "asset": "cemetery_grave_row",
+   "position": [
+    298.0,
+    14.4,
+    219.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_graves_8_3",
+   "asset": "cemetery_grave_row",
+   "position": [
+    308.0,
+    14.4,
+    219.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_sotoba_8",
+   "asset": "cemetery_sotoba_rack",
+   "position": [
+    262.0,
+    14.4,
+    220.75
+   ],
+   "collision": "cemetery_sotoba_rack_col"
+  },
+  {
+   "id": "sh_cem_wall_9_262",
+   "asset": "cemetery_terrace_wall_12",
+   "position": [
+    262.0,
+    14.4,
+    225.5
+   ],
+   "collision": "cemetery_terrace_wall_12_col"
+  },
+  {
+   "id": "sh_cem_wall_9_274",
+   "asset": "cemetery_terrace_wall_12",
+   "position": [
+    274.0,
+    14.4,
+    225.5
+   ],
+   "collision": "cemetery_terrace_wall_12_col"
+  },
+  {
+   "id": "sh_cem_wall_9_298",
+   "asset": "cemetery_terrace_wall_12",
+   "position": [
+    298.0,
+    14.4,
+    225.5
+   ],
+   "collision": "cemetery_terrace_wall_12_col"
+  },
+  {
+   "id": "sh_cem_wall_9_310",
+   "asset": "cemetery_terrace_wall_12",
+   "position": [
+    310.0,
+    14.4,
+    225.5
+   ],
+   "collision": "cemetery_terrace_wall_12_col"
+  },
+  {
+   "id": "sh_graves_9_0",
+   "asset": "cemetery_grave_row",
+   "position": [
+    265.0,
+    16.2,
+    231.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_graves_9_1",
+   "asset": "cemetery_grave_row",
+   "position": [
+    273.0,
+    16.2,
+    231.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_graves_9_2",
+   "asset": "cemetery_grave_row",
+   "position": [
+    299.0,
+    16.2,
+    231.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_graves_9_3",
+   "asset": "cemetery_grave_row",
+   "position": [
+    307.0,
+    16.2,
+    231.5
+   ],
+   "collision": "cemetery_grave_row_col"
+  },
+  {
+   "id": "sh_sotoba_9",
+   "asset": "cemetery_sotoba_rack",
+   "position": [
+    276.0,
+    16.2,
+    232.75
+   ],
+   "collision": "cemetery_sotoba_rack_col"
+  },
+  {
+   "id": "sh_jizo_hall",
+   "asset": "cemetery_jizo_hall",
+   "position": [
+    299.0,
+    16.2,
+    241.0
+   ],
+   "collision": "cemetery_jizo_hall_col"
+  },
+  {
+   "id": "edge_rock_e192",
+   "asset": "edge_rock_e192",
+   "position": [
+    319.0,
+    7.0,
+    224.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  }
+ ],
+ "entities": [
+  {
+   "id": "core_coin_cemetery_2",
+   "type": "coin",
+   "position": [
+    286.0,
+    11.8,
+    197
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_cemetery_3",
+   "type": "coin",
+   "position": [
+    286.0,
+    15.4,
+    221
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_cemetery_4",
+   "type": "coin",
+   "position": [
+    286.0,
+    17.2,
+    233
+   ],
+   "asset": "gbc_coin"
+  }
+ ]
+}

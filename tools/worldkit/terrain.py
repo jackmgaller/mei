@@ -421,7 +421,11 @@ class Field:
                 raise WorldError(f'{self.path}/{key}', f'No terrain material {spec[key]!r}.')
         if 'steep' in spec and spec['steep']['material'] not in mats:
             raise WorldError(self.path + '/steep/material', f'No terrain material {spec["steep"]["material"]!r}.')
-        self.floor_cos = ctx.floor_cos
+        # slide_floor_degrees: faces steeper than the game's floor limit, up to this slope, are
+        # floors as well as walls, so a falling body lands on steep ground (and the game slides it
+        # down) instead of sinking between walls; the quads' splits judge kinds by it
+        self.slide_floor = spec.get('slide_floor_degrees')
+        self.floor_cos = ctx.floor_cos if self.slide_floor is None else math.cos(math.radians(self.slide_floor))
         # a textured material's rectangles stay within its texture's reach (its span)
         self.caps, self.reaches = {}, {}
         for m, tex in ctx.textures.items():
@@ -1298,6 +1302,10 @@ def cliff_faces(f, walls):
         B = [(x, y, z) for x, z, y in B]
         T = [(x, y, z) for x, z, y in T]
         hint = (lo[0] - hi[0], 0.0, lo[1] - hi[1])
+        if T[0][1] + T[1][1] < B[0][1] + B[1][1]:
+            # the sheet at the higher offset ends lower here (operations after the cliffs set the
+            # two sheets' heights the other way round): the face looks out over the lower one
+            hint = (-hint[0], 0.0, -hint[2])
         bands = [(B, T)]
         if ov and T[0][1] - lip > B[0][1] and T[1][1] - lip > B[1][1]:
             M = [(b[0], q16(t[1] - lip), b[2]) for b, t in zip(B, T)]
@@ -1573,7 +1581,8 @@ def compile_terrain(w, base, size, cells, surface_of, warnings, overhang, floor_
                         if spec.get('collision', True):
                             a, b, c = world
                             collision.setdefault(cell, []).append(
-                                P.Tri(c, b, a, surface=surface_of(materials[material].get('tag')), tag=TAG_FIELD))
+                                P.Tri(c, b, a, surface=surface_of(materials[material].get('tag')), tag=TAG_FIELD,
+                                      slide_floor_degrees=f.slide_floor))
                 meshes.append(out)
                 frep['triangles'][li] += out.faces
             if walls:

@@ -1,0 +1,8 @@
+[
+ {"name": "lane", "eye": [-2.0, 1.6, -9.0], "target": [0, 2.4, 0]},
+ {"name": "plaque", "eye": [-2.2, 1.6, -2.6], "target": [-2.75, 2.3, 0]},
+ {"name": "through", "eye": [0.5, 1.6, -4.0], "target": [0, 2.0, 6.0]},
+ {"name": "from_terrace", "eye": [3.0, 3.4, 7.0], "target": [0, 3.6, 0]},
+ {"name": "from_above", "eye": [-6.0, 9.0, -8.0], "target": [0, 3.0, 0]},
+ {"name": "far", "eye": [10.0, 3.0, -32.0], "target": [0, 2.5, 0]}
+]

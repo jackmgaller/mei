@@ -1,5 +1,6 @@
 /* Replay oracle-generated packets through the real GPU, bypassing Akari geometry.
- * Input: LE clear/dither/list byte count, 8 KB palette, 512 KB texture RAM, list.
+ * Input: LE clear/dither/list byte count, 16 KB of palette (colours 0-8191: banks 0 and 1),
+ * 1 MB of texture RAM (slots 0-31), list.
  * Output: native little-endian RGB555 framebuffer. */
 #include "machine.h"
 #include <stdio.h>
@@ -17,7 +18,8 @@ int main(int argc, char **argv) {
     uint32_t bytes = rd32(header + 8);
     if (bytes > RAM_SIZE - 0x1000 || bytes % 4) goto done;
     if (fread(m->vram + PALETTE_ADDR - VRAM_BASE, 1, 8192, in) != 8192) goto done;
-    if (fread(m->vram + TEXTURE_ADDR - VRAM_BASE, 1, 524288, in) != 524288) goto done;
+    if (fread(m->vram + PALETTE_HI_ADDR - VRAM_BASE, 1, 8192, in) != 8192) goto done;
+    if (fread(m->vram + TEXTURE_ADDR - VRAM_BASE, 1, TEXTURE_SLOTS * TEXTURE_SLOT_BYTES, in) != TEXTURE_SLOTS * TEXTURE_SLOT_BYTES) goto done;
     if (fread(m->ram + 0x1000, 1, bytes, in) != bytes) goto done;
     m->fault.kind = MEI_FAULT_NONE;
     m->gpu_ctrl = rd32(header + 4);

@@ -10,8 +10,14 @@ import "tuning.akr"
 import "player.akr"
 import "camera.akr"
 import "attach.akr"
+import "updraft.akr"
+import "goals.akr"
 import "body.akr"
+import "shadow.akr"
+import "cardnames.akr"
 import "hud.akr"
+import "sound_hooks.akr"       // the sound and music (audio/WIRING.md)
+import "arrival.akr"
 
 const MAX_CATCH_UP = 4         // ticks run at most in one update()
 
@@ -24,6 +30,10 @@ var coins: s32
 var red_coins: s32
 var coin_got: [8]u32           // a bit per entity number (of the world open now)
 var door_wait: bool            // standing in the door just come through: not taken again until left
+var region_cycles: s32         // the cost of the last region crossing (follow_region()), for the tests
+var region_entered_at: s32     // and the frame it was in (frame_n)
+var region_enters: s32         // crossings so far
+var body_shown: bool           // draw() drew the body (the tests)
 
 fn init() {
     // The depth buffer and perspective-correct textures (docs/RENDERING.md): everything is
@@ -31,14 +41,20 @@ fn init() {
     // plain mesh_at(), in any order.
     render_depth(true)
     render_perspective(true)
+    progress_load()
     world_k = start_world()
     assert(world_load())
     tune_defaults()
-    for k in 0..8 { surface_map[k] = WORLD_SURFACES[k] }
+    for k in 0..16 { surface_map[k] = WORLD_SURFACES[k] }
     body_init()
     place_at_spawn()
     attach_init()
+    updraft_init()
+    goals_init()
     cam_reset()
+    sound_init()
+    cam_intro()
+    arrival_open()
     timing_start()
     last_frame = FRAME
     test_init()
@@ -78,6 +94,7 @@ fn read_input(s: vec2) {
 }
 
 fn update() {
+    water_cycle_update(frame() as s32)
     pad_prev = pad_now
     pad_now = input_pad(frame_n)
     let s = input_stick(frame_n)
@@ -87,13 +104,19 @@ fn update() {
         if held(LEFT) { look.x = -1.0 }
         if held(RIGHT) { look.x = 1.0 }
     }
-    if pressed(Y) && !menu_open { player_respawn() }
+    if pressed(Y) && !menu_open && !arrival_busy() { player_respawn() }       // a challenge running is lost (goals_respawn())
+    if pressed(Y) && !menu_open && !arrival_busy() { ga_play(GA_S_WINDUP) }   // the key wound (sound_hooks.akr)
+    if ticks(T.Night) != world_variant { world_set_variant(ticks(T.Night)) }
     read_input(s)
     let n = clamp((FRAME - last_frame) as s32, 1, MAX_CATCH_UP)
     last_frame = FRAME
     for k in 0..n {
         attach_tick()
+        arrival_tick()                  // the arrival train, and the input while arriving
+        goals_pre(&pin)
         player_tick(&pin)
+        goals_tick()
+        sound_tick()
         cam_tick(look.x, k == 0 && pressed(L))
         pin.ap = false
         pin.bp = false
@@ -101,8 +124,13 @@ fn update() {
         sim_t += 1
     }
     collect_coins()
+    goals_collect()
+    goals_frame()
     use_doors()
+    follow_region()
     cam_place()
+    arrival_cam()
+    sound_frame()
     test_hook(frame_n)
     timing_frame()
     frame_n += 1
@@ -124,23 +152,48 @@ fn collect_coins() {
         if abs(d.x) < 0.8 && abs(d.y) < 1.2 && abs(d.z) < 0.8 {
             coin_got[(n >> 5) & 7] |= (1 << (n & 31)) as u32
             if ty == RED_COIN_TYPE { red_coins += 1 } else { coins += 1 }
+            red_coins_check()
         }
+    }
+}
+
+// ---- regions: a world with several (the shrine town's town and shrine,
+// shrinetown/TEXTURES.md) enters the region of the cell the player stands in. wp_region_enter()
+// loads its texture set, palettes and backdrop at once (about 56,000 cycles a 32 KB texture slot:
+// the frame of a crossing may be late); near cells of the other region draw as their stand-ins.
+
+fn follow_region() {
+    let c = wp_cell_at(pl.pos)
+    if c == null || wp_region_loaded < 0 { return }
+    let k = c.region as s32
+    if k != wp_region_loaded {
+        let c0 = cycle_count()
+        wp_region_enter(k, world_variant)
+        world_region_entered(k)
+        region_cycles = cycle_count() - c0
+        region_entered_at = frame_n
+        region_enters += 1
     }
 }
 
 // ---- doors (the world's door entities): walk into one to go to its world
 
 // Opens world k and starts the player at its spawn. Coins taken are the world's own, so they
-// start again (nothing is saved yet).
+// start again; stars and the triggers kept are in the saved progress (goals.akr).
 fn world_switch(k: s32) {
     world_k = k
+    wp_region_loaded = -1      // the last world's region: world_load() enters the new world's own
     assert(world_load())
     for w in 0..8 { coin_got[w] = 0 }
     coins = 0
     red_coins = 0
     attach_init()
+    updraft_init()
     place_at_spawn()
+    goals_init()
     cam_reset()
+    cam_intro()
+    arrival_open()
     door_wait = true
 }
 
@@ -166,7 +219,8 @@ fn use_doors() {
 
 // ---- drawing
 
-// The entities' meshes in the near cells; taken coins and what attach.akr draws are skipped.
+// The entities' meshes in the near cells; taken coins, hidden triggers and what attach.akr and
+// goals.akr (the stars) draw are skipped.
 fn draw_entities() {
     let o = wp_view_origin()
     let ci = wp_cell_index(cam.eye.x)
@@ -182,7 +236,8 @@ fn draw_entities() {
                 let ty = e.type_id as s32
                 let coin = ty == COIN_TYPE || ty == RED_COIN_TYPE
                 if coin && coin_taken(e.number as s32) { continue }
-                if attach_owns(e) { continue }         // attach_draw() draws it where it is now
+                if attach_owns(e) || ty == STAR_TYPE { continue }     // attach_draw(), goals_draw()
+                if ty == TRIGGER_TYPE && !trig_shown(e) { continue }
                 var yaw = e.yaw
                 if coin { yaw = frame_angle(sim_t, 0.05) }
                 mesh_at(m, wp_entity_pos(e) - o, yaw)
@@ -196,6 +251,14 @@ fn draw() {
     wp_draw(cam.eye, cam.yaw, cam.pitch)
     draw_entities()
     attach_draw()
-    body_draw()
+    updraft_draw()
+    goals_draw()
+    body_shown = cam.reach >= CAM_BODY_HIDE && !arrival_hides_body()   // the eye in the robot's head, or on the train: not drawn
+    if body_shown {
+        body_draw()
+        shadow_draw()
+    }
+    goals_hud()
+    arrival_draw()
     hud_draw()
 }

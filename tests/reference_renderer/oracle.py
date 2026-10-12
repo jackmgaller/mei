@@ -60,8 +60,11 @@ def read_mesh(path):
         uv = [[t&255,t>>8] for t in tail[8:12]]
         # Texture byte bits 5-7: window 1-7 from the halfword table at header +12.
         window = struct.unpack_from('<H',data,wo+2*((tex>>5)-1))[0] if tex>>5 else 0
-        faces.append({'flags':flags,'blend':blend,'slot':tex&15,'four':bool(tex&16),
-                      'pal':pal,'window':window,'idx':tail[:n],'cols':cols[:n],'uv':uv[:n]})
+        # Flags bit 6: slots 16-31; bit 7: palette bank 1 (DECISIONS.md, "VRAM at 2 MB").
+        four = bool(tex&16)
+        faces.append({'flags':flags&63,'blend':blend,'slot':(tex&15)|(16 if flags&64 else 0),'four':four,
+                      'pal':(pal if four else pal&15)+((256 if four else 16) if flags&128 else 0),
+                      'window':window,'idx':tail[:n],'cols':cols[:n],'uv':uv[:n]})
     return vertices,faces
 
 
@@ -189,13 +192,23 @@ def packets_for(scene, case):
     return packets,counters
 
 
+BANK=524288    # 16 slots of 32 KB: an 8-bit texture's second slot wraps within its bank
+
+
+def tex_address(slot,offset):
+    """The texture-area byte of `offset` into slot 0-31: slots 16-31 follow 0-15, and an offset
+    past the bank's end wraps to the bank's start (8-bit slot 15 into 0, 31 into 16)."""
+    return slot//16*BANK+(slot%16*32768+offset)%BANK
+
+
 def load_vram(scene):
-    texture=np.zeros(524288,dtype=np.uint8)
+    texture=np.zeros(2*BANK,dtype=np.uint8)            # slots 0-31
     for tex in scene['textures']:
         data=np.frombuffer((CART/tex['file']).read_bytes(),dtype=np.uint8)
-        addresses=(np.arange(len(data))+tex['slot']*32768)%524288
-        texture[addresses]=data
-    palette=np.frombuffer((CART/'palette.bin').read_bytes(),dtype='<u2').astype(np.int64)
+        texture[tex_address(tex['slot'],np.arange(len(data)))]=data
+    palette=np.zeros(8192,dtype=np.int64)               # colours 0-8191, both banks
+    loaded=np.frombuffer((CART/'palette.bin').read_bytes(),dtype='<u2').astype(np.int64)
+    palette[:len(loaded)]=loaded
     return texture,palette
 
 
@@ -252,8 +265,8 @@ def render(scene,case,packets,texture,palette):
                     idx=(texture[p['slot']*32768+v*128+u//2]>>(u%2*4))&15
                     base=p['pal']*16
                 else:
-                    idx=texture[(p['slot']*32768+v*256+u)%524288]
-                    base=(p['pal']&15)*256
+                    idx=texture[tex_address(p['slot'],v*256+u)]
+                    base=p['pal']*256
                 keep=idx!=0
                 y,x,colours,idx=y[keep],x[keep],colours[keep],idx[keep]
                 texel=palette[base+idx.astype(np.int64)]
@@ -287,7 +300,9 @@ def write_probe(path,scene,case,packets,texture,palette):
             if p['flags']&2:
                 uv=p['uv'][i][0]|(p['uv'][i][1]<<8)
                 if i==0:
-                    uv |= p['slot']<<16 | int(p['four'])<<20 | p['pal']<<24
+                    per=256 if p['four'] else 16
+                    uv |= ((p['slot']&15)<<16 | int(p['four'])<<20 | (p['slot']>>4)<<21 |
+                           (p['pal']//per)<<22 | (p['pal']%per)<<24)
                 if i==1:
                     uv |= p.get('window',0)<<16
                 words.append(uv)
@@ -297,8 +312,11 @@ def write_probe(path,scene,case,packets,texture,palette):
         address+=len(words)*4
         words[0]|=address if i<len(records)-1 else 0xFFFFFF
     payload=b''.join(struct.pack('<'+'I'*len(words),*words) for words in records)
+    # gpu_probe.c's input: colours 0-8191 (both palette banks) and slots 0-31, zero-padded
+    pal=np.zeros(8192,dtype='<u2');pal[:len(palette)]=palette
+    tex=np.zeros(2*BANK,dtype=np.uint8);tex[:len(texture)]=texture
     path.write_bytes(struct.pack('<III',colour15(scene['background']),int(case['dither']),len(payload))+
-                     palette.astype('<u2').tobytes()+texture.tobytes()+payload)
+                     pal.tobytes()+tex.tobytes()+payload)
 
 
 def compare(expected,actual):

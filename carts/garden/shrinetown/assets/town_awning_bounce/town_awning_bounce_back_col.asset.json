@@ -1,0 +1,134 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "town_awning_bounce_back_col",
+ "budget": {
+  "triangles": 40
+ },
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  },
+  "bounce": {
+   "color": "#f04880",
+   "palette": true,
+   "tag": "bounce"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "awning",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.0,
+     4.2222,
+     0.75
+    ],
+    [
+     4.0,
+     4.2222,
+     0.75
+    ],
+    [
+     4.0,
+     2.7517,
+     -0.1
+    ],
+    [
+     -4.0,
+     2.7517,
+     -0.1
+    ],
+    [
+     4.0,
+     2.6,
+     -0.75
+    ],
+    [
+     -4.0,
+     2.6,
+     -0.75
+    ],
+    [
+     4.0,
+     2.32,
+     -0.75
+    ],
+    [
+     -4.0,
+     2.32,
+     -0.75
+    ],
+    [
+     4.0,
+     2.72,
+     0.75
+    ],
+    [
+     -4.0,
+     2.72,
+     0.75
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     3,
+     2,
+     4,
+     5
+    ],
+    [
+     5,
+     4,
+     6,
+     7
+    ],
+    [
+     7,
+     6,
+     8,
+     9
+    ],
+    [
+     0,
+     3,
+     5,
+     7,
+     9
+    ],
+    [
+     8,
+     6,
+     4,
+     2,
+     1
+    ]
+   ],
+   "face_materials": [
+    "solid",
+    "bounce",
+    "bounce",
+    "solid",
+    "solid",
+    "solid"
+   ]
+  }
+ ]
+}

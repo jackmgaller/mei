@@ -1,0 +1,53 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_4",
+ "at": [
+  0,
+  4
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "canal_spring_0",
+   "asset": "forest_boulder_big",
+   "position": [
+    48.0,
+    295.0
+   ],
+   "yaw": 20,
+   "collision": "self"
+  },
+  {
+   "id": "canal_spring_1",
+   "asset": "forest_boulder",
+   "position": [
+    44.6,
+    293.6
+   ],
+   "yaw": 110,
+   "collision": "self"
+  },
+  {
+   "id": "canal_spring_2",
+   "asset": "forest_boulder",
+   "position": [
+    51.6,
+    293.8
+   ],
+   "yaw": 250,
+   "collision": "self"
+  },
+  {
+   "id": "edge_rock_w256",
+   "asset": "edge_rock_w256",
+   "position": [
+    1.0,
+    17.0,
+    288.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  }
+ ]
+}

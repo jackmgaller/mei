@@ -1,0 +1,65 @@
+// Occlusion zones (pack 1.5), for tests/test_worldpack.py. The wrapper embeds PACK and VIEWS
+// (WpOcclView records) and imports this. Each view is drawn twice, with wp_occlusion on and off,
+// and the reader's zone, counts and cycles are printed; the test compares them with
+// tools/worldkit/pack.py's zone_at() and with the pictures (the frame dumps of a view drawn each
+// way are the same when the zones hide only what is hidden).
+
+import "worldpack.akr"
+
+struct WpOcclView {
+    eye: vec4          // world
+    yaw: fixed
+    pitch: fixed
+    layers: s32        // bit k: layer k on
+    occlusion: s32     // the picture's run: 0 occlusion off, 1 on (the other runs print both)
+}
+
+fn sp(v: s32) {
+    print_char(' ')
+    print_int(v)
+}
+
+fn draw_view(v: *WpOcclView, on: bool) -> s32 {
+    for l in 0..wp_layer_count() { wp_layer_set(l, (v.layers >> l) & 1 != 0) }
+    wp_occlusion = on
+    cls(0)
+    let c0 = cycle_count()
+    wp_draw(vec3(v.eye.x, v.eye.y, v.eye.z), v.yaw, v.pitch)
+    return cycle_count() - c0
+}
+
+fn report(label: *u8, c: s32) {
+    print(label)
+    sp(wp_stats.zone)
+    sp(wp_stats.occluded)
+    sp(wp_stats.standins_occluded)
+    sp(wp_stats.drawn)
+    sp(wp_stats.standins)
+    sp(c)
+    println("")
+}
+
+var next: s32
+
+fn init() { assert(wp_open(PACK)) }
+
+// PICTURE >= 0: draw only view PICTURE, every frame, with its occlusion setting (for a dump).
+// Otherwise one view a frame, both ways, then "done".
+fn draw() {
+    if PICTURE >= 0 {
+        let v = &VIEWS[PICTURE]
+        draw_view(v, v.occlusion != 0)
+        return
+    }
+    let n = len(VIEWS) as s32
+    if next < n {
+        let v = &VIEWS[next]
+        let c1 = draw_view(v, true)
+        report("on", c1)
+        let c0 = draw_view(v, false)
+        report("off", c0)
+    } else if next == n {
+        println("done")
+    }
+    next += 1
+}

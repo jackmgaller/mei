@@ -9,19 +9,27 @@
 #define RAM_SIZE   MEI_RAM_SIZE
 #define ROM_BASE   MEI_ROM_BASE     /* the cart ROM window (mei.h) */
 #define ROM_WINDOW MEI_ROM_WINDOW
-#define VRAM_BASE  0x400000u
-#define VRAM_SIZE  0x100000u
+#define VRAM_BASE  MEI_VRAM_BASE
+#define VRAM_SIZE  MEI_VRAM_SIZE
 #define IO_BASE    MEI_IO_BASE
 #define IO_SIZE    0x800u   /* 0x400-0x5FF: audio channels 8-15 and global audio registers;
                                0x600: broadcast; 0x700-0x7FF: the plane chip */
 
-/* VRAM layout (absolute addresses) */
+/* VRAM layout (absolute addresses; docs/DECISIONS.md, "VRAM at 2 MB"). The first megabyte is
+ * the spec's layout unchanged; the second holds texture slots 16-31 right after slots 0-15,
+ * then the second palette bank, then free pages (plane atlases and maps, by convention). */
 #define FB_A_ADDR     0x400000u
 #define FB_B_ADDR     0x425800u
 #define FB_BYTES      (MEI_W * MEI_H * 2)
-#define PALETTE_ADDR  0x44C000u
-#define TEXTURE_ADDR  0x480000u
+#define PALETTE_ADDR  0x44C000u     /* palette bank 0: colours 0-4095 */
+#define TEXTURE_ADDR  0x480000u     /* slot n at TEXTURE_ADDR + n * TEXTURE_SLOT_BYTES */
 #define TEXTURE_SLOT_BYTES 0x8000u
+#define TEXTURE_SLOTS      32u      /* 0-31: 1 MB, 0x480000-0x57FFFF */
+#define TEXTURE_BANK_SLOTS 16u      /* an 8-bit texture's second slot wraps within its bank of 16 */
+#define TEXTURE_BANK_BYTES (TEXTURE_BANK_SLOTS * TEXTURE_SLOT_BYTES)
+#define PALETTE_HI_ADDR    0x580000u   /* palette bank 1: colours 4096-8191 */
+#define PALETTE_BANK_COLOURS 4096u
+#define VRAM_FREE_ADDR     0x582000u   /* free to 0x5FFFFF (pages 49-63 whole) */
 
 /* I/O offsets from IO_BASE */
 #define IO_GPU_DRAW    0x000
@@ -34,6 +42,8 @@
 #define IO_GPU_LAG     0x01C   /* extension, read-only: ticks the GPU held a finished frame back */
 #define IO_GPU_DEPTH   0x020   /* extension: bit 0 tests packets with depth (0x30-0x3F) (docs/RENDERING.md) */
 #define IO_GPU_ZCLEAR  0x024   /* extension, write-only: fill the depth buffer with bits 0-15 */
+#define IO_GPU_FOG     0x028   /* proposal: bits 0-23 the fog colour, bit 24 fog packets with depth (DECISIONS.md) */
+#define IO_GPU_FOG_RANGE 0x02C /* proposal: bits 0-15 near (1/16 units), bits 16-31 the factor's scale */
 #define IO_AUDIO       0x100   /* channel n at IO_AUDIO + n * 0x20 */
 #define IO_AUD_ADDR    0x00
 #define IO_AUD_LEN     0x04
@@ -115,6 +125,7 @@
 #define GPU_CYCLES_RECIP   24u   /* a triangle with depth that is tested or textured: three vertex reciprocals */
 #define GPU_CYCLES_DIVIDE  2u    /* each perspective divide (a span's start, every 16 pixels, its end) */
 #define GPU_CYCLES_ZCLEAR  (MEI_W * MEI_H / 2u)   /* GPU_ZCLEAR, as GPU_CLEAR: 38,400 */
+#define GPU_CYCLES_FOG     8u    /* proposal: a fogged triangle's setup (three fog factors, one more interpolant) */
 #define GPU_PERSP_SPAN     16    /* pixels between perspective divides */
 
 #define AUD_CHANNELS 16
@@ -229,6 +240,8 @@ struct Mei {
     int gpu_wait;            /* the CPU reached vsync; the frame waits for the GPU to finish */
     uint32_t gpu_lag;        /* GPU_LAG: ticks since reset a finished frame waited for the GPU */
     uint32_t gpu_depth;      /* GPU_DEPTH: bit 0 the depth test on */
+    uint32_t gpu_fog;        /* GPU_FOG (proposal): bits 0-23 the colour, bit 24 on */
+    uint32_t gpu_fog_range;  /* GPU_FOG_RANGE (proposal): bits 0-15 near, bits 16-31 scale */
     uint16_t zbuf[MEI_W * MEI_H];   /* the depth buffer: on the GPU, not in VRAM, not CPU-addressable */
     uint16_t error_screen[MEI_W * MEI_H];
 

@@ -123,9 +123,66 @@ def require_tools(tools, keys):
                      'or --compiler, --runner and --probe.')
 
 
-def flush_contacts(mesh):
-    """inspect's check for flush faces before rendering: duplicate faces and coplanar overlaps,
-    which the Asset Checker fails in either mode, by part pair. Needs NumPy; without it, says so."""
+SINK = 0.02          # how far flush_contacts suggests sinking a part into its neighbour (units)
+BOX_SIDE_OF = {(0,1):'right',(0,-1):'left',(1,1):'top',(1,-1):'bottom',(2,1):'front',(2,-1):'back'}
+
+
+def direction(n):
+    """'-Y' for an axis-aligned unit normal, else the vector rounded."""
+    k = max(range(3),key=lambda i: abs(n[i]))
+    if abs(abs(n[k])-1) < 1e-6: return ('+' if n[k] > 0 else '-')+'XYZ'[k]
+    return '['+', '.join(f'{x:.2f}' for x in n)+']'
+
+
+def contact_fixes(mesh, findings, depth=True):
+    """One line per part pair of flush findings: which part to move, where and by about how much.
+    The smaller part (by surface area) is the one to move."""
+    from assetkit.geometry import cross, sub, dot, norm
+    area = {}
+    for f in mesh.faces:
+        a,b,c = (mesh.vertices[i] for i in f.indices)
+        n = cross(sub(b,a),sub(c,a))
+        area[f.part] = area.get(f.part,0)+dot(n,n)**.5/2
+    first, count = {}, {}
+    for f in findings:
+        pair = tuple(sorted((f['a']['part'],f['b']['part'])))
+        first.setdefault(pair,f)
+        count[pair] = count.get(pair,0)+1
+    lines = []
+    # in the order of the audit's summary: the largest first
+    for (p,q),f in sorted(first.items(),key=lambda kv:(-count[kv[0]],kv[0])):
+        if f['code'] == 'duplicate_face':
+            lines.append(f'{p} and {q}: remove one of the coincident faces (faces {f["a"]["face"]}/{f["b"]["face"]}); '
+                         'a mirror or array copy laid over the original makes them')
+            continue
+        if p == q:
+            lines.append(f'within {p}: two of its faces lie flush in one plane (faces {f["a"]["face"]}/{f["b"]["face"]}); '
+                         'remove the covered one or split the part (a mirror copy over the original?)')
+            continue
+        faces = {f['a']['part']:f['a']['face'],f['b']['part']:f['b']['face']}
+        small,big = (p,q) if area.get(p,0) <= area.get(q,0) else (q,p)
+        normal = lambda part: norm(cross(*(sub(mesh.vertices[mesh.faces[faces[part]].indices[k]],
+                                                mesh.vertices[mesh.faces[faces[part]].indices[0]]) for k in (1,2))))
+        ns = normal(small)
+        toward = direction(ns)
+        k = max(range(3),key=lambda i: abs(ns[i]))
+        side = BOX_SIDE_OF.get((k,1 if ns[k] > 0 else -1)) if len(toward) == 2 else None
+        opened = f'open {small}\'s face toward {toward}' + (f' (an unrotated box: "open": ["{side}"])' if side else '')
+        if dot(ns,normal(big)) < 0:
+            # back to back: one part stands on or against the other
+            sink = f'sink {small} about {SINK} along {toward} into {big}, or {opened}'
+            lines.append(sink if depth else f'{opened}; sinking {small} into {big} would make them cross, '
+                         'which fails without the depth buffer')
+        else:
+            lines.append(f'move {small} about 0.03 along {toward} so its face stands proud of {big}\'s '
+                         '(closer than 3 cm z-fights from a distance), or remove the covered face')
+    return lines
+
+
+def flush_contacts(mesh, depth=True):
+    """The check for flush faces before rendering (inspect, and build and preview): duplicate
+    faces and coplanar overlaps, which the Asset Checker fails in either mode, by part pair,
+    with a fix per pair. Needs NumPy; without it, says so."""
     from assetkit.geometry_audit import geometry_audit
     try:
         audit = geometry_audit(mesh,crossings=False)
@@ -135,7 +192,28 @@ def flush_contacts(mesh):
     if audit['findings']:
         result['hint'] = ('Faces of two parts lie flush in one plane: the Asset Checker fails these in either mode. '
                           'Sink one part 1-2 cm into its neighbour, or open the hidden face (a box\'s open sides).')
+        result['fixes'] = contact_fixes(mesh,audit['findings'],depth)
     return result
+
+
+class FlushContacts(AssetError):
+    """build and preview stop before rendering when the recipe requires the Asset Checker and the
+    mesh has flush contacts, which it would fail."""
+    def __init__(self, flush):
+        listed = '; '.join(flush['summary'][:6])+(f'; and {len(flush["summary"])-6} more' if len(flush['summary']) > 6 else '')
+        fixes = '; '.join(flush['fixes'][:6])
+        super().__init__('/verification',f'Stopped before rendering: {flush["count"]} flush contacts, which the Asset Checker '
+                         f'fails in either mode: {listed}. Fix: {fixes}. Nothing was written; run inspect to see them all.')
+        self.report = {'flush_contacts':flush}
+
+
+def close_contacts(mesh):
+    """inspect's and verify's warning of faces facing the same way closer than 3 cm (geometry_audit.close_faces)."""
+    from assetkit.geometry_audit import close_faces
+    try:
+        return {'checked':True,**close_faces(mesh)}
+    except AssetError as error:
+        return {'checked':False,'message':str(error)}
 
 
 def camera_views(shots, report):
@@ -143,7 +221,7 @@ def camera_views(shots, report):
     from assetkit.preview import closeups, part_camera
     if not shots: return []
     views=closeups(report['bounds']) if shots.get('closeups') else []
-    views+=[part_camera(report['parts'],part) for part in shots.get('parts',[])]
+    views+=[part_camera(report['parts'],part,report.get('decals',())) for part in shots.get('parts',[])]
     views+=list(shots.get('cameras',[]))
     names=[v['name'] for v in views]
     if len(set(names))!=len(names):
@@ -179,8 +257,11 @@ def folder(input_path):
 
 
 def build(recipe, directory, preview=False, compiler=None, runner=None, input_path=None, verification=False, probe=None,
-          drawn=None, shots=None):
-    """drawn: {'depth': True, 'perspective': True} or part of it (build/preview --depth and
+          drawn=None, shots=None, flush_check=False):
+    """flush_check (the CLI's build and preview): check for flush contacts first (flush_contacts),
+    put them in the report, and stop before rendering or writing anything when the Asset Checker
+    is to run and would fail them.
+    drawn: {'depth': True, 'perspective': True} or part of it (build/preview --depth and
     --perspective): the asset is drawn so, as in a world whose runtime says so. Its preview draws
     so, and the Asset Checker judges it so (where the recipe's policy does not set them).
     shots: the preview's world-scale views, {'cameras': [camera()...], 'parts': [ids],
@@ -188,6 +269,22 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
     previews are still rendered, marked as failing, into verification-failed/preview/."""
     mesh,materials,report = compile_recipe(recipe,folder(input_path))
     views = camera_views(shots,report) if preview else []     # named parts checked before any work
+    if flush_check:
+        policy = recipe.get('verification')
+        checking = verification or (policy is not None and policy.get('required',True))
+        depth = (policy or {}).get('depth',bool((drawn or {}).get('depth')))
+        flush = flush_contacts(mesh,depth)
+        for k,(level,_) in enumerate((mesh.levels or []) if flush['checked'] else [],1):
+            more = flush_contacts(level,depth)
+            if more.get('count'):
+                flush['count'] += more['count']
+                for code,n in more['by_code'].items(): flush['by_code'][code] = flush['by_code'].get(code,0)+n
+                flush['summary'] += [f'lod {k} {line}' for line in more['summary']]
+                flush['fixes'] = flush.get('fixes',[])+[f'lod {k} {line}' for line in more['fixes']]
+                flush.setdefault('hint',more['hint'])
+        if checking and (policy or {}).get('geometry','error') != 'warn' and flush.get('count'):
+            raise FlushContacts(flush)
+        report['flush_contacts'] = flush
     files = artifacts(recipe,mesh,materials,report,drawn)
     directory = Path(directory).resolve()
     if input_path and input_path != '-':
@@ -251,18 +348,24 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
 
 
 def images_of(recipe):
-    """The files a recipe's textures read, relative to its folder: images, sheets and the
-    sheets' NAME.sheet.json."""
-    names = [m['texture']['image'] for m in recipe.get('materials',{}).values() if 'image' in m.get('texture',{})]
-    for sheet in recipe.get('sheets',{}).values():
-        names.append(sheet['image'])
-        if 'grid' not in sheet:
-            names.append(str(Path(sheet['image']).with_suffix('.sheet.json')))
-    return sorted(set(names))
+    """The files a recipe's textures read, relative to its folder (assetkit.textures.image_files)."""
+    from assetkit.textures import image_files
+    return image_files(recipe)
+
+
+def numbers(text, n, what):
+    """'1,2,3' -> [1.0, 2.0, 3.0], n of them."""
+    try:
+        values = [float(v) for v in text.split(',')]
+    except ValueError:
+        values = []
+    if len(values) != n:
+        raise AssetError(f'/arguments/{what}',f'Give --{what} as {n} numbers separated by commas, not {text!r}.')
+    return values
 
 
 def slot_list(text):
-    """'14-10' -> [14, 13, 12, 11, 10]; '14,12' -> [14, 12]."""
+    """'14-10' -> [14, 13, 12, 11, 10]; '14,12' -> [14, 12]. Slots are 0-31 (VRAM at 2 MB), never 15."""
     try:
         if '-' in text:
             a,b = (int(n) for n in text.split('-'))
@@ -271,8 +374,8 @@ def slot_list(text):
             slots = [int(n) for n in text.split(',')]
     except ValueError as error:
         raise AssetError('/arguments/slots','Give slots as a range (14-10) or a list (14,12).') from error
-    if not slots or any(not 0 <= s <= 14 for s in slots) or len(set(slots)) != len(slots):
-        raise AssetError('/arguments/slots','Slots are 0-14, each once (15 holds the fonts).')
+    if not slots or any(not 0 <= s <= 31 or s == 15 for s in slots) or len(set(slots)) != len(slots):
+        raise AssetError('/arguments/slots','Slots are 0-14 and 16-31, each once (15 holds the fonts).')
     return slots
 
 
@@ -280,10 +383,10 @@ def pack_command(args):
     from assetkit.packer import pack
     if not re.fullmatch(r'[a-z][a-z0-9_]{0,47}',args.name):
         raise AssetError('/arguments/name','A pack name uses lowercase letters, digits and underscores, beginning with a letter.')
-    if not 0 <= args.palette <= 254 or not 0 <= args.palette8 <= 14:
-        raise AssetError('/arguments/palette','--palette is 0-254 and --palette8 0-14 (palette 255 and 8-bit palette 15 hold the fonts).')
+    if not 0 <= args.palette <= 510 or args.palette == 255 or not 0 <= args.palette8 <= 31 or args.palette8 == 15:
+        raise AssetError('/arguments/palette','--palette is 0-254 or 256-510 and --palette8 0-14 or 16-31 (palette 255 and 8-bit palette 15 hold the fonts).')
     recipes = [(load(path),folder(path)) for path in args.recipes]
-    files,manifest = pack(recipes,args.name,slot_list(args.slots),args.palette,args.palette8)
+    files,manifest = pack(recipes,args.name,slot_list(args.slots),args.palette,args.palette8,args.swatch)
     directory = Path(args.output).resolve()
     staged.guard(directory,files,args.recipes,error=AssetError)
     with staged.staging(directory,'.mei-assets-') as stage:
@@ -345,13 +448,32 @@ def parser():
             cmd.add_argument('--depth',action='store_true',help='Judge the asset as drawn with the depth buffer (policy depth: true).')
             cmd.add_argument('--perspective',action='store_true',help='Draw it with perspective-correct texturing (policy perspective: true).')
             cmd.add_argument('--depth-views',type=int,help='With depth: the views of the sweep judged (default 16; more if needed to judge every face drawn).')
+    for name,text in (('info','Bounds (drawn and collision), triangles per level of detail and switch distances, '
+                                'texture bytes per texture, palettes and texture windows.'),
+                      ('floors','A grid of the collision\'s top floor heights, with walls and too-steep faces marked.')):
+        cmd = sub.add_parser(name,help=text)
+        cmd.add_argument('recipe',help='Recipe JSON path.')
+        cmd.add_argument('--json',action='store_true',help='The result as JSON (default: plain text).')
+        cmd.add_argument('--at',metavar='X,Y,Z',help='Place it here (world units), as a world placement does.')
+        cmd.add_argument('--yaw',type=float,default=0.0,help='Placement yaw in degrees (+Z toward +X, as mesh_at()).')
+        cmd.add_argument('--collision',default='auto',metavar='auto|self|none|PATH',
+                         help='The collision: auto (NAME_col.asset.json beside the recipe, else the recipe), self, none '
+                              '(info only) or a collision recipe path.')
+        cmd.add_argument('--floor-max',type=float,default=45.0,metavar='DEG',
+                         help='Steepest floor in degrees (default 45, the World Kit\'s; a game\'s probe may say less).')
+        if name == 'floors':
+            cmd.add_argument('--step',type=float,default=0.25,help='Grid spacing (units, default 0.25).')
+            cmd.add_argument('--area',metavar='X0,Z0,X1,Z1',help='The grid\'s extent (default: the collision\'s bounds).')
+            cmd.add_argument('--below',type=float,metavar='Y',help='The highest floor at or below this height (under a '
+                             'roof, say); the JSON\'s stacks list every floor at each point.')
     pk = sub.add_parser('pack',help='Pack several assets (or one) for a cart without a world: shared texture slots and palettes, one loader.')
     pk.add_argument('recipes',nargs='+',help='Recipe JSON paths.')
     pk.add_argument('-o','--output',required=True,help='Dedicated generated-output directory.')
     pk.add_argument('--name',default='assets',help='Name of the Akari file, its loader NAME_load() and the data files (default assets).')
-    pk.add_argument('--slots',default='14-0',help='Texture slots to use, in order: a range 14-10 or a list 14,12 (never 15). Default 14-0.')
-    pk.add_argument('--palette',type=int,default=0,help='First 4-bit palette (palette-backed materials, then 4-bit textures). Default 0.')
-    pk.add_argument('--palette8',type=int,default=14,help='First 8-bit palette for 8-bit textures (they take it and those below). Default 14.')
+    pk.add_argument('--slots',default='14-0',help='Texture slots 0-31 to use, in order: a range 14-10 or a list 14,12 (never 15). Default 14-0.')
+    pk.add_argument('--palette',type=int,default=0,help='First 4-bit palette, 0-510 (palette-backed materials, then 4-bit textures; never across 255). Default 0.')
+    pk.add_argument('--palette8',type=int,default=14,help='First 8-bit palette for 8-bit textures, 0-31 but not 15 (they take it and those below). Default 14.')
+    pk.add_argument('--swatch',action='store_true',help='Keep the swatch block (row 0 of the first slot) and load the swatch even with no palette-backed material: the textures can then share a slot with a world\'s swatch.')
     gltf.add_parser(sub)
     imp = sub.add_parser('import-obj',help='Convert OBJ geometry into an editable recipe; materials/UVs are not imported.')
     imp.add_argument('input')
@@ -361,7 +483,53 @@ def parser():
     return p
 
 
+def node_of(recipe, path):
+    """The ids of the nodes a JSON Pointer path runs through, as inspect's parts name them (a node
+    without an id is OP_INDEX): '/nodes/2/children/0/size' -> 'body/arm'. Prototypes and levels of
+    detail say so: 'prototype wheel: rim', 'lod level 1: body'. None outside the nodes."""
+    if not isinstance(recipe, dict) or not isinstance(path, str) or not path.startswith('/'): return None
+    tokens, value, names, context = path[1:].split('/'), recipe, [], ''
+    for k,token in enumerate(tokens):
+        if isinstance(value, list):
+            if not token.isdigit() or int(token) >= len(value): break
+            value = value[int(token)]
+            if k and tokens[k-1] in ('nodes','children') and isinstance(value, dict) and 'op' in value:
+                names.append(value.get('id', f'{value["op"]}_{token}'))
+        elif isinstance(value, dict):
+            if token not in value: break
+            value = value[token]
+            if k and tokens[k-1] == 'prototypes' and isinstance(value, dict) and 'op' in value:
+                context = f'prototype {token}: '
+                if 'id' in value: names.append(value['id'])
+            if k > 1 and tokens[k-2] == 'levels' and token == 'nodes':
+                context = f'lod level {int(tokens[k-1])+1}: '
+        else:
+            break
+    return context+'/'.join(names) if names else None
+
+
+def inspect_extras(recipe, mesh, report):
+    """What inspect adds to the compile report: flush contacts (with a fix per part pair), close
+    parallel faces, the repeating texture windows in use, and warnings for mirror copies over
+    their originals and for parts below y = 0."""
+    policy = recipe.get('verification')
+    depth = policy.get('depth',False) if policy is not None else True
+    report['flush_contacts'] = flush_contacts(mesh,depth)
+    report['close_faces'] = close_contacts(mesh)
+    if mesh.textures:
+        from assetkit.info import texture_windows
+        report['texture_windows'] = texture_windows(mesh)
+    report['warnings'] += mesh.notes or []
+    below = [(part['bounds']['min'][1],part['id']) for part in report['parts'] if part['bounds']['min'][1] < 0]
+    if below:
+        report['warnings'].append({'code':'below_ground','parts':[name for _,name in sorted(below)],'min_y':min(below)[0],
+                                   'message':f'{len(below)} part{"s reach" if len(below) > 1 else " reaches"} below y = 0, the ground '
+                                             f'the asset stands on (lowest {min(below)[1]}, at y = {min(below)[0]:.4g}): '
+                                             'intentional if sunk into the ground or hanging from a mount; otherwise raise them.'})
+
+
 def main(argv=None):
+    recipe = None
     try:
         args = parser().parse_args(argv)
         if args.command == 'schema':
@@ -379,6 +547,20 @@ def main(argv=None):
             output({'ok':True,'recipe':str(Path(args.output).resolve()),'next':'inspect, then preview this recipe'})
         elif args.command == 'pack':
             output(pack_command(args))
+        elif args.command in ('info','floors'):
+            from assetkit import info as I
+            recipe = load(args.recipe)
+            at = numbers(args.at,3,'at') if args.at else None
+            if args.command == 'info':
+                result = I.info(recipe,folder(args.recipe),args.collision,at,args.yaw,args.floor_max)
+                text = I.info_text(result)
+            else:
+                area = numbers(args.area,4,'area') if args.area else None
+                result = I.floors(recipe,folder(args.recipe),args.step,args.collision,at,args.yaw,args.floor_max,area,
+                                  args.below)
+                text = I.floors_text(result)
+            if args.json: output(result)
+            else: print(text)
         elif args.command == 'export':
             output(gltf.command(args,load,folder))
         elif args.command == 'import-obj':
@@ -390,12 +572,13 @@ def main(argv=None):
                     'warnings':['Geometry only: OBJ materials, UVs and supplied normals are not imported. Assign recipe materials before building.']})
         else:
             recipe = load(args.recipe)
-            mesh,_,report = compile_recipe(recipe,folder(args.recipe))
+            # inspect reports a recipe over its budgets in full, the breach a warning
+            mesh,_,report = compile_recipe(recipe,folder(args.recipe),'warn' if args.command == 'inspect' else 'error')
             if args.strict and report['warnings']:
                 output(dict(report,ok=False,errors=[{'path':'/nodes','message':'Topology warnings rejected by --strict.'}]))
                 return 1
             if args.command == 'inspect':
-                report['flush_contacts'] = flush_contacts(mesh)
+                inspect_extras(recipe,mesh,report)
             tools = tool_paths(args)
             if args.command in ('build','preview'):
                 drawn = {k:True for k in ('depth','perspective') if getattr(args,k)}
@@ -408,7 +591,7 @@ def main(argv=None):
                 if args.cameras:
                     shots['cameras'] = cameras_file(load(str(args.cameras)))+shots['cameras']
                 report = build(recipe,args.output,preview,tools['compiler'][0],tools['runner'][0],args.recipe,args.verify,
-                               tools['probe'][0],drawn,shots)
+                               tools['probe'][0],drawn,shots,flush_check=True)
             elif args.command=='verify':
                 require_tools(tools,['compiler','probe'])
                 from assetkit.visibility import verify
@@ -432,7 +615,13 @@ def main(argv=None):
         return 0
     except (AssetError,OSError,ValueError,RecursionError) as error:
         # the errors first, so that the reason leads a long failure report
-        output({'ok':False,'errors':[{'path':getattr(error,'path','/input'),'message':str(error)}],
+        path = getattr(error,'path','/input')
+        node = node_of(recipe,path)
+        args_given = sys.argv[1:] if argv is None else list(argv)
+        if args_given and args_given[0] in ('info','floors') and '--json' not in args_given:
+            print(f'error at {path}' + (f' ({node})' if node else '') + f': {error}')
+            return 1
+        output({'ok':False,'errors':[{'path':path,**({'node':node} if node else {}),'message':str(error)}],
                 **{k:v for k,v in getattr(error,'report',{}).items() if k not in ('ok','errors')}})
         return 1
 

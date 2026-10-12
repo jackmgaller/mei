@@ -29,9 +29,12 @@ sys.path.insert(0, str(ROOT/'tools'))
 from kitcore.schema import validator, obj, NAME, array  # noqa: E402
 from kitcore.errors import KitError  # noqa: E402
 from worldkit import pack as P  # noqa: E402
+from worldkit import terrain as terrain_mod  # noqa: E402
+from worldkit.terrain import cross  # noqa: E402
 from worldkit.build import build, compile_source  # noqa: E402
 from worldkit.schema import WorldError  # noqa: E402
 import mei_world  # noqa: E402
+import meshlib  # noqa: E402
 
 EXAMPLES = ROOT/'examples'/'worlds'
 CLI = [sys.executable, str(ROOT/'tools'/'mei_world.py')]
@@ -260,6 +263,11 @@ class ValidationTests(unittest.TestCase):
             w['regions']['downtown']['variants']['night']['colors'] = {'paving': '#000000', 'ground_tile.paving': '#ffffff'}
         self.check(two_colours, '/regions/downtown/variants/night/colors/ground_tile.paving', 'two colours', name='two_districts')
 
+        def reserved(w):
+            # palette.reserved: a palette the game keeps (a collectible's) that a region would take
+            w['palette'] = {'reserved': [1]}
+        self.check(reserved, '/palette/reserved', 'is reserved', name='two_districts')
+
 
 class IdTests(unittest.TestCase):
     def test_bits_survive_edits_renames_and_deletions(self):
@@ -484,6 +492,33 @@ class BuildTests(unittest.TestCase):
             self.assertEqual(s['merged'][0]['layer'], 'festival')
             self.assertEqual(s['triangles']['by_layer'], {'festival': 4 * c.library.assets['lantern'].triangles})
 
+    def test_merged_props_keep_their_cull(self):
+        # The bollards (x 4..25 at z 12) culled at 30: merged, the mesh is culled from 30 plus the
+        # farthest bollard's distance from the mesh's centre (10.5), so none goes early; a prop
+        # without a cull merged with them leaves the mesh unculled, with a warning.
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp, 'two_districts')
+            ex.edit(lambda a: a.__setitem__('lod', {'cull': 30}), 'assets/bollard.asset.json')
+            c = ex.compile()
+            a = [x for x in c.report['cells'] if x['id'] == 'downtown_a'][0]
+            self.assertEqual(a['merged'][0]['cull'], 40.5)
+            self.assertNotIn('cull_merged', [w['code'] for w in c.report['warnings']])
+            merged = [p for p in P.decode(c.pack).cells[(0, 0)].placements if p['tag'] == 0xFFFF]
+            self.assertTrue(merged[0]['lod']['cull'])
+            self.assertEqual(len(merged[0]['lod']['rows']), 1)
+            # the reader's (distance / 8)^2 at the cull
+            self.assertEqual(merged[0]['lod']['rows'][0][0], round((40.5 / 8) ** 2 * 65536))
+
+            def one_unculled(cell):
+                cell['placements'][1]['merge'] = True        # shop_1, which has no cull
+            ex.edit(one_unculled, 'cells/downtown_a.cell.json')
+            c = ex.compile()
+            warn = [w for w in c.report['warnings'] if w['code'] == 'cull_merged']
+            self.assertEqual(len(warn), 1)
+            self.assertIn('bollard_0', warn[0]['placements'])
+            merged = [p for p in P.decode(c.pack).cells[(0, 0)].placements if p['tag'] == 0xFFFF]
+            self.assertTrue(all(p['lod'] is None for p in merged))
+
     def test_ground_placements(self):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp)
@@ -575,6 +610,20 @@ class BuildTests(unittest.TestCase):
             c = Example(tmp).compile()
             pack = P.decode(c.pack)
             self.assertEqual((pack.near_far, pack.lod_slots, c.report['lod']), (0, 0, {}))
+
+    def test_asset_dirs_add_directories_and_refuse_a_name_in_two(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            before = ex.compile().pack
+            (ex.dir/'more').mkdir()
+            shutil.move(str(ex.dir/'assets'/'ramp.asset.json'), str(ex.dir/'more'/'ramp.asset.json'))
+            with self.assertRaisesRegex(WorldError, 'No asset recipe'):
+                ex.compile()
+            ex.edit(lambda w: w.update(asset_dirs=['more']))
+            self.assertEqual(ex.compile().pack, before)
+            shutil.copy(ex.dir/'more'/'ramp.asset.json', ex.dir/'assets'/'ramp.asset.json')
+            with self.assertRaisesRegex(WorldError, 'more than one asset directory'):
+                ex.compile()
 
     def test_assets_must_pass_their_own_policy(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -896,6 +945,23 @@ class TerrainTests(unittest.TestCase):
             top = c.terrain.floors().at(30, 50)
             self.assertAlmostEqual(top[0], 8 * 50 / 64 + 6, places=3)
 
+    def test_a_cliff_face_looks_out_over_the_lower_sheet(self):
+        # Two flats cut as sheets and set after: the one at the higher offset (0.02) ends at 4, the
+        # other (0.01) at 20, so the higher sheet is the lower ground. The face between them is
+        # wound outward over the lower ground (toward -z), as a wall the body stops at.
+        ops = [{'op': 'cliff', 'area': {'rect': [0, 32, 64, 64]}, 'height': 0.01, 'material': 'stone'},
+               {'op': 'set', 'area': {'rect': [0, 32, 64, 64]}, 'height': 20},
+               {'op': 'cliff', 'area': {'rect': [0, 20, 64, 32]}, 'height': 0.02, 'material': 'stone'},
+               {'op': 'set', 'area': {'rect': [0, 20, 64, 32]}, 'height': 4}]
+        with tempfile.TemporaryDirectory() as tmp:
+            c = TerrainWorld(tmp, terrain=field(operations=ops)).compile()
+            faces = [(t, m) for t, m in terrain_mod.cliff_faces(c.terrain.fields['main'], c.terrain.fields['main'].walls())
+                     if all(abs(p[2] - 32) < 1e-6 for p in t)]
+            self.assertTrue(faces)
+            for t, _ in faces:
+                n = cross(tuple(b - a for a, b in zip(t[0], t[1])), tuple(b - a for a, b in zip(t[0], t[2])))
+                self.assertLess(n[2], 0, t)
+
     def test_water_is_semi_transparent_without_collision_and_answers_wp_water(self):
         ops = [{'op': 'carve', 'area': {'circle': [20, 20, 6]}, 'height': -1, 'falloff': 2},
                {'op': 'water', 'area': {'circle': [20, 20, 12]}, 'level': -0.25, 'material': 'pond'}]
@@ -1123,6 +1189,18 @@ class FarLodTests(unittest.TestCase):
         m6 = raw_mesh(sq, [((0, 2, 1), 16, 0x808080), ((1, 2, 3), 16, 0x808080)])
         self.assertEqual(struct.unpack_from('<H', quads.pair(m6), 2)[0], 1)
         self.assertEqual(quads.pair(m6, skip=quads.DOUBLE), m6)
+        # a sliver (edge_neighbour_s6's facade: two corners 0.0002 apart, an 18-unit edge) is
+        # never paired: the reader would turn the quad away by its first triangle, the sliver,
+        # whose facing is rounding noise, and lose the big triangle with it
+        sliver = [(0, 0, 18), (0, 0, 0), (0.0002, 0, 18), (9, 0, 9)]
+        for order in (((0, 1, 2), (1, 3, 2)), ((0, 2, 1), (1, 2, 3))):
+            m7 = raw_mesh(sliver, [(order[0], 0, 0x808080), (order[1], 0, 0x808080)])
+            self.assertEqual(quads.pair(m7), m7)
+            old, quads.SLIVER = quads.SLIVER, 0.0
+            try:        # without the rule they pair (the convex check passes them)
+                self.assertEqual(struct.unpack_from('<H', quads.pair(m7), 2)[0], 1)
+            finally:
+                quads.SLIVER = old
 
     def test_quads_in_a_world(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1285,11 +1363,85 @@ class FarLodTests(unittest.TestCase):
                 self.assertGreaterEqual(P.mesh_info(cell.standin)[1], want)
             pack = P.decode(c.pack)
             self.assertTrue(all(pc.standin for pc in pack.cells.values()))
+            # a second region: the stand-ins, untextured, are the same
             spec['regions']['r2'] = {}
             w.world.write_text(json.dumps(spec))
+            self.assertEqual([x.standin for x in w.compile().world.cells], [x.standin for x in c.world.cells])
+
+    def test_standin_caps_and_ground(self):
+        from worldkit.world import standin_triangles
+        scatter = {'s': {'assets': [{'asset': 'ledge_block'}, {'asset': 'ramp'}], 'area': {'rect': [0, 0, 64, 64]},
+                         'spacing': 6, 'seed': 2, 'chunk': 32, 'lod': 'assets'}}
+
+        def box(name, size):
+            return {'format': 'mei-asset', 'version': 1, 'name': name,
+                    'materials': {'m': {'color': '#806040', 'palette': True}},
+                    'nodes': [{'id': 'b', 'op': 'box', 'size': size, 'material': 'm',
+                               'transform': {'translate': [0, size[1] / 2, 0]}}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            w = self.scatter_world(tmp, scatter, lod={'ground': [{'distance': 30, 'grid': 16}]})
+            # a tower (10 high, 2 wide: size 20), a slab (1 high, 10 wide: 10) and the scatter's
+            # blocks at level 1 (2 high, 3 wide: 6), on flat ground
+            (w.dir/'assets'/'tower.asset.json').write_text(json.dumps(box('tower', [2, 10, 2])))
+            (w.dir/'assets'/'slab.asset.json').write_text(json.dumps(box('slab', [10, 1, 10])))
+            spec = json.loads(w.world.read_text())
+            spec['cells'][0]['placements'] = [{'id': 'slab', 'asset': 'slab', 'position': [8, 8], 'collision': 'none'},
+                                              {'id': 'tower', 'asset': 'tower', 'position': [24, 24], 'collision': 'none'}]
+
+            def compile_with(**standins):
+                spec['standins'] = dict(distance=48, **standins)
+                w.world.write_text(json.dumps(spec))
+                return w.compile()
+
+            def tops(mesh):
+                return {round(float(v[1]), 2) for v in P.mesh_vertices(mesh)}
+            plain = compile_with()
+            self.assertEqual(plain.report['standins']['cells']['c0_0']['left_out'], 0)
+            self.assertLessEqual({1.0, 2.0, 10.0}, tops(plain.world.cells[0].standin))
+            # the ground alone: a cap below it keeps the ground and warns
+            bare = compile_with(triangles=1)
+            over = [x for x in bare.report['warnings'] if x['code'] == 'standin_over_cap']
+            self.assertEqual(sorted(x['cell'] for x in over), ['c0_0', 'c0_1', 'c1_0', 'c1_1'])
+            ground = [cell.standin for cell in bare.world.cells]
+            self.assertEqual(tops(ground[0]), {0.0})
+            g0 = standin_triangles(ground[0])
+            tower = next(p for p in plain.world.cells[0].placements if p.tag != 0xFFFE and p.tag != 0xFFFC
+                         and P.mesh_info(p.mesh)[0] and max(float(v[1]) for v in P.mesh_vertices(p.mesh)) > 9)
+            t = standin_triangles(tower.mesh)
+            # room for the tower and less than the slab: the tower, then blocks where they fit
+            c = compile_with(triangles=g0 + 2 * t - 1)
+            rep = c.report['standins']['cells']['c0_0']
+            standin = c.world.cells[0].standin
+            self.assertLessEqual(standin_triangles(standin), g0 + 2 * t - 1)
+            self.assertEqual(rep['triangles'], standin_triangles(standin))
+            self.assertEqual(rep['cap'], g0 + 2 * t - 1)
+            self.assertIn(10.0, tops(standin))
+            self.assertNotIn(1.0, tops(standin), 'the slab does not fit')
+            self.assertIn(2.0, tops(standin), 'blocks of the chunk go in one by one where they fit')
+            self.assertGreater(rep['left_out'], 1)
+            # the ground goes in first, unchanged
+            gv, gf = P.mesh_info(ground[0])[:2]
+            self.assertEqual(standin[16:16 + 16 * gv], ground[0][16:16 + 16 * gv])
+            sv = P.mesh_info(standin)[0]
+            self.assertEqual(standin[16 + 16 * sv:][:36 * gf], ground[0][16 + 16 * gv:][:36 * gf])
+            # deterministic
+            self.assertEqual([x.standin for x in compile_with(triangles=g0 + 2 * t - 1).world.cells],
+                             [x.standin for x in c.world.cells])
+            # a cell's own cap, and the ground on a coarser grid: one square over the flat cell
+            c = compile_with(triangles=4000, ground=32, cells={'c1_1': {'triangles': 1}})
+            rep = c.report['standins']['cells']
+            self.assertEqual([x['cell'] for x in c.report['warnings'] if x['code'] == 'standin_over_cap'], ['c1_1'])
+            self.assertEqual((rep['c1_1']['cap'], rep['c1_1']['triangles'], rep['c1_1']['ground']), (1, 2, 32))
+            self.assertEqual(rep['c0_0']['left_out'], 0)
+            self.assertEqual(rep['c0_0']['triangles'], plain.report['standins']['cells']['c0_0']['triangles'] - g0 + 2)
+            # without a cap, the ground grid alone
+            c = compile_with(ground=32)
+            self.assertEqual(c.report['standins']['cells']['c1_1']['triangles'],
+                             plain.report['standins']['cells']['c1_1']['triangles'] - standin_triangles(ground[3]) + 2)
+            self.assertNotIn('cap', c.report['standins']['cells']['c1_1'])
             with self.assertRaises(WorldError) as cm:
-                w.compile()
-            self.assertEqual(cm.exception.path, '/standins')
+                compile_with(cells={'nowhere': {'triangles': 10}})
+            self.assertEqual(cm.exception.path, '/standins/cells/nowhere')
 
 
 def rgb15_of(c):
@@ -1335,14 +1487,14 @@ class TextureTests(unittest.TestCase):
         self.assertEqual(market['tiles'], 14)
         self.assertLess(market['tiles'], sum(a['tiles'] for a in market['by_asset'].values()) + 1)
         self.assertEqual([s['slot'] for s in market['slots']], [12, 13])      # "13-6": 4-bit 13, 8-bit 12
-        self.assertEqual(market['palettes_8bit'], [14])
+        self.assertEqual(market['palettes_8bit'], [31])     # palette.first8's default: the top of bank 1
         self.assertEqual([a['material'] for a in market['animations']], ['shopfront.neon', 'stall.lantern'])
         self.assertEqual(harbour['animations'], [])
         rm, rh = pack.regions
         self.assertEqual(sorted(t.slot for t in rm.textures), [12, 13])
         self.assertEqual([t.slot for t in rh.textures], [13])
         self.assertEqual(len(rm.animations), 2)
-        self.assertEqual(rm.runs[0].first_colour, 14 * 256)
+        self.assertEqual(rm.runs[0].first_colour, 31 * 256)
         # disjoint palettes: textures after each region's entries, every region's set coexisting
         pm, ph = (set(c.report['regions'][r]['palette']['palettes']) for r in ('market', 'harbour'))
         self.assertFalse(pm & ph)
@@ -1357,9 +1509,44 @@ class TextureTests(unittest.TestCase):
                 for k in range(nf):
                     at = pl['mesh'] + fo + 36 * k
                     if pack.data[at] & 2:
-                        tex, pal = pack.data[at + 2], pack.data[at + 3]
-                        self.assertIn(tex & 15, slots)
+                        flags, tex, pal = pack.data[at], pack.data[at + 2], pack.data[at + 3]
+                        pal = meshlib.face_palette(flags, tex, pal)
+                        self.assertIn(meshlib.face_slot(flags, tex), slots)
                         self.assertTrue(pal in pals if tex & 16 else 256 * pal == reg.runs[0].first_colour)
+
+    def test_standins_with_several_regions_draw_far_colours(self):
+        # a stand-in is drawn whichever region is loaded: its textured faces become palette-backed
+        # faces (the world's swatch) in their tiles' far colours, entries of the cell's own region
+        self.ex.edit(lambda w: w.__setitem__('standins', {'distance': 8}))
+        for name in ('market', 'harbour'):
+            self.ex.edit(lambda cell: cell.pop('standin'), f'cells/{name}.cell.json')
+        c = self.ex.compile()
+        pack = P.decode(c.pack)
+        far = {r: [e for e in c.report['regions'][r]['palette']['entries']
+                   if any(m.startswith('far.') for m in e['materials'])] for r in ('market', 'harbour')}
+        self.assertTrue(far['market'] and far['harbour'])
+        self.assertIn('far.stall.sign', [m for e in far['market'] for m in e['materials']])
+        drawn = 0
+        for cell in pack.cells.values():
+            self.assertIsNotNone(cell.standin)
+            reg = pack.regions[cell.region]
+            entry_pals = {e['colour'] // 16 for e in c.report['regions'][reg.name]['palette']['entries']}
+            colours = {e['colour'] for e in far[reg.name]}
+            mesh = pack.data[cell.standin:]
+            nv, nf, vo, fo = P.mesh_info(mesh)
+            for k in range(nf):
+                face = mesh[fo + 36 * k:fo + 36 * k + 36]
+                if not face[0] & 2:
+                    continue
+                self.assertEqual(face[2], 14 | 16)                  # the swatch, 4-bit, no window
+                self.assertIn(face[3], entry_pals)
+                self.assertEqual(face[29], 0)                       # the swatch's row
+                drawn += face[3] * 16 + face[28] in colours
+        self.assertGreater(drawn, 0)
+        sign = next(e for e in far['market'] if 'far.stall.sign' in e['materials'])
+        self.assertEqual(sign['class'], 'emissive')
+        # the placements themselves still draw their textures
+        self.assertEqual(c.report['regions']['market']['textures']['tiles'], 14)
 
     def test_night_variants_per_colour_and_by_multiply(self):
         c = self.ex.compile()
@@ -1416,6 +1603,52 @@ class TextureTests(unittest.TestCase):
             self.ex.compile()
         self.assertIn('do not fit in its slots', str(e.exception))
 
+    def test_second_megabyte(self):
+        # VRAM at 2 MB (DECISIONS.md): a region in slots 16-31 and 4-bit palettes from 256, the
+        # 8-bit sign from 8-bit palette 14 (bank 0) when the recipe says so
+        self.ex.edit(lambda w: w['regions']['market'].__setitem__('textures', {'slots': '20,17-16'}))
+        self.ex.edit(lambda w: w['regions']['market'].__setitem__('palettes', {'first': 300}))
+        self.ex.edit(lambda w: w.__setitem__('palette', {'first8': 14}))
+        c = self.ex.compile()
+        pack = P.decode(c.pack)
+        market = c.report['regions']['market']
+        self.assertEqual(sorted(s['slot'] for s in market['textures']['slots']), [17, 20])
+        self.assertEqual(market['textures']['palettes_8bit'], [14])
+        self.assertTrue(all(p >= 300 for p in market['palette']['palettes']))
+        rm = pack.regions[0]
+        self.assertEqual(rm.first_colour, 300 * 16)
+        self.assertEqual(sorted(t.slot for t in rm.textures), [17, 20])
+        hi = 0
+        for cell in pack.cells.values():
+            if cell.region != 0:
+                continue
+            for pl in cell.placements:
+                nv, nf, vo, fo = P.mesh_info(pack.data[pl['mesh']:])
+                for k in range(nf):
+                    at = pl['mesh'] + fo + 36 * k
+                    flags, tex, pal = pack.data[at], pack.data[at + 2], pack.data[at + 3]
+                    if not flags & 2:
+                        continue
+                    slot, palette = meshlib.face_slot(flags, tex), meshlib.face_palette(flags, tex, pal)
+                    self.assertIn(slot, (14, 17, 20))
+                    self.assertTrue(palette >= 300 if tex & 16 else palette == 14)
+                    hi += bool(flags & 64)
+        self.assertGreater(hi, 0)
+        # a region that would run across palette 255 starts at 256 instead
+        self.ex.edit(lambda w: w['regions']['market'].pop('palettes'))
+        self.ex.edit(lambda w: w.__setitem__('palette', {'first': 252}))     # the market needs 5
+        c = self.ex.compile()
+        pm = c.report['regions']['market']['palette']['palettes']
+        self.assertNotIn(255, pm + c.report['regions']['harbour']['palette']['palettes'])
+        self.assertEqual(min(pm), 256)
+        # the default slots reach into the second megabyte, after 13-0
+        from worldkit.textures import DEFAULT_SLOTS
+        self.assertEqual(DEFAULT_SLOTS, tuple(range(13, -1, -1)) + tuple(range(16, 32)))
+        for bad in ('32', '15-16'):
+            self.ex.edit(lambda w: w['regions']['market'].__setitem__('textures', {'slots': bad}))
+            with self.assertRaises(WorldError):
+                self.ex.compile()
+
     def test_slots_and_swatch(self):
         # the swatch's slot may hold region textures: the swatch row is kept and copied with them
         self.ex.edit(lambda w: w.__setitem__('textures', {'slots': '14-12'}))
@@ -1468,6 +1701,112 @@ class TextureTests(unittest.TestCase):
             self.assertEqual((p.minor, struct.unpack_from('<H', c.pack, 14)[0]), (3, 80), name)
             self.assertNotIn('wp_region_enter', c.akr)
             self.assertNotIn('wpbackdrop', c.akr)
+
+    def test_silhouette_palette_of_a_bank_1_region_is_in_bank_0(self):
+        # a plane reads palette bank 0 only: the harbour, placed from 256, keeps its silhouette's
+        # palette in bank 0 as a run of its own, loaded with each variant
+        self.ex.edit(lambda w: w['regions']['harbour'].__setitem__('palettes', {'first': 256}))
+        c = self.ex.compile()
+        rm, rh = P.decode(c.pack).regions
+        self.assertGreaterEqual(rh.first_colour, 256 * 16)
+        pal = (rh.sky.mode >> 8) & 255
+        market = c.report['regions']['market']['palette']['palettes']
+        self.assertNotIn(pal, market)
+        self.assertGreater(pal, max(market))
+        run = [r for r in rh.runs if r.first_colour == pal * 16]
+        self.assertEqual(len(run), 1)
+        self.assertEqual(len(run[0].variants), 2)                  # day and night
+        self.assertTrue(any(run[0].variants[0][1:]))
+
+    def far_world(self, **extra):
+        """Night market with the kit's stand-ins from 8 units (every cell draws one)."""
+        self.ex.edit(lambda w: w.__setitem__('standins', {'distance': 8, **extra}))
+        for name in ('market', 'harbour'):
+            self.ex.edit(lambda cell: cell.pop('standin', None), f'cells/{name}.cell.json')
+
+    def test_standin_texture_set_keeps_cutout_cards(self):
+        # the stall's lattice (a cutout) is in the stand-ins' own set, at one place in every
+        # region's set; stand-ins keep it textured instead of drawing it in a far colour
+        before = self.ex.compile()
+        self.far_world(textures={'slots': '6'})
+        c = self.ex.compile()
+        pack = P.decode(c.pack)
+        common = c.report['standins']['textures']
+        self.assertEqual(common['slots_given'], [6])
+        self.assertEqual({m.split('.')[0] for m in common['by_material']}, {'stall'})
+        self.assertGreater(common['vram_bytes'], 0)
+        images = {}
+        for reg in pack.regions:
+            slots = {t.slot: t for t in reg.textures}
+            self.assertIn(6, slots, reg.name)             # every region's set holds the common slot
+            images[reg.name] = slots[6]
+            self.assertNotIn(6, c.report['regions'][reg.name]['textures']['slots_given'])
+        self.assertEqual(images['market'].data, images['harbour'].data)
+        # stored once: both regions' records point at the same data, so the reader, entering
+        # the second region, sees the slot already holds it and does not copy it again
+        self.assertEqual(images['market'].offset, images['harbour'].offset)
+        cards = 0
+        for cell in pack.cells.values():
+            mesh = pack.data[cell.standin:]
+            nv, nf, vo, fo = P.mesh_info(mesh)
+            for k in range(nf):
+                face = mesh[fo + 36 * k:fo + 36 * k + 36]
+                if face[0] & 2 and face[2] & 15 == 6:
+                    cards += 1
+                    self.assertTrue(face[2] & 16)
+        self.assertGreater(cards, 0)
+        # the region's own set no longer holds the lattice; the placements are unchanged
+        self.assertLess(c.report['regions']['market']['textures']['vram_bytes'],
+                        before.report['regions']['market']['textures']['vram_bytes'])
+
+    def test_haze(self):
+        from worldkit.haze import Haze, mix, sky_at
+        self.assertEqual(sky_at([-8, 0, 6], ['#000000', '#646464', '#c8c8c8'], 3), '#969696')
+        self.assertEqual(mix('#000000', '#ffffff', 0.5), '#808080')
+        self.far_world(textures={'slots': '6'})
+        plain = self.ex.compile()
+        self.ex.edit(lambda w: w.__setitem__('haze', {'end': 40, 'amount': 0.5, 'standins': 0.4}))
+        c = self.ex.compile()
+        hz = c.report['haze']
+        # the haze colour per region and variant: the backdrop's sky at 2 degrees
+        self.assertEqual(hz['colors']['market']['day'], sky_at([-8, 0, 6, 30, 70],
+                         ['#8a9298', '#e8dcc8', '#b8d0e8', '#6898d0', '#3060a8'], 2))
+        self.assertEqual(set(hz['colors']['harbour']), {'day', 'night'})
+        # stand-ins' far colours are entries of their own, hazed in each variant toward its colour
+        pack = P.decode(c.pack)
+        for reg in pack.regions:
+            entries = c.report['regions'][reg.name]['palette']['entries']
+            far = [e for e in entries if any(m.startswith('far.far') for m in e['materials'])]
+            self.assertTrue(far, reg.name)
+            (vd, day), (vn, night) = reg.variants
+            for e in far:
+                want = mix(e['color'], hz['colors'][reg.name]['day'],
+                           0.4 * (0.5 if e['class'] == 'emissive' else 1))
+                self.assertEqual(day[e['colour'] - reg.first_colour], rgb15_of(want))
+        # placements' level 0 is never hazed (its colours; the palettes move: the far colours are
+        # entries of their own now)
+        plain_pack = P.decode(plain.pack)
+
+        def mesh_bytes(data, at):
+            nv, nf, vo, fo = P.mesh_info(data[at:])
+            return [data[at + fo + 36 * k + 12:at + fo + 36 * k + 28] for k in range(nf)]
+        for key in pack.cells:
+            for pl, ppl in zip(pack.cells[key].placements, plain_pack.cells[key].placements):
+                self.assertEqual(mesh_bytes(pack.data, pl['mesh']), mesh_bytes(plain_pack.data, ppl['mesh']))
+        # the tint of a level: an untextured face mixed exactly; a textured one's tint toward
+        # the colour its base needs, clamped at 255
+        h = Haze({'end': 100, 'amount': 1.0}, 0)
+        h.colours['r'] = {'day': '#c8c8c8'}
+        self.assertEqual(h.at(50), 0.5)
+        mesh = struct.pack('<HHIII', 3, 2, 16, 64, 0) + bytes(48)
+        flat = struct.pack('<BBBB4H4I4H', 0, 0, 0, 0, 0, 1, 2, 0, 0x000000, 0, 0, 0, 0, 0, 0, 0)
+        textured = struct.pack('<BBBB4H4I4H', 2, 0, 16 | 3, 7, 0, 1, 2, 0, *[0x808080] * 4, 0, 0, 0, 0)
+        out = h.tint(mesh + flat + textured, 0.5, lambda flags, tex, pal, uvs, hw: ((100, 100, 100), 'surface'), 'r')
+        f0 = struct.unpack_from('<4I', out, 64 + 12)
+        f1 = struct.unpack_from('<4I', out, 64 + 36 + 12)
+        self.assertEqual(f0[0], 0x646464)                   # black halfway to #c8c8c8
+        self.assertEqual(f1[0], 0xC0C0C0)                   # 128 * 0.5 + 128 * 0.5 * 200 / 100 = 192
+        self.assertEqual(h.tint(mesh + flat + textured, 0.0, None, 'r'), mesh + flat + textured)
 
 
 @tools_built
@@ -1523,6 +1862,29 @@ class ConsoleTests(unittest.TestCase):
             pixels = {data[k:k + 3] for k in range(0, len(data), 3)}
             self.assertGreater(len(pixels), 6)
             self.assertNotEqual(data[(200 * 320 + 160) * 3:(200 * 320 + 160) * 3 + 3], bytes([40, 60, 120]))
+
+    def test_fog_per_variant_on_the_console(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            def night_fog(w):
+                w['regions']['lab']['variants']['night']['fog'] = {'color': '#102040', 'near': 8, 'far': 40}
+            ex.edit(night_fog)
+            out = Path(tmp)/'out'
+            build_without_asset_checker(ex, out)
+            akr = (out/'test_room.akr').read_text()
+            self.assertIn('fn world_test_room_fog(region: s32, variant: s32) {', akr)
+            got = self.run_cart(out, 'room_fog.akr', frames=1)
+            self.assertEqual(got['day'], ['0', '0'])              # no fog declared: off
+            # bit 24 on, 0x402010; near 8 units = 128 sixteenths, scale 65,536 / 32 = 2,048
+            self.assertEqual(got['night'], [str(1 << 24 | 0x402010), str(2048 << 16 | 128)])
+        # without fog the generated source has no fog function; far must pass near by a unit
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertNotIn('_fog(', Example(tmp + '/a').compile().akr)
+            bad = Example(tmp + '/b')
+            bad.edit(lambda w: w['regions']['lab']['variants']['day'].__setitem__('fog', {'color': '#ffffff', 'near': 10, 'far': 10.5}))
+            with self.assertRaises(WorldError) as e:
+                bad.compile()
+            self.assertEqual(e.exception.path, '/regions/lab/variants/day/fog')
 
     def test_paths_on_the_console(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1663,6 +2025,283 @@ class ConsoleTests(unittest.TestCase):
             self.assertGreaterEqual(drawn, 3)
             self.assertEqual(got['festival'][:2], ['0', '1'])
             self.assertEqual(got['floor'], ['1', '0', '1'])
+
+
+SCENE_PROBE = Path(os.environ.get('SCENE_PROBE', COMPILER.parent/'mei-scene-probe')).resolve()
+checker_tools = unittest.skipUnless(COMPILER.exists() and SCENE_PROBE.exists() and importlib.util.find_spec('numpy'),
+                                    'the World Checker needs NumPy, meic and mei-scene-probe')
+
+
+class AssetDirTests(unittest.TestCase):
+    """asset_dirs: up to 256 entries, DIR/* for every subfolder, clashes naming both files."""
+
+    def test_a_folder_of_asset_folders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            before = ex.compile().pack
+            for name in ('ramp', 'gate'):
+                (ex.dir/'more'/name).mkdir(parents=True)
+                shutil.move(str(ex.dir/'assets'/f'{name}.asset.json'), str(ex.dir/'more'/name/f'{name}.asset.json'))
+            (ex.dir/'more'/'.hidden').mkdir()
+            ex.edit(lambda w: w.update(asset_dirs=['more/*']))
+            self.assertEqual(ex.compile().pack, before)
+            ex.edit(lambda w: w.update(asset_dirs=['more/*', 'more/ramp']))     # named twice: searched once
+            self.assertEqual(ex.compile().pack, before)
+            (ex.dir/'empty').mkdir()
+            ex.edit(lambda w: w.update(asset_dirs=['more/*', 'empty/*']))
+            with self.assertRaises(WorldError) as cm:
+                ex.compile()
+            self.assertEqual(cm.exception.path, '/asset_dirs/1')
+            # a name in two folders: the message names both files
+            ex.edit(lambda w: w.update(asset_dirs=['more/*']))
+            shutil.copy(ex.dir/'more'/'ramp'/'ramp.asset.json', ex.dir/'assets'/'ramp.asset.json')
+            with self.assertRaisesRegex(WorldError, 'more than one asset directory') as cm:
+                ex.compile()
+            self.assertIn(os.path.join('assets', 'ramp.asset.json') + ' and ' + os.path.join('more', 'ramp', 'ramp.asset.json'),
+                          str(cm.exception))
+
+    def test_the_schema_takes_256(self):
+        from worldkit.schema import validate_world
+        with tempfile.TemporaryDirectory() as tmp:
+            world = Example(tmp).read()
+        validate_world(dict(world, asset_dirs=[f'd{k}' for k in range(256)]))
+        with self.assertRaises(WorldError):
+            validate_world(dict(world, asset_dirs=[f'd{k}' for k in range(257)]))
+
+    def test_make_depends_on_the_subfolders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            (ex.dir/'more'/'ramp').mkdir(parents=True)
+            shutil.move(str(ex.dir/'assets'/'ramp.asset.json'), str(ex.dir/'more'/'ramp'/'ramp.asset.json'))
+            ex.edit(lambda w: w.update(asset_dirs=['more/*']))
+            sys.path.insert(0, str(ROOT/'tools'))
+            import world_cart
+            deps = world_cart.depfile(str(ex.world), Path(tmp)/'out')
+            self.assertIn('ramp.asset.json', deps)
+            self.assertIn(str(ex.dir/'more').replace(' ', '\\ ') + ' ', deps.replace('\n', ' ') + ' ')
+
+
+class QuickToolTests(unittest.TestCase):
+    """mei_world.py check, floors and textures (worldkit/quick.py)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cache = Path(self.tmp.name)/'cache'
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_the_compiled_world_is_kept_by_its_inputs(self):
+        from worldkit.quick import load_world
+        ex = Example(self.tmp.name)
+        first = load_world(str(ex.world), None, self.cache)
+        self.assertFalse(first.cached)
+        self.assertEqual(first.pack, ex.compile().pack)
+        again = load_world(str(ex.world), None, self.cache)
+        self.assertTrue(again.cached)
+        self.assertEqual((again.pack, again.meta['cells']), (first.pack, first.meta['cells']))
+        ex.edit(lambda w: w['cells'][0]['placements'][1].update(position=[36, 0, 27]))
+        moved = load_world(str(ex.world), None, self.cache)
+        self.assertFalse(moved.cached)
+        self.assertNotEqual(moved.pack, first.pack)
+        ex.edit(lambda a: a['nodes'][0].update(size=[2.5, 1, 4]) if a['nodes'][0].get('size') else None,
+                'assets/ramp.asset.json')
+        self.assertFalse(load_world(str(ex.world), None, self.cache).cached)      # an asset recipe changed
+        (ex.dir/'assets'/'new.asset.json').write_text((ex.dir/'assets'/'ramp.asset.json').read_text())
+        self.assertFalse(load_world(str(ex.world), None, self.cache).cached)      # an asset directory's listing
+        self.assertTrue(load_world(str(ex.world), None, self.cache).cached)
+
+    def test_floors_are_the_packs(self):
+        from worldkit.quick import load_world, floors, floors_text
+        ex = Example(self.tmp.name)
+        world = load_world(str(ex.world), None, self.cache)
+        # off the faces' edges (where the reader's rows and the kit's float test may differ)
+        r = floors(world, (20.5, 20.5, 43.5, 43.5), 1.0, ['gate_closed', 'gate_open'])     # the kit's floor: every layer
+        points = []
+        for b, z in enumerate(r['z']):
+            for a, x in enumerate(r['x']):
+                points += [x, z]
+        kit = mei_world.floors(str(ex.world), points)['floors']
+        got = [h for row in r['heights'] for h in row]
+        self.assertEqual(len(kit), len(got))
+        for k, (want, h) in enumerate(zip(kit, got)):
+            if want['y'] is None or h is None:
+                self.assertEqual(want['y'], h, kit[k])
+            else:
+                self.assertAlmostEqual(want['y'], h, places=3)
+        names = {g['what'] for g in r['sources']}
+        self.assertIn('room/slope', names)
+        self.assertEqual(floors(world, (20, 20, 21, 21), 1.0)['layers'], ['gate_closed'])     # those on at the start
+        self.assertIn('heights', floors_text(r))
+        under = floors(world, (32, 30, 32, 30), 1.0, below=2.0)
+        self.assertLessEqual(under['heights'][0][0], 2.0)
+
+    def test_textures_are_the_regions(self):
+        from worldkit.quick import load_world, textures, textures_text
+        from worldkit.assets import Library, asset_directories
+        ex = Example(self.tmp.name, 'night_market')
+        report = ex.compile().report
+        world = load_world(str(ex.world), None, self.cache)
+        r = textures(world)
+        for name in ('market', 'harbour'):
+            want = report['regions'][name]['textures']
+            self.assertEqual(r['regions'][name]['allocated'], want['vram_bytes_allocated'])
+            self.assertEqual(r['regions'][name]['tiles'], want['tiles'])
+            self.assertEqual({a['asset']: a['allocated'] for a in r['regions'][name]['assets']},
+                             {n: a['vram_bytes'] for n, a in want['by_asset'].items()})
+        crate = next(a for a in r['regions']['market']['assets'] if a['asset'] == 'crate')
+        self.assertEqual(crate['allocated'], crate['own'] + crate['shared'])
+        one = textures(world, cells=[(1, 0)])
+        self.assertEqual(list(one['regions']), ['harbour'])
+        self.assertEqual(one['regions']['harbour']['selected']['assets'], ['crate', 'quay', 'warehouse'])
+        from worldkit.world import load
+        s = load(str(ex.world))
+        dirs = asset_directories(s.world, s.base)
+        added = textures(world, 'harbour', add={'harbour': ['stall']}, library=Library(dirs[0], s.base, dirs[1:]))
+        self.assertGreater(added['regions']['harbour']['allocated'], r['regions']['harbour']['allocated'])
+        self.assertIn('market:', textures_text(r))
+
+    @checker_tools
+    def test_check_one_cell_and_a_camera(self):
+        from worldkit.quick import load_world, check, check_text, parse_cells, parse_cameras
+        from worldkit import verify as V
+        ex = Example(self.tmp.name, 'two_districts')
+        world = load_world(str(ex.world), None, self.cache)
+        tools = {'compiler': COMPILER, 'probe': SCENE_PROBE}
+        cells = parse_cells(['1,0'], world)
+        cams = parse_cameras(['street=40,1.5,8@90,0'], None)
+        r = check(world, cells, cams, tools, 40)
+        self.assertEqual(r['focus']['cells'], [[1, 0]])
+        named = [v for v in r['views'] if 'name' in v]
+        self.assertTrue(named and all(v['name'] == 'street' and v['kind'] == 'vantage' for v in named))
+        self.assertTrue(all(tuple(v['camera']['cell']) == (1, 0) for v in r['views'] if 'name' not in v))
+        self.assertTrue(all('heaviest' in v for v in r['views']))
+        self.assertEqual([c['cell'] for c in r['static']['cells']], [[1, 0]])
+        # the cell's static findings are the full check's there
+        full = V.verify(world.pack, {'sampling': {'max_views': 1}}, None, None, tools)
+        mine = lambda f: (f['code'], f['floor_tag'], f['beyond_tag'], tuple(f['at']))
+        there = [f for f in full['static']['collision']['findings'] if (int(f['at'][0]) // 32, int(f['at'][2]) // 32) == (1, 0)]
+        self.assertEqual(sorted(map(mine, r['static']['collision']['findings'])), sorted(map(mine, there)))
+        self.assertIn('street', check_text(r, world, cells, cams))
+        with self.assertRaises(WorldError):
+            parse_cells(['9,9'], world)
+        self.assertEqual(parse_cells([world.meta['cells'][0]['id']], world), [tuple(world.meta['cells'][0]['at'])])
+
+    def test_cli_text_and_json(self):
+        ex = Example(self.tmp.name, 'night_market')
+        base = [*CLI, 'textures', str(ex.world), '--cache', str(self.cache)]
+        r = subprocess.run(base, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertTrue(r.stdout.startswith('night_market: texture VRAM'))
+        code, out = cli('textures', ex.world, '--cache', self.cache, '--json', '--region', 'market')
+        self.assertEqual((code, list(out['regions'])), (0, ['market']))
+        self.assertTrue(out['compiled']['compiled'] == 'cached')
+        r = subprocess.run([*CLI, 'floors', str(ex.world), '--cache', str(self.cache), '--area', '1,2'],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertTrue(r.stdout.startswith('error at /arguments/area'), r.stdout)
+        code, out = cli('check', ex.world, '--cache', self.cache, '--json')
+        self.assertEqual((code, out['errors'][0]['path']), (1, '/arguments'))
+
+
+class OcclusionTests(unittest.TestCase):
+    """Occlusion zones (WORLDKIT.md, "Occlusion"): the recipe's occluders and zones, the sets the
+    kit works out, its errors and warnings, and the World Checker's leak check."""
+    WALL = {'box': [[28.1, 0.1, 41.85], [35.9, 4.9, 42.15]]}     # inside test_room's climb wall
+    FRONT = {'box': [[30, 1, 33], [34, 2.5, 38]]}
+
+    def room(self, tmp, occlusion=None):
+        ex = Example(tmp)
+
+        def edit(w):
+            ledge = next(p for p in w['cells'][0]['placements'] if p['id'] == 'ledge')
+            w['cells'][0]['placements'].append(dict(ledge, id='behind', position=[32, 0, 50]))
+            if occlusion is not None:
+                w['occlusion'] = occlusion
+        ex.edit(edit)
+        return ex
+
+    def test_zones_hide_what_lies_behind_the_wall(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            plain = self.room(tmp).compile()
+        with tempfile.TemporaryDirectory() as tmp:
+            empty = self.room(tmp, {}).compile()
+        self.assertEqual(plain.pack, empty.pack, 'a world without occluders builds as before')
+        self.assertNotIn('occlusion', plain.report)
+        self.assertEqual(P.decode(plain.pack).minor, 3)
+        with tempfile.TemporaryDirectory() as tmp:
+            c = self.room(tmp, {'occluders': {'wall': self.WALL}, 'zones': {'front': self.FRONT}}).compile()
+        pack = P.decode(c.pack)
+        self.assertEqual(pack.minor, 5)
+        cell = pack.cells[(0, 0)]
+        self.assertEqual(len(cell.zones), 1)
+        hidden = [cell.placements[k]['tag'] for k in cell.zones[0]['hidden'][(0, 0)]]
+        self.assertEqual(hidden, [7], 'the block behind the wall, and nothing else')
+        self.assertEqual(c.report['occlusion'], [{'zone': 'front', 'occluders': ['wall'], 'cells': [[0, 0]],
+                                                  'placements': 1, 'faces': 12, 'standins': 0, 'hidden_by': {'wall': 1}}])
+        # the pack is the plain one but for the zone: same cells, same placements
+        self.assertEqual(len(P.decode(plain.pack).cells[(0, 0)].placements), len(cell.placements))
+
+    def test_warnings_and_errors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            c = self.room(tmp, {'occluders': {'wall': self.WALL},
+                                'zones': {'nothing': {'box': [[2, 1, 2], [6, 2, 6]]},
+                                          'inside': {'box': [[30, 1, 40], [34, 2, 43]]}}}).compile()
+        codes = [w['code'] for w in c.report['warnings']]
+        self.assertIn('zone_hides_nothing', codes)
+        self.assertIn('zone_meets_occluder', codes)
+        self.assertEqual(P.decode(c.pack).minor, 3, 'no zone hides anything: no zones in the pack')
+        cases = [({'occluders': {'wall': self.WALL}, 'zones': {'front': dict(self.FRONT, occluders=['door'])}},
+                  '/occlusion/zones/front/occluders/0'),
+                 ({'occluders': {'wall': {'box': [[36, 0, 42], [28, 5, 43]]}}}, '/occlusion/occluders/wall/box'),
+                 ({'occluders': {'wall': dict(self.WALL, quad=[[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]])}},
+                  '/occlusion/occluders/wall'),
+                 ({'occluders': {'q': {'quad': [[0, 0, 0], [1, 0, 0], [1, 1, 1], [0, 1, 0]]}}}, '/occlusion/occluders/q/quad'),
+                 ({'occluders': {'q': {'quad': [[0, 0, 0], [1, 1, 0], [1, 0, 0], [0, 1, 0]]}}}, '/occlusion/occluders/q/quad'),
+                 ({'occluders': {'wall': dict(self.WALL, layer='rain')}}, '/occlusion/occluders/wall/layer'),
+                 ({'occluders': {'wall': dict(self.WALL, layer='gate_closed')},
+                   'zones': {'front': dict(self.FRONT, occluders=['wall'])}}, '/occlusion/zones/front/occluders/0'),
+                 ({'zones': {'front': {'box': [[30, 1, 33], [30, 2, 38]]}}}, '/occlusion/zones/front/box'),
+                 ({'zones': {'front': {'box': [[30, 1, 33], [34, 2, 38]], 'size': 1}}}, '/occlusion/zones/front/size')]
+        for spec, path in cases:
+            with tempfile.TemporaryDirectory() as tmp, self.subTest(path=path):
+                with self.assertRaises(WorldError) as cm:
+                    self.room(tmp, spec).compile()
+                self.assertEqual(cm.exception.path, path)
+        # an occluder of a layer serves the zones of that layer, by default
+        with tempfile.TemporaryDirectory() as tmp:
+            c = self.room(tmp, {'occluders': {'wall': dict(self.WALL, layer='gate_closed')},
+                                'zones': {'front': self.FRONT, 'gated': dict(self.FRONT, layer='gate_closed')}}).compile()
+        self.assertEqual([(z['zone'], z['occluders']) for z in c.report['occlusion']], [('front', []), ('gated', ['wall'])])
+        zones = P.decode(c.pack).cells[(0, 0)].zones
+        self.assertEqual(len(zones), 1)
+        self.assertEqual(zones[0]['layer'], P.decode(c.pack).layers.index(('gate_closed', 0, True)))
+
+    @checker_ready
+    def test_the_checker_finds_a_zone_that_hides_what_is_in_sight(self):
+        from worldkit import verify as V
+        tools = {'compiler': COMPILER, 'probe': SCENE_PROBE}
+        settings = {'sampling': {'max_views': 4}, 'ordering': {'enabled': False}, 'images': 0,
+                    'vantage_points': [{'position': [32, 2, 35], 'yaw': 0, 'pitch': 0}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            good = self.room(tmp, {'occluders': {'wall': self.WALL}, 'zones': {'front': self.FRONT}}).compile()
+        r = V.verify(good.pack, settings, None, None, tools)
+        occ = r['static']['occlusion']
+        self.assertEqual((occ['zones'], occ['hidden_placements'], occ['leaks']), (1, 1, 0))
+        self.assertGreater(occ['rays'], 100)
+        view = next(v for v in r['views'] if 'vantage' in v)
+        self.assertEqual((view['stats']['zone'], view['stats']['occluded']), (0, 1))
+        # a box where nothing stands (over the floor between the zone and the gate) hides nothing
+        # truly: the check counts the rays that reach what it claims to hide
+        with tempfile.TemporaryDirectory() as tmp:
+            bad = self.room(tmp, {'occluders': {'air': {'box': [[22, 0.2, 29.5], [42, 6, 30]]}},
+                                  'zones': {'front': self.FRONT}}).compile()
+        r = V.verify(bad.pack, settings, None, None, tools)
+        occ = r['static']['occlusion']
+        self.assertGreater(occ['hidden_placements'], 0)
+        self.assertGreater(occ['leaks'], 0)
+        self.assertEqual(occ['findings'][0]['hidden']['kind'], 'placement')
+        self.assertIn('occlusion_leak', [f['code'] for f in r['threshold_failures']])
 
 
 if __name__ == '__main__':

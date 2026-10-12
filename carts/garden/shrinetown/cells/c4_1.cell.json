@@ -1,0 +1,248 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c4_1",
+ "at": [
+  4,
+  1
+ ],
+ "region": "town",
+ "placements": [
+  {
+   "id": "edge_e1",
+   "asset": "edge_fence_40",
+   "position": [
+    319.95,
+    0,
+    84.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "neighbour_e2",
+   "asset": "edge_neighbour_e2",
+   "position": [
+    319.8,
+    0,
+    88.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "hoarding_e",
+   "asset": "edge_hoarding",
+   "position": [
+    319.95,
+    0,
+    111.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "viaduct_23",
+   "asset": "viaduct_span_16",
+   "position": [
+    310.5577,
+    0.0,
+    78.5577
+   ],
+   "yaw": 270.0,
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_24",
+   "asset": "viaduct_span_16",
+   "position": [
+    310.5577,
+    0.0,
+    94.5577
+   ],
+   "yaw": 270.0,
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_25",
+   "asset": "viaduct_underpass",
+   "position": [
+    310.5577,
+    0.0,
+    114.5577
+   ],
+   "yaw": 90.0,
+   "collision": "viaduct_underpass_col"
+  },
+  {
+   "id": "viaduct_end",
+   "asset": "viaduct_end_wall",
+   "position": [
+    310.5577,
+    9.0,
+    126.2577
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "signal_gantry_1",
+   "asset": "signal_gantry",
+   "position": [
+    310.56,
+    9.0,
+    98.0
+   ],
+   "yaw": 270.0,
+   "collision": "signal_gantry_col"
+  },
+  {
+   "id": "schoolhouse",
+   "asset": "schoolhouse",
+   "position": [
+    273.0,
+    0.0,
+    71.0
+   ],
+   "collision": "schoolhouse_col"
+  },
+  {
+   "id": "overpass",
+   "asset": "overpass",
+   "position": [
+    262.0,
+    0.0,
+    111.0
+   ],
+   "yaw": 90,
+   "collision": "overpass_col"
+  },
+  {
+   "id": "pole_road280",
+   "asset": "town_utility_pole_tall",
+   "position": [
+    280.0,
+    0.0,
+    106.0
+   ],
+   "yaw": 90,
+   "collision": "town_utility_pole_tall_col"
+  },
+  {
+   "id": "zelkova_s0",
+   "asset": "tree_zelkova",
+   "position": [
+    268.0,
+    0.0,
+    97.0
+   ],
+   "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "zelkova_s1",
+   "asset": "tree_zelkova",
+   "position": [
+    275.0,
+    0.0,
+    97.0
+   ],
+   "yaw": 37,
+   "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "zelkova_s2",
+   "asset": "tree_zelkova",
+   "position": [
+    282.0,
+    0.0,
+    97.0
+   ],
+   "yaw": 74,
+   "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "zelkova_s3",
+   "asset": "tree_zelkova",
+   "position": [
+    289.0,
+    0.0,
+    97.0
+   ],
+   "yaw": 111,
+   "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "neighbour_e3",
+   "asset": "edge_neighbour_e3",
+   "position": [
+    319.8,
+    0.0,
+    116.0
+   ],
+   "yaw": 90.0,
+   "collision": "self"
+  },
+  {
+   "id": "neighbour_e4",
+   "asset": "edge_neighbour_e4",
+   "position": [
+    319.8,
+    0.0,
+    127.9
+   ],
+   "yaw": 90.0,
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_road280",
+   "type": "pole",
+   "position": [
+    280.0,
+    0.0,
+    106.0
+   ],
+   "params": {
+    "height": 11.5
+   }
+  },
+  {
+   "id": "pole_gantry_1",
+   "type": "pole",
+   "position": [
+    305.26,
+    9.2,
+    97.55
+   ],
+   "yaw": 180.0,
+   "params": {
+    "height": 4.25,
+    "front": true
+   }
+  },
+  {
+   "id": "pole_school_flag",
+   "type": "pole",
+   "position": [
+    279.0,
+    0.0,
+    69.0
+   ],
+   "params": {
+    "height": 9.1
+   }
+  },
+  {
+   "id": "rail_overpass_rail_e",
+   "type": "rail",
+   "position": [
+    277.7,
+    1.265,
+    125.95
+   ],
+   "params": {
+    "path": "overpass_rail_e"
+   }
+  }
+ ]
+}

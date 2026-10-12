@@ -1,0 +1,408 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_1",
+ "at": [
+  0,
+  1
+ ],
+ "region": "town",
+ "placements": [
+  {
+   "id": "edge_w1",
+   "asset": "edge_fence_40",
+   "position": [
+    0.05,
+    0,
+    84.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "neighbour_w2",
+   "asset": "edge_neighbour_w2",
+   "position": [
+    0.2,
+    0,
+    88.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "hoarding_w",
+   "asset": "edge_hoarding",
+   "position": [
+    0.05,
+    0,
+    111.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "machiya_w78",
+   "asset": "town_machiya_a",
+   "position": [
+    10.7,
+    0.0,
+    83.0
+   ],
+   "yaw": 270,
+   "collision": "town_machiya_a_col"
+  },
+  {
+   "id": "machiya_e78",
+   "asset": "town_machiya_b",
+   "position": [
+    31.3,
+    0.0,
+    83.0
+   ],
+   "yaw": 90,
+   "collision": "town_machiya_b_col"
+  },
+  {
+   "id": "machiya_w90",
+   "asset": "town_machiya_a",
+   "position": [
+    10.7,
+    0.0,
+    95.0
+   ],
+   "yaw": 270,
+   "collision": "town_machiya_a_col"
+  },
+  {
+   "id": "machiya_e90",
+   "asset": "town_machiya_b",
+   "position": [
+    31.3,
+    0.0,
+    95.0
+   ],
+   "yaw": 90,
+   "collision": "town_machiya_b_col"
+  },
+  {
+   "id": "canal_road_bridge",
+   "asset": "canal_road_bridge",
+   "position": [
+    48.0,
+    0.0,
+    111.0
+   ],
+   "collision": "canal_road_bridge_col"
+  },
+  {
+   "id": "pole_road10",
+   "asset": "street_utility_pole",
+   "position": [
+    10.0,
+    0.0,
+    106.0
+   ],
+   "yaw": 90,
+   "collision": "street_utility_pole_col"
+  },
+  {
+   "id": "pole_road40",
+   "asset": "street_utility_pole",
+   "position": [
+    40.0,
+    0.0,
+    106.0
+   ],
+   "yaw": 90,
+   "collision": "street_utility_pole_col"
+  },
+  {
+   "id": "road_works_0",
+   "asset": "street_barrier",
+   "position": [
+    1.0,
+    0.0,
+    107.5
+   ],
+   "yaw": 270,
+   "collision": "road_works_barrier_col"
+  },
+  {
+   "id": "road_works_1",
+   "asset": "street_barrier",
+   "position": [
+    1.0,
+    0.0,
+    114.5
+   ],
+   "yaw": 270,
+   "collision": "road_works_barrier_col"
+  },
+  {
+   "id": "canal_pots_w78",
+   "asset": "town_potted_plants",
+   "position": [
+    18.4,
+    0,
+    86.0
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_pots_e78",
+   "asset": "town_potted_plants",
+   "position": [
+    23.6,
+    0,
+    80.5
+   ],
+   "yaw": 90,
+   "collision": "self"
+  },
+  {
+   "id": "canal_pots_e90",
+   "asset": "town_potted_plants",
+   "position": [
+    23.6,
+    0,
+    96.5
+   ],
+   "yaw": 90,
+   "collision": "self"
+  },
+  {
+   "id": "canal_bike_w90",
+   "asset": "mamachari",
+   "position": [
+    18.9,
+    0,
+    98.0
+   ],
+   "yaw": 355,
+   "collision": "mamachari_col"
+  },
+  {
+   "id": "canal_aircon_e78",
+   "asset": "town_aircon_pipes",
+   "position": [
+    38.5,
+    0,
+    85.0
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_bins_e90",
+   "asset": "town_crates_bins",
+   "position": [
+    38.6,
+    0,
+    92.0
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_jizo_footbridge",
+   "asset": "jizo",
+   "position": [
+    41.8,
+    0,
+    64.2
+   ],
+   "yaw": 270,
+   "collision": "jizo_col"
+  },
+  {
+   "id": "canal_bench_canal_lane",
+   "asset": "town_bench",
+   "position": [
+    53.4,
+    0,
+    76.0
+   ],
+   "yaw": 90,
+   "collision": "town_bench_col"
+  },
+  {
+   "id": "neighbour_w3",
+   "asset": "edge_neighbour_w3",
+   "position": [
+    0.2,
+    0.0,
+    116.0
+   ],
+   "yaw": 270.0,
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "door_shrine",
+   "type": "door",
+   "position": [
+    1.6,
+    0.0,
+    111.0
+   ],
+   "params": {
+    "world": "shrine",
+    "size": [
+     2.0,
+     3.0,
+     13.0
+    ]
+   }
+  },
+  {
+   "id": "red_chimney",
+   "type": "red_coin",
+   "position": [
+    30.5,
+    18.9,
+    67.5
+   ],
+   "asset": "gbt_coin_red"
+  },
+  {
+   "id": "ud_sento",
+   "type": "updraft",
+   "position": [
+    30.5,
+    18.2,
+    67.5
+   ],
+   "params": {
+    "width": 14.0,
+    "depth": 12.0,
+    "base": -12.2,
+    "cap": 5.8,
+    "lift": 6.0,
+    "look": "steam",
+    "puffs": 20,
+    "lean": [
+     6.0,
+     0.0,
+     -4.0
+    ]
+   }
+  },
+  {
+   "id": "coin_canal3",
+   "type": "coin",
+   "position": [
+    48,
+    0.1,
+    68
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_canal4",
+   "type": "coin",
+   "position": [
+    48,
+    0.1,
+    84
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_canal5",
+   "type": "coin",
+   "position": [
+    48,
+    0.1,
+    100
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "rail_wire_road_a",
+   "type": "rail",
+   "position": [
+    10.0,
+    8.0,
+    106.8
+   ],
+   "params": {
+    "path": "wire_road_a"
+   }
+  },
+  {
+   "id": "rail_wire_road_b",
+   "type": "rail",
+   "position": [
+    10.0,
+    8.0,
+    105.2
+   ],
+   "params": {
+    "path": "wire_road_b"
+   }
+  },
+  {
+   "id": "pole_chimney",
+   "type": "pole",
+   "position": [
+    30.5,
+    5.02,
+    66.7
+   ],
+   "params": {
+    "height": 14.38
+   }
+  },
+  {
+   "id": "pole_road_bridge_0",
+   "type": "pole",
+   "position": [
+    48.0,
+    2.1,
+    104.2
+   ],
+   "params": {
+    "height": 2.75
+   }
+  },
+  {
+   "id": "pole_road_bridge_1",
+   "type": "pole",
+   "position": [
+    48.0,
+    2.1,
+    117.8
+   ],
+   "params": {
+    "height": 2.75
+   }
+  },
+  {
+   "id": "pole_road10",
+   "type": "pole",
+   "position": [
+    10.0,
+    0.0,
+    106.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "pole_road40",
+   "type": "pole",
+   "position": [
+    40.0,
+    0.0,
+    106.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  }
+ ]
+}

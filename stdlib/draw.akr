@@ -30,15 +30,17 @@ const BLEND_QUARTER = 3           // background + a quarter of the polygon (fain
 const BLEND_SHIFT = 24            // a packet's first colour word holds the mode at this bit
 
 const TEX_4BIT = 0x100000         // first texture coordinate word: a 4-bit texture
+const TEX_SLOT_HI = 0x200000      // ... slots 16-31 (bits 16-19 the slot within the bank)
+const TEX_PAL_HI = 0x400000       // ... palette bank 1 (4-bit palettes 256-511, 8-bit 16-31)
 
 // ---- sprite() and rect()
 
-// Draws a w x h texel rectangle from texture slot `slot` at pixel (x, y), untinted.
-// four_bit: the texture holds 4-bit texels (palette 0-255) instead of 8-bit (palette 0-15).
+// Draws a w x h texel rectangle from texture slot `slot` (0-31) at pixel (x, y), untinted.
+// four_bit: the texture holds 4-bit texels (palette 0-511) instead of 8-bit (palette 0-31).
 fn sprite(slot: u32, palette: u32, four_bit: bool, u: s32, v: s32, w: s32, h: s32, x: s32, y: s32) {
     let q = packet_alloc(10)
     if q == null { return }
-    let info = ((slot & 15) << 16) | ((four_bit as u32) << 20) | (palette << 24)
+    let info = tex_page(slot as s32, palette as s32, four_bit)
     q[1] = 0x808080
     q[2] = __pos(x, y)
     q[3] = (u as u32) | ((v as u32) << 8) | info
@@ -314,10 +316,16 @@ fn quad_fill(x0: s32, y0: s32, x1: s32, y1: s32, x2: s32, y2: s32, x3: s32, y3: 
 
 // ---- textured quads
 
-// The texture page of a sprite: texture slot 0-15, palette (0-255 for 4-bit textures, 0-15 for
-// 8-bit) and depth, as the GPU wants them in a packet's first texture coordinate.
+// The texture page of a sprite: texture slot 0-31, palette (0-511 for 4-bit textures, 0-31 for
+// 8-bit) and depth, as the GPU wants them in a packet's first texture coordinate: bits 16-19
+// the slot within its bank, 20 4-bit, 21 slots 16-31, 22 palette bank 1, 24-31 the palette
+// within its bank.
 fn tex_page(slot: s32, palette: s32, four_bit: bool) -> u32 {
-    return ((slot as u32 & 15) << 16) | ((four_bit as u32) << 20) | ((palette as u32 & 255) << 24)
+    let s = slot as u32
+    let p = palette as u32
+    var hi = (p >> 4) & 1               // 8-bit palettes 16-31
+    if four_bit { hi = (p >> 8) & 1 }   // 4-bit palettes 256-511
+    return ((s & 15) << 16) | ((four_bit as u32) << 20) | ((s & 16) << 17) | (hi << 22) | ((p & 255) << 24)
 }
 
 // A texture window (docs/LANGUAGE.md, "Texture windows"): the polygon samples

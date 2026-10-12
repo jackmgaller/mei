@@ -1,0 +1,125 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "arch_wall_gate_bar_lifted",
+ "budget": {
+  "triangles": 30
+ },
+ "materials": {
+  "wood": {
+   "color": "#8a6446",
+   "texture": {
+    "pattern": "grain",
+    "size": 16,
+    "colors": [
+     "#8a6446",
+     "#6a4a36",
+     "#a07c58"
+    ],
+    "params": {
+     "rings": 3,
+     "waves": 1,
+     "amplitude": 2
+    },
+    "projection": "box",
+    "scale": [
+     1.0,
+     0.5
+    ]
+   }
+  },
+  "wood_dark": {
+   "color": "#5a3e2c",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "beam_0",
+   "op": "box",
+   "size": [
+    5.6,
+    0.22,
+    0.22
+   ],
+   "material": "wood",
+   "open": [
+    "left",
+    "right"
+   ],
+   "transform": {
+    "rotate": [
+     90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     0.11,
+     0.75
+    ]
+   }
+  },
+  {
+   "id": "beam_1",
+   "op": "box",
+   "size": [
+    5.6,
+    0.22,
+    0.22
+   ],
+   "material": "wood",
+   "open": [
+    "left",
+    "right"
+   ],
+   "transform": {
+    "rotate": [
+     90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     0.11,
+     1.65
+    ]
+   }
+  },
+  {
+   "id": "stile",
+   "op": "box",
+   "size": [
+    0.14,
+    1.1,
+    0.12
+   ],
+   "material": "wood_dark",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "rotate": [
+     90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     0.11,
+     1.2
+    ]
+   }
+  }
+ ]
+}

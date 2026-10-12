@@ -47,8 +47,8 @@ MATERIAL['properties']['texture'] = TEXTURE
 SHEET = dict(obj({'image':{'type':'string','minLength':1,'maxLength':200},
                   'grid':dict(array(integer(1,256),2,2),description="Cell width and height: cells are named [column, row]. Without it, cells are named in the image's NAME.sheet.json.")},['image']),
              description='A PNG holding many textures: an authoring container that the kit slices.')
-PALETTE_LAYOUT = dict(obj({'slot':integer(0,14),'row':integer(0,255),'first':integer(0,254)}),
-                      description='Where palette-backed materials live: swatch texels u 0-15 of row `row` in texture slot `slot` (default 14, 0); entries from 4-bit palette `first` (default 0).')
+PALETTE_LAYOUT = dict(obj({'slot':integer(0,31),'row':integer(0,255),'first':integer(0,510)}),
+                      description='Where palette-backed materials live: swatch texels u 0-15 of row `row` in texture slot `slot` (0-31 but not 15, the fonts\'; default 14, 0); entries from 4-bit palette `first` (0-511, not running into 255, the fonts\'; default 0).')
 VERIFICATION = obj({'required':BOOL,'yaw_steps':integer(4,120),
                     'pitches':array(number(-1.4,1.4),1,5),
                     'distances':array(number(.8,3),1,3),'far':number(1,1000),'geometry':choice('error','warn'),
@@ -73,18 +73,44 @@ MODIFIERS = {'oneOf':[
     operation('subdivide', {'levels':integer(1,3)}, ['levels']),
 ]}
 BOX_SIDES = ('top','bottom','left','right','back','front')
+BOX_AXES = ('+y','-y','-x','+x','-z','+z')       # the same sides by axis
 COMMON = {'id':NAME,'material':NAME,'transform':TRANSFORM,'modifiers':array(MODIFIERS,0,16)}
+
+
+def faces_map(*sides):
+    return dict(obj({side:NAME for side in sides}),
+                description='A material per side, replacing the node\'s material there: '+', '.join(sides)+
+                            '. Sides not named keep the node\'s material. Adds no triangles.')
+
+
+DECAL = obj({'id':NAME,
+             'face':dict({},description='The flat face the decal lies on: a side name (a box\'s top, bottom, left, right, '
+                                         'back, front or +y, -y, -x, +x, -z, +z; a cylinder, cone, lathe or loft\'s top or bottom; '
+                                         'an extrusion\'s front or back), or a mesh node\'s polygon index.'),
+             'material':NAME,
+             'at':dict(POINT,description='The decal\'s centre, from the face\'s centre (the middle of its bounding rectangle), '
+                                         'right and up as the face is seen from outside, in the primitive\'s own units. Default [0, 0].'),
+             'size':dict(array(POS,2,2),description='Width and height in the primitive\'s own units.')},
+            ['face','material','size'])
+DECALS = dict(array(DECAL,1,32),
+              description='Rectangles baked into flat faces of this primitive: each becomes two faces of its material, '
+                          'and its face is cut around it (8 more triangles and 4 vertices a decal). In the face\'s plane, '
+                          'so nothing overlaps. A textured decal material draws its texture once over the rectangle '
+                          '(projection fit).')
+CAPPED = {**COMMON,'faces':faces_map('top','bottom','side','+y','-y'),'decals':DECALS}
 NODE = {'oneOf':[
     operation('box', {'size':array(POS,3,3),
-                      'open':dict(array(choice(*BOX_SIDES),1,5),description='Faces to leave out: top (+Y), bottom (-Y), left (-X), right (+X), back (-Z), front (+Z). For a ground tile ["bottom"], for a building standing on the ground ["bottom"].')},
-              ['size'], COMMON),
+                      'open':dict(array(choice(*BOX_SIDES,*BOX_AXES),1,5),description='Faces to leave out: top (+Y), bottom (-Y), left (-X), right (+X), back (-Z), front (+Z), or by axis: +y, -y, -x, +x, -z, +z. For a ground tile ["bottom"], for a building standing on the ground ["bottom"].')},
+              ['size'], {**COMMON,'faces':faces_map(*BOX_SIDES,*BOX_AXES),'decals':DECALS}),
     operation('sphere', {'radius':POS,'rings':integer(2,64),'segments':integer(3,128)}, ['radius'], COMMON),
-    operation('cylinder', {'radius':POS,'height':POS,'segments':integer(3,128),'caps':BOOL}, ['radius','height'], COMMON),
-    operation('cone', {'radius':POS,'height':POS,'segments':integer(3,128),'caps':BOOL}, ['radius','height'], COMMON),
-    operation('lathe', {'profile':array(POINT,2,128),'segments':integer(3,128),'caps':BOOL}, ['profile'], COMMON),
-    operation('extrude', {'points':array(POINT,3,256),'depth':POS}, ['points','depth'], COMMON),
-    operation('loft', {'sections':array(obj({'y':NUM,'points':array(POINT,3,256)}, ['y','points']),2,128),'caps':BOOL}, ['sections'], COMMON),
+    operation('cylinder', {'radius':POS,'height':POS,'segments':integer(3,128),'caps':BOOL}, ['radius','height'], CAPPED),
+    operation('cone', {'radius':POS,'height':POS,'segments':integer(3,128),'caps':BOOL}, ['radius','height'], CAPPED),
+    operation('lathe', {'profile':array(POINT,2,128),'segments':integer(3,128),'caps':BOOL}, ['profile'], CAPPED),
+    operation('extrude', {'points':array(POINT,3,256),'depth':POS}, ['points','depth'],
+              {**COMMON,'faces':faces_map('front','back','side','+z','-z'),'decals':DECALS}),
+    operation('loft', {'sections':array(obj({'y':NUM,'points':array(POINT,3,256)}, ['y','points']),2,128),'caps':BOOL}, ['sections'], CAPPED),
     operation('mesh', {'vertices':array(VEC,3,8192),'faces':array(array(integer(0,8191),3,256),1,8192),
+                       'decals':DECALS,
                        'face_materials':array(NAME,1,8192),
                        'uvs':dict(array(array(number(-256,256),2,2),3,8192),description="Hand texture coordinates, one [u, v] per vertex, in repeats (1 = the texture's width or height), top-left 0: used instead of the material's projection on textured faces.")},
               ['vertices','faces'], COMMON),

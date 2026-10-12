@@ -1,0 +1,103 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "konbini_roof_sign",
+ "budget": {
+  "vertices": 64,
+  "triangles": 40
+ },
+ "sheets": {
+  "street": {
+   "image": "../../../shrine/assets/art/street_sheet.png"
+  }
+ },
+ "materials": {
+  "sign": {
+   "color": "#fbfaf4",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "street",
+    "cell": "kon_sign",
+    "projection": "fit"
+   }
+  },
+  "frame": {
+   "color": "#6a665e",
+   "palette": true
+  },
+  "cap": {
+   "color": "#c8c4b8",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "lightbox",
+   "op": "box",
+   "size": [
+    5.6,
+    1.4,
+    0.8
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     0,
+     1.6,
+     0
+    ]
+   },
+   "faces": {
+    "front": "sign",
+    "back": "sign",
+    "top": "cap"
+   }
+  },
+  {
+   "id": "posts",
+   "op": "group",
+   "children": [
+    {
+     "id": "post",
+     "op": "box",
+     "size": [
+      0.12,
+      0.92,
+      0.12
+     ],
+     "material": "frame",
+     "transform": {
+      "translate": [
+       2.2,
+       0.46,
+       0
+      ]
+     },
+     "open": [
+      "top",
+      "bottom"
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  }
+ ],
+ "lod": {
+  "cull": 140
+ }
+}

@@ -41,14 +41,15 @@ import tempfile
 import time
 
 from kitcore import depth as DEPTH
-from .pack import ONE, mesh_info, lod_level, lod_d2
+from meshlib import face_slot, SLOT_HI, PAL_HI
+from .pack import ONE, mesh_info, lod_level, lod_d2, zone_at, zone_hides_standin
 from .verify_shared import numpy, id_colour, diagnostic_png
 
 W, H = 320, 240
 MAX_ID = 32767
 FACE_GOURAUD, FACE_TEXTURED, FACE_QUAD, FACE_SEMI, FACE_DOUBLE, FACE_KEYED = 1, 2, 4, 8, 16, 32
 VIEW_SIZE = 64          # bytes of a VView record in the cart
-OUT_SIZE = 136          # bytes of the cart's VOut block
+OUT_SIZE = 148          # bytes of the cart's VOut block
 STATS_WORDS = 24
 DEPTH_STATS = ('px_ztest', 'px_zfail', 'zclears', 'tris_recip', 'px_persp', 'persp_divs')
 STATS_NAMES = ('tris', 'tris_empty', 'tris_dropped', 'px0', 'px1', 'px2', 'px3', 'px4', 'px5', 'px6',
@@ -117,11 +118,12 @@ class RegionTexels:
             if not t.four_bit and len(raw) > 32768:
                 pass                    # an 8-bit texture running into the next slot: not written by the kit
 
-    def tile(self, tex, uv, windows):
+    def tile(self, flags, tex, uv, windows):
         """(texel array, window (su, sv) or None) a textured face samples: its window's tile, or
-        the slot (a texture drawn once: coordinates are slot texels)."""
+        the slot (a texture drawn once: coordinates are slot texels). The slot is 0-31: flag bit 6
+        is slots 16-31 (VRAM at 2 MB)."""
         np = numpy()
-        slot = self.slots.get(tex & 15)
+        slot = self.slots.get(face_slot(flags, tex))
         if slot is None:
             return np.zeros((1, 1), dtype=bool), None
         k = tex >> 5
@@ -132,10 +134,10 @@ class RegionTexels:
             return slot[ov:ov + sv, ou:ou + su], (su, sv)
         return slot, None
 
-    def solid(self, tex, uv, windows):
+    def solid(self, flags, tex, uv, windows):
         """Whether a face can never sample texel 0: every texel of its window's tile, or of its
         corners' texel box, is set. Such a face covers exactly its outline's pixels."""
-        arr, win = self.tile(tex, uv, windows)
+        arr, win = self.tile(flags, tex, uv, windows)
         if win:
             return bool(arr.all())
         us, vs = [c & 255 for c in uv], [c >> 8 for c in uv]
@@ -254,12 +256,12 @@ def identity_mesh(data, off, mesh, first, cutouts=()):
         at = fo + 36 * k
         flags = out[at]
         if k in cutouts:
-            out[at] = flags & ~FACE_SEMI
+            out[at] = flags & ~(FACE_SEMI | PAL_HI)     # palette 0 of bank 0; the slot (and its bank) kept
             out[at + 1] = 0
             out[at + 3] = 0
             struct.pack_into('<4I', out, at + 12, *([id_tint(first + k)] * 4))
             continue
-        flags &= ~(FACE_TEXTURED | FACE_SEMI)
+        flags &= ~(FACE_TEXTURED | FACE_SEMI | SLOT_HI | PAL_HI)
         out[at] = flags
         out[at + 1] = out[at + 2] = out[at + 3] = 0
         c = id_colour(first + k)
@@ -277,7 +279,7 @@ def cutout_faces(texels, inst, mesh, pack):
     if tx is None:
         return set()
     return {k for k, (flags, _, tex, _, uv) in enumerate(mesh.faces)
-            if flags & FACE_TEXTURED and not swatch_face(flags, tex, uv) and not tx.solid(tex, uv, mesh.windows)}
+            if flags & FACE_TEXTURED and not swatch_face(flags, tex, uv) and not tx.solid(flags, tex, uv, mesh.windows)}
 
 
 def mask_bytes(data, four_bit):
@@ -363,6 +365,9 @@ struct VOut {{
     ground: s32         // ground placements drawn
     coarse: s32         // placements drawn at a level of detail other than 0
     lod_culled: s32     // placements in view not drawn: past their LOD cull distance
+    occluded: s32       // placements skipped: hidden from the eye's occlusion zone (pack 1.5)
+    standins_occluded: s32
+    zone: s32           // the zone's number in the eye's cell, or -1
     origin: vec4
     vp: mat4
 }}
@@ -423,6 +428,7 @@ fn draw() {{
     wp_object_squash = {object_squash}
     wp_lod = {lod}
     wp_lod_fine = {lod_fine}
+    wp_occlusion = {occlusion}
     let nl = wp_layer_count()
     for l in 0..nl {{ wp_layer_set(l, false) }}
     for l in 0..nl {{
@@ -451,6 +457,9 @@ fn draw() {{
     vout.ground = wp_stats.ground
     vout.coarse = wp_stats.coarse
     vout.lod_culled = wp_stats.lod_culled
+    vout.occluded = wp_stats.occluded
+    vout.standins_occluded = wp_stats.standins_occluded
+    vout.zone = wp_stats.zone
     let o = wp_view_origin()
     vout.origin = vec4(o.x, o.y, o.z, 0.0)
     vout.vp = __vp
@@ -493,7 +502,7 @@ def _run(cmd, what, timeout=600):
 
 def swatch_rows(meshes):
     """The (texture slot, row) of every palette swatch face's texel in these meshes."""
-    return sorted({(tex & 15, uv[0] >> 8) for m in meshes for flags, _, tex, _, uv in m.faces
+    return sorted({(face_slot(flags, tex), uv[0] >> 8) for m in meshes for flags, _, tex, _, uv in m.faces
                    if swatch_face(flags, tex, uv)})
 
 
@@ -546,7 +555,8 @@ def _cart_source(runtime, rows, walk):
                        object_bias=fixed_literal(runtime['object_bias']),
                        object_squash=int(runtime['object_squash']),
                        lod='true' if runtime['lod'] else 'false',
-                       lod_fine='true' if runtime['lod_fine'] else 'false', **walk)
+                       lod_fine='true' if runtime['lod_fine'] else 'false',
+                       occlusion='false' if runtime.get('occlusion') is False else 'true', **walk)
 
 
 def _compile_and_run(pack_bytes, id_bytes, records, source, frames, tools, work):
@@ -588,13 +598,14 @@ def _records(cap, expected):
     for _ in range(count):
         stats = dict(zip(STATS_NAMES, struct.unpack_from(f'<{STATS_WORDS}I', cap, at)))
         at += 4 * STATS_WORDS
-        o = struct.unpack_from('<14i', cap, at)
-        origin = struct.unpack_from('<4i', cap, at + 56)
-        vp = struct.unpack_from('<16i', cap, at + 72)
+        o = struct.unpack_from('<17i', cap, at)
+        origin = struct.unpack_from('<4i', cap, at + 68)
+        vp = struct.unpack_from('<16i', cap, at + 84)
         at += OUT_SIZE
         out = dict(request=o[0] & 0xFFFFFFFF, view=o[1], draw_cycles=o[2], entity_cycles=o[3],
                    arena_bytes=o[4], arena_left=o[5], near_cells=o[6], placements=o[7], drawn=o[8],
                    standins=o[9], entities=o[10], ground=o[11], coarse=o[12], lod_culled=o[13],
+                   occluded=o[14], standins_occluded=o[15], zone=o[16],
                    origin=[c / ONE for c in origin[:3]],
                    vp=np.array(vp, dtype=float).reshape(4, 4) / ONE)
         pic = None
@@ -673,13 +684,19 @@ def cell_mask(pack, cell, layers_on):
     return sum(1 << k for k, lid in enumerate(cell.layers) if lid in layers_on)
 
 
-def select(pack, by_cell, eye, vp, layers_on, runtime, region=None):
+def select(pack, by_cell, eye, vp, layers_on, runtime, region=None, occlusion=True):
     """What wp_draw() (and the cart's entity loop) draws from eye: a list of (instance, pass,
     certain), certain False where a culling sphere is too close to a plane to say. The pass is
-    'far', 'ground' (a ground placement, when the runtime draws ground first) or 'near'."""
+    'far', 'ground' (a ground placement, when the runtime draws ground first) or 'near'.
+    occlusion False: what it would draw without the eye's occlusion zone (pack 1.5), the
+    reference the pictures are judged by, so that a zone that hides what is in sight is found."""
     S = 1 << pack.cell_shift
     half = S / 2
     ci, cj = math.floor(eye[0]) >> pack.cell_shift, math.floor(eye[2]) >> pack.cell_shift
+    zone = None
+    if occlusion and runtime.get('occlusion') is not False:
+        found = zone_at(pack, [round(c * ONE) for c in eye], layers_on)
+        zone = found[1] if found else None
     out = []
     ring = int(runtime['far_ring'])
     if ring >= 2:
@@ -688,6 +705,8 @@ def select(pack, by_cell, eye, vp, layers_on, runtime, region=None):
         for dj in range(-ring, ring + 1):
             for di in range(-ring, ring + 1):
                 if max(abs(di), abs(dj)) < 2:
+                    continue
+                if zone and zone_hides_standin(zone, di, dj):
                     continue
                 for inst in by_cell.get((ci + di, cj + dj), ()):
                     if inst.key[0] != 'standin':
@@ -712,6 +731,8 @@ def select(pack, by_cell, eye, vp, layers_on, runtime, region=None):
                 # wp_region_loaded: a near cell of another region draws its stand-in, near
                 for inst in by_cell.get((ci + di, cj + dj), ()):
                     if inst.key[0] == 'standin':
+                        if zone and zone_hides_standin(zone, di, dj):
+                            continue
                         s = inst.sphere
                         v = _sphere(planes, (s[0] / ONE + di * S, s[1] / ONE, s[2] / ONE + dj * S), s[3] / ONE)
                         if v is not False:
@@ -724,6 +745,7 @@ def select(pack, by_cell, eye, vp, layers_on, runtime, region=None):
                         if v is not False:
                             out.append((inst, 'near', v is True))
                 continue
+            hid = zone['hidden'].get((ci + di, cj + dj), ()) if zone else ()
             cv = True
             if c.placements:
                 b = c.bounds
@@ -741,6 +763,8 @@ def select(pack, by_cell, eye, vp, layers_on, runtime, region=None):
                         if v is not False:
                             out.append((inst, 'near', v is True))
                 elif kind == 'placement' and cv is not False:
+                    if inst.key[3] in hid:
+                        continue
                     s = inst.sphere
                     if inst.lod is not None:
                         level = 0
@@ -861,8 +885,8 @@ def view_faces(pack, meshes, view_insts, vp, origin, first_ids, near_planes, tex
             texel = None
             if not ok and tx is not None and not flags & FACE_SEMI and len(idx) == 3:
                 ok = True
-                if not tx.solid(tex, uv, mesh.windows):
-                    tile, win = tx.tile(tex, uv, mesh.windows)
+                if not tx.solid(flags, tex, uv, mesh.windows):
+                    tile, win = tx.tile(flags, tex, uv, mesh.windows)
                     texel = (np.array([cxyw[i] for i in idx]), np.array([(c & 255, c >> 8) for c in uv], dtype=float),
                              tile, win)
             faces.append(Face(first + k, inst, k, pas, scr, (nrm, d),

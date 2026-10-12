@@ -26,10 +26,13 @@ class Face:
     uv: tuple = None
     uvf: tuple = None            # texel coordinates per corner (floats), from the projection
     texcoords: tuple = None      # set on the final mesh: integer texel coordinates per corner
+    own: bool = False            # the material came from a faces map or a decal (an instance's material keeps it)
+    decal: str = None            # a decal's face: the decal's id (PART/ID)
 
     def copy(self, indices, reverse=False):
         flip = (lambda t: tuple(reversed(t)) if t is not None else None) if reverse else (lambda t: t)
-        return Face(indices, self.material, self.part, flip(self.local), self.polygon, flip(self.uv))
+        return Face(indices, self.material, self.part, flip(self.local), self.polygon, flip(self.uv),
+                    own=self.own, decal=self.decal)
 
 
 @dataclass
@@ -39,6 +42,7 @@ class Mesh:
     palette: dict = None   # set on the final mesh only: the palette entry assignment, if any
     levels: list = None    # set on the final mesh of a recipe with lod: [(mesh, report)] of levels 1..
     textures: dict = None  # set on the final mesh of a textured recipe (assetkit/textures.py)
+    notes: list = None     # set on the final mesh: inspect's notes on modifiers (mirror copies over the original)
 
     def append(self, other):
         offset = len(self.vertices)
@@ -193,8 +197,14 @@ def explicit_mesh(vertices, faces, path, face_materials=None, uvs=None):
         if dot(normal, normal) == 0:
             raise AssetError(at, "Face has no area.")
         extent = max(math.sqrt(dot(sub(v, points[0]), sub(v, points[0]))) for v in points)
-        if any(abs(dot(normal, sub(v, points[0]))) > max(1e-10, extent*1e-6) for v in points):
-            raise AssetError(at, "Polygon is not planar; provide triangles explicitly.")
+        tolerance = max(1e-10, extent*1e-6)
+        off = [abs(dot(normal, sub(v, points[0]))) for v in points]
+        if max(off) > tolerance:
+            worst = max(range(len(points)), key=lambda i: off[i])
+            raise AssetError(at, f"Polygon is not planar: its corner {worst} (vertex {ids[worst]}) is {off[worst]:.3g} units "
+                                 f"off the plane through its corners (Newell's normal through corner 0); the tolerance is "
+                                 f"{tolerance:.3g} units (10^-6 of the polygon's extent, {extent:.3g}). Move the corner onto "
+                                 "the plane, or split the polygon into triangles.")
         axis = max(range(3), key=lambda i: abs(normal[i]))
         dims = [i for i in range(3) if i != axis]
         _, tris = polygon([[p[dims[0]],p[dims[1]]] for p in points], at)
@@ -251,7 +261,7 @@ def modify(mesh, spec, path):
                 c_ab,c_bc,c_ca = mid(0,1),mid(1,2),mid(2,0)
                 for t,cs in (((a,ab,ca),(corners[0],c_ab,c_ca)),((ab,b,bc),(c_ab,corners[1],c_bc)),
                              ((ca,bc,c),(c_ca,c_bc,corners[2])),((ab,bc,ca),(c_ab,c_bc,c_ca))):
-                    piece = Face(t,face.material,face.part,None,face.polygon,None)
+                    piece = Face(t,face.material,face.part,None,face.polygon,None,own=face.own,decal=face.decal)
                     if face.local: piece.local = tuple(p for p,_ in cs)
                     if face.uv: piece.uv = tuple(u for _,u in cs)
                     result.faces.append(piece)

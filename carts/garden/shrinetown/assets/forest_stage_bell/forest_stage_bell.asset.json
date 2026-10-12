@@ -1,0 +1,344 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "forest_stage_bell",
+ "budget": {
+  "triangles": 120
+ },
+ "materials": {
+  "bronze": {
+   "color": "#5f7a4a",
+   "double_sided": true,
+   "texture": {
+    "pattern": "grain",
+    "size": 16,
+    "colors": [
+     "#6a7a50",
+     "#4e6644",
+     "#8a8a5a"
+    ],
+    "params": {
+     "rings": 2,
+     "waves": 1,
+     "amplitude": 1
+    },
+    "projection": "cylindrical",
+    "scale": [
+     1.7,
+     1.0
+    ]
+   }
+  },
+  "bell_in": {
+   "color": "#2c2a28",
+   "palette": true
+  },
+  "wood": {
+   "color": "#8a6446",
+   "texture": {
+    "pattern": "grain",
+    "size": 16,
+    "colors": [
+     "#8a6446",
+     "#6a4a36",
+     "#a07c58"
+    ],
+    "params": {
+     "rings": 3,
+     "waves": 1,
+     "amplitude": 2
+    },
+    "projection": "box",
+    "scale": [
+     1.0,
+     0.5
+    ]
+   }
+  },
+  "rope": {
+   "color": "#c8b890",
+   "texture": {
+    "pattern": "stripes",
+    "size": 8,
+    "colors": [
+     "#c8b890",
+     "#8a7a56"
+    ],
+    "params": {
+     "count": 4,
+     "axis": "v"
+    },
+    "projection": "box",
+    "scale": [
+     0.25,
+     0.25
+    ]
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "bell",
+   "op": "lathe",
+   "profile": [
+    [
+     0.64,
+     1.2
+    ],
+    [
+     0.6,
+     1.55
+    ],
+    [
+     0.5,
+     2.2
+    ],
+    [
+     0.3,
+     2.65
+    ],
+    [
+     0.12,
+     2.9
+    ]
+   ],
+   "segments": 6,
+   "caps": false,
+   "material": "bronze"
+  },
+  {
+   "id": "beam",
+   "op": "box",
+   "size": [
+    2.4,
+    0.3,
+    0.3
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0,
+     3.4,
+     0.1
+    ]
+   }
+  },
+  {
+   "id": "arm",
+   "op": "box",
+   "size": [
+    0.26,
+    0.22,
+    2.3
+   ],
+   "material": "wood",
+   "open": [
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     3.4,
+     -0.95
+    ]
+   }
+  },
+  {
+   "id": "hanger",
+   "op": "box",
+   "size": [
+    0.12,
+    0.6,
+    0.18
+   ],
+   "material": "bell_in",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     3.1,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "log",
+   "op": "cylinder",
+   "radius": 0.13,
+   "height": 1.5,
+   "segments": 4,
+   "material": "wood",
+   "transform": {
+    "rotate": [
+     90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     1.65,
+     -1.2
+    ]
+   }
+  },
+  {
+   "id": "log_rope_0",
+   "op": "box",
+   "size": [
+    0.05,
+    1.5199999999999996,
+    0.05
+   ],
+   "material": "rope",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     2.51,
+     -0.75
+    ]
+   }
+  },
+  {
+   "id": "log_rope_1",
+   "op": "box",
+   "size": [
+    0.05,
+    1.5199999999999996,
+    0.05
+   ],
+   "material": "rope",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     2.51,
+     -1.6
+    ]
+   }
+  },
+  {
+   "id": "pull_rope",
+   "op": "box",
+   "size": [
+    0.1,
+    1.05,
+    0.1
+   ],
+   "material": "rope",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     1.0750000000000002,
+     -1.85
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 30,
+    "nodes": [
+     {
+      "id": "bell",
+      "op": "lathe",
+      "profile": [
+       [
+        0.64,
+        1.2
+       ],
+       [
+        0.6,
+        1.55
+       ],
+       [
+        0.5,
+        2.2
+       ],
+       [
+        0.3,
+        2.65
+       ],
+       [
+        0.12,
+        2.9
+       ]
+      ],
+      "segments": 5,
+      "caps": false,
+      "material": "bronze"
+     },
+     {
+      "id": "beam",
+      "op": "box",
+      "size": [
+       2.4,
+       0.3,
+       0.3
+      ],
+      "material": "wood",
+      "open": [
+       "left",
+       "right",
+       "back",
+       "top",
+       "bottom"
+      ],
+      "transform": {
+       "translate": [
+        0,
+        3.4,
+        0.1
+       ]
+      }
+     },
+     {
+      "id": "pull_rope",
+      "op": "box",
+      "size": [
+       0.1,
+       1.05,
+       0.1
+      ],
+      "material": "rope",
+      "open": [
+       "top",
+       "bottom"
+      ],
+      "transform": {
+       "translate": [
+        0,
+        1.0750000000000002,
+        -1.85
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 80
+ }
+}

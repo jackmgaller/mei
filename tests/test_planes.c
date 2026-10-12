@@ -451,12 +451,25 @@ static void test_tile_sizes(void) {
     d = present();
     CHECK_EQ(d[0], (248 * 3 + 248 * 7) % 255 + 1);
     CHECK_EQ(d[7 + 7 * MEI_W], (255 * 3 + 255 * 7) % 255 + 1);
-    /* atlas addresses wrap within VRAM: page 31 (slot 15) with an 8-bit atlas runs into page 0 */
+    /* VRAM is 2 MB: page 31 (slot 15) with an 8-bit atlas runs into page 32 (slot 16), and page
+     * 63, the last, wraps into page 0. Tile 543 (row 16, column 31) samples byte 0x8000 + 248
+     * past the page; screen pixel 0 reads only the front buffer's pixel 0, not byte 248. */
     reg(BG(1, PLN_BG_TILES), 0x4F8000);
-    map_set(MAP1, 32, 0, 0, 32 * 16);                 /* row 16: byte 16 * 8 * 256 = 0x8000 past the page */
-    V(0x400000)[0] = 77;                              /* VRAM offset 0: framebuffer A's first byte */
+    map_set(MAP1, 32, 0, 0, 32 * 16 + 31);
+    V(0x500000)[248] = 78;                            /* VRAM offset 0x1000F8: in slot 16 */
+    V(0x400000)[248] = 77;                            /* VRAM offset 0xF8: framebuffer A */
+    d = present();
+    CHECK_EQ(d[0], 78);
+    reg(BG(1, PLN_BG_TILES), 0x5F8000);
     d = present();
     CHECK_EQ(d[0], 77);
+    /* the second megabyte as an atlas: bit 20 of the page (page 40 = slot 24), not page 8 */
+    reg(BG(1, PLN_BG_TILES), 0x540000);
+    map_set(MAP1, 32, 0, 0, 31);
+    V(0x540000)[248] = 79;
+    V(0x440000)[248] = 80;
+    d = present();
+    CHECK_EQ(d[0], 79);
 }
 
 /* ================================================================ the affine plane */
@@ -740,16 +753,23 @@ static void test_line_channels(void) {
     CHECK_EQ(d[100 * MEI_W + 60], pat_a(60 & 7, 100 & 7));
     CHECK_EQ(d[100 * MEI_W + 259], pat_a(259 & 7, 100 & 7));
     CHECK_EQ(d[100 * MEI_W + 260], 0);
-    /* table addresses wrap within VRAM: ADDR 0xFFFFC, line 1 reads VRAM offset 0 */
+    /* table addresses wrap within VRAM: ADDR 0x1FFFFC, line 1 reads VRAM offset 0 */
     reg(PLN_LC + 6 * 8 + 4, 0);
     reg(PLN_LAYERS, 8);                               /* (the table runs into framebuffer A) */
-    wr32(V(0x4FFFFC), 0x0000F8);
+    wr32(V(0x5FFFFC), 0x0000F8);
     wr32(V(0x400000), 0x00F800);
-    reg(PLN_LC + 1 * 8, 0x4FFFFC);
+    reg(PLN_LC + 1 * 8, 0x5FFFFC);
     reg(PLN_LC + 1 * 8 + 4, 0x8000 | PLN_BD_COLOR);
     d = present();
     CHECK_EQ(d[0], 31);
     CHECK_EQ(d[MEI_W], 31 << 5);
+    /* the old end of VRAM no longer wraps: ADDR 0xFFFFC, line 1 reads offset 0x100000 */
+    wr32(V(0x4FFFFC), 0x0000F8);
+    wr32(V(0x500000), 0xF80000);
+    reg(PLN_LC + 1 * 8, 0x4FFFFC);
+    d = present();
+    CHECK_EQ(d[0], 31);
+    CHECK_EQ(d[MEI_W], 31 << 10);
 }
 
 /* ================================================================ priorities */
@@ -942,18 +962,18 @@ static uint32_t ref_W(int y, uint32_t off) {
     for (int ch = 0; ch < 8; ch++) {
         uint32_t ctrl = ref_reg[(0xA4 + 8 * ch) / 4];
         if (!(ctrl & 0x8000)) continue;
-        uint32_t n = ((ctrl >> 8) & 3) + 1, t = ctrl & 0xFC, addr = ref_reg[(0xA0 + 8 * ch) / 4] & 0xFFFFC;
+        uint32_t n = ((ctrl >> 8) & 3) + 1, t = ctrl & 0xFC, addr = ref_reg[(0xA0 + 8 * ch) / 4] & 0x1FFFFC;
         for (uint32_t k = 0; k < n; k++) {
             uint32_t o = t + 4 * k;
             int ok = o >= 4 && o <= 0x8C && o != 0x1C && o != 0x38 && o != 0x3C && o != 0x58 && o != 0x5C && o != 0x6C;
-            if (ok && o == off) v = rd32(m->vram + ((addr + ((uint32_t)y * n + k) * 4) & 0xFFFFF));
+            if (ok && o == off) v = rd32(m->vram + ((addr + ((uint32_t)y * n + k) * 4) & 0x1FFFFF));
         }
     }
     return v;
 }
 static int ref_sample(int n, int y, int x, int *hi) {
     uint32_t b = 0x20 + 0x20 * (uint32_t)n;
-    uint32_t mode = ref_W(y, b), tiles = ref_W(y, b + 4) & 0xF8000, map = ref_W(y, b + 8) & 0xFF800;
+    uint32_t mode = ref_W(y, b), tiles = ref_W(y, b + 4) & 0x1F8000, map = ref_W(y, b + 8) & 0x1FF800;
     int mw = (mode & 3) == 0 ? 32 : (mode & 3) == 1 ? 64 : 128;
     int mh = ((mode >> 2) & 3) == 0 ? 32 : ((mode >> 2) & 3) == 1 ? 64 : 128;
     int ts = (mode & 16) ? 16 : 8;
@@ -974,7 +994,7 @@ static int ref_sample(int n, int y, int x, int *hi) {
     if (outside && om == 2) { e = 0; tu = ((tu % ts) + ts) % ts; tv = ((tv % ts) + ts) % ts; }
     else {
         tu = ((tu % wpx) + wpx) % wpx; tv = ((tv % hpx) + hpx) % hpx;
-        e = rd16(m->vram + ((map + (uint32_t)((tv / ts) * mw + tu / ts) * 2) & 0xFFFFF));
+        e = rd16(m->vram + ((map + (uint32_t)((tv / ts) * mw + tu / ts) * 2) & 0x1FFFFF));
     }
     int tx = (int)(tu % ts), ty = (int)(tv % ts);
     if (e & 0x4000) tx = ts - 1 - tx;
@@ -983,9 +1003,9 @@ static int ref_sample(int n, int y, int x, int *hi) {
     if (ts == 8) { cu = (t % 32) * 8 + tx; cv = (t / 32) * 8 + ty; }
     else { cu = (t % 16) * 16 + tx; cv = ((t / 16) % 16) * 16 + ty; }
     int idx, ci, p = (e >> 10) & 7, base = (mode >> 8) & 255;
-    if (mode & 32) { idx = m->vram[(tiles + (uint32_t)(cv * 256 + cu)) & 0xFFFFF]; ci = ((base + p) % 16) * 256 + idx; }
+    if (mode & 32) { idx = m->vram[(tiles + (uint32_t)(cv * 256 + cu)) & 0x1FFFFF]; ci = ((base + p) % 16) * 256 + idx; }
     else {
-        int byte = m->vram[(tiles + (uint32_t)(cv * 128 + cu / 2)) & 0xFFFFF];
+        int byte = m->vram[(tiles + (uint32_t)(cv * 128 + cu / 2)) & 0x1FFFFF];
         idx = (cu % 2) ? byte >> 4 : byte & 15;
         ci = ((base + p) % 256) * 16 + idx;
     }
@@ -1324,6 +1344,10 @@ static void test_reference_random(void) {
         for (int i = 0; i < 4096; i++) pal(i, (uint16_t)(rnd32() & 0x7FFF));
         /* random atlases, maps and tables in the plane area and slots 0-1 */
         for (uint32_t a = 0x44E000; a < 0x490000; a += 4) wr32(V(a), rnd32() & (rnd(0, 3) ? 0xFFFFFFFFu : 0));
+        /* and in VRAM's second megabyte: slots 16-17, a free page's map, the last page */
+        for (uint32_t a = 0x500000; a < 0x510000; a += 4) wr32(V(a), rnd32() & (rnd(0, 3) ? 0xFFFFFFFFu : 0));
+        for (uint32_t a = 0x588000; a < 0x590000; a += 4) wr32(V(a), rnd32() & (rnd(0, 3) ? 0xFFFFFFFFu : 0));
+        for (uint32_t a = 0x5F8000; a < 0x600000; a += 4) wr32(V(a), rnd32() & (rnd(0, 3) ? 0xFFFFFFFFu : 0));
         uint16_t *fr = (uint16_t *)(void *)back();
         for (int i = 0; i < MEI_W * MEI_H; i++) fr[i] = rnd(0, 2) ? 0x8000 : (uint16_t)rnd32();
         uint32_t r[64] = {0};
@@ -1333,13 +1357,14 @@ static void test_reference_random(void) {
         r[3] = rnd32() & 0x3F0FFFFF;
         r[4] = rnd32();
         r[5] = rnd32();
-        static const uint32_t maps[] = {0x450000, 0x452000, 0x454000, 0x458000, 0x45C800};
-        static const uint32_t pages[] = {0x460000, 0x468000, 0x470000, 0x478000, 0x480000, 0x488000};
+        static const uint32_t maps[] = {0x450000, 0x452000, 0x454000, 0x458000, 0x45C800, 0x588000, 0x58C800};
+        static const uint32_t pages[] = {0x460000, 0x468000, 0x470000, 0x478000, 0x480000, 0x488000,
+                                         0x500000, 0x508000, 0x5F8000};
         for (int n = 0; n < 3; n++) {
             uint32_t b = (0x20 + 0x20 * (uint32_t)n) / 4;
             r[b] = rnd32() & 0x3FF3F;
-            r[b + 1] = pages[rnd(0, 5)];
-            r[b + 2] = maps[rnd(0, 4)];
+            r[b + 1] = pages[rnd(0, 8)];
+            r[b + 2] = maps[rnd(0, 6)];
             if (n < 2) r[b + 3] = rnd32();
             if (rnd(0, 2) == 0) { r[b + 4] = (uint32_t)rnd(0, 60) | (uint32_t)rnd(0, 60) << 16; r[b + 5] = (uint32_t)rnd(0, 50) | (uint32_t)rnd(0, 50) << 8; }
         }

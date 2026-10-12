@@ -1,0 +1,85 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "viaduct_end_wall",
+ "budget": {
+  "triangles": 24
+ },
+ "sheets": {
+  "concrete": {
+   "image": "../viaduct_span_16/art/concrete.png"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "concrete": {
+   "color": "#b4b0a6",
+   "texture": {
+    "sheet": "concrete",
+    "cell": "wall",
+    "projection": "box",
+    "scale": [
+     4.0,
+     2.0
+    ]
+   }
+  },
+  "coping": {
+   "color": "#c8c4b8",
+   "palette": true
+  }
+ },
+ "nodes": [
+  {
+   "id": "wall",
+   "op": "box",
+   "size": [
+    13.2,
+    5.3,
+    0.6
+   ],
+   "material": "concrete",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "coping"
+   },
+   "transform": {
+    "translate": [
+     0,
+     2.65,
+     0
+    ]
+   }
+  },
+  {
+   "id": "coping",
+   "op": "box",
+   "size": [
+    13.299999999999999,
+    0.2,
+    0.7
+   ],
+   "material": "coping",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     5.4,
+     0
+    ]
+   }
+  }
+ ]
+}

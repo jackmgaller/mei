@@ -1,0 +1,289 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c3_1",
+ "at": [
+  3,
+  1
+ ],
+ "region": "town",
+ "placements": [
+  {
+   "id": "building",
+   "asset": "street_building",
+   "position": [
+    193.0,
+    0.0,
+    73.0
+   ],
+   "yaw": 90,
+   "collision": "street_building_col"
+  },
+  {
+   "id": "building_dressing",
+   "asset": "street_building_dressing",
+   "position": [
+    193.0,
+    0.0,
+    102.0
+   ],
+   "collision": "street_building_dressing_col"
+  },
+  {
+   "id": "fire_escape",
+   "asset": "town_fire_escape",
+   "position": [
+    196.5,
+    0.0,
+    103.0
+   ],
+   "yaw": 180,
+   "collision": "town_fire_escape_col"
+  },
+  {
+   "id": "fire_escape_up",
+   "asset": "town_fire_escape_up",
+   "position": [
+    196.5,
+    0.0,
+    103.0
+   ],
+   "yaw": 180,
+   "layer": "ladder_e_up",
+   "collision": "none"
+  },
+  {
+   "id": "fire_escape_down",
+   "asset": "town_fire_escape_down",
+   "position": [
+    196.5,
+    0.0,
+    103.0
+   ],
+   "yaw": 180,
+   "layer": "ladder_e",
+   "collision": "none"
+  },
+  {
+   "id": "pole_konbini1",
+   "asset": "town_utility_pole_transformer",
+   "position": [
+    207.0,
+    0.0,
+    106.0
+   ],
+   "collision": "town_utility_pole_transformer_col"
+  },
+  {
+   "id": "lamp_road4",
+   "asset": "street_lamp",
+   "position": [
+    204.0,
+    0.0,
+    115.8
+   ],
+   "yaw": 90,
+   "collision": "street_lamp_col"
+  },
+  {
+   "id": "gym",
+   "asset": "school_gym",
+   "position": [
+    226.0,
+    0.0,
+    79.0
+   ],
+   "yaw": 270,
+   "collision": "school_gym_col"
+  },
+  {
+   "id": "pole_road220",
+   "asset": "town_utility_pole_transformer",
+   "position": [
+    220.0,
+    0.0,
+    106.0
+   ],
+   "yaw": 90,
+   "collision": "town_utility_pole_transformer_col"
+  },
+  {
+   "id": "pole_road250",
+   "asset": "town_utility_pole_tall",
+   "position": [
+    250.0,
+    0.0,
+    106.0
+   ],
+   "yaw": 90,
+   "collision": "town_utility_pole_tall_col"
+  },
+  {
+   "id": "culvert_deck",
+   "asset": "culvert_deck",
+   "position": [
+    236.0,
+    0.0,
+    111.0
+   ],
+   "collision": "culvert_deck_col"
+  },
+  {
+   "id": "zelkova_n0",
+   "asset": "tree_zelkova",
+   "position": [
+    216.0,
+    0.0,
+    122.0
+   ],
+   "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "zelkova_n1",
+   "asset": "tree_zelkova",
+   "position": [
+    248.0,
+    0.0,
+    121.0
+   ],
+   "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "signs_school",
+   "asset": "town_road_signs",
+   "position": [
+    244.0,
+    0.0,
+    101.5
+   ],
+   "yaw": 180,
+   "collision": "none"
+  },
+  {
+   "id": "mirror_gym",
+   "asset": "traffic_mirror",
+   "position": [
+    240.0,
+    0.0,
+    95.5
+   ],
+   "yaw": 225,
+   "collision": "traffic_mirror_col"
+  },
+  {
+   "id": "hydrant_road",
+   "asset": "firepost",
+   "position": [
+    232.0,
+    0.0,
+    102.6
+   ],
+   "yaw": 180,
+   "collision": "firepost_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_ladder_e",
+   "type": "pole",
+   "position": [
+    198.5,
+    0.0,
+    103.95
+   ],
+   "layer": "ladder_e",
+   "params": {
+    "height": 9.0,
+    "front": true
+   },
+   "yaw": 0
+  },
+  {
+   "id": "pole_road220",
+   "type": "pole",
+   "position": [
+    220.0,
+    0.0,
+    106.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "pole_road250",
+   "type": "pole",
+   "position": [
+    250.0,
+    0.0,
+    106.0
+   ],
+   "params": {
+    "height": 11.5
+   }
+  },
+  {
+   "id": "pole_konbini1",
+   "type": "pole",
+   "position": [
+    207.0,
+    0.0,
+    106.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "shortcut_e",
+   "type": "trigger",
+   "position": [
+    199.0,
+    15.25,
+    101.0
+   ],
+   "params": {
+    "size": [
+     3.0,
+     3.0,
+     2.4
+    ],
+    "how": "press",
+    "flag": "shortcut_e",
+    "on": "ladder_e"
+   }
+  },
+  {
+   "id": "coin_wire_konbini1",
+   "type": "coin",
+   "position": [
+    209.195,
+    8.7,
+    72.05
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_wire_konbini2",
+   "type": "coin",
+   "position": [
+    208.612,
+    8.7,
+    86.25
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "rail_overpass_rail_w",
+   "type": "rail",
+   "position": [
+    246.3,
+    1.265,
+    96.05
+   ],
+   "params": {
+    "path": "overpass_rail_w"
+   }
+  }
+ ]
+}

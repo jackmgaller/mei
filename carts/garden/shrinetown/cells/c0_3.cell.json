@@ -1,0 +1,103 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_3",
+ "at": [
+  0,
+  3
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "watermill",
+   "asset": "watermill",
+   "position": [
+    42.27,
+    0.6,
+    196.0
+   ],
+   "collision": "watermill_col"
+  },
+  {
+   "id": "sakagura",
+   "asset": "sakagura",
+   "position": [
+    15.0,
+    0.7,
+    218.0
+   ],
+   "collision": "sakagura_col"
+  },
+  {
+   "id": "ginkgo_4",
+   "asset": "tree_ginkgo",
+   "position": [
+    14,
+    200
+   ],
+   "yaw": 188,
+   "collision": "tree_ginkgo_col"
+  },
+  {
+   "id": "ginkgo_5",
+   "asset": "tree_ginkgo",
+   "position": [
+    32,
+    196
+   ],
+   "yaw": 235,
+   "collision": "tree_ginkgo_col"
+  },
+  {
+   "id": "canal_shrub_toilet_n",
+   "asset": "plant_shrub",
+   "position": [
+    3.4,
+    193.2
+   ],
+   "yaw": 140,
+   "collision": "self"
+  },
+  {
+   "id": "canal_shrub_toilet_e",
+   "asset": "plant_shrub",
+   "position": [
+    11.2,
+    194.0
+   ],
+   "yaw": 70,
+   "collision": "self"
+  },
+  {
+   "id": "canal_shishi_odoshi_mill",
+   "asset": "shishi_odoshi",
+   "position": [
+    36.6,
+    192.6
+   ],
+   "yaw": 90,
+   "collision": "shishi_odoshi_col"
+  },
+  {
+   "id": "canal_tanuki_brewery",
+   "asset": "tanuki",
+   "position": [
+    9.0,
+    211.0
+   ],
+   "collision": "tanuki_col"
+  },
+  {
+   "id": "edge_rock_w192",
+   "asset": "edge_rock_w192",
+   "position": [
+    1.0,
+    9.0,
+    224.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  }
+ ],
+ "entities": []
+}

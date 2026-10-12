@@ -110,6 +110,30 @@ def world_triangles(pack):
 
 # ---- the reader's floor query, exactly
 
+def near_cells(tris, cells, size, margin=1.0):
+    """The triangles a check of `cells` ((i, j) pairs, cell size `size`) needs: near_boxes() of
+    the cells grown by `margin`."""
+    return near_boxes(tris, [(i * size - margin, j * size - margin, (i + 1) * size + margin, (j + 1) * size + margin)
+                             for i, j in cells])
+
+
+def near_boxes(tris, boxes):
+    """The triangles whose bounds (seen from above) meet one of the boxes (x0, z0, x1, z1), and
+    every triangle whose bounds meet theirs, so that an edge they share with a neighbour outside
+    the boxes is still shared."""
+    def meets(b, c):
+        return b[0] <= c[2] and c[0] <= b[2] and b[1] <= c[3] and c[1] <= b[3]
+    marked = [(t, (min(v[0] for v in t.verts), min(v[2] for v in t.verts),
+                   max(v[0] for v in t.verts), max(v[2] for v in t.verts))) for t in tris if t.verts is not None]
+    unions = []
+    for c in boxes:
+        core = [b for _, b in marked if meets(b, c)]
+        if core:
+            unions.append((min(b[0] for b in core), min(b[1] for b in core),
+                           max(b[2] for b in core), max(b[3] for b in core)))
+    return [t for t, b in marked if any(meets(b, u) for u in unions)]
+
+
 def reader_floor(pack, x, y, z, layers_on, above=0):
     """wp_floor() at raw world point (x, y, z): the height (raw) of the highest present floor at
     or below y + above whose edge rows accept the point, and its tag; or None."""
@@ -132,6 +156,64 @@ def reader_floor(pack, x, y, z, layers_on, above=0):
             continue
         best = (h, info >> 16, info & 255)
     return best
+
+
+# wp_floor_across()'s steps (raw units): 1/16 along x and z, 181/4096 in x and z along the diagonals.
+ACROSS = ((4096, 0), (0, 4096), (2896, 2896), (2896, -2896))
+
+
+def across_steps(bridge):
+    """wp_floor_across()'s span in steps of 1/16: (span * 16) as s32, span in fixed point."""
+    return (round(bridge * ONE) * 16) >> 16
+
+
+def reader_floor_across(pack, x, y, z, layers_on, above, below, n):
+    """wp_floor_across() at raw world point (x, y, z), bit for bit (above, below raw; n steps,
+    across_steps()): wp_floor()'s floor when it is at or above y - below; else, along x, z and
+    the two diagonals in that order, the nearest floor within y - below .. y + above on each
+    side, a and b steps out with a + b <= n: the higher of the two (the first direction that
+    has them); else wp_floor()'s answer. Returns (height raw, tag, surface) or None."""
+    lo = y - below
+    got = reader_floor(pack, x, y, z, layers_on, above)
+    if got is not None and got[0] >= lo:
+        return got
+
+    def ok(k, sx, sz):
+        g = reader_floor(pack, x + k * sx, y, z + k * sz, layers_on, above)
+        return g if g is not None and g[0] >= lo else None
+    for sx, sz in ACROSS:
+        side = None
+        a = 1
+        while a < n:
+            side = ok(a, sx, sz)
+            if side is not None:
+                break
+            a += 1
+        if side is None:
+            continue
+        other = None
+        b = 1
+        while a + b <= n:
+            other = ok(-b, sx, sz)
+            if other is not None:
+                break
+            b += 1
+        if other is None:
+            continue
+        return side if side[0] > other[0] else other
+    return got
+
+
+def bridged(pack, x, h, z, layers_on, probe):
+    """Whether the game's floor query bridges raw point (x, z) for a body at height h (units):
+    wp_floor_across() with the probe's step above and below and its bridge as the span finds a
+    floor within the step of h."""
+    n = across_steps(probe.get('bridge', 0) or 0)
+    if n < 2:
+        return False
+    y, step = round(h * ONE), round(probe['step'] * ONE)
+    got = reader_floor_across(pack, x, y, z, layers_on, step, step, n)
+    return got is not None and got[0] >= y - step
 
 
 # ---- collision checks
@@ -209,6 +291,7 @@ def crack_check(pack, floors_all, layers_on, probe, settings, limit):
     floors = [t for t in floors_all if t.kind == KIND_FLOOR and _present(t, layers_on)]
     edges = _boundary_edges(floors)
     radius, step = probe['radius'], probe['step']
+    bridging = across_steps(probe.get('bridge', 0) or 0) >= 2
     per_unit = settings['crack_samples_per_unit']
     offsets = [1 / ONE, 2 / ONE, 4 / ONE, 16 / ONE, 1 / 256, 1 / 64]
     t = 1 / 16
@@ -230,21 +313,37 @@ def crack_check(pack, floors_all, layers_on, probe, settings, limit):
             px, pz = p[0] + (q[0] - p[0]) * f, p[2] + (q[2] - p[2]) * f
             h = _height(tri, px, pz)
             gap = None
+            holes = []
+            last = 0.0                  # the last offset with a floor before the gap
             for off in offsets:
                 x, z = round((px + out[0] * off) * ONE), round((pz + out[1] * off) * ONE)
                 got = reader_floor(pack, x, round((h + step) * ONE), z, layers_on)
                 present = got is not None and got[0] >= (h - step) * ONE
-                if not present and gap is None:
-                    gap = off
-                elif present and gap is not None:
+                if not present:
+                    holes.append((off, x, z))
+                    if gap is None:
+                        gap = off
+                elif gap is None:
+                    last = off
+                else:
+                    if bridging:
+                        # the game's query bridges it unless a point of the gap is not bridged
+                        gap = next((o for o, hx, hz in holes if not bridged(pack, hx, h, hz, layers_on, probe)), None)
+                        if gap is None:
+                            break
                     count += 1
                     key = (tri.tag, got[1], tri.cell)
                     if key not in findings:
                         findings[key] = {'code': 'crack', 'cell': list(tri.cell), 'floor_tag': tri.tag,
                                          'beyond_tag': got[1], 'at': [round(px, 4), round(h, 4), round(pz, 4)],
                                          'gap': [round(gap, 6), round(off, 6)], 'samples': 0,
-                                         'on_seam': _on_seam(px, pz, S)}
-                    findings[key]['samples'] += 1
+                                         'on_seam': _on_seam(px, pz, S), 'width': 0.0}
+                    found = findings[key]
+                    found['samples'] += 1
+                    width = round(off - last, 6)    # at most this wide here; the widest of the samples
+                    if width > found['width']:
+                        found['width'] = width
+                        found['widest_at'] = [round(px, 4), round(h, 4), round(pz, 4)]
                     break
     # collinear boundary edges facing each other without shared rows
     lines = {}
@@ -267,6 +366,8 @@ def crack_check(pack, floors_all, layers_on, probe, settings, limit):
                 r = _facing_overlap(a, b, step)
                 if r is None:
                     continue
+                if bridging and _sliver_bridged(pack, a, r, layers_on, probe):
+                    continue
                 k2 = (a[0].tag, b[0].tag, a[0].cell)
                 if k2 not in mism:
                     mx_, mz_ = r
@@ -277,6 +378,240 @@ def crack_check(pack, floors_all, layers_on, probe, settings, limit):
     found = list(findings.values()) + list(mism.values())
     found.sort(key=lambda f: (f['code'], f['cell'], f['floor_tag'], f['beyond_tag']))
     return found[:limit], len(found), len(edges), count
+
+
+# ---- drops: a body falling onto steep ground
+
+# The game's body samples walls at these heights above its feet, as fractions of the probe's
+# height (carts/garden/player.akr's PUSH_H: 0.36, 0.9 and 1.4 of 1.6).
+PUSH_FRACTIONS = (0.225, 0.5625, 0.875)
+
+
+def _cell_mask(c, layers_on):
+    return sum(1 << k for k, lid in enumerate(c.layers) if lid in layers_on)
+
+
+def _fxdot(a, b):
+    """The CPU's four-lane dot product: the 64-bit sum shifted right 16."""
+    return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]) >> 16
+
+
+def reader_push(pack, x, y, z, radius, layers_on):
+    """wp_push() at raw world point (x, y, z), bit for bit: the walls of the point's cell's
+    bucket, in the order the pack files them, each pushing the point out along its horizontal
+    normal when it is within radius (raw) of the wall's plane and inside its edges. Returns
+    (x, z, walls pushed)."""
+    (i, j), lx, lz = pack.cell_of(x, z)
+    c = pack.cells.get((i, j))
+    if c is None or c.coll is None:
+        return x, z, 0
+    ox, oz = x - lx, z - lz
+    mask = _cell_mask(c, layers_on)
+    count = 0
+    for wid in c.coll.bucket(lx, lz)[1]:
+        p, edges, hx, hz, inv, info = c.coll.walls[wid]
+        lm = (info >> 8) & 255
+        if lm and not lm & mask:
+            continue
+        q = (lx, y, lz, ONE)
+        d = _fxdot(p, q)
+        if d <= -radius or d >= radius:
+            continue
+        if any(_fxdot(e, q) < 0 for e in edges):
+            continue
+        push = ((radius - d) * inv) >> 16
+        lx += (hx * push) >> 16
+        lz += (hz * push) >> 16
+        count += 1
+    return lx + ox, lz + oz, count
+
+
+def up_surfaces(pack, x, z, layers_on, min_ny):
+    """The up-facing collision over raw world point (x, z) in its cell's bucket: [(height raw,
+    kind, tag)] for every present floor whose edges accept the point, and every wall whose
+    normal's y is at least min_ny (raw) whose edges accept the point on its plane."""
+    (i, j), lx, lz = pack.cell_of(x, z)
+    c = pack.cells.get((i, j))
+    if c is None or c.coll is None:
+        return []
+    mask = _cell_mask(c, layers_on)
+    fl, wl, _ = c.coll.bucket(lx, lz)
+    out = []
+    for fid in fl:
+        a, b, cc, info, edges, _, _ = c.coll.floors[fid]
+        lm = (info >> 8) & 255
+        if lm and not lm & mask:
+            continue
+        if any(mx * lx + mz * lz + k * ONE < 0 for mx, mz, k in edges):
+            continue
+        out.append(((a * lx + b * lz + cc * ONE) >> 16, KIND_FLOOR, info >> 16))
+    for wid in wl:
+        p, edges, hx, hz, inv, info = c.coll.walls[wid]
+        if p[1] < min_ny:
+            continue
+        lm = (info >> 8) & 255
+        if lm and not lm & mask:
+            continue
+        y = -(p[0] * lx + p[2] * lz + p[3] * ONE) // p[1]
+        q = (lx, y, lz, ONE)
+        if any(_fxdot(e, q) < 0 for e in edges):
+            continue
+        out.append((y, KIND_WALL, info >> 16))
+    return out
+
+
+def drop_body(pack, x, z, y, layers_on, probe, drop):
+    """A body dropped with its feet at raw (x, y, z), falling drop['speed'] units a tick, moved
+    as the game's air move moves it: pushed out of walls at the probe's sample heights, then
+    down, then onto a floor its feet reached (wp_floor_across() with the probe's step and
+    bridge). Returns ('landed', x, y, z, ticks); ('through', x, y, z, ticks, tag, height): it is
+    under up-facing collision (that tag's, at that height) with none under its feet, fallen
+    through the world; ('out', x, y, z, ticks): no collision is left over or under it (off the
+    world's edge); or ('falling', ...) after drop['ticks'] ticks."""
+    radius, step = round(probe['radius'] * ONE), round(probe['step'] * ONE)
+    speed = round(drop['speed'] * ONE)
+    n = across_steps(probe.get('bridge', 0) or 0)
+    heights = [round(probe['height'] * f * ONE) for f in PUSH_FRACTIONS]
+    min_ny = round(drop['min_normal_y'] * ONE)
+    top = heights[-1] + radius
+    for tick in range(1, drop['ticks'] + 1):
+        for h in heights:
+            x, z, _ = reader_push(pack, x, y + h, z, radius, layers_on)
+        old = y
+        y -= speed
+        got = (reader_floor_across(pack, x, old, z, layers_on, step, max(old - y, step), n) if n >= 2
+               else reader_floor(pack, x, old, z, layers_on, step))
+        if got is not None and got[0] >= y:
+            return ('landed', x, got[0], z, tick)
+        ups = up_surfaces(pack, x, z, layers_on, min_ny)
+        if not ups:
+            return ('out', x, y, z, tick)
+        over = min(ups, key=lambda s: s[0])
+        if over[0] > y + top:
+            # the whole body is under the lowest up-facing collision here: no wall sample can
+            # reach the surface to push it back out
+            return ('through', x, y, z, tick, over[2], over[0])
+    return ('falling', x, y, z, drop['ticks'])
+
+
+def _layer_near(pack, x, z, layers_on):
+    """Whether the bucket over raw world point (x, z) holds a floor or wall of one of the layers
+    (a drop there can go otherwise than with every layer off)."""
+    (i, j), lx, lz = pack.cell_of(x, z)
+    c = pack.cells.get((i, j))
+    if c is None or c.coll is None:
+        return False
+    mask = _cell_mask(c, layers_on)
+    if not mask:
+        return False
+    fl, wl, _ = c.coll.bucket(lx, lz)
+    return any((c.coll.floors[f][3] >> 8) & mask for f in fl) or any((c.coll.walls[w][5] >> 8) & mask for w in wl)
+
+
+def drop_check(pack, layers_on, probe, drop, limit, cells=None):
+    """Bodies dropped over every point of a grid (drop['spacing'] units) where the highest
+    up-facing collision is a wall, not a floor: ground too steep to stand on, which a falling
+    body can still land on. Each starts drop['start'] units over that wall at the fall speed and
+    moves as drop_body() moves it; one that falls through the world is a finding (points within
+    drop['merge'] units of a finding in its cell are counted in it). Returns (findings, findings
+    before the limit, drops made)."""
+    S = 1 << pack.cell_shift
+    k = max(1, int(round(S / drop['spacing'])))
+    min_ny = round(drop['min_normal_y'] * ONE)
+    start = round(drop['start'] * ONE)
+    near = drop['merge']
+    found, made = [], 0
+    for (i, j) in sorted(pack.cells, key=lambda ij: (ij[1], ij[0])):
+        if cells is not None and (i, j) not in cells:
+            continue
+        if pack.cells[(i, j)].coll is None:
+            continue
+        for gz in range(k):
+            for gx in range(k):
+                x = round((i * S + (gx + 0.5) * S / k) * ONE)
+                z = round((j * S + (gz + 0.5) * S / k) * ONE)
+                if layers_on and not _layer_near(pack, x, z, layers_on):
+                    continue            # the layers change nothing here: every layer off covered it
+                ups = up_surfaces(pack, x, z, layers_on, min_ny)
+                if not ups:
+                    continue
+                top = max(ups, key=lambda s: (s[0], -s[1]))
+                if top[1] == KIND_FLOOR:
+                    continue
+                made += 1
+                r = drop_body(pack, x, z, top[0] + start, layers_on, probe, drop)
+                if r[0] != 'through':
+                    continue
+                at = [round(x / ONE, 4), round(top[0] / ONE, 4), round(z / ONE, 4)]
+                same = next((g for g in found if g['cell'] == [i, j] and abs(g['at'][0] - at[0]) <= near
+                             and abs(g['at'][2] - at[2]) <= near), None)
+                if same is not None:
+                    same['points'] += 1
+                    continue
+                found.append({'code': 'drop_through', 'cell': [i, j], 'at': at, 'tag': top[2],
+                              'ended': [round(r[1] / ONE, 4), round(r[2] / ONE, 4), round(r[3] / ONE, 4)],
+                              'ticks': r[4], 'under_tag': r[5], 'under': round(r[6] / ONE, 4), 'points': 1})
+    return found[:limit], len(found), made
+
+
+# ---- the crack baseline (NAME.cracks.json beside the recipe; WORLDCHECKER.md, "Crack baseline")
+
+BASELINE_FORMAT = 'mei-world-cracks'
+BASELINE_KEYS = ('code', 'cell', 'floor_tag', 'beyond_tag', 'layers', 'at', 'width')
+
+
+def _same_crack(f, b):
+    """Whether finding f is baseline entry b: the same code and layers, and the same cell and
+    tags, or a point within 1 unit across and 0.5 up of b's (tags change when a cell's placements
+    are renumbered; a finding's point moves when its first sample does)."""
+    if f['code'] != b['code'] or sorted(f.get('layers', [])) != sorted(b.get('layers', [])):
+        return False
+    if list(f['cell']) == list(b['cell']) and f['floor_tag'] == b['floor_tag'] and f['beyond_tag'] == b['beyond_tag']:
+        return True
+    (x, y, z), (bx, by, bz) = f['at'], b['at']
+    return abs(x - bx) <= 1.0 and abs(z - bz) <= 1.0 and abs(y - by) <= 0.5
+
+
+def against_baseline(found, baseline):
+    """Findings split by the baseline's entries: (new, known, fixed), fixed being the entries
+    no finding matches."""
+    new, known, used = [], [], set()
+    for f in found:
+        hit = next((k for k, b in enumerate(baseline) if _same_crack(f, b)), None)
+        if hit is None:
+            new.append(f)
+        else:
+            known.append(f)
+            used.add(hit)
+    return new, known, [b for k, b in enumerate(baseline) if k not in used]
+
+
+def baseline_entry(f):
+    """A finding as NAME.cracks.json keeps it."""
+    out = {k: f[k] for k in BASELINE_KEYS if k in f}
+    for k in ('floor', 'beyond', 'route'):
+        if k in f:
+            out[k] = f[k]
+    return out
+
+
+def _sliver_bridged(pack, a, r, layers_on, probe):
+    """Whether the game's floor query bridges the sliver a mismatched edge can leave: at the
+    overlap's midpoint r and 1 and 2 raw units either side of edge a's line, every point without
+    a floor within the step of the edge's height is bridged (bridged())."""
+    tri, row = a[0], a[1]
+    mlen = math.hypot(row[0], row[1])
+    nx, nz = row[0] / mlen, row[1] / mlen
+    h = _height(tri, r[0], r[1])
+    step = probe['step']
+    for t in (-2, -1, 0, 1, 2):
+        x, z = round(r[0] * ONE + nx * t), round(r[1] * ONE + nz * t)
+        got = reader_floor(pack, x, round((h + step) * ONE), z, layers_on)
+        if got is not None and got[0] >= (h - step) * ONE:
+            continue
+        if not bridged(pack, x, h, z, layers_on, probe):
+            return False
+    return True
 
 
 def _on_seam(x, z, S):
@@ -529,7 +864,7 @@ def _clip_side(poly, n, d):
     return out
 
 
-def ground_check(pack, near_far, limit):
+def ground_check(pack, near_far, limit, cells=None):
     """Likely misuse of the ground flag (docs/WORLDPACK.md, "Ground"): geometry that a ground
     face can hide. The reader draws ground first, so whatever is drawn after it shows through
     ground that truly hides it, and ground faces that can overlap on screen are sorted among
@@ -540,10 +875,13 @@ def ground_check(pack, near_far, limit):
     of each other. The sides and undersides of ground meshes are left out as hiding faces: only
     cameras below the ground's top see through them. Layers that can never be on together are
     skipped. Returns warnings: one per pair of
-    instances, at most `limit` of each code, with the totals."""
+    instances, at most `limit` of each code, with the totals. cells: only the ground of these
+    cells ((i, j) pairs; the quick check's focus), or None for every cell."""
     from .verify_render import instances, read_mesh
     insts = [i for i in instances(pack) if i.key[0] != 'standin']
-    ground = [i for i in insts if i.ground]
+    if cells is not None:
+        insts = [i for i in insts if any(max(abs(i.cell[0] - a), abs(i.cell[1] - b)) <= 2 for a, b in cells)]
+    ground = [i for i in insts if i.ground and (cells is None or tuple(i.cell) in cells)]
     if not ground:
         return []
     meshes, faces = {}, {}

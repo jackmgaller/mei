@@ -451,6 +451,69 @@ class DifferentialTests(unittest.TestCase):
                 if VERBOSE:
                     print(f'\n  heightfield shift {shift}: worst height error {worst:.6f}')
 
+    def test_floor_across_cracks_matches_the_checker(self):
+        """wp_floor_across() and the World Checker's reader_floor_across() give the same answer,
+        bit for bit, near gaps of many widths and angles between slabs 2 units up over a ground
+        at 0 (outside the window), some across a cell seam and some with the far slab higher;
+        and a gap is bridged as WORLDKIT.md says: narrower than (span - 1/8) cos 22.5 at every
+        point, never wider than the span."""
+        try:
+            from worldkit import verify_static as ST
+        except ImportError as error:
+            self.skipTest(f'the World Checker does not load: {error}')
+        rng = random.Random(5)
+        tris, gaps = [], []
+        tag = 10
+        S = 64
+        tris += [Tri((0, 0, 0), (2 * S, 0, 0), (0, 0, S), tag=1), Tri((2 * S, 0, 0), (2 * S, 0, S), (0, 0, S), tag=1)]
+        k = 0
+        for width in (0.016, 0.05, 0.1, 0.2, 0.25, 0.28, 0.33, 0.4, 0.45, 0.6):
+            for deg in (0, 22.5, 30, 45, 60, 90):
+                for rise in (0.0, 0.25, 0.5):
+                    # 20 columns of 9; the eleventh (x = 64) on the seam
+                    cx, cz = 4 + 6 * (k // 9), 4 + 6.5 * (k % 9)
+                    k += 1
+                    a = math.radians(deg)
+                    ux, uz, vx, vz = math.cos(a), math.sin(a), -math.sin(a), math.cos(a)
+
+                    def at(s, t, y):
+                        return (cx + ux * s + vx * t, y, cz + uz * s + vz * t)
+                    for (s0, s1), y in (((-1.5, -width / 2), 2.0), ((width / 2, 1.5), 2.0 + rise)):
+                        q = [at(s0, -1.5, y), at(s1, -1.5, y), at(s1, 1.5, y), at(s0, 1.5, y)]
+                        tris += [Tri(q[0], q[1], q[2], tag=tag), Tri(q[0], q[2], q[3], tag=tag)]
+                        tag += 1
+                    gaps.append((cx, cz, ux, uz, width, rise))
+        w = World(cells=[Cell(0, 0, collision=[t for t in tris]), Cell(1, 0, collision=[])])
+        pack = decode(encode(w))
+        recs, pts = [], []
+        for cx, cz, ux, uz, width, rise in gaps:
+            for _ in range(12):
+                s = rng.uniform(-0.6, 0.6) * max(width, 0.3)
+                t = rng.uniform(-1.2, 1.2)
+                y = 2.0 + rng.choice([0.0, 0.1, -0.1, rise])
+                span = rng.choice([0.4375, 0.4375, 0.25, 0.125])
+                p = F.raw((cx + ux * s - uz * t, y, cz + uz * s + ux * t))
+                q = (fx(0.32), fx(0.32), fx(span))
+                recs.append(F.query(F.OP_ACROSS, p, q))
+                pts.append((p, q, s, width, rise, span))
+        got = self.run_queries(w, recs, frames=600)
+        bridged = 0
+        for (p, q, s, width, rise, span), g in zip(pts, got):
+            want = ST.reader_floor_across(pack, p[0], p[1], p[2], set(), q[0], q[1], ST.across_steps(span))
+            lo = p[1] - q[1]
+            self.assertEqual(g[0] == 1, want is not None, (p, width, span))
+            if want is not None:
+                self.assertEqual((g[1], g[3]), (want[0], want[1]), (p, width, span))
+            inside = abs(s) < width / 2 - 1e-3
+            on_slab = want is not None and want[0] >= lo and want[1] != 1
+            if inside and on_slab:
+                bridged += 1
+                self.assertLessEqual(width, span + 1e-9, 'a gap wider than the span is never bridged')
+            elif inside and rise <= 0.32 - 0.1 and abs(p[1] / ONE - 2.0) <= 0.1 + 1e-6 and \
+                    width < (span - 0.125) * math.cos(math.radians(22.5)) - 1e-3:
+                self.fail(f'a gap of {width} is not bridged with span {span} at {[c / ONE for c in p]}')
+        self.assertGreater(bridged, 100)
+
     def test_moving_object_in_its_own_frame(self):
         w, etris = F.random_world(21, 6)
         oracle = Oracle.from_tris(etris)
@@ -916,9 +979,13 @@ class CostTests(unittest.TestCase):
             got.setdefault(f[0], []).append([int(x) for x in f[1:]])
         if VERBOSE:
             print('\n  ' + '\n  '.join(lines))
-        per = {k: got[k][0][0] for k in ('cell', 'floor', 'ceiling', 'push', 'ray4', 'ray15')}
+        per = {k: got[k][0][0] for k in ('cell', 'floor', 'across', 'across_air', 'ceiling', 'push', 'ray4', 'ray15')}
         # Tsumiki's floor query among 41 solids took about 2,000 cycles (docs/WORLDKIT.md)
         self.assertLess(per['floor'], 1000)
+        # wp_floor_across(): wp_floor() and little more on whole ground; at most 25 queries when
+        # there is nothing in the window (in the air), 6 steps out along each of 4 directions
+        self.assertLess(per['across'], per['floor'] + 100)
+        self.assertLess(per['across_air'], 25 * per['floor'] + 1000)
         self.assertLess(per['ceiling'], 1000)
         self.assertLess(per['push'], 1000)
         self.assertLess(per['ray4'], 5000)
@@ -1211,7 +1278,7 @@ class RegionExtTests(unittest.TestCase):
         self.assertEqual((old.regions[0].runs, old.regions[0].animations, old.regions[0].sky), ([], [], None))
 
     def test_limits(self):
-        bad = [dict(runs=[P.PaletteRun(4090, [[0] * 8, [0] * 8])]),           # past colour 4095
+        bad = [dict(runs=[P.PaletteRun(8186, [[0] * 8, [0] * 8])]),           # past colour 8191
                dict(runs=[P.PaletteRun(3584, [[0, 1]])]),                       # one list for two variants
                dict(animations=[P.Animation(b'\0' * 7, 3, 4, 4, 2, 0, 128)]),   # frames' bytes
                dict(animations=[P.Animation(b'\0' * 24, 3, 0, 4, 2, 0, 128)]),  # ticks 0
@@ -1235,6 +1302,43 @@ class RegionExtTests(unittest.TestCase):
         for what, data in cases.items():
             with self.assertRaises(PackError, msg=what):
                 decode(data)
+
+    def high_world(self):
+        """region_world() moved into VRAM's second megabyte: slot 20, colours 4112 on, the 8-bit
+        run at colour 7936 (8-bit palette 31), the animated tile in slot 20, backdrop art at
+        0x590000 (a free page)."""
+        w = region_world()
+        r = w.regions[0]
+        r.textures[0].slot = 20
+        r.first_colour = 4096 + 16
+        r.runs = [P.PaletteRun(31 * 256, r.runs[0].variants)]
+        r.animations[0].vram = 20 * 32768 + 128 * 8
+        r.backdrop = [P.VramCopy(0x590000, bytes([9, 8, 7, 6]))]
+        return w
+
+    def test_second_megabyte_round_trip_and_limits(self):
+        r = decode(encode(self.high_world())).regions[0]
+        self.assertEqual((r.textures[0].slot, r.first_colour, r.runs[0].first_colour, r.animations[0].vram),
+                         (20, 4112, 7936, 20 * 32768 + 1024))
+        for over in (dict(runs=[P.PaletteRun(8190, [[0] * 4, [0] * 4])]),            # past colour 8191
+                     dict(textures=[P.Texture(32, b'\0' * 4, True)]),                  # no slot 32
+                     dict(animations=[P.Animation(b'\0' * 24, 3, 4, 4, 2, 32 * 32768, 128)])):   # past slot 31
+            with self.assertRaises(PackError, msg=over):
+                encode(region_world(**over))
+
+    @needs_tools
+    def test_the_reader_uses_the_second_megabyte(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lines = F.run_cart(tmp, 'regions_hi.akr', {'PACK': ('u8', encode(self.high_world()))})
+        self.assertEqual(lines[-1], 'done')
+        vals = dict(l.split(' ', 1) for l in lines[:-1])
+        self.assertEqual(vals['texture'], '33 67 17')
+        self.assertEqual(vals['slot4'], '0 0 0')
+        self.assertEqual(vals['day'], '1000 31 992')
+        self.assertEqual(vals['bank0'], '0 0 0')
+        self.assertEqual(vals['backdrop'], '9 6 0')
+        self.assertEqual(vals['night'], '2000 1 32')
+        self.assertEqual(vals['frame1'], '0 1 34')
 
     @needs_tools
     def test_the_reader_enters_regions_and_animates(self):
@@ -1260,6 +1364,8 @@ class RegionExtTests(unittest.TestCase):
             print(f'\nwp_animate: {unchanged} cycles with no frame change, {changed} copying 2 rows of 4 bytes')
         self.assertLess(unchanged, 400)
         self.assertLess(changed, 1500)
+        self.assertEqual(vals['again'], '17 0 0')         # the animated slot is copied again
+        self.assertEqual(vals['cache'], '99 33 0')        # an untouched slot is not, until forgotten
 
 
 class PathEncoderTests(unittest.TestCase):
@@ -1461,6 +1567,207 @@ class PathTests(unittest.TestCase):
         self.assertLess(got[1][1], 200)
         self.assertLess(got[4][0], 800)
         self.assertLess(got[16][0], 2500)
+
+
+def occl_world(zones=True):
+    """One 64-unit cell (with a layer, `night`): a floor, a wall 24 x 8 across z 30.5, boxes behind
+    it and in front, a ground tile behind it, a box in the layer behind it; and two cells north
+    with stand-ins. With zones, the World Kit's occlusion (tools/worldkit/occlusion.py) gives the
+    cell two zones south of the wall: `front`, and `night_front` in the layer."""
+    from worldkit import occlusion
+    wall = F.box_mesh((-12, 0, -0.5), (12, 8, 0.5), meshlib_rgb(200, 180, 160))
+    box = F.box_mesh((-0.5, 0, -0.5), (0.5, 2, 0.5), meshlib_rgb(60, 120, 200))
+    floor = F.box_mesh((-32, -0.2, -32), (32, 0, 32), meshlib_rgb(90, 140, 90))
+    tile = F.box_mesh((-4, -0.1, -4), (4, 0.05, 4), meshlib_rgb(140, 90, 90))
+    pls = [Placement(floor, (32, 0, 32), ground=True, tag=1), Placement(wall, (32, 0, 30.5), tag=2)]
+    pls += [Placement(box, (22 + 2 * k, 0, 36 + (k % 4) * 5), tag=10 + k) for k in range(12)]   # behind
+    pls += [Placement(box, (8 + 16 * k, 0, 6), tag=30 + k) for k in range(4)]                     # in front
+    pls += [Placement(box, (6, 0, 50), tag=40),                             # beside the wall, in sight
+            Placement(tile, (32, 0, 52), ground=True, tag=41),              # ground behind the wall
+            Placement(box, (30, 0, 44), layer='night', tag=42)]
+    cells = [Cell(0, 0, layers=['night'], placements=pls)]
+    standin = F.box_mesh((-20, 0, -20), (20, 3, 20), meshlib_rgb(120, 120, 120))
+    for j in (2, 3):
+        cells.append(Cell(0, j, standin=standin, placements=[Placement(box, (32, 0, 64 * j + 32), tag=50 + j)]))
+    w = World(cells=cells, layers=[Layer('night')])
+    if zones:
+        spec = {'occluders': {'wall': {'box': [[20.2, 0.2, 30.2], [43.8, 7.8, 30.8]]}},
+                'zones': {'front': {'box': [[28, 1, 10], [36, 3, 20]]},
+                          'night_front': {'box': [[8, 1, 10], [16, 3, 20]], 'layer': 'night'}}}
+        w.report = occlusion.compute(spec, w, 64, ['night'], [])
+    return w
+
+
+class OcclusionEncoderTests(unittest.TestCase):
+    """Occlusion zones (1.5): the records, their limits and the oracle."""
+
+    def test_round_trip(self):
+        w = occl_world()
+        data = encode(w)
+        self.assertEqual(data, encode(occl_world()), 'encoding is deterministic')
+        pack = decode(data)
+        self.assertEqual((pack.minor, struct.unpack_from('<H', data, 14)[0], struct.unpack_from('<I', data, 80)[0]),
+                         (5, 84, 0))
+        c = pack.cells[(0, 0)]
+        self.assertEqual(len(c.zones), 2)
+        front, night = c.zones
+        self.assertEqual((front['lo'], front['hi']), ((fx(-4), fx(1), fx(-22)), (fx(4), fx(3), fx(-12))))
+        self.assertEqual((front['layer'], night['layer']), (None, 0))
+        tags = lambda z: sorted(c.placements[k]['tag'] for k in z['hidden'][(0, 0)])
+        # the ground tile and the boxes behind the wall that stay inside its shadow; not the box
+        # beside it, the ones in front, the wall or the floor, nor the three nearest the wall (z 36):
+        # their feet reach 0.0005 below the shadow of the occluder's bottom edge (0.2) from (28, 1, 10)
+        self.assertEqual(tags(front), [11, 12, 13, 15, 16, 17, 19, 20, 21, 41, 42])
+        self.assertEqual(tags(night), [19, 20], 'from the west: two boxes far behind the wall\'s east half')
+        tile = next(k for k, q in enumerate(c.placements) if q['tag'] == 41)
+        self.assertTrue(tile < c.ground_count and tile in front['hidden'][(0, 0)], 'the ground tile, filed first')
+        self.assertTrue(P.zone_hides_standin(front, 0, 2) and P.zone_hides_standin(front, 0, 3))
+        self.assertFalse(P.zone_hides_standin(night, 0, 2))
+        self.assertEqual(w.report[0]['standins'], 2)
+
+    def test_the_kit_answers_the_same_without_numpy(self):
+        with_np = encode(occl_world())
+        saved = sys.modules.get('numpy')
+        sys.modules['numpy'] = None             # import numpy now raises ImportError
+        try:
+            without = encode(occl_world())
+        finally:
+            if saved is None:
+                del sys.modules['numpy']
+            else:
+                sys.modules['numpy'] = saved
+        self.assertEqual(with_np, without)
+
+    def test_worlds_without_zones_are_unchanged(self):
+        plain = occl_world(zones=False)
+        data = encode(plain)
+        self.assertEqual(decode(data).minor, 3)
+        self.assertEqual(struct.unpack_from('<II', data, decode(data).cells[(0, 0)].off + 88), (0, 0))
+        # with a region extension the pack is 1.4 without zones, 1.5 with them
+        ext = region_world()
+        self.assertEqual(decode(encode(ext)).minor, 4)
+        ext.cells[0].placements = [Placement(F.box_mesh((-1, 0, -1), (1, 2, 1), 1), (8, 0, 8))]
+        ext.cells[0].zones = [P.Zone((1, 0, 1), (4, 2, 4), hidden=list(ext.cells[0].placements))]
+        data = encode(ext)
+        p = decode(data)
+        self.assertEqual(p.minor, 5)
+        self.assertNotEqual(struct.unpack_from('<I', data, 80)[0], 0)
+        self.assertIsNotNone(p.regions[0].sky)
+        # a 1.5 pack read as 1.4: the cell's zone words are reserved there
+        data = encode(occl_world())
+        old = decode(data[:6] + struct.pack('<H', 4) + data[8:])
+        self.assertEqual(old.cells[(0, 0)].zones, [])
+
+    def test_limits(self):
+        box = F.box_mesh((-1, 0, -1), (1, 2, 1), 1)
+
+        def world(zone):
+            a, b = Placement(box, (8, 0, 8)), Placement(box, (200, 0, 8))
+            cells = [Cell(0, 0, placements=[a]), Cell(3, 0, placements=[b], standin=box), Cell(5, 0, standin=box)]
+            cells[0].zones = [zone(a, b)]
+            return World(cells=cells)
+        for zone, message in ((lambda a, b: P.Zone((4, 0, 4), (4, 2, 8), hidden=[a]), 'empty'),
+                              (lambda a, b: P.Zone((4, 0, 4), (70, 2, 8), hidden=[a]), 'past its cell'),
+                              (lambda a, b: P.Zone((4, 0, 4), (8, 2, 8), layer='x', hidden=[a]), 'not a layer'),
+                              (lambda a, b: P.Zone((4, 0, 4), (8, 2, 8), standins=[(5, 0)]), 'within 3'),
+                              (lambda a, b: P.Zone((4, 0, 4), (8, 2, 8), standins=[(2, 0)]), 'within 3'),
+                              (lambda a, b: P.Zone((4, 0, 4), (8, 2, 8), hidden=[b]), 'near cell'),
+                              (lambda a, b: P.Zone((4, 0, 4), (8, 2, 8), hidden=[Placement(box, (8, 0, 8))]), 'no cell')):
+            with self.subTest(message=message), self.assertRaisesRegex(PackError, message):
+                encode(world(zone))
+        self.assertEqual(decode(encode(world(lambda a, b: P.Zone((4, 0, 4), (8, 2, 8), standins=[(3, 0)])))).minor, 5)
+
+    def test_malformed_zones_are_refused(self):
+        good = encode(occl_world())
+        pack = decode(good)
+        c = pack.cells[(0, 0)]
+        z = c.zones[0]['off']
+        mask = struct.unpack_from('<I', good, z + 44 + 16)[0]
+        cases = [(c.off + 88, '<I', 0), (c.off + 92, '<I', 3), (c.off + 92, '<I', len(good)),
+                 (z, '<i', fx(5)), (z + 16, '<i', fx(40)), (z + 12, '<i', 1), (z + 32, '<B', 7), (z + 33, '<B', 1),
+                 (z + 36, '<I', 1), (z + 40, '<I', 1 << 20), (z + 44, '<I', mask), (mask, '<I', 0xFFFFFFFF)]
+        for at, fmt, value in cases:
+            bad = bytearray(good)
+            struct.pack_into(fmt, bad, at, value)
+            with self.subTest(at=at, value=value), self.assertRaises(PackError):
+                decode(bytes(bad))
+
+    def test_zone_oracle(self):
+        pack = decode(encode(occl_world()))
+        at = lambda e, on=(): P.zone_at(pack, F.raw(e), set(on))
+        self.assertEqual(at((32, 2, 15))[1]['layer'], None)
+        self.assertIsNone(at((36, 2, 15)), 'hi is outside')
+        self.assertIsNotNone(at((28, 1, 10)), 'lo is inside')
+        self.assertIsNone(at((32, 3, 15)))
+        self.assertIsNone(at((12, 2, 15)), 'the layer is off')
+        self.assertEqual(at((12, 2, 15), [0])[1]['layer'], 0)
+        self.assertIsNone(at((32, 2, 160)), 'a cell without zones')
+        self.assertIsNone(at((32, 2, 70)), 'no cell')
+
+
+@needs_tools
+class OcclusionTests(unittest.TestCase):
+    """The reader's occlusion zones against zone_at(), the pictures they leave, their cost."""
+    VIEWS = [((32, 2, 15), 0.0, 0.0, 0), ((32, 2, 15), 0.0, 0.0, 1), ((30, 1.5, 12), 0.3, -0.1, 0),
+             ((12, 2, 15), 0.0, 0.0, 0), ((12, 2, 15), 0.0, 0.0, 1), ((50, 2, 15), 0.0, 0.0, 0),
+             ((36, 2, 15), 0.0, 0.0, 0), ((32, 1.2, 19.9), -0.4, 0.05, 0)]
+
+    def run_views(self, w, views, picture=-1, occlusion=1, dump=False):
+        recs = b''.join(struct.pack('<4i2iii', *F.raw(e), 0, round(y * ONE), round(p * ONE), l, occlusion)
+                        for e, y, p, l in views)
+        with tempfile.TemporaryDirectory() as tmp:
+            dpath = Path(tmp) / 'shot.ppm' if dump else None
+            lines = F.run_cart(tmp, 'occlusion.akr', {'PACK': ('u8', encode(w)), 'VIEWS': ('WpOcclView', recs)},
+                               {'PICTURE': str(picture)}, frames=len(views) + 3 if picture < 0 else 3, dump=dpath)
+            return lines, F.read_ppm(dpath) if dump else None
+
+    def counts(self, lines, which):
+        return [[int(x) for x in l.split()[1:]] for l in lines if l.startswith(which + ' ')]
+
+    def test_zones_and_counts_match_the_oracle(self):
+        w = occl_world()
+        pack = decode(encode(w))
+        lines, _ = self.run_views(w, self.VIEWS)
+        self.assertEqual(lines[-1], 'done')
+        on, off = self.counts(lines, 'on'), self.counts(lines, 'off')
+        for (eye, yaw, pitch, layers), a, b in zip(self.VIEWS, on, off):
+            found = P.zone_at(pack, F.raw(eye), {0} if layers else set())
+            with self.subTest(eye=eye, layers=layers):
+                self.assertEqual(b[:3], [-1, 0, 0], 'occlusion off')
+                if found is None:
+                    self.assertEqual(a[:5], b[:5])
+                    continue
+                key, z = found
+                self.assertEqual(a[0], pack.cells[key].zones.index(z))
+                # the near cell is in view from inside it: every hidden placement is skipped
+                self.assertEqual(a[1], len(z['hidden'][(0, 0)]))
+                self.assertEqual(a[2], b[4] - a[4])
+                self.assertLessEqual(b[3] - a[3], a[1])
+        self.assertGreater(off[0][3] - on[0][3], 5)
+        self.assertEqual(on[0][2], 2, 'both stand-ins behind the wall')
+
+    def test_pictures_are_the_same(self):
+        w = occl_world()
+        for k in (0, 2, 4, 7):
+            with self.subTest(view=k):
+                _, a = self.run_views(w, self.VIEWS, k, 1, dump=True)
+                _, b = self.run_views(w, self.VIEWS, k, 0, dump=True)
+                self.assertEqual(a, b)
+
+    def test_costs(self):
+        """Cycles of wp_draw(): occlusion on and off in the zone, and outside every zone against a
+        pack without zones."""
+        lines, _ = self.run_views(occl_world(), self.VIEWS)
+        on, off = self.counts(lines, 'on'), self.counts(lines, 'off')
+        plain, _ = self.run_views(occl_world(zones=False), self.VIEWS)
+        flat = self.counts(plain, 'on')
+        if VERBOSE:
+            print(f'\n  occlusion: in the zone {on[0][5]} against {off[0][5]} cycles ({on[0][1]} placements and '
+                  f'{on[0][2]} stand-ins skipped, {off[0][3] - on[0][3]} of them in view); outside every zone '
+                  f'{on[5][5]} against {flat[5][5]} without zones; in a zone whose {on[4][1]} hidden placements are out of '
+                  f'view {on[4][5]} against {off[4][5]}')
+        self.assertGreater(off[0][5] - on[0][5], 5000)
+        self.assertLess(on[5][5] - flat[5][5], 150)
 
 
 if __name__ == '__main__':

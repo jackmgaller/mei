@@ -12,8 +12,10 @@ from meshlib import Mesh, rgb, DOUBLE, SEMI
 
 OUT = common.cart_dir('scene')
 UV = [(0, 255), (255, 255), (0, 0), (255, 0)]
+# (slot, 4-bit, palette). Slots 20 and 31 and palettes 300 and 19 are VRAM's second megabyte
+# (DECISIONS.md, "VRAM at 2 MB"): the faces' bank bits; slot 31's 8-bit second half wraps to 16.
 MATERIALS = [(4, True, 0), (7, True, 7), (2, False, 2),
-             (13, False, 3), (15, False, 3), (None, False, 0)]
+             (13, False, 3), (15, False, 3), (None, False, 0), (20, True, 300), (31, False, 19)]
 
 
 def material(m, corners, number, colours=None, semi=False, blend=0, window=0):
@@ -92,7 +94,7 @@ def generate():
     def c15(r,g,b):
         return (r>>3) | ((g>>3)<<5) | ((b>>3)<<10)
     palette = []
-    for i in range(4096):
+    for i in range(8192):
         level = 45 + (i*23 % 160)
         palette.append(c15(level, min(255,level+14), min(255,level+24)))
     for i in range(1,16):
@@ -102,13 +104,18 @@ def generate():
         light = 75 + (i*13 % 135)
         palette[2*256+i] = c15(light-25, light, min(255,light+25))
         palette[3*256+i] = c15(min(255,light+28), light, max(0,light-38))
-    (OUT/'palette.bin').write_bytes(struct.pack('<4096H', *palette))
+        palette[19*256+i] = c15(max(0,light-40), min(255,light+20), light)
+    for i in range(1,16):
+        palette[300*16+i] = c15(200-i*8, 60+i*10, 150)
+    (OUT/'palette.bin').write_bytes(struct.pack('<8192H', *palette))    # both banks: crosses colour 4096
     textures = []
-    for slot, four in [(4,True),(7,True),(2,False),(13,False),(15,False)]:
+    for slot, four in [(4,True),(7,True),(2,False),(13,False),(15,False),(20,True),(31,False)]:
         data = bytearray(32768 if four else 65536)
         for y in range(256):
             for x in range(256):
-                if slot == 4:
+                if slot == 20:
+                    idx = 0 if (x//8+y//8)%5==0 else 1+(x//4+y//16)%15
+                elif slot == 4:
                     idx = 1 if y%16==15 or (x+(8 if y//16%2 else 0))%32==31 else 2+(x//8+y//8)%13
                 elif slot == 7:
                     idx = 0 if (x//16+y//16)%4==0 else 1+(x//16+y//16)%15
@@ -151,11 +158,12 @@ def generate():
     for tex in textures:
         lines.append(f'embed TEX{tex["slot"]}: u8 = "{tex["file"]}"')
     lines += ['var selected: s32', 'fn init() {', '    camera_clip(0.5, 32.0)', '    load_palette(0, PALETTE, len(PALETTE))']
-    # Slot 15's second half wraps to slot 0, matching the documented texture addressing.
+    # Slot 15's second half wraps to slot 0, and slot 31's to slot 16, matching the documented
+    # texture addressing (an 8-bit texture's second slot wraps within its bank of 16).
     for tex in textures:
         slot=tex['slot']
-        if slot == 15:
-            lines += ['    load_texture(15, TEX15, 32768)', '    load_texture(0, TEX15 + 32768, 32768)']
+        if slot in (15, 31):
+            lines += [f'    load_texture({slot}, TEX{slot}, 32768)', f'    load_texture({slot - 15}, TEX{slot} + 32768, 32768)']
         else:
             lines.append(f'    load_texture({slot}, TEX{slot}, len(TEX{slot}))')
     lines += ['}', 'fn update() {', f'    if btnp(A) {{ selected = (selected + 1) % {len(cases)} }}', f'    if btnp(B) {{ selected = (selected + {len(cases)-1}) % {len(cases)} }}', '}', 'fn draw() {', '    cls(rgb(24, 32, 48))', '    var view: mat4']

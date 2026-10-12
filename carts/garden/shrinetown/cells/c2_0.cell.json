@@ -1,0 +1,812 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c2_0",
+ "at": [
+  2,
+  0
+ ],
+ "region": "town",
+ "placements": [
+  {
+   "id": "edge_s3",
+   "asset": "edge_fence_64",
+   "position": [
+    160.0,
+    0,
+    0.05
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "neighbour_s4",
+   "asset": "edge_neighbour_s4",
+   "position": [
+    160.0,
+    0,
+    0.2
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "viaduct_8",
+   "asset": "viaduct_station_taper",
+   "position": [
+    128.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_station_taper_col"
+  },
+  {
+   "id": "viaduct_9",
+   "asset": "viaduct_station_span",
+   "position": [
+    144.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 180.0,
+   "collision": "viaduct_station_span_col"
+  },
+  {
+   "id": "viaduct_10",
+   "asset": "viaduct_station_span_stair",
+   "position": [
+    160.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 180.0,
+   "collision": "viaduct_station_span_stair_col"
+  },
+  {
+   "id": "viaduct_11",
+   "asset": "viaduct_station_span",
+   "position": [
+    176.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 180.0,
+   "collision": "viaduct_station_span_col"
+  },
+  {
+   "id": "station_concourse",
+   "asset": "station_concourse",
+   "position": [
+    160.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 180.0,
+   "collision": "station_concourse_col"
+  },
+  {
+   "id": "station_hall",
+   "asset": "station_hall",
+   "position": [
+    160.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "ticket_gates",
+   "asset": "ticket_gates",
+   "position": [
+    160.0,
+    0.06,
+    7.4
+   ],
+   "yaw": 180.0,
+   "collision": "ticket_gates_col"
+  },
+  {
+   "id": "station_platform",
+   "asset": "station_platform",
+   "position": [
+    160.0,
+    9.0,
+    8.0
+   ],
+   "collision": "station_platform_col"
+  },
+  {
+   "id": "platform_fittings_w",
+   "asset": "station_platform_fittings_w",
+   "position": [
+    160.0,
+    9.0,
+    8.0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "platform_fittings_e",
+   "asset": "station_platform_fittings_e",
+   "position": [
+    160.0,
+    9.0,
+    8.0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "bus_stop",
+   "asset": "bus_stop",
+   "position": [
+    140.0,
+    0.0,
+    36.0
+   ],
+   "collision": "bus_stop_col"
+  },
+  {
+   "id": "newsstand",
+   "asset": "newsstand",
+   "position": [
+    141.0,
+    0.0,
+    18.7
+   ],
+   "yaw": 180.0,
+   "collision": "newsstand_col"
+  },
+  {
+   "id": "taxi_rank",
+   "asset": "town_taxi_rank",
+   "position": [
+    184.5,
+    0.0,
+    37.5
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "postbox",
+   "asset": "postbox",
+   "position": [
+    132.5,
+    0.0,
+    37.0
+   ],
+   "collision": "postbox_col"
+  },
+  {
+   "id": "vending_konbini",
+   "asset": "street_vending_machine",
+   "position": [
+    179.1,
+    0.0,
+    29.8
+   ],
+   "yaw": 90.0,
+   "collision": "street_vending_machine_col"
+  },
+  {
+   "id": "vending_station_0",
+   "asset": "street_vending_machine",
+   "position": [
+    154.0,
+    0.0,
+    15.6
+   ],
+   "yaw": 180.0,
+   "collision": "street_vending_machine_col"
+  },
+  {
+   "id": "vending_station_1",
+   "asset": "street_vending_machine",
+   "position": [
+    155.0,
+    0.0,
+    15.6
+   ],
+   "yaw": 180.0,
+   "collision": "street_vending_machine_col"
+  },
+  {
+   "id": "planters_station",
+   "asset": "town_potted_plants",
+   "position": [
+    165.5,
+    0.0,
+    15.7
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_rack_0",
+   "asset": "bike_rack",
+   "position": [
+    131.0,
+    0.0,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "bike_rack_col"
+  },
+  {
+   "id": "bike_0_1",
+   "asset": "mamachari",
+   "position": [
+    131.6,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_0_3",
+   "asset": "mamachari",
+   "position": [
+    130.4,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_rack_1",
+   "asset": "bike_rack",
+   "position": [
+    145.3,
+    0.0,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "bike_rack_col"
+  },
+  {
+   "id": "bike_1_0",
+   "asset": "mamachari",
+   "position": [
+    146.5,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_1_2",
+   "asset": "mamachari",
+   "position": [
+    145.3,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_1_4",
+   "asset": "mamachari",
+   "position": [
+    144.1,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_rack_2",
+   "asset": "bike_rack",
+   "position": [
+    173.5,
+    0.0,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "bike_rack_col"
+  },
+  {
+   "id": "bike_2_1",
+   "asset": "mamachari",
+   "position": [
+    174.1,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_2_3",
+   "asset": "mamachari",
+   "position": [
+    172.9,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_rack_3",
+   "asset": "bike_rack",
+   "position": [
+    176.9,
+    0.0,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "bike_rack_col"
+  },
+  {
+   "id": "bike_3_2",
+   "asset": "mamachari",
+   "position": [
+    176.9,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "shop_w0",
+   "asset": "town_shop_2f_c_left_noawning",
+   "position": [
+    147.0,
+    0.0,
+    49.0
+   ],
+   "yaw": 270.0,
+   "collision": "town_shop_2f_c_left_noawning_col"
+  },
+  {
+   "id": "awning_w0",
+   "asset": "town_awning_bounce",
+   "position": [
+    154.75,
+    0.0,
+    48.9
+   ],
+   "yaw": 270.0,
+   "collision": "town_awning_bounce_col"
+  },
+  {
+   "id": "shop_w1",
+   "asset": "town_shop_3f",
+   "position": [
+    147.0,
+    0.0,
+    59.0
+   ],
+   "yaw": 270.0,
+   "collision": "town_shop_3f_col"
+  },
+  {
+   "id": "shop_e0",
+   "asset": "town_shop_2f_c_store_noawning",
+   "position": [
+    173.0,
+    0.0,
+    49.0
+   ],
+   "yaw": 90.0,
+   "collision": "town_shop_2f_c_store_noawning_col"
+  },
+  {
+   "id": "awning_e0",
+   "asset": "town_awning_bounce",
+   "position": [
+    165.25,
+    0.0,
+    48.9
+   ],
+   "yaw": 90.0,
+   "collision": "town_awning_bounce_col"
+  },
+  {
+   "id": "shop_e1",
+   "asset": "town_shop_2f_a_noawning",
+   "position": [
+    173.0,
+    0.0,
+    59.0
+   ],
+   "yaw": 90.0,
+   "collision": "town_shop_2f_a_noawning_col"
+  },
+  {
+   "id": "awning_e1",
+   "asset": "town_awning_bounce",
+   "position": [
+    165.25,
+    0.0,
+    59.0
+   ],
+   "yaw": 90.0,
+   "collision": "town_awning_bounce_col"
+  },
+  {
+   "id": "arcade_gate_0",
+   "asset": "arcade_gate",
+   "position": [
+    160.0,
+    0.0,
+    54.0
+   ],
+   "collision": "arcade_gate_col"
+  },
+  {
+   "id": "lamp_sando0",
+   "asset": "town_street_lamp",
+   "position": [
+    155.9,
+    0.0,
+    46.0
+   ],
+   "yaw": 90,
+   "collision": "town_street_lamp_col"
+  },
+  {
+   "id": "lamp_sando1",
+   "asset": "town_street_lamp",
+   "position": [
+    164.1,
+    0.0,
+    51.5
+   ],
+   "yaw": 90,
+   "collision": "town_street_lamp_col"
+  },
+  {
+   "id": "alley_126_55",
+   "asset": "town_alley_house_b",
+   "position": [
+    130.75,
+    0.0,
+    59.25
+   ],
+   "collision": "town_alley_house_b_col"
+  },
+  {
+   "id": "dagashi",
+   "asset": "dagashi_shop",
+   "position": [
+    128.5,
+    0.0,
+    46.5
+   ],
+   "collision": "dagashi_shop_col"
+  },
+  {
+   "id": "gacha_1",
+   "asset": "gachapon",
+   "position": [
+    128.0,
+    0.0,
+    43.55
+   ],
+   "collision": "gachapon_col"
+  },
+  {
+   "id": "pole_lane_e0",
+   "asset": "town_utility_pole_transformer",
+   "position": [
+    137.75,
+    0.0,
+    44.0
+   ],
+   "collision": "town_utility_pole_transformer_col"
+  },
+  {
+   "id": "bike_1",
+   "asset": "mamachari",
+   "position": [
+    131.9,
+    0.0,
+    44.9
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "crates_0",
+   "asset": "town_crates_bins",
+   "position": [
+    139.7,
+    0.0,
+    47.5
+   ],
+   "yaw": 90,
+   "collision": "none"
+  },
+  {
+   "id": "crates_2",
+   "asset": "town_crates_bins",
+   "position": [
+    180.3,
+    0.0,
+    59.0
+   ],
+   "yaw": 270,
+   "collision": "none"
+  }
+ ],
+ "entities": [
+  {
+   "id": "spawn",
+   "type": "spawn",
+   "position": [
+    160,
+    0.0,
+    26
+   ],
+   "params": {
+    "yaw": 0
+   }
+  },
+  {
+   "id": "pole_lane_e0",
+   "type": "pole",
+   "position": [
+    137.75,
+    0.0,
+    44.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "red_canopy",
+   "type": "red_coin",
+   "position": [
+    172.0,
+    14.17,
+    8.0
+   ],
+   "asset": "gbt_coin_red"
+  },
+  {
+   "id": "star_5_platform",
+   "type": "star",
+   "position": [
+    160,
+    11.4,
+    7.0
+   ],
+   "params": {
+    "appear": "race5_won"
+   }
+  },
+  {
+   "id": "race_platform",
+   "type": "trigger",
+   "position": [
+    160,
+    10.05,
+    8.0
+   ],
+   "params": {
+    "size": [
+     32,
+     3,
+     5.0
+    ],
+    "flag": "race5_won",
+    "needs": "race5",
+    "ends": "race5",
+    "keep": false
+   }
+  },
+  {
+   "id": "train_arrival",
+   "type": "mover",
+   "position": [
+    134.0,
+    9.0,
+    3.99
+   ],
+   "asset": "train_emu_pair",
+   "collision": "train_emu_pair_col",
+   "params": {
+    "path": "arrive_track1_in",
+    "period": 1,
+    "mode": "loop",
+    "start": "arrival"
+   }
+  },
+  {
+   "id": "coin_stair0_0",
+   "type": "coin",
+   "position": [
+    150.0,
+    3.5,
+    29.0
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_stair0_1",
+   "type": "coin",
+   "position": [
+    150.0,
+    6.5,
+    23.0
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_stair0_2",
+   "type": "coin",
+   "position": [
+    150.0,
+    9.5,
+    17.0
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_stair1_0",
+   "type": "coin",
+   "position": [
+    170.0,
+    3.5,
+    29.0
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_stair1_1",
+   "type": "coin",
+   "position": [
+    170.0,
+    6.5,
+    23.0
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_stair1_2",
+   "type": "coin",
+   "position": [
+    170.0,
+    9.5,
+    17.0
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_roof0",
+   "type": "coin",
+   "position": [
+    165.2,
+    3.463,
+    49
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_roof1",
+   "type": "coin",
+   "position": [
+    173,
+    7.2,
+    49
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_roof2",
+   "type": "coin",
+   "position": [
+    173,
+    7.22,
+    58
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_wire_lane0",
+   "type": "coin",
+   "position": [
+    138.55,
+    8.7,
+    60
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "door_garden",
+   "type": "door",
+   "position": [
+    187.5,
+    0.0,
+    33.0
+   ],
+   "params": {
+    "world": "garden",
+    "size": [
+     3.0,
+     3.0,
+     1.2
+    ]
+   }
+  },
+  {
+   "id": "rail_parapet_n_m",
+   "type": "rail",
+   "position": [
+    151.65,
+    10.2,
+    15.475
+   ],
+   "params": {
+    "path": "parapet_n_m"
+   }
+  },
+  {
+   "id": "rail_parapet_n_e",
+   "type": "rail",
+   "position": [
+    171.65,
+    10.2,
+    15.475
+   ],
+   "params": {
+    "path": "parapet_n_e"
+   }
+  },
+  {
+   "id": "pole_lamp_sando0",
+   "type": "pole",
+   "position": [
+    155.9,
+    0.0,
+    46.0
+   ],
+   "params": {
+    "height": 3.8
+   }
+  },
+  {
+   "id": "pole_lamp_sando1",
+   "type": "pole",
+   "position": [
+    164.1,
+    0.0,
+    51.5
+   ],
+   "params": {
+    "height": 3.8
+   }
+  },
+  {
+   "id": "rail_wire_lane_e_a",
+   "type": "rail",
+   "position": [
+    136.95,
+    8.0,
+    44.0
+   ],
+   "params": {
+    "path": "wire_lane_e_a"
+   }
+  },
+  {
+   "id": "rail_wire_lane_e_b",
+   "type": "rail",
+   "position": [
+    138.55,
+    8.0,
+    44.0
+   ],
+   "params": {
+    "path": "wire_lane_e_b"
+   }
+  }
+ ]
+}

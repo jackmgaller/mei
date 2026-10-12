@@ -1,0 +1,497 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "station_platform_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  },
+  "canopy": {
+   "color": "#ffffff",
+   "palette": true,
+   "tag": "metal"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "slab_w",
+   "op": "box",
+   "size": [
+    20.65,
+    1.0,
+    5.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -9.675,
+     0.5,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "slab_e",
+   "op": "box",
+   "size": [
+    12.1,
+    1.0,
+    5.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     13.95,
+     0.5,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "slab_n",
+   "op": "box",
+   "size": [
+    7.25,
+    1.0,
+    1.3
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     4.275,
+     0.5,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "slab_s",
+   "op": "box",
+   "size": [
+    7.25,
+    1.0,
+    1.3
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     4.275,
+     0.5,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "floor_over",
+   "op": "box",
+   "size": [
+    2.7,
+    0.2,
+    2.4
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     6.55,
+     0.9,
+     0.0
+    ]
+   },
+   "open": [
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "wall_n",
+   "op": "box",
+   "size": [
+    4.65,
+    1.0,
+    0.15
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     2.975,
+     1.5,
+     -1.275
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "wall_s",
+   "op": "box",
+   "size": [
+    4.65,
+    1.0,
+    0.15
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     2.975,
+     1.5,
+     1.275
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "head_wall",
+   "op": "box",
+   "size": [
+    0.25,
+    1.25,
+    2.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     5.325,
+     1.425,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "fence_w",
+   "op": "box",
+   "size": [
+    0.2,
+    1.1,
+    5.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -19.9,
+     1.55,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "fence_e",
+   "op": "box",
+   "size": [
+    0.2,
+    1.1,
+    5.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     19.9,
+     1.55,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "kiosk",
+   "op": "box",
+   "size": [
+    3.6,
+    2.6,
+    1.6
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -10.0,
+     2.3,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "vending",
+   "op": "box",
+   "size": [
+    1.0,
+    1.8,
+    0.7
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     12.5,
+     1.9,
+     0.4
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "bins",
+   "op": "box",
+   "size": [
+    1.1,
+    0.9,
+    0.46
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     14.05,
+     1.45,
+     0.3
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "benches_w",
+   "op": "box",
+   "size": [
+    1.8,
+    0.48,
+    1.52
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -6.5,
+     1.24,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "bench_e",
+   "op": "box",
+   "size": [
+    1.8,
+    0.48,
+    0.42
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     12.5,
+     1.24,
+     -0.55
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "board_w",
+   "op": "box",
+   "size": [
+    2.5,
+    0.95,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -16.5,
+     2.475,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "board_e",
+   "op": "box",
+   "size": [
+    2.5,
+    0.95,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     7.5,
+     2.475,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "roof",
+   "op": "extrude",
+   "material": "canopy",
+   "depth": 34.0,
+   "points": [
+    [
+     -2.9,
+     4.52
+    ],
+    [
+     0,
+     4.27
+    ],
+    [
+     2.9,
+     4.52
+    ],
+    [
+     2.9,
+     4.72
+    ],
+    [
+     0,
+     4.47
+    ],
+    [
+     -2.9,
+     4.72
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ]
+   }
+  },
+  {
+   "id": "column0",
+   "op": "box",
+   "size": [
+    0.3,
+    3.3,
+    0.3
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -15.0,
+     2.65,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "column1",
+   "op": "box",
+   "size": [
+    0.3,
+    3.3,
+    0.3
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -5.0,
+     2.65,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "column2",
+   "op": "box",
+   "size": [
+    0.3,
+    3.3,
+    0.3
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     5.5,
+     2.65,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "column3",
+   "op": "box",
+   "size": [
+    0.3,
+    3.3,
+    0.3
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     15.0,
+     2.65,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  }
+ ]
+}

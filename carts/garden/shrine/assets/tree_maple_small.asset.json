@@ -27,6 +27,15 @@
     "projection": "fit"
    },
    "double_sided": true
+  },
+  "far_b": {
+   "color": "#c8301e",
+   "texture": {
+    "sheet": "foliage",
+    "cell": "maple_far_b",
+    "projection": "fit"
+   },
+   "double_sided": true
   }
  },
  "lighting": {
@@ -1313,7 +1322,7 @@
       ],
       "face_materials": [
        "far",
-       "far",
+       "far_b",
        "leaves"
       ],
       "uvs": [
@@ -1433,7 +1442,7 @@
       ],
       "face_materials": [
        "far",
-       "far"
+       "far_b"
       ],
       "uvs": [
        [

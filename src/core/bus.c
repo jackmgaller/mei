@@ -55,6 +55,8 @@ static MeiFaultKind io_read(Mei *m, uint32_t off, uint32_t *out) {
     switch (off) {
     case IO_GPU_DRAW: case IO_GPU_CLEAR: case IO_GPU_ZCLEAR: case IO_SYS_DEBUG: case IO_SYS_LAUNCH: return 0;   /* write-only */
     case IO_GPU_DEPTH:  *out = m->gpu_depth; return 0;
+    case IO_GPU_FOG:    *out = m->gpu_fog; return 0;
+    case IO_GPU_FOG_RANGE: *out = m->gpu_fog_range; return 0;
     case IO_SYS_CONFIG: *out = m->sys_config; return 0;
     case IO_SYS_TIME:   *out = m->clock[0]; return 0;
     case IO_SYS_DATE:   *out = m->clock[1]; return 0;
@@ -88,6 +90,8 @@ static MeiFaultKind io_write(Mei *m, uint32_t off, uint32_t val) {
     case IO_GPU_CTRL:  m->gpu_ctrl = val; return 0;
     case IO_GPU_DEPTH: m->gpu_depth = val & 1; return 0;   /* bits 1-31 reserved: read as 0 */
     case IO_GPU_ZCLEAR: gpu_zclear(m, val); return 0;
+    case IO_GPU_FOG:   m->gpu_fog = val & 0x1FFFFFF; return 0;   /* bits 25-31 reserved: read as 0 */
+    case IO_GPU_FOG_RANGE: m->gpu_fog_range = val; return 0;
     case IO_SYS_RAND:  m->rng = val ? val : RNG_RESET_SEED; return 0;
     case IO_SYS_DEBUG: {
         char ch = (char)(val & 0xFF);

@@ -5,22 +5,26 @@ import math
 import struct
 
 from kitcore.jsonio import canonical
-from meshlib import Mesh as NativeMesh, rgb
+from meshlib import Mesh as NativeMesh, rgb, tex_fields, face_slot, face_colour, PALETTES4
+import meshlib
 from .geometry import (AssetError, Mesh, Face, add, sub, cross, dot, norm, extrude,
                        lathe, loft, explicit_mesh, transform, modify)
 from .schema import validate
-from . import textures as TEX, texout
+from . import textures as TEX, texout, faces as FACES
 
 
 SIDE_AXES = {'right':(0,1),'left':(0,-1),'top':(1,1),'bottom':(1,-1),'front':(2,1),'back':(2,-1)}
+# A box's open sides may also be named by their axis: -z is back, +z front, and so on.
+SIDE_ALIASES = {'-x':'left','+x':'right','-y':'bottom','+y':'top','-z':'back','+z':'front'}
 
 
 def open_box(mesh, sides, path):
     """A box without the faces on the named sides (each face's outward normal names its side),
     and without the vertices only they used."""
-    if len(set(sides)) != len(sides):
-        raise AssetError(path, 'Name each side once.')
-    gone = {SIDE_AXES[s] for s in sides}
+    named = [SIDE_ALIASES.get(s,s) for s in sides]
+    if len(set(named)) != len(named):
+        raise AssetError(path, 'Name each side once (-z is back, +z front, -x left, +x right, -y bottom, +y top).')
+    gone = {SIDE_AXES[s] for s in named}
     kept = []
     for face in mesh.faces:
         a,b,c = (mesh.vertices[i] for i in face.indices)
@@ -33,13 +37,44 @@ def open_box(mesh, sides, path):
                 [f.copy(tuple(new[i] for i in f.indices)) for f in kept])
 
 
-def compile_recipe(recipe, base=None):
-    """base: the folder image paths are relative to (the recipe's own; default the current one)."""
+def mirror_note(mesh, spec, label, path):
+    """A note when a mirror modifier that keeps the original makes its copy coincide with it, overlap
+    it across the mirror plane, or lay faces back to back on the plane; None otherwise."""
+    if not spec.get('keep_original',True) or not mesh.faces: return None
+    axis, offset, tol = 'xyz'.index(spec['axis']), spec.get('offset',0), 1e-6
+    used = sorted({i for f in mesh.faces for i in f.indices})
+    values = [mesh.vertices[i][axis] for i in used]
+    lo, hi, name = min(values), max(values), label.lstrip('/') or label
+    where = f'{"xyz"[axis]} from {lo:.4g} to {hi:.4g}, the mirror plane at {"xyz"[axis]} = {offset:g}'
+    if lo < offset-tol and hi > offset+tol:
+        key = lambda v: tuple(round(x,6) for x in v)
+        points = {key(mesh.vertices[i]) for i in used}
+        mirrored = {key(tuple(2*offset-x if k == axis else x for k,x in enumerate(mesh.vertices[i]))) for i in used}
+        if points == mirrored:
+            return {'code':'mirror_coincides','part':name,'path':path,
+                    'message':f'The mirror\'s copy lies exactly over the original ({where}): every face is doubled. '
+                              'Remove the mirror, or set keep_original false.'}
+        return {'code':'mirror_overlaps','part':name,'path':path,
+                'message':f'The part spans the mirror plane ({where}), so the copy overlaps the original. Move the part '
+                          'to one side of the plane (translate a child, then mirror its group), or remove the mirror.'}
+    on_plane = sum(all(abs(mesh.vertices[i][axis]-offset) <= tol for i in f.indices) for f in mesh.faces)
+    if on_plane:
+        return {'code':'mirror_touches','part':name,'path':path,'count':on_plane,
+                'message':f'{on_plane} faces lie on the mirror plane ({where}): the copy\'s lie back to back on them, '
+                          'a coplanar overlap. Open that side (a box\'s open), or overlap the halves a little.'}
+    return None
+
+
+def compile_recipe(recipe, base=None, budgets='error'):
+    """base: the folder image paths are relative to (the recipe's own; default the current one).
+    budgets: 'error' (a breach fails) or 'warn' (inspect: a breach is a warning in the report)."""
     validate(recipe)
     materials = {'default':{'color':'#c4cad4'}, **recipe.get('materials',{})}
     prototypes = recipe.get('prototypes',{})
     labels = set()
     calls = 0
+    notes = []
+    log = {'faces':[],'decals':[]}
 
     def node(spec, path, parent='', inherited='default', stack=()):
         nonlocal calls
@@ -94,14 +129,21 @@ def compile_recipe(recipe, base=None):
             if target in stack: raise AssetError(path+'/ref','Prototype cycle: '+' → '.join((*stack,target)))
             mesh = node(prototypes[target],'/prototypes/'+target,label,material,(*stack,target))
             if 'material' in spec:
-                for face in mesh.faces: face.material = material
+                # faces maps and decals keep their materials
+                for face in mesh.faces:
+                    if not face.own: face.material = material
         if op not in ('group','instance'):
             for face in mesh.faces:
                 if op != 'mesh' or 'face_materials' not in spec:
                     face.material = material
                 face.part = label.lstrip('/')
                 face.local = tuple(mesh.vertices[i] for i in face.indices)
+            if (op != 'mesh' and 'faces' in spec) or 'decals' in spec:
+                FACES.apply(mesh,spec,op,label,materials,path,log)
         for i,modifier in enumerate(spec.get('modifiers',[])):
+            if modifier['op'] == 'mirror':
+                note = mirror_note(mesh,modifier,label,f'{path}/modifiers/{i}')
+                if note: notes.append(note)
             mesh = modify(mesh,modifier,f'{path}/modifiers/{i}')
         return transform(mesh,spec.get('transform',{}),path+'/transform')
 
@@ -111,8 +153,12 @@ def compile_recipe(recipe, base=None):
     # Textures: texel coordinates from each primitive's own coordinates, then faces of repeating
     # textures cut to fit the GPU's 8-bit coordinates (assetkit/textures.py).
     textures, split_faces = {}, 0
-    if any('texture' in materials[f.material] for f in mesh.faces):
-        textures = TEX.load(recipe,materials,base,{f.material for f in mesh.faces})
+    used = {f.material for f in mesh.faces}
+    # textures only coarser levels draw (a far card, an impostor's facade) are the asset's too:
+    # level 0 loads and places them, and every level shares that placement
+    used |= {m for m in level_materials(recipe) if m in materials and 'texture' in materials[m]}
+    if any('texture' in materials[m] for m in used):
+        textures = TEX.load(recipe,materials,base,used)
         TEX.project(mesh,textures)
         split_faces = TEX.split(mesh,textures)
     # Export precisely the geometry we audit, including fixed-point quantization.
@@ -134,12 +180,25 @@ def compile_recipe(recipe, base=None):
         a,b,c = (vertices[i] for i in face.indices)
         normal = cross(sub(b,a),sub(c,a))
         if len(set(face.indices)) != 3 or dot(normal,normal) == 0:
+            tex = textures.get(face.material)
+            if tex and tex.repeat and split_faces:
+                spec = tex.spec
+                raise AssetError(f'/materials/{face.material}/texture/scale',
+                                 f'Part {face.part!r} has a triangle that collapses at Mei 16.16 precision after its long faces '
+                                 f'were split for the texture of material {face.material!r} ({TEX.describe(tex)}, '
+                                 f'{tex.width} x {tex.height} texels, {tex.projection} projection, scale '
+                                 f'{spec.get("scale",[1,1])}): a cut fell within a 16.16 step of a corner. Use a power-of-two '
+                                 'scale (0.25, 0.5, 1, 2), which puts the cuts on exact coordinates, or move the corner.')
             raise AssetError('/nodes',f'Part {face.part!r} has a triangle that collapses at Mei 16.16 precision. Enlarge it or reduce detail.')
     mesh.vertices = vertices
     budget = {'vertices':2048,'triangles':2000,**recipe.get('budget',{})}
+    breaches = []
     for key,count in (('vertices',len(vertices)),('triangles',len(mesh.faces))):
         if count > budget[key]:
-            raise AssetError('/budget/'+key,f'Asset has {count} {key}; budget is {budget[key]}. Reduce detail/repetition or explicitly raise the budget within hardware limits.')
+            message = f'Asset has {count} {key}; budget is {budget[key]}. Reduce detail/repetition or explicitly raise the budget within hardware limits.'
+            if budgets != 'warn': raise AssetError('/budget/'+key,message)
+            breaches.append({'code':'over_budget','key':key,'count':count,'budget':budget[key],
+                             'message':message+' build fails until it fits; the per-part counts are in parts.'})
     light = recipe.get('lighting',{})
     if light.get('mode','directional') == 'vertical':
         if 'direction' in light:
@@ -156,13 +215,57 @@ def compile_recipe(recipe, base=None):
         mesh.textures = TEX.finish(mesh,textures,recipe,{**DEFAULT_LAYOUT,**recipe.get('palette_layout',{})})
         mesh.textures['split_faces'] = split_faces
     result = report(mesh,recipe,budget,materials)
+    result['warnings'][:0] = breaches
+    if log['faces']: result['face_maps'] = log['faces']
+    if log['decals']: result['decals'] = decal_report(mesh,log['decals'])
+    mesh.notes = notes
     if 'lod' in recipe:
-        mesh.levels = compile_levels(recipe,mesh,base)
+        mesh.levels = compile_levels(recipe,mesh,base,budgets)
         result['lod'] = lod_summary(recipe,mesh,result)
+        for k,(_,rep) in enumerate(mesh.levels,1):
+            result['warnings'] += [{**w,'level':k,'message':f'Level {k}: '+w['message']}
+                                   for w in rep['warnings'] if w['code'] == 'over_budget']
     return mesh, materials, result
 
 
+def decal_report(mesh, decals):
+    """The report's decals: each with its faces in the final mesh (all copies) and their bounds,
+    their outward normal (the first copy's), and the triangles it added (8 a copy)."""
+    out = []
+    for entry in decals:
+        faces = [f for f in mesh.faces if f.decal == entry['id']]
+        if not faces: continue
+        points = [mesh.vertices[i] for f in faces for i in f.indices]
+        a,b,c = (mesh.vertices[i] for i in faces[0].indices)
+        out.append({**entry,'triangles':len(faces),'added_triangles':4*len(faces),
+                    'bounds':{'min':[min(p[k] for p in points) for k in range(3)],'max':[max(p[k] for p in points) for k in range(3)]},
+                    'normal':[round(x,6) for x in norm(cross(sub(b,a),sub(c,a)))]})
+    return out
+
+
 DEFAULT_BAND = 1.0
+
+
+def level_materials(recipe):
+    """The materials the nodes of a recipe's lod levels name (material, face_materials), for
+    level 0 to load their textures; empty without lod."""
+    out = set()
+
+    def walk(v):
+        if isinstance(v, dict):
+            if isinstance(v.get('material'), str):
+                out.add(v['material'])
+            for m in v.get('face_materials') or ():
+                if isinstance(m, str):
+                    out.add(m)
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x)
+    for level in recipe.get('lod', {}).get('levels', []):
+        walk(level.get('nodes', []))
+    return out
 
 
 def level_recipe(recipe, k):
@@ -174,7 +277,7 @@ def level_recipe(recipe, k):
     return out
 
 
-def compile_levels(recipe, base, folder=None):
+def compile_levels(recipe, base, folder=None, budgets='error'):
     """Levels 1.. of a recipe with lod, each compiled as a recipe of its own: [(mesh, report)].
     Checks the switch distances."""
     lod = recipe['lod']
@@ -191,7 +294,7 @@ def compile_levels(recipe, base, folder=None):
     out = []
     for k in range(1,len(levels)+1):
         try:
-            mesh,_,rep = compile_recipe(level_recipe(recipe,k),folder)
+            mesh,_,rep = compile_recipe(level_recipe(recipe,k),folder,budgets)
         except AssetError as error:
             path = error.path if error.path.startswith('/budget') else f'/lod/levels/{k-1}'+error.path
             raise AssetError(path,f'Level {k}: {error}') from error
@@ -229,6 +332,15 @@ def lod_summary(recipe, mesh, base):
 DEFAULT_LAYOUT = {'slot':14,'row':0,'first':0}
 
 
+FONT_PALETTE = 255      # 4-bit palette 255 (colours 4080-4095) holds the fonts' colours
+
+
+def palette_range_ok(first, count):
+    """Whether 4-bit palettes first..first+count-1 exist (0-511, VRAM at 2 MB) and leave out
+    the fonts' palette 255."""
+    return 0 <= first and first+count <= PALETTES4 and not first <= FONT_PALETTE < first+count
+
+
 def palette_backed(mat):
     if 'texture' in mat: return False     # a textured material draws through its texture's palette
     return mat.get('palette',mat.get('class','surface') == 'emissive')
@@ -258,9 +370,12 @@ def assign_palette(mesh, materials, recipe, textured=False):
             raise AssetError('/palette_layout','No material the mesh uses is drawn through the palette. Set palette: true (or class "emissive") on a material, or remove palette_layout.')
         return None
     layout = {**DEFAULT_LAYOUT,**recipe.get('palette_layout',{})}
+    if layout['slot'] == 15:
+        raise AssetError('/palette_layout/slot','Texture slot 15 holds the fonts.')
     count = (len(keys)+14)//15
-    if layout['first']+count > 255:
-        raise AssetError('/palette_layout/first',f'{len(keys)} palette entries need {count} 4-bit palettes from {layout["first"]}; palette 255 holds the fonts.')
+    if not palette_range_ok(layout['first'],count):
+        raise AssetError('/palette_layout/first',f'{len(keys)} palette entries need {count} 4-bit palettes from {layout["first"]}; '
+                         f'palette 255 holds the fonts, and there are {PALETTES4} (0-{PALETTES4-1}).')
     entries, by_material = [], {}
     for i,key in enumerate(keys):
         palette, index = layout['first']+i//15, 1+i%15
@@ -396,19 +511,20 @@ def relocate(binary, colours=None, slot=None, row=None):
     _,count,_,offset,_ = struct.unpack_from('<HHIII',data)
     for i in range(count):
         at = offset+i*36
-        if not data[at]&2: continue
+        flags = data[at]
+        if not flags&2: continue
         tex,palette = data[at+2],data[at+3]
         uv = struct.unpack_from('<4H',data,at+28)
         if not tex&16 or len(set(uv[:3])) != 1 or not 0 < (uv[0]&255) < 16:
             raise AssetError('/binary',f'Face {i} is textured but is not a palette swatch face.')
-        colour, v = palette*16+(uv[0]&255), uv[0]>>8
+        colour, v = face_colour(flags,tex,palette,uv[0]&255), uv[0]>>8
         if colours and colour in colours:
             colour = colours[colour]
-            if not 0 < colour < 4080 or colour%16 == 0:
-                raise AssetError('/binary',f'Colour {colour} is index 0 of a palette or outside palettes 0-254.')
-        if slot is not None: tex = (tex&~15)|slot
+            if not 0 < colour < 16*PALETTES4 or colour%16 == 0 or colour//16 == FONT_PALETTE:
+                raise AssetError('/binary',f'Colour {colour} is index 0 of a palette or outside palettes 0-254 and 256-511.')
+        banks,tex,data[at+3] = tex_fields(face_slot(flags,tex) if slot is None else slot,True,colour//16,tex>>5)
+        data[at],data[at+2] = (flags&~(meshlib.SLOT_HI|meshlib.PAL_HI))|banks,tex
         if row is not None: v = row
-        data[at+2],data[at+3] = tex,colour//16
         struct.pack_into('<4H',data,at+28,*([colour%16|v<<8]*4))
     return bytes(data)
 

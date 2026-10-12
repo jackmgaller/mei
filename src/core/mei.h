@@ -27,6 +27,11 @@
 #define MEI_RAM_USER_BASE 0x000100u
 #define MEI_IO_BASE       0xFF0000u
 
+/* VRAM is MEI_VRAM_SIZE bytes from MEI_VRAM_BASE: 2 MB since 2026-10-05, 1 MB before
+ * (docs/DECISIONS.md, "VRAM at 2 MB"). Its layout is in machine.h. */
+#define MEI_VRAM_BASE     0x400000u
+#define MEI_VRAM_SIZE     0x200000u   /* 2 MB: 0x400000-0x5FFFFF */
+
 /* The optional cart header (docs/DECISIONS.md, "Cart file format"): word 0 is any
  * instruction (normally a jump past the header), then the magic "MEI1", the title and the
  * cart ID for memory cards, both NUL-padded (an all-zero ID: none). Code follows it. */
@@ -117,6 +122,9 @@ typedef struct {
     uint32_t tris_recip;    /* triangles charged the reciprocal setup (tested, or textured with depth) */
     uint32_t px_persp;      /* pixels of triangles drawn perspective-correct (included in px[]) */
     uint32_t persp_divs;    /* perspective divides */
+    /* fog toward a colour (a proposal, docs/DECISIONS.md) */
+    uint32_t tris_fog;      /* triangles charged the fog setup (packets with depth while GPU_FOG is on) */
+    uint32_t px_fog;        /* pixels of those triangles (included in px[]) */
 } MeiGpuStats;
 const MeiGpuStats *mei_gpu_stats(const Mei *m);
 

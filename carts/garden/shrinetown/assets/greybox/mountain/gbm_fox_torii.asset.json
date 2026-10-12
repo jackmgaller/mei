@@ -1,0 +1,149 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbm_fox_torii",
+ "materials": {
+  "torii": {
+   "color": "#e0502a"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    0.3,
+    3.92,
+    0.3
+   ],
+   "material": "torii",
+   "transform": {
+    "translate": [
+     -1.6,
+     1.36,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    0.3,
+    3.92,
+    0.3
+   ],
+   "material": "torii",
+   "transform": {
+    "translate": [
+     1.6,
+     1.36,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b2",
+   "op": "box",
+   "size": [
+    4.0,
+    0.3,
+    0.3
+   ],
+   "material": "torii",
+   "transform": {
+    "translate": [
+     0.0,
+     3.45,
+     0.0
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "b0",
+      "op": "box",
+      "size": [
+       0.3,
+       3.92,
+       0.3
+      ],
+      "material": "torii",
+      "transform": {
+       "translate": [
+        -1.6,
+        1.36,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom",
+       "top",
+       "left",
+       "right"
+      ]
+     },
+     {
+      "id": "b1",
+      "op": "box",
+      "size": [
+       0.3,
+       3.92,
+       0.3
+      ],
+      "material": "torii",
+      "transform": {
+       "translate": [
+        1.6,
+        1.36,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom",
+       "top",
+       "left",
+       "right"
+      ]
+     },
+     {
+      "id": "b2",
+      "op": "box",
+      "size": [
+       4.0,
+       0.3,
+       0.3
+      ],
+      "material": "torii",
+      "transform": {
+       "translate": [
+        0.0,
+        3.45,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     }
+    ]
+   }
+  ],
+  "cull": 60
+ }
+}

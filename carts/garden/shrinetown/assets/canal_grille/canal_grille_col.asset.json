@@ -1,0 +1,82 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "canal_grille_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "headwall",
+   "op": "box",
+   "size": [
+    8.6,
+    2.2,
+    2.0
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     -0.9,
+     0
+    ]
+   }
+  },
+  {
+   "id": "fence_front",
+   "op": "box",
+   "size": [
+    8.58,
+    1.23,
+    0.2
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.715,
+     -0.85
+    ]
+   }
+  },
+  {
+   "id": "fence_back",
+   "op": "box",
+   "size": [
+    8.58,
+    1.23,
+    0.2
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.715,
+     0.85
+    ]
+   }
+  }
+ ]
+}

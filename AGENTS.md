@@ -14,7 +14,7 @@ in [README.md](README.md#documentation).
 | `carts/` | The carts, one folder each (`carts/NAME/NAME.akr`), with their binary assets in `art/` and `audio/`, their tests in `tests/`, and the worlds they use in `worlds.txt` |
 | `examples/` | Example recipes for the kits: `assets/` (Asset Kit) and `worlds/` (World Kit) |
 | `tests/` | C unit tests (`test_*.c`), language tests (`lang/`), the kits' Python suites (`test_*.py`) and their fixtures, the Reference Renderer (`reference_renderer/`), the depth mode's measurements (`depth/`) |
-| `tools/` | Generators, the kits and their shared core, the MeiNet gateway, the language fuzzer, the web cart packer, the VS Code extension |
+| `tools/` | Generators, the kits and their shared core, the MeiNet gateway, the workboard, the language fuzzer, the web cart packer, the VS Code extension |
 | `web/` | The browser page (`shell.html`) |
 | `docs/` | The documentation and the spec |
 
@@ -36,7 +36,7 @@ tests/run_lang_tests.sh planes    # only the language tests whose name contains 
 
 `make test` runs the suites in this order: the C unit tests, `tests/run_lang_tests.sh`, the
 MeiNet gateway's tests, then `test_assetkit.py`, `test_worldpack.py`, `test_worldkit.py`,
-`test_mochi.py`, `test_worldverify.py` and `test_worldcache.py`, and last
+`test_mochi.py`, `test_worldverify.py`, `test_worldcache.py` and `test_workboard.py`, and last
 `tools/check_generated.sh` (what `make check-generated` runs: the generators that need only the standard library, and
 `gen_adpcm_vectors.py` when NumPy is there, into a temporary directory, compared with the
 committed files). `make test-carts` runs `carts/weather/tests/check.sh`,
@@ -85,6 +85,19 @@ DIR` (repeatable) names a directory searched for imports after the importing fil
 and before the standard library. [WORLDKIT.md](docs/WORLDKIT.md#using-a-world-in-a-cart) has the
 details; `carts/worldview/` is the example.
 
+**Quick feedback while placing assets in a world** (plain text; `--json` for JSON):
+
+```sh
+python3 tools/mei_assets.py info RECIPE [--at X,Y,Z --yaw DEG]     # bounds, LOD, texture bytes
+python3 tools/mei_assets.py floors RECIPE [--step 0.25]             # collision floor heights
+python3 tools/mei_world.py check WORLD --cells I,J --camera NAME=EX,EY,EZ@YAW,PITCH --build-dir build-mine
+python3 tools/mei_world.py floors WORLD --area X0,Z0,X1,Z1 --build-dir build-mine
+python3 tools/mei_world.py textures WORLD [--cells I,J] --build-dir build-mine
+```
+
+The world commands keep the compiled world in `BUILD_DIR/kit-cache/quick/` and reuse it while
+nothing it read has changed ([WORLDKIT.md](docs/WORLDKIT.md#quick-tools)).
+
 ## Dependencies
 
 - A C compiler and SDL3 (`brew install sdl3`). Optional: libusb (`brew install libusb`) for
@@ -102,13 +115,39 @@ details; `carts/worldview/` is the example.
   textures) and `meifont`, and for the Asset Kit's textures read
   from PNG images and sheets (`examples/assets/stall`, the shrine world's assets, so `make`;
   recipes without images need it not).
-  **SciPy** too for `gen_boot_duet`, `gen_soundlab_assets` and `gen_fallline_audio`.
+  **SciPy** too for `gen_boot_duet`, `gen_soundlab_assets`, `gen_fallline_audio` and the garden's
+  audio generators (`carts/garden/audio/gen_sounds.py`, `gen_music.py`).
 - The generators draw text with the OFL fonts in `tools/fonts/` (Figtree, Sofia Sans Condensed,
   Belleza, Gelasio, Noto Sans JP, Noto Serif JP, Zen Maru Gothic, M PLUS Rounded 1c), which
   `tools/fonts/make_fonts.py` makes from Google Fonts' repository; that script needs
   **fontTools** and network access. Scripts whose output is not shipped still draw with macOS
   system fonts: the garden's `layout.py` sketches, `carts/weather/tests/contact.py` and the lab
   scripts in `examples/assets/` (docs/LICENSING.md, section 3).
+
+## Reporting status
+
+Agents working in a worktree report to the workboard ([tools/workboard/README.md](tools/workboard/README.md);
+`python3 tools/workboard/serve.py`, then http://127.0.0.1:8770/). It infers branches, commits,
+uncommitted files and Asset Kit and World Kit reports by itself; what it cannot see is the
+model, the current step, the items planned and the questions. The orchestrator creates the
+record when it starts an agent and gives it the ID:
+
+```sh
+python3 tools/work_status.py new ID --title "Plaza props" --kind asset --model sonnet --lead LEAD --branch BRANCH
+```
+
+The agent, from its worktree (branch and worktree are filled in from there):
+
+```sh
+python3 tools/work_status.py set ID --state working --step "LOD pass" --percent 60   # at each step
+python3 tools/work_status.py item ID bench --state done --size small                  # each item
+python3 tools/work_status.py ask ID "Red or blue awning?"                             # then carry on
+python3 tools/work_status.py done ID --note "3 assets, all verified"                  # or review, block ID "why", stop
+```
+
+Call `set` when the step changes, not on a timer; a card with nothing new for 20 minutes is
+marked stale. `show ID` prints the record with any answers. Records live in `.git/mei-work/`
+(or `$MEI_WORK_DIR`), never in the checkout.
 
 ## Rules
 
@@ -126,6 +165,10 @@ details; `carts/worldview/` is the example.
   against the code before writing it down, and run a command before documenting it.
 - **Build into a private directory** (`make B=...`) rather than `build/` when other people or
   agents may be building too.
+- **Commit an asset's generator with the asset.** When a script writes a lab or example asset's
+  recipe or draws its art (a recipe writer, a texture or sheet drawer), commit it in the asset's
+  own folder beside what it writes, and add it to the Generators table below, so the asset can
+  be regenerated. A recipe or PNG without its script cannot be changed except by hand.
 
 ## Where new things go
 
@@ -152,10 +195,11 @@ details; `carts/worldview/` is the example.
 - **A cart's tests** in `carts/NAME/tests/`: a `harness.akr` with the scenarios, a `run.sh` that
   calls `tools/cart_scenario.sh`, and a `check.sh` that `make test-carts` runs.
 - **Machine constants** come from the core's headers, not from new numbers: the memory map
-  (`MEI_ROM_BASE`, `MEI_RAM_SIZE`, `MEI_RAM_USER_BASE`, `MEI_IO_BASE`), the cart header layout
-  (`MEI_HDR_*`) and the frame budgets in `src/core/mei.h`; the 18-bit immediate range
-  (`MEI_IMM_MIN`, `MEI_IMM_MAX`, `MEI_UIMM_MAX`) and the instruction encodings in
-  `src/core/isa.h`.
+  (`MEI_ROM_BASE`, `MEI_RAM_SIZE`, `MEI_RAM_USER_BASE`, `MEI_IO_BASE`, `MEI_VRAM_BASE`,
+  `MEI_VRAM_SIZE`), the cart header layout (`MEI_HDR_*`) and the frame budgets in
+  `src/core/mei.h`; VRAM's layout (`TEXTURE_ADDR`, `TEXTURE_SLOTS`, `PALETTE_HI_ADDR`, ...) in
+  `src/core/machine.h`; the 18-bit immediate range (`MEI_IMM_MIN`, `MEI_IMM_MAX`,
+  `MEI_UIMM_MAX`) and the instruction encodings in `src/core/isa.h`.
 - **Compiler passes:** the AST optimisations (inlining, let forwarding, induction pointers) are
   in `src/lang/opt.c`, run by `opt_program()` between type checking and code generation.
 
@@ -189,6 +233,20 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_fallline_audio.py` | `carts/fallline/audio/` and `carts/fallline/mu_data.akr`: Fall Line's music and sound effects |
 | `fonts/make_fonts.py` | `tools/fonts/`: the generators' fonts as static weights cut to Latin, kana and the kanji in its `KANJI` list, and their licences (`OFL-*.txt`) |
 | `meinet/make_fixture.sh` | `tests/lang/data/broadcast.bin`, the canned broadcast the language tests replay (`meinet.py --fixture`) |
+| `carts/garden/shrinetown/art/water/draw_water.py` | The shrine town's water textures in `art/water/`: `water.png`, `pond_water.png`, `falls.png`, `water_ramps.akr` |
+| `carts/garden/shrinetown/art/backdrop/draw_backdrop.py` | The shrine town's backdrops in `art/backdrop/`: `town_backdrop.png`, `shrine_backdrop.png`, `backdrop.json` |
+| `carts/garden/shrinetown/art/ground/draw_ground.py` | The shrine town's ground textures in `art/ground/` (`--preview DIR`: a contact sheet) |
+| `carts/garden/shrinetown/art/plain/draw_plain.py` | The shrine town's far plain in `art/plain/`: `plain.png`, `plain_atlas.bin`, `plain_map.bin`, `plain_data.akr` |
+| `carts/garden/shrinetown/assets/edge_neighbour/make_edge_neighbour.py` | The neighbours' backs: `art/facade_a.png`, `art/facade_b.png` and the `edge_neighbour_*` recipes |
+| `carts/garden/shrinetown/assets/edge_hoarding/make_edge_hoarding.py` | The road-works hoarding: `art/panel.png`, `art/sign.png`, `edge_hoarding.asset.json`; the edge fences, `edge_fence_*.asset.json` |
+| `carts/garden/shrinetown/assets/viaduct_end_wall/make_viaduct_end_wall.py` | The viaduct's end wall: `viaduct_end_wall.asset.json` |
+| `carts/garden/shrinetown/assets/edge_rock/make_edge_rock.py` | The frame's rock walls on the rims: `edge_rock_*.asset.json` (their table from `tools/frame.py --rocks`) |
+| `carts/garden/shrinetown/tools/frame.py --build-dir B --probes` | `carts/garden/tests/frame_probes.akr`, the frame scenarios' probes, from the built world (NumPy) |
+| `carts/garden/audio/gen_sounds.py` | The movement garden's sounds (the robot, the goals, the shrine town's beds, emitters, timers and life) in `carts/garden/audio/sounds.adp`, and `sound_data.akr`: the sounds' table and the zones, emitters and timers (`--preview DIR`: a WAV of every sound) |
+| `carts/garden/audio/gen_music.py` | "Momiji", the shrine town's music: `carts/garden/audio/music.adp` and `music_data.akr` (`--preview DIR`: a WAV of every sample) |
+
+The last twelve are run by their path from the repository root, not as `tools/NAME.py`; the
+garden's two audio generators share `carts/garden/audio/garden_dsp.py`, which writes nothing.
 
 Helpers the generators import, which write nothing themselves: `boot_audio.py`, `mei_adpcm.py`,
 `mei_icon.py` (memory card icons), `meshlib.py` (the native mesh format) and `weather_geo.py`.

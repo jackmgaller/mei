@@ -1,0 +1,12 @@
+[
+ {"name": "from_rope_deck", "eye": [0, 12.5, -24], "target": [0, 9.6, -3]},
+ {"name": "basin_front", "eye": [0, 1.6, -10], "target": [0, 4.5, 0]},
+ {"name": "hole_close", "eye": [0, 10.2, -7.5], "target": [0, 9.6, -2]},
+ {"name": "side_profile", "eye": [-11, 9.5, -6], "target": [0, 9.5, -3]},
+ {"name": "on_sill_down", "eye": [0, 10.1, -2.9], "target": [0, 1, 0.6]},
+ {"name": "chamber_to_door", "eye": [0.3, 1.5, 1.7], "target": [0, 1.1, -3]},
+ {"name": "chamber_up", "eye": [0.6, 1.0, 1.4], "target": [-0.2, 11, -1.2]},
+ {"name": "chamber_back", "eye": [-0.4, 1.6, -1.9], "target": [0.3, 0.4, 1.6]},
+ {"name": "from_above", "eye": [-6, 30, -22], "target": [0, 12, -2]},
+ {"name": "whole", "eye": [0, 10, -60], "target": [0, 22, 0]}
+]

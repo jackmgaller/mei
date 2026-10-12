@@ -20,9 +20,11 @@ from kitcore.errors import pointer
 from kitcore.vector import yaw as turn
 from . import farground, ids, merge, quads
 from . import pack as P
-from .assets import Library, collision_triangles, relative
-from .palettes import RegionPalette
-from .textures import RegionTextures, relocated_palette
+from .assets import Library, asset_directories, collision_triangles, relative
+from .palettes import RegionPalette, multiply as RP_multiply
+from .textures import RegionTextures, CommonTextures, relocated_palette
+from .haze import Haze
+from kitcore.texpack import PaletteRangeError, FONT_PALETTE
 from . import backdrop as BD
 from .terrain import TAG_FIELD, TAG_SWEEP, TAG_SCATTER, compile_terrain, q16
 from .scatter import scatter_items
@@ -160,6 +162,9 @@ class Compiled:
     terrain_files: list = field(default_factory=list)   # heights files the terrain read
     terrain: object = None                              # terrain.Result, or None
     water: bytes = b''                                  # NAME.water.bin (wp_water()), or empty
+    # what the quick tools read (worldkit/quick.py), not written by a build
+    region_textures: dict = None                        # region name -> RegionTextures
+    plans: list = None                                  # per cell: what went into the pack
 
 
 @dataclass
@@ -219,7 +224,8 @@ def compile_world(source, lock=None, assets_dir=None):
             return surfaces.get('default', 0)
         return surface_tags[tag]
 
-    library = Library(assets_dir or (source.base / w['assets']).resolve(), source.base)
+    directories = asset_directories(w, source.base, assets_dir)
+    library = Library(directories[0], source.base, directories[1:])
     warnings = []
     regions = list(w['regions'])
     layer_names = list(w.get('layers', {}))
@@ -259,10 +265,12 @@ def compile_world(source, lock=None, assets_dir=None):
             entity_where[e['id']] = (c['id'], k)
 
     auto_standins = w.get('standins')
-    if auto_standins and len(regions) > 1:
-        raise WorldError('/standins', 'Stand-ins made by the kit keep their placements\' textures, and a stand-in '
-                         'is drawn whichever region is loaded: they need a world with one region. Give each cell '
-                         'its own stand-in instead.')
+    # A stand-in is drawn whichever region is loaded: with several regions, the kit's stand-ins draw
+    # textured faces in their tiles' far colours (textures.py, far_faces()).
+    far_standins = bool(auto_standins) and len(regions) > 1
+    for cid in (auto_standins or {}).get('cells', {}):
+        if cid not in seen_cells:
+            raise WorldError(pointer('/standins/cells', cid), f'No cell {cid!r}.')
     if len(source.cells) > 1 and not auto_standins:
         for cs in source.cells:
             if 'standin' not in cs.recipe:
@@ -559,6 +567,7 @@ def compile_world(source, lock=None, assets_dir=None):
                 levels.append((at, None))
                 break
             levels.append((at, merge.merge(parts, centre)[0]))
+            note_props(levels[-1][1], parts, [it for (it, _, _), k in zip(batch, state) if k is not None])
             prev, last = at, state
         else:
             if cap is not None:
@@ -569,18 +578,35 @@ def compile_world(source, lock=None, assets_dir=None):
                              'switch distances, or fewer kinds of asset.')
         return levels
 
-    def standin_of(cell, centre, cid, far_grids):
+    chunk_props = {}        # a scatter chunk's level mesh -> [((mesh, position, yaw[, scale]), item)]
+
+    def note_props(mesh, parts, items):
+        """Remembers the props a chunk's level was merged from, so that a stand-in with a cap can
+        take some of them when the whole chunk does not fit."""
+        if mesh is not None and auto_standins and any(
+                'triangles' in o for o in [auto_standins, *auto_standins.get('cells', {}).values()]):
+            chunk_props[mesh] = list(zip(parts, items))
+
+    def standin_of(cell, centre, cid, far_grids, field_src, region):
         """A stand-in made from the cell itself (standins): each placement not in a layer (sweeps only
         with standins.sweeps) at the level it draws at standins.distance, merged into one mesh around
         the cell's centre; None when nothing is drawn from that far. A far ground level is made
-        again without the skirts between the cell's own tiles, which meet exactly."""
+        again without the skirts between the cell's own tiles, which meet exactly. With ground, the
+        field's tiles are resampled on that grid instead. With triangles, the ground (field tiles and
+        ground placements) goes in first, then the rest largest first (standin_size), each whole or
+        not at all, a scatter chunk's props one by one in a seeded order."""
         dist = auto_standins['distance'] * lod_cfg.get('scale', 1.0)
+        limits = dict(auto_standins, **auto_standins.get('cells', {}).get(cid, {}))
+        cap, grid = limits.get('triangles'), limits.get('ground')
         half = size / 2
         def border(a, b):
             return any(abs(a[q]) >= half - 1e-3 and abs(b[q]) >= half - 1e-3 and a[q] * b[q] > 0 for q in (0, 2))
-        items, windows = [], False
+        ground, items, tiles, windows = [], [], [], False
         for k, pl in enumerate(cell.placements):
             if pl.layer is not None or (pl.tag == TAG_SWEEP and not auto_standins.get('sweeps')):
+                continue
+            if grid and k in field_src:
+                tiles.append(field_src[k])
                 continue
             mesh = pl.mesh
             for d, m in (pl.lod.levels if pl.lod else []):
@@ -593,10 +619,47 @@ def compile_world(source, lock=None, assets_dir=None):
             if mesh is None:
                 continue
             windows = windows or bool(struct.unpack_from('<I', mesh, 12)[0])
-            items.append((mesh, pl.position, pl.yaw))
+            if cap is not None and (pl.tag == TAG_FIELD or pl.ground):
+                ground.append((mesh, pl.position, pl.yaw))
+            elif cap is not None and mesh in chunk_props:
+                for part, it in chunk_props[mesh]:
+                    items.append((part, hashlib.sha256(f'standin:{it.id}'.encode()).digest()))
+            else:
+                items.append(((mesh, pl.position, pl.yaw), struct.pack('>I', k)))
+        if tiles:
+            # the field's tiles resampled together on one grid over the cell, or one by one where
+            # that cannot be (ground not under every grid point, or more than one mesh would hold it)
+            windows = windows or any(struct.unpack_from('<I', m, 12)[0] for m in tiles)
+            whole = merge.merge([(m, centre, 0.0) for m in tiles], centre)
+            got = farground.far_levels(whole[0], [grid], skirted=border)[0] if len(whole) == 1 else None
+            parts = [(m, centre, 0.0) for m in
+                     ([got] if got else [farground.far_levels(m, [grid], skirted=border)[0] or m for m in tiles])]
+            if cap is not None:
+                ground[:0] = parts
+            else:
+                items[:0] = [(part, b'') for part in parts]
+        left_out = 0
+        if cap is not None:
+            used = sum(standin_triangles(m) for m, *_ in ground)
+            if used > cap:
+                warnings.append({'code': 'standin_over_cap', 'cell': cid, 'triangles': used, 'cap': cap,
+                                 'message': 'The ground alone is more triangles than the stand-in\'s cap, so the '
+                                            'stand-in is the ground alone. Give it a coarser ground or a higher cap.'})
+            keep = set()
+            for q in sorted(range(len(items)), key=lambda q: (standin_size(*items[q][0]), items[q][1])):
+                t = standin_triangles(items[q][0][0])
+                if used + t <= cap:
+                    keep.add(q)
+                    used += t
+            left_out = len(items) - len(keep)
+            items = [(part, b'') for part in ground] + [it for q, it in enumerate(items) if q in keep]
         if not items:
             return None
-        meshes = merge.merge(items, centre)
+        if far_standins:
+            rt_, rp_ = region_textures[region], region_palettes[region]
+            items = [((rt_.far_faces(part[0], rp_, slot, row), *part[1:]), q) for part, q in items]
+            windows = False
+        meshes = merge.merge([part for part, _ in items], centre)
         if len(meshes) > 1:
             nf = sum(struct.unpack_from('<H', m, 2)[0] for m in meshes)
             raise WorldError('/standins/distance', f'Cell {cid!r} drawn from {dist:g} units is {nf} faces, more than '
@@ -606,7 +669,11 @@ def compile_world(source, lock=None, assets_dir=None):
             warnings.append({'code': 'standin_windows', 'cell': cid,
                              'message': 'The stand-in merges faces with repeating textures; a merged mesh has no '
                                         'texture window table, so they are drawn without their windows.'})
-        auto_report[cid] = {'placements': len(items), 'triangles': struct.unpack_from('<H', meshes[0], 2)[0]}
+        auto_report[cid] = {'placements': len(items), 'left_out': left_out, 'triangles': standin_triangles(meshes[0])}
+        if cap is not None:
+            auto_report[cid]['cap'] = cap
+        if grid:
+            auto_report[cid]['ground'] = grid
         return meshes[0]
 
     auto_report = {}
@@ -648,11 +715,50 @@ def compile_world(source, lock=None, assets_dir=None):
                               'length': round(recs[-1][2] / P.ONE, 4), 'raised': path.raised, 'closed': closed,
                               'surface': path.surface}
 
+    # ---- the stand-ins' texture set (standins.textures): the 4-bit cutout tiles (the trees' far
+    # cards) of the levels the stand-ins draw, packed once and held by every region's set
+    common = None
+    if auto_standins and auto_standins.get('textures'):
+        common = CommonTextures(auto_standins['textures'], '/standins/textures')
+        sdist = auto_standins['distance'] * lod_cfg.get('scale', 1.0)
+
+        def standin_level(asset):
+            """The level of the asset a stand-in draws (None: culled by then)."""
+            e = lod_entry(asset)
+            if e is None or e['off']:
+                return 0
+            if e['cull'] is not None and sdist >= e['cull']:
+                return None
+            return min(sum(1 for d in e['distances'] if sdist >= d), len(asset.mesh.levels))
+        seen_levels = set()
+        for plan in plans:
+            drawn = [pl['asset'] for pl in plan['placements'] if pl['spec'].get('layer') is None]
+            drawn += [a for it, a in plan['scatter'] if it.layer is None]
+            for asset in drawn:
+                if not getattr(asset, 'textured', False):
+                    continue
+                k = standin_level(asset)
+                if k is None or (asset.name, k) in seen_levels:
+                    continue
+                seen_levels.add((asset.name, k))
+                mesh = asset.mesh if k == 0 else asset.mesh.levels[k - 1][0]
+                textures = asset.mesh.textures['textures'] if asset.mesh.textures else {}
+                for material in sorted({f.material for f in mesh.faces}):
+                    tex = textures.get(material)
+                    if tex and tex.tile.holes and tex.tile.bits == 4 and len(tex.tile.frames) == 1:
+                        common.add(asset.name, material, tex.tile, asset.materials[material].get('class', 'surface'))
+        if not common.tiles:
+            common = None
+
+    # ---- haze (aerial perspective): far levels and stand-ins fade toward the horizon's colour
+    hz = Haze(w['haze'], auto_standins['distance'] * lod_cfg.get('scale', 1.0) if auto_standins else 0) \
+        if w.get('haze') else None
+
     # ---- palettes: each region's entries, then the assets' faces moved to them
     palette = w.get('palette', {})
     slot, row = palette.get('swatch_slot', 14), palette.get('swatch_row', 0)
     nxt = palette.get('first', 0)
-    next8 = palette.get('first8', 14)
+    next8 = palette.get('first8', 31)          # 8-bit palettes from the top of bank 1 down
     any_palette = any(rp.by_key for rp in region_palettes.values())
     backdrops = {}
     for r in regions:
@@ -665,26 +771,63 @@ def compile_world(source, lock=None, assets_dir=None):
                 if vn not in vnames:
                     raise WorldError(pointer(bp + '/sky', vn), f'Region {r!r} has no palette variant {vn!r}; its '
                                      f'variants: {", ".join(vnames)}.')
+    if common:
+        common.pack((slot, row) if any_palette else None)
+    for r in regions:
+        region_textures[r].common = common
+        far = None
+        if far_standins and (region_textures[r].assets or (hz and region_palettes[r].by_key)):
+            far = region_textures[r].far_asset(dict(region_palettes[r].by_key) if hz else None)
+        if far:
+            region_palettes[r].add_asset(far)
+        if hz:
+            rspec = w['regions'][r]
+            hz.region(r, rspec, backdrops.get(r), rspec.get('variants') or {'default': {}},
+                      lambda c, t: RP_multiply(c, t))
+            region_palettes[r].haze = {'colours': hz.colours[r], 'amount': hz.standins, 'emissive': hz.emissive}
     for r in regions:
         rp, rt = region_palettes[r], region_textures[r]
-        if rt.assets or r in backdrops:
-            # textures, then the backdrop's palette, after the entries' palettes in the region's range
-            first = rp.spec.get('palettes', {}).get('first', nxt)
-            extra = 0
-            if rt.assets:
-                rt.pack(warnings, first + rp.entry_palettes(), next8, (slot, row) if any_palette else None)
-                rp.tex4, rp.tex8, rp.texels = rt.palettes4(), rt.palettes8(), rt.texel_owners()
-                extra = len(rp.tex4)
-                if rp.tex8:
-                    next8 = min(rp.tex8) - 1
+        nxt += nxt == FONT_PALETTE                   # palette 255 holds the fonts' colours
+        if rt.assets or r in backdrops or common:
+            # textures, then the backdrop's palette, after the entries' palettes in the region's range;
+            # a region's palettes never cross 255 (the fonts'), so one that does not fit below it
+            # starts at 256, in palette bank 1, unless the recipe places it
+            placed = 'first' in rp.spec.get('palettes', {})
+            for start in ([nxt] if placed or nxt >= FONT_PALETTE else [nxt, FONT_PALETTE + 1]):
+                first = rp.spec.get('palettes', {}).get('first', start)
+                extra, n8, said = 0, next8, []
+                try:
+                    if rt.assets or common:
+                        rt.haze = bool(hz and far_standins)
+                        rt.pack(said, first + rp.entry_palettes(), n8, (slot, row) if any_palette else None, common)
+                        rp.haze_palettes = set(rt.common_haze.values())
+                        rp.tex4, rp.tex8, rp.texels = rt.palettes4(), rt.palettes8(), rt.texel_owners()
+                        extra = len(rp.tex4)
+                        if rp.tex8:
+                            n8 = min(rp.tex8) - 1
+                            n8 -= n8 == FONT_PALETTE // 16      # 8-bit palette 15 holds the fonts' colours
+                except WorldError as error:
+                    if placed or start > FONT_PALETTE or not isinstance(error.__cause__, PaletteRangeError):
+                        raise
+                    continue
+                total = rp.entry_palettes() + extra + (1 if r in backdrops and backdrops[r].height else 0)
+                if not placed and first < FONT_PALETTE < first + total and start < FONT_PALETTE:
+                    continue
+                break
+            warnings += said
+            next8 = n8
             if r in backdrops:
                 rp.sky = backdrops[r]
                 if rp.sky.height:
                     rp.backdrop = (first + rp.entry_palettes() + extra, rp.sky.colours)
                     extra += 1
-            nxt = rp.assign(nxt, extra)
+            nxt = rp.assign(first, extra)
         else:
-            nxt = region_palettes[r].assign(nxt) if region_palettes[r].by_key or 'palettes' in w['regions'][r] else nxt
+            rp = region_palettes[r]
+            if rp.by_key or 'palettes' in w['regions'][r]:
+                if 'first' not in rp.spec.get('palettes', {}) and nxt < FONT_PALETTE < nxt + rp.entry_palettes():
+                    nxt = FONT_PALETTE + 1
+                nxt = rp.assign(nxt)
         if not region_palettes[r].by_key and not region_palettes[r].extra and 'variants' in w['regions'][r]:
             warnings.append({'code': 'variants_without_entries', 'region': r,
                              'message': 'The region has palette variants but no palette-backed material is drawn in it.'})
@@ -698,10 +841,39 @@ def compile_world(source, lock=None, assets_dir=None):
             taken[pal] = r
     any_palette = any(rp.entries for rp in region_palettes.values())
     low8 = [p for rp in region_palettes.values() for p in rp.tex8]
-    if low8 and taken and max(taken) >= 16 * min(low8):
-        raise WorldError('/palette', f'8-bit palette {min(low8)} (colours {256 * min(low8)}-{256 * min(low8) + 255}) '
-                         f'overlaps 4-bit palette {max(taken)}, which region {taken[max(taken)]!r} uses. Use fewer '
-                         '8-bit textures, palette.first8, or lower 4-bit palettes.')
+    for p8 in sorted(low8):
+        hit = [p for p in taken if p8 * 16 <= p < p8 * 16 + 16]
+        if hit:
+            raise WorldError('/palette', f'8-bit palette {p8} (colours {256 * p8}-{256 * p8 + 255}) overlaps 4-bit '
+                             f'palette {hit[0]}, which region {taken[hit[0]]!r} uses. Use fewer 8-bit textures, '
+                             'palette.first8, or other 4-bit palettes.')
+    # palette.reserved: 4-bit palettes the game keeps for itself (a collectible's colours, say),
+    # which no region, texture or silhouette may take
+    reserved = sorted(set(palette.get('reserved', [])))
+    for pal in reserved:
+        if pal in taken:
+            raise WorldError('/palette/reserved', f'4-bit palette {pal} is reserved (palette.reserved), but region '
+                             f'{taken[pal]!r} uses it. Give the region palettes.first and palettes.count that leave '
+                             'it out.')
+        hit = [p8 for p8 in low8 if p8 * 16 <= pal < p8 * 16 + 16]
+        if hit:
+            raise WorldError('/palette/reserved', f'4-bit palette {pal} is reserved (palette.reserved), but 8-bit '
+                             f'palette {hit[0]} covers it. Use fewer 8-bit textures or palette.first8.')
+    # a backdrop silhouette is drawn by a plane, which reads palette bank 0 only: a region whose
+    # palettes are in bank 1 gets its silhouette's palette in bank 0, after every palette there
+    # taken, loaded with its variants as a run of its own
+    for r in regions:
+        rp = region_palettes[r]
+        if rp.backdrop and rp.backdrop[0] > FONT_PALETTE:
+            used0 = [p for p in taken if p < FONT_PALETTE] + [16 * p8 + 15 for p8 in low8 if p8 < FONT_PALETTE // 16]
+            pal = max(used0, default=-1) + 1
+            while pal in reserved:
+                pal += 1
+            if pal >= FONT_PALETTE:
+                raise WorldError(pointer('/regions', r) + '/backdrop', f'Region {r!r}\'s backdrop needs a 4-bit palette in '
+                                 'bank 0 (0-254: a plane reads bank 0 only); none is free.')
+            taken[pal] = r
+            rp.backdrop = (pal, rp.backdrop[1])
 
     # ---- the pack's description
     variants_shown = {}
@@ -713,10 +885,12 @@ def compile_world(source, lock=None, assets_dir=None):
             variants_shown[r] = shown
             reg = P.Region(r, first_colour=rp.first_colour, variants=rows)
             rt = region_textures[r]
-            if rt.packing:
+            if rt.packing and (rt.packing.placements or common):
                 reg.textures = rt.slot_textures(SWATCH if any_palette else b'')
                 reg.runs = [P.PaletteRun(pal * 256, rp.run_rows[q]) for q, pal in enumerate(sorted(rp.tex8))]
                 reg.animations = [a for _, a in rt.animations()]
+            if rp.backdrop_rows:
+                reg.runs = list(reg.runs or []) + [P.PaletteRun(rp.backdrop[0] * 16, rp.backdrop_rows)]
             if rp.sky:
                 bd = rp.sky
                 reg.sky = P.Sky(bd.elevations, rp.sky_rows, bd.mode(rp.backdrop[0]) if bd.height else 0,
@@ -766,10 +940,33 @@ def compile_world(source, lock=None, assets_dir=None):
         # ground placement, the way a terrain piece is)
         for (lname, ground), items in sorted(to_merge.items(),
                                              key=lambda kv: (kv[0][0] is not None, kv[0][0] or '', kv[0][1])):
-            meshes = merge.merge([(b, pl['pos'], pl['yaw']) for b, pl in items], centre)
-            for m in meshes:
-                cell.placements.append(P.Placement(m, centre, 0.0, lname, 0xFFFF, ground))
+            groups = merge.merge_groups([(b, pl['pos'], pl['yaw']) for b, pl in items], centre)
+            # A merged mesh keeps the props' cull when every prop in it has one (moved out by how
+            # far each prop is from the mesh's centre, merge.shared_cull()); levels are lost.
+            entries = [lod_entry(pl['asset']) for _, pl in items]
+            culls = [e['cull'] if e is not None and not e['off'] else None for e in entries]
+            culled = []
+            for m, props in groups:
+                cull = merge.shared_cull(props, culls)
+                lod = None
+                if cull is not None:
+                    band = max(entries[k]['band'] for k, _ in props)
+                    if cull + band <= P.MAX_LOD_DISTANCE:
+                        lod = P.Lod([(cull, None)], band)
+                        culled.append(cull)
+                    else:
+                        cull = None
+                if cull is None:
+                    lost = sorted({items[k][1]['spec']['id'] for k, _ in props if culls[k] is not None})
+                    if lost:
+                        warnings.append({'code': 'cull_merged', 'cell': c['id'], 'placements': lost,
+                                         'message': 'Merged placements whose assets have a cull distance are drawn '
+                                                    'at every distance: another prop merged with them has no cull. '
+                                                    'Give it one, or do not merge them.'})
+                cell.placements.append(P.Placement(m, centre, 0.0, lname, 0xFFFF, ground, lod))
+            meshes = [m for m, _ in groups]
             entry = {'layer': lname, 'placements': [pl['spec']['id'] for _, pl in items], 'meshes': len(meshes)}
+            if culled: entry['cull'] = max(culled)
             if ground: entry['ground'] = True
             merged_report.setdefault(c['id'], []).append(entry)
         # scatter: each chunk's props merged into one mesh (or more, split between props), with a
@@ -794,6 +991,7 @@ def compile_world(source, lock=None, assets_dir=None):
             if cur: batches.append(cur)
             for batch in batches:
                 mesh = merge.merge([(b, it.position, it.yaw) for it, _, b in batch], centre)[0]
+                note_props(mesh, [(b, it.position, it.yaw) for it, _, b in batch], [it for it, _, _ in batch])
                 levels = []
                 if sc.get('lod') == 'assets':
                     levels = chunk_levels(sname, sc, batch, rp, centre)
@@ -804,6 +1002,7 @@ def compile_world(source, lock=None, assets_dir=None):
                               else rp.relocated_levels(asset, slot, row)[0]) if asset.levels else b
                         coarse.append((lv, it.position, it.yaw))
                     levels.append((sc['coarse'], merge.merge(coarse, centre)[0]))
+                    note_props(levels[-1][1], coarse, [it for it, _, _ in batch])
                 if 'cull' in sc and sc.get('lod') != 'assets':
                     levels.append((sc['cull'], None))
                 lod = P.Lod(levels, 2.0) if levels else None
@@ -817,6 +1016,7 @@ def compile_world(source, lock=None, assets_dir=None):
                 srep['chunks'] = srep.get('chunks', 0) + 1
                 srep['triangles'] = srep.get('triangles', 0) + struct.unpack_from('<H', mesh, 2)[0]
         far_grids = {}          # placement number -> (mesh resampled, [(distance, grid)]) of its far ground
+        field_src = {}          # placement number -> the mesh a field tile's far levels are resampled from
         for piece in (terrain.pieces.get((i, j), []) if terrain else []):
             ta = terrain_assets[c['region']]
 
@@ -829,6 +1029,8 @@ def compile_world(source, lock=None, assets_dir=None):
             base = terrain_mesh(piece.mesh)
             levels = [(d, terrain_mesh(m)) for d, m in piece.levels]
             where = pointer('/terrain/fields', piece.name) + '/lod'
+            if piece.kind == 'field':
+                field_src[len(cell.placements)] = levels[-1][1] if levels and levels[-1][1] else base
             if piece.kind == 'field' and ground_lod:
                 # far ground (WORLDKIT.md, "Levels of detail"): grids resampled from level 0, each
                 # kept only where it has fewer faces than the level before it
@@ -861,7 +1063,7 @@ def compile_world(source, lock=None, assets_dir=None):
         if plan['standin']:
             cell.standin = rp.relocated(plan['standin'], slot, row)
         elif auto_standins:
-            cell.standin = standin_of(cell, centre, c['id'], far_grids)
+            cell.standin = standin_of(cell, centre, c['id'], far_grids, field_src, c['region'])
         cell.collision = plan['collision']
         for e in plan['entities']:
             spec = e['spec']
@@ -869,6 +1071,19 @@ def compile_world(source, lock=None, assets_dir=None):
                                           spec.get('layer'), mesh=mesh_of(e['asset']) if e['asset'] else None,
                                           collision=e['collision']))
         cells.append(cell)
+
+    if hz:
+        # haze: every level after level 0 at the amount where it starts, stand-ins at theirs
+        bases = {r: region_textures[r].face_base(region_palettes[r], slot, row) for r in regions}
+        haze_levels = 0
+        for cell in cells:
+            r = regions[cell.region]
+            for pl in cell.placements:
+                if pl.lod:
+                    pl.lod.levels = [(d, hz.tint(m, hz.at(d), bases[r], r)) for d, m in pl.lod.levels]
+                    haze_levels += sum(1 for d, m in pl.lod.levels if m is not None and hz.at(d) > 0)
+            cell.standin = hz.tint(cell.standin, hz.standins, bases[r], r)
+        hz.levels = haze_levels
 
     if w.get('meshes', {}).get('quads'):
         # pairs of triangles drawn as quads (WORLDKIT.md, "Quads"): the same pictures, fewer faces;
@@ -894,6 +1109,10 @@ def compile_world(source, lock=None, assets_dir=None):
                     near_far=w.get('runtime', {}).get('near_far'),
                     overhang=overhang, floor_max_degrees=probe['floor_max_degrees'],
                     ceiling_max_degrees=probe.get('ceiling_max_degrees', DEFAULT_CEILING_DEGREES), paths=paths)
+    occlusion_report = None
+    if w.get('occlusion'):
+        from . import occlusion
+        occlusion_report = occlusion.compute(w['occlusion'], world, size, layer_names, warnings)
 
     # ---- entity numbers, saved bits, parameter records
     numbers = P.entity_numbers(world)
@@ -947,8 +1166,14 @@ def compile_world(source, lock=None, assets_dir=None):
         if r in backdrops:
             entry['backdrop'] = backdrops[r].report()
     report['lod'] = {n: s for n, s in lod_report.items()}
+    if occlusion_report is not None:
+        report['occlusion'] = occlusion_report
     if auto_standins:
         report['standins'] = {'distance': auto_standins['distance'], 'cells': auto_report}
+        if common:
+            report['standins']['textures'] = common.report()
+    if hz:
+        report['haze'] = hz.report()
     if ground_lod:
         report['far_ground'] = {'levels': [dict(g) for g in ground_lod], 'tiles': far_ground['tiles'],
                                 'triangles': far_ground['triangles']}
@@ -972,6 +1197,7 @@ def compile_world(source, lock=None, assets_dir=None):
         report['scatter'] = scatter_report
     compiled.water = water_blob(terrain.water) if terrain and terrain.water else b''
     compiled.terrain = terrain
+    compiled.region_textures, compiled.plans = region_textures, plans
     from .akr import world_source, game_source
     compiled.akr = world_source(source, compiled, region_palettes, slot, row, number_of, groups)
     compiled.game_akr = game_source(game)
@@ -1111,3 +1337,23 @@ def make_report(source, world, data, plans, library, region_palettes, variants_s
 
 def mesh_faces(binary):
     return struct.unpack_from('<H', binary, 2)[0]
+
+
+def standin_triangles(binary):
+    """A mesh's triangles as drawn: a quad is two."""
+    nf, fo = struct.unpack_from('<H', binary, 2)[0], struct.unpack_from('<I', binary, 8)[0]
+    return sum(2 if binary[fo + 36 * k] & 4 else 1 for k in range(nf))
+
+
+def standin_size(binary, position=None, yaw=0.0, scale=1.0):
+    """The sort key of a piece of a capped stand-in, largest first (WORLDKIT.md, "Stand-ins made by
+    the kit"): its bounding box's height times its larger horizontal side, then its footprint."""
+    nv, _, vo = struct.unpack_from('<HHI', binary)
+    if not nv:
+        return (0.0, 0.0)
+    lo, hi = [math.inf] * 3, [-math.inf] * 3
+    for k in range(nv):
+        for q, c in enumerate(struct.unpack_from('<3i', binary, vo + 16 * k)):
+            lo[q], hi[q] = min(lo[q], c), max(hi[q], c)
+    dx, dy, dz = ((hi[q] - lo[q]) / 65536 * scale for q in range(3))
+    return (-dy * max(dx, dz), -dx * dz)

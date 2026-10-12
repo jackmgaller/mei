@@ -24,10 +24,23 @@
 //   fixed: on the line through the box's centre along `look`, CamZoneDist behind the player
 //          along it (backing away when the player comes toward it); it turns to face `look`.
 //   rail:  on the box's long axis, at the player's place along it, CamZoneDist back against
-//          `look`; it turns to face `look`.
+//          the way the player is going along the axis (chosen on entry from its velocity, or
+//          its facing when still; `look` only breaks a tie), so it looks ahead of a runner either
+//          way; running back the other way for CAM_BACK_TICKS turns it round (CAM_ZONE_TURN a
+//          tick, the eye swinging round the player).
 //   follow: the normal camera.
 // In both, the eye's height rises with the player (CamZoneRise above the feet, eased by
-// CamLift) and it pitches to keep the player's middle in view.
+// CamLift) and it pitches to keep the player's middle in view. The zone the player is in is held
+// until the feet leave it, even where another overlaps it (the alleys' crossings), and a change
+// from one zone to the next turns the view (CAM_ZONE_TURN a tick) instead of jumping. A world
+// with more zones than CAM_MAX_ZONES fails to load (cam_read_zones()), as poles and rails do.
+//
+// The body is not drawn while the eye is closer to the head than CAM_BODY_HIDE (a stairwell, a
+// cave's back): the screen would be the robot's head (game.akr's draw()).
+//
+// The opening (cam_intro(), when a world opens): for CAM_INTRO ticks the view looks up, level
+// with the horizon, along the spawn's facing (the level's axis), then eases back; the stick, L
+// or a run ends it sooner.
 //
 // cam.lock (the tests) holds the yaw: no following, no zones, so the stick stays world-fixed.
 // An outside change to cam.yaw is taken as it is (the frame-timing sweep sets it).
@@ -40,7 +53,13 @@ const CAM_MIN: fixed = 0.15      // the eye comes no closer to the head than thi
 const CAM_NEAR: fixed = 2.5      // pulled in closer than this, it looks more at the player
 const CAM_PITCH_LO: fixed = -1.3
 const CAM_PITCH_HI: fixed = 0.7
-const CAM_MAX_ZONES = 8
+const CAM_MAX_ZONES = 24
+const CAM_ZONE_TURN: fixed = 0.06  // a zone's view turning to a new look, radians a tick
+const CAM_BACK_TICKS = 40          // running against a rail zone's look this long turns it round
+const CAM_BACK_SPEED: fixed = 2.0  // m/s against it that counts
+const CAM_BODY_HIDE: fixed = 0.8   // the body is not drawn with the eye nearer the head than this
+const CAM_INTRO = 150              // the opening's ticks (the last 60 easing back)
+const CAM_INTRO_PITCH: fixed = 0.02
 const CAM_RECENTRE: fixed = 0.15 // L: the share of the angle left that is turned each tick,
 const CAM_SWING_MAX: fixed = 0.08 // at most this (radians a tick: 4.8 a second)
 
@@ -49,6 +68,7 @@ struct CamZone {
     hi: vec3
     mode: s32           // GardenCameraZoneMode as s32
     look: vec3          // horizontal unit; zero: the game's choice (the yaw on entry)
+    along_x: bool       // its long axis (a rail's) is x
 }
 
 struct Cam {
@@ -71,7 +91,10 @@ struct Cam {
     zone: s32          // the zone being blended in or out, or -1
     w: fixed           // 0 (follow) .. 1 (the zone's view), linear
     zy: fixed          // the zone eye's height (eased)
-    zlook: vec3        // the zone's look direction, fixed on entry
+    zyaw: fixed        // the zone's view's heading (eased toward zwant)
+    zwant: fixed       // the heading it turns to: chosen on entry (a rail's: by the player's way)
+    zback: s32         // ticks the player has run against a rail zone's look
+    intro: s32         // the opening's ticks left (cam_intro())
     // for the tests
     blocked: bool      // the walls ray found something this frame
     cycles: s32        // the cost of the last cam_place() and the cam_tick()s before it
@@ -89,7 +112,8 @@ fn cam_read_zones() {
     cam_zone_n = 0
     for n in 0..wp_pack.entity_count as s32 {
         let e = wp_entity(n)
-        if e.type_id as s32 != GARDEN_TYPE_CAMERA_ZONE || cam_zone_n >= CAM_MAX_ZONES { continue }
+        if e.type_id as s32 != GARDEN_TYPE_CAMERA_ZONE { continue }
+        assert(cam_zone_n < CAM_MAX_ZONES)      // a world with more zones than the cart holds stops here
         let p = wp_entity_params(e) as *GardenCameraZone
         if p == null { continue }
         let at = wp_entity_pos(e)
@@ -100,21 +124,44 @@ fn cam_read_zones() {
         z.mode = p.mode as s32
         let lh = vec3(p.look.x, 0.0, p.look.z)
         if abs(lh.x) + abs(lh.z) > 0.001 { z.look = normalize(lh) }
+        z.along_x = p.size.x > p.size.z
         cam_zones[cam_zone_n] = z
         cam_zone_n += 1
     }
 }
 
+fn cam_in_zone(k: s32, p: vec3) -> bool {
+    let z = &cam_zones[k]
+    return p.x >= z.lo.x && p.x <= z.hi.x && p.z >= z.lo.z && p.z <= z.hi.z && p.y >= z.lo.y - 1.0 && p.y <= z.hi.y
+}
+
 // The zone (not a follow one) the player's feet are in, or -1.
 fn cam_zone_at(p: vec3) -> s32 {
     for k in 0..cam_zone_n {
-        let z = &cam_zones[k]
-        if z.mode == GardenCameraZoneMode.Follow as s32 { continue }
-        if p.x >= z.lo.x && p.x <= z.hi.x && p.z >= z.lo.z && p.z <= z.hi.z && p.y >= z.lo.y - 1.0 && p.y <= z.hi.y {
-            return k
-        }
+        if cam_zones[k].mode == GardenCameraZoneMode.Follow as s32 { continue }
+        if cam_in_zone(k, p) { return k }
     }
     return -1
+}
+
+// The zone the player is in now: the one it was in while the feet stay in it (hysteresis where
+// zones overlap), else the first that has them.
+fn cam_zone_now(p: vec3) -> s32 {
+    if cam.zone >= 0 && cam.w > 0.0 && cam_in_zone(cam.zone, p) { return cam.zone }
+    return cam_zone_at(p)
+}
+
+// A rail zone's heading: along its long axis, the way the player goes along it (its velocity, or
+// its facing when nearly still); `look` breaks a tie (going across the axis).
+fn cam_rail_yaw(z: *CamZone) -> fixed {
+    var a = vec3(0.0, 0.0, 1.0)
+    if z.along_x { a = vec3(1.0, 0.0, 0.0) }
+    var v = vec3(pl.vel.x, 0.0, pl.vel.z)
+    if hspeed() < 0.02 { v = fwd_dir(pl.yaw) * 0.1 }
+    var s = dot(v, a)
+    if abs(s) < tlen(v) * 0.3 && abs(z.look.x) + abs(z.look.z) > 0.0 { s = dot(z.look, a) }
+    if s < 0.0 { a = -a }
+    return yaw_of(a)
 }
 
 fn cam_reset() {
@@ -129,12 +176,13 @@ fn cam_reset() {
     cam.lift = 0.0
     cam.zone = -1
     cam.w = 0.0
+    cam.intro = 0
     if !cam.lock {
         cam.zone = cam_zone_at(pl.pos)
         if cam.zone >= 0 {
             cam.w = 1.0
-            cam_enter_zone()
-            cam.yaw = yaw_of(cam.zlook)
+            cam_enter_zone(false)
+            cam.yaw = cam.zyaw
         }
     }
     cam.zy = pl.pos.y + tv[T.CamZoneRise]
@@ -142,10 +190,22 @@ fn cam_reset() {
     cam_place()
 }
 
-fn cam_enter_zone() {
-    cam.zlook = cam_zones[cam.zone].look
-    if cam.zlook.x == 0.0 && cam.zlook.z == 0.0 { cam.zlook = fwd_dir(cam.yaw) }
+// The zone cam.zone entered: its heading; turned to (from another zone's) or taken at once.
+fn cam_enter_zone(turn: bool) {
+    let z = &cam_zones[cam.zone]
+    if z.mode == GardenCameraZoneMode.Rail as s32 {
+        cam.zwant = cam_rail_yaw(z)
+    } else if z.look.x == 0.0 && z.look.z == 0.0 {
+        cam.zwant = cam.yaw
+    } else {
+        cam.zwant = yaw_of(z.look)
+    }
+    if !turn { cam.zyaw = cam.zwant }
+    cam.zback = 0
 }
+
+// The opening view (a world opened): looking up the spawn's way, level, for CAM_INTRO ticks.
+fn cam_intro() { cam.intro = CAM_INTRO }
 
 fn smooth01(w: fixed) -> fixed { return w * w * (3.0 - w * 2) }
 
@@ -156,14 +216,32 @@ fn cam_tick(turn: fixed, recentre: bool) {
     // zones
     var want_w: fixed = 0.0
     if !cam.lock {
-        let z = cam_zone_at(pl.pos)
+        let z = cam_zone_now(pl.pos)
         if z >= 0 {
             if z != cam.zone {
+                let from_zone = cam.zone >= 0 && cam.w > 0.0
                 cam.zone = z
-                cam_enter_zone()
+                cam_enter_zone(from_zone)
             }
             want_w = 1.0
         }
+    }
+    if cam.zone >= 0 {
+        // a rail zone: run back against its look a while and it turns round
+        if want_w > 0.0 && cam_zones[cam.zone].mode == GardenCameraZoneMode.Rail as s32 {
+            let d = fwd_dir(cam.zwant)
+            if pl.vel.x * d.x + pl.vel.z * d.z < -CAM_BACK_SPEED / 60 { cam.zback += 1 } else { cam.zback = 0 }
+            if cam.zback > CAM_BACK_TICKS {
+                cam.zwant = wrap_angle(cam.zwant + PI)
+                cam.zback = 0
+            }
+        }
+        cam.zyaw = wrap_angle(cam.zyaw + clamp(wrap_angle(cam.zwant - cam.zyaw), -CAM_ZONE_TURN, CAM_ZONE_TURN))
+    }
+    // the opening: ended by the stick, L or a run
+    if cam.intro > 0 {
+        cam.intro -= 1
+        if turn != 0.0 || recentre || (pl.st == St.Ground && pl.fwd > mps(T.RunSpeed) / 2) { cam.intro = min(cam.intro, 60) }
     }
     let dw = tv[T.CamZoneEase] / 60
     if want_w > 0.0 { cam.w = min(cam.w + dw, 1.0) } else { cam.w = max(cam.w - dw, 0.0) }
@@ -183,7 +261,7 @@ fn cam_tick(turn: fixed, recentre: bool) {
     if in_zone && !cam.lock {
         cam.swing = false
         let k = smooth01(cam.w) * 0.1
-        cam.yaw = wrap_angle(cam.yaw + wrap_angle(yaw_of(cam.zlook) - cam.yaw) * k)
+        cam.yaw = wrap_angle(cam.yaw + wrap_angle(cam.zyaw - cam.yaw) * k)
     } else if cam.swing {
         let d = wrap_angle(cam.swing_to - cam.yaw)
         if abs(d) < 0.01 {
@@ -236,7 +314,7 @@ fn cam_tick(turn: fixed, recentre: bool) {
 fn cam_zone_eye() -> vec3 {
     let z = &cam_zones[cam.zone]
     let c = (z.lo + z.hi) / 2
-    let lk = cam.zlook
+    let lk = fwd_dir(cam.zyaw)
     let p = pl.pos
     var e: vec3
     if z.mode == GardenCameraZoneMode.Rail as s32 {
@@ -319,6 +397,10 @@ fn cam_place() {
     let v = look - eye
     let ahead = max(v.x * sin(cam.yaw) + v.z * cos(cam.yaw), 0.3)
     cam.pitch = clamp(atan2(v.y, ahead), CAM_PITCH_LO, CAM_PITCH_HI)
+    if cam.intro > 0 {
+        let u = smooth01(min(fixed(cam.intro) / 60, 1.0))
+        cam.pitch = lerp(cam.pitch, CAM_INTRO_PITCH, u)
+    }
     cam.cycles = cycle_count() - c0 + cam.tick_cycles
     cam.tick_cycles = 0
 }

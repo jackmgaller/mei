@@ -1,0 +1,8 @@
+[
+ {"name": "player_front", "eye": [-3.0, 1.6, -7.5], "target": [0, 2.0, 0]},
+ {"name": "under_ladder", "eye": [1.6, 1.6, -3.4], "target": [0, 2.4, 0.5]},
+ {"name": "pole_side", "eye": [5.5, 1.6, 4.5], "target": [0, 2.3, 1.5]},
+ {"name": "on_ladder", "eye": [0, 4.1, -3.4], "target": [0, 2.6, 1.5]},
+ {"name": "on_beam", "eye": [-2.6, 6.1, 2.0], "target": [2.5, 4.5, 2.0]},
+ {"name": "far_20m", "eye": [-10.0, 4.0, -18.0], "target": [0, 2.0, 0]}
+]

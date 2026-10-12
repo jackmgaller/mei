@@ -9,10 +9,43 @@
     open('x.bin', 'wb').write(m.pack())
 
 Front faces are counter-clockwise as seen by the viewer (for quads: the first triangle).
-A mesh with no windows packs exactly as before windows existed (no table, header +12 zero)."""
+A mesh with no windows packs exactly as before windows existed (no table, header +12 zero).
+
+Slots are 0-31 and palettes 0-511 (4-bit) or 0-31 (8-bit) (VRAM at 2 MB, docs/DECISIONS.md):
+slots 16-31 set flag bit 6 (SLOT_HI) and the slot's low 4 bits in the texture byte; palette
+bank 1 sets flag bit 7 (PAL_HI) and the palette within the bank in the palette byte. A face in
+slots 0-15 and palette bank 0 packs exactly as before."""
 import struct
 
 GOURAUD, TEXTURED, QUAD, SEMI, DOUBLE = 1, 2, 4, 8, 16
+KEYED, SLOT_HI, PAL_HI = 32, 64, 128
+SLOTS = 32                  # texture slots 0-31; 15 holds the fonts
+PALETTES4, PALETTES8 = 512, 32
+BANK_COLOURS = 4096         # palette bank 0 is colours 0-4095, bank 1 4096-8191
+
+def tex_fields(slot, four_bit, palette, window=0):
+    """(flag bits, texture byte, palette byte) of a face drawing slot 0-31 with palette 0-511
+    (4-bit) or 0-31 (8-bit) and window 0-7."""
+    assert 0 <= slot < SLOTS, 'texture slots are 0-31'
+    assert 0 <= palette < (PALETTES4 if four_bit else PALETTES8), \
+        'palettes are 0-511 for a 4-bit texture, 0-31 for an 8-bit one'
+    per_bank = 256 if four_bit else 16
+    flags = (SLOT_HI if slot >= 16 else 0) | (PAL_HI if palette >= per_bank else 0)
+    return flags, (slot & 15) | (16 if four_bit else 0) | window << 5, palette % per_bank
+
+def face_slot(flags, tex):
+    """The slot 0-31 of a face's flags and texture byte."""
+    return (tex & 15) | (16 if flags & SLOT_HI else 0)
+
+def face_palette(flags, tex, palette):
+    """The palette 0-511 (4-bit) or 0-31 (8-bit) of a face's flags, texture and palette bytes."""
+    if tex & 16:
+        return palette | (256 if flags & PAL_HI else 0)
+    return (palette & 15) | (16 if flags & PAL_HI else 0)
+
+def face_colour(flags, tex, palette, index):
+    """The palette colour 0-8191 a face's texel `index` shows."""
+    return face_palette(flags, tex, palette) * (16 if tex & 16 else 256) + index
 
 def fx(v):
     return int(round(v * 65536))
@@ -58,7 +91,8 @@ class Mesh:
         idx = list(idx) + [0] * (4 - n)
         uvs = list(uvs or []) + [(0, 0)] * (4 - len(uvs or []))
         assert 0 <= window <= len(self.windows), 'unknown window (see Mesh.window)'
-        tex = (slot & 15) | (16 if four_bit else 0) | window << 5
+        banks, tex, palette = tex_fields(slot, four_bit, palette, window)
+        flags |= banks
         self.faces.append(struct.pack('<BBBB4H4I4H', flags, blend, tex, palette, *idx,
                                       *colours, *[(u & 255) | ((v & 255) << 8) for u, v in uvs]))
 

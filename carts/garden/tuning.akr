@@ -34,6 +34,8 @@ enum T {
     // camera (camera.akr)
     CamDist, CamHeight, CamPitch, CamOrbit, CamFollow, CamHold, CamLift, CamBand, CamTilt,
     CamPullOut, CamWallTurn, CamZoneDist, CamZoneRise, CamZoneEase,
+    // the world (ground.akr): 1 for the night palette (the shrine town's)
+    Night,
 }
 
 struct TuneDef {
@@ -151,6 +153,8 @@ const TUNE: [len(T)]TuneDef = [
     TuneDef { name: "zone distance",  unit: "m",    def: 8.0,   step: 0.25, lo: 1.0,  hi: 30.0 },
     TuneDef { name: "zone rise",      unit: "m",    def: 2.5,   step: 0.1,  lo: 0.0,  hi: 10.0 },
     TuneDef { name: "zone ease",      unit: "/s",   def: 1.5,   step: 0.1,  lo: 0.1,  hi: 10.0 },
+
+    TuneDef { name: "night",          unit: "0/1",  def: 0.0,   step: 1.0,  lo: 0.0,  hi: 1.0 },
 ]
 
 // The glider's deploy modes (T.GlideMode).

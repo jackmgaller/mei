@@ -1,0 +1,979 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "phone_booth",
+ "budget": {
+  "vertices": 200,
+  "triangles": 170
+ },
+ "materials": {
+  "green": {
+   "color": "#3fae68",
+   "texture": {
+    "pattern": "planks",
+    "colors": [
+     "#3fae68",
+     "#2b7f4e",
+     "#4cbb74"
+    ],
+    "params": {
+     "boards": 4,
+     "joint": 1
+    },
+    "projection": "planar",
+    "axis": "z",
+    "scale": [
+     0.84,
+     0.84
+    ],
+    "rotate": 90
+   }
+  },
+  "dark": {
+   "color": "#2b7f4e",
+   "palette": true
+  },
+  "concrete": {
+   "color": "#a8a8a0",
+   "tag": "floor",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#a8a8a0",
+     "#8c8c86",
+     "#bcbcb2"
+    ],
+    "params": {
+     "density": 0.2
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "glass": {
+   "color": "#d6f0e4",
+   "double_sided": true,
+   "texture": {
+    "texels": [
+     "000000000000000000000000",
+     "000000000000000000000000",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111121111111111100",
+     "001111111221111111111100",
+     "001111112211111111111100",
+     "001111122111211111111100",
+     "001111221112211111111100",
+     "001112211122111111111100",
+     "001122111221111111111100",
+     "000000000000000000000000",
+     "001111122111111111111100",
+     "001111221111111111111100",
+     "001111211111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "001111111111111111111100",
+     "000000000000000000000000",
+     "000000000000000000000000"
+    ],
+    "colors": [
+     "#3fae68",
+     "#d6f0e4",
+     "#eaf7f0"
+    ],
+    "clear": "#d6f0e4",
+    "projection": "fit"
+   }
+  },
+  "sign": {
+   "color": "#f6f4d6",
+   "class": "emissive",
+   "texture": {
+    "image": "art/sign.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "phone": {
+   "color": "#f0e4a8",
+   "texture": {
+    "image": "art/phone_front.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "phoneside": {
+   "color": "#d8c888",
+   "palette": true
+  },
+  "shelf": {
+   "color": "#2b7f4e",
+   "texture": {
+    "image": "art/shelf_top.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "catface": {
+   "color": "#f4f0e6",
+   "texture": {
+    "image": "art/cat_face.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "cat": {
+   "color": "#f4f0e6",
+   "palette": true
+  },
+  "umb": {
+   "color": "#f0c830",
+   "palette": true
+  },
+  "pot": {
+   "color": "#b8704a",
+   "palette": true
+  },
+  "bush": {
+   "color": "#3f8f3c",
+   "palette": true
+  },
+  "bloom": {
+   "color": "#f08ab0",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "slab",
+      "op": "box",
+      "size": [
+       1.14,
+       0.1,
+       1.14
+      ],
+      "material": "concrete",
+      "open": [
+       "bottom"
+      ],
+      "transform": {
+       "translate": [
+        0,
+        0.05,
+        0
+       ]
+      }
+     },
+     {
+      "id": "shell",
+      "op": "box",
+      "size": [
+       1.04,
+       2.0,
+       1.04
+      ],
+      "material": "green",
+      "open": [
+       "bottom"
+      ],
+      "transform": {
+       "translate": [
+        0,
+        1.1,
+        0
+       ]
+      }
+     },
+     {
+      "id": "eaves",
+      "op": "box",
+      "size": [
+       1.2,
+       0.07,
+       1.2
+      ],
+      "material": "dark",
+      "open": [
+       "bottom"
+      ],
+      "transform": {
+       "translate": [
+        0,
+        2.145,
+        0
+       ]
+      }
+     },
+     {
+      "id": "roof",
+      "op": "lathe",
+      "segments": 4,
+      "caps": false,
+      "material": "dark",
+      "profile": [
+       [
+        0.82,
+        2.18
+       ],
+       [
+        0,
+        2.4
+       ]
+      ],
+      "transform": {
+       "rotate": [
+        0,
+        45,
+        0
+       ]
+      }
+     },
+     {
+      "id": "signbody",
+      "op": "box",
+      "size": [
+       0.56,
+       0.24,
+       0.2
+      ],
+      "material": "dark",
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "back": "sign",
+       "front": "sign"
+      },
+      "transform": {
+       "translate": [
+        0,
+        2.5,
+        0
+       ]
+      }
+     },
+     {
+      "id": "pot",
+      "op": "lathe",
+      "segments": 5,
+      "caps": false,
+      "material": "pot",
+      "profile": [
+       [
+        0.12,
+        0.0
+       ],
+       [
+        0.17,
+        0.26
+       ]
+      ],
+      "transform": {
+       "translate": [
+        0.86,
+        0,
+        0
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "shell",
+      "op": "box",
+      "size": [
+       1.04,
+       2.0,
+       1.04
+      ],
+      "material": "green",
+      "open": [
+       "bottom"
+      ],
+      "transform": {
+       "translate": [
+        0,
+        1.1,
+        0
+       ]
+      }
+     },
+     {
+      "id": "roof",
+      "op": "lathe",
+      "segments": 4,
+      "caps": false,
+      "material": "dark",
+      "profile": [
+       [
+        0.82,
+        2.18
+       ],
+       [
+        0,
+        2.4
+       ]
+      ],
+      "transform": {
+       "rotate": [
+        0,
+        45,
+        0
+       ]
+      }
+     },
+     {
+      "id": "signbody",
+      "op": "box",
+      "size": [
+       0.56,
+       0.24,
+       0.2
+      ],
+      "material": "dark",
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "back": "sign",
+       "front": "sign"
+      },
+      "transform": {
+       "translate": [
+        0,
+        2.5,
+        0
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 100,
+  "band": 1
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    1.14,
+    0.1,
+    1.14
+   ],
+   "material": "concrete",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.05,
+     0
+    ]
+   }
+  },
+  {
+   "id": "posts",
+   "op": "group",
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ],
+   "children": [
+    {
+     "id": "post",
+     "op": "box",
+     "size": [
+      0.12,
+      2.0,
+      0.12
+     ],
+     "material": "dark",
+     "open": [
+      "bottom",
+      "top"
+     ],
+     "transform": {
+      "translate": [
+       0.46,
+       1.1,
+       -0.46
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "lowback",
+   "op": "box",
+   "size": [
+    1.04,
+    2.0,
+    0.08
+   ],
+   "material": "green",
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     1.1,
+     0.46
+    ]
+   }
+  },
+  {
+   "id": "walls",
+   "op": "group",
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ],
+   "children": [
+    {
+     "id": "lowside",
+     "op": "box",
+     "size": [
+      0.04,
+      0.85,
+      0.88
+     ],
+     "material": "green",
+     "open": [
+      "bottom",
+      "back",
+      "front",
+      "top"
+     ],
+     "transform": {
+      "translate": [
+       0.46,
+       0.525,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sides",
+   "op": "group",
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ],
+   "children": [
+    {
+     "id": "sidepane",
+     "op": "mesh",
+     "material": "glass",
+     "vertices": [
+      [
+       0.46,
+       0.95,
+       -0.42
+      ],
+      [
+       0.46,
+       2.11,
+       -0.42
+      ],
+      [
+       0.46,
+       2.11,
+       0.42
+      ],
+      [
+       0.46,
+       0.95,
+       0.42
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "door",
+   "op": "group",
+   "transform": {
+    "pivot": [
+     -0.42,
+     0,
+     -0.46
+    ],
+    "rotate": [
+     0,
+     60,
+     0
+    ]
+   },
+   "children": [
+    {
+     "id": "doorlow",
+     "op": "box",
+     "size": [
+      0.84,
+      0.85,
+      0.05
+     ],
+     "material": "green",
+     "open": [
+      "bottom"
+     ],
+     "transform": {
+      "translate": [
+       0,
+       0.525,
+       -0.46
+      ]
+     }
+    },
+    {
+     "id": "doorpane",
+     "op": "mesh",
+     "material": "glass",
+     "vertices": [
+      [
+       0.42,
+       0.95,
+       -0.46
+      ],
+      [
+       -0.42,
+       0.95,
+       -0.46
+      ],
+      [
+       -0.42,
+       2.07,
+       -0.46
+      ],
+      [
+       0.42,
+       2.07,
+       -0.46
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "eaves",
+   "op": "box",
+   "size": [
+    1.2,
+    0.07,
+    1.2
+   ],
+   "material": "dark",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     2.145,
+     0
+    ]
+   }
+  },
+  {
+   "id": "roof",
+   "op": "lathe",
+   "segments": 4,
+   "caps": false,
+   "material": "dark",
+   "profile": [
+    [
+     0.82,
+     2.18
+    ],
+    [
+     0,
+     2.4
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     45,
+     0
+    ]
+   }
+  },
+  {
+   "id": "signbody",
+   "op": "box",
+   "size": [
+    0.56,
+    0.24,
+    0.2
+   ],
+   "material": "dark",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "sign",
+    "front": "sign"
+   },
+   "transform": {
+    "translate": [
+     0,
+     2.5,
+     0
+    ]
+   }
+  },
+  {
+   "id": "shelf",
+   "op": "box",
+   "size": [
+    0.92,
+    0.04,
+    0.3
+   ],
+   "material": "dark",
+   "open": [
+    "bottom",
+    "front",
+    "left",
+    "right"
+   ],
+   "faces": {
+    "top": "shelf"
+   },
+   "transform": {
+    "translate": [
+     0,
+     1.1,
+     0.29
+    ]
+   }
+  },
+  {
+   "id": "phonebody",
+   "op": "box",
+   "size": [
+    0.34,
+    0.4,
+    0.2
+   ],
+   "material": "phoneside",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "back": "phone"
+   },
+   "transform": {
+    "translate": [
+     0,
+     1.31,
+     0.33
+    ]
+   }
+  },
+  {
+   "id": "catbody",
+   "op": "lathe",
+   "segments": 5,
+   "caps": false,
+   "material": "cat",
+   "profile": [
+    [
+     0.09,
+     1.12
+    ],
+    [
+     0.085,
+     1.2
+    ],
+    [
+     0,
+     1.27
+    ]
+   ],
+   "transform": {
+    "translate": [
+     0.27,
+     0,
+     0.31
+    ]
+   }
+  },
+  {
+   "id": "cathead",
+   "op": "box",
+   "size": [
+    0.14,
+    0.11,
+    0.1
+   ],
+   "material": "cat",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "back": "catface"
+   },
+   "transform": {
+    "translate": [
+     0.27,
+     1.33,
+     0.3
+    ]
+   }
+  },
+  {
+   "id": "catears",
+   "op": "group",
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x",
+     "offset": 0.27
+    }
+   ],
+   "children": [
+    {
+     "id": "catear",
+     "op": "cone",
+     "radius": 0.032,
+     "height": 0.06,
+     "segments": 3,
+     "caps": false,
+     "material": "cat",
+     "transform": {
+      "translate": [
+       0.315,
+       1.41,
+       0.3
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "pot",
+   "op": "lathe",
+   "segments": 5,
+   "caps": false,
+   "material": "pot",
+   "profile": [
+    [
+     0.12,
+     0.0
+    ],
+    [
+     0.17,
+     0.26
+    ]
+   ],
+   "transform": {
+    "translate": [
+     0.86,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bush",
+   "op": "lathe",
+   "segments": 5,
+   "caps": false,
+   "material": "bush",
+   "profile": [
+    [
+     0.2,
+     0.26
+    ],
+    [
+     0.23,
+     0.36
+    ],
+    [
+     0,
+     0.5
+    ]
+   ],
+   "transform": {
+    "translate": [
+     0.86,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "blooms",
+   "op": "group",
+   "children": [
+    {
+     "id": "bl0",
+     "op": "cone",
+     "radius": 0.05,
+     "height": 0.07,
+     "segments": 3,
+     "caps": false,
+     "material": "bloom",
+     "transform": {
+      "translate": [
+       0.8,
+       0.42,
+       -0.2
+      ]
+     }
+    },
+    {
+     "id": "bl1",
+     "op": "cone",
+     "radius": 0.05,
+     "height": 0.07,
+     "segments": 3,
+     "caps": false,
+     "material": "bloom",
+     "transform": {
+      "translate": [
+       0.96,
+       0.37,
+       -0.12
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ttstring",
+   "op": "box",
+   "size": [
+    0.012,
+    0.2,
+    0.012
+   ],
+   "material": "cat",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right"
+   ],
+   "transform": {
+    "translate": [
+     0.4,
+     2.0,
+     -0.62
+    ]
+   }
+  },
+  {
+   "id": "ttcloth",
+   "op": "cone",
+   "radius": 0.06,
+   "height": 0.14,
+   "segments": 4,
+   "caps": false,
+   "material": "cat",
+   "transform": {
+    "translate": [
+     0.4,
+     1.83,
+     -0.62
+    ],
+    "rotate": [
+     180,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "umbrella",
+   "op": "cone",
+   "radius": 0.05,
+   "height": 0.85,
+   "segments": 5,
+   "caps": false,
+   "material": "umb",
+   "transform": {
+    "translate": [
+     -0.62,
+     0.52,
+     0.12
+    ],
+    "rotate": [
+     0,
+     0,
+     10
+    ]
+   }
+  }
+ ]
+}

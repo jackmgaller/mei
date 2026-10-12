@@ -35,22 +35,34 @@ fn rgb_of15(c: u32) -> u32 {
     return ((r << 3) | (r >> 2)) | (((g << 3) | (g >> 2)) << 8) | (((b << 3) | (b >> 2)) << 16)
 }
 
-// Writes `count` palette colours from colour `index` on: each the blend of a[i] and b[i]
+// Writes `count` palette colours from colour `index` (0-8191) on: each the blend of a[i] and b[i]
 // (15-bit colours, e.g. two keyframe palettes in ROM) by t (0..1.0, clamped; each channel
-// rounds down, like clerp). About 38 cycles a colour (15 when a[i] == b[i]).
+// rounds down, like clerp). About 38 cycles a colour (15 when a[i] == b[i]). A run that
+// crosses colour 4096 continues at the start of palette bank 1.
 fn palette_lerp(index: s32, a: *u16, b: *u16, count: s32, t: fixed) {
-    if count > 0 { __pal_lerp(((index & 0xFFF) | (count << 16)) as u32, a, b, t) }
+    if count <= 0 { return }
+    var n = count
+    if index < PALETTE_BANK_COLOURS && index + count > PALETTE_BANK_COLOURS {
+        n = PALETTE_BANK_COLOURS - index
+        __pal_lerp((PALETTE_BANK_COLOURS | ((count - n) << 16)) as u32, a + n, b + n, t)
+    }
+    __pal_lerp(((index & 0x1FFF) | (n << 16)) as u32, a, b, t)
 }
 
-// palette_lerp's loop: ic is the first colour | the count << 16.
+// palette_lerp's loop: ic is the first colour (0-8191) | the count << 16, within one bank.
 asm fn __pal_lerp(ic: u32, a: *u16, b: *u16, t: fixed) {
     addi sp, sp, -8
     sw   r9, [sp+0]
     sw   r10, [sp+4]
     shri r10, {ic}, 16              ; the count
-    andi r1, {ic}, 0xFFF
+    andi r1, {ic}, 0x1FFF
     shli r1, r1, 1
     li   r6, {VRAM_PALETTE}
+    andi r7, r1, 0x2000             ; colours 4096-8191: palette bank 1
+    beq  r7, r0, .bank0
+    li   r6, {VRAM_PALETTE_HI}
+    sub  r1, r1, r7
+.bank0:
     add  r1, r1, r6                 ; the destination
 .loop:
     lhu  r6, [{a}+0]
@@ -99,7 +111,7 @@ fn palette_rotate(index: s32, count: s32, step: s32) {
     var k = step % count
     if k < 0 { k += count }
     if k == 0 { return }
-    let p = (VRAM_PALETTE + index * 2) as *u16
+    let p = palette_ptr(index)          // (the colours must be in one bank)
     __rev16(p, p + (k - 1))
     __rev16(p + k, p + (count - 1))
     __rev16(p, p + (count - 1))

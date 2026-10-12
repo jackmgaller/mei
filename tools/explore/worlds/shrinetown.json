@@ -1,0 +1,91 @@
+{
+ "about": "The explorer's notes on the shrine town (carts/garden/shrinetown/DESIGN.md): its sealed places and their intended ways in, its shortcuts' two ends, and the glide cases to measure.",
+ "sealed": [
+  {
+   "name": "star 4's chamber (inside the sacred cedar)",
+   "cylinders": [
+    [
+     154.0,
+     296.0,
+     2.2,
+     11.5,
+     21.0
+    ],
+    [
+     154.0,
+     296.0,
+     3.6,
+     20.5,
+     22.5
+    ]
+   ],
+   "ways_in": [
+    "hang",
+    "hang_drop",
+    "hang_jump"
+   ],
+   "why": "DESIGN 5, star 4: hang along the cedar rope to the knot hole's sill (21.5), then down the shaft to the chamber (13.1); the rope is hang only. The region is the chamber and its shaft (r 2.2) and the sill (r 3.6). The root door (shortcut D) opens from inside."
+  }
+ ],
+ "shortcuts": [
+  {
+   "name": "A, the rope ladder",
+   "trigger": "shortcut_a",
+   "near": [
+    154.0,
+    24.0,
+    316.5
+   ]
+  },
+  {
+   "name": "B, the north gate",
+   "trigger": "shortcut_b",
+   "near": [
+    162.0,
+    5.0,
+    234.5
+   ]
+  },
+  {
+   "name": "C, the dead cedar",
+   "trigger": "shortcut_c",
+   "near": [
+    226.0,
+    20.0,
+    318.0
+   ]
+  },
+  {
+   "name": "D, the root door",
+   "trigger": "shortcut_d",
+   "near": [
+    147.0,
+    13.0,
+    292.0
+   ]
+  },
+  {
+   "name": "E, the fire-escape ladder",
+   "trigger": "shortcut_e",
+   "near": [
+    198.5,
+    0.0,
+    105.5
+   ]
+  }
+ ],
+ "glides": {
+  "cases": "carts/garden/tests/shrinetown_cases.akr",
+  "scenarios": {
+   "G1": 410,
+   "G2": 411,
+   "G3": 412,
+   "G4": 413,
+   "G5": 414,
+   "G6": 415,
+   "G7": 416,
+   "G8": 417,
+   "G9": 418
+  }
+ }
+}
