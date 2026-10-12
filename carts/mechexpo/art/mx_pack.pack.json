@@ -4,6 +4,1795 @@
   "name": "mx_pack",
   "assets": [
     {
+      "name": "beam_pelvis",
+      "mesh": "beam_pelvis.bin",
+      "levels": [],
+      "vertices": 72,
+      "triangles": 120,
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              16,
+              18
+            ],
+            [
+              28,
+              34
+            ],
+            [
+              44,
+              48
+            ],
+            [
+              60,
+              66
+            ],
+            [
+              68,
+              70
+            ],
+            [
+              84,
+              90
+            ],
+            [
+              92,
+              94
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 56,
+          "faces": [
+            [
+              18,
+              28
+            ],
+            [
+              34,
+              44
+            ],
+            [
+              48,
+              60
+            ],
+            [
+              72,
+              84
+            ],
+            [
+              96,
+              108
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              66,
+              68
+            ],
+            [
+              70,
+              72
+            ],
+            [
+              90,
+              92
+            ],
+            [
+              94,
+              96
+            ],
+            [
+              108,
+              120
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_torso",
+      "mesh": "beam_torso.bin",
+      "levels": [],
+      "vertices": 148,
+      "triangles": 254,
+      "palette": {
+        "palettes": [
+          0
+        ],
+        "entries": [
+          {
+            "colour": 1,
+            "class": "emissive",
+            "color": "#b4ff3c",
+            "materials": [
+              "gglow"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 48,
+          "faces": [
+            [
+              44,
+              62
+            ],
+            [
+              72,
+              74
+            ],
+            [
+              78,
+              80
+            ],
+            [
+              86,
+              88
+            ],
+            [
+              140,
+              156
+            ],
+            [
+              210,
+              214
+            ],
+            [
+              250,
+              254
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 78,
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              32,
+              44
+            ],
+            [
+              108,
+              140
+            ],
+            [
+              156,
+              174
+            ]
+          ]
+        },
+        "gglow": {
+          "color": "#b4ff3c",
+          "class": "emissive",
+          "palette_colour": 1,
+          "tag": null,
+          "triangles": 40,
+          "faces": [
+            [
+              174,
+              194
+            ],
+            [
+              214,
+              234
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 32,
+          "faces": [
+            [
+              16,
+              32
+            ],
+            [
+              92,
+              108
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 56,
+          "faces": [
+            [
+              62,
+              72
+            ],
+            [
+              74,
+              78
+            ],
+            [
+              80,
+              86
+            ],
+            [
+              88,
+              92
+            ],
+            [
+              194,
+              210
+            ],
+            [
+              234,
+              250
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_head",
+      "mesh": "beam_head.bin",
+      "levels": [],
+      "vertices": 92,
+      "triangles": 160,
+      "palette": {
+        "palettes": [
+          1
+        ],
+        "entries": [
+          {
+            "colour": 17,
+            "class": "emissive",
+            "color": "#b4ff3c",
+            "materials": [
+              "gglow"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 60,
+          "faces": [
+            [
+              14,
+              24
+            ],
+            [
+              60,
+              76
+            ],
+            [
+              82,
+              108
+            ],
+            [
+              152,
+              160
+            ]
+          ]
+        },
+        "copper": {
+          "color": "#c8783a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              132,
+              134
+            ],
+            [
+              140,
+              152
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#1c1d21",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              12,
+              14
+            ],
+            [
+              24,
+              28
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              0,
+              12
+            ],
+            [
+              76,
+              82
+            ]
+          ]
+        },
+        "gglow": {
+          "color": "#b4ff3c",
+          "class": "emissive",
+          "palette_colour": 17,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              28,
+              30
+            ],
+            [
+              40,
+              44
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              108,
+              128
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              30,
+              40
+            ],
+            [
+              44,
+              60
+            ],
+            [
+              128,
+              132
+            ],
+            [
+              134,
+              140
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_pauldron_r",
+      "mesh": "beam_pauldron_r.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 60,
+      "textures": [
+        {
+          "material": "emblem",
+          "tile": "5133b9954786f689",
+          "source": {
+            "texels": "56 x 32"
+          },
+          "width": 56,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#292931",
+            "#f7c618"
+          ],
+          "slot": 0,
+          "x": 152,
+          "y": 40,
+          "gutter": 1,
+          "window": null,
+          "palette": 12,
+          "first_colour": 192,
+          "indices": {
+            "#292931": 1,
+            "#f7c618": 2
+          },
+          "vram_bytes": 957,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              22,
+              24
+            ],
+            [
+              30,
+              48
+            ]
+          ]
+        },
+        "emblem": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              48,
+              54
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 32,
+          "faces": [
+            [
+              0,
+              18
+            ],
+            [
+              20,
+              22
+            ],
+            [
+              24,
+              30
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_upper_arm_r",
+      "mesh": "beam_upper_arm_r.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 50,
+      "materials": {
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 50,
+          "faces": [
+            [
+              0,
+              50
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_forearm_r",
+      "mesh": "beam_forearm_r.bin",
+      "levels": [],
+      "vertices": 52,
+      "triangles": 92,
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              52,
+              68
+            ],
+            [
+              80,
+              92
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              74,
+              80
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 38,
+          "faces": [
+            [
+              20,
+              52
+            ],
+            [
+              68,
+              74
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_hand_r",
+      "mesh": "beam_hand_r.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 64,
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              40,
+              50
+            ],
+            [
+              52,
+              64
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#1c1d21",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              32,
+              36
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              20,
+              32
+            ],
+            [
+              36,
+              40
+            ],
+            [
+              50,
+              52
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_cannon",
+      "mesh": "beam_cannon.bin",
+      "levels": [],
+      "vertices": 88,
+      "triangles": 152,
+      "palette": {
+        "palettes": [
+          2
+        ],
+        "entries": [
+          {
+            "colour": 33,
+            "class": "emissive",
+            "color": "#b4ff3c",
+            "materials": [
+              "gglow"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 74,
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              20,
+              26
+            ],
+            [
+              32,
+              66
+            ],
+            [
+              68,
+              70
+            ],
+            [
+              132,
+              144
+            ],
+            [
+              148,
+              152
+            ]
+          ]
+        },
+        "copper": {
+          "color": "#c8783a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 40,
+          "faces": [
+            [
+              92,
+              132
+            ]
+          ]
+        },
+        "gglow": {
+          "color": "#b4ff3c",
+          "class": "emissive",
+          "palette_colour": 33,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              66,
+              68
+            ],
+            [
+              70,
+              72
+            ],
+            [
+              144,
+              148
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              72,
+              92
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              16,
+              20
+            ],
+            [
+              26,
+              32
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_pauldron_l",
+      "mesh": "beam_pauldron_l.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 60,
+      "textures": [
+        {
+          "material": "emblem",
+          "tile": "5133b9954786f689",
+          "source": {
+            "texels": "56 x 32"
+          },
+          "width": 56,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#292931",
+            "#f7c618"
+          ],
+          "slot": 0,
+          "x": 152,
+          "y": 40,
+          "gutter": 1,
+          "window": null,
+          "palette": 12,
+          "first_colour": 192,
+          "indices": {
+            "#292931": 1,
+            "#f7c618": 2
+          },
+          "vram_bytes": 957,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              22,
+              24
+            ],
+            [
+              30,
+              48
+            ]
+          ]
+        },
+        "emblem": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              48,
+              54
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 32,
+          "faces": [
+            [
+              0,
+              18
+            ],
+            [
+              20,
+              22
+            ],
+            [
+              24,
+              30
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_upper_arm_l",
+      "mesh": "beam_upper_arm_l.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 50,
+      "materials": {
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 50,
+          "faces": [
+            [
+              0,
+              50
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_forearm_l",
+      "mesh": "beam_forearm_l.bin",
+      "levels": [],
+      "vertices": 52,
+      "triangles": 92,
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              52,
+              68
+            ],
+            [
+              80,
+              92
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              74,
+              80
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 38,
+          "faces": [
+            [
+              20,
+              52
+            ],
+            [
+              68,
+              74
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_hand_l",
+      "mesh": "beam_hand_l.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 64,
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              40,
+              50
+            ],
+            [
+              52,
+              64
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#1c1d21",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              32,
+              36
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              20,
+              32
+            ],
+            [
+              36,
+              40
+            ],
+            [
+              50,
+              52
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_thigh_r",
+      "mesh": "beam_thigh_r.bin",
+      "levels": [],
+      "vertices": 56,
+      "triangles": 104,
+      "textures": [
+        {
+          "material": "serial",
+          "tile": "9cf093e8ab8e03e3",
+          "source": {
+            "texels": "32 x 16"
+          },
+          "width": 32,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7c618",
+            "#292931"
+          ],
+          "slot": 0,
+          "x": 216,
+          "y": 40,
+          "gutter": 1,
+          "window": null,
+          "palette": 12,
+          "first_colour": 192,
+          "indices": {
+            "#292931": 1,
+            "#f7c618": 2
+          },
+          "vram_bytes": 289,
+          "night": "per_colour",
+          "faces": [
+            [
+              46,
+              48
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              76,
+              104
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        },
+        "serial": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              46,
+              48
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 46,
+          "faces": [
+            [
+              28,
+              46
+            ],
+            [
+              48,
+              76
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_shin_r",
+      "mesh": "beam_shin_r.bin",
+      "levels": [],
+      "vertices": 66,
+      "triangles": 120,
+      "textures": [
+        {
+          "material": "hazard",
+          "tile": "25fc0d581f21a64c",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#f7c618",
+            "#181821"
+          ],
+          "slot": 0,
+          "x": 240,
+          "y": 0,
+          "gutter": 0,
+          "window": 497,
+          "palette": 12,
+          "first_colour": 192,
+          "indices": {
+            "#f7c618": 2,
+            "#181821": 3
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              94,
+              96
+            ],
+            [
+              102,
+              104
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        497
+      ],
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              28,
+              46
+            ],
+            [
+              56,
+              62
+            ],
+            [
+              72,
+              76
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 52,
+          "faces": [
+            [
+              0,
+              28
+            ],
+            [
+              92,
+              94
+            ],
+            [
+              96,
+              102
+            ],
+            [
+              104,
+              120
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              94,
+              96
+            ],
+            [
+              102,
+              104
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              76,
+              92
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              46,
+              56
+            ],
+            [
+              62,
+              72
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_foot_r",
+      "mesh": "beam_foot_r.bin",
+      "levels": [],
+      "vertices": 38,
+      "triangles": 64,
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              32,
+              36
+            ],
+            [
+              52,
+              54
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#1c1d21",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              38,
+              42
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              54,
+              64
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              28,
+              32
+            ],
+            [
+              36,
+              38
+            ],
+            [
+              42,
+              52
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_thigh_l",
+      "mesh": "beam_thigh_l.bin",
+      "levels": [],
+      "vertices": 56,
+      "triangles": 104,
+      "textures": [
+        {
+          "material": "serial",
+          "tile": "9cf093e8ab8e03e3",
+          "source": {
+            "texels": "32 x 16"
+          },
+          "width": 32,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7c618",
+            "#292931"
+          ],
+          "slot": 0,
+          "x": 216,
+          "y": 40,
+          "gutter": 1,
+          "window": null,
+          "palette": 12,
+          "first_colour": 192,
+          "indices": {
+            "#292931": 1,
+            "#f7c618": 2
+          },
+          "vram_bytes": 289,
+          "night": "per_colour",
+          "faces": [
+            [
+              46,
+              48
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              76,
+              104
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        },
+        "serial": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              46,
+              48
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 46,
+          "faces": [
+            [
+              28,
+              46
+            ],
+            [
+              48,
+              76
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_shin_l",
+      "mesh": "beam_shin_l.bin",
+      "levels": [],
+      "vertices": 66,
+      "triangles": 120,
+      "textures": [
+        {
+          "material": "hazard",
+          "tile": "25fc0d581f21a64c",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#f7c618",
+            "#181821"
+          ],
+          "slot": 0,
+          "x": 240,
+          "y": 0,
+          "gutter": 0,
+          "window": 497,
+          "palette": 12,
+          "first_colour": 192,
+          "indices": {
+            "#f7c618": 2,
+            "#181821": 3
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              94,
+              96
+            ],
+            [
+              102,
+              104
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        497
+      ],
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              28,
+              46
+            ],
+            [
+              56,
+              62
+            ],
+            [
+              72,
+              76
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 52,
+          "faces": [
+            [
+              0,
+              28
+            ],
+            [
+              92,
+              94
+            ],
+            [
+              96,
+              102
+            ],
+            [
+              104,
+              120
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              94,
+              96
+            ],
+            [
+              102,
+              104
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              76,
+              92
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              46,
+              56
+            ],
+            [
+              62,
+              72
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "beam_foot_l",
+      "mesh": "beam_foot_l.bin",
+      "levels": [],
+      "vertices": 38,
+      "triangles": 64,
+      "materials": {
+        "black": {
+          "color": "#2a2c31",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              32,
+              36
+            ],
+            [
+              52,
+              54
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#1c1d21",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              38,
+              42
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#4a4f58",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        },
+        "metal": {
+          "color": "#8e959f",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              54,
+              64
+            ]
+          ]
+        },
+        "yellow": {
+          "color": "#f5c21b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              28,
+              32
+            ],
+            [
+              36,
+              38
+            ],
+            [
+              42,
+              52
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
       "name": "doubleblade_pelvis",
       "mesh": "doubleblade_pelvis.bin",
       "levels": [],
@@ -129,11 +1918,11 @@
       "triangles": 250,
       "palette": {
         "palettes": [
-          0
+          3
         ],
         "entries": [
           {
-            "colour": 1,
+            "colour": 49,
             "class": "emissive",
             "color": "#c47cff",
             "materials": [
@@ -314,7 +2103,7 @@
         "vglow": {
           "color": "#c47cff",
           "class": "emissive",
-          "palette_colour": 1,
+          "palette_colour": 49,
           "tag": null,
           "triangles": 12,
           "faces": [
@@ -392,11 +2181,11 @@
       "triangles": 216,
       "palette": {
         "palettes": [
-          1
+          4
         ],
         "entries": [
           {
-            "colour": 17,
+            "colour": 65,
             "class": "emissive",
             "color": "#c47cff",
             "materials": [
@@ -510,7 +2299,7 @@
         "vglow": {
           "color": "#c47cff",
           "class": "emissive",
-          "palette_colour": 17,
+          "palette_colour": 65,
           "tag": null,
           "triangles": 6,
           "faces": [
@@ -581,12 +2370,12 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#212129": 1,
-            "#9c52f7": 2,
-            "#e7bdff": 3
+            "#212129": 4,
+            "#9c52f7": 5,
+            "#e7bdff": 6
           },
           "vram_bytes": 1089,
           "night": "per_colour",
@@ -908,11 +2697,11 @@
       "triangles": 72,
       "palette": {
         "palettes": [
-          2
+          5
         ],
         "entries": [
           {
-            "colour": 33,
+            "colour": 81,
             "class": "emissive",
             "color": "#e8c8ff",
             "materials": [
@@ -993,7 +2782,7 @@
         "vedge": {
           "color": "#e8c8ff",
           "class": "emissive",
-          "palette_colour": 33,
+          "palette_colour": 81,
           "tag": null,
           "triangles": 12,
           "faces": [
@@ -1068,12 +2857,12 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#212129": 1,
-            "#9c52f7": 2,
-            "#e7bdff": 3
+            "#212129": 4,
+            "#9c52f7": 5,
+            "#e7bdff": 6
           },
           "vram_bytes": 1089,
           "night": "per_colour",
@@ -1412,14 +3201,14 @@
           ],
           "slot": 0,
           "x": 216,
-          "y": 40,
+          "y": 64,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#736b8c": 4,
-            "#101018": 5
+            "#736b8c": 7,
+            "#101018": 8
           },
           "vram_bytes": 289,
           "night": "per_colour",
@@ -1549,11 +3338,11 @@
       "triangles": 132,
       "palette": {
         "palettes": [
-          3
+          6
         ],
         "entries": [
           {
-            "colour": 49,
+            "colour": 97,
             "class": "emissive",
             "color": "#c47cff",
             "materials": [
@@ -1580,15 +3369,15 @@
             "#101018"
           ],
           "slot": 0,
-          "x": 240,
+          "x": 248,
           "y": 0,
           "gutter": 0,
-          "window": 497,
-          "palette": 9,
-          "first_colour": 144,
+          "window": 505,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#9c52f7": 2,
-            "#101018": 5
+            "#9c52f7": 5,
+            "#101018": 8
           },
           "vram_bytes": 32,
           "night": "per_colour",
@@ -1605,7 +3394,7 @@
         }
       ],
       "windows": [
-        497
+        505
       ],
       "materials": {
         "black": {
@@ -1712,7 +3501,7 @@
         "vglow": {
           "color": "#c47cff",
           "class": "emissive",
-          "palette_colour": 49,
+          "palette_colour": 97,
           "tag": null,
           "triangles": 3,
           "faces": [
@@ -1887,14 +3676,14 @@
           ],
           "slot": 0,
           "x": 216,
-          "y": 40,
+          "y": 64,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#736b8c": 4,
-            "#101018": 5
+            "#736b8c": 7,
+            "#101018": 8
           },
           "vram_bytes": 289,
           "night": "per_colour",
@@ -2024,11 +3813,11 @@
       "triangles": 132,
       "palette": {
         "palettes": [
-          4
+          7
         ],
         "entries": [
           {
-            "colour": 65,
+            "colour": 113,
             "class": "emissive",
             "color": "#c47cff",
             "materials": [
@@ -2055,15 +3844,15 @@
             "#101018"
           ],
           "slot": 0,
-          "x": 240,
+          "x": 248,
           "y": 0,
           "gutter": 0,
-          "window": 497,
-          "palette": 9,
-          "first_colour": 144,
+          "window": 505,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#9c52f7": 2,
-            "#101018": 5
+            "#9c52f7": 5,
+            "#101018": 8
           },
           "vram_bytes": 32,
           "night": "per_colour",
@@ -2080,7 +3869,7 @@
         }
       ],
       "windows": [
-        497
+        505
       ],
       "materials": {
         "black": {
@@ -2187,7 +3976,7 @@
         "vglow": {
           "color": "#c47cff",
           "class": "emissive",
-          "palette_colour": 65,
+          "palette_colour": 113,
           "tag": null,
           "triangles": 3,
           "faces": [
@@ -2376,8 +4165,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 10,
-          "first_colour": 160,
+          "palette": 13,
+          "first_colour": 208,
           "indices": {
             "#1042ad": 1,
             "#f7ffff": 2,
@@ -2437,8 +4226,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 11,
-          "first_colour": 176,
+          "palette": 14,
+          "first_colour": 224,
           "indices": {
             "#1042ad": 1,
             "#f7ffff": 2,
@@ -2565,11 +4354,11 @@
       "triangles": 108,
       "palette": {
         "palettes": [
-          5
+          8
         ],
         "entries": [
           {
-            "colour": 81,
+            "colour": 129,
             "class": "emissive",
             "color": "#f2f6ff",
             "materials": [
@@ -2605,12 +4394,12 @@
           "y": 0,
           "gutter": 0,
           "window": 738,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#4a5a6b": 6,
-            "#63738c": 7,
-            "#6b7b94": 8
+            "#4a5a6b": 9,
+            "#63738c": 10,
+            "#6b7b94": 11
           },
           "vram_bytes": 128,
           "night": "per_colour",
@@ -2653,8 +4442,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 12,
-          "first_colour": 192,
+          "palette": 15,
+          "first_colour": 240,
           "indices": {
             "#18397b": 1,
             "#f7f7f7": 2,
@@ -2691,15 +4480,15 @@
             "#212129"
           ],
           "slot": 0,
-          "x": 248,
-          "y": 0,
+          "x": 0,
+          "y": 8,
           "gutter": 0,
-          "window": 505,
-          "palette": 9,
-          "first_colour": 144,
+          "window": 2305,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#212129": 1,
-            "#f7c600": 9
+            "#212129": 4,
+            "#f7c600": 12
           },
           "vram_bytes": 32,
           "night": "per_colour",
@@ -2721,7 +4510,7 @@
       ],
       "windows": [
         738,
-        505
+        2305
       ],
       "materials": {
         "cap": {
@@ -2827,7 +4616,7 @@
         "light": {
           "color": "#f2f6ff",
           "class": "emissive",
-          "palette_colour": 81,
+          "palette_colour": 129,
           "tag": null,
           "triangles": 2,
           "faces": [
@@ -2911,11 +4700,11 @@
       "triangles": 108,
       "palette": {
         "palettes": [
-          6
+          9
         ],
         "entries": [
           {
-            "colour": 97,
+            "colour": 145,
             "class": "emissive",
             "color": "#f2f6ff",
             "materials": [
@@ -2951,12 +4740,12 @@
           "y": 0,
           "gutter": 0,
           "window": 738,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#4a5a6b": 6,
-            "#63738c": 7,
-            "#6b7b94": 8
+            "#4a5a6b": 9,
+            "#63738c": 10,
+            "#6b7b94": 11
           },
           "vram_bytes": 128,
           "night": "per_colour",
@@ -2999,8 +4788,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 12,
-          "first_colour": 192,
+          "palette": 15,
+          "first_colour": 240,
           "indices": {
             "#18397b": 1,
             "#f7f7f7": 2,
@@ -3037,15 +4826,15 @@
             "#212129"
           ],
           "slot": 0,
-          "x": 248,
-          "y": 0,
+          "x": 0,
+          "y": 8,
           "gutter": 0,
-          "window": 505,
-          "palette": 9,
-          "first_colour": 144,
+          "window": 2305,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#212129": 1,
-            "#f7c600": 9
+            "#212129": 4,
+            "#f7c600": 12
           },
           "vram_bytes": 32,
           "night": "per_colour",
@@ -3067,7 +4856,7 @@
       ],
       "windows": [
         738,
-        505
+        2305
       ],
       "materials": {
         "cap": {
@@ -3173,7 +4962,7 @@
         "light": {
           "color": "#f2f6ff",
           "class": "emissive",
-          "palette_colour": 97,
+          "palette_colour": 145,
           "tag": null,
           "triangles": 2,
           "faces": [
@@ -3497,11 +5286,11 @@
       "triangles": 200,
       "palette": {
         "palettes": [
-          7
+          10
         ],
         "entries": [
           {
-            "colour": 113,
+            "colour": 161,
             "class": "emissive",
             "color": "#8ff4ff",
             "materials": [
@@ -3569,7 +5358,7 @@
         "glow": {
           "color": "#8ff4ff",
           "class": "emissive",
-          "palette_colour": 113,
+          "palette_colour": 161,
           "tag": null,
           "triangles": 6,
           "faces": [
@@ -3664,15 +5453,15 @@
             "#f7f7f7"
           ],
           "slot": 0,
-          "x": 152,
-          "y": 40,
+          "x": 96,
+          "y": 80,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#ef2129": 10,
-            "#f7f7f7": 11
+            "#ef2129": 13,
+            "#f7f7f7": 14
           },
           "vram_bytes": 957,
           "night": "per_colour",
@@ -3945,11 +5734,11 @@
       "triangles": 118,
       "palette": {
         "palettes": [
-          8
+          11
         ],
         "entries": [
           {
-            "colour": 129,
+            "colour": 177,
             "class": "emissive",
             "color": "#f4fcff",
             "materials": [
@@ -3992,7 +5781,7 @@
         "edge": {
           "color": "#f4fcff",
           "class": "emissive",
-          "palette_colour": 129,
+          "palette_colour": 177,
           "tag": null,
           "triangles": 20,
           "faces": [
@@ -4120,15 +5909,15 @@
             "#f7f7f7"
           ],
           "slot": 0,
-          "x": 152,
-          "y": 40,
+          "x": 96,
+          "y": 80,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#ef2129": 10,
-            "#f7f7f7": 11
+            "#ef2129": 13,
+            "#f7f7f7": 14
           },
           "vram_bytes": 957,
           "night": "per_colour",
@@ -4417,15 +6206,15 @@
             "#212931"
           ],
           "slot": 0,
-          "x": 216,
-          "y": 64,
+          "x": 160,
+          "y": 80,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#f7f7f7": 11,
-            "#212931": 12
+            "#f7f7f7": 14,
+            "#212931": 15
           },
           "vram_bytes": 289,
           "night": "per_colour",
@@ -4522,15 +6311,15 @@
             "#212129"
           ],
           "slot": 0,
-          "x": 248,
-          "y": 0,
+          "x": 0,
+          "y": 8,
           "gutter": 0,
-          "window": 505,
-          "palette": 9,
-          "first_colour": 144,
+          "window": 2305,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#212129": 1,
-            "#f7c600": 9
+            "#212129": 4,
+            "#f7c600": 12
           },
           "vram_bytes": 32,
           "night": "per_colour",
@@ -4547,7 +6336,7 @@
         }
       ],
       "windows": [
-        505
+        2305
       ],
       "materials": {
         "chrome": {
@@ -4757,15 +6546,15 @@
             "#212931"
           ],
           "slot": 0,
-          "x": 216,
-          "y": 64,
+          "x": 160,
+          "y": 80,
           "gutter": 1,
           "window": null,
-          "palette": 9,
-          "first_colour": 144,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#f7f7f7": 11,
-            "#212931": 12
+            "#f7f7f7": 14,
+            "#212931": 15
           },
           "vram_bytes": 289,
           "night": "per_colour",
@@ -4862,15 +6651,15 @@
             "#212129"
           ],
           "slot": 0,
-          "x": 248,
-          "y": 0,
+          "x": 0,
+          "y": 8,
           "gutter": 0,
-          "window": 505,
-          "palette": 9,
-          "first_colour": 144,
+          "window": 2305,
+          "palette": 12,
+          "first_colour": 192,
           "indices": {
-            "#212129": 1,
-            "#f7c600": 9
+            "#212129": 4,
+            "#f7c600": 12
           },
           "vram_bytes": 32,
           "night": "per_colour",
@@ -4887,7 +6676,7 @@
         }
       ],
       "windows": [
-        505
+        2305
       ],
       "materials": {
         "chrome": {
@@ -5083,20 +6872,20 @@
       "runs": [
         {
           "bits": 4,
-          "first_colour": 144,
+          "first_colour": 192,
           "colours": 64,
           "offset": 0
         }
       ]
     },
-    "tiles": 10,
-    "vram_bytes": 8283,
-    "vram_bytes_allocated": 10688,
+    "tiles": 13,
+    "vram_bytes": 9561,
+    "vram_bytes_allocated": 12480,
     "palettes_4bit": [
-      9,
-      10,
-      11,
-      12
+      12,
+      13,
+      14,
+      15
     ],
     "palettes_8bit": []
   },
@@ -5143,6 +6932,18 @@
       },
       {
         "first_colour": 128,
+        "colours": 16
+      },
+      {
+        "first_colour": 144,
+        "colours": 16
+      },
+      {
+        "first_colour": 160,
+        "colours": 16
+      },
+      {
+        "first_colour": 176,
         "colours": 16
       }
     ]

@@ -13,7 +13,7 @@
 // face +x or -x in the world.
 import "anim_data.akr"
 
-enum Mech { Hero, Doubleblade }
+enum Mech { Hero, Doubleblade, Beam }   // Beam: Raikō's zoner (appended)
 
 // The move list (README.md, "Interfaces"): the same names for both mechs.
 enum Mv {

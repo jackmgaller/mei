@@ -13,7 +13,7 @@ from .move import Move, KINDS
 from .rig import AnimError, PARTS, load_rig
 
 # anim.akr's enums, in order
-MECHS = ['hero', 'doubleblade']
+MECHS = ['hero', 'doubleblade', 'beam']
 MOVES = ['idle', 'walk_f', 'walk_b', 'crouch', 'jump', 'land', 'block', 'hit_high', 'hit_low', 'hit_air',
          'knockdown', 'getup', 'ko', 'win', 'intro', 'atk_n', 'atk_f', 'atk_d', 'atk_air', 'sp_n', 'sp_f', 'sp_u',
          'sp_d', 'grab', 'grab_whiff', 'throw', 'thrown', 'grab_break', 'super', 'thrown_vault']

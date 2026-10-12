@@ -50,7 +50,7 @@ struct Cpu {
 }
 
 var cpu: [2]Cpu
-var cpu_tip: [2]fixed           // each mech's forward attack's reach, from the data
+var cpu_tip: [len(Mech)]fixed           // each mech's forward attack's reach, from the data
 
 fn cpu_init(seed: s32) {
     cpu[0] = Cpu { rng: (seed as u32) * 2654435761 + 1 }

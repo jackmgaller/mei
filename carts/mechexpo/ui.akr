@@ -129,6 +129,7 @@ fn mech_name(m: Mech) -> *u8 {
     match m {
         Hero => return "HERO MECH"
         Doubleblade => return "DOUBLE-BLADE HERO"
+        Beam => return "BEAM MECH"
     }
 }
 
@@ -136,6 +137,7 @@ fn mech_short(m: Mech) -> *u8 {
     match m {
         Hero => return "HERO"
         Doubleblade => return "DOUBLE-BLADE"
+        Beam => return "BEAM"
     }
 }
 
@@ -143,6 +145,7 @@ fn mech_maker(m: Mech) -> *u8 {
     match m {
         Hero => return "MOMENTUM ROBOTICS"
         Doubleblade => return "UMBRAL RESEARCH"
+        Beam => return "RAIKO CHEMICAL GROUP"
     }
 }
 
@@ -150,6 +153,7 @@ fn mech_maker_short(m: Mech) -> *u8 {
     match m {
         Hero => return "MOMENTUM ROBO."
         Doubleblade => return "UMBRAL RESEARCH"
+        Beam => return "RAIKO CHEMICAL"
     }
 }
 
@@ -157,6 +161,7 @@ fn mech_power(m: Mech) -> *u8 {
     match m {
         Hero => return "KINETIC"
         Doubleblade => return "ANTIMATTER"
+        Beam => return "CHEMICAL"
     }
 }
 
@@ -164,6 +169,7 @@ fn mech_booth(m: Mech) -> *u8 {
     match m {
         Hero => return "BOOTH A-12"
         Doubleblade => return "BOOTH B-07"
+        Beam => return "BOOTH C-03"
     }
 }
 
@@ -171,6 +177,7 @@ fn mech_model(m: Mech) -> *u8 {
     match m {
         Hero => return "MR-01 \"HERO\""
         Doubleblade => return "UR-02 \"DOUBLE-BLADE\""
+        Beam => return "RC-03 \"BEAM\""
     }
 }
 
@@ -178,6 +185,7 @@ fn mech_colour(m: Mech) -> u32 {
     match m {
         Hero => return C_RED
         Doubleblade => return C_VIOLET
+        Beam => return C_YELLOW
     }
 }
 

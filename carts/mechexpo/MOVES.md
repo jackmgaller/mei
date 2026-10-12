@@ -102,6 +102,15 @@ below zero, down to at most one bar of debt. While the meter is below zero the m
 % more damage**, until the reactor climbs back to zero. Saving a full bar first means a super
 without debt; borrowing means a super now and a dangerous 20 seconds after.
 
+**Chemical (Beam, Raikō Chemical Group): primes a reaction.** Down + B is Beam's Reaction Prime
+instead of an attack: 30 exposed frames, then the reaction runs for 300 frames (5 seconds) and
+fills the meter by itself, +2 a frame, half a bar in all. A reaction cannot be started while
+one is running (down + B does nothing until it burns out), and a hit before the prime's release
+frame spoils it (no reaction). Hits give no meter. The reaction keeps running whatever Beam does
+(walking, attacking, in hitstun); it stops only in the freezes and burns out at the end of the
+round. The meter carries over between rounds; the super costs a bar. Rewards committing at the
+right moment, then fighting freely.
+
 ## Movement
 
 | | Hero | Double-blade Hero |
@@ -262,6 +271,184 @@ the mech vanishes and reappears 12 m ahead mid-slash (startup 3 after the flash,
 1 to the first active frame. 320 damage, knockdown, chip 80; −24 on block. Available any time the meter is at
 zero or above: the borrowing super.
 
+## Beam (Raikō Chemical Group, chemical)
+
+Raikō's base mech: the roster's zoner, the Tank's natural nemesis. A heavy, square mech built
+round one weapon, the **Raikō Arc Cannon** in its right hand: a capacitor body on the fist and a
+long barrel wound with copper coils, held like a pistol, level at chest height.
+Two green reaction tanks stand on its back. It keeps the other mech out
+with electric orbs and a long-range beam, answers jumps with a pillar of lightning and keeps
+one quick jab for when something gets close. Slow on its feet, no lunges: once the other mech
+is in, Beam has to block, jab and throw its way out. Its stance is upright and planted, legs
+wide, the cannon pointed at the other mech.
+
+Code name `Beam` (`enum Mech`); shown as BEAM MECH, model RC-03 (a proposed product name is in
+the open questions). Built on the Hero's skeleton: the same part ids and joints
+([For the animator](#for-the-animator-beam)).
+
+### Movement and stats
+
+| | Beam |
+|---|---|
+| Health | 1,000 |
+| Walk forward | 0.062 m a frame (3.7 m/s): the slowest |
+| Walk back | 0.058 m a frame (3.5 m/s) |
+| Walk cycle | 52 frames, two steps (3.2 m forward) |
+| Jump | 5 frames' crouch, then 40 in the air, 6.0 m high at the top (45 frames in all) |
+| Diagonal jump | 0.14 m a frame across (5.6 m) |
+| Landing | 6 frames (9 after an air attack) |
+| Push box | 1.7 m either side of the root, 11.5 m tall (7.5 crouching) |
+
+The walk is the heaviest of the three: a long plant on each step, the cannon kept level and
+steady while the body dips under it (it is an instrument: it does not swing). The jump is
+short and late off the ground.
+
+### Attacks (A)
+
+| Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | On block / hit | Hit box |
+|---|---|---|---|---|---|---|---|---|
+| `atk_n` Arc Jab | 6 | 3 | 15 | 24 | 65 | 17 / 12 | −4 / +1 | x 1.8–5.6, y 6–9 |
+| `atk_f` Static Lance | 14 | 4 | 22 | 40 | 110 | 25 / 18 | −7 / +0 | x 3.5–9.4, y 6–8.5 |
+| `atk_d` Ground Spark | 12 | 5 | 24 | 41 | 85, knockdown | — / 16 | −13 / KD +40 | x 1.5–7.5, y 0–2 |
+| `atk_air` Down Arc | 9 | 6 | to landing | 32 | 90 | 20 / 15 | by height | x 0.5–5.5, y −3–3 (from the root, in the air) |
+
+(The on-block and on-hit columns are measured by `tests/run.sh 17` with the stand-in timings.)
+
+- **Arc Jab** (`atk_n`): Beam's answer up close and the chain's start. The cannon is short-armed
+  straight forward, muzzle first, a stab with a crackle at the muzzle (frames 1–5: the elbow
+  draws back 20°, the cannon tilts up a little; 6–8: the arm punches out level, the muzzle at
+  about 5 m; then it is pulled back to the guard by frame 20). Little body motion: the torso
+  turns into it 10°. The arm is hurtable to 3 m out from frame 7 until it is back.
+- **Static Lance** (`atk_f`): the footsie poke, shorter than the Hero's Tip Thrust. A half step
+  (0.8 m over frames 4–13, the right foot sliding forward) and the cannon thrust out at full
+  length, both arms (the left hand leaves the barrel and pushes the cannon's body), an arc
+  jumping from the muzzle to the target: the hit box is the arc, not the barrel. Hold the
+  thrust on 15–18, then a slow pull back (the last 12 frames). The arm is hurtable to 4.5 m out
+  from the first active frame until 10 frames after the last.
+- **Ground Spark** (`atk_d`): from a crouch, the muzzle is pushed down onto the floor ahead and
+  discharges along it: a low knockdown. Frames 1–11: the knees bend, the cannon dips to point at
+  the floor 4 m ahead; 12–16: contact, the body jolts with the recoil; then the long recovery
+  rising from the crouch. Punishable on block or a miss.
+- **Down Arc** (`atk_air`): in the air, the cannon pointed down and forward at 45°, a short
+  discharge below and in front; the cannon stays pointed until landing. Once per jump.
+
+### Specials (B)
+
+| Move | Startup | Active | Recovery | Total | Damage | Chip | Hitstun / blockstun | On block / hit |
+|---|---|---|---|---|---|---|---|---|
+| `sp_n` Volt Orb (tap) | 18 | the orb | 26 | 45 | 70 | 14 | 20 / 16 | −16 / −12 at the mech; safe far |
+| `sp_n` Volt Orb (charged) | 18 + 20–49 held | the orb | 26 | 65–94 | 90 | 18 | 22 / 18 | |
+| `sp_n` Volt Orb (full) | 18 + 50 held | the orb | 26 | 95 | 120, knockdown | 24 | — / 20 | |
+| `sp_f` Arc Lance | 20 | 6 | 24 | 50 | 100, knockdown | 20 | — / 18 | −13 / KD +45 (close) |
+| `sp_u` Thunder Pillar | 7 | 8 | 27 | 42 | 110, knockdown | 22 | — / 14 | −21 / KD +48 |
+| `sp_d` Reaction Prime | — | — | 14 after the release | 44 | — | — | — | — |
+
+- **Volt Orb** (`sp_n`): the projectile, and the charge attack. Frames 1–10: the left hand comes
+  off the barrel, the cannon is levelled at chest height, the coils light from the grip to the
+  muzzle, and the cannon is lowered to the hip. **Frame 11 is the charge frame** (the `charge` mark): while B is held, the move holds
+  there, up to 50 frames, the muzzle glowing brighter; letting go (or 50 frames) carries on.
+  Frames 12–18: recoil builds (the body leans in), the orb leaves on frame 19 (the `release`
+  mark, frame 18 counted from 0), and the cannon kicks up 15° with the recoil; 26 frames to settle
+  back to the guard. The orb is a ball of lightning in front of the chest: it starts 4.5 m ahead
+  and flies at **mid height**, a box from y 4.2 to 6.0, so it hits a standing or crouching mech
+  (8 m tall crouching), passes over a mech lower than 4.2 m (the Antimatter Slide) and under a
+  jump that is high enough. Held under 20 frames it is a **tap** (0.24 m a frame, 1.4 m wide),
+  20 to 49 frames a **charged** orb (0.30 m a frame, 1.8 m wide), 50 frames a **full** orb (0.36
+  m a frame, 2.2 m wide, knockdown). It lasts 130 frames and vanishes at a wall. One orb at a
+  time: B while Beam's orb is out does nothing.
+  - **Against the Kinetic Wave** (decided here): two projectiles that meet both stop unless one
+    is stronger. The wave is strength 2; a tap orb is 1 (it is cancelled and the wave goes on),
+    a charged orb 2 (both go), a full orb 3 (the wave is cancelled and the orb goes on). So the
+    Hero answers taps with the wave; Beam answers the wave by charging, which costs it time.
+  - **The Parry catches an orb** like the wave (the orb vanishes, the Hero ripostes if Beam is
+    close enough to reach). The Void Step passes through it; the Antimatter Slide passes under.
+- **Arc Lance** (`sp_f`): the long-range beam, and the chain's ender. No root motion: Beam plants,
+  levels the cannon with both hands on frames 1–12 (anticipation: the body sinks 0.4 m, the
+  coils charge), and the beam fires from the muzzle on frame 21: a straight bolt out to 15 m (a
+  box from x 2.5 to 15, y 6 to 8), held for 6 frames, the body pushed back by the recoil, then
+  24 frames of recovery with the barrel smoking. The arm and the muzzle are hurtable to 5.5 m
+  out from the first active frame until 10 after. Knocks down. Too slow to use on reaction from
+  close; it catches a mech walking or jumping in at mid range. The Antimatter Slide (4 m tall)
+  passes under the beam; the Parry catches it.
+- **Thunder Pillar** (`sp_u`): the anti-air. No jump: Beam points the cannon straight up in
+  front of its head and a column of lightning goes up from just in front of it (x 0.5–5, y
+  6–16) on frames 8–15. Frames 1–7: the cannon swings up from the guard (it passes the head on
+  the far side: the cannon must clear the antenna), the knees bend; the body is invulnerable on
+  frames 1–7, so it beats a jump-in started in time. 27 frames of recovery bringing the cannon
+  back down. Knocks down. Punishable on block or a miss.
+- **Reaction Prime** (`sp_d`): the chemical meter's prime, not an attack. Frames 1–12: Beam
+  plants the cannon's butt against its hip, reaches back over its shoulder with the left hand
+  and turns the valve between the tanks; 13–30: it holds still, braced, the tanks flaring (the
+  exposed moment: any hit spoils it); **frame 31 (the `release` mark, 30 from 0) the reaction
+  starts**: a jolt through the body, the tanks glow; 14 frames back to the guard. A
+  reaction lasts 300 frames and fills half a bar ([The meters](#the-meters)). Down + B during a
+  reaction does nothing.
+
+### Grab and throw (Y): Shock Grip
+
+As the Hero's grab (startup 5, the same reach and whiff). On a catch, `throw` (46 frames) on Beam
+and `thrown` (46) on the other: Beam takes the other by the shoulder with its left hand, jams
+the muzzle into its chest (frames 6–28: the other shakes in the current), and on frame 33 (the
+`release` mark, 32 from 0) the shock throws it off backwards: 130 damage, the other lands about
+9 m away and is knocked down. The break window is the throw's first 10 frames. For getting a
+rushing mech back out to orb range.
+
+### Super (A + B): Raikō Overload
+
+The flash (frames 1–40: the world freezes, Beam alone moves: it plants its feet wide, both hands
+on the cannon, the tanks and the coils flare and the head's antenna sparks), then startup 8
+(the cannon levelled, the body braced back), and the beam: active frames 49–64, a bolt the
+height of a mech across the hangar (x 2–30, y 4.5–9), then 36 frames of recovery (the recoil
+skids Beam back a little, the barrel glowing). Invulnerable from frame 1 to frame 48. 300
+damage, knockdown; chip 75 through a block (which can finish a round). Very punishable when
+blocked close (the other recovers long before Beam does); from far it is safe. A full-screen
+answer to a mech that is zoning back, or to a whiff anywhere.
+
+### Chains
+
+Beam's chain is the shared one: Arc Jab, then Static Lance, then a special. The Arc Lance and the
+Volt Orb both combo from a Static Lance that hits; the Thunder Pillar does not reach a standing
+mech pushed back by the lance; the Reaction Prime can be cancelled into (the other recovers
+long before the release: a gamble).
+
+### Reaction lengths (Beam)
+
+As the shared table below, except: `walk_f`, `walk_b` 52; `jump` 45; `throw` and `thrown` (by
+Beam's Shock Grip) 46. `win` (120): the cannon pointed up and fired once into the hangar's
+roof, a shower of sparks. `intro` (90): walks out with the cannon on its shoulder, then lowers
+it into the guard.
+
+### For the animator (Beam)
+
+- **The skeleton is the Hero's**: the same part ids and joint offsets
+  (`models/beam/beam.rig.json`), so a Hero pose reads on Beam. The proportions differ only in the
+  armour: Beam's chest and shoulder blocks are broader and squarer (the joints are where the
+  Hero's are), its back carries two tanks and its head an antenna 1.3 m tall, raked back.
+- **`weapon_r` is the Arc Cannon**, on the right hand's mount (the same mount as the Hero's
+  sword), but held like a pistol: the grip runs up through the fist (the mount's +Y, the thumb
+  side), the capacitor body sits on top of the fist and **the barrel runs along the mount's −Z**,
+  the line of the forearm. So with the hand straight (`hand_r` near 0) the cannon points where
+  the forearm points: a forearm held level aims it at the other mech; the guard holds the
+  upper arm at the side and the forearm level (`upper_arm_r` 2°, `forearm_r` 86°). It is a gun,
+  not a blade: aim it and let it recoil; keep it out of the floor (it reaches 4.8 m past the
+  fist). **`weapon_l` is empty** (the left hand is a fist, raised in front of the chest in the
+  guard).
+- **The muzzle** is the effects' anchor: the point (0, 0.8, −4.4) in `weapon_r`'s frame. The orb,
+  the beam, the pillar and the arcs start there (the fight's boxes are in fight-local metres; keep
+  the muzzle near where the boxes say: about x 4.5, y 5 for the orb, so the cannon is lowered to
+  the hip for the Volt Orb, and level at the chest, y 7, for the Arc Lance and the Static Lance).
+- **Joint ranges** (degrees, the kit's X/Y/Z on each joint, as the rig file says): pelvis ±25 X,
+  ±30 Y; torso −30..35 X, ±40 Y, ±15 Z; head ±35 X, ±45 Y; upper arms −60..170 X, −10..80 Z
+  outward; forearms 0..140 X (the elbow bends one way); hands ±60 X, ±30 Z; thighs −50..100 X,
+  ±25 Z; shins −140..0 X (the knee bends one way); feet ±45 X. The pauldrons follow the upper
+  arms by about a third in X and half in Z, as the Hero's do. The flex pose
+  (`beam_flex.asset.json`) bends every joint near these ends and passes the Asset Checker.
+- **Marks** (anim.akr's `MARK_*`): `cancel` on atk_n frames 6–14 and atk_f 14–23 (from 0);
+  `invuln` on sp_u 0–6 and the super 0–47; `flash` on the super's 0–39; `release` on sp_n 18
+  (the orb), sp_d 30 (the reaction) and throw 32 (the shock); **`charge` (new) on sp_n 10**, the
+  frame held while B is held; `step` on the walks' plants.
+- **The guard** (`_body.anim.json`, the rig's `guard` pose) is the stance every stand-in holds.
+
 ## Reactions and the rest of the list
 
 | Move | Length | Notes |
@@ -302,3 +489,8 @@ Void Step's gone frames, 7–18).
 
 - The Double-blade Hero's second Twin Cut: one animation played twice, or an `atk_n` variant?
   (The animator's call.)
+- Beam's product name. Proposed: keep BEAM MECH on screen with the model number RC-03 (as the
+  Hero is the MR-01 HERO MECH), or name it in Raikō's house style, RC-03 RAIJIN ("thunder god";
+  Raikō means "lightning flash"). `ui.akr`'s `mech_name()` is the one place to change.
+- Beam against the Kinetic Wave: the strength rule above (a tap orb loses, a charged orb
+  trades, a full orb wins). Retune after human play.

@@ -5,7 +5,7 @@ import "assets.akr"
 
 embed AK_BLOB: u8 = "anims/anim_data.bin"
 
-const AK_MOVES: [60]AnimMove = [
+const AK_MOVES: [90]AnimMove = [
     AnimMove { len: 60, flags: 1, frames: 0, box_first: 36480, boxes: 36604, marks: 49804, root: 50044 },   // hero idle
     AnimMove { len: 48, flags: 1, frames: 50524, box_first: 79708, boxes: 79808, marks: 90368, root: 90560 },   // hero walk_f
     AnimMove { len: 48, flags: 1, frames: 90944, box_first: 120128, boxes: 120228, marks: 130788, root: 130980 },   // hero walk_b
@@ -66,10 +66,41 @@ const AK_MOVES: [60]AnimMove = [
     AnimMove { len: 20, flags: 0, frames: 1887928, box_first: 1900088, boxes: 1900132, marks: 1904532, root: 1904612 },   // doubleblade grab_break
     AnimMove { len: 87, flags: 0, frames: 1904772, box_first: 1957668, boxes: 1957844, marks: 1977144, root: 1977492 },   // doubleblade super
     AnimMove { len: 40, flags: 2, frames: 1978188, box_first: 2002508, boxes: 2002592, marks: 2011392, root: 2011552 },   // doubleblade thrown_vault
+    AnimMove { len: 60, flags: 5, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam idle (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam walk_f (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam walk_b (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam crouch (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam jump (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam land (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam block (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam hit_high (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam hit_low (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam hit_air (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam knockdown (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam getup (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam ko (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam win (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam intro (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam atk_n (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam atk_f (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam atk_d (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam atk_air (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam sp_n (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam sp_f (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam sp_u (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam sp_d (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam grab (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam grab_whiff (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam throw (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam thrown (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam grab_break (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam super (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2011872, box_first: 2048352, boxes: 2048476, marks: 2061676, root: 2061916 },   // beam thrown_vault (stand-in)
 ]
 
 // each mech's part meshes in anim.akr's Part order (null: no mesh)
-const AK_MESH: [38]*Mesh = [
+const AK_MESH: [57]*Mesh = [
     ASSET_HERO_PELVIS, ASSET_HERO_TORSO, ASSET_HERO_HEAD, ASSET_HERO_PAULDRON_R, ASSET_HERO_UPPER_ARM_R, ASSET_HERO_FOREARM_R, ASSET_HERO_HAND_R, ASSET_HERO_SWORD, ASSET_HERO_PAULDRON_L, ASSET_HERO_UPPER_ARM_L, ASSET_HERO_FOREARM_L, ASSET_HERO_HAND_L, null, ASSET_HERO_THIGH_R, ASSET_HERO_SHIN_R, ASSET_HERO_FOOT_R, ASSET_HERO_THIGH_L, ASSET_HERO_SHIN_L, ASSET_HERO_FOOT_L,
     ASSET_DOUBLEBLADE_PELVIS, ASSET_DOUBLEBLADE_TORSO, ASSET_DOUBLEBLADE_HEAD, ASSET_DOUBLEBLADE_PAULDRON_R, ASSET_DOUBLEBLADE_UPPER_ARM_R, ASSET_DOUBLEBLADE_FOREARM_R, ASSET_DOUBLEBLADE_HAND_R, ASSET_DOUBLEBLADE_DAGGER, ASSET_DOUBLEBLADE_PAULDRON_L, ASSET_DOUBLEBLADE_UPPER_ARM_L, ASSET_DOUBLEBLADE_FOREARM_L, ASSET_DOUBLEBLADE_HAND_L, ASSET_DOUBLEBLADE_DAGGER, ASSET_DOUBLEBLADE_THIGH_R, ASSET_DOUBLEBLADE_SHIN_R, ASSET_DOUBLEBLADE_FOOT_R, ASSET_DOUBLEBLADE_THIGH_L, ASSET_DOUBLEBLADE_SHIN_L, ASSET_DOUBLEBLADE_FOOT_L,
+    ASSET_BEAM_PELVIS, ASSET_BEAM_TORSO, ASSET_BEAM_HEAD, ASSET_BEAM_PAULDRON_R, ASSET_BEAM_UPPER_ARM_R, ASSET_BEAM_FOREARM_R, ASSET_BEAM_HAND_R, ASSET_BEAM_CANNON, ASSET_BEAM_PAULDRON_L, ASSET_BEAM_UPPER_ARM_L, ASSET_BEAM_FOREARM_L, ASSET_BEAM_HAND_L, null, ASSET_BEAM_THIGH_R, ASSET_BEAM_SHIN_R, ASSET_BEAM_FOOT_R, ASSET_BEAM_THIGH_L, ASSET_BEAM_SHIN_L, ASSET_BEAM_FOOT_L,
 ]
