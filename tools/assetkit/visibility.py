@@ -24,7 +24,7 @@ from kitcore import depth as DEPTH
 from meshlib import face_slot, SLOT_HI, PAL_HI, SLOTS
 from .compiler import compile_recipe, native_bytes
 from .geometry import AssetError
-from .geometry_audit import numpy, geometry_audit, face_ref, CODES, close_faces
+from .geometry_audit import numpy, geometry_audit, face_ref, CODES, close_faces, position
 from .preview import source, camera_numbers, png_bytes
 from .views import cameras, cutout_texels, select_views
 from .schema import validate, VERIFICATION
@@ -52,6 +52,22 @@ def verdict(ok, failures, geometry, depth, policy):
     tail=f"; {allowed} findings allowed in {mode} ({', '.join(geometry['allowed_codes'])})" if allowed else ''
     if ok: return f'PASS ({mode}){tail}'
     return f"FAIL ({mode}): {len(failures)} problem{'s' if len(failures)!=1 else ''}, see failures{tail}"
+
+
+def worst_issue(views):
+    """', most where PART is drawn over PART (faces F/G at (x, y, z))': the part pair with the most
+    wrong-depth pixels over every view, and its worst face pair."""
+    pairs=Counter();faces={}
+    for v in views:
+        for issue in v['issues']:
+            key=(issue['drawn']['part'],issue['expected']['part'])
+            pairs[key]+=issue['pixels']
+            if issue['pixels']>faces.get(key,(0,))[0]:faces[key]=(issue['pixels'],issue['drawn'],issue['expected'])
+    if not pairs:return ''
+    (drawn,expected),_=pairs.most_common(1)[0]
+    _,a,b=faces[drawn,expected]
+    return (f", most where {drawn} is drawn over {expected} (faces {a['face']}/{b['face']} at {position(a,b)})"
+            if drawn!=expected else f", most within {drawn} (faces {a['face']}/{b['face']} at {position(a,b)})")
 
 
 def identity_mesh(binary, cutouts=(), solid=False):
@@ -475,11 +491,15 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
     if not covered:failures.append('views: no covered pixels in any view (the asset is not drawn)')
     if totals['wrong_pixels']:
         failures.append(f"views: {totals['wrong_pixels']} wrong-depth pixels in "
-                        f"{sum(1 for v in views if v['wrong_pixels'])} views (see views[].issues)")
+                        f"{sum(1 for v in views if v['wrong_pixels'])} views{worst_issue(views)} (see views[].issues)")
     if totals['coverage_errors']:
         failures.append(f"views: {totals['coverage_errors']} coverage errors in "
                         f"{sum(1 for v in views if v['coverage_errors'])} views")
-    if cycles:failures.append(f'views: ordering cycles in {cycles} views (see views[].ordering_graph)')
+    if cycles:
+        cycle=next(v['ordering_graph']['cycle'] for v in views if v['ordering_graph']['cycle'])
+        parts=list(dict.fromkeys(f['part'] for f in cycle))
+        failures.append(f"views: ordering cycles in {cycles} views, the first through {', '.join(parts)} "
+                        f"at {position(*cycle)} (see views[].ordering_graph)")
     allowed=[f"{row['code']}: {row['count']} {'within '+row['parts'][0] if row['parts'][0]==row['parts'][1] else 'between '+' and '.join(row['parts'])}"
              for row in geometry['allowed']]
     if len(allowed)>ALLOWED_LINES:

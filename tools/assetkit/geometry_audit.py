@@ -14,8 +14,18 @@ def numpy():
 
 
 def face_ref(mesh, i):
+    """A face as reports name it: its index, part, material (and decal), and `at`, its centre in
+    the asset's coordinates (world units, as placed at the origin with yaw 0)."""
     f=mesh.faces[i]
-    return {'face':i,'part':f.part,'material':f.material,**({'decal':f.decal} if f.decal else {})}
+    corners=[mesh.vertices[k] for k in f.indices]
+    at=[round(sum(c[k] for c in corners)/len(corners),3)+0.0 for k in range(3)]
+    return {'face':i,'part':f.part,'material':f.material,**({'decal':f.decal} if f.decal else {}),'at':at}
+
+
+def position(*refs):
+    """'(x, y, z)': the middle of the faces' centres, to the centimetre."""
+    at=[sum(r['at'][k] for r in refs)/len(refs) for k in range(3)]
+    return '('+', '.join(f'{n:.2f}'.replace('-0.00','0.00') for n in at)+')'
 
 
 def clip_polygon(subject, clip, eps):
@@ -140,8 +150,8 @@ def summarise(found, allowed, scope):
 
 
 def failure_summary(failing, faces=4):
-    """One line per part pair and code, the largest first:
-    'coplanar_overlap: 12 between roof and wall (faces 3/40, 5/41, 6/44, 9/45, ...)'."""
+    """One line per part pair and code, the largest first, with where the first pair is:
+    'coplanar_overlap: 12 between roof and wall (faces 3/40, 5/41, 6/44, 9/45, ...) at (0.00, 2.40, -1.10)'."""
     groups={}
     for f in failing:
         groups.setdefault((pair_of(f),f['code']),[]).append(f)
@@ -149,7 +159,7 @@ def failure_summary(failing, faces=4):
     for (pair,code),group in sorted(groups.items(),key=lambda kv:(-len(kv[1]),kv[0])):
         where=f'within {pair[0]}' if pair[0]==pair[1] else f'between {pair[0]} and {pair[1]}'
         sample=', '.join(f"{g['a']['face']}/{g['b']['face']}" for g in group[:faces])+(', ...' if len(group)>faces else '')
-        lines.append(f'{code}: {len(group)} {where} (faces {sample})')
+        lines.append(f'{code}: {len(group)} {where} (faces {sample}) at {position(group[0]["a"],group[0]["b"])}')
     return lines
 
 

@@ -27,7 +27,9 @@ build-mine/mei-headless build-mine/mei-asset-probe` once):
 3. **`preview FILE -o DIR --build-dir build-mine --closeups`** (and `--camera`, `--part` for the
    views a player has). Look at `contact.png` and `cameras.png`; the frame costs are in
    `report.json` at `preview.cameras.views[i].cost` ([Camera views](#camera-views-at-world-scale)).
-   With a required policy, `build` and `preview` stop before rendering on flush contacts.
+   With a required policy, `build` and `preview` stop before rendering on flush contacts. Give
+   the views the game's sky and ground with `--background` and `--ground`, or once for a cart's
+   assets in an `asset-preview.json` ([The look](#the-look-background-and-ground)).
 4. **`verify FILE --build-dir build-mine`** until `ok`; then the asset is done. Make the policy
    required in the recipe (`"verification": {"required": true, "depth": true, "perspective":
    true}` for a depth-mode game) so every later build checks it.
@@ -91,13 +93,15 @@ For an agent building a game:
 6. Import the generated Akari file into the cart. Verify the asset in its intended camera and
    scene too: the preview's statistics measure an isolated asset, not its cost in every scene.
 
-The CLI prints JSON on stdout for both successes and failures and exits 0 on success or 1 on
-failure. `--help` prints human-readable help. Recipe errors contain a JSON Pointer `path`
+The CLI exits 0 on success or 1 on failure. `preview` and `verify` print a one-screen summary
+([Output](#output-the-summary-and-the-full-report)), and with `--json` the full report; the other
+commands (but `info` and `floors`) print JSON on stdout for both successes and failures.
+`--help` prints human-readable help. Recipe errors contain a JSON Pointer `path`
 and an actionable `message`, and, when the path runs through nodes, `node`: their ids as
 `inspect`'s parts name them (`"path": "/nodes/1/children/0/size/2"`, `"node": "group_1/arm"`; a
 node without an id is `OP_INDEX`; `prototype wheel: rim`, `lod level 1: lump`). Commands
 accepting a recipe also accept `-` to read stdin. A
-failure's output begins with `ok` and `errors`; a verification report begins with `ok`,
+failure's JSON output begins with `ok` and `errors`; a verification report begins with `ok`,
 `verdict`, `failures` and `allowed` ([Reports and repairs](#reports-and-repairs)).
 
 ## Authoring rules (depth mode)
@@ -138,6 +142,8 @@ Conventions, each checked on native renders (`tests/test_assetkit.py`, `Conventi
 | `cylindrical` | u = 0 on the −Z meridian (the line facing the front camera), growing toward +X, so rightward in the front view, and around; v = 0 at the primitive's y = 0 (its middle: primitives are centred), growing downward |
 | `disc` | Centred on the primitive's origin. About `y` (the default) as seen from above: u = 0 at the −X edge and v = 0 at the +Z edge. Both caps of a cylinder get the same mapping, so the bottom cap, seen from below, shows it upside down. About `z` and `x` as `planar` sees those axes |
 | `fit` | Each plane of the primitive gets the whole texture over the bounding rectangle of its faces in that plane, in its own right/down frame: u = 0 at the left edge, v = 0 at the top. A plane is a box side, each side quad of a cylinder or lathe (so each gets the whole texture), a cap, an extrusion's outline face; in a `mesh` node, each source polygon. On a shape that is not a rectangle (a triangle, a round cap, an L shape) the parts of the texture outside it are not drawn |
+| `stripes` `axis` | The colour changes **along** the axis: `u` (the default) makes bands side by side along u, each running the whole way along v, so on a wall (`box`, `planar` `z` or `x`, `fit`) **vertical stripes**, and around a `cylindrical` surface stripes running up it; `v` makes bands stacked along v: horizontal stripes on a wall, rings around a cylinder. On a face looking up or down (`box`, `planar` `y`, `disc` `y`), u runs along +X, so `u` stripes run along Z, front to back. A texture's `rotate` 90 turns them a quarter turn |
+| Lighting `direction` | Points **from the asset toward the light**, in the asset's own frame: a face whose outward normal is `direction` gets the full colour, one facing away gets `ambient` (the shade is `ambient + (1 − ambient) × max(0, n · direction)`, n the face's unit normal, `direction` normalised). The default `[-0.4, 0.85, -0.35]` is a light above, in front (−Z, the side the front camera sees) and to the left in the front view (−X) |
 
 ## Commands
 
@@ -147,14 +153,63 @@ Conventions, each checked on native renders (`tests/test_assetkit.py`, `Conventi
 | `init FILE [--example robot\|vessel\|cottage\|kiosk\|stall]` | Editable starter (with the images it reads, beside it); refuses to overwrite unless `--force` |
 | `validate FILE [--strict]` | Schema, reference, geometry, fixed-point and budget checks |
 | `inspect FILE [--strict]` | Same checks, with full bounds, per-part report, `flush_contacts`, `close_faces`, `texture_windows` and more `warnings` (below); a recipe over its budgets is reported in full |
-| `verify FILE [-o DIR] [--build-dir DIR]` | Geometry checks plus native triangle-ID visibility and ordering-graph checks |
+| `verify FILE [-o DIR] [--build-dir DIR] [--json]` | Geometry checks plus native triangle-ID visibility and ordering-graph checks; a [summary](#output-the-summary-and-the-full-report), or the full report with `--json` |
 | `build FILE -o DIR [--verify] [--preview] [--strict] [--depth] [--perspective] [--build-dir DIR]` | Native and exchange artifacts; optional or recipe-mandated verification gate |
-| `preview FILE -o DIR [--verify] [--strict] [--depth] [--perspective] [--build-dir DIR] [--closeups] [--camera SPEC]… [--cameras FILE] [--part ID]… [--upscale N]` | Build plus six native renders and contact sheet, and [camera views](#camera-views-at-world-scale) |
+| `preview FILE -o DIR [--verify] [--strict] [--depth] [--perspective] [--build-dir DIR] [--closeups] [--camera SPEC]… [--cameras FILE] [--part ID]… [--upscale N] [--background C[,C]] [--ground C\|none] [--look FILE\|none] [--json]` | Build plus six native renders and contact sheet, and [camera views](#camera-views-at-world-scale), in [a look](#the-look-background-and-ground); a [summary](#output-the-summary-and-the-full-report), or the full report with `--json` |
 | `info FILE [--at X,Y,Z] [--yaw DEG] [--collision auto\|self\|none\|PATH] [--json]` | Bounds (drawn and collision, and placed), triangles per level of detail and switch distances, texture bytes per texture, palettes, texture windows ([Quick facts](#quick-facts-info-and-floors)) |
 | `floors FILE [--step 0.25] [--at X,Y,Z] [--yaw DEG] [--below Y] [--area X0,Z0,X1,Z1] [--json]` | A grid of the collision's top floor heights, with walls and too-steep faces marked ([Quick facts](#quick-facts-info-and-floors)) |
 | `import-obj FILE -o RECIPE [--name NAME] [--force]` | Geometry-only OBJ import into an explicit `mesh` recipe |
 | `pack FILE... -o DIR [--name NAME] [--slots 14-0] [--palette 0] [--palette8 14]` | Several assets (or one) for a cart without a world: shared texture slots and palettes, one loader ([Placement](#placement-build-and-pack)) |
 | `export FILE -o DIR [--format glb\|gltf]` | One glTF 2.0 file for ordinary 3D viewers, drawn as Mei draws it ([export](#viewing-an-asset-elsewhere-export)) |
+
+### Output: the summary and the full report
+
+`preview` and `verify` print a summary of one screen, in plain text: the verdict, each failure,
+the counts (triangles and vertices against the budget, textures and VRAM bytes, always, also
+when 0, and palette entries for palette-backed materials), the bounds and how far the asset
+reaches below y = 0 (and which parts), the allowed findings as counts per kind and part pair,
+the compile warnings counted by code, the look, the images and where the full report is.
+`--json` prints the full report instead, as before. `preview` always writes the full report to
+`report.json` in its output directory; `verify -o DIR` writes `verification.json` there.
+`build` prints JSON as before. `pine` from Fall Line (`carts/fallline/models/pine/`):
+
+```
+pine: preview written to build-mine/assets/pine
+verdict: PASS (depth mode); 104 findings allowed in depth mode (surface_intersection, t_junction)
+views judged: 16; faces seen 82 of 82
+allowed surface_intersection: 104 (tier_1/trunk 30, snow_1/trunk 18, tier_2/trunk 12, snow_1/tier_2 11, and 3 more pairs)
+close faces: 2 part pairs (they z-fight from a distance)
+  close_faces: 7 between snow_3 and tier_3: snow_3's faces 24.9 mm in front of tier_3's, facing the same way (…)
+  close_faces: 7 between snow_4 and tier_4: snow_4's faces 19.5 mm in front of tier_4's, facing the same way (…)
+triangles 82 of 100, vertices 81 of 128, textures 0, VRAM 0 bytes, palette entries 1
+bounds: x -1.98 .. 2.20  y -1.00 .. 6.60  z -2.14 .. 2.14  (size 4.18 x 7.60 x 4.29)
+below y = 0: down to -1.00 (trunk)
+warning open_surface: 8 (snow_1, snow_2, snow_3, snow_4, tier_3, tier_4, ...)
+look: background #70d0f8 to #fffcf4, ground #eef5fc (from carts/fallline/models/asset-preview.json)
+images: build-mine/assets/pine/contact.png (6 fitted views)
+        build-mine/assets/pine/cameras.png (the asset's share of a frame's GPU: eye_level 0.4 %, closeup_1 4.2 %, closeup_2 3.3 %)
+full report: build-mine/assets/pine/report.json (or run with --json)
+```
+
+A failure names the parts and where they are, in the asset's coordinates (world units as placed
+at the origin with yaw 0), besides the face indices:
+
+```
+test: FAIL (ordering-table mode): 4 problems, see failures
+  FAIL geometry: surface_intersection: 60 between bar and body (faces 20/49, 20/64, 20/68, 22/53, ...) at (-0.76, -0.89, -0.25)
+  FAIL geometry: coplanar_overlap: 8 between body and cap (faces 32/100, 34/101, 35/100, 35/101, ...) at (0.25, 1.00, -0.42)
+  FAIL views: 864 wrong-depth pixels in 4 views, most where body is drawn over bar (faces 45/82 at (-0.99, -0.18, 0.62)) (see views[].issues)
+  FAIL views: ordering cycles in 4 views, the first through body, bar at (1.03, -0.21, -0.53) (see views[].ordering_graph)
+```
+
+A geometry line's position is the middle of its first face pair's centres; a views line's, of
+the face pair with the most wrong pixels in the part pair with the most. The same lines are the
+report's `failures` (and the flush-contact error's summary). Every face a report names (in
+`geometry.findings`, `views[].issues`, `ordering_graph`) has `at`, its centre. Paths are shown
+relative to the current directory. At most 8 failures, 4 part pairs per kind of allowed finding
+and 3 close-face lines are shown, each list with a count of the rest. A failed verification under
+`preview` prints the same summary, the failing renders and `verification.failed.json`; any other
+error is one line, `error at PATH (node): message`.
 
 `--strict` fails on topology warnings, useful for closed props. Omit it for intentionally open
 surfaces. `--depth` and `--perspective` on build and
@@ -189,9 +244,9 @@ the output carries `flush_contacts`:
 ```json
 {"ok": false, "errors": [{"path": "/verification", "message": "Stopped before rendering: 4 flush
   contacts, which the Asset Checker fails in either mode: coplanar_overlap: 4 between base and top
-  (faces 8/16, 8/17, 9/16, 9/17). Fix: sink top about 0.02 along -Y into base, or open top's face
-  toward -Y (an unrotated box: \"open\": [\"bottom\"]). Nothing was written; run inspect to see
-  them all."}], "flush_contacts": {…}}
+  (faces 8/16, 8/17, 9/16, 9/17) at (-0.08, 0.50, -0.25). Fix: sink top about 0.02 along -Y into
+  base, or open top's face toward -Y (an unrotated box: \"open\": [\"bottom\"]). Nothing was
+  written; run inspect to see them all."}], "flush_contacts": {…}}
 ```
 
 Levels of detail are checked too (lines `lod K …`). The check is in the command line; the
@@ -332,7 +387,7 @@ python3 tools/mei_assets.py preview stall.asset.json -o build/assets/stall \
 | `--upscale N` | 1–4, default 2: each camera view's PNG is 320 × 240 scaled up N times, pixel for pixel (the console draws 320 × 240) |
 
 Each view is written as `camera_NAME.png` and the views together as `cameras.png` (two columns).
-**Where the costs are:** `report.json` (and the command's output) has `preview.cameras`, an
+**Where the costs are:** `report.json` (and the output with `--json`) has `preview.cameras`, an
 object whose `views` list has one entry per camera view, in the order given; the six fitted
 views are in `preview.views`, the same way:
 
@@ -371,6 +426,66 @@ Measured: a 24 × 3.5 × 2.9 m railcar (202 triangles, depth policy) with `--clo
 `eye_level` 0.6 % of the GPU budget for the asset and each close-up 2.2–3.0 %; the `stall`
 example's `--part sign` 3.8 %, its whole isometric fitted frame 5.3 %. A view costs one compile
 and one run, about 0.05 s.
+
+`eye_level` stands 1.6 units above the ground: y = 0 when the asset reaches below it (a post sunk
+into the snow), else the asset's base. It starts as far back as the asset's front needs and
+steps back by a tenth until all eight corners of the asset's bounds are inside the view, a tenth
+of the way in from its edges, so a tall model (a 12 m pylon seen from 1.6 m) is not cropped.
+
+### The look: background and ground
+
+By default the views are drawn on a near-black background (`rgb(24, 28, 36)`) with nothing
+else, which hides how an asset reads against a game's scenery: pale chrome on white snow, say,
+or a post that is meant to stand a metre deep in the ground. A **look** gives every view of
+`preview` (and `build --preview`), the six fitted views and the camera views, the game's
+background and ground:
+
+```sh
+# a sky gradient, top to bottom, and white snow
+python3 tools/mei_assets.py preview pine.asset.json -o build-mine/assets/pine --closeups \
+  --background '#70d0f8,#fffcf4' --ground '#eef5fc'
+```
+
+| Option | Effect |
+|---|---|
+| `--background #RRGGBB` | The views' background in that colour (the frame's clear) |
+| `--background #TOP,#BOTTOM` | A vertical gradient over the whole view, drawn before anything else |
+| `--ground #RRGGBB` | The ground, the plane y = 0, in that colour: a faint checker (every other tile 0.96 times the colour) of square tiles aligned to the world's metres, 1 m, or 2, 4, … m so that at most 16 lie along a side. In the fitted views it reaches about three camera distances past the asset; in the camera views 20 units, or three times the asset's width if more, past the farthest eye (along X or Z), and their far clip is moved past its corners. `none`: no ground |
+| `--look FILE` | A look file; `none`: no look file |
+
+What lies below y = 0 is drawn, **seen through the ground, half tinted with its colour**, so the
+part of a post sunk into the snow shows as such and the line where the asset meets the ground
+is plain to see. A cart draws three passes for it, under the depth buffer: the ground (drawn and
+flushed), the depth buffer cleared, the asset (all of it), then the ground again, half
+transparent (blend mode 0), which tests against the asset: where a part is behind the ground, it
+shows through half mixed with the ground; above the ground the asset is drawn as it is. A view
+with a ground therefore draws with the depth buffer (and perspective-correct textures) also when
+the asset would otherwise preview without them. Seen from below y = 0 (a `--camera` there),
+everything above the ground is the part behind it. HUD text is dark on a light background
+(luma above 140).
+
+**A look file** sets the look once for a cart's assets: `asset-preview.json`, in the recipe's
+folder or any folder above it up to the repository's root (the nearest wins), applies to every
+preview of those recipes; `--background` and `--ground` override its values, `--look FILE` names
+another and `--look none` ignores it. A recipe read from stdin has none unless given. Fall Line's,
+`carts/fallline/models/asset-preview.json`, is its sky and snow:
+
+```json
+{
+  "background": ["#70d0f8", "#fffcf4"],
+  "ground": "#eef5fc"
+}
+```
+
+`background` is a colour or a list of one or two; `ground` a colour. The report's `preview.look`
+says what was drawn and where it came from (`"from": "carts/fallline/models/asset-preview.json"`,
+or `arguments`). Without a look (no options and no file), the views and `preview.akr` are exactly
+as before. The ground is in `preview_ground.bin` and `preview_ground_tint.bin` (the fitted views;
+`preview.akr` embeds them) and `camera_ground.bin` and `camera_ground_tint.bin` (the camera
+views), in the output directory. Costs include the look: the fitted views' frame costs include
+the ground's passes, and a camera view's `baseline` draws the ground (with the background) without
+the asset, so `asset_gpu_cycles` is still the asset's share. The six Fall Line models preview in
+0.9–1.8 s each with `--closeups`, their Asset Checker included.
 
 ## Recipe contract
 
@@ -657,13 +772,13 @@ mode (`verify examples/assets/cottage.asset.json --depth`):
 "ok": false,
 "verdict": "FAIL (depth mode): 7 problems, see failures; 284 findings allowed in depth mode (surface_intersection, t_junction)",
 "failures": [
-  "geometry: coplanar_overlap: 8 between front_windows/window/group_window/frame and front_windows/window/group_window/pane (faces 80/93, 80/95, 82/93, 82/95, ...)",
-  "geometry: coplanar_overlap: 8 between side_windows/group_window/frame and side_windows/group_window/pane (faces 176/189, 176/191, 178/189, 178/191, ...)",
-  "geometry: coplanar_overlap: 6 between front_windows/window/group_window/frame and walls (faces 12/129, 12/131, 14/81, 14/83, ...)",
-  "geometry: coplanar_overlap: 6 between side_windows/group_window/frame and walls (faces 20/177, 20/179, 20/225, 20/227, ...)",
-  "geometry: coplanar_overlap: 4 between foundation and walls (faces 8/18, 8/19, 9/18, 9/19)",
-  "geometry: coplanar_overlap: 2 between door and foundation (faces 8/56, 8/57)",
-  "geometry: coplanar_overlap: 2 between door and walls (faces 18/56, 18/57)"
+  "geometry: coplanar_overlap: 8 between front_windows/window/group_window/frame and front_windows/window/group_window/pane (faces 80/93, 80/95, 82/93, 82/95, ...) at (0.58, 0.94, -0.88)",
+  "geometry: coplanar_overlap: 8 between side_windows/group_window/frame and side_windows/group_window/pane (faces 176/189, 176/191, 178/189, 178/191, ...) at (1.08, 0.96, -0.46)",
+  "geometry: coplanar_overlap: 6 between front_windows/window/group_window/frame and walls (faces 12/129, 12/131, 14/81, 14/83, ...) at (-0.45, 0.82, -0.80)",
+  "geometry: coplanar_overlap: 6 between side_windows/group_window/frame and walls (faces 20/177, 20/179, 20/225, 20/227, ...) at (1.00, 1.08, -0.37)",
+  "geometry: coplanar_overlap: 4 between foundation and walls (faces 8/18, 8/19, 9/18, 9/19) at (-0.02, 0.20, -0.29)",
+  "geometry: coplanar_overlap: 2 between door and foundation (faces 8/56, 8/57) at (-0.15, 0.20, -0.57)",
+  "geometry: coplanar_overlap: 2 between door and walls (faces 18/56, 18/57) at (0.21, 0.20, -0.55)"
 ],
 "allowed": [
   "surface_intersection: 40 between front_windows/window/group_window/cross_h and front_windows/window/group_window/cross_v",
@@ -1240,7 +1355,7 @@ For an asset named `stool`, `build` produces:
 | `stool.asset.json` | Copy of the editable source recipe |
 | `stool.obj`, `stool.mtl` | Geometry/material exchange with external modeling tools |
 | `stool.model.json` | Explicit geometry in Mei Modeler's project format |
-| `preview.akr` | Standalone camera-fitted preview cart source |
+| `preview.akr` | Standalone camera-fitted preview cart source; with a [look](#the-look-background-and-ground)'s ground it embeds `preview_ground.bin` and `preview_ground_tint.bin`, written beside it |
 | `report.json` | Build costs, hashes, per-part diagnostics and optional native render results |
 | `stool.lod1.bin`, … | With `lod`: each coarser level's native mesh, embedded in `stool.akr` as `ASSET_STOOL_LOD1`, … |
 | `stool.materials.json` | Material manifest: palette entries, classes, tags and face ranges (below) |
@@ -1866,7 +1981,15 @@ counted); `DecalTests` that each decal adds 8 triangles and 4 vertices and keeps
 its corners and texture coordinates, `rotate`, no flush contacts or T-junctions (with NumPy), the
 errors, `mesh` polygons and modifiers' copies, `--part` framing a decal, and (with NumPy and the
 native tools) that a baked decal passes the Asset Checker with and without the depth buffer
-where a quad 3.5 cm proud fails without it. It also runs as part of `make test` when
+where a quad 3.5 cm proud fails without it. `LookTests` checks the look's options and files
+(found above the recipe, overridden by the options, Fall Line's), that a preview without a look is
+unchanged, the ground's tiles and tint, the eye-level view's framing of a 12 m pylon, and the
+`stripes` axis and lighting `direction` conventions; `LookRenderTests` renders a post sunk 1 m
+into a white ground under a sky gradient and finds the sky, the ground, the post above it and
+the part below it tinted; `SummaryTests` that findings carry their positions, that allowed
+findings collapse to counts per kind and pair, the summaries of `preview` and `verify` (under 25
+lines, failures with parts and positions, textures and VRAM at 0) and Fall Line's pine previewed
+on its snow. It also runs as part of `make test` when
 Python is available. Pure Python tests can run independently; native render tests skip if
 the binaries are absent:
 
