@@ -111,6 +111,11 @@ frame spoils it (no reaction). Hits give no meter. The reaction keeps running wh
 round. The meter carries over between rounds; the super costs a bar. Rewards committing at the
 right moment, then fighting freely.
 
+**Fusion (the Twins, Binary Mechanica): fills only combined.** +1 a frame while the twins are
+combined, +5 % for each combined hit that lands, more from Fusion Focus; nothing while split.
+The super exists only combined ([the Twins](#the-fusion-meter)). Rewards switching forms at the
+right times.
+
 ## Movement
 
 | | Hero | Double-blade Hero |
@@ -706,6 +711,302 @@ victim: dead weight, the treads hanging), `thrown_slam` 56.
 - Tank is 10.2 m tall and 9.5 m wide in its guard; the depth buffer sorts the two mechs, but a
   grab's arms should pass in front of the other mech's chest (−z) rather than through it.
 
+## The Twins (Binary Mechanica, fusion)
+
+Binary Mechanica's base mech, and its founding idea: two small mechs that fight side by side
+and lock together into one. **Split**, the player steers twin A and twin B follows a few frames
+behind, copying it (the Ice Climbers' way): every button comes out twice, a beat apart, so the
+twins press hard and are safe on block, but each hit is light and the **fusion meter does not
+fill**. **Combined**, the two are one mid-weight brawler with full-weight hits, the meter fills
+and the super is there. **L switches** between the two, a move each way. Unlocked by clearing
+the arcade with each base mech ([roster.akr](roster.akr)).
+
+"Twins" is the code identifier: `Mech.Twins` is the combined form and the mech the player picks
+(the fighter's `mech` all match long); `Mech.TwinA` and `Mech.TwinB` are the split form's two
+bodies, for the animations and the drawing only (never in the roster, never a fighter's `mech`).
+The fighter's `body` says which one is drawn and timed: `Twins` combined, `TwinA` split (twin
+B is the partner, a second body of the same fighter). All three are on the shared skeleton
+(`enum Part`), from `models/twins/make_twins.py`. Twin A's accent is cyan, twin B's the model's
+second accent; names for the two are an open question at the end.
+
+### The two forms
+
+| | Split (each twin) | Combined |
+|---|---|---|
+| Health | 1,000: one bar for the fighter, whichever body is hit | (the same bar) |
+| Height | about 7.2 m | about 12 m |
+| Walk forward | 0.100 m a frame (6.0 m/s): the quickest | 0.080 m a frame (4.8 m/s) |
+| Walk back | 0.080 m a frame (4.8 m/s) | 0.065 m a frame (3.9 m/s) |
+| Walk cycle | 32 frames, two quick steps (3.2 m) | 44 frames, two steps (3.5 m) |
+| Jump | 3 frames' crouch, then 34 in the air, 6.0 m high (`jump` 37) | 4 frames, then 38 in the air, 6.0 m high (`jump` 42) |
+| Diagonal jump | 0.20 m a frame across (6.8 m) | 0.17 m a frame (6.5 m) |
+| Landing | 4 frames (6 after an air attack) | 5 frames (8 after an air attack) |
+| Push box | 1.1 m either side of the root, 7.0 m tall (4.8 crouching) | 1.6 m, 11.5 m tall (7.5 crouching) |
+| Hurt box (standing) | 1.2 m either side, 7.4 m tall (5.0 crouching) | 1.8 m either side, 12 m tall (8 crouching) |
+| Meter | does not fill | fills (below) |
+| Super | none | Fusion Burst |
+
+The twins are light: a quick, bouncing walk with short steps (`step` marks on the plants), a
+springy jump, the arms held high and close like a boxer's. Twin A and twin B move the same way
+(the same move set, the same timing): one is the other's echo a beat late. The combined form
+is heavier and squarer, a boxer's stance, both fists up at the chin, the waist coupling glowing.
+
+### Split: attacks (A), each twin
+
+The numbers are one twin's. The partner's copy lands six frames after the leader's, as a
+second hit (a combo: the second does 80 %). A knockdown lands once: the partner's copy misses a
+mech already falling (knocked down, a mech can't be hit).
+
+| Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | Hit box |
+|---|---|---|---|---|---|---|---|
+| `atk_n` Bit Jab | 4 | 2 | 10 | 16 | 40 | 15 / 11 | x 1.0–4.4, y 3.8–6.2 |
+| `atk_f` Byte Kick | 9 | 3 | 15 | 27 | 60 | 22 / 16 | x 1.2–5.8, y 2.4–4.8 |
+| `atk_d` Low Bit | 7 | 3 | 18 | 28 | 55, knockdown | — / 14 | x 1.0–5.0, y 0–1.6 |
+| `atk_air` Drop Kick | 5 | to landing | landing 6 | 24 | 50 | 16 / 12 | x 0.3–3.8, y −2.0–1.8 (from the root, in the air) |
+
+- **Bit Jab** (`atk_n`): a straight jab with the leading fist at head height of a crouching
+  big mech, and back. Frames 1–4 the shoulder turns in; 5–6 the arm is straight; 7–16 it comes
+  back to the guard. The pair is two jabs, rat-tat. The chain's start (cancel window frames 5–12).
+  The arm is hurtable to 2.5 m out from the first active frame until 10 frames after the last.
+- **Byte Kick** (`atk_f`): a hop forward (1.0 m over frames 3–10) into a straight front kick at
+  the other's thigh. The twin leans back from the hips, the kicking leg chambered on 6–9 and
+  snapped out on 10–12. Cancel window frames 10–18. The leg is hurtable to 3.5 m out.
+- **Low Bit** (`atk_d`): from a crouch, a low spinning sweep with the leading leg along the
+  floor, the hands on the floor. Knocks down. Punishable on block or a miss.
+- **Drop Kick** (`atk_air`): in the air, both feet out ahead and down, the body laid back. Out
+  until landing; once a jump.
+
+### Split: specials (B), each twin
+
+| Move | Startup | Active | Recovery | Total | Damage | Chip | Hitstun / blockstun |
+|---|---|---|---|---|---|---|---|
+| `sp_n` Pulse Spin | 8 | 10 | 16 | 34 | 45 | 9 | 18 / 14 |
+| `sp_f` Dash Kick | 10 | 4 | 18 | 32 | 80, knockdown | 16 | — / 14 |
+| `sp_u` Rising Kick | 4 | 8 | 22 | 34 | 70, knockdown | 14 | — / 12 |
+| `sp_d` Low Roll | — | — | 8 | 28 | — | — | — |
+
+- **Pulse Spin** (`sp_n`): the twin plants and spins on the spot, arms straight out, a ring of
+  cyan light round its waist: the box covers both sides (x −3.2–3.2, y 1.5–6.0) on frames 9–18,
+  so it hits a mech that jumped over. Two turns in the active frames; 16 frames of wobbling
+  back to the guard. The pair's spins overlap into one long spinning wall: a way to stop a
+  rush on both sides. No knockdown.
+- **Dash Kick** (`sp_f`): a low skating dash, 5.5 m over frames 3–12, into a flying side kick
+  on frames 11–14 (x 0.8–4.6, y 2.0–5.5). Knocks down: the chain's ender, and the leader's
+  usually lands alone (the partner's arrives at a mech already falling). Punishable on block.
+- **Rising Kick** (`sp_u`): the anti-air. A crouch on frames 1–4 and a spring straight up, one
+  leg kicking up over the head (the box x 0.3–3.6, y 2.0–8.0 from the root, which rises 4.5 m
+  over the active frames 5–12), then the fall. **Invulnerable on frames 1–5.** Knocks down.
+- **Low Roll** (`sp_d`): a forward roll along the floor, 6 m over frames 3–20, curled up: the
+  hurt box only 3.0 m tall (it rolls under the Hero's Guard Cut and Tip Thrust, Beam's orb and
+  Arc Lance, and the Double-blade Hero's Cross Lunge), no hit box. It stops at the other
+  mech's push box (it doesn't pass through). 8 frames to stand up. The way in.
+
+### Split: grab and throw (Y): Tag Toss
+
+Only the leader grabs: the partner never copies Y. `grab` startup 4, active 2 (x 0.8–3.2,
+y 1–7), 6 frames; a miss plays `grab_whiff` (18 frames). On a catch, `throw` (36 frames) on twin
+A and `thrown` on the other: twin A grabs the other mech's wrist and waist (frames 1–10, the
+break window), turns its hips and swings it overhead (11–23: the fight lifts the other's root to
+2 m, 2.6 m in front), and slings it forward on frame 24 (`release`): 100 damage, knockdown, the
+other flying about 8 m. Twin B carries on following meanwhile.
+
+### Combined: attacks (A)
+
+| Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | Hit box |
+|---|---|---|---|---|---|---|---|
+| `atk_n` Coupler Jab | 6 | 3 | 14 | 23 | 75 | 18 / 13 | x 1.8–6.6, y 6.0–9.0 |
+| `atk_f` Fusion Straight | 12 | 4 | 20 | 36 | 125 | 26 / 18 | x 2.5–8.4, y 6.0–8.5 |
+| `atk_d` Sweep Kick | 10 | 4 | 23 | 37 | 90, knockdown | — / 16 | x 1.8–7.4, y 0–2 |
+| `atk_air` Hammer Drop | 7 | to landing | landing 8 | 30 | 100 | 20 / 15 | x 0.5–5.5, y −2.0–3.5 (from the root, in the air) |
+
+- **Coupler Jab** (`atk_n`): a quick lead-hand jab at chest height from the chin guard, the
+  shoulder plate rolling in; the chain's start (cancel window frames 7–15). Arm hurtable to
+  3.5 m.
+- **Fusion Straight** (`atk_f`): a step in (1.0 m over frames 4–12) and a full straight with
+  the rear fist, hips and shoulders turned through, the waist coupling flaring on contact.
+  Cancel window frames 13–22. Arm hurtable to 5 m.
+- **Sweep Kick** (`atk_d`): drops to one knee and sweeps the far leg round along the floor.
+  Knocks down; punishable on block.
+- **Hammer Drop** (`atk_air`): both fists clasped overhead and brought down in front as it
+  falls; out until landing; once a jump.
+
+### Combined: specials (B)
+
+| Move | Startup | Active | Recovery | Total | Damage | Chip | Hitstun / blockstun |
+|---|---|---|---|---|---|---|---|
+| `sp_n` Binary Lariat | 10 | 10 | 22 | 42 | 100, knockdown | 20 | — / 16 |
+| `sp_f` Coupling Rush | 14 | 4 | 24 | 42 | 130, knockdown | 26 | — / 16 |
+| `sp_u` Twin Drill | 5 | 8 | 27 | 40 | 120, knockdown | 24 | — / 14 |
+| `sp_d` Fusion Focus | — | — | 12 | 20 + held | — | — | — |
+
+- **Binary Lariat** (`sp_n`): both arms straight out, the combined form spins once on its
+  heel, drifting 1.5 m forward over the active frames 11–20; the box covers both sides (x
+  −5.0–5.0, y 4.0–9.0), so it catches a mech that crossed over. The big body's answer to
+  pressure up close; a mech that waits out the spin punishes the 22 frames of recovery.
+- **Coupling Rush** (`sp_f`): a shoulder-first charge, 5 m over frames 4–13, into a rising
+  elbow (x 1.0–6.5, y 4.0–9.0) on 15–18. Knocks down; the chain's ender and the gap closer.
+- **Twin Drill** (`sp_u`): the anti-air. A spinning uppercut that drills straight up, the root
+  rising 4.5 m over the active frames 6–13 (the box x 0.5–5.0, y 4.0–13.0 from the root), then
+  the fall. **Invulnerable on frames 1–6.** Knocks down. Very punishable on a miss.
+- **Fusion Focus** (`sp_d`): the meter's charge, not an attack. Frames 1–7: the combined form
+  plants its feet, fists together in front of the waist coupling. **Frame 8 is the charge
+  frame** (the `charge` mark, as Beam's Volt Orb): while B is held the move holds there, up to
+  50 frames, filling the fusion meter +6 a frame (a quarter bar at most); letting go (or 50
+  frames) carries on into 12 frames back to the guard. Fully exposed the whole time: a read
+  for a knockdown or a far-away opponent.
+
+### Combined: grab and throw (Y): Binary Buster
+
+`grab` startup 5, active 2 (x 1.0–3.8, y 2–10), 7 frames; `grab_whiff` 22. On a catch, `throw`
+(44 frames) and `thrown` (44): both hands on the other's shoulders (frames 1–10, the break
+window), lifted overhead (11–29, the root lifted to 3 m, 3.4 m in front) and thrown forward on
+frame 30 (`release`): 140 damage, knockdown, about 9 m.
+
+### Combined: super (A + B): Fusion Burst
+
+Only combined, a bar. The flash (frames 1–40: the world freezes, the combined form alone
+moves: it plants, crosses its forearms in front of the face, and both twins' accent colours
+race along the seams to the core, which flares white), then a dash, 12 m over frames 41–47
+(root motion), into a two-fisted hammer blow, active frames 47–56 (x 0–7.5, y 2.0–10.5), and
+38 frames of recovery (it skids to a stop and the plates vent). Invulnerable from frame 1 to 46.
+330 damage, knockdown; chip 80 through a block (which can finish a round); about −28 on block.
+
+### Switching forms: L
+
+L is a move each way. It is accepted when the fighter can act (on the ground: idle, walking,
+crouching, or blocking outside blockstun), buffered 8 frames like the other buttons; split, the
+partner must be free too (on the ground and not in a reaction or a move), else L does nothing.
+Both moves are appended to `enum Mv`: `combine` and `split`.
+
+**`combine`** (split, 36 frames; twin A and twin B each play it, then the combined form):
+
+| Frames | Twin A (the leader) | Twin B (the partner) |
+|---|---|---|
+| 1–12 | crouches, arms up, looking back for its twin | runs to twin A: **the fight slides its root** from where it is to twin A's root, evenly over these frames |
+| 13–23 | springs up (its pelvis rises about 5 m over its root, which stays on the floor), its legs fold up against its back; lands on twin B's shoulders on 23 | under twin A, it crouches and folds: arms in along the thighs, head tucked down into the chest: it becomes the legs |
+| **24** | **the flash** (`release`): the bodies swap. The twins are hidden, the combined form drawn from here, on the twins' root | |
+| 24–36 | the combined form, from the docked crouch: stands up into its guard, the combined-only plates (the waist coupling, the shoulder and back plates) sliding out, the seams flaring | |
+
+Vulnerable on frames 1–23: a hit on either twin stops it (that twin plays its reaction, the
+other stands back up into its guard). **Invulnerable on 24–30** (the flash). Actionable after 36.
+So the end of twin A's and twin B's `combine` (frame 23) must be the pose the combined form's
+`combine` starts in (its frame 24, the same frame), and the combined form's last frame is its
+guard.
+
+**`split`** (combined, 30 frames; the combined form plays it, then the twins):
+
+| Frames | The combined form | Twin A | Twin B |
+|---|---|---|---|
+| 1–12 | crouches, the combined-only plates fold in, the seams flare | | |
+| **13** | **the flash** (`release`): the bodies swap. From here the twins are drawn | docked on top of twin B, as in `combine`'s frame 23 | folded as the legs |
+| 13–30 | | springs up off twin B's shoulders and lands in front on frame 22 at the root's spot (its root stays put), into its guard | unfolds and stands, then hops back 2.5 m: **the fight moves its root** to its spot behind twin A over frames 13–24 |
+
+Vulnerable on frames 1–12 (a hit there stops it: it stays combined). **Invulnerable on 13–18.**
+Actionable after 30.
+
+The rounds start split (the twins walk out of the booth as two, twin B 2.5 m behind twin A).
+The form is kept through the round and resets to split at the start of the next.
+
+### The partner (twin B)
+
+- **Delay.** Twin B plays the leader's pad **6 frames late**: the directions, A, B, X and R.
+  Never Y (the leader's grab), L or A + B. Directions are copied as forward and back (relative
+  to the facing), so a twin on the far side still attacks the right way. The delay counts
+  frames of play: the hitstop and the super's freeze do not eat into it.
+- **Its spot** is 2.5 m behind twin A. When twin B can act and the copied stick holds no
+  direction, it walks back to its spot if it is more than 1 m away; more than 4 m away, it
+  walks to its spot whatever the stick says (it still copies the buttons).
+- **Leash.** Never more than 8 m from twin A (a hard stop, like the separation limit), never
+  more than 36 m from the other mech, and inside the walls.
+- **Push boxes.** The twins pass through each other. Twin B's push box keeps it out of the
+  other mech, but it **never moves the other mech**: on the ground twin B is moved out of the
+  way, to its own side. The other mech pushes and is pushed by twin A only.
+- **Depth.** Twin B is drawn 1.2 m behind the fight plane (further from the camera), so
+  where the two twins overlap they read as two, side by side.
+- **Its hits** are the fighter's (events, chains, combo scaling). Each hit box hits one body
+  of the other side, the first it touches, and the other mech's whole hit hits **one twin**:
+  the leader if it touches both.
+- **Being hit.** Twin B has its own hurt boxes and its own reactions (hitstun, blockstun,
+  knockdown, getting up); the damage comes off the fighter's one bar. In a reaction it ignores
+  the copied pad (presses then are lost) and picks up the copy when it is free again.
+- **Thrown.** Either twin can be grabbed (the leader if both are in reach) and thrown, slammed
+  by Tank's command grabs, or vaulted. The player's Y breaks a grab on either twin. The other
+  twin carries on (the thrower can't be hit while it throws, as always).
+- **Knocked away**, twin B flies, lands, gets up and walks back to its spot.
+- **KO.** One bar: when it is empty, both twins fall (`ko`), whichever took the last hit.
+  There is no separate KO of the partner.
+- **The camera** frames all three bodies.
+
+### The fusion meter
+
+Fills **only while combined**: +1 a frame (a bar in 20 seconds of being combined), +60 (5 %)
+for each combined hit that lands, and Fusion Focus +6 a frame held (a quarter bar at most).
+**Nothing while split**: not by time, not by hits. It does not drain while split either, and
+it carries over between rounds. The super, Fusion Burst, costs a bar and exists only combined;
+split with a full bar, the HUD shows the bar dimmed with "L COMBINE" beside it.
+
+The HUD's gauge (`twins_fx.akr`) is a bright cyan fill with a white leading edge and two
+shimmer bands running along it (one cyan, one twin B's colour: the two reactors meeting),
+quickening as it fills, "SUPER" and a white pulse when full; while split it greys to a dim
+silver, with no shimmer.
+
+### Balance intent
+
+Combined is the reward form: full-weight hits, a meter that fills and the super. Split is the
+form of pressure and position: every button twice, a beat apart, a quick walk, the roll and
+the spin; on block the partner's late copy extends the blockstun, so a split string is safe
+where the combined form's is not; but each twin's hit is light, a knockdown lands only once,
+and the meter stands still. Switching is a commitment (36 frames in, 30 out, vulnerable before
+the flash), so the right moments are the safe ones: after a knockdown, far away behind a jump,
+or split to press after the combined form's chain ender knocked the other down. A player who
+never switches is choosing between no meter and no pressure.
+
+### Chains
+
+The shared chain in both forms: neutral attack, forward attack, a special (or, combined, the
+super). Split, each twin cancels on its own contact, so the partner follows the leader's chain
+whenever its own copies connect.
+
+### Reactions and the rest (the Twins)
+
+As the shared list below, with these lengths: split `walk_f` and `walk_b` 32, `jump` 37,
+`land` 6, `grab` 6, `grab_whiff` 18, `throw` 36; combined `walk_f`, `walk_b` 44, `jump` 42.
+Every one of the three bodies has the whole list, `thrown`, `thrown_vault` and `thrown_slam`
+included (a twin can be thrown). `super` is the combined form's only; the twins' `super` is never
+played (the stand-in is fine). `intro` (90): split, the two twins walk out of the booth side by
+side, twin B half a step behind, and bump fists; `win` (120): split, they high-five and land
+back to back; combined, it raises one fist, the seams flaring; `ko` (90): each body falls on
+its own.
+
+### For the animators (the Twins)
+
+- **Three rigs on the shared skeleton** (`models/twins/twins.rig.json`,
+  `models/twin_a/twin_a.rig.json`, `models/twin_b/twin_b.rig.json`), the same part ids. Twin A
+  is the combined form's upper body (head, torso, arms; its legs fold up against its back),
+  twin B its lower body (pelvis, legs; its torso and arms fold into the hips and thighs). The
+  model agent writes where each sits inside the combined rig.
+- **The swap.** `combine`'s frame 24 and `split`'s frame 13 (0-based 23 and 12: the `release`
+  mark) is the frame the drawing changes body. The twins' `combine` ends (frame 23) in the
+  docked pose: twin A's pelvis about where the combined torso joint is, twin B folded where the
+  combined pelvis and legs are, both on the same root; the combined form's `combine` holds that
+  docked crouch until frame 24 and stands from there. The combined form's `split` reaches the
+  same docked crouch on frame 12; the twins' `split` starts docked on frame 13. Frames a body is
+  not drawn on (the twins after the swap in `combine`, the combined form before it; the reverse
+  in `split`) can hold any pose: hold the docked one.
+- **Root motion.** None in `combine` and `split`: the fight places twin B's root (sliding it
+  in, then back out to its spot). Keep twin A's root still; its leap is the pelvis rising.
+- **Marks** (frames from 0, as the files count): `combine`: `release` 23, `invuln` 23–29;
+  `split`: `release` 12, `invuln` 12–17. Split: `cancel` on `atk_n` 4–11 and `atk_f` 9–17;
+  `invuln` on `sp_u` 0–4. Combined: `cancel` on `atk_n` 6–14 and `atk_f` 12–21; `invuln` on
+  `sp_u` 0–5 and `super` 0–45; `flash` on `super` 0–39; `charge` on `sp_d` 7; `release` on the
+  `throw`s (split 23, combined 29). `step` on the walks' plants. The rest as the shared list.
+- **Twin B plays the same moves as twin A** (its own file each: `anims/twin_a/`,
+  `anims/twin_b/`), with its own accent; the timing must match, frame for frame, since the fight
+  times both twins from the same numbers.
+- **Each twin is 7.2 m tall:** keep the boxes in the tables above (the hurt box 7.4 m tall, the
+  jab at y 3.8–6.2, a crouching big mech's head height). The partner is drawn 1.2 m further
+  from the camera: nothing to do in the animation.
+
 ## Reactions and the rest of the list
 
 | Move | Length | Notes |
@@ -758,3 +1059,7 @@ Void Step's gone frames, 7–18).
   so in practice one). If that proves too strong, cap it at one hit a move.
 - The nuclear meter's rate (a bar per 480 damage taken) and whether it carries between rounds
   (it does) want human play.
+- The Twins' names. "Twins" stays the code identifier and the roster shows TWINS, model BM-2X;
+  proposed for the two: twin A **ONE** and twin B **ZERO** (binary), combined **BINARY**.
+- The Twins' fusion rate (+1 a frame combined, a bar in 20 s) and whether every round should
+  start split (it does) want human play; so does the partner's delay (6 frames).

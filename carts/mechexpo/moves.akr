@@ -15,7 +15,7 @@ fn use_standin(m: Mech, mv: Mv) -> bool { return STANDIN_ALL || anim_standin(m, 
 
 // The marks the fight reads are anim.akr's MARK_*; the stand-in below sets them too.
 
-enum Power { Kinetic, Antimatter, Chemical, Nuclear }
+enum Power { Kinetic, Antimatter, Chemical, Nuclear, Fusion }
 
 struct Stats {
     health: s32
@@ -42,6 +42,15 @@ const STATS: [len(Mech)]Stats = [
     // Tank (MOVES.md, "Tank"): the jump is 6 frames' crouch, 34 in the air, 4.5 m high
     Stats { health: 1100, walk_f: 0.055, walk_b: 0.045, pre: 6, jv: 0.529412, grav: 0.031142,
             jvx: 0.13, land: 7, land_air: 10, push: 2.4, power: Power.Nuclear },
+    // the Twins (MOVES.md, "The Twins"): combined, 4 frames' crouch, 38 in the air, 6.0 m high
+    Stats { health: 1000, walk_f: 0.080, walk_b: 0.065, pre: 4, jv: 0.631579, grav: 0.033241,
+            jvx: 0.17, land: 5, land_air: 8, push: 1.6, power: Power.Fusion },
+    // twin A and twin B, the split form's bodies: 3 frames' crouch, 34 in the air, 6.0 m high
+    // (their health is never read: the fighter's is the Twins')
+    Stats { health: 1000, walk_f: 0.100, walk_b: 0.080, pre: 3, jv: 0.705882, grav: 0.041522,
+            jvx: 0.20, land: 4, land_air: 6, push: 1.1, power: Power.Fusion },
+    Stats { health: 1000, walk_f: 0.100, walk_b: 0.080, pre: 3, jv: 0.705882, grav: 0.041522,
+            jvx: 0.20, land: 4, land_air: 6, push: 1.1, power: Power.Fusion },
 ]
 
 // ---- what a hit does

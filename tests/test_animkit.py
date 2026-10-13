@@ -246,6 +246,8 @@ class ExportTests(Files, unittest.TestCase):
         out = self.dir/'out'
         anims = self.dir/'anims'
         for mech in EX.MECHS:
+            if not (CART/'anims'/mech/'_body.anim.json').is_file():
+                continue                    # a mech with no rig yet: the first mech's stand-in
             (anims/mech).mkdir(parents=True)
             (anims/mech/'_body.anim.json').write_text((CART/'anims'/mech/'_body.anim.json').read_text().replace(
                 '../../models/', str(CART/'models')+'/').replace('../hero/', str(CART/'anims'/'hero')+'/'))

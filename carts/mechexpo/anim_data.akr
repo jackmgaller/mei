@@ -5,7 +5,7 @@ import "assets.akr"
 
 embed AK_BLOB: u8 = "anims/anim_data.bin"
 
-const AK_MOVES: [124]AnimMove = [
+const AK_MOVES: [231]AnimMove = [
     AnimMove { len: 60, flags: 1, frames: 0, box_first: 36480, boxes: 36604, marks: 49804, root: 50044 },   // hero idle
     AnimMove { len: 48, flags: 1, frames: 50524, box_first: 79708, boxes: 79808, marks: 90368, root: 90560 },   // hero walk_f
     AnimMove { len: 48, flags: 1, frames: 90944, box_first: 120128, boxes: 120228, marks: 130788, root: 130980 },   // hero walk_b
@@ -37,105 +37,215 @@ const AK_MOVES: [124]AnimMove = [
     AnimMove { len: 96, flags: 0, frames: 937388, box_first: 995756, boxes: 995952, marks: 1017272, root: 1017656 },   // hero super
     AnimMove { len: 40, flags: 2, frames: 1018424, box_first: 1042744, boxes: 1042828, marks: 1051628, root: 1051788 },   // hero thrown_vault
     AnimMove { len: 56, flags: 2, frames: 1052108, box_first: 1086156, boxes: 1086272, marks: 1098592, root: 1098816 },   // hero thrown_slam
-    AnimMove { len: 60, flags: 1, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // doubleblade idle
-    AnimMove { len: 40, flags: 1, frames: 1149788, box_first: 1174108, boxes: 1174192, marks: 1182992, root: 1183152 },   // doubleblade walk_f
-    AnimMove { len: 40, flags: 1, frames: 1183472, box_first: 1207792, boxes: 1207876, marks: 1216676, root: 1216836 },   // doubleblade walk_b
-    AnimMove { len: 8, flags: 0, frames: 1217156, box_first: 1222020, boxes: 1222040, marks: 1223800, root: 1223832 },   // doubleblade crouch
-    AnimMove { len: 37, flags: 2, frames: 1223896, box_first: 1246392, boxes: 1246468, marks: 1254608, root: 1254756 },   // doubleblade jump
-    AnimMove { len: 8, flags: 0, frames: 1255052, box_first: 1259916, boxes: 1259936, marks: 1261696, root: 1261728 },   // doubleblade land
-    AnimMove { len: 4, flags: 0, frames: 1261792, box_first: 1264224, boxes: 1264236, marks: 1265116, root: 1265132 },   // doubleblade block
-    AnimMove { len: 20, flags: 0, frames: 1265164, box_first: 1277324, boxes: 1277368, marks: 1281768, root: 1281848 },   // doubleblade hit_high
-    AnimMove { len: 20, flags: 0, frames: 1282008, box_first: 1294168, boxes: 1294212, marks: 1298612, root: 1298692 },   // doubleblade hit_low
-    AnimMove { len: 30, flags: 2, frames: 1298852, box_first: 1317092, boxes: 1317156, marks: 1323756, root: 1323876 },   // doubleblade hit_air
-    AnimMove { len: 32, flags: 0, frames: 1324116, box_first: 1343572, boxes: 1343640, marks: 1350680, root: 1350808 },   // doubleblade knockdown
-    AnimMove { len: 20, flags: 0, frames: 1351064, box_first: 1363224, boxes: 1363268, marks: 1367668, root: 1367748 },   // doubleblade getup
-    AnimMove { len: 90, flags: 0, frames: 1367908, box_first: 1422628, boxes: 1422812, marks: 1442612, root: 1442972 },   // doubleblade ko
-    AnimMove { len: 120, flags: 0, frames: 1443692, box_first: 1516652, boxes: 1516896, marks: 1543296, root: 1543776 },   // doubleblade win
-    AnimMove { len: 90, flags: 0, frames: 1544736, box_first: 1599456, boxes: 1599640, marks: 1619440, root: 1619800 },   // doubleblade intro
-    AnimMove { len: 19, flags: 0, frames: 1620520, box_first: 1632072, boxes: 1632112, marks: 1636572, root: 1636648 },   // doubleblade atk_n
-    AnimMove { len: 32, flags: 0, frames: 1636800, box_first: 1656256, boxes: 1656324, marks: 1663964, root: 1664092 },   // doubleblade atk_f
-    AnimMove { len: 35, flags: 0, frames: 1664348, box_first: 1685628, boxes: 1685700, marks: 1693840, root: 1693980 },   // doubleblade atk_d
-    AnimMove { len: 26, flags: 2, frames: 1694260, box_first: 1710068, boxes: 1710124, marks: 1716324, root: 1716428 },   // doubleblade atk_air
-    AnimMove { len: 28, flags: 0, frames: 1716636, box_first: 1733660, boxes: 1733720, marks: 1737240, root: 1737352 },   // doubleblade sp_n
-    AnimMove { len: 41, flags: 0, frames: 1737576, box_first: 1762504, boxes: 1762588, marks: 1772028, root: 1772192 },   // doubleblade sp_f
-    AnimMove { len: 39, flags: 0, frames: 1772520, box_first: 1796232, boxes: 1796312, marks: 1805052, root: 1805208 },   // doubleblade sp_u
-    AnimMove { len: 40, flags: 0, frames: 1805520, box_first: 1829840, boxes: 1829924, marks: 1839404, root: 1839564 },   // doubleblade sp_d
-    AnimMove { len: 7, flags: 0, frames: 1839884, box_first: 1844140, boxes: 1844156, marks: 1845736, root: 1845764 },   // doubleblade grab
-    AnimMove { len: 22, flags: 0, frames: 1845820, box_first: 1859196, boxes: 1859244, marks: 1864084, root: 1864172 },   // doubleblade grab_whiff
-    AnimMove { len: 40, flags: 0, frames: 1864348, box_first: 1888668, boxes: 1888752, marks: 1897552, root: 1897712 },   // doubleblade throw
-    AnimMove { len: 44, flags: 2, frames: 1898032, box_first: 1924784, boxes: 1924876, marks: 1934556, root: 1934732 },   // doubleblade thrown
-    AnimMove { len: 20, flags: 0, frames: 1935084, box_first: 1947244, boxes: 1947288, marks: 1951688, root: 1951768 },   // doubleblade grab_break
-    AnimMove { len: 87, flags: 0, frames: 1951928, box_first: 2004824, boxes: 2005000, marks: 2024300, root: 2024648 },   // doubleblade super
-    AnimMove { len: 40, flags: 2, frames: 2025344, box_first: 2049664, boxes: 2049748, marks: 2058548, root: 2058708 },   // doubleblade thrown_vault
-    AnimMove { len: 56, flags: 2, frames: 2059028, box_first: 2093076, boxes: 2093192, marks: 2105512, root: 2105736 },   // doubleblade thrown_slam
-    AnimMove { len: 60, flags: 1, frames: 2106184, box_first: 2142664, boxes: 2142788, marks: 2155988, root: 2156228 },   // beam idle
-    AnimMove { len: 52, flags: 1, frames: 2156708, box_first: 2188324, boxes: 2188432, marks: 2199872, root: 2200080 },   // beam walk_f
-    AnimMove { len: 52, flags: 1, frames: 2200496, box_first: 2232112, boxes: 2232220, marks: 2243660, root: 2243868 },   // beam walk_b
-    AnimMove { len: 8, flags: 0, frames: 2244284, box_first: 2249148, boxes: 2249168, marks: 2250928, root: 2250960 },   // beam crouch
-    AnimMove { len: 45, flags: 2, frames: 2251024, box_first: 2278384, boxes: 2278476, marks: 2288376, root: 2288556 },   // beam jump
-    AnimMove { len: 8, flags: 0, frames: 2288916, box_first: 2293780, boxes: 2293800, marks: 2295560, root: 2295592 },   // beam land
-    AnimMove { len: 4, flags: 0, frames: 2295656, box_first: 2298088, boxes: 2298100, marks: 2298980, root: 2298996 },   // beam block
-    AnimMove { len: 20, flags: 0, frames: 2299028, box_first: 2311188, boxes: 2311232, marks: 2315632, root: 2315712 },   // beam hit_high
-    AnimMove { len: 20, flags: 0, frames: 2315872, box_first: 2328032, boxes: 2328076, marks: 2332476, root: 2332556 },   // beam hit_low
-    AnimMove { len: 30, flags: 2, frames: 2332716, box_first: 2350956, boxes: 2351020, marks: 2357620, root: 2357740 },   // beam hit_air
-    AnimMove { len: 32, flags: 0, frames: 2357980, box_first: 2377436, boxes: 2377504, marks: 2384544, root: 2384672 },   // beam knockdown
-    AnimMove { len: 20, flags: 0, frames: 2384928, box_first: 2397088, boxes: 2397132, marks: 2401532, root: 2401612 },   // beam getup
-    AnimMove { len: 90, flags: 0, frames: 2401772, box_first: 2456492, boxes: 2456676, marks: 2476476, root: 2476836 },   // beam ko
-    AnimMove { len: 120, flags: 0, frames: 2477556, box_first: 2550516, boxes: 2550760, marks: 2577160, root: 2577640 },   // beam win
-    AnimMove { len: 90, flags: 0, frames: 2578600, box_first: 2633320, boxes: 2633504, marks: 2653304, root: 2653664 },   // beam intro
-    AnimMove { len: 24, flags: 0, frames: 2654384, box_first: 2668976, boxes: 2669028, marks: 2674548, root: 2674644 },   // beam atk_n
-    AnimMove { len: 40, flags: 0, frames: 2674836, box_first: 2699156, boxes: 2699240, marks: 2708120, root: 2708280 },   // beam atk_f
-    AnimMove { len: 41, flags: 0, frames: 2708600, box_first: 2733528, boxes: 2733612, marks: 2742732, root: 2742896 },   // beam atk_d
-    AnimMove { len: 32, flags: 2, frames: 2743224, box_first: 2762680, boxes: 2762748, marks: 2769908, root: 2770036 },   // beam atk_air
-    AnimMove { len: 45, flags: 0, frames: 2770292, box_first: 2797652, boxes: 2797744, marks: 2807644, root: 2807824 },   // beam sp_n
-    AnimMove { len: 44, flags: 0, frames: 2808184, box_first: 2834936, boxes: 2835028, marks: 2845148, root: 2845324 },   // beam sp_f
-    AnimMove { len: 42, flags: 0, frames: 2845676, box_first: 2871212, boxes: 2871300, marks: 2880700, root: 2880868 },   // beam sp_u
-    AnimMove { len: 44, flags: 0, frames: 2881204, box_first: 2907956, boxes: 2908048, marks: 2917728, root: 2917904 },   // beam sp_d
-    AnimMove { len: 7, flags: 0, frames: 2918256, box_first: 2922512, boxes: 2922528, marks: 2924108, root: 2924136 },   // beam grab
-    AnimMove { len: 22, flags: 0, frames: 2924192, box_first: 2937568, boxes: 2937616, marks: 2942456, root: 2942544 },   // beam grab_whiff
-    AnimMove { len: 46, flags: 0, frames: 2942720, box_first: 2970688, boxes: 2970784, marks: 2980904, root: 2981088 },   // beam throw
-    AnimMove { len: 44, flags: 2, frames: 2981456, box_first: 3008208, boxes: 3008300, marks: 3017980, root: 3018156 },   // beam thrown
-    AnimMove { len: 20, flags: 0, frames: 3018508, box_first: 3030668, boxes: 3030712, marks: 3035112, root: 3035192 },   // beam grab_break
-    AnimMove { len: 100, flags: 0, frames: 3035352, box_first: 3096152, boxes: 3096356, marks: 3118676, root: 3119076 },   // beam super
-    AnimMove { len: 40, flags: 2, frames: 3119876, box_first: 3144196, boxes: 3144280, marks: 3153080, root: 3153240 },   // beam thrown_vault
-    AnimMove { len: 60, flags: 4, frames: 3153560, box_first: 3190040, boxes: 3190164, marks: 3203364, root: 3203604 },   // beam thrown_slam (stand-in)
-    AnimMove { len: 60, flags: 1, frames: 3204084, box_first: 3240564, boxes: 3240688, marks: 3252688, root: 3252928 },   // tank idle
-    AnimMove { len: 32, flags: 1, frames: 3253408, box_first: 3272864, boxes: 3272932, marks: 3279332, root: 3279460 },   // tank walk_f
-    AnimMove { len: 32, flags: 1, frames: 3279716, box_first: 3299172, boxes: 3299240, marks: 3305640, root: 3305768 },   // tank walk_b
-    AnimMove { len: 8, flags: 0, frames: 3306024, box_first: 3310888, boxes: 3310908, marks: 3312508, root: 3312540 },   // tank crouch
-    AnimMove { len: 40, flags: 2, frames: 3312604, box_first: 3336924, boxes: 3337008, marks: 3345008, root: 3345168 },   // tank jump
-    AnimMove { len: 10, flags: 0, frames: 3345488, box_first: 3351568, boxes: 3351592, marks: 3353592, root: 3353632 },   // tank land
-    AnimMove { len: 4, flags: 0, frames: 3353712, box_first: 3356144, boxes: 3356156, marks: 3356956, root: 3356972 },   // tank block
-    AnimMove { len: 20, flags: 0, frames: 3357004, box_first: 3369164, boxes: 3369208, marks: 3373208, root: 3373288 },   // tank hit_high
-    AnimMove { len: 20, flags: 0, frames: 3373448, box_first: 3385608, boxes: 3385652, marks: 3389652, root: 3389732 },   // tank hit_low
-    AnimMove { len: 30, flags: 2, frames: 3389892, box_first: 3408132, boxes: 3408196, marks: 3414196, root: 3414316 },   // tank hit_air
-    AnimMove { len: 32, flags: 0, frames: 3414556, box_first: 3434012, boxes: 3434080, marks: 3440480, root: 3440608 },   // tank knockdown
-    AnimMove { len: 24, flags: 0, frames: 3440864, box_first: 3455456, boxes: 3455508, marks: 3460308, root: 3460404 },   // tank getup
-    AnimMove { len: 90, flags: 0, frames: 3460596, box_first: 3515316, boxes: 3515500, marks: 3533500, root: 3533860 },   // tank ko
-    AnimMove { len: 120, flags: 0, frames: 3534580, box_first: 3607540, boxes: 3607784, marks: 3631784, root: 3632264 },   // tank win
-    AnimMove { len: 90, flags: 0, frames: 3633224, box_first: 3687944, boxes: 3688128, marks: 3706128, root: 3706488 },   // tank intro
-    AnimMove { len: 25, flags: 0, frames: 3707208, box_first: 3722408, boxes: 3722460, marks: 3727640, root: 3727740 },   // tank atk_n
-    AnimMove { len: 42, flags: 0, frames: 3727940, box_first: 3753476, boxes: 3753564, marks: 3761924, root: 3762092 },   // tank atk_f
-    AnimMove { len: 39, flags: 0, frames: 3762428, box_first: 3786140, boxes: 3786220, marks: 3794100, root: 3794256 },   // tank atk_d
-    AnimMove { len: 28, flags: 2, frames: 3794568, box_first: 3811592, boxes: 3811652, marks: 3818092, root: 3818204 },   // tank atk_air
-    AnimMove { len: 43, flags: 0, frames: 3818428, box_first: 3844572, boxes: 3844660, marks: 3853360, root: 3853532 },   // tank sp_n
-    AnimMove { len: 105, flags: 0, frames: 3853876, box_first: 3917716, boxes: 3917928, marks: 3939048, root: 3939468 },   // tank sp_f
-    AnimMove { len: 43, flags: 0, frames: 3940308, box_first: 3966452, boxes: 3966540, marks: 3975380, root: 3975552 },   // tank sp_u
-    AnimMove { len: 48, flags: 0, frames: 3975896, box_first: 4005080, boxes: 4005180, marks: 4015100, root: 4015292 },   // tank sp_d
-    AnimMove { len: 7, flags: 0, frames: 4015676, box_first: 4019932, boxes: 4019948, marks: 4021388, root: 4021416 },   // tank grab
-    AnimMove { len: 22, flags: 0, frames: 4021472, box_first: 4034848, boxes: 4034896, marks: 4039296, root: 4039384 },   // tank grab_whiff
-    AnimMove { len: 44, flags: 0, frames: 4039560, box_first: 4066312, boxes: 4066404, marks: 4075204, root: 4075380 },   // tank throw
-    AnimMove { len: 44, flags: 2, frames: 4075732, box_first: 4102484, boxes: 4102576, marks: 4111376, root: 4111552 },   // tank thrown
-    AnimMove { len: 20, flags: 0, frames: 4111904, box_first: 4124064, boxes: 4124108, marks: 4128108, root: 4128188 },   // tank grab_break
-    AnimMove { len: 150, flags: 0, frames: 4128348, box_first: 4219548, boxes: 4219852, marks: 4250012, root: 4250612 },   // tank super
-    AnimMove { len: 40, flags: 2, frames: 4251812, box_first: 4276132, boxes: 4276216, marks: 4284216, root: 4284376 },   // tank thrown_vault
-    AnimMove { len: 56, flags: 2, frames: 4284696, box_first: 4318744, boxes: 4318860, marks: 4330060, root: 4330284 },   // tank thrown_slam
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // hero combine (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // hero split (stand-in)
+    AnimMove { len: 60, flags: 1, frames: 1149788, box_first: 1186268, boxes: 1186392, marks: 1199592, root: 1199832 },   // doubleblade idle
+    AnimMove { len: 40, flags: 1, frames: 1200312, box_first: 1224632, boxes: 1224716, marks: 1233516, root: 1233676 },   // doubleblade walk_f
+    AnimMove { len: 40, flags: 1, frames: 1233996, box_first: 1258316, boxes: 1258400, marks: 1267200, root: 1267360 },   // doubleblade walk_b
+    AnimMove { len: 8, flags: 0, frames: 1267680, box_first: 1272544, boxes: 1272564, marks: 1274324, root: 1274356 },   // doubleblade crouch
+    AnimMove { len: 37, flags: 2, frames: 1274420, box_first: 1296916, boxes: 1296992, marks: 1305132, root: 1305280 },   // doubleblade jump
+    AnimMove { len: 8, flags: 0, frames: 1305576, box_first: 1310440, boxes: 1310460, marks: 1312220, root: 1312252 },   // doubleblade land
+    AnimMove { len: 4, flags: 0, frames: 1312316, box_first: 1314748, boxes: 1314760, marks: 1315640, root: 1315656 },   // doubleblade block
+    AnimMove { len: 20, flags: 0, frames: 1315688, box_first: 1327848, boxes: 1327892, marks: 1332292, root: 1332372 },   // doubleblade hit_high
+    AnimMove { len: 20, flags: 0, frames: 1332532, box_first: 1344692, boxes: 1344736, marks: 1349136, root: 1349216 },   // doubleblade hit_low
+    AnimMove { len: 30, flags: 2, frames: 1349376, box_first: 1367616, boxes: 1367680, marks: 1374280, root: 1374400 },   // doubleblade hit_air
+    AnimMove { len: 32, flags: 0, frames: 1374640, box_first: 1394096, boxes: 1394164, marks: 1401204, root: 1401332 },   // doubleblade knockdown
+    AnimMove { len: 20, flags: 0, frames: 1401588, box_first: 1413748, boxes: 1413792, marks: 1418192, root: 1418272 },   // doubleblade getup
+    AnimMove { len: 90, flags: 0, frames: 1418432, box_first: 1473152, boxes: 1473336, marks: 1493136, root: 1493496 },   // doubleblade ko
+    AnimMove { len: 120, flags: 0, frames: 1494216, box_first: 1567176, boxes: 1567420, marks: 1593820, root: 1594300 },   // doubleblade win
+    AnimMove { len: 90, flags: 0, frames: 1595260, box_first: 1649980, boxes: 1650164, marks: 1669964, root: 1670324 },   // doubleblade intro
+    AnimMove { len: 19, flags: 0, frames: 1671044, box_first: 1682596, boxes: 1682636, marks: 1687096, root: 1687172 },   // doubleblade atk_n
+    AnimMove { len: 32, flags: 0, frames: 1687324, box_first: 1706780, boxes: 1706848, marks: 1714488, root: 1714616 },   // doubleblade atk_f
+    AnimMove { len: 35, flags: 0, frames: 1714872, box_first: 1736152, boxes: 1736224, marks: 1744364, root: 1744504 },   // doubleblade atk_d
+    AnimMove { len: 26, flags: 2, frames: 1744784, box_first: 1760592, boxes: 1760648, marks: 1766848, root: 1766952 },   // doubleblade atk_air
+    AnimMove { len: 28, flags: 0, frames: 1767160, box_first: 1784184, boxes: 1784244, marks: 1787764, root: 1787876 },   // doubleblade sp_n
+    AnimMove { len: 41, flags: 0, frames: 1788100, box_first: 1813028, boxes: 1813112, marks: 1822552, root: 1822716 },   // doubleblade sp_f
+    AnimMove { len: 39, flags: 0, frames: 1823044, box_first: 1846756, boxes: 1846836, marks: 1855576, root: 1855732 },   // doubleblade sp_u
+    AnimMove { len: 40, flags: 0, frames: 1856044, box_first: 1880364, boxes: 1880448, marks: 1889928, root: 1890088 },   // doubleblade sp_d
+    AnimMove { len: 7, flags: 0, frames: 1890408, box_first: 1894664, boxes: 1894680, marks: 1896260, root: 1896288 },   // doubleblade grab
+    AnimMove { len: 22, flags: 0, frames: 1896344, box_first: 1909720, boxes: 1909768, marks: 1914608, root: 1914696 },   // doubleblade grab_whiff
+    AnimMove { len: 40, flags: 0, frames: 1914872, box_first: 1939192, boxes: 1939276, marks: 1948076, root: 1948236 },   // doubleblade throw
+    AnimMove { len: 44, flags: 2, frames: 1948556, box_first: 1975308, boxes: 1975400, marks: 1985080, root: 1985256 },   // doubleblade thrown
+    AnimMove { len: 20, flags: 0, frames: 1985608, box_first: 1997768, boxes: 1997812, marks: 2002212, root: 2002292 },   // doubleblade grab_break
+    AnimMove { len: 87, flags: 0, frames: 2002452, box_first: 2055348, boxes: 2055524, marks: 2074824, root: 2075172 },   // doubleblade super
+    AnimMove { len: 40, flags: 2, frames: 2075868, box_first: 2100188, boxes: 2100272, marks: 2109072, root: 2109232 },   // doubleblade thrown_vault
+    AnimMove { len: 56, flags: 2, frames: 2109552, box_first: 2143600, boxes: 2143716, marks: 2156036, root: 2156260 },   // doubleblade thrown_slam
+    AnimMove { len: 60, flags: 4, frames: 2156708, box_first: 2193188, boxes: 2193312, marks: 2206512, root: 2206752 },   // doubleblade combine (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 2156708, box_first: 2193188, boxes: 2193312, marks: 2206512, root: 2206752 },   // doubleblade split (stand-in)
+    AnimMove { len: 60, flags: 1, frames: 2207232, box_first: 2243712, boxes: 2243836, marks: 2257036, root: 2257276 },   // beam idle
+    AnimMove { len: 52, flags: 1, frames: 2257756, box_first: 2289372, boxes: 2289480, marks: 2300920, root: 2301128 },   // beam walk_f
+    AnimMove { len: 52, flags: 1, frames: 2301544, box_first: 2333160, boxes: 2333268, marks: 2344708, root: 2344916 },   // beam walk_b
+    AnimMove { len: 8, flags: 0, frames: 2345332, box_first: 2350196, boxes: 2350216, marks: 2351976, root: 2352008 },   // beam crouch
+    AnimMove { len: 45, flags: 2, frames: 2352072, box_first: 2379432, boxes: 2379524, marks: 2389424, root: 2389604 },   // beam jump
+    AnimMove { len: 8, flags: 0, frames: 2389964, box_first: 2394828, boxes: 2394848, marks: 2396608, root: 2396640 },   // beam land
+    AnimMove { len: 4, flags: 0, frames: 2396704, box_first: 2399136, boxes: 2399148, marks: 2400028, root: 2400044 },   // beam block
+    AnimMove { len: 20, flags: 0, frames: 2400076, box_first: 2412236, boxes: 2412280, marks: 2416680, root: 2416760 },   // beam hit_high
+    AnimMove { len: 20, flags: 0, frames: 2416920, box_first: 2429080, boxes: 2429124, marks: 2433524, root: 2433604 },   // beam hit_low
+    AnimMove { len: 30, flags: 2, frames: 2433764, box_first: 2452004, boxes: 2452068, marks: 2458668, root: 2458788 },   // beam hit_air
+    AnimMove { len: 32, flags: 0, frames: 2459028, box_first: 2478484, boxes: 2478552, marks: 2485592, root: 2485720 },   // beam knockdown
+    AnimMove { len: 20, flags: 0, frames: 2485976, box_first: 2498136, boxes: 2498180, marks: 2502580, root: 2502660 },   // beam getup
+    AnimMove { len: 90, flags: 0, frames: 2502820, box_first: 2557540, boxes: 2557724, marks: 2577524, root: 2577884 },   // beam ko
+    AnimMove { len: 120, flags: 0, frames: 2578604, box_first: 2651564, boxes: 2651808, marks: 2678208, root: 2678688 },   // beam win
+    AnimMove { len: 90, flags: 0, frames: 2679648, box_first: 2734368, boxes: 2734552, marks: 2754352, root: 2754712 },   // beam intro
+    AnimMove { len: 24, flags: 0, frames: 2755432, box_first: 2770024, boxes: 2770076, marks: 2775596, root: 2775692 },   // beam atk_n
+    AnimMove { len: 40, flags: 0, frames: 2775884, box_first: 2800204, boxes: 2800288, marks: 2809168, root: 2809328 },   // beam atk_f
+    AnimMove { len: 41, flags: 0, frames: 2809648, box_first: 2834576, boxes: 2834660, marks: 2843780, root: 2843944 },   // beam atk_d
+    AnimMove { len: 32, flags: 2, frames: 2844272, box_first: 2863728, boxes: 2863796, marks: 2870956, root: 2871084 },   // beam atk_air
+    AnimMove { len: 45, flags: 0, frames: 2871340, box_first: 2898700, boxes: 2898792, marks: 2908692, root: 2908872 },   // beam sp_n
+    AnimMove { len: 44, flags: 0, frames: 2909232, box_first: 2935984, boxes: 2936076, marks: 2946196, root: 2946372 },   // beam sp_f
+    AnimMove { len: 42, flags: 0, frames: 2946724, box_first: 2972260, boxes: 2972348, marks: 2981748, root: 2981916 },   // beam sp_u
+    AnimMove { len: 44, flags: 0, frames: 2982252, box_first: 3009004, boxes: 3009096, marks: 3018776, root: 3018952 },   // beam sp_d
+    AnimMove { len: 7, flags: 0, frames: 3019304, box_first: 3023560, boxes: 3023576, marks: 3025156, root: 3025184 },   // beam grab
+    AnimMove { len: 22, flags: 0, frames: 3025240, box_first: 3038616, boxes: 3038664, marks: 3043504, root: 3043592 },   // beam grab_whiff
+    AnimMove { len: 46, flags: 0, frames: 3043768, box_first: 3071736, boxes: 3071832, marks: 3081952, root: 3082136 },   // beam throw
+    AnimMove { len: 44, flags: 2, frames: 3082504, box_first: 3109256, boxes: 3109348, marks: 3119028, root: 3119204 },   // beam thrown
+    AnimMove { len: 20, flags: 0, frames: 3119556, box_first: 3131716, boxes: 3131760, marks: 3136160, root: 3136240 },   // beam grab_break
+    AnimMove { len: 100, flags: 0, frames: 3136400, box_first: 3197200, boxes: 3197404, marks: 3219724, root: 3220124 },   // beam super
+    AnimMove { len: 40, flags: 2, frames: 3220924, box_first: 3245244, boxes: 3245328, marks: 3254128, root: 3254288 },   // beam thrown_vault
+    AnimMove { len: 60, flags: 4, frames: 3254608, box_first: 3291088, boxes: 3291212, marks: 3304412, root: 3304652 },   // beam thrown_slam (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 3254608, box_first: 3291088, boxes: 3291212, marks: 3304412, root: 3304652 },   // beam combine (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 3254608, box_first: 3291088, boxes: 3291212, marks: 3304412, root: 3304652 },   // beam split (stand-in)
+    AnimMove { len: 60, flags: 1, frames: 3305132, box_first: 3341612, boxes: 3341736, marks: 3353736, root: 3353976 },   // tank idle
+    AnimMove { len: 32, flags: 1, frames: 3354456, box_first: 3373912, boxes: 3373980, marks: 3380380, root: 3380508 },   // tank walk_f
+    AnimMove { len: 32, flags: 1, frames: 3380764, box_first: 3400220, boxes: 3400288, marks: 3406688, root: 3406816 },   // tank walk_b
+    AnimMove { len: 8, flags: 0, frames: 3407072, box_first: 3411936, boxes: 3411956, marks: 3413556, root: 3413588 },   // tank crouch
+    AnimMove { len: 40, flags: 2, frames: 3413652, box_first: 3437972, boxes: 3438056, marks: 3446056, root: 3446216 },   // tank jump
+    AnimMove { len: 10, flags: 0, frames: 3446536, box_first: 3452616, boxes: 3452640, marks: 3454640, root: 3454680 },   // tank land
+    AnimMove { len: 4, flags: 0, frames: 3454760, box_first: 3457192, boxes: 3457204, marks: 3458004, root: 3458020 },   // tank block
+    AnimMove { len: 20, flags: 0, frames: 3458052, box_first: 3470212, boxes: 3470256, marks: 3474256, root: 3474336 },   // tank hit_high
+    AnimMove { len: 20, flags: 0, frames: 3474496, box_first: 3486656, boxes: 3486700, marks: 3490700, root: 3490780 },   // tank hit_low
+    AnimMove { len: 30, flags: 2, frames: 3490940, box_first: 3509180, boxes: 3509244, marks: 3515244, root: 3515364 },   // tank hit_air
+    AnimMove { len: 32, flags: 0, frames: 3515604, box_first: 3535060, boxes: 3535128, marks: 3541528, root: 3541656 },   // tank knockdown
+    AnimMove { len: 24, flags: 0, frames: 3541912, box_first: 3556504, boxes: 3556556, marks: 3561356, root: 3561452 },   // tank getup
+    AnimMove { len: 90, flags: 0, frames: 3561644, box_first: 3616364, boxes: 3616548, marks: 3634548, root: 3634908 },   // tank ko
+    AnimMove { len: 120, flags: 0, frames: 3635628, box_first: 3708588, boxes: 3708832, marks: 3732832, root: 3733312 },   // tank win
+    AnimMove { len: 90, flags: 0, frames: 3734272, box_first: 3788992, boxes: 3789176, marks: 3807176, root: 3807536 },   // tank intro
+    AnimMove { len: 25, flags: 0, frames: 3808256, box_first: 3823456, boxes: 3823508, marks: 3828688, root: 3828788 },   // tank atk_n
+    AnimMove { len: 42, flags: 0, frames: 3828988, box_first: 3854524, boxes: 3854612, marks: 3862972, root: 3863140 },   // tank atk_f
+    AnimMove { len: 39, flags: 0, frames: 3863476, box_first: 3887188, boxes: 3887268, marks: 3895148, root: 3895304 },   // tank atk_d
+    AnimMove { len: 28, flags: 2, frames: 3895616, box_first: 3912640, boxes: 3912700, marks: 3919140, root: 3919252 },   // tank atk_air
+    AnimMove { len: 43, flags: 0, frames: 3919476, box_first: 3945620, boxes: 3945708, marks: 3954408, root: 3954580 },   // tank sp_n
+    AnimMove { len: 105, flags: 0, frames: 3954924, box_first: 4018764, boxes: 4018976, marks: 4040096, root: 4040516 },   // tank sp_f
+    AnimMove { len: 43, flags: 0, frames: 4041356, box_first: 4067500, boxes: 4067588, marks: 4076428, root: 4076600 },   // tank sp_u
+    AnimMove { len: 48, flags: 0, frames: 4076944, box_first: 4106128, boxes: 4106228, marks: 4116148, root: 4116340 },   // tank sp_d
+    AnimMove { len: 7, flags: 0, frames: 4116724, box_first: 4120980, boxes: 4120996, marks: 4122436, root: 4122464 },   // tank grab
+    AnimMove { len: 22, flags: 0, frames: 4122520, box_first: 4135896, boxes: 4135944, marks: 4140344, root: 4140432 },   // tank grab_whiff
+    AnimMove { len: 44, flags: 0, frames: 4140608, box_first: 4167360, boxes: 4167452, marks: 4176252, root: 4176428 },   // tank throw
+    AnimMove { len: 44, flags: 2, frames: 4176780, box_first: 4203532, boxes: 4203624, marks: 4212424, root: 4212600 },   // tank thrown
+    AnimMove { len: 20, flags: 0, frames: 4212952, box_first: 4225112, boxes: 4225156, marks: 4229156, root: 4229236 },   // tank grab_break
+    AnimMove { len: 150, flags: 0, frames: 4229396, box_first: 4320596, boxes: 4320900, marks: 4351060, root: 4351660 },   // tank super
+    AnimMove { len: 40, flags: 2, frames: 4352860, box_first: 4377180, boxes: 4377264, marks: 4385264, root: 4385424 },   // tank thrown_vault
+    AnimMove { len: 56, flags: 2, frames: 4385744, box_first: 4419792, boxes: 4419908, marks: 4431108, root: 4431332 },   // tank thrown_slam
+    AnimMove { len: 60, flags: 4, frames: 4431780, box_first: 4468260, boxes: 4468384, marks: 4480384, root: 4480624 },   // tank combine (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 4431780, box_first: 4468260, boxes: 4468384, marks: 4480384, root: 4480624 },   // tank split (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins idle (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins walk_f (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins walk_b (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins crouch (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins jump (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins land (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins block (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins hit_high (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins hit_low (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins hit_air (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins knockdown (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins getup (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins ko (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins win (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins intro (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins atk_n (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins atk_f (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins atk_d (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins atk_air (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins sp_n (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins sp_f (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins sp_u (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins sp_d (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins grab (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins grab_whiff (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins throw (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins thrown (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins grab_break (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins super (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins thrown_vault (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins thrown_slam (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins combine (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twins split (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a idle (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a walk_f (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a walk_b (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a crouch (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a jump (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a land (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a block (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a hit_high (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a hit_low (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a hit_air (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a knockdown (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a getup (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a ko (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a win (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a intro (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a atk_n (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a atk_f (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a atk_d (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a atk_air (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a sp_n (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a sp_f (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a sp_u (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a sp_d (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a grab (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a grab_whiff (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a throw (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a thrown (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a grab_break (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a super (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a thrown_vault (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a thrown_slam (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a combine (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_a split (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b idle (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b walk_f (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b walk_b (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b crouch (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b jump (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b land (stand-in)
+    AnimMove { len: 60, flags: 5, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b block (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b hit_high (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b hit_low (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b hit_air (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b knockdown (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b getup (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b ko (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b win (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b intro (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b atk_n (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b atk_f (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b atk_d (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b atk_air (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b sp_n (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b sp_f (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b sp_u (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b sp_d (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b grab (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b grab_whiff (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b throw (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b thrown (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b grab_break (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b super (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b thrown_vault (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b thrown_slam (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b combine (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 1099264, box_first: 1135744, boxes: 1135868, marks: 1149068, root: 1149308 },   // twin_b split (stand-in)
 ]
 
 // each mech's part meshes in anim.akr's Part order (null: no mesh)
-const AK_MESH: [76]*Mesh = [
+const AK_MESH: [133]*Mesh = [
     ASSET_HERO_PELVIS, ASSET_HERO_TORSO, ASSET_HERO_HEAD, ASSET_HERO_PAULDRON_R, ASSET_HERO_UPPER_ARM_R, ASSET_HERO_FOREARM_R, ASSET_HERO_HAND_R, ASSET_HERO_SWORD, ASSET_HERO_PAULDRON_L, ASSET_HERO_UPPER_ARM_L, ASSET_HERO_FOREARM_L, ASSET_HERO_HAND_L, null, ASSET_HERO_THIGH_R, ASSET_HERO_SHIN_R, ASSET_HERO_FOOT_R, ASSET_HERO_THIGH_L, ASSET_HERO_SHIN_L, ASSET_HERO_FOOT_L,
     ASSET_DOUBLEBLADE_PELVIS, ASSET_DOUBLEBLADE_TORSO, ASSET_DOUBLEBLADE_HEAD, ASSET_DOUBLEBLADE_PAULDRON_R, ASSET_DOUBLEBLADE_UPPER_ARM_R, ASSET_DOUBLEBLADE_FOREARM_R, ASSET_DOUBLEBLADE_HAND_R, ASSET_DOUBLEBLADE_DAGGER, ASSET_DOUBLEBLADE_PAULDRON_L, ASSET_DOUBLEBLADE_UPPER_ARM_L, ASSET_DOUBLEBLADE_FOREARM_L, ASSET_DOUBLEBLADE_HAND_L, ASSET_DOUBLEBLADE_DAGGER, ASSET_DOUBLEBLADE_THIGH_R, ASSET_DOUBLEBLADE_SHIN_R, ASSET_DOUBLEBLADE_FOOT_R, ASSET_DOUBLEBLADE_THIGH_L, ASSET_DOUBLEBLADE_SHIN_L, ASSET_DOUBLEBLADE_FOOT_L,
     ASSET_BEAM_PELVIS, ASSET_BEAM_TORSO, ASSET_BEAM_HEAD, ASSET_BEAM_PAULDRON_R, ASSET_BEAM_UPPER_ARM_R, ASSET_BEAM_FOREARM_R, ASSET_BEAM_HAND_R, ASSET_BEAM_CANNON, ASSET_BEAM_PAULDRON_L, ASSET_BEAM_UPPER_ARM_L, ASSET_BEAM_FOREARM_L, ASSET_BEAM_HAND_L, null, ASSET_BEAM_THIGH_R, ASSET_BEAM_SHIN_R, ASSET_BEAM_FOOT_R, ASSET_BEAM_THIGH_L, ASSET_BEAM_SHIN_L, ASSET_BEAM_FOOT_L,
     ASSET_TANK_PELVIS, ASSET_TANK_TORSO, ASSET_TANK_HEAD, ASSET_TANK_PAULDRON_R, ASSET_TANK_UPPER_ARM_R, ASSET_TANK_FOREARM_R, ASSET_TANK_HAND_R, null, ASSET_TANK_PAULDRON_L, ASSET_TANK_UPPER_ARM_L, ASSET_TANK_FOREARM_L, ASSET_TANK_HAND_L, null, ASSET_TANK_THIGH_R, ASSET_TANK_SHIN_R, ASSET_TANK_FOOT_R, ASSET_TANK_THIGH_L, ASSET_TANK_SHIN_L, ASSET_TANK_FOOT_L,
+    ASSET_HERO_PELVIS, ASSET_HERO_TORSO, ASSET_HERO_HEAD, ASSET_HERO_PAULDRON_R, ASSET_HERO_UPPER_ARM_R, ASSET_HERO_FOREARM_R, ASSET_HERO_HAND_R, ASSET_HERO_SWORD, ASSET_HERO_PAULDRON_L, ASSET_HERO_UPPER_ARM_L, ASSET_HERO_FOREARM_L, ASSET_HERO_HAND_L, null, ASSET_HERO_THIGH_R, ASSET_HERO_SHIN_R, ASSET_HERO_FOOT_R, ASSET_HERO_THIGH_L, ASSET_HERO_SHIN_L, ASSET_HERO_FOOT_L,
+    ASSET_HERO_PELVIS, ASSET_HERO_TORSO, ASSET_HERO_HEAD, ASSET_HERO_PAULDRON_R, ASSET_HERO_UPPER_ARM_R, ASSET_HERO_FOREARM_R, ASSET_HERO_HAND_R, ASSET_HERO_SWORD, ASSET_HERO_PAULDRON_L, ASSET_HERO_UPPER_ARM_L, ASSET_HERO_FOREARM_L, ASSET_HERO_HAND_L, null, ASSET_HERO_THIGH_R, ASSET_HERO_SHIN_R, ASSET_HERO_FOOT_R, ASSET_HERO_THIGH_L, ASSET_HERO_SHIN_L, ASSET_HERO_FOOT_L,
+    ASSET_HERO_PELVIS, ASSET_HERO_TORSO, ASSET_HERO_HEAD, ASSET_HERO_PAULDRON_R, ASSET_HERO_UPPER_ARM_R, ASSET_HERO_FOREARM_R, ASSET_HERO_HAND_R, ASSET_HERO_SWORD, ASSET_HERO_PAULDRON_L, ASSET_HERO_UPPER_ARM_L, ASSET_HERO_FOREARM_L, ASSET_HERO_HAND_L, null, ASSET_HERO_THIGH_R, ASSET_HERO_SHIN_R, ASSET_HERO_FOOT_R, ASSET_HERO_THIGH_L, ASSET_HERO_SHIN_L, ASSET_HERO_FOOT_L,
 ]

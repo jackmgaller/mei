@@ -86,7 +86,7 @@ const MV_NAMES: [len(Mv)]*u8 = [
     "idle", "walk_f", "walk_b", "crouch", "jump", "land", "block", "hit_high", "hit_low",
     "hit_air", "knockdown", "getup", "ko", "win", "intro", "atk_n", "atk_f", "atk_d", "atk_air",
     "sp_n", "sp_f", "sp_u", "sp_d", "grab", "grab_whiff", "throw", "thrown", "grab_break", "super",
-    "thrown_vault", "thrown_slam",
+    "thrown_vault", "thrown_slam", "combine", "split",
 ]
 const EV_NAMES: [len(Ev)]*u8 = [
     "Hit", "Block", "Chip", "Whiff", "Grab", "Throw", "Break", "Land", "Step", "MeterFull",
@@ -1513,7 +1513,7 @@ private fn check_orb_beaten() {
     }
 }
 
-const MECH_NAMES: [len(Mech)]*u8 = ["Hero", "Double-blade", "Beam", "Tank"]
+const MECH_NAMES: [len(Mech)]*u8 = ["Hero", "Double-blade", "Beam", "Tank", "Twins", "Twin A", "Twin B"]
 
 private fn check_beam_budget() {
     if frames > 3 && frames != 901 && frames != 902 {

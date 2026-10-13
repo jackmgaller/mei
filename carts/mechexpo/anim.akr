@@ -13,7 +13,10 @@
 // face +x or -x in the world.
 import "anim_data.akr"
 
-enum Mech { Hero, Doubleblade, Beam, Tank }   // Beam: Raikō's zoner, Tank: Heartland's grappler (appended)
+// Beam: Raikō's zoner, Tank: Heartland's grappler (appended). Twins: Binary Mechanica's combined
+// form and the mech the player picks; TwinA and TwinB: the split form's two bodies, for the
+// animations and the drawing only (never in the roster, never a fighter's mech; MOVES.md, "The Twins")
+enum Mech { Hero, Doubleblade, Beam, Tank, Twins, TwinA, TwinB }
 
 // The move list (README.md, "Interfaces"): the same names for both mechs.
 enum Mv {
@@ -21,7 +24,9 @@ enum Mv {
     getup, ko, win, intro, atk_n, atk_f, atk_d, atk_air, sp_n, sp_f, sp_u, sp_d, grab,
     grab_whiff, throw, thrown, grab_break, super,
     thrown_vault,      // the victim of the Double-blade Hero's Vault Throw (added last: the numbering stays)
-    thrown_slam        // the victim of Tank's Atomic Clinch and Chain Reaction (added last)
+    thrown_slam,       // the victim of Tank's Atomic Clinch and Chain Reaction (added last)
+    combine,           // the Twins: split into combined (L); the bodies swap on its release frame
+    split              // the Twins: combined into split (L)
 }
 
 // The rigs' parts (models/NAME/NAME.rig.json), one numbering for both mechs. A mech without a
