@@ -13,7 +13,7 @@ run() {       # scenario frames
     s="$1"; f="$2"; shift 2
     "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@" > "$O/s$s.log" 2>&1 || { echo "FAILED scenario $s"; tail -8 "$O/s$s.log"; exit 1; }
     grep -q '^OK' "$O/s$s.log" || { echo "FAILED scenario $s: no OK"; tail -8 "$O/s$s.log"; exit 1; }
-    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late)' "$O/s$s.log"
+    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split)' "$O/s$s.log"
 }
 run 1 700
 run 2 4000
@@ -59,6 +59,20 @@ run 46 300
 run 47 340
 run 48 2000
 run 49 1800
+# the Twins (mx-twins-fight): 60 combining and splitting, 61 the partner, 62 a hit on the
+# partner, 63 throws on the Twins, 64 their throws, 65 the fusion meter, 66 the super, 67 CPU
+# against CPU (four matches), 68 the unlock rule, 69 the budget with three bodies (the split
+# Twins against Tank, through the real game)
+run 60 210
+run 61 310
+run 62 310
+run 63 450
+run 64 300
+run 65 470
+run 66 270
+run 67 2500
+run 68 3
+run 69 1800
 run 50 330
 run 51 210
 run 52 210

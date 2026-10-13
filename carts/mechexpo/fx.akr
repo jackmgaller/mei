@@ -706,7 +706,7 @@ private fn trail_sample(t: *Trail, m: mat4, b0: fixed, b1: fixed, on: bool, mech
 
 // The torso's point of side s (for the reactor's glow and the smoke).
 private fn fx_torso(fi: *Fighter, root: mat4) -> vec3 {
-    let m = anim_part(fi.mech, fi.mv, fi.frame, root, Part.torso)
+    let m = anim_part(fi.body, fi.mv, fi.frame, root, Part.torso)
     return (m * vec4(0.0, 2.0, 0.0, 1.0)) as vec3
 }
 
@@ -866,8 +866,8 @@ fn fx_update(f: *Fight) {
         let sd = &fx_side[s]
         let root = anim_place(vec2(fi.x, fi.y), fi.facing)
         let on = is_swing(fi.mv)
-        if fi.mech == Mech.Beam || fi.mech == Mech.Tank {
-            // no blades: Beam's discharges are beam_fx.akr's, Tank's fists leave no trail
+        if fi.mech == Mech.Beam || fi.mech == Mech.Tank || fi.mech == Mech.Twins {
+            // no blades: Beam's discharges are beam_fx.akr's, Tank's and the Twins' fists leave no trail
             fx_trails[s * 2].n = 0
             fx_trails[s * 2 + 1].n = 0
         } else if fi.mech == Mech.Doubleblade {
@@ -881,7 +881,7 @@ fn fx_update(f: *Fight) {
             fx_trails[s * 2 + 1].n = 0
         }
         // vanishing and reappearing: a hidden frame, or a jump of the root (the Rend)
-        let hidden = (anim_marks(fi.mech, fi.mv, fi.frame as s32) & MARK_HIDE) != 0
+        let hidden = (anim_marks(fi.body, fi.mv, fi.frame as s32) & MARK_HIDE) != 0
         let jump = abs(fi.x - sd.x) > 3.0 && fi.mv == sd.mv && (fi.mv == Mv.super || fi.mv == Mv.sp_n)
         if (hidden && !sd.hidden) || jump { fx_vanish(sd.x, sd.y) }
         if (!hidden && sd.hidden) || jump { fx_appear(fi.x, fi.y) }

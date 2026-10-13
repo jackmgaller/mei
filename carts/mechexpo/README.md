@@ -29,7 +29,8 @@ scenarios are 40-49. Until its animations land, its moves use the stand-in timin
 `tank.akr` and are drawn in the guard pose (`anims/tank/_body.anim.json`).
 
 **Controls.** Stick or d-pad: walk, crouch, and the direction of a move. A attack, B special,
-X jump, Y grab, R block, A + B super (when the meter allows), Start pause. L is unused. Any move
+X jump, Y grab, R block, A + B super (when the meter allows), Start pause. L switches the
+Twins between their forms (the other mechs ignore it). Any move
 is one direction plus one button; no motion inputs, no tilts, no per-direction aerials.
 
 ## Gates
@@ -161,6 +162,34 @@ timings, the Volt Orb and the reaction), `beam_hud.akr` (the chemical meter and 
 and `beam_fx.akr` (its effects). The shared files call these with a line each; the shot system
 in `fighter.akr` carries both the Hero's wave and Beam's orb (`Shot.lvl`, `str`, `half`, `y0`,
 `y1`, `life`). Tests: scenarios 30–39 in `tests/harness.akr`.
+
+## The Twins
+
+The Twins (Binary Mechanica, fusion; `Mech.Twins`) are the base mech unlocked by clearing the
+arcade with every base mech in the game (`RULE_BASES`: slots 0-3 that have a mech, so Hero,
+Beam and Tank until Shadow joins). Split, the player's twin A leads and twin B copies its pad six
+frames late; combined, they are one mid-weight brawler; L switches, a move each way (`combine`,
+`split`), the bodies swapping on the move's `release` frame under a flash. The design is
+[MOVES.md](MOVES.md#the-twins-binary-mechanica-fusion).
+
+- **Three bodies, one fighter.** `Mech.Twins` is the combined form and the fighter's `mech`;
+  `Mech.TwinA` and `Mech.TwinB` are the split form's bodies, for the animations and the drawing
+  only. Each fighter has a `body` (the mech for everyone else); the fight times, boxes and draws
+  by body. Split, twin B is a second body of the same fighter, `fight.f[s + 2]` (`Fight.f` holds
+  four), with its own state in `fx[s + 2]`; its hits are the side's, and hits on it come off the
+  side's one health bar. A fight without the Twins takes the old two-body paths unchanged.
+- **Files:** `models/twins/make_twins.py` (the three rigs and models), `anims/twins/`,
+  `anims/twin_a/`, `anims/twin_b/`, `twins.akr` (the hits, the stand-in timings and boxes, and
+  the rules: the partner's pad and following, the leash, one-way pushing, combining and
+  splitting, four-body collisions, the throws, the fusion meter's fills, the move lists),
+  `twins_fx.akr` (twin B drawn 1.2 m behind the fight plane, the swap's flash, the camera over
+  every body, the HUD's fusion gauge), the Twins' CPU at the end of `cpu.akr`. The shared files
+  call these with a line each. Tests: scenarios 60-67 in `tests/harness.akr`, 68 (the unlock
+  rule) and 69 (the budget with three bodies, through the real game) in `tests/twins/harness.akr`;
+  70 is a measurement (the Twins' wins against each mech, CPU against CPU).
+- **The budget split** (scenario 69, CPU against CPU, the split Twins against Tank, a release
+  build): 521,418 CPU cycles and 560,514 GPU cycles at the peak, 1,768 triangles drawn; the
+  three bodies' drawing (`prof_mechs`) about 396,000 cycles.
 
 ## Rendering, VRAM and budgets
 

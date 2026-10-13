@@ -450,8 +450,8 @@
           "y": 40,
           "gutter": 1,
           "window": null,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#292931": 1,
             "#f7c618": 2
@@ -856,8 +856,8 @@
           "y": 40,
           "gutter": 1,
           "window": null,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#292931": 1,
             "#f7c618": 2
@@ -1140,8 +1140,8 @@
           "y": 40,
           "gutter": 1,
           "window": null,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#292931": 1,
             "#f7c618": 2
@@ -1245,8 +1245,8 @@
           "y": 0,
           "gutter": 0,
           "window": 497,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#f7c618": 2,
             "#181821": 3
@@ -1480,8 +1480,8 @@
           "y": 40,
           "gutter": 1,
           "window": null,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#292931": 1,
             "#f7c618": 2
@@ -1585,8 +1585,8 @@
           "y": 0,
           "gutter": 0,
           "window": 497,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#f7c618": 2,
             "#181821": 3
@@ -2370,8 +2370,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#212129": 4,
             "#9c52f7": 5,
@@ -2857,8 +2857,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#212129": 4,
             "#9c52f7": 5,
@@ -3200,12 +3200,12 @@
             "#101018"
           ],
           "slot": 0,
-          "x": 0,
+          "x": 128,
           "y": 120,
           "gutter": 1,
           "window": null,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#736b8c": 7,
             "#101018": 8
@@ -3373,8 +3373,8 @@
           "y": 0,
           "gutter": 0,
           "window": 505,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#9c52f7": 5,
             "#101018": 8
@@ -3675,12 +3675,12 @@
             "#101018"
           ],
           "slot": 0,
-          "x": 0,
+          "x": 128,
           "y": 120,
           "gutter": 1,
           "window": null,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#736b8c": 7,
             "#101018": 8
@@ -3848,8 +3848,8 @@
           "y": 0,
           "gutter": 0,
           "window": 505,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#9c52f7": 5,
             "#101018": 8
@@ -4165,8 +4165,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 15,
-          "first_colour": 240,
+          "palette": 22,
+          "first_colour": 352,
           "indices": {
             "#1042ad": 1,
             "#f7ffff": 2,
@@ -4226,8 +4226,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 16,
-          "first_colour": 256,
+          "palette": 23,
+          "first_colour": 368,
           "indices": {
             "#1042ad": 1,
             "#f7ffff": 2,
@@ -4394,8 +4394,8 @@
           "y": 0,
           "gutter": 0,
           "window": 738,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#4a5a6b": 9,
             "#63738c": 10,
@@ -4442,8 +4442,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 17,
-          "first_colour": 272,
+          "palette": 24,
+          "first_colour": 384,
           "indices": {
             "#18397b": 1,
             "#f7f7f7": 2,
@@ -4484,8 +4484,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2305,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#212129": 4,
             "#f7c600": 12
@@ -4740,8 +4740,8 @@
           "y": 0,
           "gutter": 0,
           "window": 738,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#4a5a6b": 9,
             "#63738c": 10,
@@ -4788,8 +4788,8 @@
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 17,
-          "first_colour": 272,
+          "palette": 24,
+          "first_colour": 384,
           "indices": {
             "#18397b": 1,
             "#f7f7f7": 2,
@@ -4830,8 +4830,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2305,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#212129": 4,
             "#f7c600": 12
@@ -5457,8 +5457,8 @@
           "y": 80,
           "gutter": 1,
           "window": null,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#ef2129": 13,
             "#f7f7f7": 14
@@ -5913,8 +5913,8 @@
           "y": 80,
           "gutter": 1,
           "window": null,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#ef2129": 13,
             "#f7f7f7": 14
@@ -6206,12 +6206,12 @@
             "#212931"
           ],
           "slot": 0,
-          "x": 40,
+          "x": 168,
           "y": 120,
           "gutter": 1,
           "window": null,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#f7f7f7": 14,
             "#212931": 15
@@ -6315,8 +6315,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2305,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#212129": 4,
             "#f7c600": 12
@@ -6546,12 +6546,12 @@
             "#212931"
           ],
           "slot": 0,
-          "x": 40,
+          "x": 168,
           "y": 120,
           "gutter": 1,
           "window": null,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#f7f7f7": 14,
             "#212931": 15
@@ -6655,8 +6655,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2305,
-          "palette": 14,
-          "first_colour": 224,
+          "palette": 21,
+          "first_colour": 336,
           "indices": {
             "#212129": 4,
             "#f7c600": 12
@@ -6890,8 +6890,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2313,
-          "palette": 15,
-          "first_colour": 240,
+          "palette": 22,
+          "first_colour": 352,
           "indices": {
             "#d6ad42": 13,
             "#292921": 14
@@ -7016,8 +7016,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2313,
-          "palette": 15,
-          "first_colour": 240,
+          "palette": 22,
+          "first_colour": 352,
           "indices": {
             "#d6ad42": 13,
             "#292921": 14
@@ -7056,8 +7056,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2545,
-          "palette": 16,
-          "first_colour": 256,
+          "palette": 23,
+          "first_colour": 368,
           "indices": {
             "#212129": 13,
             "#4a5252": 14
@@ -7296,8 +7296,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2545,
-          "palette": 16,
-          "first_colour": 256,
+          "palette": 23,
+          "first_colour": 368,
           "indices": {
             "#212129": 13,
             "#4a5252": 14
@@ -7450,8 +7450,8 @@
           "y": 80,
           "gutter": 1,
           "window": null,
-          "palette": 17,
-          "first_colour": 272,
+          "palette": 24,
+          "first_colour": 384,
           "indices": {
             "#5a7352": 9,
             "#e7dec6": 10,
@@ -7605,8 +7605,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2313,
-          "palette": 15,
-          "first_colour": 240,
+          "palette": 22,
+          "first_colour": 352,
           "indices": {
             "#d6ad42": 13,
             "#292921": 14
@@ -7641,8 +7641,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2545,
-          "palette": 16,
-          "first_colour": 256,
+          "palette": 23,
+          "first_colour": 368,
           "indices": {
             "#212129": 13,
             "#4a5252": 14
@@ -7850,8 +7850,8 @@
           "y": 80,
           "gutter": 1,
           "window": null,
-          "palette": 17,
-          "first_colour": 272,
+          "palette": 24,
+          "first_colour": 384,
           "indices": {
             "#5a7352": 9,
             "#e7dec6": 10,
@@ -8005,8 +8005,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2313,
-          "palette": 15,
-          "first_colour": 240,
+          "palette": 22,
+          "first_colour": 352,
           "indices": {
             "#d6ad42": 13,
             "#292921": 14
@@ -8041,8 +8041,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2545,
-          "palette": 16,
-          "first_colour": 256,
+          "palette": 23,
+          "first_colour": 368,
           "indices": {
             "#212129": 13,
             "#4a5252": 14
@@ -8284,8 +8284,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2553,
-          "palette": 16,
-          "first_colour": 256,
+          "palette": 23,
+          "first_colour": 368,
           "indices": {
             "#212129": 13,
             "#4a5252": 14
@@ -8316,12 +8316,12 @@
             "#212129"
           ],
           "slot": 0,
-          "x": 80,
+          "x": 208,
           "y": 120,
           "gutter": 1,
           "window": null,
-          "palette": 16,
-          "first_colour": 256,
+          "palette": 23,
+          "first_colour": 368,
           "indices": {
             "#212129": 13,
             "#9c9c94": 15
@@ -8592,8 +8592,8 @@
           "y": 8,
           "gutter": 0,
           "window": 2553,
-          "palette": 16,
-          "first_colour": 256,
+          "palette": 23,
+          "first_colour": 368,
           "indices": {
             "#212129": 13,
             "#4a5252": 14
@@ -8624,12 +8624,12 @@
             "#212129"
           ],
           "slot": 0,
-          "x": 80,
+          "x": 208,
           "y": 120,
           "gutter": 1,
           "window": null,
-          "palette": 16,
-          "first_colour": 256,
+          "palette": 23,
+          "first_colour": 368,
           "indices": {
             "#212129": 13,
             "#9c9c94": 15
@@ -8835,6 +8835,4987 @@
         }
       },
       "tags": {}
+    },
+    {
+      "name": "twin_a_pelvis",
+      "mesh": "twin_a_pelvis.bin",
+      "levels": [],
+      "vertices": 30,
+      "triangles": 44,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              2,
+              4
+            ],
+            [
+              6,
+              8
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              14,
+              20
+            ],
+            [
+              28,
+              44
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              4,
+              6
+            ],
+            [
+              24,
+              28
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              0,
+              2
+            ],
+            [
+              8,
+              14
+            ],
+            [
+              20,
+              24
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_torso",
+      "mesh": "twin_a_torso.bin",
+      "levels": [],
+      "vertices": 96,
+      "triangles": 138,
+      "palette": {
+        "palettes": [
+          14
+        ],
+        "entries": [
+          {
+            "colour": 225,
+            "class": "emissive",
+            "color": "#a2fbff",
+            "materials": [
+              "glow"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              12,
+              14
+            ],
+            [
+              20,
+              22
+            ],
+            [
+              26,
+              28
+            ],
+            [
+              30,
+              32
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              0,
+              12
+            ],
+            [
+              48,
+              56
+            ],
+            [
+              90,
+              106
+            ]
+          ]
+        },
+        "glow": {
+          "color": "#a2fbff",
+          "class": "emissive",
+          "palette_colour": 225,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              56,
+              68
+            ],
+            [
+              126,
+              138
+            ]
+          ]
+        },
+        "shell": {
+          "color": "#bfeefc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              68,
+              78
+            ],
+            [
+              106,
+              118
+            ]
+          ],
+          "blend": "half"
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              16,
+              18
+            ],
+            [
+              36,
+              48
+            ],
+            [
+              118,
+              126
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 26,
+          "faces": [
+            [
+              14,
+              16
+            ],
+            [
+              18,
+              20
+            ],
+            [
+              22,
+              26
+            ],
+            [
+              28,
+              30
+            ],
+            [
+              32,
+              36
+            ],
+            [
+              78,
+              90
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_head",
+      "mesh": "twin_a_head.bin",
+      "levels": [],
+      "vertices": 68,
+      "triangles": 108,
+      "palette": {
+        "palettes": [
+          15
+        ],
+        "entries": [
+          {
+            "colour": 241,
+            "class": "emissive",
+            "color": "#a2fbff",
+            "materials": [
+              "glow"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              76,
+              78
+            ],
+            [
+              84,
+              88
+            ],
+            [
+              100,
+              108
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              12
+            ],
+            [
+              48,
+              52
+            ]
+          ]
+        },
+        "glow": {
+          "color": "#a2fbff",
+          "class": "emissive",
+          "palette_colour": 241,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              24,
+              26
+            ],
+            [
+              32,
+              36
+            ]
+          ]
+        },
+        "shell": {
+          "color": "#bfeefc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              56,
+              76
+            ]
+          ],
+          "blend": "half"
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              12,
+              14
+            ],
+            [
+              20,
+              24
+            ],
+            [
+              40,
+              42
+            ],
+            [
+              52,
+              56
+            ],
+            [
+              88,
+              100
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              14,
+              20
+            ],
+            [
+              26,
+              32
+            ],
+            [
+              36,
+              40
+            ],
+            [
+              42,
+              48
+            ],
+            [
+              78,
+              84
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_pauldron_r",
+      "mesh": "twin_a_pauldron_r.bin",
+      "levels": [],
+      "vertices": 24,
+      "triangles": 44,
+      "textures": [
+        {
+          "material": "emblem",
+          "tile": "d0cfb6fd41861e6b",
+          "source": {
+            "texels": "56 x 32"
+          },
+          "width": 56,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7f7ff",
+            "#c6cede",
+            "#212129",
+            "#18c6ef",
+            "#39425a"
+          ],
+          "slot": 0,
+          "x": 0,
+          "y": 120,
+          "gutter": 1,
+          "window": null,
+          "palette": 25,
+          "first_colour": 400,
+          "indices": {
+            "#f7f7ff": 1,
+            "#c6cede": 2,
+            "#212129": 3,
+            "#18c6ef": 4,
+            "#39425a": 5
+          },
+          "vram_bytes": 957,
+          "night": "per_colour",
+          "faces": [
+            [
+              14,
+              16
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              12
+            ],
+            [
+              40,
+              44
+            ]
+          ]
+        },
+        "emblem": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              14,
+              16
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              36,
+              40
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              24,
+              36
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              12,
+              14
+            ],
+            [
+              16,
+              24
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_upper_arm_r",
+      "mesh": "twin_a_upper_arm_r.bin",
+      "levels": [],
+      "vertices": 24,
+      "triangles": 28,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_forearm_r",
+      "mesh": "twin_a_forearm_r.bin",
+      "levels": [],
+      "vertices": 38,
+      "triangles": 64,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              22,
+              24
+            ],
+            [
+              30,
+              32
+            ],
+            [
+              34,
+              36
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              48,
+              52
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 34,
+          "faces": [
+            [
+              20,
+              22
+            ],
+            [
+              24,
+              30
+            ],
+            [
+              32,
+              34
+            ],
+            [
+              36,
+              48
+            ],
+            [
+              52,
+              64
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_hand_r",
+      "mesh": "twin_a_hand_r.bin",
+      "levels": [],
+      "vertices": 24,
+      "triangles": 32,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              12,
+              14
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              24,
+              28
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              14,
+              24
+            ],
+            [
+              28,
+              32
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              0,
+              12
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_pauldron_l",
+      "mesh": "twin_a_pauldron_l.bin",
+      "levels": [],
+      "vertices": 24,
+      "triangles": 44,
+      "textures": [
+        {
+          "material": "emblem",
+          "tile": "d0cfb6fd41861e6b",
+          "source": {
+            "texels": "56 x 32"
+          },
+          "width": 56,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7f7ff",
+            "#c6cede",
+            "#212129",
+            "#18c6ef",
+            "#39425a"
+          ],
+          "slot": 0,
+          "x": 0,
+          "y": 120,
+          "gutter": 1,
+          "window": null,
+          "palette": 25,
+          "first_colour": 400,
+          "indices": {
+            "#f7f7ff": 1,
+            "#c6cede": 2,
+            "#212129": 3,
+            "#18c6ef": 4,
+            "#39425a": 5
+          },
+          "vram_bytes": 957,
+          "night": "per_colour",
+          "faces": [
+            [
+              14,
+              16
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              12
+            ],
+            [
+              40,
+              44
+            ]
+          ]
+        },
+        "emblem": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              14,
+              16
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              36,
+              40
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              24,
+              36
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              12,
+              14
+            ],
+            [
+              16,
+              24
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_upper_arm_l",
+      "mesh": "twin_a_upper_arm_l.bin",
+      "levels": [],
+      "vertices": 24,
+      "triangles": 28,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_forearm_l",
+      "mesh": "twin_a_forearm_l.bin",
+      "levels": [],
+      "vertices": 38,
+      "triangles": 64,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              22,
+              24
+            ],
+            [
+              30,
+              32
+            ],
+            [
+              34,
+              36
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              48,
+              52
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 34,
+          "faces": [
+            [
+              20,
+              22
+            ],
+            [
+              24,
+              30
+            ],
+            [
+              32,
+              34
+            ],
+            [
+              36,
+              48
+            ],
+            [
+              52,
+              64
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_hand_l",
+      "mesh": "twin_a_hand_l.bin",
+      "levels": [],
+      "vertices": 24,
+      "triangles": 32,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              12,
+              14
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              24,
+              28
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              14,
+              24
+            ],
+            [
+              28,
+              32
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              0,
+              12
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_thigh_r",
+      "mesh": "twin_a_thigh_r.bin",
+      "levels": [],
+      "vertices": 36,
+      "triangles": 64,
+      "textures": [
+        {
+          "material": "serial_a",
+          "tile": "9d3a093eb1ccf1b2",
+          "source": {
+            "texels": "32 x 16"
+          },
+          "width": 32,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7f7ff",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 128,
+          "y": 144,
+          "gutter": 1,
+          "window": null,
+          "palette": 24,
+          "first_colour": 384,
+          "indices": {
+            "#f7f7ff": 13,
+            "#212129": 14
+          },
+          "vram_bytes": 289,
+          "night": "per_colour",
+          "faces": [
+            [
+              34,
+              36
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              42,
+              44
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              48,
+              50
+            ],
+            [
+              56,
+              64
+            ]
+          ]
+        },
+        "serial_a": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              34,
+              36
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 30,
+          "faces": [
+            [
+              20,
+              34
+            ],
+            [
+              36,
+              42
+            ],
+            [
+              44,
+              48
+            ],
+            [
+              50,
+              56
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_shin_r",
+      "mesh": "twin_a_shin_r.bin",
+      "levels": [],
+      "vertices": 46,
+      "triangles": 80,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              20,
+              38
+            ],
+            [
+              44,
+              48
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              20
+            ],
+            [
+              72,
+              80
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              52,
+              54
+            ],
+            [
+              60,
+              72
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              38,
+              44
+            ],
+            [
+              48,
+              52
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_foot_r",
+      "mesh": "twin_a_foot_r.bin",
+      "levels": [],
+      "vertices": 22,
+      "triangles": 36,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              24,
+              26
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              28,
+              30
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              20,
+              24
+            ],
+            [
+              26,
+              28
+            ],
+            [
+              30,
+              36
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_thigh_l",
+      "mesh": "twin_a_thigh_l.bin",
+      "levels": [],
+      "vertices": 36,
+      "triangles": 64,
+      "textures": [
+        {
+          "material": "serial_a",
+          "tile": "9d3a093eb1ccf1b2",
+          "source": {
+            "texels": "32 x 16"
+          },
+          "width": 32,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7f7ff",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 128,
+          "y": 144,
+          "gutter": 1,
+          "window": null,
+          "palette": 24,
+          "first_colour": 384,
+          "indices": {
+            "#f7f7ff": 13,
+            "#212129": 14
+          },
+          "vram_bytes": 289,
+          "night": "per_colour",
+          "faces": [
+            [
+              34,
+              36
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              42,
+              44
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              48,
+              50
+            ],
+            [
+              56,
+              64
+            ]
+          ]
+        },
+        "serial_a": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              34,
+              36
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 30,
+          "faces": [
+            [
+              20,
+              34
+            ],
+            [
+              36,
+              42
+            ],
+            [
+              44,
+              48
+            ],
+            [
+              50,
+              56
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_shin_l",
+      "mesh": "twin_a_shin_l.bin",
+      "levels": [],
+      "vertices": 46,
+      "triangles": 80,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              20,
+              38
+            ],
+            [
+              44,
+              48
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              20
+            ],
+            [
+              72,
+              80
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              52,
+              54
+            ],
+            [
+              60,
+              72
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              38,
+              44
+            ],
+            [
+              48,
+              52
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_a_foot_l",
+      "mesh": "twin_a_foot_l.bin",
+      "levels": [],
+      "vertices": 22,
+      "triangles": 36,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              24,
+              26
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              28,
+              30
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              20,
+              24
+            ],
+            [
+              26,
+              28
+            ],
+            [
+              30,
+              36
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_pelvis",
+      "mesh": "twin_b_pelvis.bin",
+      "levels": [],
+      "vertices": 30,
+      "triangles": 44,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 26,
+          "faces": [
+            [
+              12,
+              22
+            ],
+            [
+              28,
+              44
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              10,
+              12
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              4,
+              6
+            ],
+            [
+              24,
+              28
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              0,
+              4
+            ],
+            [
+              6,
+              10
+            ],
+            [
+              22,
+              24
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_torso",
+      "mesh": "twin_b_torso.bin",
+      "levels": [],
+      "vertices": 104,
+      "triangles": 164,
+      "palette": {
+        "palettes": [
+          16
+        ],
+        "entries": [
+          {
+            "colour": 257,
+            "class": "emissive",
+            "color": "#ffb6e3",
+            "materials": [
+              "pglow"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              76,
+              88
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 52,
+          "faces": [
+            [
+              0,
+              12
+            ],
+            [
+              48,
+              68
+            ],
+            [
+              72,
+              76
+            ],
+            [
+              100,
+              116
+            ]
+          ]
+        },
+        "pglow": {
+          "color": "#ffb6e3",
+          "class": "emissive",
+          "palette_colour": 257,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              68,
+              72
+            ],
+            [
+              144,
+              164
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              12,
+              26
+            ],
+            [
+              32,
+              34
+            ]
+          ]
+        },
+        "pshell": {
+          "color": "#fcc8e6",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              116,
+              144
+            ]
+          ],
+          "blend": "half"
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              36,
+              48
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              26,
+              32
+            ],
+            [
+              34,
+              36
+            ],
+            [
+              88,
+              100
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_head",
+      "mesh": "twin_b_head.bin",
+      "levels": [],
+      "vertices": 64,
+      "triangles": 104,
+      "palette": {
+        "palettes": [
+          17
+        ],
+        "entries": [
+          {
+            "colour": 273,
+            "class": "emissive",
+            "color": "#ffb6e3",
+            "materials": [
+              "pglow"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              12
+            ],
+            [
+              48,
+              52
+            ]
+          ]
+        },
+        "pglow": {
+          "color": "#ffb6e3",
+          "class": "emissive",
+          "palette_colour": 273,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              24,
+              26
+            ],
+            [
+              32,
+              36
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              38,
+              44
+            ],
+            [
+              52,
+              56
+            ],
+            [
+              92,
+              104
+            ]
+          ]
+        },
+        "pshell": {
+          "color": "#fcc8e6",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              56,
+              76
+            ]
+          ],
+          "blend": "half"
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              22,
+              24
+            ],
+            [
+              76,
+              92
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              12,
+              22
+            ],
+            [
+              26,
+              32
+            ],
+            [
+              36,
+              38
+            ],
+            [
+              44,
+              48
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_pauldron_r",
+      "mesh": "twin_b_pauldron_r.bin",
+      "levels": [],
+      "vertices": 24,
+      "triangles": 44,
+      "textures": [
+        {
+          "material": "emblem_p",
+          "tile": "27ac9d430b955cc8",
+          "source": {
+            "texels": "56 x 32"
+          },
+          "width": 56,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#ff4aad",
+            "#c6cede",
+            "#212129",
+            "#f7f7ff",
+            "#18c6ef",
+            "#39425a"
+          ],
+          "slot": 0,
+          "x": 64,
+          "y": 120,
+          "gutter": 1,
+          "window": null,
+          "palette": 25,
+          "first_colour": 400,
+          "indices": {
+            "#f7f7ff": 1,
+            "#c6cede": 2,
+            "#212129": 3,
+            "#18c6ef": 4,
+            "#39425a": 5,
+            "#ff4aad": 6
+          },
+          "vram_bytes": 957,
+          "night": "per_colour",
+          "faces": [
+            [
+              14,
+              16
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "emblem_p": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              14,
+              16
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              36,
+              40
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              12,
+              14
+            ],
+            [
+              16,
+              24
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              24,
+              36
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              12
+            ],
+            [
+              40,
+              44
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_upper_arm_r",
+      "mesh": "twin_b_upper_arm_r.bin",
+      "levels": [],
+      "vertices": 24,
+      "triangles": 28,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_forearm_r",
+      "mesh": "twin_b_forearm_r.bin",
+      "levels": [],
+      "vertices": 38,
+      "triangles": 64,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              48,
+              52
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              32,
+              34
+            ],
+            [
+              40,
+              44
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 34,
+          "faces": [
+            [
+              20,
+              32
+            ],
+            [
+              34,
+              40
+            ],
+            [
+              44,
+              48
+            ],
+            [
+              52,
+              64
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_hand_r",
+      "mesh": "twin_b_hand_r.bin",
+      "levels": [],
+      "vertices": 24,
+      "triangles": 32,
+      "materials": {
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              24,
+              28
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              14,
+              24
+            ],
+            [
+              28,
+              32
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              12,
+              14
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              0,
+              12
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_pauldron_l",
+      "mesh": "twin_b_pauldron_l.bin",
+      "levels": [],
+      "vertices": 24,
+      "triangles": 44,
+      "textures": [
+        {
+          "material": "emblem_p",
+          "tile": "27ac9d430b955cc8",
+          "source": {
+            "texels": "56 x 32"
+          },
+          "width": 56,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#ff4aad",
+            "#c6cede",
+            "#212129",
+            "#f7f7ff",
+            "#18c6ef",
+            "#39425a"
+          ],
+          "slot": 0,
+          "x": 64,
+          "y": 120,
+          "gutter": 1,
+          "window": null,
+          "palette": 25,
+          "first_colour": 400,
+          "indices": {
+            "#f7f7ff": 1,
+            "#c6cede": 2,
+            "#212129": 3,
+            "#18c6ef": 4,
+            "#39425a": 5,
+            "#ff4aad": 6
+          },
+          "vram_bytes": 957,
+          "night": "per_colour",
+          "faces": [
+            [
+              14,
+              16
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "emblem_p": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              14,
+              16
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              36,
+              40
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              12,
+              14
+            ],
+            [
+              16,
+              24
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              24,
+              36
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              12
+            ],
+            [
+              40,
+              44
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_upper_arm_l",
+      "mesh": "twin_b_upper_arm_l.bin",
+      "levels": [],
+      "vertices": 24,
+      "triangles": 28,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_forearm_l",
+      "mesh": "twin_b_forearm_l.bin",
+      "levels": [],
+      "vertices": 38,
+      "triangles": 64,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              48,
+              52
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              32,
+              34
+            ],
+            [
+              40,
+              44
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 34,
+          "faces": [
+            [
+              20,
+              32
+            ],
+            [
+              34,
+              40
+            ],
+            [
+              44,
+              48
+            ],
+            [
+              52,
+              64
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_hand_l",
+      "mesh": "twin_b_hand_l.bin",
+      "levels": [],
+      "vertices": 24,
+      "triangles": 32,
+      "materials": {
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              24,
+              28
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              14,
+              24
+            ],
+            [
+              28,
+              32
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              12,
+              14
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              0,
+              12
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_thigh_r",
+      "mesh": "twin_b_thigh_r.bin",
+      "levels": [],
+      "vertices": 34,
+      "triangles": 60,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              44,
+              46
+            ],
+            [
+              52,
+              60
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              16,
+              28
+            ],
+            [
+              38,
+              40
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              16
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              28,
+              38
+            ],
+            [
+              40,
+              44
+            ],
+            [
+              46,
+              52
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_shin_r",
+      "mesh": "twin_b_shin_r.bin",
+      "levels": [],
+      "vertices": 46,
+      "triangles": 80,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              20
+            ],
+            [
+              72,
+              80
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              20,
+              36
+            ],
+            [
+              46,
+              48
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              52,
+              54
+            ],
+            [
+              60,
+              72
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              36,
+              46
+            ],
+            [
+              48,
+              52
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_foot_r",
+      "mesh": "twin_b_foot_r.bin",
+      "levels": [],
+      "vertices": 22,
+      "triangles": 36,
+      "materials": {
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              28,
+              30
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              26,
+              28
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              20,
+              26
+            ],
+            [
+              30,
+              36
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_thigh_l",
+      "mesh": "twin_b_thigh_l.bin",
+      "levels": [],
+      "vertices": 34,
+      "triangles": 60,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              44,
+              46
+            ],
+            [
+              52,
+              60
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              16,
+              28
+            ],
+            [
+              38,
+              40
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              16
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              28,
+              38
+            ],
+            [
+              40,
+              44
+            ],
+            [
+              46,
+              52
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_shin_l",
+      "mesh": "twin_b_shin_l.bin",
+      "levels": [],
+      "vertices": 46,
+      "triangles": 80,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              20
+            ],
+            [
+              72,
+              80
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              20,
+              36
+            ],
+            [
+              46,
+              48
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              52,
+              54
+            ],
+            [
+              60,
+              72
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              36,
+              46
+            ],
+            [
+              48,
+              52
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twin_b_foot_l",
+      "mesh": "twin_b_foot_l.bin",
+      "levels": [],
+      "vertices": 22,
+      "triangles": 36,
+      "materials": {
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              28,
+              30
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              0,
+              20
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              26,
+              28
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              20,
+              26
+            ],
+            [
+              30,
+              36
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_pelvis",
+      "mesh": "twins_pelvis.bin",
+      "levels": [],
+      "vertices": 176,
+      "triangles": 276,
+      "palette": {
+        "palettes": [
+          18
+        ],
+        "entries": [
+          {
+            "colour": 289,
+            "class": "emissive",
+            "color": "#f4ffff",
+            "materials": [
+              "fglow"
+            ]
+          },
+          {
+            "colour": 290,
+            "class": "emissive",
+            "color": "#ffb6e3",
+            "materials": [
+              "pglow"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "hazard",
+          "tile": "75899df5deb7ae05",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#f7c618",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 0,
+          "y": 16,
+          "gutter": 0,
+          "window": 4353,
+          "palette": 21,
+          "first_colour": 336,
+          "indices": {
+            "#f7c618": 2,
+            "#212129": 4
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              244,
+              260
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        4353
+      ],
+      "materials": {
+        "fglow": {
+          "color": "#f4ffff",
+          "class": "emissive",
+          "palette_colour": 289,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              260,
+              276
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 60,
+          "faces": [
+            [
+              16,
+              30
+            ],
+            [
+              38,
+              60
+            ],
+            [
+              98,
+              104
+            ],
+            [
+              142,
+              160
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#f0c419",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              244,
+              260
+            ]
+          ]
+        },
+        "pglow": {
+          "color": "#ffb6e3",
+          "class": "emissive",
+          "palette_colour": 290,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              188,
+              216
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              14,
+              16
+            ],
+            [
+              76,
+              80
+            ],
+            [
+              86,
+              92
+            ],
+            [
+              120,
+              124
+            ],
+            [
+              130,
+              136
+            ]
+          ]
+        },
+        "pshell": {
+          "color": "#fcc8e6",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              160,
+              188
+            ]
+          ],
+          "blend": "half"
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              6,
+              8
+            ],
+            [
+              32,
+              38
+            ],
+            [
+              216,
+              244
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 70,
+          "faces": [
+            [
+              0,
+              6
+            ],
+            [
+              8,
+              14
+            ],
+            [
+              30,
+              32
+            ],
+            [
+              60,
+              76
+            ],
+            [
+              80,
+              86
+            ],
+            [
+              92,
+              98
+            ],
+            [
+              104,
+              120
+            ],
+            [
+              124,
+              130
+            ],
+            [
+              136,
+              142
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_torso",
+      "mesh": "twins_torso.bin",
+      "levels": [],
+      "vertices": 188,
+      "triangles": 308,
+      "palette": {
+        "palettes": [
+          19
+        ],
+        "entries": [
+          {
+            "colour": 305,
+            "class": "emissive",
+            "color": "#a2fbff",
+            "materials": [
+              "glow"
+            ]
+          },
+          {
+            "colour": 306,
+            "class": "emissive",
+            "color": "#ffb6e3",
+            "materials": [
+              "pglow"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              16,
+              18
+            ],
+            [
+              28,
+              30
+            ],
+            [
+              34,
+              36
+            ],
+            [
+              42,
+              44
+            ],
+            [
+              184,
+              190
+            ],
+            [
+              202,
+              204
+            ],
+            [
+              248,
+              254
+            ],
+            [
+              266,
+              268
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              148,
+              168
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 112,
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              64,
+              76
+            ],
+            [
+              114,
+              136
+            ],
+            [
+              142,
+              148
+            ],
+            [
+              168,
+              180
+            ],
+            [
+              212,
+              218
+            ],
+            [
+              224,
+              236
+            ],
+            [
+              240,
+              244
+            ],
+            [
+              276,
+              282
+            ],
+            [
+              288,
+              300
+            ],
+            [
+              304,
+              308
+            ]
+          ]
+        },
+        "glow": {
+          "color": "#a2fbff",
+          "class": "emissive",
+          "palette_colour": 305,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              76,
+              88
+            ],
+            [
+              236,
+              240
+            ],
+            [
+              300,
+              304
+            ]
+          ]
+        },
+        "pglow": {
+          "color": "#ffb6e3",
+          "class": "emissive",
+          "palette_colour": 306,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              136,
+              142
+            ]
+          ]
+        },
+        "shell": {
+          "color": "#bfeefc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              88,
+              98
+            ]
+          ],
+          "blend": "half"
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 30,
+          "faces": [
+            [
+              22,
+              24
+            ],
+            [
+              48,
+              64
+            ],
+            [
+              218,
+              224
+            ],
+            [
+              282,
+              288
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 86,
+          "faces": [
+            [
+              18,
+              22
+            ],
+            [
+              24,
+              28
+            ],
+            [
+              30,
+              34
+            ],
+            [
+              36,
+              42
+            ],
+            [
+              44,
+              48
+            ],
+            [
+              98,
+              114
+            ],
+            [
+              180,
+              184
+            ],
+            [
+              190,
+              202
+            ],
+            [
+              204,
+              212
+            ],
+            [
+              244,
+              248
+            ],
+            [
+              254,
+              266
+            ],
+            [
+              268,
+              276
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_head",
+      "mesh": "twins_head.bin",
+      "levels": [],
+      "vertices": 96,
+      "triangles": 156,
+      "palette": {
+        "palettes": [
+          20
+        ],
+        "entries": [
+          {
+            "colour": 321,
+            "class": "emissive",
+            "color": "#a2fbff",
+            "materials": [
+              "glow"
+            ]
+          }
+        ]
+      },
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              92,
+              94
+            ],
+            [
+              100,
+              104
+            ],
+            [
+              120,
+              136
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              0,
+              12
+            ],
+            [
+              60,
+              66
+            ]
+          ]
+        },
+        "glow": {
+          "color": "#a2fbff",
+          "class": "emissive",
+          "palette_colour": 321,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              28,
+              30
+            ],
+            [
+              40,
+              44
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              144,
+              148
+            ]
+          ]
+        },
+        "shell": {
+          "color": "#bfeefc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              72,
+              92
+            ]
+          ],
+          "blend": "half"
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 46,
+          "faces": [
+            [
+              12,
+              14
+            ],
+            [
+              24,
+              28
+            ],
+            [
+              50,
+              52
+            ],
+            [
+              66,
+              72
+            ],
+            [
+              104,
+              120
+            ],
+            [
+              136,
+              144
+            ],
+            [
+              148,
+              156
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 40,
+          "faces": [
+            [
+              14,
+              24
+            ],
+            [
+              30,
+              40
+            ],
+            [
+              44,
+              50
+            ],
+            [
+              52,
+              60
+            ],
+            [
+              94,
+              100
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_pauldron_r",
+      "mesh": "twins_pauldron_r.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 72,
+      "textures": [
+        {
+          "material": "emblem",
+          "tile": "d0cfb6fd41861e6b",
+          "source": {
+            "texels": "56 x 32"
+          },
+          "width": 56,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7f7ff",
+            "#c6cede",
+            "#212129",
+            "#18c6ef",
+            "#39425a"
+          ],
+          "slot": 0,
+          "x": 0,
+          "y": 120,
+          "gutter": 1,
+          "window": null,
+          "palette": 25,
+          "first_colour": 400,
+          "indices": {
+            "#f7f7ff": 1,
+            "#c6cede": 2,
+            "#212129": 3,
+            "#18c6ef": 4,
+            "#39425a": 5
+          },
+          "vram_bytes": 957,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              0,
+              2
+            ],
+            [
+              12,
+              16
+            ],
+            [
+              30,
+              32
+            ]
+          ]
+        },
+        "emblem": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              48,
+              54
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              4,
+              10
+            ],
+            [
+              22,
+              24
+            ]
+          ]
+        },
+        "shell": {
+          "color": "#bfeefc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              60,
+              72
+            ]
+          ],
+          "blend": "half"
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              32,
+              48
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              2,
+              4
+            ],
+            [
+              10,
+              12
+            ],
+            [
+              16,
+              18
+            ],
+            [
+              20,
+              22
+            ],
+            [
+              24,
+              30
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_upper_arm_r",
+      "mesh": "twins_upper_arm_r.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 38,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 38,
+          "faces": [
+            [
+              0,
+              38
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_forearm_r",
+      "mesh": "twins_forearm_r.bin",
+      "levels": [],
+      "vertices": 48,
+      "triangles": 84,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              30,
+              32
+            ],
+            [
+              42,
+              44
+            ],
+            [
+              46,
+              48
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              66,
+              72
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 44,
+          "faces": [
+            [
+              28,
+              30
+            ],
+            [
+              32,
+              42
+            ],
+            [
+              44,
+              46
+            ],
+            [
+              48,
+              66
+            ],
+            [
+              72,
+              84
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_hand_r",
+      "mesh": "twins_hand_r.bin",
+      "levels": [],
+      "vertices": 44,
+      "triangles": 60,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              16,
+              18
+            ],
+            [
+              48,
+              60
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              28,
+              32
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              18,
+              28
+            ],
+            [
+              32,
+              36
+            ],
+            [
+              46,
+              48
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              16
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              36,
+              46
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_pauldron_l",
+      "mesh": "twins_pauldron_l.bin",
+      "levels": [],
+      "vertices": 40,
+      "triangles": 72,
+      "textures": [
+        {
+          "material": "emblem",
+          "tile": "d0cfb6fd41861e6b",
+          "source": {
+            "texels": "56 x 32"
+          },
+          "width": 56,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7f7ff",
+            "#c6cede",
+            "#212129",
+            "#18c6ef",
+            "#39425a"
+          ],
+          "slot": 0,
+          "x": 0,
+          "y": 120,
+          "gutter": 1,
+          "window": null,
+          "palette": 25,
+          "first_colour": 400,
+          "indices": {
+            "#f7f7ff": 1,
+            "#c6cede": 2,
+            "#212129": 3,
+            "#18c6ef": 4,
+            "#39425a": 5
+          },
+          "vram_bytes": 957,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              0,
+              2
+            ],
+            [
+              12,
+              16
+            ],
+            [
+              30,
+              32
+            ]
+          ]
+        },
+        "emblem": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              48,
+              54
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              4,
+              10
+            ],
+            [
+              22,
+              24
+            ]
+          ]
+        },
+        "shell": {
+          "color": "#bfeefc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              60,
+              72
+            ]
+          ],
+          "blend": "half"
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              32,
+              48
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 20,
+          "faces": [
+            [
+              2,
+              4
+            ],
+            [
+              10,
+              12
+            ],
+            [
+              16,
+              18
+            ],
+            [
+              20,
+              22
+            ],
+            [
+              24,
+              30
+            ],
+            [
+              54,
+              60
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_upper_arm_l",
+      "mesh": "twins_upper_arm_l.bin",
+      "levels": [],
+      "vertices": 32,
+      "triangles": 38,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 38,
+          "faces": [
+            [
+              0,
+              38
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_forearm_l",
+      "mesh": "twins_forearm_l.bin",
+      "levels": [],
+      "vertices": 48,
+      "triangles": 84,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              30,
+              32
+            ],
+            [
+              42,
+              44
+            ],
+            [
+              46,
+              48
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              66,
+              72
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 44,
+          "faces": [
+            [
+              28,
+              30
+            ],
+            [
+              32,
+              42
+            ],
+            [
+              44,
+              46
+            ],
+            [
+              48,
+              66
+            ],
+            [
+              72,
+              84
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_hand_l",
+      "mesh": "twins_hand_l.bin",
+      "levels": [],
+      "vertices": 44,
+      "triangles": 60,
+      "materials": {
+        "cyan": {
+          "color": "#1fc6ee",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              16,
+              18
+            ],
+            [
+              48,
+              60
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              28,
+              32
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              18,
+              28
+            ],
+            [
+              32,
+              36
+            ],
+            [
+              46,
+              48
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              16
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              36,
+              46
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_thigh_r",
+      "mesh": "twins_thigh_r.bin",
+      "levels": [],
+      "vertices": 48,
+      "triangles": 84,
+      "textures": [
+        {
+          "material": "serial",
+          "tile": "e487da46bb71e890",
+          "source": {
+            "texels": "32 x 16"
+          },
+          "width": 32,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7f7ff",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 168,
+          "y": 144,
+          "gutter": 1,
+          "window": null,
+          "palette": 24,
+          "first_colour": 384,
+          "indices": {
+            "#f7f7ff": 13,
+            "#212129": 14
+          },
+          "vram_bytes": 289,
+          "night": "per_colour",
+          "faces": [
+            [
+              78,
+              80
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              50,
+              52
+            ],
+            [
+              60,
+              72
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              16,
+              28
+            ],
+            [
+              42,
+              44
+            ]
+          ]
+        },
+        "serial": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              78,
+              80
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              16
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 38,
+          "faces": [
+            [
+              28,
+              42
+            ],
+            [
+              44,
+              50
+            ],
+            [
+              52,
+              60
+            ],
+            [
+              72,
+              78
+            ],
+            [
+              80,
+              84
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_shin_r",
+      "mesh": "twins_shin_r.bin",
+      "levels": [],
+      "vertices": 58,
+      "triangles": 104,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 40,
+          "faces": [
+            [
+              0,
+              28
+            ],
+            [
+              92,
+              104
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              28,
+              44
+            ],
+            [
+              58,
+              60
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              66,
+              68
+            ],
+            [
+              76,
+              92
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              44,
+              58
+            ],
+            [
+              60,
+              66
+            ],
+            [
+              68,
+              76
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_foot_r",
+      "mesh": "twins_foot_r.bin",
+      "levels": [],
+      "vertices": 26,
+      "triangles": 44,
+      "materials": {
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              36,
+              38
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              34,
+              36
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              28,
+              34
+            ],
+            [
+              38,
+              44
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_thigh_l",
+      "mesh": "twins_thigh_l.bin",
+      "levels": [],
+      "vertices": 48,
+      "triangles": 84,
+      "textures": [
+        {
+          "material": "serial",
+          "tile": "e487da46bb71e890",
+          "source": {
+            "texels": "32 x 16"
+          },
+          "width": 32,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7f7ff",
+            "#212129"
+          ],
+          "slot": 0,
+          "x": 168,
+          "y": 144,
+          "gutter": 1,
+          "window": null,
+          "palette": 24,
+          "first_colour": 384,
+          "indices": {
+            "#f7f7ff": 13,
+            "#212129": 14
+          },
+          "vram_bytes": 289,
+          "night": "per_colour",
+          "faces": [
+            [
+              78,
+              80
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              50,
+              52
+            ],
+            [
+              60,
+              72
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              16,
+              28
+            ],
+            [
+              42,
+              44
+            ]
+          ]
+        },
+        "serial": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              78,
+              80
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              16
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 38,
+          "faces": [
+            [
+              28,
+              42
+            ],
+            [
+              44,
+              50
+            ],
+            [
+              52,
+              60
+            ],
+            [
+              72,
+              78
+            ],
+            [
+              80,
+              84
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_shin_l",
+      "mesh": "twins_shin_l.bin",
+      "levels": [],
+      "vertices": 58,
+      "triangles": 104,
+      "materials": {
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 40,
+          "faces": [
+            [
+              0,
+              28
+            ],
+            [
+              92,
+              104
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              28,
+              44
+            ],
+            [
+              58,
+              60
+            ]
+          ]
+        },
+        "silver": {
+          "color": "#c3cdd9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              66,
+              68
+            ],
+            [
+              76,
+              92
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              44,
+              58
+            ],
+            [
+              60,
+              66
+            ],
+            [
+              68,
+              76
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "twins_foot_l",
+      "mesh": "twins_foot_l.bin",
+      "levels": [],
+      "vertices": 26,
+      "triangles": 44,
+      "materials": {
+        "dark": {
+          "color": "#22262e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              36,
+              38
+            ]
+          ]
+        },
+        "frame": {
+          "color": "#5b6577",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              0,
+              28
+            ]
+          ]
+        },
+        "pink": {
+          "color": "#ff4aab",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              34,
+              36
+            ]
+          ]
+        },
+        "white": {
+          "color": "#f2f5f9",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              28,
+              34
+            ],
+            [
+              38,
+              44
+            ]
+          ]
+        }
+      },
+      "tags": {}
     }
   ],
   "textures": {
@@ -8846,20 +13827,21 @@
       "runs": [
         {
           "bits": 4,
-          "first_colour": 224,
-          "colours": 64,
+          "first_colour": 336,
+          "colours": 80,
           "offset": 0
         }
       ]
     },
-    "tiles": 18,
-    "vram_bytes": 10903,
-    "vram_bytes_allocated": 14336,
+    "tiles": 23,
+    "vram_bytes": 13427,
+    "vram_bytes_allocated": 17888,
     "palettes_4bit": [
-      14,
-      15,
-      16,
-      17
+      21,
+      22,
+      23,
+      24,
+      25
     ],
     "palettes_8bit": []
   },
@@ -8926,6 +13908,34 @@
       },
       {
         "first_colour": 208,
+        "colours": 16
+      },
+      {
+        "first_colour": 224,
+        "colours": 16
+      },
+      {
+        "first_colour": 240,
+        "colours": 16
+      },
+      {
+        "first_colour": 256,
+        "colours": 16
+      },
+      {
+        "first_colour": 272,
+        "colours": 16
+      },
+      {
+        "first_colour": 288,
+        "colours": 16
+      },
+      {
+        "first_colour": 304,
+        "colours": 16
+      },
+      {
+        "first_colour": 320,
         "colours": 16
       }
     ]

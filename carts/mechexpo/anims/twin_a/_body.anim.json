@@ -1,0 +1,75 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Twin A, the 1 (the split form's leader): its hurt and push boxes, which every move starts from (\"base\"), and the stand-in for a move with no file yet: the guard pose, held. Not a loop itself: a move based on it says \"loop\": true if it loops (the exporter makes the stand-ins of idle, walk_f, walk_b, crouch and block loop). The torso box is the slim chest, not the fusion cell on its back; the push box (1.1 m either side, 7.0 m high) is MOVES.md's.",
+  "rig": "../../models/twin_a/twin_a.rig.json",
+  "length": 60,
+  "loop": false,
+  "boxes": {
+    "head": {
+      "kind": "hurt",
+      "part": "head"
+    },
+    "torso": {
+      "kind": "hurt",
+      "part": "torso",
+      "min": [
+        -0.95,
+        -0.15,
+        -0.68
+      ],
+      "max": [
+        0.95,
+        2.32,
+        0.6
+      ]
+    },
+    "pelvis": {
+      "kind": "hurt",
+      "part": "pelvis"
+    },
+    "forearm_r": {
+      "kind": "hurt",
+      "part": "forearm_r"
+    },
+    "forearm_l": {
+      "kind": "hurt",
+      "part": "forearm_l"
+    },
+    "hand_r": {
+      "kind": "hurt",
+      "part": "hand_r"
+    },
+    "thigh_r": {
+      "kind": "hurt",
+      "part": "thigh_r"
+    },
+    "thigh_l": {
+      "kind": "hurt",
+      "part": "thigh_l"
+    },
+    "shin_r": {
+      "kind": "hurt",
+      "part": "shin_r"
+    },
+    "shin_l": {
+      "kind": "hurt",
+      "part": "shin_l"
+    },
+    "push": {
+      "kind": "push",
+      "rect": [
+        -1.1,
+        0,
+        1.1,
+        7.0
+      ]
+    }
+  },
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard"
+    }
+  ]
+}

@@ -40,6 +40,9 @@
 //     a Double-blade Hero holding block (no damage)
 // 40-49 Tank's (mx-tank): armour, its grabs and throws, the nuclear meter, its super, the CPU
 //     and the budget; listed with their code at the end of this file
+// 60-67 the Twins' (mx-twins-fight): combining and splitting, the partner, hits and throws on and
+//     by both forms, the fusion meter, the super, the CPU; listed with their code at the end
+//     (68 and 69 are in tests/twins/harness.akr)
 // 15  training: the dummy blocking, standing (health refills after a moment, meter kept full),
 //     the dummy's CPU, no clock, no KO; the move lists; a super cancelled from a chain, and A
 //     then B two frames apart (the Guard Cut becomes the super)
@@ -86,7 +89,7 @@ const MV_NAMES: [len(Mv)]*u8 = [
     "idle", "walk_f", "walk_b", "crouch", "jump", "land", "block", "hit_high", "hit_low",
     "hit_air", "knockdown", "getup", "ko", "win", "intro", "atk_n", "atk_f", "atk_d", "atk_air",
     "sp_n", "sp_f", "sp_u", "sp_d", "grab", "grab_whiff", "throw", "thrown", "grab_break", "super",
-    "thrown_vault", "thrown_slam",
+    "thrown_vault", "thrown_slam", "combine", "split",
 ]
 const EV_NAMES: [len(Ev)]*u8 = [
     "Hit", "Block", "Chip", "Whiff", "Grab", "Throw", "Break", "Land", "Step", "MeterFull",
@@ -112,6 +115,10 @@ fn init() {
     }
     if tk_scenario() {
         tk_init()
+        return
+    }
+    if tw_scenario() {
+        tw_init()
         return
     }
     if SCENARIO == 10 || SCENARIO == 13 || SCENARIO == 16 { tick_per_frame = 40 }
@@ -195,6 +202,7 @@ private fn at(f: s32) -> bool { return frames == f }
 private fn script1() -> u32 {
     if SCENARIO >= 30 && SCENARIO <= 39 { return beam_script(0) }
     if tk_scenario() { return tk_script(0) }
+    if tw_scenario() { return tw_script(0) }
     let a = &fight.f[0]
     let fwd = if_u(a.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -255,6 +263,7 @@ private fn script1() -> u32 {
 private fn script2() -> u32 {
     if SCENARIO >= 30 && SCENARIO <= 39 { return beam_script(1) }
     if tk_scenario() { return tk_script(1) }
+    if tw_scenario() { return tw_script(1) }
     let b = &fight.f[1]
     let fwd = if_u(b.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -352,7 +361,10 @@ private fn check() {
         16 => check_stats()
         18 => check_vault()
         19 => check_air()
-        else => { if tk_scenario() { tk_check() } }
+        else => {
+            if tk_scenario() { tk_check() }
+            if tw_scenario() { tw_check() }
+        }
     }
 }
 
@@ -928,7 +940,8 @@ var fd_case: s32
 private fn frame_data() {
     if done { return }
     let n = len(FD_MOVES)
-    if fd_case >= len(Mech) * 2 * n {
+    // the Twins twice: Twins the combined form, Twin A the split form (twin A alone)
+    if fd_case >= ((Mech.TwinA as s32) + 1) * 2 * n {
         ok("frame data")
         return
     }
@@ -939,8 +952,11 @@ private fn frame_data() {
     fd_case += 1
     if mv == Mv.atk_air { return }          // depends on the jump's height
     if m == Mech.Doubleblade && (mv == Mv.sp_n || mv == Mv.sp_d) && block { }
-    fight_init(m, Mech.Hero, FightMode.Versus, 0)
+    var fm = m
+    if m == Mech.TwinA { fm = Mech.Twins }
+    fight_init(fm, Mech.Hero, FightMode.Versus, 0)
     skip_intro()
+    if m == Mech.Twins { fight.f[0].body = Mech.Twins }
     place(-FD_DIST[k] / 2, FD_DIST[k] / 2)
     if mv == Mv.super {
         fight.f[0].meter = METER_BAR
@@ -1028,15 +1044,17 @@ fn draw() {
         rect(wx - 1, 40, 3, FLOOR_Y - 40, rgb(110, 110, 130))
     }
     var bx: Boxes
-    for i in 0..2 {
+    for i in 0..4 {
+        if i >= 2 && !twins_on(i - 2) { continue }
         let f = &fight.f[i]
-        mv_boxes(f.mech, f.mv, cur_frame(i), &bx)
+        mv_boxes(f.body, f.mv, cur_frame(i), &bx)
         for k in 0..bx.n { draw_box(i, &bx.b[k], cx) }
         // the root and the facing
         let rx = sx(f.x, cx)
         let ry = sy(f.y)
         rect(rx - 1, ry - 1, 3, 3, rgb(255, 255, 255))
         rect(rx, ry - 40, f.facing * 8, 2, rgb(255, 255, 255))
+        if i >= 2 { continue }
         let s = &fight.shot[i]
         if s.on {
             rect_blend(sx(s.x - WAVE_HALF, cx), sy(WAVE_H), (WAVE_HALF * 2 * PX) as s32, (WAVE_H * PX) as s32,
@@ -1513,7 +1531,7 @@ private fn check_orb_beaten() {
     }
 }
 
-const MECH_NAMES: [len(Mech)]*u8 = ["Hero", "Double-blade", "Beam", "Tank"]
+const MECH_NAMES: [len(Mech)]*u8 = ["Hero", "Double-blade", "Beam", "Tank", "Twins", "Twin A", "Twin B"]
 
 private fn check_beam_budget() {
     if frames > 3 && frames != 901 && frames != 902 {
@@ -1981,4 +1999,538 @@ private fn tk_check_budget() {
 private fn if_i(c: bool, a: s32, b: s32) -> s32 {
     if c { return a }
     return b
+}
+
+// ---- the Twins' scenarios, 60-67 (mx-twins-fight; MOVES.md, "The Twins"); 68 and 69 need the
+// whole game and are in tests/twins/harness.akr
+//
+// 60  combining and splitting on L: twin B slides in, the bodies swap on combine's frame 23 and
+//     split's frame 12 (the release mark), twin B hops back to its spot; a hit on twin A before
+//     the swap stops the combine (twin B stands back up)
+// 61  the partner: twin B's jab starts exactly TW_DELAY frames after twin A's, its walk too; it
+//     walks back to its spot; the leash holds it within 8 m; it never copies Y
+// 62  a hit on the partner: the Hero's Guard Cut hits twin B only (twin A free), off the one
+//     bar; with the twins overlapping, one hit lands on one twin; a KO through twin B fells both
+// 63  throws on the Twins: the Hero throws twin A; grabs twin B and the player's Y breaks it;
+//     throws the combined form
+// 64  throws by the Twins: the Tag Toss (split, 100) and the Binary Buster (combined, 140)
+// 65  the fusion meter: nothing split (not by time, not by hits); combined +1 a frame from the
+//     swap, +60 for a hit, Fusion Focus +6 a frame held (50 frames at most); split again, it
+//     stands still
+// 66  the super: Fusion Burst from a full bar, combined (330); split, A + B is no super
+// 67  CPU against CPU (level 2): the Twins against the Hero (twice: the same match), Tank
+//     against the Twins, the Twins against the Twins; every match finishes; prints the rounds,
+//     the form switches and the supers
+// 70  (a measurement, not in check.sh) CPU level 2 against level 2: the Twins against each
+//     other mech, 8 matches each (both sides, four seeds); prints the Twins' wins, their time
+//     combined and their supers
+
+var tw_part: s32
+var tw_at: [4]s32               // frames something was first seen
+var tw_swaps: s32
+var tw_prev_body: [2]Mech
+var tw_matches: s32
+var tw_sum: u32
+var tw_sum_first: u32
+var tw_meter0: s32
+var tw_live: s32                // frames of play (not frozen) combined: the fusion meter's regen
+var tw_prev_freeze: s32
+
+private fn tw_scenario() -> bool { return SCENARIO >= 60 && SCENARIO <= 67 || SCENARIO == 70 }
+
+// scenario 70
+var tw_m: s32                   // the match
+var tw_wins: [4]s32             // the Twins' wins against each mech
+var tw_comb: s32                // frames of play combined, all matches
+var tw_play: s32
+var tw_sup: s32
+
+private fn tw_stat_start() {
+    let foe = (tw_m / 8) as Mech
+    if tw_m % 2 == 0 { fight_init(Mech.Twins, foe, FightMode.VsCpu, 2) }
+    else { fight_init(foe, Mech.Twins, FightMode.VsCpu, 2) }
+    cpu_init(91 + tw_m * 7919)
+}
+
+private fn tw_check_stats() {
+    let ts = if_i(fight.f[0].mech == Mech.Twins, 0, 1)
+    if fight.phase == Phase.Fight {
+        tw_play += 1
+        if fight.f[ts].body == Mech.Twins { tw_comb += 1 }
+    }
+    let ev = fight_events()
+    for e in 0..ev.n {
+        if ev.e[e].kind == Ev.Super && ev.e[e].side == ts { tw_sup += 1 }
+    }
+    if fight.phase != Phase.MatchOver { return }
+    if fight.winner == ts { tw_wins[tw_m / 8] += 1 }
+    tw_m += 1
+    if tw_m < 32 {
+        tw_stat_start()
+        return
+    }
+    let names: [4]*u8 = ["Hero", "Double-blade", "Beam", "Tank"]
+    for k in 0..4 {
+        print("Twins against ")
+        print(names[k])
+        print(": ")
+        print_int(tw_wins[k])
+        println(" of 8")
+    }
+    print("combined ")
+    print_int(tw_comb * 100 / max(tw_play, 1))
+    print(" % of the time, supers ")
+    print_int(tw_sup)
+    println("")
+    ok("the Twins' statistics")
+}
+
+// Puts the fighters at x0 and x1, each split Twins' partner on its spot.
+private fn tw_place(x0: fixed, x1: fixed) {
+    place(x0, x1)
+    for s in 0..2 {
+        if twins_on(s) {
+            let f = &fight.f[s]
+            fight.f[s + 2].x = f.x - fixed(f.facing) * TW_SPOT
+        }
+    }
+}
+
+private fn tw_combined(s: s32) { fight.f[s].body = Mech.Twins }
+
+private fn tw_restart(a: Mech, b: Mech, x: fixed) {
+    fight_init(a, b, FightMode.Versus, 0)
+    tw_skip_intro()
+    tw_place(-x, x)
+    for k in 0..len(Ev) {
+        evc[k] = 0
+        evc_side[0][k] = 0
+        evc_side[1][k] = 0
+    }
+    stage = 0
+    for k in 0..4 { tw_at[k] = 0 }
+}
+
+private fn tw_skip_intro() {
+    skip_intro()
+    twins_copy_mv(Mv.idle)
+}
+
+private fn tw_init() {
+    match SCENARIO {
+        60, 61, 62, 65, 66 => fight_init(Mech.Twins, Mech.Hero, FightMode.Versus, 0)
+        63 => fight_init(Mech.Twins, Mech.Hero, FightMode.Versus, 0)
+        64 => fight_init(Mech.Twins, Mech.Hero, FightMode.Versus, 0)
+        67 => {
+            fight_init(Mech.Twins, Mech.Hero, FightMode.VsCpu, 2)
+            tick_per_frame = 40
+        }
+        70 => {
+            tw_stat_start()
+            tick_per_frame = 40
+        }
+        else => {}
+    }
+    if SCENARIO != 67 && SCENARIO != 70 { tw_skip_intro() }
+    match SCENARIO {
+        60 => tw_place(-6.0, 6.0)
+        61 => tw_place(-10.0, 10.0)
+        62 => { tw_place(-6.0, 3.5); fight.f[2].x = -1.0 }
+        63 => tw_place(-2.0, 2.0)
+        64 => tw_place(-2.0, 2.0)
+        65 => tw_place(-1.0, 1.7)
+        66 => { tw_place(-6.0, 6.0); tw_combined(0); fight.f[0].meter = METER_BAR }
+        else => {}
+    }
+    tw_prev_body[0] = fight.f[0].body
+    tw_prev_body[1] = fight.f[1].body
+}
+
+private fn tw_script(i: s32) -> u32 {
+    let a = &fight.f[i]
+    let fwd = if_u(a.facing > 0, RIGHT, LEFT)
+    if SCENARIO == 67 || SCENARIO == 70 { return cpu_pad(i, 2) }
+    if i == 0 {
+        match SCENARIO {
+            60 => { if at(5) || at(60) || at(121) { return L } }
+            61 => {
+                if at(5) { return A }
+                if frames >= 40 && frames < 100 { return fwd }
+                if at(280) { return Y }
+            }
+            63 => { if at(163) { return Y } }
+            64 => { if at(5) || at(155) { return Y } }
+            65 => {
+                if at(5) { return A }
+                if at(50) { return L }
+                if at(120) { return A }
+                if at(200) { return DOWN | B }
+                if frames > 200 && frames < 280 { return B }
+                if at(330) { return L }
+            }
+            66 => {
+                if at(5) || at(205) { return A | B }
+            }
+            else => {}
+        }
+    } else {
+        match SCENARIO {
+            60 => { if at(120) { return A } }
+            62 => { if at(5) || at(85) || at(165) { return A } }
+            63 => { if at(5) || at(155) || at(305) { return Y } }
+            else => {}
+        }
+    }
+    return 0
+}
+
+private fn tw_check() {
+    // swaps of bodies seen
+    for s in 0..2 {
+        if fight.f[s].body != tw_prev_body[s] {
+            tw_swaps += 1
+            tw_prev_body[s] = fight.f[s].body
+        }
+    }
+    match SCENARIO {
+        60 => tw_check_switch()
+        61 => tw_check_partner()
+        62 => tw_check_hit_partner()
+        63 => tw_check_thrown()
+        64 => tw_check_throws()
+        65 => tw_check_fusion()
+        66 => tw_check_super()
+        67 => tw_check_cpu()
+        70 => tw_check_stats()
+        else => {}
+    }
+}
+
+private fn tw_check_switch() {
+    let f = &fight.f[0]
+    let p = &fight.f[2]
+    if f.mv == Mv.combine {
+        if tw_at[0] == 0 { tw_at[0] = frames }
+        let t = fx[0].t
+        if t < TW_COMBINE_SWAP {
+            assert(f.body == Mech.TwinA && twins_on(0), "combined before the swap")
+            assert(p.mv == Mv.combine, "twin B is not combining")
+            assert_eq(fx[2].t, t, "the twins' combine frames apart")
+            if t >= TW_RUN_IN { assert(abs(p.x - f.x) < 0.01, "twin B has not reached twin A") }
+        } else {
+            assert(f.body == Mech.Twins && !twins_on(0), "not combined after the swap")
+            if tw_at[1] == 0 {
+                tw_at[1] = frames
+                assert_eq(t, TW_COMBINE_SWAP, "combine's swap frame")
+                print("combine: the bodies swap on frame ")
+                print_int(t)
+                println("")
+            }
+        }
+    }
+    if at(55) {
+        assert(actionable(0) && f.body == Mech.Twins, "the combine did not end in the combined form")
+        assert_eq(tw_swaps, 1, "swaps")
+    }
+    if f.mv == Mv.split && tw_at[2] == 0 { tw_at[2] = frames }
+    if f.mv == Mv.split || p.mv == Mv.split && twins_on(0) {
+        let t = fx[0].t
+        if f.mv == Mv.split && t < TW_SPLIT_SWAP {
+            assert(f.body == Mech.Twins, "split before the swap")
+        } else if f.mv == Mv.split {
+            assert(f.body == Mech.TwinA && twins_on(0), "not split after the swap")
+            if tw_at[3] == 0 {
+                tw_at[3] = frames
+                assert_eq(t, TW_SPLIT_SWAP, "split's swap frame")
+                assert(abs(p.x - f.x) < 0.01, "twin B does not start docked on the root")
+                assert(p.mv == Mv.split && fx[2].t == t, "twin B is not in split")
+                print("split: the bodies swap on frame ")
+                print_int(t)
+                println("")
+            }
+            if t >= TW_HOP_AT + TW_HOP {
+                assert(abs(p.x - (f.x - fixed(f.facing) * TW_SPOT)) < 0.01, "twin B did not hop back to its spot")
+            }
+        }
+    }
+    if at(110) {
+        assert(actionable(0) && actionable(2) && f.body == Mech.TwinA, "the split did not end split")
+        assert_eq(tw_swaps, 2, "swaps")
+        tw_place(-3.0, 3.0)
+    }
+    // the combine at 121, hit at 127 by the Hero's Guard Cut (pressed at 120)
+    if at(200) {
+        assert_eq(evc_side[1][Ev.Hit], 1, "the Guard Cut missed the combining twins")
+        assert(f.body == Mech.TwinA && twins_on(0), "the combine went on through the hit")
+        assert_eq(tw_swaps, 2, "a swap after the hit")
+        assert(actionable(0) && actionable(2), "the twins did not recover")
+        ok("combining and splitting on L; the swap frames; a hit stops the combine")
+    }
+}
+
+private fn tw_check_partner() {
+    let f = &fight.f[0]
+    let p = &fight.f[2]
+    if f.mv == Mv.atk_n && tw_at[0] == 0 { tw_at[0] = frames }
+    if p.mv == Mv.atk_n && tw_at[1] == 0 { tw_at[1] = frames }
+    if f.mv == Mv.walk_f && tw_at[2] == 0 { tw_at[2] = frames }
+    if p.mv == Mv.walk_f && tw_at[3] == 0 { tw_at[3] = frames }
+    if at(39) {
+        assert(tw_at[0] > 0 && tw_at[1] > 0, "a jab missing")
+        assert_eq(tw_at[1] - tw_at[0], TW_DELAY, "twin B's jab delay")
+        mark = (p.x - f.x) as s32
+    }
+    if at(130) {
+        assert_eq(tw_at[3] - tw_at[2], TW_DELAY, "twin B's walk delay")
+        let d = abs(p.x - (f.x - fixed(f.facing) * TW_SPOT))
+        assert(d <= TW_NEAR + 0.01, "twin B is not back near its spot")
+        print("jab and walk delay ")
+        print_int(tw_at[1] - tw_at[0])
+        print(" frames; twin B ")
+        print_fixed(d)
+        println(" m from its spot after the walk")
+        p.x = f.x - fixed(f.facing) * 14.0       // knocked far away
+    }
+    if at(131) {
+        assert(abs(abs(p.x - f.x) - TW_LEASH) < 0.2, "the leash did not hold twin B")
+    }
+    if at(270) {
+        let d = abs(p.x - (f.x - fixed(f.facing) * TW_SPOT))
+        assert(d <= TW_NEAR + 0.01, "twin B did not walk back to its spot")
+    }
+    if frames > 280 && frames < 300 { assert(p.mv != Mv.grab, "twin B copied Y") }
+    if at(300) {
+        assert(evc_side[0][Ev.Swing] >= 2, "no swings")
+        ok("the partner copies six frames late, walks back to its spot, keeps the leash, never grabs")
+    }
+}
+
+private fn tw_check_hit_partner() {
+    let f = &fight.f[0]
+    let p = &fight.f[2]
+    if at(25) {
+        assert(p.mv == Mv.hit_high, "twin B was not the one hit")
+        assert(!is_hurt(f.mv), "twin A was hit")
+    }
+    if at(40) {
+        assert_eq(evc_side[1][Ev.Hit], 1, "the Guard Cut did not land")
+        assert_eq(f.health, 1000 - dmg(0, Mv.atk_n), "the hit on twin B came off the bar")
+        print("twin B hit; the bar ")
+        print_int(f.health)
+        println("")
+    }
+    if at(80) {
+        assert(actionable(0) && actionable(2), "the twins are not ready")
+        p.x = -3.0
+        f.x = -3.0
+        mark_h = f.health
+    }
+    if at(120) {
+        assert_eq(evc_side[1][Ev.Hit], 2, "the second Guard Cut")
+        assert_eq(f.health, mark_h - dmg(0, Mv.atk_n), "a hit on overlapping twins landed twice")
+        print("overlapping twins: one hit, the bar ")
+        print_int(f.health)
+        println("")
+    }
+    if at(160) {
+        tw_place(-6.0, 3.5)
+        p.x = -1.0
+        f.health = 30
+    }
+    if at(300) {
+        assert(evc[Ev.Ko] == 1, "no KO through twin B")
+        assert(fight.phase == Phase.Ko || fight.phase == Phase.RoundOver, "the round did not end")
+        assert(f.mv == Mv.ko && p.mv == Mv.ko, "both twins did not fall")
+        ok("a hit on the partner, one twin a hit, a KO through twin B fells both")
+    }
+}
+
+private fn tw_check_thrown() {
+    let f = &fight.f[0]
+    let p = &fight.f[2]
+    if at(140) {
+        assert_eq(evc[Ev.Throw], 1, "the Hero did not throw twin A")
+        assert_eq(f.health, 1000 - dmg(0, Mv.throw), "the throw's damage")
+        print("twin A thrown, the bar ")
+        print_int(f.health)
+        println("")
+        tw_restart(Mech.Twins, Mech.Hero, 2.0)
+        fight.f[0].x = -6.0
+        fight.f[2].x = -0.5
+        frames = 150
+    }
+    if frames > 150 && frames < 200 && is_thrown(p.mv) && stage == 0 { stage = 1 }
+    if frames > 155 && frames < 175 { assert(f.mv != Mv.grab, "twin A grabbed instead of breaking") }
+    if at(260) {
+        assert(stage == 1, "the Hero did not grab twin B")
+        assert_eq(evc[Ev.Break], 1, "the player's Y did not break the grab on twin B")
+        assert_eq(evc[Ev.Throw], 0, "twin B was thrown")
+        assert_eq(fight.f[0].health, 1000, "damage from a broken grab")
+        tw_restart(Mech.Twins, Mech.Hero, 2.0)
+        tw_combined(0)
+        frames = 300
+    }
+    if at(440) {
+        assert_eq(evc[Ev.Throw], 1, "the Hero did not throw the combined form")
+        assert_eq(fight.f[0].health, 1000 - dmg(0, Mv.throw), "the throw on the combined form")
+        assert(fight.f[0].body == Mech.Twins, "the throw split the twins")
+        ok("throws on the Twins: twin A thrown, a grab on twin B broken, the combined form thrown")
+    }
+}
+
+private fn tw_check_throws() {
+    let h = &fight.f[1]
+    if at(140) {
+        assert_eq(evc[Ev.Throw], 1, "no Tag Toss")
+        assert_eq(h.health, 1000 - move_hit(Mech.TwinA, Mv.throw).dmg, "the Tag Toss's damage")
+        print("Tag Toss: the Hero thrown to ")
+        print_fixed(dist())
+        println(" m")
+        tw_restart(Mech.Twins, Mech.Hero, 2.0)
+        tw_combined(0)
+        frames = 150
+    }
+    if at(290) {
+        assert_eq(evc[Ev.Throw], 1, "no Binary Buster")
+        assert_eq(fight.f[1].health, 1000 - move_hit(Mech.Twins, Mv.throw).dmg, "the Binary Buster's damage")
+        print("Binary Buster: the Hero thrown to ")
+        print_fixed(dist())
+        println(" m")
+        ok("the Twins' throws, split and combined")
+    }
+}
+
+private fn tw_check_fusion() {
+    let f = &fight.f[0]
+    if tw_prev_freeze == 0 && f.body == Mech.Twins && fight.phase == Phase.Fight { tw_live += 1 }
+    tw_prev_freeze = fight.freeze
+    if frames < 50 { assert_eq(f.meter, 0, "the meter filled split") }
+    if at(45) { assert(evc_side[0][Ev.Hit] >= 2, "the split jabs did not land") }
+    if f.body == Mech.Twins && tw_at[0] == 0 { tw_at[0] = frames }
+    if at(110) {
+        assert(tw_at[0] > 0, "no combine")
+        assert_eq(f.meter, tw_live * FUS_REGEN, "the meter's fill combined")
+        print("combined: meter ")
+        print_int(f.meter)
+        print(" after ")
+        print_int(tw_live)
+        println(" frames of play")
+        tw_meter0 = f.meter
+        mark = tw_live
+    }
+    if at(160) {
+        assert_eq(evc_side[0][Ev.Hit] - mark2, 1, "the Coupler Jab missed")
+        assert_eq(f.meter, tw_meter0 + (tw_live - mark) * FUS_REGEN + FUS_HIT, "a combined hit's meter")
+    }
+    if at(110) { mark2 = evc_side[0][Ev.Hit] }
+    if at(199) {
+        tw_meter0 = f.meter
+        mark = tw_live
+    }
+    if at(300) {
+        assert(f.mv != Mv.sp_d, "Fusion Focus is still held")
+        assert_eq(f.meter, tw_meter0 + (tw_live - mark) * FUS_REGEN + ORB_CHARGE_MAX * FUS_FOCUS, "Fusion Focus's meter")
+        print("Fusion Focus: +")
+        print_int(ORB_CHARGE_MAX * FUS_FOCUS)
+        println(" held for 50 frames")
+    }
+    if at(360) { tw_meter0 = f.meter }
+    if at(460) {
+        assert(f.body == Mech.TwinA, "not split")
+        assert_eq(f.meter, tw_meter0, "the meter moved split")
+        print("meter after ")
+        print_int(frames)
+        print(" frames: ")
+        print_int(f.meter)
+        println("")
+        ok("the fusion meter fills only combined")
+    }
+}
+
+private fn tw_check_super() {
+    let h = &fight.f[1]
+    if evc[Ev.Super] == 1 && stage == 0 {
+        stage = 1
+        assert(fight.f[0].meter <= FUS_REGEN, "the bar was not spent")
+    }
+    if at(190) {
+        assert_eq(evc[Ev.Super], 1, "no Fusion Burst")
+        assert_eq(evc_side[0][Ev.Hit], 1, "the Fusion Burst missed")
+        assert_eq(h.health, 1000 - move_hit(Mech.Twins, Mv.super).dmg, "the Fusion Burst's damage")
+        tw_restart(Mech.Twins, Mech.Hero, 6.0)
+        fight.f[0].meter = METER_BAR
+        frames = 200
+    }
+    if at(204) { assert(!fight.f[0].super_ok, "the split twins have a super") }
+    if at(260) {
+        assert_eq(evc[Ev.Super], 0, "a super split")
+        assert_eq(fight.f[0].meter, METER_BAR, "the meter spent split")
+        ok("Fusion Burst combined; no super split")
+    }
+}
+
+private fn tw_check_cpu() {
+    if fight.phase == Phase.Fight && fight.phase_t == 1 { round_start = frames }
+    tw_sum = tw_sum * 31 + (fight.f[0].health as u32) * 7 + (fight.f[1].health as u32) + (fight.f[0].x as s32) as u32
+    if fight.phase == Phase.Ko && fight.phase_t == 1 {
+        print("  round ")
+        print_int(fight.round)
+        print(": ")
+        if fight.timer <= 0 { print("time up") } else { print("KO") }
+        print(" after ")
+        print_int((frames - round_start) / 60)
+        print(" s, winner ")
+        print_int(fight.round_winner)
+        print(", health ")
+        print_int(fight.f[0].health)
+        print(" / ")
+        print_int(fight.f[1].health)
+        println("")
+    }
+    if fight.phase == Phase.MatchOver {
+        print("run ")
+        print_int(tw_matches + 1)
+        print(": ")
+        print(MECH_NAMES[fight.f[0].mech])
+        print(" against ")
+        print(MECH_NAMES[fight.f[1].mech])
+        print(", winner ")
+        print_int(fight.winner)
+        print(" after ")
+        print_int(frames)
+        print(" frames; hits ")
+        print_int(evc_side[0][Ev.Hit])
+        print(" / ")
+        print_int(evc_side[1][Ev.Hit])
+        print(", form switches ")
+        print_int(tw_swaps)
+        print(", supers ")
+        print_int(evc_side[0][Ev.Super])
+        print(" / ")
+        print_int(evc_side[1][Ev.Super])
+        println("")
+        assert(tw_swaps > 0, "the CPU never switched forms")
+        tw_matches += 1
+        if tw_matches == 1 { tw_sum_first = tw_sum }
+        if tw_matches == 2 { assert(tw_sum == tw_sum_first, "the same match played twice differs") }
+        var a = Mech.Twins
+        var b = Mech.Hero
+        if tw_matches == 2 { a = Mech.Tank; b = Mech.Twins }
+        if tw_matches == 3 { b = Mech.Twins }
+        if tw_matches == 4 {
+            ok("CPU against CPU: the Twins' matches finish")
+            return
+        }
+        fight_init(a, b, FightMode.VsCpu, 2)
+        for k in 0..len(Ev) {
+            evc[k] = 0
+            evc_side[0][k] = 0
+            evc_side[1][k] = 0
+        }
+        tw_swaps = 0
+        tw_sum = 0
+        tw_prev_body[0] = fight.f[0].body
+        tw_prev_body[1] = fight.f[1].body
+        frames = 0
+    }
 }
