@@ -472,7 +472,9 @@ private fn draw_hint(c: s32, x: s32, y: s32) {
     if ROSTER[c].rule == RULE_BASES {
         let b = sb()
         str_append_int(b, 64, bases_cleared(), 0, false)
-        str_append(b, 64, " OF 4 CLEARED")
+        str_append(b, 64, " OF ")
+        str_append_int(b, 64, bases_in_game(), 0, false)
+        str_append(b, 64, " CLEARED")
         txt(FONT_MICRO, x, y + 44, b, C_NAVY, ALIGN_LEFT)
     }
 }

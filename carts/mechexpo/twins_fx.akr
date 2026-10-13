@@ -1,0 +1,122 @@
+// Mech Expo 2000: the Twins' drawing, effects and HUD meter (mx-twins-fight; MOVES.md, "The
+// Twins"). game.akr and hud.akr call these with a line each:
+//
+//   bodies     each fighter is drawn by its body (fight.f[s].body: the combined form or twin A);
+//              a split Twins' twin B, fight.f[s + 2], is drawn TW_Z behind the fight plane, so
+//              two overlapping twins read as two
+//   the swap   combine's and split's release frame, where the bodies swap: a white flash and a
+//              ring in the twins' colours over the root, hiding the change
+//   the camera frames all the bodies (twin B too)
+//   the meter  the HUD's fusion gauge: cyan with a white edge and two shimmer bands while
+//              combined, dimmed to silver while split (the meter stands still), SUPER when full
+//              and combined, L COMBINE when full and split
+
+const TW_Z: fixed = 1.2             // twin B is drawn this far behind the fight plane
+const TW_FLASH = 10                 // frames the swap's flash lasts
+const TW_A_COL: u32 = 0xFFE040      // twin A's accent, cyan (0xBBGGRR)
+const TW_B_COL: u32 = 0x60A0FF      // twin B's, until the model's colour is known: a warm amber
+
+// Whether the twins' bodies are still the exporter's stand-ins (no rig yet: the Hero's meshes),
+// drawn at the twins' size so the fight reads right until the models land.
+private fn twins_rigless() -> bool {
+    return AK_MESH[(Mech.TwinA as s32) * len(Part)] == AK_MESH[0]
+}
+
+// Draws a fighter's body (game.akr's draw path).
+fn twins_draw_body(body: Mech, mv: Mv, f: fixed, root: mat4) {
+    if (body == Mech.TwinA || body == Mech.TwinB) && twins_rigless() {
+        anim_draw(body, mv, f, root * mat4_scale(vec3(0.6, 0.6, 0.6)))
+        return
+    }
+    anim_draw(body, mv, f, root)
+}
+
+// A split Twins' twin B, drawn after the fighters.
+fn twins_fx_partners(f: *Fight) {
+    for s in 0..2 {
+        if !twins_on(s) { continue }
+        let p = &f.f[s + 2]
+        twins_draw_body(p.body, p.mv, p.frame, mat4_translate(vec3(0.0, 0.0, TW_Z)) * anim_place(vec2(p.x, p.y), p.facing))
+    }
+}
+
+// The camera over every body in the fight.
+fn twins_cam_follow(f: *Fight) {
+    if !twins_in_fight {
+        cam_follow(f.f[0].x, f.f[0].y, f.f[1].x, f.f[1].y, f.shake)
+        return
+    }
+    var x0 = min(f.f[0].x, f.f[1].x)
+    var x1 = max(f.f[0].x, f.f[1].x)
+    var y = max(f.f[0].y, f.f[1].y)
+    for s in 0..2 {
+        if !twins_on(s) { continue }
+        let p = &f.f[s + 2]
+        x0 = min(x0, p.x)
+        x1 = max(x1, p.x)
+        y = max(y, p.y)
+    }
+    cam_follow(x0, y, x1, y, f.shake)
+}
+
+// The swap's flash (after the mechs, on the interface list).
+fn twins_fx_draw(f: *Fight) {
+    if !twins_in_fight { return }
+    for s in 0..2 {
+        let t = f.ticks - tw_swap_tick[s]
+        if t < 0 || t >= TW_FLASH { continue }
+        let fi = &f.f[s]
+        let c = vec3(fi.x, fi.y + 5.0, -1.2)
+        let q = project_point(c)
+        if q.z < 0 { continue }
+        let fade = 1.0 - fixed(t) / TW_FLASH
+        let px = fx_px(c, 9.0 + fixed(t) * 0.6)
+        fx_sprite(&FX_GLOW[0], q.x, q.y, px, px * 3 / 2, col_scale(0xFFFFFF, fade), BLEND_ADD)
+        let d = (fixed(px) * (0.5 + fixed(t) / TW_FLASH)) as s32
+        fx_sprite(&FX_RING[0], q.x, q.y, d, d, col_scale(TW_A_COL, fade), BLEND_ADD)
+        fx_sprite(&FX_RING[0], q.x, q.y, d * 3 / 4, d * 3 / 4, col_scale(TW_B_COL, fade), BLEND_ADD)
+    }
+}
+
+// The partners' boxes (training's box view).
+fn twins_fx_boxes(f: *Fight) {
+    for s in 0..2 {
+        if !twins_on(s) { continue }
+        let p = &f.f[s + 2]
+        anim_draw_boxes(p.body, p.mv, p.frame as s32, vec2(p.x, p.y), p.facing)
+    }
+}
+
+// The fusion meter's fill in its bezel (hud.akr's draw_meter calls it for the Twins).
+fn twins_meter_hud(fi: *Fighter, s: s32, x0: s32, w: s32, l: s32, y: s32, h: s32) {
+    span_quad(s, x0, w, y, h, 0, l, 0x402010, 0x100804, BLEND_HALF)
+    let m = clamp(fi.meter, 0, METER_BAR)
+    let n = m * l / METER_BAR
+    let full = fi.meter >= METER_BAR
+    let combined = fi.body == Mech.Twins
+    if !combined {
+        // split: the reactor is off; the fill dimmed to silver, no shimmer
+        span_quad(s, x0, w, y, h, 0, n, 0xA0A0A0, 0x606060, BLEND_NONE)
+    } else if full && (hud_tick >> 2) & 1 == 0 {
+        span_quad(s, x0, w, y, h, 0, l, 0xFFFFFF, 0xFFF0C0, BLEND_NONE)
+    } else {
+        span_quad(s, x0, w, y, h, 0, n, 0xFFF080, 0xC09018, BLEND_NONE)
+        // two shimmer bands, twin A's and twin B's colours, running along the fill
+        let speed = 1 + n / 20
+        let o1 = (hud_tick * speed) % max(l, 1)
+        let o2 = (hud_tick * speed + l / 2) % max(l, 1)
+        if o1 + 4 < n { span_quad(s, x0, w, y, h, o1, o1 + 4, TW_A_COL, TW_A_COL, BLEND_HALF) }
+        if o2 + 4 < n { span_quad(s, x0, w, y, h, o2, o2 + 4, TW_B_COL, TW_B_COL, BLEND_HALF) }
+        if n > 2 { span_quad(s, x0, w, y, h, n - 2, n, 0xFFFFFF, 0xFFFFFF, BLEND_NONE) }
+    }
+    if full {
+        var lx = x0 + w + 4
+        var al = ALIGN_LEFT
+        if s == 1 {
+            lx = x0 - 4
+            al = ALIGN_RIGHT
+        }
+        if combined { txt(FONT_LABEL, lx, y - 13, "SUPER", TW_A_COL, al) }
+        else if (hud_tick >> 4) & 1 == 0 { txt(FONT_LABEL, lx, y - 13, "L COMBINE", C_WHITE, al) }
+    }
+}

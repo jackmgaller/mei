@@ -142,6 +142,10 @@ private fn draw_meter(f: *Fight, s: s32) {
     var ix = x0 - 21
     if s == 1 { ix = x0 + w + 5 }
     ui_power_icon(mech_src(fi.mech), ix, y - 4)
+    if fi.mech == Mech.Twins {
+        twins_meter_hud(fi, s, x0, w, l, y, h)      // fusion (twins_fx.akr)
+        return
+    }
     if meter_power(fi.mech) == Power.Chemical {
         draw_chemical(fi, s, x0, w, l, y, h)
         return

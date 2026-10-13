@@ -6,6 +6,7 @@
 import "anim.akr"
 import "beam_moves.akr"     // Beam's tables (mx-beam)
 import "tank.akr"               // Tank's data (mx-tank)
+import "twins.akr"              // the Twins' data and rules (mx-twins-fight)
 
 // The stand-in data (below) is used for every move anim.akr still stands in for (it holds the
 // guard pose there: anim_standin()), and for all of them while STANDIN_ALL is set.
@@ -87,6 +88,7 @@ fn move_hit(m: Mech, mv: Mv) -> Hit {
         }
     }
     if m == Mech.Tank { return tank_hit(mv) }
+    if m >= Mech.Twins { return twins_hit(m, mv) }
     return match mv {
         atk_n => Hit { dmg: 60, hitstun: 17, blockstun: 12, stop: 7, kb: 0.09 }
         atk_f => Hit { dmg: 100, hitstun: 24, blockstun: 17, stop: 10, power: 1, kb: 0.13 }
@@ -176,6 +178,10 @@ fn mv_boxes(m: Mech, mv: Mv, f: s32, out: *Boxes) {
     }
     if m == Mech.Tank {
         tank_boxes(mv, f, out)
+        return
+    }
+    if m >= Mech.Twins {
+        twins_boxes(m, mv, f, out)
         return
     }
     let t = tm(m, mv)
@@ -272,6 +278,7 @@ fn tm(m: Mech, mv: Mv) -> Tm {
         }
     }
     if m == Mech.Tank { return tank_tm(mv) }
+    if m >= Mech.Twins { return twins_tm(m, mv) }
     return match mv {
         idle => Tm { len: 60, loops: true }
         walk_f, walk_b => Tm { len: 40, loops: true }

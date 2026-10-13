@@ -1,0 +1,547 @@
+// Mech Expo 2000: the Twins (mx-twins-fight). Binary Mechanica's two-in-one mech (MOVES.md, "The
+// Twins"): what its hits do in both forms, its stand-in timings and boxes until its animations
+// land (moves.akr asks here for Mech.Twins, TwinA and TwinB), and the fight's Twins rules: the
+// split form's partner, combining and splitting on L, the fusion meter's fills. The fight calls
+// these with a line each (fight.akr, fighter.akr); the drawing and the HUD meter are
+// twins_fx.akr's.
+//
+// One fighter, three bodies. The fighter (fight.f[s], mech Twins) is twin A, the leader, while
+// split (body TwinA) and the combined form while combined (body Twins). Split, its partner twin
+// B is a second body, fight.f[s + 2] (body TwinB): its own position, move, frame, facing and
+// boxes, playing the leader's pad TW_DELAY frames late. Its hits are the fighter's; hits on it
+// come off the fighter's one health bar.
+//
+// Frames here count from 0 (MOVES.md's tables count from 1).
+
+import "moves.akr"
+import "fight.akr"
+
+const TW_DELAY = 6                  // the partner plays the leader's pad this many frames late
+const TW_HIST = 8                   // the pad history kept (more than TW_DELAY)
+const TW_SPOT: fixed = 2.5          // the partner's spot, behind the leader
+const TW_NEAR: fixed = 1.0          // it walks back to its spot when further than this ...
+const TW_FAR: fixed = 4.0           // ... and whatever the stick says when further than this
+const TW_LEASH: fixed = 8.0         // never further than this from the leader
+const TW_RUN_IN = 12                // combine: twin B's root slides to twin A's over these frames
+const TW_HOP_AT = 12                // split: twin B hops back to its spot over the frames from
+const TW_HOP = 12                   // the swap (12) for 12 frames
+const TW_COMBINE_SWAP = 23          // the swap frames (the `release` mark) when the data has none
+const TW_SPLIT_SWAP = 12
+
+// the pad bits the partner copies (not Y, L or START)
+const TW_COPY: u32 = UP | DOWN | LEFT | RIGHT | A | B | X | R
+
+// the fusion meter (meter.akr's METER_BAR is a bar)
+const FUS_REGEN = 1                 // a frame, while combined: a bar in 20 s
+const FUS_HIT = 60                  // a combined hit that lands: 5 %
+const FUS_FOCUS = 6                 // a frame of Fusion Focus held: a quarter bar in its 50 frames
+
+var twins_in_fight: bool            // a side is the Twins (fight_init)
+var tw_pad: [2][TW_HIST]u32         // the leaders' pads (forward is RIGHT), a frame of play each
+var tw_press: [2][TW_HIST]u32       // and the presses in that frame
+var tw_head: [2]s32
+var tw_prev: [2]u32
+var tw_acc: [2]u32                  // presses since the last frame of play (the freezes)
+var tw_from: [2]fixed               // where twin B's slide in (or hop out) began
+var tw_swap_tick: [2]s32            // fight.ticks of the last swap of bodies (the flash), or -1000
+
+// Whether side s is the split Twins (its partner, body s + 2, is in the fight).
+fn twins_on(s: s32) -> bool { return twins_in_fight && fight.f[s].body == Mech.TwinA }
+
+fn twins_init() {
+    twins_in_fight = fight.f[0].mech == Mech.Twins || fight.f[1].mech == Mech.Twins
+    tw_swap_tick[0] = -1000
+    tw_swap_tick[1] = -1000
+}
+
+// The start of a round: the Twins start split, twin B on its spot behind twin A.
+fn twins_reset() {
+    for s in 0..2 {
+        let f = &fight.f[s]
+        if f.mech != Mech.Twins { continue }
+        f.body = Mech.TwinA
+        partner_on(s, f.x - fixed(f.facing) * TW_SPOT)
+        tw_swap_tick[s] = -1000
+    }
+}
+
+// Puts side s's partner in the fight at x, idle, its pad history cleared.
+private fn partner_on(s: s32, x: fixed) {
+    let f = &fight.f[s]
+    let p = s + 2
+    fight.f[p] = Fighter { mech: Mech.Twins, body: Mech.TwinB, x: x, facing: f.facing,
+                           health: f.health, health_max: f.health_max }
+    fx_clear(p)
+    vic[p] = other(p)
+    for k in 0..TW_HIST {
+        tw_pad[s][k] = 0
+        tw_press[s][k] = 0
+    }
+    tw_acc[s] = 0
+}
+
+// The leaders' moves at the round's phases (intro, win): the partners play them too.
+fn twins_copy_mv(mv: Mv) {
+    for s in 0..2 {
+        if twins_on(s) { set_mv(s + 2, mv) }
+    }
+}
+
+// ---- the partner's pad
+
+// Left and right swapped (the history keeps forward as RIGHT).
+private fn mirror(pad: u32) -> u32 {
+    var p = pad & ~(LEFT | RIGHT)
+    if pad & LEFT != 0 { p |= RIGHT }
+    if pad & RIGHT != 0 { p |= LEFT }
+    return p
+}
+
+// Every tick, after the leaders' input: their presses (kept through the freezes).
+fn twins_record() {
+    for s in 0..2 {
+        if fight.f[s].mech != Mech.Twins { continue }
+        let pad = fx[s].pad
+        tw_acc[s] |= pad & ~tw_prev[s]
+        tw_prev[s] = pad
+    }
+}
+
+// Each frame of play: the leaders' pads go into the history, and each partner gets its copy
+// from TW_DELAY frames ago, steered back toward its spot when it is off it.
+fn twins_feed(live: bool) {
+    for s in 0..2 {
+        let f = &fight.f[s]
+        if f.mech != Mech.Twins { continue }
+        var pad = fx[s].pad & TW_COPY
+        var press = tw_acc[s] & TW_COPY
+        tw_acc[s] = 0
+        if f.facing < 0 {
+            pad = mirror(pad)
+            press = mirror(press)
+        }
+        tw_head[s] = (tw_head[s] + 1) % TW_HIST
+        tw_pad[s][tw_head[s]] = pad
+        tw_press[s][tw_head[s]] = press
+        if !twins_on(s) { continue }
+        let p = s + 2
+        let k = (tw_head[s] - TW_DELAY + TW_HIST) % TW_HIST
+        var cp = tw_pad[s][k]
+        var cq = tw_press[s][k]
+        let pf = &fight.f[p]
+        if pf.facing < 0 {
+            cp = mirror(cp)
+            cq = mirror(cq)
+        }
+        if !live {
+            cp = 0
+            cq = 0
+        }
+        // following: back to its spot (not while a button comes out: it would change the move)
+        if live && cq == 0 && actionable(p) && fight.f[s].mv != Mv.combine {
+            let d = f.x - fixed(f.facing) * TW_SPOT - pf.x
+            var toward: u32 = LEFT
+            if d > 0.0 { toward = RIGHT }
+            if abs(d) > TW_FAR {
+                cp = (cp & ~(LEFT | RIGHT | DOWN)) | toward
+            } else if abs(d) > TW_NEAR && (cp & (LEFT | RIGHT | UP | DOWN)) == 0 {
+                cp |= toward
+            }
+        }
+        fighter_pad(p, cp, cq)
+        fighter_age_input(p)
+    }
+}
+
+// ---- each frame: the partners, combining and splitting
+
+private fn swap_frame(m: Mech, mv: Mv) -> s32 {
+    let k = find_mark(m, mv, MARK_RELEASE)
+    if k >= 0 { return k }
+    if mv == Mv.combine { return TW_COMBINE_SWAP }
+    return TW_SPLIT_SWAP
+}
+
+// After the leaders' frame: the partners' frame, then the forms.
+fn twins_tick(live: bool) {
+    for s in 0..2 {
+        let f = &fight.f[s]
+        if f.mech != Mech.Twins { continue }
+        let p = s + 2
+        let pf = &fight.f[p]
+        if f.body == Mech.TwinA {
+            fighter_tick(p, live)
+            if f.mv == Mv.combine {
+                if fx[s].t >= swap_frame(Mech.TwinA, Mv.combine) {
+                    // the flash: the combined form from here, on twin A's root
+                    f.body = Mech.Twins
+                    tw_swap_tick[s] = fight.ticks
+                    continue
+                }
+                if pf.mv != Mv.combine {
+                    to_neutral(s)               // twin B was hit: twin A stands back up
+                } else {
+                    let k = fixed(min(fx[p].t, TW_RUN_IN)) / TW_RUN_IN
+                    pf.x = tw_from[s] + (f.x - tw_from[s]) * k
+                    pf.y = 0.0
+                }
+            } else if pf.mv == Mv.combine {
+                to_neutral(p)                   // twin A was hit: twin B stands back up
+            }
+            if pf.mv == Mv.split {
+                let k = clamp(fixed(fx[p].t - TW_HOP_AT) / TW_HOP, 0.0, 1.0)
+                pf.x = tw_from[s] + (f.x - fixed(f.facing) * TW_SPOT - tw_from[s]) * k
+            }
+        } else if f.mv == Mv.split && fx[s].t >= swap_frame(Mech.Twins, Mv.split) {
+            // the flash: twin A and twin B from here, docked on the root, twin B hopping back
+            f.body = Mech.TwinA
+            partner_on(s, f.x)
+            set_mv(p, Mv.split)
+            fx[p].t = fx[s].t
+            tw_from[s] = f.x
+            tw_swap_tick[s] = fight.ticks
+        }
+    }
+}
+
+// L, when the leader i can act (fighter.akr's decide): combine or split. Whether it started.
+fn twins_switch(i: s32) -> bool {
+    let x = &fx[i]
+    if x.l_age > BUF { return false }
+    let f = &fight.f[i]
+    if f.body == Mech.Twins {
+        x.l_age = NO_PRESS
+        set_mv(i, Mv.split)
+        return true
+    }
+    let p = i + 2
+    if !actionable(p) { return false }          // twin B busy: L waits in the buffer
+    x.l_age = NO_PRESS
+    set_mv(i, Mv.combine)
+    set_mv(p, Mv.combine)
+    x.slide = 0.0
+    fx[p].slide = 0.0
+    tw_from[i] = fight.f[p].x
+    return true
+}
+
+// Whether leader i's Y is for breaking a grab on its partner (not for its own grab).
+fn twins_y_breaks(i: s32) -> bool {
+    if !twins_on(i) { return false }
+    return is_thrown(fight.f[i + 2].mv) && fx[i + 2].break_t > 0
+}
+
+// Knocked out: both twins fall (j is the body that took the last hit).
+fn twins_ko(j: s32) {
+    let s = j & 1
+    if !twins_on(s) { return }
+    var b = s
+    if j == s { b = s + 2 }
+    ko_body(b)
+}
+
+// ---- the throws: the Tag Toss (split) and the Binary Buster (combined)
+
+// Thrower i (the Twins) holding body j at frame t of its throw.
+fn twins_hold(i: s32, j: s32, t: s32) {
+    let f = &fight.f[i]
+    let o = &fight.f[j]
+    let ft = fixed(f.facing)
+    if f.body == Mech.TwinA {
+        o.x = f.x + ft * 2.6                    // swung round by the wrist and waist
+        o.y = min(fixed(t) * 0.1, 2.0)
+    } else {
+        o.x = f.x + ft * 3.4                    // lifted overhead
+        o.y = min(fixed(t) * 0.1, 3.0)
+    }
+}
+
+fn twins_toss_vx(body: Mech) -> fixed {
+    if body == Mech.TwinA { return 0.26 }       // about 8 m
+    return 0.30                                 // about 9 m
+}
+
+// ---- collisions with four bodies (fighter.akr's collide() for a fight with the Twins)
+
+fn twins_load_boxes() {
+    for s in 0..2 {
+        let p = s + 2
+        if twins_on(s) {
+            let f = &fight.f[p]
+            mv_boxes(f.body, f.mv, cur_frame(p), &fbox[p])
+        } else {
+            fbox[p].n = 0
+        }
+    }
+}
+
+// Each body's hit boxes against the other side: its fighter first, then its partner (a hit
+// lands on one body); all are found before any is resolved, as two fighters' are.
+fn twins_collide() {
+    var r: [4]s32
+    var tg: [4]s32
+    var h: [4]Hit
+    var mvs: [4]Mv
+    for a in 0..4 {
+        r[a] = R_NONE
+        tg[a] = -1
+        if a >= 2 && !twins_on(a - 2) { continue }
+        let j = other(a)
+        r[a] = strike(a, j)
+        tg[a] = j
+        if r[a] == R_NONE && twins_on(j) {
+            r[a] = strike(a, j + 2)
+            tg[a] = j + 2
+        }
+    }
+    if r[0] == R_GRAB && r[1] == R_GRAB && tg[0] == 1 && tg[1] == 0 {
+        ev_add(Ev.Grab, 0, (fight.f[0].x + fight.f[1].x) / 2, 6.0, 0)
+        vic[0] = 1
+        grab_break(0)
+        return
+    }
+    for a in 0..4 {
+        h[a] = move_hit(fight.f[a].body, fight.f[a].mv)
+        mvs[a] = fight.f[a].mv
+    }
+    for a in 0..4 {
+        if tg[a] >= 0 { resolve(a, tg[a], r[a], h[a], mvs[a]) }
+    }
+}
+
+// ---- the partners' bounds (after fighter.akr's bound())
+
+fn twins_bound() {
+    for s in 0..2 {
+        if !twins_on(s) { continue }
+        let p = s + 2
+        let pf = &fight.f[p]
+        let lf = &fight.f[s]
+        let j = other(s)
+        let o = &fight.f[j]
+        // held by a thrower, or placed by combine and split: the fight's placing stands
+        if is_thrown(pf.mv) || pf.mv == Mv.combine || pf.mv == Mv.split { continue }
+        // out of the other mech's way, on its own side; the other mech is never moved
+        let busy = o.mv == Mv.throw || tank_holding(j)
+        let need = push_half(p) + push_half(j)
+        if !busy && grounded(p) && grounded(j) && push_half(p) > 0.0 && push_half(j) > 0.0
+            && abs(pf.x - o.x) < need {
+            var sd = sgn(pf.x - o.x)
+            if sd == 0 { sd = sgn(lf.x - o.x) }
+            if sd == 0 { sd = -o.facing }
+            pf.x = o.x + fixed(sd) * need
+        }
+        // the leash, the separation limit, the walls
+        if abs(pf.x - lf.x) > TW_LEASH {
+            pf.x = lf.x + fixed(sgn(pf.x - lf.x)) * TW_LEASH
+            fx[p].slide = 0.0
+        }
+        if abs(pf.x - o.x) > FIGHT_MAX_SEP {
+            pf.x = o.x + fixed(sgn(pf.x - o.x)) * FIGHT_MAX_SEP
+            fx[p].slide = 0.0
+        }
+        if wall_clamp(p) != 0.0 { fx[p].slide = 0.0 }
+    }
+}
+
+// ---- the fusion meter (meter.akr calls these for Power.Fusion)
+
+// Fills only while combined.
+fn fusion_tick(f: *Fighter) {
+    if f.body == Mech.Twins { meter_add(f, FUS_REGEN) }
+}
+
+fn fusion_on_hit(f: *Fighter, landed: bool) {
+    if landed && f.body == Mech.Twins { meter_add(f, FUS_HIT) }
+}
+
+fn fusion_can_super(f: *Fighter) -> bool { return f.body == Mech.Twins && f.meter >= METER_BAR }
+
+// A frame of Fusion Focus held (fighter.akr's charge frame).
+fn twins_focus(f: *Fighter) {
+    if f.body == Mech.Twins { meter_add(f, FUS_FOCUS) }
+}
+
+// ---- what the Twins' hits do (MOVES.md's tables)
+
+fn twins_hit(m: Mech, mv: Mv) -> Hit {
+    if m == Mech.Twins {
+        return match mv {
+            atk_n => Hit { dmg: 75, hitstun: 18, blockstun: 13, stop: 8, kb: 0.10 }
+            atk_f => Hit { dmg: 125, hitstun: 26, blockstun: 18, stop: 11, power: 1, kb: 0.14 }
+            atk_d => Hit { dmg: 90, blockstun: 16, stop: 11, power: 1, kb: 0.10, kd: true, launch: 0.30 }
+            atk_air => Hit { dmg: 100, hitstun: 20, blockstun: 15, stop: 11, power: 1, kb: 0.08 }
+            sp_n => Hit { dmg: 100, chip: 20, blockstun: 16, stop: 12, power: 2, kb: 0.18, kd: true, launch: 0.40 }
+            sp_f => Hit { dmg: 130, chip: 26, blockstun: 16, stop: 12, power: 2, kb: 0.20, kd: true, launch: 0.35 }
+            sp_u => Hit { dmg: 120, chip: 24, blockstun: 14, stop: 12, power: 2, kb: 0.10, kd: true, launch: 0.55 }
+            throw => Hit { dmg: 140, stop: 10, power: 2, kd: true, launch: 0.30 }
+            super => Hit { dmg: 330, chip: 80, blockstun: 20, stop: 20, power: 3, kb: 0.25, kd: true, launch: 0.60 }
+            else => HIT_NONE
+        }
+    }
+    // twin A and twin B: one twin's hit (the partner's copy is a second hit)
+    return match mv {
+        atk_n => Hit { dmg: 40, hitstun: 15, blockstun: 11, stop: 7, kb: 0.08 }
+        atk_f => Hit { dmg: 60, hitstun: 22, blockstun: 16, stop: 9, power: 1, kb: 0.11 }
+        atk_d => Hit { dmg: 55, blockstun: 14, stop: 9, power: 1, kb: 0.08, kd: true, launch: 0.28 }
+        atk_air => Hit { dmg: 50, hitstun: 16, blockstun: 12, stop: 9, power: 1, kb: 0.07 }
+        sp_n => Hit { dmg: 45, chip: 9, hitstun: 18, blockstun: 14, stop: 9, power: 1, kb: 0.10 }
+        sp_f => Hit { dmg: 80, chip: 16, blockstun: 14, stop: 11, power: 2, kb: 0.16, kd: true, launch: 0.32 }
+        sp_u => Hit { dmg: 70, chip: 14, blockstun: 12, stop: 11, power: 2, kb: 0.08, kd: true, launch: 0.50 }
+        throw => Hit { dmg: 100, stop: 10, power: 2, kd: true, launch: 0.30 }
+        else => HIT_NONE
+    }
+}
+
+// ---- the stand-in timings (MOVES.md's tables, 0-based)
+
+fn twins_tm(m: Mech, mv: Mv) -> Tm {
+    // both forms: switching
+    if mv == Mv.combine { return Tm { len: 36, rel: TW_COMBINE_SWAP, i0: 23, i1: 29 } }
+    if mv == Mv.split { return Tm { len: 30, rel: TW_SPLIT_SWAP, i0: 12, i1: 17 } }
+    if m == Mech.Twins {
+        return match mv {
+            idle => Tm { len: 60, loops: true }
+            walk_f, walk_b => Tm { len: 44, loops: true }
+            crouch => Tm { len: 8, loops: true, shape: 1 }
+            jump => Tm { len: 42, shape: 2 }
+            atk_n => Tm { len: 23, a0: 6, a1: 8, hx0: 1.8, hy0: 6.0, hx1: 6.6, hy1: 9.0, c1: 14, reach: 3.5 }
+            atk_f => Tm { len: 36, a0: 12, a1: 15, hx0: 2.5, hy0: 6.0, hx1: 8.4, hy1: 8.5, c1: 21,
+                          m0: 3, m1: 11, dx: 0.111112, reach: 5.0 }
+            atk_d => Tm { len: 37, a0: 10, a1: 13, hx0: 1.8, hy0: 0.0, hx1: 7.4, hy1: 2.0, shape: 1, reach: 4.0 }
+            atk_air => Tm { len: 30, a0: 7, a1: 29, hx0: 0.5, hy0: -2.0, hx1: 5.5, hy1: 3.5, shape: 2 }
+            sp_n => Tm { len: 42, a0: 10, a1: 19, hx0: -5.0, hy0: 4.0, hx1: 5.0, hy1: 9.0, m0: 10, m1: 19, dx: 0.15 }
+            sp_f => Tm { len: 42, a0: 14, a1: 17, hx0: 1.0, hy0: 4.0, hx1: 6.5, hy1: 9.0,
+                         m0: 3, m1: 12, dx: 0.5, reach: 3.0 }
+            sp_u => Tm { len: 40, a0: 5, a1: 12, hx0: 0.5, hy0: 4.0, hx1: 5.0, hy1: 13.0, i0: 0, i1: 5,
+                         m0: 5, m1: 12, dx: 0.05, dy: 0.5625, n0: 13, n1: 39, ey: -0.166667 }
+            sp_d => Tm { len: 20, ch: 7 }
+            grab => Tm { len: 7, a0: 5, a1: 6, hx0: 1.0, hy0: 2.0, hx1: 3.8, hy1: 10.0 }
+            throw => Tm { len: 44, rel: 29 }
+            thrown => Tm { len: 44, rel: 30 }
+            thrown_vault => Tm { len: 40, rel: 28 }
+            super => Tm { len: 94, a0: 46, a1: 55, hx0: 0.0, hy0: 2.0, hx1: 7.5, hy1: 10.5, flash: 40,
+                          i0: 0, i1: 45, m0: 40, m1: 46, dx: 1.714286 }
+            else => common_tm(mv)
+        }
+    }
+    return match mv {
+        idle => Tm { len: 60, loops: true }
+        walk_f, walk_b => Tm { len: 32, loops: true }
+        crouch => Tm { len: 8, loops: true, shape: 1 }
+        jump => Tm { len: 37, shape: 2 }
+        land => Tm { len: 6 }
+        atk_n => Tm { len: 16, a0: 4, a1: 5, hx0: 1.0, hy0: 3.8, hx1: 4.4, hy1: 6.2, c1: 11, reach: 2.5 }
+        atk_f => Tm { len: 27, a0: 9, a1: 11, hx0: 1.2, hy0: 2.4, hx1: 5.8, hy1: 4.8, c1: 17,
+                      m0: 2, m1: 9, dx: 0.125, reach: 3.5 }
+        atk_d => Tm { len: 28, a0: 7, a1: 9, hx0: 1.0, hy0: 0.0, hx1: 5.0, hy1: 1.6, shape: 1, reach: 3.0 }
+        atk_air => Tm { len: 24, a0: 5, a1: 23, hx0: 0.3, hy0: -2.0, hx1: 3.8, hy1: 1.8, shape: 2 }
+        sp_n => Tm { len: 34, a0: 8, a1: 17, hx0: -3.2, hy0: 1.5, hx1: 3.2, hy1: 6.0 }
+        sp_f => Tm { len: 32, a0: 10, a1: 13, hx0: 0.8, hy0: 2.0, hx1: 4.6, hy1: 5.5,
+                     m0: 2, m1: 11, dx: 0.55, reach: 3.0 }
+        sp_u => Tm { len: 34, a0: 4, a1: 11, hx0: 0.3, hy0: 2.0, hx1: 3.6, hy1: 8.0, i0: 0, i1: 4,
+                     m0: 4, m1: 11, dx: 0.05, dy: 0.5625, n0: 12, n1: 33, ey: -0.204546 }
+        sp_d => Tm { len: 28, m0: 2, m1: 19, dx: 0.333334, shape: 3 }
+        grab => Tm { len: 6, a0: 4, a1: 5, hx0: 0.8, hy0: 1.0, hx1: 3.2, hy1: 7.0 }
+        grab_whiff => Tm { len: 18 }
+        throw => Tm { len: 36, rel: 23 }
+        thrown => Tm { len: 44, rel: 30 }
+        thrown_vault => Tm { len: 40, rel: 28 }
+        else => common_tm(mv)
+    }
+}
+
+// The stand-in boxes: the combined form a 12 m mech, each twin a 7.2 m one.
+fn twins_boxes(m: Mech, mv: Mv, f: s32, out: *Boxes) {
+    let t = twins_tm(m, mv)
+    var shape = t.shape
+    out.n = 0
+    // the size: half width, height; crouching, air and lying heights
+    var hw = 1.8
+    var ht = 12.0
+    var pw = STATS[m].push
+    var ph = 11.5
+    var k = 1.0                     // the twins' boxes are 0.6 of the combined form's
+    if m != Mech.Twins {
+        hw = 1.2
+        ht = 7.4
+        ph = 7.0
+        k = 0.6
+        // the Low Roll is low only while it rolls
+        if mv == Mv.sp_d && (f < t.m0 || f > t.m1 + 2) { shape = 0 }
+    }
+    var hx0 = -hw
+    var hx1 = hw
+    var hy0 = 0.0
+    var hy1 = ht
+    var py1 = ph
+    match shape {
+        1 => { hy1 = ht * 2 / 3; py1 = ph * 2 / 3 }
+        2 => { hy0 = 1.0 * k; hy1 = ht - 1.0 * k }
+        3 => { hx0 = -1.5; hx1 = 1.5; hy1 = 3.0; py1 = 3.0 }
+        4 => { hx0 = -5.0 * k; hx1 = 5.0 * k; hy1 = 2.0 * k; py1 = 2.0 * k }
+        else => {}
+    }
+    tw_box(out, BOX_HURT, hx0, hy0, hx1, hy1)
+    tw_box(out, BOX_PUSH, -pw, 0.0, pw, py1)
+    if t.a0 >= 0 && f >= t.a0 && f <= t.a1 { tw_box(out, BOX_HIT, t.hx0, t.hy0, t.hx1, t.hy1) }
+    // the arm or leg reaching out: hurtable from the first active frame until it comes back
+    if t.reach > 0.0 && f >= t.a0 && f <= t.a1 + 10 {
+        tw_box(out, BOX_HURT, 0.0, t.hy0 - 0.6 * k, t.reach, t.hy1 + 0.6 * k)
+    }
+}
+
+private fn tw_box(out: *Boxes, kind: u8, x0: fixed, y0: fixed, x1: fixed, y1: fixed) {
+    out.b[out.n] = Box { kind: kind, x0: x0, y0: y0, x1: x1, y1: y1 }
+    out.n += 1
+}
+
+// ---- the training move list: the form the Twins are in now (each fits MOVES_MAX)
+
+const TWINS_SPLIT_MOVES = MoveList { n: 15, e: [
+    MoveEntry { name: "Bit Jab", input: "A" },
+    MoveEntry { name: "Byte Kick", input: "FWD + A" },
+    MoveEntry { name: "Low Bit", input: "DOWN + A" },
+    MoveEntry { name: "Drop Kick", input: "A in the air" },
+    MoveEntry { name: "Pulse Spin", input: "B" },
+    MoveEntry { name: "Dash Kick", input: "FWD + B" },
+    MoveEntry { name: "Rising Kick", input: "UP + B" },
+    MoveEntry { name: "Low Roll", input: "DOWN + B" },
+    MoveEntry { name: "Tag Toss", input: "Y" },
+    MoveEntry { name: "Break a grab", input: "Y when grabbed" },
+    MoveEntry { name: "Combine", input: "L (the meter fills combined)" },
+    MoveEntry { name: "Block", input: "hold R" },
+    MoveEntry { name: "Jump", input: "X (+ FWD or BACK)" },
+    MoveEntry { name: "Chain", input: "A, FWD + A, B" },
+    MoveEntry { name: "Twin B", input: "copies twin A, a beat late" },
+    MoveEntry {}
+] }
+
+const TWINS_COMBINED_MOVES = MoveList { n: 15, e: [
+    MoveEntry { name: "Coupler Jab", input: "A" },
+    MoveEntry { name: "Fusion Straight", input: "FWD + A" },
+    MoveEntry { name: "Sweep Kick", input: "DOWN + A" },
+    MoveEntry { name: "Hammer Drop", input: "A in the air" },
+    MoveEntry { name: "Binary Lariat", input: "B" },
+    MoveEntry { name: "Coupling Rush", input: "FWD + B" },
+    MoveEntry { name: "Twin Drill", input: "UP + B" },
+    MoveEntry { name: "Fusion Focus", input: "DOWN + B (hold)" },
+    MoveEntry { name: "Binary Buster", input: "Y" },
+    MoveEntry { name: "Break a grab", input: "Y when grabbed" },
+    MoveEntry { name: "Fusion Burst", input: "A + B, one bar" },
+    MoveEntry { name: "Split", input: "L" },
+    MoveEntry { name: "Block", input: "hold R" },
+    MoveEntry { name: "Jump", input: "X (+ FWD or BACK)" },
+    MoveEntry { name: "Fusion meter", input: "fills only combined" },
+    MoveEntry {}
+] }
+
+var tw_list: MoveList
+
+fn twins_moves() -> *MoveList {
+    var s = 0
+    if fight.f[0].mech != Mech.Twins { s = 1 }
+    if fight.f[s].mech == Mech.Twins && fight.f[s].body == Mech.Twins { tw_list = TWINS_COMBINED_MOVES }
+    else { tw_list = TWINS_SPLIT_MOVES }
+    return &tw_list
+}

@@ -71,7 +71,8 @@ const MAKERS: [5]Maker = [
 // Unlock rules.
 const RULE_OPEN = 0                 // on show from the start
 const RULE_CLEAR = 1                // clear the arcade with the mech in slot `arg`
-const RULE_BASES = 2                // clear the arcade with each of the four base mechs (slots 0-3)
+const RULE_BASES = 2                // clear the arcade with each base mech in the game (slots 0-3 with a
+                                    // mech: Shadow joins the rule when its slot gets one)
 
 // save.unlocked (save.akr): bit `bit` of a slot is set once it is unlocked (the Double-blade
 // Hero keeps bit 0, the MVP's UNLOCK_ECHO); bit CLEAR_SHIFT + slot once the arcade has been
@@ -124,10 +125,10 @@ const ROSTER: [10]Slot = [
            emblem: UI_EMBLEM_HEARTLAND, emblem24: UI_EMBLEM24_HEARTLAND, epal: PAL_POWER,
            name: "TANK", short: "TANK", card: "TANK", model: "HA-57", height: 102, width: 95, stats: 0x5125,
            blurb: "TREADS, ARMOUR,\nCOMMAND GRABS", hint: "" },
-    Slot { maker: CO_BINARY, rule: RULE_BASES, bit: 0x10, mystery: true,
+    Slot { maker: CO_BINARY, mech: Mech.Twins as s32, rule: RULE_BASES, bit: 0x10, mystery: true,
            emblem: UI_EMBLEM_BINARY, emblem24: UI_EMBLEM24_BINARY, epal: PAL_POWER,
-           name: "TWINS", short: "TWINS", card: "TWINS", model: "BM-2X", stats: 0x3333,
-           blurb: "TWO SMALL MECHS,\nOR ONE COMBINED", hint: "CLEAR THE ARCADE\nWITH HERO, SHADOW,\nBEAM AND TANK" },
+           name: "TWINS", short: "TWINS", card: "TWINS", model: "BM-2X", height: 120, stats: 0x3433,
+           blurb: "TWO SMALL MECHS,\nOR ONE COMBINED", hint: "CLEAR THE ARCADE\nWITH EACH\nBASE MECH" },
     // the echoes, each below its base
     Slot { maker: CO_UMBRAL, echo: true, mech: Mech.Doubleblade as s32, rule: RULE_CLEAR, arg: 0, bit: 0x01,
            mystery: true, emblem: UI_EMBLEM_ECHO, emblem24: UI_EMBLEM24_UMBRAL, epal: PAL_EMBLEM,
@@ -178,11 +179,20 @@ fn mech_maker_of(m: Mech) -> *Maker { return &MAKERS[max(ROSTER[mech_slot(m)].ma
 
 fn slot_cleared(i: s32) -> bool { return save.unlocked & ((1 as u32) << (CLEAR_SHIFT + i)) != 0 }
 
-// How many of the four base mechs have cleared the arcade (RULE_BASES's progress).
+// How many of the base mechs in the game (slots 0-3 with a mech) have cleared the arcade
+// (RULE_BASES's progress), and how many there are.
 fn bases_cleared() -> s32 {
     var n = 0
     for i in 0..4 {
-        if slot_cleared(i) { n += 1 }
+        if slot_has_mech(i) && slot_cleared(i) { n += 1 }
+    }
+    return n
+}
+
+fn bases_in_game() -> s32 {
+    var n = 0
+    for i in 0..4 {
+        if slot_has_mech(i) { n += 1 }
     }
     return n
 }
@@ -190,7 +200,7 @@ fn bases_cleared() -> s32 {
 private fn rule_met(i: s32) -> bool {
     let r = &ROSTER[i]
     if r.rule == RULE_CLEAR { return slot_cleared(r.arg) }
-    if r.rule == RULE_BASES { return bases_cleared() == 4 }
+    if r.rule == RULE_BASES { return bases_cleared() == bases_in_game() }
     return true
 }
 
