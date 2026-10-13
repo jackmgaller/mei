@@ -14,7 +14,7 @@ mkdir -p "$O"
 POOL_DIR="$O"
 . "$HERE/pool.sh"
 pool_report() {
-    grep -E '^(OK|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb)' "$O/$1.log"
+    grep -E '^(OK|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|cover|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb)' "$O/$1.log"
 }
 run() {       # scenario frames: the scenarios through the whole game cost about 8 times a frame
     s="$1"; f="$2"; shift 2
@@ -128,7 +128,8 @@ run 110 900
 # NORMAL with Shadow, HARD with Tank: the rivals drawn, a loss and a continue, the reveal, the
 # test unit, the cover, the unlock and the stamps), 120 the lot, 121 the save's migration from
 # version 1 and the stamps on the select, 122 the difficulty select, 123 the schedule page, 124
-# the reveal, 125 the test unit in a fight, 126 the cover, 127 a continue. 117-119 and 121 get a
+# the reveal, 125 the test unit in a fight, 126 the cover (a frozen pose per mech, the fanfare,
+# the headline pick and every line's width), 127 a continue. 117-119 and 121 get a
 # memory card each (out/check/ladder_card*.bin, made fresh)
 lrun() {      # scenario view frames [mei-headless args]
     s="$1"; v="$2"; f="$3"; shift 3
@@ -156,6 +157,11 @@ lrun 125 1 601
 lrun 126 0 151
 lrun 126 1 151
 lrun 126 2 151
+lrun 126 3 151
+lrun 126 4 151
+lrun 126 5 151
+lrun 126 6 151
+lrun 126 7 401
 lrun 127 0 61
 lrun 127 1 141
 lrun 127 2 121

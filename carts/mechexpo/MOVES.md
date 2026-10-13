@@ -1483,6 +1483,10 @@ Built by mx-ladder; how it works is in [README.md](README.md#the-arcade-ladder).
   final's reveal played up, deadpan ("UMBRAL RESEARCH PRESENTS ITS COMPETING PRODUCT", "THE UAPC
   WILL NOW EVALUATE YOUR PRODUCT AGAINST ITS OWN TEST UNIT", "MOMENTUM ROBOTICS DEFENDS ITS
   TITLE").
+- **The cover, the owner's notes (2026-10-13):** no mech animation: a photograph, the mech
+  frozen in one strong pose; a victory fanfare when it appears (a corporate award jingle that is
+  secretly a banger); headlines from pools by case, maker and mech, and a larger pool of side
+  teasers, picked per run, so covers differ.
 - **Endings are magazine covers:** after the final, your mech live in 3D in its win pose under a
   masthead, a headline and side teasers: one layout, text per case (a base mech wins: CONTRACT
   AWARDED; an echo beats its original: UPSET AT THE EXPO; a win over the test unit: EVALUATION

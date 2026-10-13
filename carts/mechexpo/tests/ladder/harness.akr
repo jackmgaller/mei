@@ -29,8 +29,11 @@
 //     test unit (Beam's), VIEW 3 the original (as the Double-blade Hero)
 // 125 the test unit in a fight: VIEW 0 Shadow against its grey copy, VIEW 1 the split Twins
 //     against theirs (four bodies, two grey), each CPU against CPU for 600 frames on the rooftop
-// 126 the cover: VIEW 0 the Hero's contract, VIEW 1 the Double-blade Hero's upset, VIEW 2 Beam
-//     beats the test unit
+// 126 the cover: VIEW 0-5 a cover for each mech (the Hero's contract, the Double-blade Hero's
+//     upset, Beam, Tank, the Twins and Shadow beating the test unit), each frozen in its held
+//     pose with the fanfare playing; VIEW 6 another seed's cover; VIEW 7 after the fanfare (the
+//     menu loop back). VIEW 0 also measures every headline and cover line against the layout,
+//     and checks the pick (two seeds differ, a replay is the same, no headline twice running)
 // 127 a continue: the second fight lost; VIEW 0 the results ask for another demonstration; VIEW 1
 //     A gives the same fight again (the same opponent, level and stage); VIEW 2 B withdraws: the
 //     title
@@ -55,7 +58,7 @@ const SHOT_AT = match SCENARIO {
     123 => 60
     124 => match VIEW { 0 => 120, else => 240 }
     125 => 600
-    126 => 150
+    126 => match VIEW { 7 => 400, else => 150 }
     127 => match VIEW { 0 => 60, 1 => 140, else => 120 }
     else => 0
 }
@@ -606,19 +609,121 @@ private fn hook_125() {
     fight.f[1].health = max(fight.f[1].health, 200)
 }
 
+// 126's covers: VIEW 0-5 one per mech (the Hero's contract, the Double-blade Hero's upset, Beam,
+// Tank, the combined Twins and Shadow beating the test unit), frozen in their held pose, with
+// the fanfare playing; VIEW 6 the Hero with another seed (another cover); VIEW 7 the Hero's after
+// the fanfare (the menu loop back). VIEW 0 also measures every pool line against the layout and
+// checks the pick: two seeds, two covers; the same seed twice, not the same headline twice.
+const COVER_SLOTS: [8]s32 = [0, ROSTER_COLS, 2, 3, 4, 1, 0, 0]
+const COVER_SEEDS: [8]u32 = [5, 5, 5, 5, 5, 5, 77, 5]
+const COVER_DIFFS: [8]s32 = [DIFF_EASY, DIFF_NORMAL, DIFF_HARD, DIFF_NORMAL, DIFF_HARD, DIFF_EASY, DIFF_NORMAL, DIFF_EASY]
+
 private fn setup_cover() {
     save.unlocked = 0
-    match VIEW {
-        0 => arcade_at(0, DIFF_EASY, LADDER_N - 1, 5)
-        1 => {
-            save.unlocked = UNLOCK_ECHO
-            arcade_at(ROSTER_COLS, DIFF_NORMAL, LADDER_N - 1, 5)
-        }
-        else => arcade_at(2, DIFF_HARD, LADDER_N - 1, 5)
+    save.diff = DIFF_NORMAL as u32
+    if VIEW == 1 { save.unlocked = UNLOCK_ECHO }
+    if VIEW == 4 { save.unlocked = 0x10 }                    // the Twins unlocked
+    if VIEW == 0 {
+        cover_widths()
+        cover_picks()
+        save.diff = DIFF_NORMAL as u32
     }
+    arcade_at(COVER_SLOTS[VIEW], COVER_DIFFS[VIEW], LADDER_N - 1, COVER_SEEDS[VIEW])
+    cover_pick()
+    print("cover ")
+    print_int(VIEW)
+    print(": ")
+    print(COVER_HEADS[cover_head].h0)
+    print(" ")
+    print(COVER_HEADS[cover_head].h1)
+    for i in 0..3 {
+        print(" / ")
+        print(cover_tease[i].a)
+    }
+    println("")
     enter_cover()
 }
 
+// Every headline with every unit's names, and every cover line, within the layout's widths.
+private fn cover_widths() {
+    var n = 0
+    var buf: [64]u8
+    var worst_l0 = 0
+    for i in 0..len(COVER_HEADS) {
+        let h = &COVER_HEADS[i]
+        fits(txt_w(FONT_TITLE, h.h0), COVER_W_BIG, h.h0)
+        fits(txt_w(FONT_TITLE, h.h1), COVER_W_BIG, h.h1)
+        for s in 0..ROSTER_N {
+            if !slot_has_mech(s) { continue }
+            run.me = slot_mech(s)
+            if h.maker != CO_ANY && h.maker != mech_maker_k(run.me) { continue }
+            cover_head = i
+            let l0 = cover_l0(&buf[0])
+            worst_l0 = max(worst_l0, txt_w(FONT_HEAD, l0))
+            fits(txt_w(FONT_HEAD, l0), COVER_W_SUB, l0)
+            let l1 = cover_fill(&buf[0], h.l1)
+            fits(txt_w(FONT_LABEL, l1), COVER_W_LINE, l1)
+            n += 1
+        }
+    }
+    var t = 0
+    for i in 0..2 {
+        t += tease_fits(&TEASE_TWINS[i]) + tease_fits(&TEASE_ECHOES[i]) + tease_fits(&TEASE_CLIENT[i])
+    }
+    for i in 0..len(TEASE_PRESS) { t += tease_fits(&TEASE_PRESS[i]) }
+    print("cover lines: ")
+    print_int(n)
+    print(" headlines (with each unit's names) and ")
+    print_int(t)
+    print(" teasers fit; the widest unit line ")
+    print_int(worst_l0)
+    println(" px")
+    assert_eq(too_wide, 0, "cover lines wider than the layout")
+}
+
+// A line w pixels wide against its limit: printed and failed when over.
+private fn fits(w: s32, lim: s32, s: *u8) {
+    if w <= lim { return }
+    print("too wide (")
+    print_int(w)
+    print(" of ")
+    print_int(lim)
+    print(" px): ")
+    println(s)
+    too_wide += 1
+}
+
+var too_wide: s32
+
+private fn tease_fits(c: *Tease) -> s32 {
+    var buf: [64]u8
+    fits(txt_w(FONT_LABEL, c.a), COVER_W_TEASE, c.a)
+    let b = cover_fill(&buf[0], c.b)
+    fits(txt_w(FONT_MICRO, b), COVER_W_TEASE, b)
+    return 1
+}
+
+// Two seeds give two covers; the same seed twice in a row does not repeat its headline; a run
+// replays its cover (the pick is the seed's and the last headline's alone).
+private fn cover_picks() {
+    save.diff = DIFF_NORMAL as u32
+    arcade_at(0, DIFF_NORMAL, LADDER_N - 1, 5)
+    cover_pick()
+    let a = cover_head
+    let a0 = cover_tease[2]
+    save.diff = DIFF_NORMAL as u32
+    arcade_at(0, DIFF_NORMAL, LADDER_N - 1, 77)
+    cover_pick()
+    assert(cover_head != a || cover_tease[2] != a0, "two seeds gave the same cover")
+    save.diff = DIFF_NORMAL as u32
+    arcade_at(0, DIFF_NORMAL, LADDER_N - 1, 5)
+    cover_pick()
+    assert_eq(cover_head, a, "the same seed and save gave another headline")
+    cover_pick()
+    assert(cover_head != a, "the same headline as the last clear's")
+    assert_eq((save.diff & 255) as s32, DIFF_NORMAL, "the cover's pick moved the saved grade")
+    println("cover picks: two seeds differ, a replay is the same, the last headline is not repeated")
+}
 // ---- 127: a continue
 
 var ct_level: s32
@@ -683,7 +788,16 @@ private fn check_shot() {
             assert(peak_tris < 4000, "over 4,000 triangles")
             report_screen("the fight", St.Fight)
         }
-        126 => assert(st == St.Cover, "not the cover")
+        126 => {
+            assert(st == St.Cover, "not the cover")
+            if VIEW == 7 {
+                assert(!sound_playing(6) && !sound_playing(7), "the fanfare did not end")
+                assert(sound_playing(3), "the menu loop did not come back after the fanfare")
+            } else {
+                assert(sound_playing(6) && sound_playing(7), "no fanfare on the cover")
+                assert(!sound_playing(3), "the menu loop plays under the fanfare")
+            }
+        }
         127 => {
             if VIEW == 0 {
                 assert(st == St.Results && !won, "not the lost fight's results")

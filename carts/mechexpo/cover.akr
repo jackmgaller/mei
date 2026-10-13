@@ -1,0 +1,232 @@
+// Mech Expo 2000's ending, the magazine cover (mx-ladder): what it says and how the unit stands.
+// menus.akr's draw_cover() draws it; game.akr picks it when the run is cleared (cover_pick(),
+// before the save is written) and plays the fanfare (music.akr's music_fanfare()) as it shows.
+//
+// The cover is a photograph: the winner stands frozen in one held frame of its win move
+// (COVER_POSE), no idle and no turntable. Its words come from pools, picked from the run's seed
+// so a scripted run gives the same cover and two runs usually differ:
+//   the headline   one of the lines for the final's case (a base mech beat its echo, an echo beat
+//                  its original, the UAPC's test unit was beaten), the maker's own lines among
+//                  them; not the last clear's headline when another one fits (save.diff keeps
+//                  it, ladder.akr's DIFF bits aside)
+//   the teasers    three cover lines: those about what is still locked first (who Binary
+//                  Mechanica are, the echoes still in development, the client's own mechs after
+//                  a test unit), then the trade press's own, drawn without repeats
+// Templates: @M the maker's short name, @N the unit's name, @S its short name, # the count of
+// echoes not in the game yet. Every line fits the cover's layout (scenario 126 measures them all
+// against COVER_W_*).
+
+const COVER_W_BIG = 184             // a headline's two big lines (FONT_TITLE)
+const COVER_W_SUB = 300             // its first small line (FONT_HEAD), across the photograph
+const COVER_W_LINE = 184            // its second (FONT_LABEL), inside the headline's panel
+const COVER_W_TEASE = 196           // a cover line (FONT_LABEL, then FONT_MICRO)
+
+// Per mech (Mech order: Hero, Doubleblade, Beam, Tank, Twins, TwinA, TwinB, Shadow): the held
+// frame of its win move (the end of the win, weapons up; Tank early in it, square to the camera,
+// before its fist swings across the lens), how far it is turned toward the camera, the camera's
+// distance and where its feet are (below the bottom edge: the photograph is cut at the knees).
+const COVER_POSE: [8]s32 = [119, 119, 119, 40, 119, 119, 119, 119]
+const COVER_YAW: [8]fixed = [1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05]
+const COVER_DIST: [8]fixed = [12.5, 12.5, 12.5, 13.5, 12.5, 12.5, 12.5, 12.5]
+const COVER_FEET: [8]s32 = [300, 300, 300, 272, 300, 300, 300, 300]
+// The backdrop's shades, top and bottom (print ramp shades: 1 lightest, 15 darkest): lighter
+// behind the dark Shadow.
+const COVER_SKY: [8][2]s32 = [[12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [8, 1]]
+
+const CO_ANY = -1
+
+struct CoverHead {
+    fin: s32            // FIN_* (ladder.akr)
+    maker: s32          // CO_*: only for this maker's units; CO_ANY for any
+    h0: *u8             // the two big lines
+    h1: *u8
+    l0: *u8             // the first small line ("" for "@M'S @N")
+    l1: *u8             // the second
+}
+
+const COVER_HEADS: [27]CoverHead = [
+    // a base mech beats its echo
+    CoverHead { fin: FIN_ECHO, maker: CO_ANY, h0: "CONTRACT", h1: "AWARDED", l0: "", l1: "TAKES THE UAPC DEAL" },
+    CoverHead { fin: FIN_ECHO, maker: CO_ANY, h0: "SIGNED,", h1: "SEALED", l0: "", l1: "IS THE UAPC'S CHOICE" },
+    CoverHead { fin: FIN_ECHO, maker: CO_ANY, h0: "PREFERRED", h1: "SUPPLIER", l0: "", l1: "WINS THE FRAMEWORK DEAL" },
+    CoverHead { fin: FIN_ECHO, maker: CO_ANY, h0: "THE CLIENT", h1: "DECIDES", l0: "", l1: "CLEARS FINAL EVALUATION" },
+    CoverHead { fin: FIN_ECHO, maker: CO_ANY, h0: "DEAL", h1: "DONE", l0: "", l1: "THE PAPERWORK IS FILED" },
+    CoverHead { fin: FIN_ECHO, maker: CO_ANY, h0: "ORIGINAL,", h1: "STILL BEST", l0: "", l1: "SEES OFF ITS OWN ECHO" },
+    CoverHead { fin: FIN_ECHO, maker: CO_MOMENTUM, h0: "MOMENTUM", h1: "DELIVERS", l0: "THE HERO MECH: CONTRACT WON", l1: "FROM CHALLENGER TO SUPPLIER" },
+    CoverHead { fin: FIN_ECHO, maker: CO_MOMENTUM, h0: "SWORD", h1: "APPROVED", l0: "", l1: "ONE BLADE BEATS TWO" },
+    // an echo beats its original
+    CoverHead { fin: FIN_ORIGINAL, maker: CO_ANY, h0: "UPSET AT", h1: "THE EXPO", l0: "", l1: "BEATS THE ORIGINAL" },
+    CoverHead { fin: FIN_ORIGINAL, maker: CO_ANY, h0: "THE COPY", h1: "WINS", l0: "", l1: "OUTPERFORMS ITS INSPIRATION" },
+    CoverHead { fin: FIN_ORIGINAL, maker: CO_ANY, h0: "LATE ENTRY,", h1: "TOP MARKS", l0: "", l1: "TAKES THE TITLE FROM ITS BASE" },
+    CoverHead { fin: FIN_ORIGINAL, maker: CO_ANY, h0: "ANSWER", h1: "ACCEPTED", l0: "", l1: "THE RIVAL'S REPLY WINS OUT" },
+    CoverHead { fin: FIN_ORIGINAL, maker: CO_ANY, h0: "TITLE", h1: "CHANGES", l0: "", l1: "THE DEFENDING UNIT DEFEATED" },
+    CoverHead { fin: FIN_ORIGINAL, maker: CO_UMBRAL, h0: "NO", h1: "COMMENT", l0: "UMBRAL'S DOUBLE-BLADE HERO WINS", l1: "ITS MAKER DECLINES TO SMILE" },
+    CoverHead { fin: FIN_ORIGINAL, maker: CO_UMBRAL, h0: "TWO", h1: "BLADES UP", l0: "", l1: "TWICE THE BLADE, ONE CONTRACT" },
+    // the UAPC's test unit beaten
+    CoverHead { fin: FIN_TEST, maker: CO_ANY, h0: "EVALUATION", h1: "PASSED", l0: "", l1: "BEATS THE UAPC'S OWN TEST UNIT" },
+    CoverHead { fin: FIN_TEST, maker: CO_ANY, h0: "CLIENT", h1: "OUTCLASSED", l0: "", l1: "THE UAPC'S UNIT FAILS ITS TEST" },
+    CoverHead { fin: FIN_TEST, maker: CO_ANY, h0: "MEETS", h1: "THE SPEC", l0: "", l1: "THE CLIENT'S OWN UNIT DID NOT" },
+    CoverHead { fin: FIN_TEST, maker: CO_ANY, h0: "TEST UNIT", h1: "RETIRED", l0: "", l1: "UAPC 'NOT DISAPPOINTED'" },
+    CoverHead { fin: FIN_TEST, maker: CO_ANY, h0: "GREY", h1: "AREA", l0: "", l1: "WHY DID THE CLIENT BUILD ONE?" },
+    CoverHead { fin: FIN_TEST, maker: CO_UMBRAL, h0: "LIGHTS", h1: "OUT", l0: "", l1: "ECLIPSES THE CLIENT'S OWN UNIT" },
+    CoverHead { fin: FIN_TEST, maker: CO_RAIKO, h0: "RAIKO", h1: "CHARGES", l0: "", l1: "SHOCKS THE UAPC'S TEST UNIT" },
+    CoverHead { fin: FIN_TEST, maker: CO_RAIKO, h0: "HIGH", h1: "VOLTAGE", l0: "", l1: "A DIVISION'S FINEST HOUR" },
+    CoverHead { fin: FIN_TEST, maker: CO_HEARTLAND, h0: "OLD IRON,", h1: "NEW DEAL", l0: "", l1: "OUTLASTS THE CLIENT'S OWN UNIT" },
+    CoverHead { fin: FIN_TEST, maker: CO_HEARTLAND, h0: "STILL", h1: "RUNNING", l0: "", l1: "THE FAMILY FIRM WINS THE TRIAL" },
+    CoverHead { fin: FIN_TEST, maker: CO_BINARY, h0: "TWICE", h1: "APPROVED", l0: "", l1: "TWO UNITS, ONE SIGNATURE" },
+    CoverHead { fin: FIN_TEST, maker: CO_BINARY, h0: "STARTUP", h1: "SIGNS UP", l0: "", l1: "THE NEWCOMERS BEAT THE CLIENT" },
+]
+
+struct Tease {
+    a: *u8              // the cover line (FONT_LABEL)
+    b: *u8              // under it (FONT_MICRO)
+}
+
+// About what is still locked, two variants each (picked by the seed).
+const TEASE_TWINS: [2]Tease = [
+    Tease { a: "WHO IS BINARY MECHANICA?", b: "THE STARTUP NOBODY HAS MET" },
+    Tease { a: "BINARY MECHANICA: REAL?", b: "TWO MECHS, ONE ADDRESS, NO PHONE" },
+]
+const TEASE_ECHOES: [2]Tease = [
+    Tease { a: "ECHOES: WHAT'S NEXT", b: "# RIVAL ANSWERS IN DEVELOPMENT" },
+    Tease { a: "THE ANSWER MACHINES", b: "# ECHOES IN THE WORKSHOPS" },
+]
+const TEASE_CLIENT: [2]Tease = [
+    Tease { a: "THE CLIENT'S OWN MECHS", b: "WHY DOES THE UAPC BUILD THEM?" },
+    Tease { a: "WHO BUILT THE TEST UNIT?", b: "THE UAPC: 'NEXT QUESTION'" },
+]
+
+// The trade press's own.
+const TEASE_PRESS: [18]Tease = [
+    Tease { a: "REACTOR SAFETY", b: "A HEARTLAND SPECIAL, P. 52" },
+    Tease { a: "Y2K: ARE MECHS READY?", b: "MAKERS SAY YES; CLOCKS SAY 1900" },
+    Tease { a: "THE UAPC'S SHOPPING LIST", b: "LEAKED: IT SAYS 'ALL OF THEM'" },
+    Tease { a: "BOOTH ETIQUETTE", b: "PLEASE DO NOT FEED THE DEMO UNITS" },
+    Tease { a: "LANYARD OF THE YEAR", b: "OUR JUDGES' SHORTLIST, P. 18" },
+    Tease { a: "WHAT'S IN A WARRANTY?", b: "WE READ THE SMALL PRINT" },
+    Tease { a: "ANTIMATTER FINANCE", b: "IS DEBT REALLY AN ASSET?" },
+    Tease { a: "THE RAIKO GROUP", b: "MECHS, DETERGENT AND KARAOKE" },
+    Tease { a: "HANGAR FLOOR REPAIRS", b: "TENDERS CLOSE ON FRIDAY" },
+    Tease { a: "PILOTLESS AND PROUD", b: "WHY NOBODY SITS INSIDE" },
+    Tease { a: "INSURANCE", b: "PREMIUMS UP 400% SINCE TUESDAY" },
+    Tease { a: "THE ROOFTOP SHOWCASE", b: "TOO MUCH EDGE? OUR VERDICT" },
+    Tease { a: "PROCUREMENT SPEAK", b: "A GLOSSARY: 'SMASH' MEANS 'ASSESS'" },
+    Tease { a: "THE CATERING TENT", b: "STILL STANDING, JUST" },
+    Tease { a: "SUPER MOVES, EXPLAINED", b: "WHERE THE METER GOES, P. 30" },
+    Tease { a: "THE MILLENNIUM BUG", b: "SEVEN MECHS, NO INCIDENTS" },
+    Tease { a: "SALVAGE RIGHTS", b: "WHO OWNS A DENTED PAULDRON?" },
+    Tease { a: "BUDGET SEASON", b: "THE UAPC'S CHEQUEBOOK, OPEN" },
+]
+
+// The cover picked for this run.
+var cover_head: s32                 // an index into COVER_HEADS
+var cover_tease: [3]*Tease
+var cover_rng: u32
+
+// xorshift32: a draw in 0..n-1
+private fn cv_rand(n: s32) -> s32 {
+    var x = cover_rng
+    x ^= x << 13
+    x ^= x >> 17
+    x ^= x << 5
+    cover_rng = x
+    return ((x >> 8) % (max(n, 1) as u32)) as s32
+}
+
+// The headlines that fit this run, counted, and the k-th of them.
+private fn heads_fit(k: s32) -> s32 {
+    let mine = mech_maker_k(run.me)
+    var n = 0
+    for i in 0..len(COVER_HEADS) {
+        let h = &COVER_HEADS[i]
+        if h.fin != run.fin || (h.maker != CO_ANY && h.maker != mine) { continue }
+        if n == k { return i }
+        n += 1
+    }
+    if k < 0 { return n }
+    return -1
+}
+
+// The echo slots with no mech yet (the teasers' #).
+fn cover_echoes_out() -> s32 {
+    var n = 0
+    for s in ROSTER_COLS..ROSTER_N {
+        if !slot_has_mech(s) { n += 1 }
+    }
+    return n
+}
+
+// Picks the cover for the run just cleared (game.akr, before the save is written).
+fn cover_pick() {
+    // the run's seed and unit, mixed (a 32-bit hash finaliser), so nearby seeds differ
+    var z = run.seed ^ ((run.me as u32) * 0x9E3779B9) ^ 0xC0FE
+    z ^= z >> 16
+    z *= 0x7FEB352D
+    z ^= z >> 15
+    z *= 0x846CA68B
+    z ^= z >> 16
+    cover_rng = z | 1
+    let n = heads_fit(-1)
+    let last = ((save.diff >> 8) & 255) as s32 - 1
+    var k = cv_rand(n)
+    var h = heads_fit(k)
+    if h == last && n > 1 { h = heads_fit((k + 1) % n) }
+    cover_head = h
+    save.diff = (save.diff & 255) | ((h + 1) as u32) << 8
+    // the cover lines: what is still locked first, then the press's own
+    var t = 0
+    if !slot_unlocked(mech_slot(Mech.Twins)) {
+        cover_tease[t] = &TEASE_TWINS[cv_rand(2)]
+        t += 1
+    }
+    if run.fin == FIN_TEST {
+        cover_tease[t] = &TEASE_CLIENT[cv_rand(2)]
+        t += 1
+    } else if cover_echoes_out() > 0 && t < 2 {
+        cover_tease[t] = &TEASE_ECHOES[cv_rand(2)]
+        t += 1
+    }
+    var used: [len(TEASE_PRESS)]bool
+    for i in 0..len(TEASE_PRESS) { used[i] = false }
+    while t < 3 {
+        var j = cv_rand(len(TEASE_PRESS))
+        while used[j] { j = (j + 1) % len(TEASE_PRESS) }
+        used[j] = true
+        cover_tease[t] = &TEASE_PRESS[j]
+        t += 1
+    }
+}
+
+// A cover line from template s into dst (64 bytes): @M, @N, @S and # filled in.
+fn cover_fill(dst: *u8, s: *u8) -> *u8 {
+    dst[0] = 0
+    let me = run.me
+    var i = 0
+    while s[i] != 0 {
+        let c = s[i]
+        if c == '@' && s[i + 1] == 'M' {
+            str_append(dst, 64, mech_maker_short(me))
+            i += 2
+        } else if c == '@' && s[i + 1] == 'N' {
+            str_append(dst, 64, mech_name(me))
+            i += 2
+        } else if c == '@' && s[i + 1] == 'S' {
+            str_append(dst, 64, mech_short(me))
+            i += 2
+        } else if c == '#' {
+            str_append_int(dst, 64, cover_echoes_out(), 0, false)
+            i += 1
+        } else {
+            str_append_char(dst, 64, c as s32)
+            i += 1
+        }
+    }
+    return dst
+}
+
+// The headline's first small line: its own, or the maker's and the unit's names.
+fn cover_l0(dst: *u8) -> *u8 {
+    let h = &COVER_HEADS[cover_head]
+    if h.l0[0] != 0 { return cover_fill(dst, h.l0) }
+    return cover_fill(dst, "@M'S @N")
+}
