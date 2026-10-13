@@ -219,6 +219,7 @@ fn twins_switch(i: s32) -> bool {
     x.l_age = NO_PRESS
     set_mv(i, Mv.combine)
     set_mv(p, Mv.combine)
+    fx[p].t = -1                                // its frame runs after twin A's this tick: in step
     x.slide = 0.0
     fx[p].slide = 0.0
     tw_from[i] = fight.f[p].x

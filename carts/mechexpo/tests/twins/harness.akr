@@ -1,0 +1,135 @@
+// Mech Expo 2000's Twins scenarios that need the whole game (mx-twins-fight): the real game
+// (game.akr: the hangar, the camera, the mechs drawn by anim.akr, the effects and the HUD)
+// driven through its test hooks, as tests/fx/harness.akr does. tests/run.sh builds scenarios
+// 68 and 69 from this file and ../../game.akr; tests/check.sh runs them.
+//
+// 68  the unlock rule: the Twins (slot 4, RULE_BASES) unlock once the arcade has been cleared
+//     with every base mech in the game (Hero, Beam, Tank: slots 0-3 with a mech, so not Shadow
+//     yet), not before; Shadow joins the rule when its slot gets a mech
+// 69  the budget with three bodies: CPU against CPU (level 2), the split Twins against Tank, for
+//     1,800 frames through the real game; the Twins forced split for the first 900 (three bodies
+//     on screen), then free to switch. Prints the peak CPU, GPU and triangles split and overall
+
+var fr: s32
+var started: bool
+var peak_cpu: [2]s32               // [0] while split (three bodies), [1] the rest
+var peak_gpu: [2]s32
+var peak_tris: [2]s32
+var peak_fight: s32
+var peak_mechs: s32
+var late: s32
+var split_frames: s32
+var switches: s32
+var last_body: Mech
+
+fn test_init() {
+    if SCENARIO == 68 {
+        unlock_rule()
+        return
+    }
+    game = Game.Versus
+    p_cpu = false
+    p_mech[0] = Mech.Twins
+    p_mech[1] = Mech.Tank
+    enter_fight()
+    last_body = fight.f[0].body
+}
+
+fn input_stick(n: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+fn input_pad(n: s32) -> u32 {
+    if SCENARIO != 69 || st != St.Fight { return 0 }
+    let p = cpu_pad(n, 2)
+    // the first half: the Twins stay split, for three bodies on screen
+    if n == 0 && fr < 900 { return p & ~L }
+    return p
+}
+
+fn test_hook() {
+    if SCENARIO != 69 || st != St.Fight { return }
+    let f = fight_get()
+    if started && fr > 3 {
+        let k = if_k(f.f[0].body == Mech.TwinA, 0, 1)
+        peak_cpu[k] = max(peak_cpu[k], cpu_used())
+        peak_gpu[k] = max(peak_gpu[k], gpu_used())
+        peak_tris[k] = max(peak_tris[k], tris_drawn())
+        peak_fight = max(peak_fight, prof_fight)
+        peak_mechs = max(peak_mechs, prof_mechs)
+        if frame_ticks() > 1 { late += 1 }
+        if k == 0 { split_frames += 1 }
+    }
+    if f.f[0].body != last_body {
+        switches += 1
+        last_body = f.f[0].body
+    }
+    started = true
+    fr += 1
+    if fr == 1800 { report() }
+}
+
+private fn if_k(c: bool, a: s32, b: s32) -> s32 {
+    if c { return a }
+    return b
+}
+
+private fn report() {
+    for k in 0..2 {
+        print(if_str(k == 0, "Twins split against Tank: ", "Twins combined against Tank: "))
+        print("peak cpu ")
+        print_int(peak_cpu[k])
+        print(", gpu ")
+        print_int(peak_gpu[k])
+        print(", triangles ")
+        print_int(peak_tris[k])
+        println("")
+        assert(peak_cpu[k] <= CPU_BUDGET, "over the CPU budget")
+        assert(peak_gpu[k] <= GPU_BUDGET, "over the GPU budget")
+        assert(peak_tris[k] < 4000, "over 4,000 triangles")
+    }
+    print("frames split ")
+    print_int(split_frames)
+    print(", switches ")
+    print_int(switches)
+    print(", late frames ")
+    print_int(late)
+    print(", the fight's peak ")
+    print_int(peak_fight)
+    print(", the mechs' drawing peak ")
+    print_int(peak_mechs)
+    println(" cycles")
+    assert(split_frames > 800, "the Twins were not split long enough to measure")
+    println("OK the budget with the split Twins and Tank drawn")
+}
+
+private fn if_str(c: bool, a: *u8, b: *u8) -> *u8 {
+    if c { return a }
+    return b
+}
+
+// ---- 68: the unlock rule
+
+private fn unlock_rule() {
+    let tw = mech_slot(Mech.Twins)
+    assert_eq(tw, 4, "the Twins are not in slot 4")
+    assert(ROSTER[tw].rule == RULE_BASES, "the Twins' rule")
+    assert_eq(bases_in_game(), 3, "the base mechs in the game (Hero, Beam, Tank)")
+    save.unlocked = 0
+    assert(!slot_ok(tw), "the Twins open from the start")
+    var got = roster_clear(Mech.Hero)
+    assert(got == ROSTER_COLS, "clearing with the Hero did not unlock its echo")
+    assert(!slot_ok(tw), "the Twins unlocked after one base mech")
+    got = roster_clear(Mech.Beam)
+    assert(!slot_ok(tw), "the Twins unlocked after two base mechs")
+    assert_eq(bases_cleared(), 2, "bases cleared")
+    // an echo's clear does not count
+    got = roster_clear(Mech.Doubleblade)
+    assert(!slot_ok(tw), "an echo's clear counted")
+    got = roster_clear(Mech.Tank)
+    assert_eq(got, tw, "the Tank's clear (the last base mech) did not unlock the Twins")
+    assert(slot_ok(tw), "the Twins are not selectable")
+    assert_eq(slot_mech(tw) as s32, Mech.Twins as s32, "slot 4's mech")
+    // clearing with the Twins marks their own clear (their echo's rule, when it has a mech)
+    got = roster_clear(Mech.Twins)
+    assert(slot_cleared(tw), "the Twins' clear was not marked")
+    println("OK the unlock rule: the Twins after Hero, Beam and Tank (Shadow joins when it has a mech)")
+}
