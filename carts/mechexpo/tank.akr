@@ -1,0 +1,114 @@
+// Mech Expo 2000: Tank's moves (mx-tank). Tank, Heartland Atomic Company's grappler (MOVES.md,
+// "Tank"): what its hits do, and its stand-in timings and boxes until its animations land
+// (moves.akr asks here for Mech.Tank). The fight's Tank rules (super armour, the command grab's
+// slam) are in fighter.akr's Tank block, the nuclear meter in meter.akr.
+//
+// Frames here count from 0 (MOVES.md's tables count from 1: startup 8 is a0 = 8, the first
+// active frame being the 9th).
+
+import "moves.akr"
+import "fight.akr"
+
+// The slam sections of the Atomic Clinch (sp_f) and Chain Reaction (super): the frame a catch
+// jumps to (MARK_RIPOSTE), and the slam's frame within the section (MARK_RELEASE - the jump).
+const TANK_CLINCH_RIP = 49
+const TANK_SUPER_RIP = 94
+const TANK_SLAM_LEN = 56            // the section, and thrown_slam's length
+const TANK_SLAM_AT = 33             // the slam, frames into the section (thrown_slam's 34th)
+
+fn tank_hit(mv: Mv) -> Hit {
+    return match mv {
+        atk_n => Hit { dmg: 80, hitstun: 18, blockstun: 13, stop: 8, kb: 0.10 }
+        atk_f => Hit { dmg: 140, hitstun: 26, blockstun: 18, stop: 11, power: 1, kb: 0.15 }
+        atk_d => Hit { dmg: 90, blockstun: 16, stop: 11, power: 1, kb: 0.10, kd: true, launch: 0.30 }
+        atk_air => Hit { dmg: 110, hitstun: 20, blockstun: 15, stop: 11, power: 1, kb: 0.08 }
+        sp_n => Hit { dmg: 100, chip: 20, blockstun: 16, stop: 12, power: 2, kb: 0.18, kd: true, launch: 0.40 }
+        sp_f => Hit { dmg: 180, stop: 12, power: 2, kd: true, launch: 0.25 }
+        sp_u => Hit { dmg: 120, chip: 24, blockstun: 14, stop: 12, power: 2, kb: 0.10, kd: true, launch: 0.55 }
+        sp_d => Hit { dmg: 90, chip: 18, blockstun: 14, stop: 11, power: 1, kb: 0.20, kd: true, launch: 0.35 }
+        throw => Hit { dmg: 150, stop: 10, power: 2, kd: true, launch: 0.30 }
+        super => Hit { dmg: 360, stop: 20, power: 3, kd: true, launch: 0.30 }
+        else => HIT_NONE
+    }
+}
+
+// The stand-in timings (MOVES.md's tables; r0..r1 the armour frames).
+fn tank_tm(mv: Mv) -> Tm {
+    return match mv {
+        idle => Tm { len: 60, loops: true }
+        walk_f, walk_b => Tm { len: 32, loops: true }
+        crouch => Tm { len: 8, loops: true, shape: 1 }
+        jump => Tm { len: 40, shape: 2 }
+        atk_n => Tm { len: 25, a0: 8, a1: 10, hx0: 1.8, hy0: 5.0, hx1: 6.4, hy1: 8.5, c1: 16, reach: 4.0 }
+        atk_f => Tm { len: 42, a0: 16, a1: 19, hx0: 2.0, hy0: 5.0, hx1: 7.6, hy1: 9.0, c1: 25,
+                      r0: 3, r1: 19, m0: 4, m1: 13, dx: 0.16, reach: 5.0 }
+        atk_d => Tm { len: 39, a0: 11, a1: 14, hx0: 1.8, hy0: 0.0, hx1: 6.8, hy1: 2.0, shape: 1, reach: 4.0 }
+        atk_air => Tm { len: 28, a0: 7, a1: 27, hx0: -1.5, hy0: -2.5, hx1: 4.0, hy1: 2.5, shape: 2 }
+        sp_n => Tm { len: 43, a0: 12, a1: 16, hx0: -4.0, hy0: 0.0, hx1: 5.8, hy1: 9.5, r0: 0, r1: 16 }
+        sp_f => Tm { len: TANK_CLINCH_RIP + TANK_SLAM_LEN, a0: 13, a1: 18, hx0: 0.5, hy0: 1.0, hx1: 4.2, hy1: 10.0,
+                     m0: 3, m1: 14, dx: 0.375, rip: TANK_CLINCH_RIP, rel: TANK_CLINCH_RIP + TANK_SLAM_AT }
+        sp_u => Tm { len: 43, a0: 9, a1: 14, hx0: 0.5, hy0: 5.0, hx1: 5.0, hy1: 14.0, r0: 0, r1: 14 }
+        sp_d => Tm { len: 48, a0: 12, a1: 27, hx0: 0.5, hy0: 0.0, hx1: 4.0, hy1: 5.0,
+                     m0: 9, m1: 26, dx: 0.444444 }
+        grab => Tm { len: 7, a0: 5, a1: 6, hx0: 1.0, hy0: 2.0, hx1: 4.0, hy1: 10.0 }
+        throw => Tm { len: 44, rel: 29 }
+        thrown => Tm { len: 44, rel: 30 }
+        thrown_vault => Tm { len: 40, rel: 28 }
+        super => Tm { len: TANK_SUPER_RIP + TANK_SLAM_LEN, a0: 46, a1: 53, hx0: 0.5, hy0: 0.0, hx1: 4.5, hy1: 11.0,
+                      flash: 40, i0: 0, i1: 45, m0: 40, m1: 47, dx: 0.75, rip: TANK_SUPER_RIP,
+                      rel: TANK_SUPER_RIP + TANK_SLAM_AT }
+        land => Tm { len: 10 }
+        getup => Tm { len: 24, shape: 4 }
+        else => common_tm(mv)
+    }
+}
+
+// Tank's stand-in boxes: a short, wide body on treads that stick out ahead and behind.
+fn tank_boxes(mv: Mv, f: s32, out: *Boxes) {
+    let t = tank_tm(mv)
+    out.n = 0
+    var hx = 2.4
+    var hy0 = 0.0
+    var hy1 = 10.2
+    var py1 = 10.0
+    var treads = true
+    match t.shape {
+        1 => { hy1 = 7.0; py1 = 6.5 }
+        2 => { hx = 2.2; hy0 = 1.0; hy1 = 9.5; treads = false }
+        4 => { hx = 5.0; hy1 = 2.5; py1 = 2.5; treads = false }
+        else => {}
+    }
+    tank_box(out, BOX_HURT, -hx, hy0, hx, hy1)
+    if treads { tank_box(out, BOX_HURT, -2.7, 0.0, 2.7, 2.2) }
+    tank_box(out, BOX_PUSH, -2.4, 0.0, 2.4, py1)
+    if t.a0 >= 0 && f >= t.a0 && f <= t.a1 { tank_box(out, BOX_HIT, t.hx0, t.hy0, t.hx1, t.hy1) }
+    if t.reach > 0.0 && f >= t.a0 && f <= t.a1 + 10 {
+        tank_box(out, BOX_HURT, 0.0, t.hy0 - 1.0, t.reach, t.hy1 + 1.0)
+    }
+}
+
+private fn tank_box(out: *Boxes, kind: u8, x0: fixed, y0: fixed, x1: fixed, y1: fixed) {
+    out.b[out.n] = Box { kind: kind, x0: x0, y0: y0, x1: x1, y1: y1 }
+    out.n += 1
+}
+
+// ---- the training move list
+
+const TANK_MOVES = MoveList { n: 15, e: [
+    MoveEntry { name: "Rivet Jab", input: "A" },
+    MoveEntry { name: "Piston Haymaker", input: "FWD + A (armour)" },
+    MoveEntry { name: "Track Hook", input: "DOWN + A" },
+    MoveEntry { name: "Body Drop", input: "A in the air" },
+    MoveEntry { name: "Reactor Vent", input: "B (armour)" },
+    MoveEntry { name: "Atomic Clinch", input: "FWD + B (command grab)" },
+    MoveEntry { name: "Smokestack Uppercut", input: "UP + B (armour)" },
+    MoveEntry { name: "Bulldozer", input: "DOWN + B" },
+    MoveEntry { name: "Scrap Heave", input: "Y" },
+    MoveEntry { name: "Break a grab", input: "Y when grabbed" },
+    MoveEntry { name: "Chain Reaction", input: "A + B, one bar" },
+    MoveEntry { name: "Block", input: "hold R" },
+    MoveEntry { name: "Jump", input: "X (+ FWD or BACK)" },
+    MoveEntry { name: "Chain", input: "A, FWD + A, DOWN + B" },
+    MoveEntry { name: "Nuclear meter", input: "fills as Tank takes damage" },
+    MoveEntry {}
+] }

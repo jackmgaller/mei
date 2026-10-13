@@ -73,7 +73,8 @@ struct Fight {
 // round ends (side: the winner, or 2 for a draw). Shot: a wave fired. Parry: a Parry caught a
 // hit (side: who parried). Clash: two waves met.
 enum Ev { Hit, Block, Chip, Whiff, Grab, Throw, Break, Land, Step, MeterFull, Super, Ko, TimeUp,
-          Shot, Parry, Clash, Swing }
+          Shot, Parry, Clash, Swing,
+          Armour }      // a hit absorbed by Tank's super armour (side: the attacker; power: the hit's)
 
 struct Event {
     kind: Ev
@@ -369,6 +370,6 @@ const DB_MOVES = MoveList { n: 15, e: [
 var move_list: MoveList
 
 fn fight_moves(m: Mech) -> *MoveList {
-    if m == Mech.Hero { move_list = HERO_MOVES } else { move_list = DB_MOVES }
+    if m == Mech.Hero { move_list = HERO_MOVES } else if m == Mech.Tank { move_list = TANK_MOVES } else { move_list = DB_MOVES }
     return &move_list
 }

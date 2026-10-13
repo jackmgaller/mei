@@ -4,6 +4,7 @@
 // boxes below, which follow MOVES.md. The fight reads timing only through the mv_* functions.
 
 import "anim.akr"
+import "tank.akr"               // Tank's data (mx-tank)
 
 // The stand-in data (below) is used for every move anim.akr still stands in for (it holds the
 // guard pose there: anim_standin()), and for all of them while STANDIN_ALL is set.
@@ -71,6 +72,7 @@ fn move_hit(m: Mech, mv: Mv) -> Hit {
             else => HIT_NONE
         }
     }
+    if m == Mech.Tank { return tank_hit(mv) }
     return match mv {
         atk_n => Hit { dmg: 60, hitstun: 17, blockstun: 12, stop: 7, kb: 0.09 }
         atk_f => Hit { dmg: 100, hitstun: 24, blockstun: 17, stop: 10, power: 1, kb: 0.13 }
@@ -146,13 +148,19 @@ fn mv_marks(m: Mech, mv: Mv, f: s32) -> u32 {
     if f == t.rip { k |= MARK_RIPOSTE }
     if f >= t.p0 && f <= t.p1 { k |= MARK_PARRY }
     if f >= t.q0 && f <= t.q1 { k |= MARK_NOPUSH | MARK_HIDE }
-    if (mv == Mv.walk_f || mv == Mv.walk_b) && (f == 0 || f == t.len / 2) { k |= MARK_STEP }
+    if f >= t.r0 && f <= t.r1 { k |= MARK_ARMOUR }
+    // Tank's treads glide: no steps
+    if (mv == Mv.walk_f || mv == Mv.walk_b) && (f == 0 || f == t.len / 2) && m != Mech.Tank { k |= MARK_STEP }
     return k
 }
 
 fn mv_boxes(m: Mech, mv: Mv, f: s32, out: *Boxes) {
     if !use_standin(m, mv) {
         anim_boxes(m, mv, f, out)
+        return
+    }
+    if m == Mech.Tank {
+        tank_boxes(mv, f, out)
         return
     }
     let t = tm(m, mv)
@@ -215,6 +223,8 @@ struct Tm {
     p1: s32 = -1
     q0: s32 = -1            // MARK_NOPUSH (and no hurt) q0..q1
     q1: s32 = -1
+    r0: s32 = -1            // MARK_ARMOUR r0..r1 (Tank)
+    r1: s32 = -1
 }
 
 fn tm(m: Mech, mv: Mv) -> Tm {
@@ -244,6 +254,7 @@ fn tm(m: Mech, mv: Mv) -> Tm {
             else => common_tm(mv)
         }
     }
+    if m == Mech.Tank { return tank_tm(mv) }
     return match mv {
         idle => Tm { len: 60, loops: true }
         walk_f, walk_b => Tm { len: 40, loops: true }
@@ -269,7 +280,7 @@ fn tm(m: Mech, mv: Mv) -> Tm {
     }
 }
 
-private fn common_tm(mv: Mv) -> Tm {
+fn common_tm(mv: Mv) -> Tm {
     return match mv {
         land => Tm { len: 8 }
         block => Tm { len: 4, loops: true }
@@ -283,6 +294,7 @@ private fn common_tm(mv: Mv) -> Tm {
         intro => Tm { len: 90 }
         grab_whiff => Tm { len: 22 }
         grab_break => Tm { len: 20 }
+        thrown_slam => Tm { len: 56, rel: 33 }     // the victim of Tank's command grabs
         else => Tm { len: 60 }
     }
 }
