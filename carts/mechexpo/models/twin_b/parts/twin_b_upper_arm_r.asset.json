@@ -1,0 +1,214 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "twin_b_upper_arm_r",
+ "budget": {
+  "vertices": 512,
+  "triangles": 400
+ },
+ "lighting": {
+  "direction": [
+   0,
+   0.62,
+   -0.78
+  ],
+  "ambient": 0.66
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "frame": {
+   "color": "#5b6577"
+  }
+ },
+ "nodes": [
+  {
+   "id": "mirrored",
+   "op": "group",
+   "children": [
+    {
+     "id": "shoulder_drum",
+     "op": "cylinder",
+     "radius": 0.33,
+     "height": 0.5,
+     "segments": 6,
+     "material": "frame",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       90
+      ],
+      "translate": [
+       0,
+       0,
+       0
+      ]
+     },
+     "caps": false
+    },
+    {
+     "id": "arm",
+     "op": "mesh",
+     "vertices": [
+      [
+       0.12,
+       -0.2,
+       -0.26
+      ],
+      [
+       0.24,
+       -0.2,
+       0.0
+      ],
+      [
+       0.12,
+       -0.2,
+       0.26
+      ],
+      [
+       -0.12,
+       -0.2,
+       0.26
+      ],
+      [
+       -0.24,
+       -0.2,
+       0.0
+      ],
+      [
+       -0.12,
+       -0.2,
+       -0.26
+      ],
+      [
+       0.11,
+       -0.95,
+       -0.24
+      ],
+      [
+       0.22,
+       -0.95,
+       0.0
+      ],
+      [
+       0.11,
+       -0.95,
+       0.24
+      ],
+      [
+       -0.11,
+       -0.95,
+       0.24
+      ],
+      [
+       -0.22,
+       -0.95,
+       0.0
+      ],
+      [
+       -0.11,
+       -0.95,
+       -0.24
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       7
+      ],
+      [
+       0,
+       7,
+       6
+      ],
+      [
+       1,
+       2,
+       8
+      ],
+      [
+       1,
+       8,
+       7
+      ],
+      [
+       2,
+       3,
+       9
+      ],
+      [
+       2,
+       9,
+       8
+      ],
+      [
+       3,
+       4,
+       10
+      ],
+      [
+       3,
+       10,
+       9
+      ],
+      [
+       4,
+       5,
+       11
+      ],
+      [
+       4,
+       11,
+       10
+      ],
+      [
+       5,
+       0,
+       6
+      ],
+      [
+       5,
+       6,
+       11
+      ],
+      [
+       6,
+       7,
+       8,
+       9,
+       10,
+       11
+      ]
+     ],
+     "face_materials": [
+      "frame",
+      "frame",
+      "frame",
+      "frame",
+      "frame",
+      "frame",
+      "frame",
+      "frame",
+      "frame",
+      "frame",
+      "frame",
+      "frame",
+      "frame"
+     ]
+    }
+   ],
+   "transform": {
+    "scale": [
+     -1,
+     1,
+     1
+    ]
+   }
+  }
+ ]
+}
