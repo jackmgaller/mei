@@ -1,0 +1,32 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Rift Mine (MOVES.md): not an attack. Frames 0-5: Shadow crouches, turning its left side forward, and raises the left claw high over its head, talons closed; 5-11: it drives the claw straight down, the body dropping onto it, and the talons strike the floor in front of its feet at x 1.8 (frame 11, the release mark: the fight lays the mine at Shadow's root), the right claw held back high. It holds the claw in the floor a moment (11-15) as the sigil spreads, then pulls it out and rises into the guard (16-25). Feet planted.",
+  "base": "_body.anim.json",
+  "length": 26,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease"},
+    {"at": 5, "ease": "in", "offset": [-0.3, -1.6],
+     "pose": {"pelvis": [-6, -12, 0], "torso": [-18, -14, 0], "head": [20, 12, 0],
+              "upper_arm_l": [150, 0, 20], "forearm_l": [30, 0, -10], "hand_l": [-30, 0, 0],
+              "weapon_l": [-20, 0, 0], "upper_arm_r": [30, 0, -24], "forearm_r": [90, 0, 0],
+              "hand_r": [-40, 0, 0], "pauldron_l": [36, 0, 16]}},
+    {"at": 9, "ease": "linear", "offset": [-0.4, -2.3],
+     "pose": {"pelvis": [-12, -14, 0], "torso": [-30, -16, 0], "head": [36, 14, 0],
+              "upper_arm_l": [30.5, 0.0, 10.0], "forearm_l": [106.9, 0.0, -10.0],
+              "hand_l": [0, 0, 0], "weapon_l": [10, 0, 0], "pauldron_l": [20, 0, 15],
+              "upper_arm_r": [30, 0, -24], "forearm_r": [110, 0, 0], "hand_r": [-40, 0, 0]},
+     "aim": {"weapon_l": [-80, 0]}},
+    {"at": 11, "ease": "out", "offset": [-0.5, -2.5],
+     "pose": {"pelvis": [-14, -14, 0], "torso": [-34, -16, 0], "head": [40, 14, 0],
+              "upper_arm_l": [28.8, 0.0, 10.0], "forearm_l": [100.5, 0.0, -10.0]},
+     "aim": {"weapon_l": [-88, 0]}},
+    {"at": 15, "ease": "ease", "offset": [-0.45, -2.4],
+     "pose": {"pelvis": [-12, -14, 0], "torso": [-32, -16, 0], "head": [38, 14, 0],
+              "upper_arm_l": [28.2, 0.0, 10.0], "forearm_l": [94.0, 0.0, -10.0]},
+     "aim": {"weapon_l": [-86, 0]}},
+    {"at": 25, "from": "guard"}
+  ],
+  "plant": {"foot_r": [[0, 25]], "foot_l": [[0, 25]]},
+  "marks": {"release": [11]}
+}
