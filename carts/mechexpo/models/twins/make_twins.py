@@ -683,7 +683,8 @@ def c_pauldron():
     fin = {'id': 'fin', 'op': 'extrude', 'depth': 0.08, 'material': 'shell',
            'points': [[-0.5, 0.0], [0.62, 0.0], [0.86, 0.36], [-0.1, 0.42]],
            'transform': {'rotate': [0, 90, 0], 'translate': [0.66, 0.82, 0.05]}}
-    return [pl, fin]
+    # drawn at 0.82 and 0.3 m lower: full size, they hid the head side-on at game distance
+    return [group('plates', [pl, fin], translate=[0, -0.3, 0], scale=[0.82, 0.82, 0.82])]
 
 
 @combined
