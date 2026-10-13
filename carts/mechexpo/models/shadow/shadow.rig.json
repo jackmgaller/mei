@@ -50,14 +50,14 @@
    "vertices": 132,
    "bounds": {
     "min": [
-     -1.987,
-     -2.6386,
+     -1.7356,
+     -2.6953,
      -0.82
     ],
     "max": [
-     1.987,
+     1.7356,
      4.7546,
-     1.8588
+     1.2608
     ]
    },
    "role": "the tall chest and long waist, the high collar, and the three cape plates on its back (they turn with it: lean forward and the cape swings back)",
@@ -706,6 +706,107 @@
     ]
    },
    "note": "low and wide-armed: crouched on its long legs, leaning in, both arms spread and reaching forward, the claws out in front and open (the lead claw high, the rear one low), the cape hanging; both soles on y = 0"
+  },
+  "sink": {
+   "drop": 5.2,
+   "rotate": {
+    "pelvis": [
+     -78,
+     0,
+     0
+    ],
+    "torso": [
+     -9,
+     0,
+     0
+    ],
+    "head": [
+     20,
+     0,
+     0
+    ],
+    "thigh_r": [
+     94,
+     87,
+     0
+    ],
+    "shin_r": [
+     -137,
+     0,
+     0
+    ],
+    "foot_r": [
+     0,
+     0,
+     0
+    ],
+    "thigh_l": [
+     94,
+     -87,
+     0
+    ],
+    "shin_l": [
+     -137,
+     0,
+     0
+    ],
+    "foot_l": [
+     0,
+     0,
+     0
+    ],
+    "upper_arm_r": [
+     13,
+     0,
+     -19
+    ],
+    "forearm_r": [
+     150,
+     0,
+     0
+    ],
+    "hand_r": [
+     80,
+     71,
+     0
+    ],
+    "weapon_r": [
+     -11,
+     0,
+     0
+    ],
+    "upper_arm_l": [
+     13,
+     0,
+     19
+    ],
+    "forearm_l": [
+     150,
+     0,
+     0
+    ],
+    "hand_l": [
+     80,
+     -71,
+     0
+    ],
+    "weapon_l": [
+     -11,
+     0,
+     0
+    ],
+    "pauldron_r": [
+     3.5,
+     0,
+     -9
+    ],
+    "pauldron_l": [
+     3.5,
+     0,
+     9
+    ]
+   },
+   "note": "folded into its shadow (the sinks' last frame before a hide): hips at 1.3 m, the legs split sideways, the torso level over them with the cape plates flat over its back like a shell, the claws laid flat in front; 2.6 m tall. Rising is the reverse, claws first"
   }
  },
  "allow": [
@@ -718,14 +819,38 @@
    "weapon_l"
   ],
   [
-   "torso",
-   "thigh_r"
+   "torso/waist",
+   "thigh_r/thigh"
   ],
   [
-   "torso",
-   "thigh_l"
+   "torso/waist",
+   "thigh_r/hip_drum"
+  ],
+  [
+   "torso/chest",
+   "thigh_r/thigh"
+  ],
+  [
+   "torso/chest",
+   "thigh_r/hip_drum"
+  ],
+  [
+   "torso/waist",
+   "thigh_l/thigh"
+  ],
+  [
+   "torso/waist",
+   "thigh_l/hip_drum"
+  ],
+  [
+   "torso/chest",
+   "thigh_l/thigh"
+  ],
+  [
+   "torso/chest",
+   "thigh_l/hip_drum"
   ]
  ],
- "allow_note": "pairs of parts every move may pass into each other (a move's \"allow\" adds more): a bent wrist puts the claw's knuckles into the forearm's cuff, and a thigh swung far back meets the cape's hem (the cape is the torso's)",
+ "allow_note": "pairs of parts every move may pass into each other (a move's \"allow\" adds more), or part/piece pairs: a bent wrist puts the claw's knuckles into the forearm's cuff, and a raised thigh meets the waist or the chest. The cape plates (torso/cape_back, torso/cape_flank_l, torso/cape_flank_r) are not allowed into the thighs: keep them clear",
  "triangles": 1800
 }

@@ -34,6 +34,7 @@ The trade-show finish is Umbral's: its eclipse on the pauldrons, a serial plate 
 
 Writes, beside this script: shadow.asset.json (assembled, in its guard), shadow_rest.asset.json
 (the rest pose), shadow_flex.asset.json (every joint bent far, for checking; not packed),
+shadow_sink.asset.json (the rig's `sink` pose, for review; not packed),
 parts/shadow_*.asset.json (each part alone, its origin at its joint), shadow.rig.json,
 cameras.json, cameras_flex.json and asset-preview.json (the preview's hangar look). Helpers (the
 loft builder, the writers) come from ../hero/make_hero.py; Umbral's mark from mxpaint.py.
@@ -189,13 +190,13 @@ def torso():
     # tilted back so the hem clears the legs; the side plates wrap round the flanks, so the
     # side camera sees the cape as a shape, not an edge
     back = plate_xy('cape_back', CAPE_SHAPE, 0.12, 'cape', 'violet', 'violet',
-                    [0, CAPE_TOP, 0.9], [-9, 0, 0])
+                    [0, CAPE_TOP, 0.9], [-3, 0, 0])
     side = [(-0.55, 0.0), (0.55, 0.0), (0.62, -4.3), (0.0, -5.0), (-0.62, -4.3)]
-    flanks = {'id': 'cape_flanks', 'op': 'group', 'children': [
-        plate_xy('cape_flank', side, 0.1, 'cape', 'violet', 'violet',
-                 [0.95, CAPE_TOP-0.1, 0.5], [-7, 58, 3])],
-        'modifiers': [{'op': 'mirror', 'axis': 'x'}]}
-    return [waist, chest, sockets, collar, wings, back, flanks]
+    # one node a side (not a mirrored group), so the Animation Kit's box for each is one plate's
+    flanks = [plate_xy(f'cape_flank_{s}', side, 0.1, 'cape', 'violet', 'violet',
+                       [k*0.95, CAPE_TOP-0.1, 0.5], [-3, k*58, k*3])
+              for s, k in (('l', 1), ('r', -1))]
+    return [waist, chest, sockets, collar, wings, back] + flanks
 
 
 EYE = (0.0, 0.7, -0.77)    # the eye's front face, in the head's frame
@@ -541,6 +542,28 @@ STANCE = pose({
 # drawn 3 cm higher than the knees were solved for.
 DRAWN_DROP = DROP - 0.03
 
+# ---- the sink: folded into its shadow, under 3 m, the cape over it ---------------------------
+# Where Shadow Sneak, Eclipse Rise and Phantom Grip end before a `hide` (MOVES.md): the hips down
+# at 1.3 m, the legs in a full sideways split with the shins folded back, the torso pitched
+# forward level over them, the head low in front, the arms folded under the shoulders and the
+# claws laid flat on the floor in front (twisted 71 degrees: their fan horizontal). The cape
+# plates lie over the back like a shell, level (they tilt only 3 degrees back on the torso, so
+# a torso pitched 87 degrees forward carries them flat). Top 2.6 m; nothing passes into
+# anything beyond what the rest and the guard have (found by a search with the Animation Kit's
+# own box check, then rounded).
+
+SINK_DROP = 5.2
+SINK = {
+    'pelvis': [-78, 0, 0], 'torso': [-9, 0, 0], 'head': [20, 0, 0],
+    'thigh_r': [94, 87, 0], 'shin_r': [-137, 0, 0], 'foot_r': [0, 0, 0],
+    'thigh_l': [94, -87, 0], 'shin_l': [-137, 0, 0], 'foot_l': [0, 0, 0],
+    'upper_arm_r': [13, 0, -19], 'forearm_r': [150, 0, 0], 'hand_r': [80, 71, 0],
+    'weapon_r': [-11, 0, 0],
+    'upper_arm_l': [13, 0, 19], 'forearm_l': [150, 0, 0], 'hand_l': [80, -71, 0],
+    'weapon_l': [-11, 0, 0],
+    'pauldron_r': [3.5, 0, -9], 'pauldron_l': [3.5, 0, 9],
+}
+
 # ---- the flex check: each joint near the end of its range -------------------------------------
 
 FLEX_DROP = 1.9
@@ -617,8 +640,12 @@ def claw_tips():
             for id_, root, a, ln, c, w, t, n in TALONS}
 
 
-ALLOW = [['forearm_r', 'weapon_r'], ['forearm_l', 'weapon_l'], ['torso', 'thigh_r'],
-         ['torso', 'thigh_l']]
+# Pairs every move may pass into each other: the claw's knuckles in the forearm's cuff (a bent
+# wrist), and the waist and chest (not the cape plates) with a raised thigh. A cape plate meeting
+# a thigh is reported, so the animators keep the cape clear of the legs.
+ALLOW = [['forearm_r', 'weapon_r'], ['forearm_l', 'weapon_l']] + [
+    [f'torso/{n}', f'thigh_{s}/{m}'] for s in 'rl' for n in ('waist', 'chest')
+    for m in ('thigh', 'hip_drum')]
 
 
 def write_rig(stance, drop, part_recipes, height):
@@ -674,11 +701,19 @@ def write_rig(stance, drop, part_recipes, height):
                             'note': 'low and wide-armed: crouched on its long legs, leaning in, '
                                     'both arms spread and reaching forward, the claws out in front '
                                     'and open (the lead claw high, the rear one low), the cape '
-                                    'hanging; both soles on y = 0'}},
+                                    'hanging; both soles on y = 0'},
+                  'sink': {'drop': SINK_DROP, 'rotate': dict(SINK),
+                           'note': "folded into its shadow (the sinks' last frame before a hide): "
+                                   'hips at 1.3 m, the legs split sideways, the torso level over '
+                                   'them with the cape plates flat over its back like a shell, the '
+                                   'claws laid flat in front; 2.6 m tall. Rising is the reverse, '
+                                   'claws first'}},
         'allow': ALLOW,
         'allow_note': "pairs of parts every move may pass into each other (a move's \"allow\" adds "
-                      "more): a bent wrist puts the claw's knuckles into the forearm's cuff, and a "
-                      "thigh swung far back meets the cape's hem (the cape is the torso's)",
+                      "more), or part/piece pairs: a bent wrist puts the claw's knuckles into the "
+                      "forearm's cuff, and a raised thigh meets the waist or the chest. The cape "
+                      "plates (torso/cape_back, torso/cape_flank_l, torso/cape_flank_r) are not "
+                      "allowed into the thighs: keep them clear",
         'triangles': sum(p['triangles'] for p in parts),
     }
     H.write(HERE/'shadow.rig.json', rig)
@@ -706,6 +741,8 @@ def main():
             p.unlink()
     H.write(HERE/'shadow_flex.asset.json', recipe('shadow_flex', assemble(FLEX, FLEX_DROP), budget))
     H.write(HERE/'cameras.json', cameras(STANCE, DRAWN_DROP))
+    # the sink, for review (not packed): the same cameras as the guard's side views
+    H.write(HERE/'shadow_sink.asset.json', recipe('shadow_sink', assemble(SINK, SINK_DROP), budget))
     H.write(HERE/'cameras_flex.json', flex_cameras(FLEX, FLEX_DROP))
     H.write(HERE/'asset-preview.json', LOOK)
     h = round(height(), 3)
