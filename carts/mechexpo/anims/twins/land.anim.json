@@ -1,0 +1,13 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Land: the Hero's (base) on the combined form's rig: the knees take the weight, the pelvis sinking 1.2 m below the guard in 2 frames, the chest pitching forward over the coupling and the fists dropping from the chin, then back up into the guard by 7 (the combined form's landing lag is 5 frames, 8 after an air attack: the fight holds the last frame). Feet at the combined guard's places.",
+  "base": "../hero/land.anim.json",
+  "rig": "../../models/twins/twins.rig.json",
+  "keys": [
+    {"at": 0, "offset": [0.0, -0.85], "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}, "pose": {"forearm_r": [70, 0, 4], "forearm_l": [86, 0, -6], "hand_r": [-16, 0, 0]}},
+    {"at": 2, "offset": [-0.1, -1.75], "pose": {"torso": [-14, -15, 0], "forearm_r": [64, 0, 4], "forearm_l": [80, 0, -6], "hand_r": [-12, 0, 0]}},
+    {"at": 5, "offset": [0.0, -0.75], "pose": {"forearm_r": [72, 0, 4], "forearm_l": [88, 0, -6], "hand_r": [-16, 0, 0], "pauldron_r": [9.8, 0, -8], "pauldron_l": [11.9, 0, 9]}},
+    {"at": 7, "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "KO: the Hero's (base) on the combined form's rig, from the combined knockdown's fall: slams flat on its back, bounces and lies still; the head lolls, the right arm lifts once, shakily (40-52), and drops back; the knees slide down flat and it powers down, still.",
+  "base": "../hero/ko.anim.json",
+  "rig": "../../models/twins/twins.rig.json",
+  "keys": [
+    {"at": 0, "offset": [-0.3, -1.6], "pose": {"torso": [4, -10, 0], "upper_arm_r": [140, 0, 16], "upper_arm_l": [120, 0, -16], "forearm_r": [16, 0, 4]}},
+    {"at": 3, "pose": {"upper_arm_r": [140, 0, 20], "upper_arm_l": [130, 0, -20], "hand_r": [-20, 0, 0]}},
+    {"at": 7, "pose": {"upper_arm_r": [130, 0, 20], "upper_arm_l": [120, 0, -20]}},
+    {"at": 11, "pose": {"upper_arm_r": [142, 0, 20], "upper_arm_l": [132, 0, -20]}},
+    {"at": 40, "pose": {"upper_arm_r": [142, 0, 20]}},
+    {"at": 47, "pose": {"upper_arm_r": [118, 0, 18]}},
+    {"at": 52, "pose": {"upper_arm_r": [114, 0, 18]}},
+    {"at": 57, "pose": {"upper_arm_r": [146, 0, 20]}}
+  ]
+}

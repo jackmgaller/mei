@@ -1,0 +1,13 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Grab break (both mechs; the fight slides each back about 3 m): the Hero's (base) on the combined form's rig: both fists shove out hard at chest height on frames 0-3, the body recoiling back onto the back foot as it slides, then it settles back into the guard by 19. Feet at the combined guard's places.",
+  "base": "../hero/grab_break.anim.json",
+  "rig": "../../models/twins/twins.rig.json",
+  "keys": [
+    {"at": 0, "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}, "pose": {"hand_r": [-30, 0, 0]}},
+    {"at": 3, "pose": {"hand_r": [-40, 0, 0]}},
+    {"at": 9, "pose": {"hand_r": [-20, 0, 0], "forearm_r": [56, 0, 4]}},
+    {"at": 19, "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}}
+  ]
+}

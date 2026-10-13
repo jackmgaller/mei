@@ -1,0 +1,13 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Thrown by the Vault Throw: the Hero's (base) on the combined form's rig (the fight carries the root over the thrower's head, slam on 28): yanked forward by the shoulders, tipped over the thrower's head, upside down at the top, slammed flat on its back on the far side. The arms trail overhead, spread clear of the head.",
+  "base": "../hero/thrown_vault.anim.json",
+  "rig": "../../models/twins/twins.rig.json",
+  "keys": [
+    {"at": 6, "pose": {"upper_arm_r": [120, 0, 10], "upper_arm_l": [124, 0, -10]}},
+    {"at": 12, "pose": {"upper_arm_r": [150, 0, 16], "upper_arm_l": [150, 0, -16]}},
+    {"at": 23, "pose": {"upper_arm_r": [160, 0, 18], "upper_arm_l": [160, 0, -18]}},
+    {"at": 28, "pose": {"upper_arm_r": [140, 0, 20], "upper_arm_l": [130, 0, -20], "hand_r": [-20, 0, 0]}}
+  ]
+}
