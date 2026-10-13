@@ -1,22 +1,234 @@
-// The fight's effects (D's), from the fight's events and state; the fight never draws.
+// The fight's effects (D's; the particle system is mx-fx's), from the fight's events and state;
+// the fight never draws, and nothing here changes the fight.
 //
-//   trails   each weapon's sweep during an attack: the blade's base and tip (anim_part) kept for
-//            the last TRAIL_N frames, drawn as a strip of additive Gouraud quads in the world
-//            (a mesh in RAM, depth-tested), fading toward the oldest. The Hero's sword white
-//            into cyan, the echo's daggers violet.
-//   sparks   on hits, blocks, chip, breaks, throws and the KO: additive sprites (a spark star,
-//            a glow, an expanding ring) on the interface list at the projected contact point,
-//            sized in metres; dust on landings
-//   shots    the Hero's ground wave (fight.shot[]): a crescent of light and its glow
-//   flash    the colour offset: white over everything as a super starts or a round is won,
-//            then the hall and the floor darkened for the rest of the super's freeze
+//   particles  a pool of FXP_MAX particles, each with a velocity, gravity, drag, a size and a
+//              colour over its life, spin (the shards' frames), a blend mode and a way of being
+//              drawn (Pk): sprites from texture slot 11 (fx_art.akr, tools/gen_mechexpo_fx.py)
+//              on the interface list at the particle's projected point, sized in metres, or
+//              streaks (untextured Gouraud lines along the velocity, for sparks). Emitted in
+//              bursts from the events (fx_event) and by the emitters below (fx_update): presets
+//              (Pre, PRES) say how each kind of particle moves and looks, fx_spray() fires n of
+//              one in a cone. Fixed-point, a fixed pool (a new particle takes the oldest slot
+//              when it is full), about 300 CPU cycles a particle a frame to move and draw.
+//   hits       by weight (Event.power): light, medium, heavy and crushing differ in the flare,
+//              the number and speed of the sparks (which fly, fall and skid on the floor), metal
+//              shards (heavy and crushing), smoke and a ring; blocks a blue-white shield hexagon
+//              with sparks skidding off it; chip a small hot spray; grabs a clank; throws and
+//              knockdowns a dust and debris burst along the floor; landings and steps dust; the
+//              KO a big burst, then sparks and smoke from the beaten mech until the next round
+//   supers     the charge-up during the super's flash, by the mech's power source (FX_POWERS:
+//              kinetic streaks and chevrons, the antimatter implosion and dark core, rows for
+//              chemical, nuclear and fusion ready for the mechs that bring them); a reactor glow
+//              and motes while a meter is full
+//   trails     each weapon's sweep during an attack: the blade's base and tip (anim_part) kept
+//              for the last TRAIL_N frames, drawn as a strip of additive Gouraud quads in the
+//              world (a mesh in RAM, depth-tested), bright at the edge and fading to nothing at
+//              the hilt and toward the oldest; the blade's tip sheds motes
+//   shots      the Hero's wave (fight.shot[]): a crescent of light and its glow, trailing motes
+//              and kicking dust, and a burst where it ends
+//   vanishing  the Void Step and the Antimatter Rend: a dark flicker as the mech sinks, a burst
+//              where it goes, and motes falling into the place it reappears
+//   flash      the colour offset: white over everything as a super starts, a heavy hit lands
+//              or a round is won, then the hall and the floor darkened (tinted by the power
+//              source) for the rest of the super's freeze
 // Screen shake is the camera's (camera.akr), from fight.shake.
+//
+// For the other mechs' files: fx_spray(), fx_spawn() and fx_burst_at() are public, and a
+// power source's charge-up is a row of FX_POWERS (fx_power_index() maps Power to the row).
+
+import "fx_art.akr"
 
 private const TRAIL_N = 8                  // samples a weapon
 private const TRAILS = 4                   // two fighters, two weapons each
-private const SPARKS = 24
+const FXP_MAX = 96                        // the particle pool
+const FX_Z: fixed = -1.2                   // particles' depth: a little in front of the mechs
+private const PXK: fixed = 207.8           // screen pixels a metre at view depth 1 (120 x 1.732)
 
-private enum FxKind: u8 { Spark, Glow, Ring, Dust }
+// How a particle is drawn.
+enum Pk: u8 { Dot, Glow, Streak, Shard, Smoke, Dust, Flare, Ring, Floor, Hex, Star, Chevron, Speed, Bubble, Bolt }
+
+const PF_FLOOR: u8 = 1        // bounces and skids on the floor
+const PF_FLICKER: u8 = 2      // blinks
+const PF_FLIP: u8 = 4         // mirrored: faces -x (chevrons, speed streaks)
+const PF_BACK: u8 = 8         // drawn first, under the rest (smoke, dust)
+const PF_STILL: u8 = 16       // keeps its first colour (no fade over life)
+
+struct Pt {
+    x: fixed
+    y: fixed
+    z: fixed
+    vx: fixed                  // metres a frame
+    vy: fixed
+    age: fixed                 // 0 at birth .. 1.0 at death
+    dt: fixed                  // age a frame
+    s0: fixed                  // metres across at birth
+    s1: fixed                  // ... at death
+    grav: fixed                // metres a frame a frame, down
+    drag: fixed                // the share of its speed kept each frame
+    c0: u32                    // colour at birth (sprites: a tint, 0x808080 the sprite as it is,
+    c1: u32                    // brighter overdrives it; streaks: the colour drawn), and at death
+    kind: Pk
+    blend: s8                  // BLEND_*
+    flags: u8
+    rot: u8                    // the shard's frame (0-7), the smoke's variant
+    spin: s8                   // frames turned a frame
+}
+
+// The particle presets: how each kind moves and looks; fx_spawn() varies life and size.
+struct FxPre {
+    kind: Pk
+    blend: s32
+    flags: u8
+    life: s32                  // frames
+    life_rnd: s32              // up to this many more
+    speed_rnd: fixed           // fx_spray: up to this share slower
+    s0: fixed
+    s1: fixed
+    grav: fixed
+    drag: fixed
+    c0: u32
+    c1: u32
+    spin: s32
+}
+
+enum Pre {
+    Spark, Ember, Shard, Flare, Glow, Ring, Smoke, Dust, Puff, Pebble, Floor, Shield, ShieldSpark,
+    Chip, Clank, Mote, Void, VoidMote, Steam, Arc, Bubble, Chevron, Speed, Star, Implode, Scrape
+}
+
+// 0xBBGGRR. Sprite colours are tints (0x80 a channel: as drawn; up to 0xFF: twice as bright).
+const PRES: [len(Pre)]FxPre = [
+    // Spark: a hot streak that flies, falls and skids (literal colours: white-yellow to red)
+    FxPre { kind: Pk.Streak, blend: BLEND_ADD, flags: PF_FLOOR, life: 14, life_rnd: 14, speed_rnd: 0.65,
+            s0: 0.32, s1: 0.2, grav: 0.02, drag: 0.95, c0: 0xD8FCFF, c1: 0x0838E0 },
+    // Ember: a small hot dot drifting down
+    FxPre { kind: Pk.Dot, blend: BLEND_ADD, flags: PF_FLOOR, life: 18, life_rnd: 16, speed_rnd: 0.7,
+            s0: 0.55, s1: 0.25, grav: 0.012, drag: 0.94, c0: 0x90D0FF, c1: 0x1030C0 },
+    // Shard: a piece of plating, opaque, spinning, bouncing (tinted by the mech hit)
+    FxPre { kind: Pk.Shard, blend: BLEND_NONE, flags: PF_FLOOR | PF_STILL, life: 34, life_rnd: 20, speed_rnd: 0.5,
+            s0: 1.0, s1: 0.7, grav: 0.026, drag: 0.975, c0: 0x9C9690, c1: 0x9C9690, spin: 1 },
+    // Flare: the impact's star and anamorphic streak (white-hot into blue)
+    FxPre { kind: Pk.Flare, blend: BLEND_ADD, life: 7, s0: 9.0, s1: 6.0, drag: 1.0,
+            c0: 0xFFFFFF, c1: 0xA05010 },
+    // Glow: a soft burst of light
+    FxPre { kind: Pk.Glow, blend: BLEND_ADD, life: 9, s0: 3.0, s1: 5.5, drag: 1.0,
+            c0: 0x5090E0, c1: 0x102050 },
+    // Ring: a shockwave
+    FxPre { kind: Pk.Ring, blend: BLEND_ADD, life: 12, s0: 1.0, s1: 9.0, drag: 1.0,
+            c0: 0xFFE8C0, c1: 0x603010 },
+    // Smoke: dark, subtracted, rising and spreading
+    FxPre { kind: Pk.Smoke, blend: BLEND_SUB, flags: PF_BACK, life: 40, life_rnd: 20, speed_rnd: 0.5,
+            s0: 2.0, s1: 5.5, grav: -0.002, drag: 0.94, c0: 0x40484C, c1: 0x181C20 },
+    // Dust: a flattened puff along the floor, lit grey-brown
+    FxPre { kind: Pk.Dust, blend: BLEND_ADD, flags: PF_BACK, life: 26, life_rnd: 14, speed_rnd: 0.5,
+            s0: 2.4, s1: 7.0, grav: -0.003, drag: 0.92, c0: 0x48586A, c1: 0x182028 },
+    // Puff: a small round dust puff (steps, landings)
+    FxPre { kind: Pk.Smoke, blend: BLEND_ADD, flags: PF_BACK, life: 14, life_rnd: 6, speed_rnd: 0.5,
+            s0: 0.8, s1: 2.4, grav: -0.003, drag: 0.9, c0: 0x3C4850, c1: 0x101418 },
+    // Pebble: a chip of floor or plating thrown up by a slam
+    FxPre { kind: Pk.Shard, blend: BLEND_NONE, flags: PF_FLOOR | PF_STILL, life: 30, life_rnd: 16, speed_rnd: 0.6,
+            s0: 0.6, s1: 0.4, grav: 0.03, drag: 0.98, c0: 0x6A6660, c1: 0x6A6660, spin: 1 },
+    // Floor: a shockwave ring flat on the floor
+    FxPre { kind: Pk.Floor, blend: BLEND_ADD, flags: PF_BACK, life: 16, s0: 2.0, s1: 14.0, drag: 1.0,
+            c0: 0x90A0B0, c1: 0x101820 },
+    // Shield: the block's hexagon, blue-white
+    FxPre { kind: Pk.Hex, blend: BLEND_ADD, life: 10, s0: 4.6, s1: 5.6, drag: 1.0,
+            c0: 0xFFF4D8, c1: 0xC04010 },
+    // ShieldSpark: blue-white sparks skidding off the shield
+    FxPre { kind: Pk.Streak, blend: BLEND_ADD, life: 8, life_rnd: 8, speed_rnd: 0.5,
+            s0: 0.25, s1: 0.15, grav: 0.008, drag: 0.9, c0: 0xFFF8E8, c1: 0xE06010 },
+    // Chip: a hot, red-orange ember through the guard
+    FxPre { kind: Pk.Dot, blend: BLEND_ADD, flags: PF_FLOOR, life: 12, life_rnd: 10, speed_rnd: 0.6,
+            s0: 0.7, s1: 0.3, grav: 0.02, drag: 0.92, c0: 0x60A0FF, c1: 0x0010A0 },
+    // Clank: a grab's metal-on-metal twinkle
+    FxPre { kind: Pk.Star, blend: BLEND_ADD, life: 7, s0: 3.5, s1: 1.5, drag: 1.0,
+            c0: 0xFFFFFF, c1: 0x806040 },
+    // Mote: a mote of light (the wave, the blades); recoloured by the caller
+    FxPre { kind: Pk.Dot, blend: BLEND_ADD, life: 16, life_rnd: 10, speed_rnd: 0.6,
+            s0: 0.6, s1: 0.2, drag: 0.95, c0: 0xFFE8B0, c1: 0x803010 },
+    // Void: the Void Step's dark flicker (subtracting green: a violet dark)
+    FxPre { kind: Pk.Smoke, blend: BLEND_SUB, flags: PF_BACK, life: 16, life_rnd: 10, speed_rnd: 0.5,
+            s0: 2.2, s1: 3.6, grav: -0.004, drag: 0.92, c0: 0x40A040, c1: 0x104010 },
+    // VoidMote: violet sparks of the vanishing
+    FxPre { kind: Pk.Dot, blend: BLEND_ADD, flags: PF_FLICKER, life: 14, life_rnd: 10, speed_rnd: 0.5,
+            s0: 0.7, s1: 0.2, drag: 0.93, c0: 0xFF90E0, c1: 0x601050 },
+    // Steam: a white vent puff (nuclear)
+    FxPre { kind: Pk.Smoke, blend: BLEND_ADD, flags: PF_BACK, life: 26, life_rnd: 12, speed_rnd: 0.4,
+            s0: 1.2, s1: 4.5, grav: -0.004, drag: 0.94, c0: 0x606866, c1: 0x101210 },
+    // Arc: an electric arc (chemical), flickering
+    FxPre { kind: Pk.Bolt, blend: BLEND_ADD, flags: PF_FLICKER, life: 5, life_rnd: 3, s0: 3.2, s1: 2.6, drag: 1.0,
+            c0: 0xC0FFFF, c1: 0x0090C0 },
+    // Bubble: a bubble rising (chemical)
+    FxPre { kind: Pk.Bubble, blend: BLEND_ADD, life: 22, life_rnd: 12, speed_rnd: 0.5,
+            s0: 0.6, s1: 1.1, grav: -0.003, drag: 0.96, c0: 0x80F0F0, c1: 0x106060 },
+    // Chevron: converging on the mech (kinetic)
+    FxPre { kind: Pk.Chevron, blend: BLEND_ADD, life: 18, s0: 1.9, s1: 1.2, drag: 1.0,
+            c0: 0x60B0FF, c1: 0x1020C0 },
+    // Speed: a speed streak rushing in (kinetic)
+    FxPre { kind: Pk.Speed, blend: BLEND_ADD, life: 16, s0: 4.5, s1: 2.5, drag: 1.0,
+            c0: 0x70C0FF, c1: 0x1018A0 },
+    // Star: a twinkle
+    FxPre { kind: Pk.Star, blend: BLEND_ADD, life: 10, s0: 6.0, s1: 2.0, drag: 1.0,
+            c0: 0xC0F0FF, c1: 0x2060A0 },
+    // Implode: a mote falling inward (antimatter)
+    FxPre { kind: Pk.Dot, blend: BLEND_ADD, life: 20, s0: 0.5, s1: 1.0, drag: 1.0,
+            c0: 0xFF60C0, c1: 0xFFE0FF },
+    // Scrape: a low spark scraped along the floor
+    FxPre { kind: Pk.Streak, blend: BLEND_ADD, flags: PF_FLOOR, life: 10, life_rnd: 8, speed_rnd: 0.5,
+            s0: 0.25, s1: 0.15, grav: 0.02, drag: 0.95, c0: 0xA0E0FF, c1: 0x0828B0 },
+]
+
+// ---- power sources: the super's charge-up and the full meter's glow, one row each
+
+const CH_STREAKS: u32 = 1          // speed streaks rushing in from both sides (kinetic)
+const CH_CHEVRONS: u32 = 2         // chevrons converging on the mech (kinetic)
+const CH_IMPLODE: u32 = 4          // motes falling in from a circle, shrinking rings, a dark core (antimatter)
+const CH_ARCS: u32 = 8             // electric arcs flickering about the body (chemical)
+const CH_BUBBLES: u32 = 16         // bubbles rising (chemical)
+const CH_STEAM: u32 = 32           // steam venting from the shoulders (nuclear)
+const CH_PULSE: u32 = 64           // rings pulsing out of the reactor (nuclear, fusion)
+const CH_SPARKS: u32 = 128         // sparks crackling off the reactor
+const CH_DARK: u32 = 256           // the core glow has a dark heart (subtracted)
+
+struct PowerFx {
+    style: u32                     // CH_*
+    core: u32                      // the reactor glow (a tint)
+    hot: u32                       // the particles' colour at birth (a tint)
+    cool: u32                      // ... at death
+    hall: [3]s32                   // the hall's colour offset in the super's freeze (r, g, b; 5-bit units)
+}
+
+const FXPOW_KINETIC = 0
+const FXPOW_ANTIMATTER = 1
+const FXPOW_CHEMICAL = 2
+const FXPOW_NUCLEAR = 3
+const FXPOW_FUSION = 4
+
+const FX_POWERS: [5]PowerFx = [
+    // kinetic: Momentum Robotics' red-orange; streaks and chevrons rushing in
+    PowerFx { style: CH_STREAKS | CH_CHEVRONS | CH_SPARKS, core: 0x3070FF, hot: 0x60B0FF, cool: 0x1018B0,
+              hall: [-6, -9, -10] },
+    // antimatter: Umbral Research's violet, falling inward on a dark heart
+    PowerFx { style: CH_IMPLODE | CH_DARK, core: 0xFF60C0, hot: 0xFF70D0, cool: 0xFFD8FF,
+              hall: [-7, -11, -5] },
+    // chemical: Raiko's yellow; arcs and bubbles (ready for Beam, mx-beam)
+    PowerFx { style: CH_ARCS | CH_BUBBLES | CH_SPARKS, core: 0x30E0FF, hot: 0x90FFFF, cool: 0x0080A0,
+              hall: [-6, -7, -11] },
+    // nuclear: Heartland Atomic's green reactor glow and steam (ready for Tank, mx-tank)
+    PowerFx { style: CH_STEAM | CH_PULSE, core: 0x50FF70, hot: 0x90FFA0, cool: 0x206010,
+              hall: [-10, -6, -10] },
+    // fusion: Binary Mechanica's cyan-white (later)
+    PowerFx { style: CH_PULSE | CH_SPARKS, core: 0xFFF0A0, hot: 0xFFFFE0, cool: 0xC08020,
+              hall: [-9, -7, -4] },
+]
+
+// The FX_POWERS row of a power source. Power's values are the rows while the enum keeps the
+// order Kinetic, Antimatter, Chemical, Nuclear, Fusion; map them here if it does not.
+fn fx_power_index(p: Power) -> s32 { return clamp(p as s32, 0, len(FX_POWERS) - 1) }
+
+fn fx_power(m: Mech) -> *PowerFx { return &FX_POWERS[fx_power_index(meter_power(m))] }
+
+// ---- state
 
 private struct Trail {
     n: s32                         // samples held (0..TRAIL_N)
@@ -24,17 +236,7 @@ private struct Trail {
     base: [TRAIL_N]vec3
     tip: [TRAIL_N]vec3
     idle: s32                      // frames since the weapon was last swinging
-}
-
-private struct Spark {
-    kind: FxKind
-    t: s32
-    life: s32
-    pos: vec3
-    size: fixed                    // metres across at its biggest
-    col: u32
-    vx: fixed                      // drift, metres a frame
-    vy: fixed
+    shed: s32                      // samples since the tip last shed a mote
 }
 
 private struct TrailMesh {
@@ -43,36 +245,168 @@ private struct TrailMesh {
     f: [TRAILS * (TRAIL_N - 1)]Face
 }
 
+private struct Side {
+    hidden: bool                   // not drawn last frame (the Void Step's gone frames)
+    x: fixed                       // last frame's root
+    y: fixed
+    mv: Mv
+    shot_on: bool                  // its wave last frame
+    shot_x: fixed
+    shot_y: fixed
+    core: vec3                     // the torso's point this frame (when core_on)
+    core_on: s32                   // 0 none, 1 a full meter's glow, 2 the super's charge-up
+    charge: s32                    // frames into the super's flash
+}
+
 var fx_trails: [TRAILS]Trail
-var fx_sparks: [SPARKS]Spark
-var fx_next: s32
+var fx_pts: [FXP_MAX]Pt
+var fx_n: s32                      // particles alive (fx_pts[0..fx_n])
+var fx_over: s32                   // the slot a spawn takes when the pool is full
+var fx_side: [2]Side
 var fx_flash: s32                  // frames of white flash left
 var fx_flash_max: s32
 var fx_dark: bool                  // the super's freeze darkens the hall
+var fx_dark_side: s32
 var fx_mesh: TrailMesh
 var fx_tick: s32
+var fx_rng: u32 = 0x2545F491
+var fx_dir: [32]vec2               // unit vectors, 0 = +x, 8 = up, 16 = -x, 24 = down
+var fx_page: u32
+var fx_ko_side: s32 = -1           // the beaten mech while it smokes
+var fx_ko_t: s32
+var fx_cycles: s32                 // CPU cycles of the last frame's fx_event()s and fx_update()
+var fx_ev_cycles: s32
+var fx_spawned: s32                // particles spawned since fx_reset (the tests read it)
+var fx_peak_n: s32                 // the most alive at once
+var fx_c0: u32                     // fx_spray()'s colour override when not 0 (then reset)
+var fx_c1: u32
 
 fn fx_reset() {
     for i in 0..TRAILS { fx_trails[i].n = 0 }
-    for i in 0..SPARKS { fx_sparks[i].life = 0 }
+    fx_n = 0
+    fx_over = 0
     fx_flash = 0
     fx_dark = false
+    fx_ko_side = -1
+    fx_spawned = 0
+    fx_peak_n = 0
+    for s in 0..2 {
+        fx_side[s] = Side {}
+        fx_side[s].mv = Mv.idle
+    }
+    for k in 0..32 {
+        let a = fixed(k) * TAU / 32
+        fx_dir[k] = vec2(cos(a), sin(a))
+    }
+    fx_page = tex_page(SLOT_FXP, PAL_FXP, true)
+    fx_art_load()
     layer_offset(0, 0, 0, 0)
 }
 
+// ---- random numbers (the effects' own: the fight's are untouched)
+
+private fn fx_u() -> u32 {
+    var s = fx_rng
+    s ^= s << 13
+    s ^= s >> 17
+    s ^= s << 5
+    fx_rng = s
+    return s
+}
+private fn fx_f() -> fixed { return from_bits((fx_u() >> 16) as s32) }          // 0 .. 1
+private fn fx_sf() -> fixed { return from_bits((fx_u() >> 15) as s32) - 1.0 }   // -1 .. 1
+private fn fx_i(n: s32) -> s32 { return (((fx_u() >> 16) as s32) * n) >> 16 }      // 0 .. n-1
+
 // ---- spawning
 
-private fn fx_spawn(kind: FxKind, pos: vec3, size: fixed, life: s32, col: u32, vx: fixed, vy: fixed) {
-    let s = &fx_sparks[fx_next]
-    fx_next = (fx_next + 1) % SPARKS
-    s.kind = kind
-    s.t = 0
-    s.life = life
-    s.pos = pos
-    s.size = size
-    s.col = col
-    s.vx = vx
-    s.vy = vy
+// One particle of preset pr at (x, y) moving (vx, vy) metres a frame, at depth FX_Z. Its colours
+// are fx_c0, fx_c1 when those are set.
+fn fx_spawn(pr: Pre, x: fixed, y: fixed, vx: fixed, vy: fixed) -> *Pt {
+    var i = fx_n
+    if i >= FXP_MAX {
+        i = fx_over
+        fx_over = (fx_over + 1) % FXP_MAX
+    } else {
+        fx_n += 1
+        fx_peak_n = max(fx_peak_n, fx_n)
+    }
+    fx_spawned += 1
+    let d = &PRES[pr]
+    let p = &fx_pts[i]
+    p.x = x
+    p.y = y
+    p.z = FX_Z
+    p.vx = vx
+    p.vy = vy
+    var life = d.life
+    if d.life_rnd > 0 { life += fx_i(d.life_rnd + 1) }
+    p.age = 0.0
+    p.dt = 1.0 / life
+    let k = 0.8 + fx_f() * 2 / 5                   // 0.8 .. 1.2 the size
+    p.s0 = d.s0 * k
+    p.s1 = d.s1 * k
+    p.grav = d.grav
+    p.drag = d.drag
+    if fx_c0 != 0 {
+        p.c0 = fx_c0
+        p.c1 = fx_c1
+    } else {
+        p.c0 = d.c0
+        p.c1 = d.c1
+    }
+    p.kind = d.kind
+    p.blend = d.blend
+    p.flags = d.flags
+    p.rot = fx_i(8)
+    p.spin = 0
+    if d.spin != 0 {
+        p.spin = d.spin
+        if fx_u() & 1 != 0 { p.spin = -d.spin }
+    }
+    return p
+}
+
+// n particles of preset pr from (x, y), in directions ang +- spread (fx_dir's steps: 0 = +x,
+// 8 = up, 16 = -x), speed metres a frame (up to the preset's speed_rnd share slower). Resets
+// the colour override.
+fn fx_spray(pr: Pre, n: s32, x: fixed, y: fixed, ang: s32, spread: s32, speed: fixed) {
+    let rnd = PRES[pr].speed_rnd
+    for k in 0..n {
+        var a = ang
+        if spread > 0 { a += fx_i(spread * 2 + 1) - spread }
+        let dv = fx_dir[a & 31]
+        let sp = speed * (1.0 - rnd * fx_f())
+        fx_spawn(pr, x, y, dv.x * sp, dv.y * sp)
+    }
+    fx_c0 = 0
+    fx_c1 = 0
+}
+
+// One still particle of preset pr at (x, y) with colours c0, c1 (0: the preset's).
+fn fx_burst_at(pr: Pre, x: fixed, y: fixed, c0: u32, c1: u32) -> *Pt {
+    fx_c0 = c0
+    fx_c1 = c1
+    let p = fx_spawn(pr, x, y, 0.0, 0.0)
+    fx_c0 = 0
+    fx_c1 = 0
+    return p
+}
+
+// n particles placed on a circle of radius r around (x, y), falling in to arrive at its centre
+// at the end of their lives.
+private fn fx_implode(pr: Pre, n: s32, x: fixed, y: fixed, r: fixed, c0: u32, c1: u32) {
+    for k in 0..n {
+        let dv = fx_dir[fx_i(32)]
+        let rr = r * (0.7 + fx_f() * 3 / 10)
+        fx_c0 = c0
+        fx_c1 = c1
+        let p = fx_spawn(pr, x + dv.x * rr, y + dv.y * rr, 0.0, 0.0)
+        let life = 1.0 / max(p.dt, 0.01)          // frames
+        p.vx = -dv.x * rr / life
+        p.vy = -dv.y * rr / life
+    }
+    fx_c0 = 0
+    fx_c1 = 0
 }
 
 fn fx_flash_start(n: s32) {
@@ -82,58 +416,216 @@ fn fx_flash_start(n: s32) {
     }
 }
 
+// The colour a mech's plating is (its shards'): a tint of its company colour.
+private fn fx_plate(m: Mech) -> u32 {
+    if m == Mech.Hero { return 0x2020B0 }           // Momentum red
+    if m == Mech.Doubleblade { return 0x602848 }    // Umbral black-violet
+    return 0x9C9690
+}
+
+// ---- the events
+
+// The direction a hit by side s travels (1: +x, -1: -x).
+private fn fx_dir_of(s: s32, f: *Fight) -> s32 {
+    let a = clamp(s, 0, 1)
+    let d = f.f[1 - a].x - f.f[a].x
+    if d > 0.0 { return 1 }
+    if d < 0.0 { return -1 }
+    return f.f[a].facing
+}
+
+// The fx_dir step pointing along dir, raised by up steps.
+private fn fx_ang(dir: s32, up: s32) -> s32 {
+    if dir > 0 { return up }
+    return 16 - up
+}
+
+// A hit's burst at (x, y) travelling dir, by power: 0 light, 1 medium, 2 heavy, 3 crushing.
+private fn fx_hit(x: fixed, y: fixed, dir: s32, pw: s32, victim: Mech) {
+    let k = fixed(pw + 2) / 2                       // 1, 1.5, 2, 2.5
+    let fl = fx_burst_at(Pre.Flare, x, y, 0, 0)
+    fl.s0 = 3.0 + fixed(pw) * 2.4
+    fl.s1 = fl.s0 * 2 / 3
+    fl.dt = 1.0 / (4 + pw * 2)
+    let g = fx_burst_at(Pre.Glow, x, y, 0, 0)
+    g.s0 = 1.2 * k
+    g.s1 = 3.0 * k
+    let a = fx_ang(dir, 2)
+    fx_spray(Pre.Spark, 7 + pw * 5, x, y, a, 5 + pw, 0.5 + fixed(pw) * 0.12)
+    fx_spray(Pre.Ember, 2 + pw, x, y, a, 7, 0.22 + fixed(pw) * 0.05)
+    if pw >= 1 {
+        let r = fx_burst_at(Pre.Ring, x, y, 0, 0)
+        r.s1 = 4.0 * k
+    }
+    if pw >= 2 {
+        // plating torn off: half the victim's colour, half bare metal
+        let n = (pw - 1) * 3 + 1
+        fx_c0 = fx_plate(victim)
+        fx_c1 = fx_c0
+        fx_spray(Pre.Shard, n / 2, x, y, fx_ang(dir, 4), 4, 0.36)
+        fx_spray(Pre.Shard, n / 2, x, y, fx_ang(dir, 3), 5, 0.32)
+        fx_spray(Pre.Smoke, pw - 1, x, y, fx_ang(dir, 3), 3, 0.06)
+        fx_flash_start(1 + pw)
+    }
+    if pw >= 3 {
+        let r2 = fx_burst_at(Pre.Ring, x, y, 0xFFFFFF, 0xC06020)
+        r2.s1 = 14.0
+        r2.dt = 1.0 / 18
+        fx_spray(Pre.Spark, 5, x, y, fx_ang(-dir, 2), 6, 0.3)
+    }
+}
+
 // A fight event's effects.
 fn fx_event(e: *Event, f: *Fight) {
-    let p = vec3(e.x, e.y, -1.0)          // a little in front of the mechs
+    let c0 = cycle_count()
     let pw = clamp(e.power, 0, 3)
-    let k = fixed(pw + 2)
+    let side = clamp(e.side, 0, 1)
+    let x = e.x
+    let y = e.y
     match e.kind {
-        Hit => {
-            fx_spawn(FxKind.Glow, p, 1.1 * k, 8 + pw * 2, 0x4080C0, 0.0, 0.0)
-            fx_spawn(FxKind.Spark, p, 1.6 * k, 8 + pw * 2, 0xFFFFFF, 0.0, 0.0)
-            fx_spawn(FxKind.Ring, p, 1.8 * k, 12 + pw * 2, 0xFFE0A0, 0.0, 0.0)
-            if pw >= 2 { fx_flash_start(3) }
+        Hit => fx_hit(x, y, fx_dir_of(e.side, f), pw, f.f[1 - side].mech)
+        Block => {
+            // the shield faces the attacker; sparks skid off it, up and down its face
+            let dir = fx_dir_of(e.side, f)
+            let h = fx_burst_at(Pre.Shield, x, y, 0, 0)
+            h.s0 = 4.0 + fixed(pw) * 1.2
+            h.s1 = h.s0 * 6 / 5
+            let g = fx_burst_at(Pre.Glow, x, y, 0xFFC090, 0x602000)
+            g.s0 = 2.5 + fixed(pw)
+            let back = fx_ang(-dir, 0)
+            fx_spray(Pre.ShieldSpark, 4 + pw * 2, x, y, back + 6, 2, 0.3 + fixed(pw) * 0.05)
+            fx_spray(Pre.ShieldSpark, 4 + pw * 2, x, y, back - 6, 2, 0.3 + fixed(pw) * 0.05)
+            fx_spray(Pre.ShieldSpark, 2 + pw, x, y, back, 3, 0.2)
         }
-        Block, Chip => {
-            fx_spawn(FxKind.Ring, p, 3.0 * k / 2, 12, 0xFFD080, 0.0, 0.0)
-            fx_spawn(FxKind.Spark, p, 1.2 * k, 6, 0xFFE8C0, 0.0, 0.0)
+        Chip => {
+            let dir = fx_dir_of(e.side, f)
+            fx_spray(Pre.Chip, 4 + pw * 2, x, y, fx_ang(dir, 3), 5, 0.2)
+            fx_c0 = 0x80D0FF
+            fx_c1 = 0x0010A0
+            fx_spray(Pre.Spark, 2 + pw, x, y, fx_ang(dir, 2), 4, 0.24)
         }
         Parry => {
-            fx_spawn(FxKind.Ring, p, 8.0, 14, 0xFFF0A0, 0.0, 0.0)
-            fx_spawn(FxKind.Spark, p, 6.0, 10, 0xFFFFFF, 0.0, 0.0)
+            let s = fx_burst_at(Pre.Star, x, y, 0xA0F0FF, 0x1060A0)
+            s.s0 = 8.0
+            fx_burst_at(Pre.Ring, x, y, 0x90F0FF, 0x104060)
+            fx_c0 = 0xA0F0FF
+            fx_c1 = 0x0840A0
+            fx_spray(Pre.Spark, 12, x, y, 8, 16, 0.3)
             fx_flash_start(3)
         }
         Clash => {
-            fx_spawn(FxKind.Ring, p, 10.0, 16, 0xFFE0A0, 0.0, 0.0)
-            fx_spawn(FxKind.Glow, p, 8.0, 12, 0xFFC060, 0.0, 0.0)
+            // the two waves cancel: the force scatters
+            let fl = fx_burst_at(Pre.Flare, x, y, 0xFFFFFF, 0xC06020)
+            fl.s0 = 10.0
+            let r = fx_burst_at(Pre.Ring, x, y, 0, 0)
+            r.s1 = 12.0
+            fx_c0 = 0xFFE8B0
+            fx_c1 = 0x803010
+            fx_spray(Pre.Mote, 20, x, y, 8, 16, 0.22)
+            fx_c0 = 0xFFF8E0
+            fx_c1 = 0xE06010
+            fx_spray(Pre.Spark, 10, x, y, 8, 10, 0.32)
+            fx_spray(Pre.Dust, 4, x, 0.4, 0, 2, 0.12)
+            fx_spray(Pre.Dust, 4, x, 0.4, 16, 2, 0.12)
         }
         Break => {
-            fx_spawn(FxKind.Ring, p, 9.0, 16, 0xFFFFFF, 0.0, 0.0)
-            fx_spawn(FxKind.Glow, p, 7.0, 10, 0xF0D830, 0.0, 0.0)
+            let s = fx_burst_at(Pre.Star, x, y, 0xFFFFFF, 0x2060A0)
+            s.s0 = 6.0
+            fx_burst_at(Pre.Ring, x, y, 0, 0)
+            fx_spray(Pre.Spark, 10, x, y, 8, 16, 0.28)
         }
-        Throw => {
-            fx_spawn(FxKind.Dust, vec3(e.x, 0.5, -1.0), 9.0, 22, 0x806858, 0.0, 0.02)
-            fx_spawn(FxKind.Ring, vec3(e.x, 0.5, -1.0), 12.0, 18, 0xC0A090, 0.0, 0.0)
+        Grab => {
+            // the clank of the hand closing
+            fx_burst_at(Pre.Clank, x, y, 0, 0)
+            fx_c0 = 0xFFF0E0
+            fx_c1 = 0x804020
+            fx_spray(Pre.Spark, 5, x, y, 8, 16, 0.16)
         }
+        Throw => fx_slam(x, 1.0, f.f[1 - side].mech)
         Land => {
-            fx_spawn(FxKind.Dust, vec3(e.x - 1.5, 0.4, -1.0), 4.5, 18, 0x504038, -0.05, 0.015)
-            fx_spawn(FxKind.Dust, vec3(e.x + 1.5, 0.4, -1.0), 4.5, 18, 0x504038, 0.05, 0.015)
+            if pw >= 2 {
+                fx_slam(x, 0.7, f.f[side].mech)
+            } else {
+                fx_spray(Pre.Puff, 3, x - 1.2, 0.3, 16, 1, 0.07)
+                fx_spray(Pre.Puff, 3, x + 1.2, 0.3, 0, 1, 0.07)
+            }
+        }
+        Step => {
+            fx_spray(Pre.Puff, 1, x - 1.0, 0.25, 16, 1, 0.04)
+            fx_spray(Pre.Puff, 1, x + 1.0, 0.25, 0, 1, 0.04)
         }
         Super => {
+            let pf = fx_power(f.f[side].mech)
             fx_flash_start(10)
-            fx_spawn(FxKind.Ring, vec3(f.f[e.side].x, 6.0, -1.0), 22.0, 20, 0xFFFFFF, 0.0, 0.0)
-            fx_spawn(FxKind.Glow, vec3(f.f[e.side].x, 6.0, -1.0), 16.0, 20, mech_colour(f.f[e.side].mech), 0.0, 0.0)
+            let r = fx_burst_at(Pre.Ring, f.f[side].x, 6.0, 0xFFFFFF, pf.cool)
+            r.s0 = 4.0
+            r.s1 = 24.0
+            r.dt = 1.0 / 20
+            let g = fx_burst_at(Pre.Glow, f.f[side].x, 6.0, pf.core, 0)
+            g.s0 = 10.0
+            g.s1 = 16.0
+            g.dt = 1.0 / 16
         }
         Ko => {
+            // the beaten mech's burst (its crushing hit has its own), then it smokes
+            let loser = 1 - side
+            let fl = fx_burst_at(Pre.Flare, x, y, 0xFFFFFF, 0xC06020)
+            fl.s0 = 20.0
+            fl.s1 = 10.0
+            fl.dt = 1.0 / 14
+            let r = fx_burst_at(Pre.Ring, x, y, 0xFFF0D0, 0x804010)
+            r.s1 = 18.0
+            r.dt = 1.0 / 22
+            fx_spray(Pre.Spark, 10, x, y, 8, 16, 0.42)
+            fx_c0 = fx_plate(f.f[loser].mech)
+            fx_c1 = fx_c0
+            fx_spray(Pre.Shard, 3, x, y, 8, 7, 0.38)
+            fx_spray(Pre.Smoke, 2, x, y, 8, 8, 0.08)
             fx_flash_start(14)
-            fx_spawn(FxKind.Glow, p, 14.0, 24, 0xFFFFFF, 0.0, 0.0)
-            fx_spawn(FxKind.Ring, p, 18.0, 24, 0x60D0FF, 0.0, 0.0)
+            if e.side == 0 || e.side == 1 {
+                fx_ko_side = loser
+                fx_ko_t = 0
+            }
         }
         Shot => {
-            fx_spawn(FxKind.Glow, p, 5.0, 10, 0xFFE0A0, 0.0, 0.0)
+            // the wave leaves: dust kicked along the floor, a glow at the blade
+            let dir = f.f[side].facing
+            fx_burst_at(Pre.Glow, x, 1.5, 0xFFC080, 0x401000)
+            fx_spray(Pre.Dust, 4, x, 0.3, fx_ang(dir, 1), 1, 0.16)
+            fx_spray(Pre.Dust, 2, x, 0.3, fx_ang(-dir, 1), 1, 0.08)
+        }
+        MeterFull => {
+            let pf = fx_power(f.f[side].mech)
+            let r = fx_burst_at(Pre.Ring, f.f[side].x, 7.0, pf.hot, pf.cool)
+            r.s1 = 7.0
+            fx_c0 = pf.hot
+            fx_c1 = pf.cool
+            fx_spray(Pre.Mote, 8, f.f[side].x, 7.0, 8, 16, 0.12)
         }
         else => {}
     }
+    fx_c0 = 0
+    fx_c1 = 0
+    fx_ev_cycles += cycle_count() - c0
+}
+
+// A mech meeting the floor (a throw's landing, a knockdown) at x: dust out along the floor both
+// ways, a shockwave on it, chips of floor and plating, sparks scraping. k scales it.
+private fn fx_slam(x: fixed, k: fixed, m: Mech) {
+    let fr = fx_burst_at(Pre.Floor, x, 0.05, 0, 0)
+    fr.s1 = 14.0 * k
+    let n = (6.0 * k) as s32
+    fx_spray(Pre.Dust, n, x - 1.5, 0.8, 15, 1, 0.24 * k)
+    fx_spray(Pre.Dust, n, x + 1.5, 0.8, 1, 1, 0.24 * k)
+    fx_c0 = 0x485868
+    fx_c1 = 0x101820
+    fx_spray(Pre.Smoke, n / 2, x, 1.5, 8, 3, 0.1 * k)
+    fx_spray(Pre.Pebble, n, x, 0.5, 8, 5, 0.34 * k)
+    fx_c0 = fx_plate(m)
+    fx_c1 = fx_c0
+    fx_spray(Pre.Shard, n / 3, x, 0.8, 8, 5, 0.3 * k)
+    fx_spray(Pre.Scrape, n, x, 0.3, 1, 1, 0.38)
+    fx_spray(Pre.Scrape, n, x, 0.3, 15, 1, 0.38)
 }
 
 // ---- trails
@@ -142,7 +634,17 @@ fn is_swing(mv: Mv) -> bool {
     return (mv >= Mv.atk_n && mv <= Mv.sp_d) || mv == Mv.super
 }
 
-private fn trail_sample(t: *Trail, m: mat4, b0: fixed, b1: fixed, on: bool) {
+// The trail's colours (sprite-free: the colours drawn): at the blade's edge, and the motes it sheds.
+private fn fx_trail_tip(m: Mech) -> u32 {
+    if m == Mech.Doubleblade { return 0xFFB8F0 }    // violet-white
+    return 0xFFF4D0                                  // white into cyan
+}
+private fn fx_trail_mid(m: Mech) -> u32 {
+    if m == Mech.Doubleblade { return 0x900C60 }
+    return 0xC06010
+}
+
+private fn trail_sample(t: *Trail, m: mat4, b0: fixed, b1: fixed, on: bool, mech: Mech) {
     let base = (m * vec4(0.0, b0, 0.0, 1.0)) as vec3
     let tip = (m * vec4(0.0, b1, 0.0, 1.0)) as vec3
     if !on {
@@ -154,6 +656,18 @@ private fn trail_sample(t: *Trail, m: mat4, b0: fixed, b1: fixed, on: bool) {
     if t.n > 0 {
         let d = tip - t.tip[t.head]
         if abs(d.x) + abs(d.y) < 0.05 { return }       // hitstop: nothing moved
+        // the tip sheds a mote every other sample
+        t.shed += 1
+        if t.shed >= 2 && abs(d.x) + abs(d.y) > 0.6 {
+            t.shed = 0
+            fx_c0 = fx_trail_tip(mech)
+            fx_c1 = fx_trail_mid(mech)
+            let p = fx_spawn(Pre.Mote, tip.x, tip.y, d.x / 48 + fx_sf() / 50, d.y / 48 + fx_sf() / 50)
+            p.z = tip.z
+            p.dt = 1.0 / 12
+            fx_c0 = 0
+            fx_c1 = 0
+        }
     }
     t.head = (t.head + 1) % TRAIL_N
     t.base[t.head] = base
@@ -161,35 +675,257 @@ private fn trail_sample(t: *Trail, m: mat4, b0: fixed, b1: fixed, on: bool) {
     t.n = min(t.n + 1, TRAIL_N)
 }
 
-// Once a frame of the fight (after fight_tick): sample the weapons.
+// The torso's point of side s (for the reactor's glow and the smoke).
+private fn fx_torso(fi: *Fighter, root: mat4) -> vec3 {
+    let m = anim_part(fi.mech, fi.mv, fi.frame, root, Part.torso)
+    return (m * vec4(0.0, 0.6, 0.0, 1.0)) as vec3
+}
+
+// ---- the emitters (once a frame)
+
+// The super's charge-up of side s during the flash, frame t of it, at the torso c.
+private fn fx_charge(s: s32, pf: *PowerFx, c: vec3, t: s32) {
+    let st = pf.style
+    let x = c.x
+    let y = c.y
+    if st & CH_STREAKS != 0 {
+        // a streak a frame rushing in, from either side in turn
+        for k in 0..1 {
+            var side = 1
+            if (fx_tick + k) & 1 != 0 { side = -1 }
+            let dx = fixed(side) * (9.0 + fx_f() * 4)
+            fx_c0 = pf.hot
+            fx_c1 = pf.cool
+            let p = fx_spawn(Pre.Speed, x + dx, y + fx_sf() * 5 - 0.5, -fixed(side) * 0.62, 0.0)
+            if side > 0 { p.flags |= PF_FLIP }
+        }
+    }
+    if st & CH_CHEVRONS != 0 && t % 4 == 0 {
+        for k in 0..2 {
+            let side = 1 - 2 * k
+            fx_c0 = pf.hot
+            fx_c1 = pf.cool
+            let p = fx_spawn(Pre.Chevron, x + fixed(side) * 7.0, y + fx_sf() * 3, -fixed(side) * 0.36, 0.0)
+            if side > 0 { p.flags |= PF_FLIP }
+        }
+    }
+    if st & CH_SPARKS != 0 && t % 2 == 0 {
+        fx_c0 = 0xC0F0FF
+        fx_c1 = pf.cool
+        fx_spray(Pre.Spark, 2, x, y, fx_i(32), 0, 0.22)
+    }
+    if st & CH_IMPLODE != 0 {
+        fx_implode(Pre.Implode, 2, x, y, 8.0, pf.hot, pf.cool)
+        if t % 8 == 0 {
+            let r = fx_burst_at(Pre.Ring, x, y, pf.hot, pf.cool)
+            r.s0 = 16.0
+            r.s1 = 1.0
+            r.dt = 1.0 / 14
+        }
+    }
+    if st & CH_ARCS != 0 && t % 2 == 0 {
+        let p = fx_burst_at(Pre.Arc, x + fx_sf() * 3, y + fx_sf() * 4, pf.hot, pf.cool)
+        if fx_u() & 1 != 0 { p.flags |= PF_FLIP }
+    }
+    if st & CH_BUBBLES != 0 && t % 3 == 0 {
+        fx_c0 = pf.hot
+        fx_c1 = pf.cool
+        fx_spawn(Pre.Bubble, x + fx_sf() * 3, y - 2.0, fx_sf() / 50, 0.07)
+    }
+    if st & CH_STEAM != 0 && t % 2 == 0 {
+        var side = 1.0
+        if fx_tick & 2 != 0 { side = -1.0 }
+        fx_spawn(Pre.Steam, x + side * 2.4, y + 2.0, side * 0.03, 0.12)
+    }
+    if st & CH_PULSE != 0 && t % 10 == 0 {
+        let r = fx_burst_at(Pre.Ring, x, y, pf.core, pf.cool)
+        r.s0 = 2.0
+        r.s1 = 13.0
+    }
+}
+
+// A full meter's idle effect at the torso c, every few frames.
+private fn fx_ambient(pf: *PowerFx, c: vec3) {
+    if fx_tick % 9 != 0 { return }
+    let st = pf.style
+    fx_c0 = pf.hot
+    fx_c1 = pf.cool
+    if st & CH_IMPLODE != 0 {
+        fx_implode(Pre.Implode, 1, c.x, c.y, 3.0, pf.hot, pf.cool)
+    } else if st & CH_STEAM != 0 {
+        fx_c0 = 0
+        fx_spawn(Pre.Steam, c.x + fx_sf() * 2, c.y + 2.0, 0.0, 0.06)
+    } else if st & CH_BUBBLES != 0 {
+        fx_spawn(Pre.Bubble, c.x + fx_sf() * 2, c.y, 0.0, 0.05)
+    } else {
+        fx_spawn(Pre.Ember, c.x + fx_sf() * 1.5, c.y + fx_sf(), fx_sf() / 50, 0.05)
+    }
+    fx_c0 = 0
+    fx_c1 = 0
+}
+
+// The beaten mech, at the torso c, t frames after the KO: smoke and sparks, dying down.
+private fn fx_smoulder(c: vec3, t: s32) {
+    if t > 420 { return }
+    let slow = t / 140                         // 0, 1, 2: further apart as it dies down
+    if t % (4 + slow * 3) == 0 {
+        let p = fx_spawn(Pre.Smoke, c.x + fx_sf() * 1.5, c.y + fx_sf(), fx_sf() / 40, 0.05)
+        p.s1 = 7.0
+        p.dt = 1.0 / 60
+    }
+    if t % (11 + slow * 6) == 0 {
+        fx_c0 = 0xC0F0FF
+        fx_c1 = 0x0830D0
+        fx_spray(Pre.Spark, 3, c.x, c.y, 8, 5, 0.2)
+        fx_burst_at(Pre.Glow, c.x, c.y, 0x60A0FF, 0x102040)
+    }
+    if t % (6 + slow * 4) == 3 {
+        fx_spawn(Pre.Ember, c.x + fx_sf() * 2, c.y, fx_sf() / 30, 0.02)
+    }
+}
+
+// The wave of side s travelling: motes trail it and it kicks up dust.
+private fn fx_wave(sh: *Shot) {
+    let dir = sgn(sh.vx)
+    let x = sh.x - fixed(dir) * 1.2
+    fx_c0 = 0xFFE8B0
+    fx_c1 = 0x803010
+    fx_spawn(Pre.Mote, x + fx_sf(), sh.y + 0.4 + fx_f() * 3, -fixed(dir) * 0.04, 0.03 + fx_f() / 25)
+    fx_c0 = 0
+    fx_c1 = 0
+    if fx_tick % 3 == 0 {
+        let p = fx_spawn(Pre.Dust, x, 0.3, -fixed(dir) * 0.05, 0.0)
+        p.s1 = 3.5
+    }
+}
+
+// The wave of side s ended at (x, y) (a hit, a block, a wall, its time): its force scatters.
+private fn fx_wave_end(x: fixed, y: fixed) {
+    fx_c0 = 0xFFE8B0
+    fx_c1 = 0x803010
+    fx_spray(Pre.Mote, 12, x, y + 1.5, 6, 6, 0.16)
+    let g = fx_burst_at(Pre.Glow, x, y + 1.5, 0xFFC080, 0x401000)
+    g.s1 = 7.0
+}
+
+// A mech vanishing at (x, y) (the Void Step, the Antimatter Rend's jump).
+private fn fx_vanish(x: fixed, y: fixed) {
+    fx_spray(Pre.Void, 4, x, y + 5.0, 8, 16, 0.08)
+    fx_spray(Pre.VoidMote, 14, x, y + 5.0, 8, 16, 0.24)
+    let r = fx_burst_at(Pre.Ring, x, y + 5.0, 0xFF70D0, 0x400828)
+    r.s0 = 10.0
+    r.s1 = 1.0
+}
+
+// ... and reappearing: motes falling in, a ring.
+private fn fx_appear(x: fixed, y: fixed) {
+    fx_implode(Pre.Implode, 12, x, y + 5.0, 6.0, 0xFF70D0, 0xFFE0FF)
+    let r = fx_burst_at(Pre.Ring, x, y + 5.0, 0xFF90E0, 0x400828)
+    r.s0 = 1.0
+    r.s1 = 10.0
+    fx_spray(Pre.Void, 2, x, y + 4.0, 8, 16, 0.06)
+}
+
+// Once a frame of the fight (after fight_tick and the events): sample the weapons, run the
+// emitters, move the particles.
 fn fx_update(f: *Fight) {
+    let c0 = cycle_count()
     fx_tick += 1
+    if f.phase == Phase.Intro { fx_ko_side = -1 }
     for s in 0..2 {
         let fi = &f.f[s]
+        let sd = &fx_side[s]
         let root = anim_place(vec2(fi.x, fi.y), fi.facing)
         let on = is_swing(fi.mv)
-        if fi.mech == Mech.Hero {
-            let m = anim_part(fi.mech, fi.mv, fi.frame, root, Part.weapon_r)
-            trail_sample(&fx_trails[s * 2], m, 1.2, 7.0, on)
-            fx_trails[s * 2 + 1].n = 0
-        } else {
+        if fi.mech == Mech.Doubleblade {
             let mr = anim_part(fi.mech, fi.mv, fi.frame, root, Part.weapon_r)
-            trail_sample(&fx_trails[s * 2], mr, 0.6, 3.2, on)
+            trail_sample(&fx_trails[s * 2], mr, 0.6, 3.2, on, fi.mech)
             let ml = anim_part(fi.mech, fi.mv, fi.frame, root, Part.weapon_l)
-            trail_sample(&fx_trails[s * 2 + 1], ml, 0.6, 3.2, on)
+            trail_sample(&fx_trails[s * 2 + 1], ml, 0.6, 3.2, on, fi.mech)
+        } else {
+            let m = anim_part(fi.mech, fi.mv, fi.frame, root, Part.weapon_r)
+            trail_sample(&fx_trails[s * 2], m, 1.2, 7.0, on, fi.mech)
+            fx_trails[s * 2 + 1].n = 0
         }
-    }
-    for i in 0..SPARKS {
-        let s = &fx_sparks[i]
-        if s.t < s.life {
-            s.t += 1
-            s.pos.x += s.vx
-            s.pos.y += s.vy
+        // vanishing and reappearing: a hidden frame, or a jump of the root (the Rend)
+        let hidden = (anim_marks(fi.mech, fi.mv, fi.frame as s32) & MARK_HIDE) != 0
+        let jump = abs(fi.x - sd.x) > 3.0 && fi.mv == sd.mv && (fi.mv == Mv.super || fi.mv == Mv.sp_n)
+        if (hidden && !sd.hidden) || jump { fx_vanish(sd.x, sd.y) }
+        if (!hidden && sd.hidden) || jump { fx_appear(fi.x, fi.y) }
+        if fi.mv == Mv.sp_n && fi.mech == Mech.Doubleblade && !hidden && fi.frame < 7.0 && fx_tick % 2 == 0 {
+            // sinking into the dark flicker
+            fx_spawn(Pre.Void, fi.x + fx_sf() * 1.5, fi.y + 1.0 + fx_f() * 8, 0.0, 0.02)
+            fx_spawn(Pre.VoidMote, fi.x + fx_sf() * 2, fi.y + 1.0 + fx_f() * 9, 0.0, -0.06)
         }
+        sd.hidden = hidden
+        sd.x = fi.x
+        sd.y = fi.y
+        sd.mv = fi.mv
+        // the reactor: the super's charge-up, a full meter's glow
+        sd.core_on = 0
+        let charging = f.flash_side == s && f.freeze > 0
+        if charging {
+            sd.charge += 1
+        } else {
+            sd.charge = 0
+        }
+        let full = fi.meter >= METER_BAR && f.phase == Phase.Fight && fi.mv != Mv.super && !hidden
+        if charging || full || fx_ko_side == s {
+            sd.core = fx_torso(fi, root)
+            sd.core.z = FX_Z
+            let pf = fx_power(fi.mech)
+            if charging {
+                sd.core_on = 2
+                fx_charge(s, pf, sd.core, sd.charge)
+            } else if full {
+                sd.core_on = 1
+                fx_ambient(pf, sd.core)
+            }
+            if fx_ko_side == s {
+                fx_smoulder(sd.core, fx_ko_t)
+                fx_ko_t += 1
+            }
+        }
+        // the wave
+        let sh = &f.shot[s]
+        if sh.on { fx_wave(sh) }
+        if sd.shot_on && !sh.on { fx_wave_end(sd.shot_x, sd.shot_y) }
+        sd.shot_on = sh.on
+        sd.shot_x = sh.x
+        sd.shot_y = sh.y
     }
+    // the particles
+    var i = 0
+    while i < fx_n {
+        let p = &fx_pts[i]
+        p.age += p.dt
+        if p.age >= 1.0 {
+            fx_n -= 1
+            if i < fx_n { fx_pts[i] = fx_pts[fx_n] }
+            continue
+        }
+        p.vy -= p.grav
+        if p.drag != 1.0 {
+            p.vx = p.vx * p.drag
+            p.vy = p.vy * p.drag
+        }
+        p.x += p.vx
+        p.y += p.vy
+        if p.y < 0.0 && (p.flags & PF_FLOOR) != 0 {
+            p.y = 0.0
+            p.vy = -p.vy * 3 / 10
+            p.vx = p.vx * 3 / 4
+        }
+        if p.spin != 0 { p.rot = ((p.rot as s32 + p.spin as s32) & 7) as u8 }
+        i += 1
+    }
+    if fx_over >= fx_n { fx_over = 0 }
     // the flash: white first, then (during a super's freeze) the hall darkened
     if fx_flash > 0 { fx_flash -= 1 }
     fx_dark = f.flash_side >= 0 && f.freeze > 0
+    if fx_dark { fx_dark_side = f.flash_side }
+    fx_cycles = cycle_count() - c0 + fx_ev_cycles
+    fx_ev_cycles = 0
 }
 
 // The colour offset for this frame.
@@ -198,13 +934,16 @@ fn fx_offset() {
         let v = 4 + 24 * fx_flash / max(fx_flash_max, 1)
         layer_offset(0x3F, v, v, v)
     } else if fx_dark {
-        layer_offset(0x26, -8, -8, -7)          // BG1, BG2 and the backdrop
+        let f = fight_get()
+        let pf = fx_power(f.f[clamp(fx_dark_side, 0, 1)].mech)
+        layer_offset(0x26, pf.hall[0], pf.hall[1], pf.hall[2])     // BG1, BG2 and the backdrop
     } else {
         layer_offset(0, 0, 0, 0)
     }
 }
 
-// The trails, as one mesh of additive quads (call with the camera set, the depth test on).
+// The trails, as one mesh of additive quads (call with the camera set, the depth test on): the
+// blade's edge bright, the hilt's side dark, the oldest samples fading out.
 fn fx_draw_trails(f: *Fight) {
     let m = &fx_mesh
     var nv = 0
@@ -212,13 +951,9 @@ fn fx_draw_trails(f: *Fight) {
     for i in 0..TRAILS {
         let t = &fx_trails[i]
         if t.n < 2 { continue }
-        let s = i / 2
-        var c0: u32 = 0xFFF0C0           // the Hero: white into cyan
-        var c1: u32 = 0xC08020
-        if f.f[s].mech == Mech.Doubleblade {
-            c0 = 0xFFB0E0
-            c1 = 0x801850
-        }
+        let mech = f.f[i / 2].mech
+        let c0 = fx_trail_tip(mech)
+        let c1 = col_scale(fx_trail_mid(mech), 0.35)
         let v0 = nv
         for k in 0..t.n {
             let j = (t.head - k + TRAIL_N) % TRAIL_N
@@ -234,8 +969,10 @@ fn fx_draw_trails(f: *Fight) {
             fc.idx[1] = (v0 + k * 2 + 1) as u16
             fc.idx[2] = (v0 + k * 2 + 2) as u16
             fc.idx[3] = (v0 + k * 2 + 3) as u16
-            let a0 = fixed(t.n - 1 - k) / (t.n - 1)
-            let a1 = fixed(t.n - 2 - k) / (t.n - 1)
+            var a0 = fixed(t.n - 1 - k) / (t.n - 1)
+            var a1 = fixed(t.n - 2 - k) / (t.n - 1)
+            a0 = a0 * a0
+            a1 = a1 * a1
             fc.col[0] = col_scale(c1, a0)
             fc.col[1] = col_scale(c0, a0)
             fc.col[2] = col_scale(c1, a1)
@@ -252,16 +989,154 @@ fn fx_draw_trails(f: *Fight) {
     mesh(&m.hdr)
 }
 
-// ---- sprites (the interface list)
+// ---- drawing (the interface list)
+
+// The view's rows for this frame (camera_look and camera_pan's matrix, scaled to pixels):
+// a point p is at screen x 160 + dot(fx_rx, p) / w, y 120 - dot(fx_ry, p) / w, w = dot(fx_rw, p).
+var fx_rx: vec4
+var fx_ry: vec4
+var fx_rw: vec4
 
 // Pixels across of size metres at world point p (0 behind the camera).
 fn fx_px(p: vec3, size: fixed) -> s32 {
     let w = view_depth(p)
     if w < 1.0 { return 0 }
-    return (size * 207.8 / w) as s32
+    return (size * PXK / w) as s32
+}
+
+// A sprite of slot 11 (rectangle r) centred on (x, y), w x h pixels: sprite_ex's packet, written
+// here without its clamps (the sheet's rectangles never reach texel 255).
+private fn fx_spr(r: *s32, x: s32, y: s32, w: s32, h: s32, c: u32, mode: s32, flip: bool) {
+    let q = __arena_ptr
+    if q + 10 > __arena_end { return }
+    __arena_ptr = q + 10
+    var ua = r[0] as u32
+    var ub = (r[0] + r[2]) as u32
+    if flip {
+        ub = ua
+        ua = (r[0] + r[2] - 1) as u32
+    }
+    let va = (r[1] as u32) << 8
+    let vb = ((r[1] + r[3]) as u32) << 8
+    let x0 = x - w / 2
+    let y0 = y - h / 2
+    let xl = x0 as u32 & 0xFFFF
+    let xr = (x0 + w) as u32 & 0xFFFF
+    let yt = (y0 as u32) << 16
+    let yb = ((y0 + h) as u32) << 16
+    if mode >= 0 {
+        q[0] = 0x2EFFFFFF
+        q[1] = (c & 0xFFFFFF) | ((mode as u32 & 3) << 24)
+    } else {
+        q[0] = 0x26FFFFFF
+        q[1] = c & 0xFFFFFF
+    }
+    q[2] = xl | yt
+    q[3] = ua | va | (fx_page & 0xFFFF0000)
+    q[4] = xr | yt
+    q[5] = ub | va
+    q[6] = xl | yb
+    q[7] = ua | vb
+    q[8] = xr | yb
+    q[9] = ub | vb
+    let tail = __ui_tail
+    if tail == null { __ui_head = q as u32 } else { tail[0] = (tail[0] & 0xFF000000) | q as u32 }
+    __ui_tail = q
+}
+
+private fn fx_draw_pt(p: *Pt, n: s32) {
+    let v = vec4(p.x, p.y, p.z, 1.0)
+    let w = dot(fx_rw, v)
+    if w < 1.0 { return }
+    let iw = 1.0 / w
+    let sx = 160 + (dot(fx_rx, v) * iw) as s32
+    let sy = 120 - (dot(fx_ry, v) * iw) as s32
+    if sx < -200 || sx > 520 || sy < -200 || sy > 440 { return }
+    let k = PXK * iw                                   // pixels a metre there
+    let a = p.age
+    var c = clerp(p.c0, p.c1, a)
+    if (p.flags & PF_STILL) == 0 { c = clerp(0, c, 1.0 - a * a) }
+    if (p.flags & PF_FLICKER) != 0 && ((fx_tick + n) & 1) != 0 { c = clerp(0, c, 0.35) }
+    let d = max(((p.s0 + (p.s1 - p.s0) * a) * k) as s32, 1)
+    let mode = p.blend as s32
+    let flip = (p.flags & PF_FLIP) != 0
+    match p.kind {
+        Streak => {
+            // a spark: from the head back along its motion, three frames long
+            var dx = (p.vx * k * 3) as s32
+            var dy = -(p.vy * k * 3) as s32
+            if abs(dx) + abs(dy) < 3 {
+                dx = 2
+                dy = 1
+            }
+            line_ex(sx, sy, sx - dx, sy - dy, clamp(d, 1, 3), c, clerp(0, c, 0.3), mode)
+        }
+        Dot => fx_spr(&FXP_DOT[0], sx, sy, d, d, c, mode, false)
+        Glow => fx_spr(&FXP_GLOW[0], sx, sy, d, d, c, mode, false)
+        Shard => fx_spr(&FXP_SHARDS[(p.rot as s32 & 7) * 4], sx, sy, d, d, c, mode, false)
+        Smoke => {
+            if (p.rot & 1) != 0 {
+                fx_spr(&FXP_SMOKE1[0], sx, sy, d, d, c, mode, false)
+            } else {
+                fx_spr(&FXP_SMOKE0[0], sx, sy, d, d, c, mode, false)
+            }
+        }
+        Dust => fx_spr(&FXP_DUST[0], sx, sy, d, d / 2, c, mode, (p.rot & 1) != 0)
+        Flare => fx_spr(&FXP_FLARE[0], sx, sy, d, d / 2, c, mode, false)
+        Ring => fx_spr(&FXP_RING[0], sx, sy, d, d, c, mode, false)
+        Floor => fx_spr(&FXP_RING[0], sx, sy, d, d / 5, c, mode, false)
+        Hex => fx_spr(&FXP_HEX[0], sx, sy, d, d, c, mode, false)
+        Star => fx_spr(&FXP_STAR[0], sx, sy, d, d, c, mode, false)
+        Chevron => fx_spr(&FXP_CHEVRON[0], sx, sy, d, d, c, mode, flip)
+        Speed => fx_spr(&FXP_SPEED[0], sx, sy, d, d / 4, c, mode, flip)
+        Bubble => fx_spr(&FXP_BUBBLE[0], sx, sy, d, d, c, mode, false)
+        Bolt => {
+            if (p.rot & 1) != 0 {
+                fx_spr(&FXP_BOLT1[0], sx, sy, d, d / 2, c, mode, flip)
+            } else {
+                fx_spr(&FXP_BOLT0[0], sx, sy, d, d / 2, c, mode, flip)
+            }
+        }
+    }
+}
+
+// A reactor's glow at side s's torso: pulsing while the meter is full, swelling through the
+// super's flash (with a dark heart for antimatter).
+private fn fx_draw_core(s: s32, f: *Fight) {
+    let sd = &fx_side[s]
+    if sd.core_on == 0 { return }
+    let q = project_point(sd.core)
+    if q.z < 0 { return }
+    let w = from_bits(q.w)
+    if w < 1.0 { return }
+    let k = PXK / w
+    let pf = fx_power(f.f[s].mech)
+    if sd.core_on == 1 {
+        let pulse = sin(fixed(fx_tick) * 0.15)
+        let d = ((2.4 + pulse * 0.6) * k) as s32
+        fx_spr(&FXP_GLOW[0], q.x, q.y, d, d, col_scale(pf.core, 0.55 + pulse / 5), BLEND_ADD, false)
+        return
+    }
+    let t = min(fixed(sd.charge) / 40, 1.0)
+    let d = ((3.0 + t * 7) * k) as s32
+    let flick = fixed((fx_tick * 7) & 7) / 40           // 0 .. 0.18
+    fx_spr(&FXP_GLOW[0], q.x, q.y, d, d, col_scale(pf.core, 0.8 + flick), BLEND_ADD, false)
+    if (pf.style & CH_DARK) != 0 {
+        let dd = ((1.2 + t * 3) * k) as s32
+        fx_spr(&FXP_GLOW[0], q.x, q.y, dd, dd, 0x60FF60, BLEND_SUB, false)
+        fx_spr(&FXP_GLOW[0], q.x, q.y, dd, dd, 0x40FF40, BLEND_SUB, false)
+    } else {
+        let dd = ((1.5 + t * 2) * k) as s32
+        fx_spr(&FXP_STAR[0], q.x, q.y, dd * 2, dd * 2, 0xFFFFFF, BLEND_ADD, false)
+    }
+    let fl = ((6.0 + t * 10) * k) as s32
+    fx_spr(&FXP_FLARE[0], q.x, q.y, fl, fl / 2, col_scale(pf.hot, 0.5 + t / 2), BLEND_ADD, false)
 }
 
 fn fx_draw_sprites(f: *Fight) {
+    fx_rx = __vp[0] * 160
+    fx_ry = __vp[1] * 120
+    fx_rw = __vp[3]
     // the waves
     for s in 0..2 {
         let sh = &f.shot[s]
@@ -277,31 +1152,14 @@ fn fx_draw_sprites(f: *Fight) {
         fx_sprite(&FX_WAVE[0], q.x, q.y, w, px * (6 + flick / 2), 0xFFE8A0, BLEND_ADD)
         fx_sprite(&FX_STREAK[0], q.x - w / 2, q.y + px * 2, w, px, 0xC09040, BLEND_ADD)
     }
-    for i in 0..SPARKS {
-        let s = &fx_sparks[i]
-        if s.t >= s.life { continue }
-        let q = project_point(s.pos)
-        if q.z < 0 { continue }
-        let k = fixed(s.t) / s.life             // 0 .. 1 over its life
-        let fade = 1.0 - k
-        let px = fx_px(s.pos, s.size)
-        match s.kind {
-            Spark => {
-                let d = (px * (1.0 - k * 0.5)) as s32
-                fx_sprite(&FX_SPARK[0], q.x, q.y, d, d, col_scale(s.col, fade), BLEND_ADD)
-            }
-            Glow => {
-                let d = (px * (0.6 + k * 0.6)) as s32
-                fx_sprite(&FX_GLOW[0], q.x, q.y, d, d, col_scale(s.col, fade), BLEND_ADD)
-            }
-            Ring => {
-                let d = (px * (0.3 + k)) as s32
-                fx_sprite(&FX_RING[0], q.x, q.y, d, d, col_scale(s.col, fade), BLEND_ADD)
-            }
-            Dust => {
-                let d = (px * (0.5 + k * 0.7)) as s32
-                fx_sprite(&FX_GLOW[0], q.x, q.y, d, d / 2, col_scale(s.col, fade), BLEND_ADD)
-            }
-        }
+    // the particles: smoke and dust first, then the light
+    for i in 0..fx_n {
+        let p = &fx_pts[i]
+        if (p.flags & PF_BACK) != 0 { fx_draw_pt(p, i) }
+    }
+    for s in 0..2 { fx_draw_core(s, f) }
+    for i in 0..fx_n {
+        let p = &fx_pts[i]
+        if (p.flags & PF_BACK) == 0 { fx_draw_pt(p, i) }
     }
 }
