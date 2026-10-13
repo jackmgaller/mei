@@ -10,7 +10,8 @@
 //   BG0       the HUD's frame (hud.akr), in front of the mechs
 //   PH        the interface list: the HUD's fills and text, the menus
 //
-// Priorities (PLN_PRIO, the stage's art.prio): the hangar BG2 0, BG1 1, PL 2, BG0 3, PH 4. The
+// Priorities (PLN_PRIO, the stage's art.prio): the hangar BG2 0, BG1 1, PL 2, BG0 3, PH 4; the
+// rooftop BG1 0, PL 1 (its city in polygons), BG2 2 (the deck), BG0 3, PH 4 (props, mechs). The
 // plane chip costs no CPU or GPU beyond the tables: about 14,000 cycles for the floor's rows, 300
 // for the hall's scroll table.
 //
@@ -30,6 +31,7 @@ var st_loaded: s32 = -1           // the stage whose floor and sky are loaded
 
 fn stage_boot() {
     stage_roof_props_load()             // the rooftop's props: slot 13 and palettes 200-203, once
+    stage_roof_city3d_load()            // and its city in polygons: slot 14 and palettes 204-211
     stage_load(stage_now())
 }
 
@@ -63,6 +65,7 @@ fn stage_show() {
     let s = stage_now()
     let a = &s.art
     stage_load(s)
+    camera_clip(0.5, a.clip_far)
     atlas_load(ATLAS_1, a.hall_tiles, a.hall_bytes as u32)
     load_palette(PAL_HALL * 16, a.hall_pal, a.hall_pals * 16)
     plane(BG1, ATLAS_1, MAP_BG1, 64, 32, 0, PAL_HALL)
@@ -110,16 +113,29 @@ fn stage_frame() {
     st_cycles = cycle_count() - c0
 }
 
-// The stage's polygon props (B's models, assets.akr), each only when the view comes within its
+// The stage's polygons: its city, if it has one (a few big meshes in the world's coordinates,
+// the rooftop's buildings: they draw into PL, which that stage's priorities put behind the deck,
+// BG2), then the polygon props (B's models, assets.akr), each only when the view comes within its
 // `near` metres of it: the hangar's walls at x = +-36 and the expo's lightbox banner towers in
-// the midground, behind the fight plane.
+// the midground, behind the fight plane. With a city, everything drawn after it (the props, the
+// mechs, the effects) is PH, in front of the deck; stage_props_end() puts the layer back.
 fn stage_props() {
     let s = stage_now()
+    if s.ncity > 0 {
+        poly_upper(false)
+        for i in 0..s.ncity { mesh_at(s.city[i], vec3(0.0, 0.0, 0.0), 0.0) }
+        poly_upper(true)
+    }
     let reach = cam_w * 0.75 + 4.0
     for i in 0..s.nprops {
         let p = &s.props[i]
         if abs(p.x - cam_x) < reach + p.near { mesh_at(p.mesh, vec3(p.x, 0.0, p.z), p.yaw) }
     }
+}
+
+// After the mechs and the effects: the polygons go back to PL.
+fn stage_props_end() {
+    if stage_now().ncity > 0 { poly_upper(false) }
 }
 
 // The planes off (the menus set their own).

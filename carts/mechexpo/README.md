@@ -57,7 +57,7 @@ a stand-in in your own files until it lands. Each owner writes the interface fil
 | `anims/` (`anims/hero/*.anim.json`, `anims/doubleblade/*.anim.json`), the exported `anim_data.akr` | Every move's animation, timing and boxes. Until Gate 1, A writes the one proof move | **F, animator** (from Gate 1) |
 | `models/`, `tools/gen_mechexpo_assets.py`, `art/` (except `art/stage_*` and `art/ui_*`), `assets.akr` | The mechs' parts and rigs, the stage's polygon props, the emblems, and the pack of every model | **B, models** |
 | `fight.akr`, `fighter.akr`, `moves.akr`, `meter.akr`, `cpu.akr`, `MOVES.md`, `tests/harness.akr`, `tests/run.sh`, `tests/check.sh` | The fight: rules, frame data effects, input, meters, rounds, the CPU, the dummy, and the cart's test cases | **C, combat** |
-| `mechexpo.akr`, `game.akr`, `stage.akr`, `camera.akr`, `hud.akr`, `fx.akr`, `menus.akr`, `save.akr`, `stage_art.akr`, `art/stage_*`, `art/ui_*`, `tools/gen_mechexpo_stage.py`, `tools/gen_mechexpo_ui.py`, `stages.akr`, `stage_select.akr`, `roof_art.akr`, `roof_props.akr`, `props/`, `tools/gen_mechexpo_rooftop.py`, any other top-level `.akr` not listed here | The entry point, the game's flow and modes, the stages (mx-stages: the table, the stage select, the rooftop and its props) on the plane chip, the camera, the HUD, effects, the menus and the unlock save | **D, stage and front end** |
+| `mechexpo.akr`, `game.akr`, `stage.akr`, `camera.akr`, `hud.akr`, `fx.akr`, `menus.akr`, `save.akr`, `stage_art.akr`, `art/stage_*`, `art/ui_*`, `tools/gen_mechexpo_stage.py`, `tools/gen_mechexpo_ui.py`, `stages.akr`, `stage_select.akr`, `roof_art.akr`, `roof_props.akr`, `roof_city3d.akr`, `props/`, `tools/gen_mechexpo_rooftop.py`, any other top-level `.akr` not listed here | The entry point, the game's flow and modes, the stages (mx-stages: the table, the stage select, the rooftop and its props) on the plane chip, the camera, the HUD, effects, the menus and the unlock save | **D, stage and front end** |
 | `music.akr`, `mu_data.akr`, `sfx.akr`, `audio/`, `tools/gen_mechexpo_audio.py` | Music and sound effects | **E, audio** |
 
 `mechexpo.akr` (the entry point, `cart "Mech Expo 2000", "MECHEXPO"`) must compile whenever it
@@ -250,15 +250,16 @@ of timed events. Then new stages are content, not engine work"). `stages.akr` ho
 | `half` | the edges are at x = −half and +half |
 | `edge: [2]Edge` | the −x and +x sides: `Edge.Wall` or `Edge.Open` (a lip, with ring-outs: [MOVES.md](MOVES.md#stages-and-ring-outs)) |
 | `tilt` | the floor's slope across x; 0 (every stage is flat for now; the carrier's deck later) |
-| `art: StageArt` | the plane chip's set: BG1's atlas, map, palettes, width, the art row on the floor line (`hall_line`) at depth `hall_z`, the parallax bands; BG2's atlas, map, palettes, texels a metre, the texel of world 0, what shows outside its map (`floor_out`), how far its rows go; the backdrop's four colours and their rows; `PLN_PRIO` |
+| `art: StageArt` | the plane chip's set: BG1's atlas, map, palettes, width, the art row on the floor line (`hall_line`) at depth `hall_z`, the parallax bands; BG2's atlas, map, palettes, texels a metre, the texel of world 0, what shows outside its map (`floor_out`), how far its rows go; the backdrop's four colours and their rows; `PLN_PRIO`; the camera's far plane (`clip_far`, 300 m); the layers a super's darkening reaches (`dark`) |
 | `nprops`, `props` | up to 6 polygon props: a mesh at (x, 0, z) turned by yaw, drawn while the view comes within `near` m of x |
+| `ncity`, `city` | up to 8 meshes of a city in polygons, in the world's coordinates, drawn at the origin every frame into the PL layer (the rooftop's; the hangar has none): the stage's priorities put PL behind BG2, and everything drawn after the city (the props, the mechs, the effects) is PH, in front of the deck (`stage_props()`, `stage_props_end()`) |
 | `music` | the fight's track: 0, the fight track (`music_fight()`) |
 | `nevents`, `events` | up to 4 timed events, none yet: `StEv.Fall` (a falling building across x0..x1 at frame `at` of a round, for `len` frames, with `power`, leaving rubble) and `StEv.Tilt` (the deck tilting to `amount` radians over `len` frames). Nothing runs them yet |
 
 | Stage | Edges | Art | Props |
 |---|---|---|---|
 | `ST_HANGAR`, the demo hangar | walls at ±36 | `stage_art.akr` (`tools/gen_mechexpo_stage.py`) | the hangar's walls, two banner towers (B's) |
-| `ST_ROOFTOP`, the rooftop showcase | a wall (the stairwell's housing) at −26, open at +26 | `roof_art.akr` (`tools/gen_mechexpo_rooftop.py`): the city on BG1 behind the roof deck on BG2, the deck transparent past its edges | the housing, the far parapet with three floodlight masts, the open edge's kerb (`props/rooftop/`, packed by the same generator into `roof_props.akr`), two banner towers |
+| `ST_ROOFTOP`, the rooftop showcase | a wall (the stairwell's housing) at −26, open at +26 | `roof_art.akr` (`tools/gen_mechexpo_rooftop.py`): the horizon (haze, a low skyline, the far city's lights) on BG1 behind the [city in polygons](#the-rooftops-city) (PL) behind the roof deck on BG2, the deck transparent past its edges | the housing, the far parapet with three floodlight masts, the open edge's kerb (`props/rooftop/`, packed by the same generator into `roof_props.akr`), two banner towers; the city (`props/rooftop_city/`, packed into `roof_city3d.akr`) |
 
 - **The fight's stage** is `fight.stage`, set by `fight_init()` from `fight_stage(id)` (called
   before it; the hangar until then), so a fight's stage is part of its state and replays. The
@@ -270,15 +271,74 @@ of timed events. Then new stages are content, not engine work"). `stages.akr` ho
   final. The title's attract view is the hangar.
 - **Loading:** `stage_show()` loads the current stage's art (BG1 into ATLAS_1 and palettes
   244–249, BG2 into ATLAS_0 and 240–243) whenever the planes go on, so only one stage's art is
-  in VRAM; the rooftop's props' pack (slot 13, palettes 200–203) is loaded once at boot.
+  in VRAM; the rooftop's props' pack (slot 13, palettes 200–203) and its city's (slot 14, palettes
+  204–211) are loaded once at boot.
 - **Adding a stage:** its art (a generator writing `art/stage_*` and an `.akr` of constants), its
   props, and a row in `STAGES` (with `STAGES_N`). The rooftop's generator is the example.
-- **Tests:** scenarios 90–99 in `tests/stages/harness.akr` (the whole game): the hangar, the
-  ring-outs, the lip, the closed side, the Twins, the CPU, the stage select and the budget.
+- **Tests:** scenarios 90–99 and 112–115 in `tests/stages/harness.akr` (the whole game): the
+  hangar, the ring-outs, the lip, the closed side, the Twins, the CPU, the stage select, the
+  budget, and four views of the rooftop's city (112 the fight's start, 113 the camera fully out,
+  114 the open edge, 115 a ring-out; `tests/run.sh N FRAMES OUT` writes `OUT.png`).
 - **The budget on the rooftop** (scenarios 98 and 99, CPU against CPU through the real game, a
-  release build): the Hero against the Double-blade Hero 546,116 CPU cycles and 703,639 GPU
-  cycles at the peak, 1,848 triangles (530,209 and 657,484 with a mech within 8 m of the open
-  edge); the split Twins against Tank 527,614 and 920,873, 1,802 triangles.
+  release build, with the city): the Hero against the Double-blade Hero 654,591 CPU cycles and
+  825,722 GPU cycles at the peak, 2,317 triangles (610,978 and 706,593 with a mech within 8 m of
+  the open edge); the split Twins against Tank 633,953 and 1,059,699, 2,257 triangles. Without
+  the city (the painted one) they were 548,666 and 694,474, 1,864 triangles, and 528,941 and
+  924,396, 1,802. The city alone costs about 104,000 CPU and 111,000 GPU cycles a frame with the
+  camera fully out (scenario 113, the mechs idle), 105,000 and 145,000 at the open edge (114).
+  Shadow against the split Twins (scenario 109's run, put on the rooftop for the measurement):
+  729,468 and 932,847, 2,454 triangles, the worst fight measured there; no late frames.
+
+### The rooftop's city
+
+The rooftop's buildings are polygons, made with the Asset Kit by
+`props/rooftop_city/make_city.py` (its recipes, textures and a Pillow-drawn texture for each
+building kind) and packed by `tools/gen_mechexpo_rooftop.py` into `roof_city3d.akr` and
+`art/stage_roof_city_*`. Six meshes, 654 triangles, each in the world's coordinates and drawn at
+the origin; every recipe passes `verify`:
+
+| Mesh | Triangles | What |
+|---|---|---|
+| `city_near` | 218 | the near rank, 48–84 m behind the fight plane: low blocks (roofs from −32 to +28 m, the deck being 0), those past the open edge with neon signs, the highest with a red aircraft light |
+| `city_mid` | 98 | the middle rank, 100–148 m: office and residential towers up to 53 m above the deck |
+| `city_umeda` | 96 | the Umeda Sky Building: two towers (12.8 m wide, 52.8 m above the deck, 10.4 m apart) joined by a bridge, an octagonal ring above it, a red light |
+| `city_lattice` | 116 | a lattice tower from the street to 48 m above the deck, then a lit observation deck, a crown and a mast: a loft of eight lattice panels with a cutout texture (the far side shows through) |
+| `city_hep` | 70 | a department store (28 m wide) with HEP's red Ferris wheel (24 m across) on it: two cutout discs 3.5 m apart, twelve gondolas between them, a hub, two legs |
+| `city_street` | 56 | the ground 48 m below the deck from the open edge to 330 m back, in a street texture (avenues, lamps, headlights), and the low blocks nearest the tower |
+
+- **What is a polygon.** Everything with sides to turn: every building, the landmarks and the
+  street. What stays on BG1 (`tools/gen_mechexpo_rooftop.py`, repainted) is what is too far to
+  have any: the haze along the horizon, a low skyline in it with a few pale windows, the far
+  city's lights and, past the open edge where the street's 330 m of ground ends, a dark carpet
+  of lights. The painted landmarks, towers and street are gone.
+- **Windows.** A building is a box in emissive textures (the lit windows are in the texture): a
+  32 × 32 texel tile of 8 × 8 cells, a window 2 × 2 or 4 × 2 texels, 5 to 14 % of them lit
+  (and the odd lit floor), in three kinds. A front face and a side face use different tiles, the
+  side's walls 0.66 as bright, so a building shows two tones and turns as the camera moves (the
+  angled framing shows it best). The mid rank's tiles are hazed toward the horizon's colour. A
+  cell is 2.4 × 2.7 m near and 3.2 × 3.6 m mid; a building is an even number of cells wide and
+  of floors high, so windows meet its corners.
+- **Layers.** The city is PL, the deck BG2 and the props and mechs PH, in the order BG1 0, PL 1,
+  BG2 2, BG0 3, PH 4 (`ROOF_PRIO`). The compositor, not the depth test (the planes have no
+  depth), puts the deck in front of the city, and the city shows below the lip past the open
+  edge where the deck is transparent. The mechs, the props and the effects are PH, so on the
+  rooftop they draw in front of the HUD's frame (BG0), which is in front of them in the hangar.
+  A super's darkening and Shadow's Total Eclipse reach PL too (`StageArt.dark`).
+- **What is not drawn.** The compositor hides what is under the deck, but the GPU has already
+  drawn it, so the city does not go there: the deck and the parapet hide everything below a
+  sight line over the rail, a building left of the open edge starts at y = −3 (near) or −10
+  (mid) instead of the street, and one whose roof is lower is not made. A roof above the eye (14 m), the +x face of a
+  building right of x = 32 and the −x face of one left of x = −30 (the camera's x runs −22 to
+  24) are not made either; a sign or a gondola is one face.
+- **Levels of detail and near culling are not used.** The camera only dollies 16–31 m, so a mesh
+  100 m or more away changes size by a tenth: no level would ever be chosen. Cutting each rank
+  into meshes 70 m wide, each drawn only while the view reaches it (as the props' `near`), saved
+  11,000 CPU cycles (2 %) on the widest view and needed a table of their extents; the ranks
+  stay whole.
+- **VRAM.** Texture slot 14 (15 tiles, 17,138 bytes of 32,768, loaded once at boot) and 4-bit
+  palettes 204–211 (the swatch's five and the textures' three). Nothing else: no atlas, no
+  table, no second palette bank, and BG1's art shrank from 288 tiles to 279. The camera's far
+  plane on the rooftop is 400 m (`ROOF_CLIP_FAR`; the hangar keeps 300).
 
 ## Rendering, VRAM and budgets
 
@@ -310,9 +370,11 @@ of timed events. Then new stages are content, not engine work"). `stages.akr` ho
   and MAP_BG0, put back by `hud_show(true)`; priorities there BG1 1, BG0 1 (it wins the tie), the
   mechs 2, the interface list 4 (`PAGE_PRIO` in `menus.akr`).
 - **The rooftop (mx-stages):** texture slot 13 and 4-bit palettes 200–203 for its props' pack
-  (`roof_props.akr`, loaded once by `stage_boot()`); its plane art uses the hangar's atlases,
+  (`roof_props.akr`, loaded once by `stage_boot()`), texture slot 14 and palettes 204–211 for its
+  city in polygons (`roof_city3d.akr`, [above](#the-rooftops-city)); its plane art uses the hangar's atlases,
   maps and palettes (one stage is loaded at a time, by `stage_show()`). Priorities on the
-  rooftop: BG1 (the city) 0, BG2 (the deck) 1, the mechs 2, BG0 3, the interface list 4.
+  rooftop: BG1 (the horizon) 0, PL (the city in polygons) 1, BG2 (the deck) 2, BG0 3, PH (the
+  mechs, the props, the effects and the interface list) 4.
 - **The roster** (`roster.akr`): the makers and the select's ten slots; a mech's names, maker,
   booth, power source, stats, blurb and unlock rule are its row. Adding a mech is filling in its
   slot's `mech` field (the file's first comment says how). `save.unlocked` keeps bit 0 for the

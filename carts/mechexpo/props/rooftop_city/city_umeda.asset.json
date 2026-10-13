@@ -1,0 +1,440 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_roof_city_umeda",
+ "budget": {
+  "vertices": 2000,
+  "triangles": 400
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.62
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "m_rf": {
+   "color": "#1a2240",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_m_rf.png",
+    "projection": "box",
+    "scale": [
+     25.6,
+     28.8
+    ]
+   }
+  },
+  "m_rs": {
+   "color": "#1a2240",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_m_rs.png",
+    "projection": "box",
+    "scale": [
+     25.6,
+     28.8
+    ]
+   }
+  },
+  "m_of": {
+   "color": "#1a2240",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_m_of.png",
+    "projection": "box",
+    "scale": [
+     25.6,
+     28.8
+    ]
+   }
+  },
+  "m_os": {
+   "color": "#1a2240",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_m_os.png",
+    "projection": "box",
+    "scale": [
+     25.6,
+     28.8
+    ]
+   }
+  },
+  "m_roof": {
+   "color": "#39385a"
+  },
+  "red": {
+   "color": "#ff3a2a",
+   "class": "emissive"
+  },
+  "steel": {
+   "color": "#3c4568"
+  },
+  "warm": {
+   "color": "#d8a860",
+   "class": "emissive"
+  },
+  "ring": {
+   "color": "#4a5780"
+  }
+ },
+ "nodes": [
+  {
+   "id": "tower_0",
+   "op": "box",
+   "size": [
+    12.8,
+    100.8,
+    14.0
+   ],
+   "material": "m_of",
+   "transform": {
+    "translate": [
+     -12.0,
+     2.4,
+     127.0
+    ]
+   },
+   "faces": {
+    "left": "m_os",
+    "right": "m_os"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "tower_1",
+   "op": "box",
+   "size": [
+    12.8,
+    100.8,
+    14.0
+   ],
+   "material": "m_rf",
+   "transform": {
+    "translate": [
+     12.0,
+     2.4,
+     127.0
+    ]
+   },
+   "faces": {
+    "left": "m_rs",
+    "right": "m_rs"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "bridge",
+   "op": "box",
+   "size": [
+    11.6,
+    7.2,
+    13.0
+   ],
+   "material": "m_of",
+   "transform": {
+    "translate": [
+     0.0,
+     45.6,
+     127.0
+    ]
+   },
+   "faces": {
+    "top": "m_roof",
+    "left": "m_os",
+    "right": "m_os"
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "bridge_lights",
+   "op": "box",
+   "size": [
+    11.0,
+    0.7,
+    0.3
+   ],
+   "material": "warm",
+   "transform": {
+    "translate": [
+     0.0,
+     46.3,
+     120.45
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "ring_0",
+   "op": "box",
+   "size": [
+    4.6421,
+    1.3,
+    7.0
+   ],
+   "material": "ring",
+   "transform": {
+    "translate": [
+     4.6194,
+     59.2134,
+     127.0
+    ],
+    "rotate": [
+     0,
+     0,
+     112.5
+    ]
+   },
+   "open": [
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "ring_1",
+   "op": "box",
+   "size": [
+    4.6721,
+    1.3,
+    7.1
+   ],
+   "material": "ring",
+   "transform": {
+    "translate": [
+     1.9134,
+     61.9194,
+     127.0
+    ],
+    "rotate": [
+     0,
+     0,
+     157.5
+    ]
+   },
+   "open": [
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "ring_2",
+   "op": "box",
+   "size": [
+    4.7021,
+    1.3,
+    7.2
+   ],
+   "material": "ring",
+   "transform": {
+    "translate": [
+     -1.9134,
+     61.9194,
+     127.0
+    ],
+    "rotate": [
+     0,
+     0,
+     202.5
+    ]
+   },
+   "open": [
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "ring_3",
+   "op": "box",
+   "size": [
+    4.7321,
+    1.3,
+    7.3
+   ],
+   "material": "ring",
+   "transform": {
+    "translate": [
+     -4.6194,
+     59.2134,
+     127.0
+    ],
+    "rotate": [
+     0,
+     0,
+     247.5
+    ]
+   },
+   "open": [
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "ring_4",
+   "op": "box",
+   "size": [
+    4.7621,
+    1.3,
+    7.4
+   ],
+   "material": "ring",
+   "transform": {
+    "translate": [
+     -4.6194,
+     55.3866,
+     127.0
+    ],
+    "rotate": [
+     0,
+     0,
+     292.5
+    ]
+   },
+   "open": [
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "ring_5",
+   "op": "box",
+   "size": [
+    4.7921,
+    1.3,
+    7.5
+   ],
+   "material": "ring",
+   "transform": {
+    "translate": [
+     -1.9134,
+     52.6806,
+     127.0
+    ],
+    "rotate": [
+     0,
+     0,
+     337.5
+    ]
+   },
+   "open": [
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "ring_6",
+   "op": "box",
+   "size": [
+    4.8221,
+    1.3,
+    7.6
+   ],
+   "material": "ring",
+   "transform": {
+    "translate": [
+     1.9134,
+     52.6806,
+     127.0
+    ],
+    "rotate": [
+     0,
+     0,
+     382.5
+    ]
+   },
+   "open": [
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "ring_7",
+   "op": "box",
+   "size": [
+    4.8521,
+    1.3,
+    7.7
+   ],
+   "material": "ring",
+   "transform": {
+    "translate": [
+     4.6194,
+     55.3866,
+     127.0
+    ],
+    "rotate": [
+     0,
+     0,
+     427.5
+    ]
+   },
+   "open": [
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "ring_light",
+   "op": "box",
+   "size": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     -12.0,
+     53.4,
+     127.0
+    ]
+   }
+  },
+  {
+   "id": "ring_mast",
+   "op": "box",
+   "size": [
+    0.3,
+    1.2,
+    0.3
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -12.0,
+     53.35,
+     127.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  }
+ ]
+}

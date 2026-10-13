@@ -20,6 +20,11 @@
 //     won by KO, time and ring-out; the first match twice, frame for frame the same
 // 97  the stage select: Versus, after the character select, RIGHT and A pick the rooftop, the
 //     VS screen follows and the fight is on the rooftop; the arcade's ladder has its own stages
+// 112 the rooftop's city seen at the fight's start, mid-stage: the Hero and the Double-blade Hero
+//     at x = -9 and 9 (screenshots: tests/run.sh 112 40 OUT, for the before and after of the city)
+// 113 the city with the camera fully out: the mechs 36 m apart at x = -14 and 22
+// 114 the city and the drop past the open edge: the mechs 9 and 3 m from the edge
+// 115 a ring-out: the Low Sweep at the lip (as 91); the loser 14 frames into the fall
 // 98  the budget on the rooftop: CPU against CPU, the Hero against the Double-blade Hero, 1,800
 //     frames through the real game; the peaks overall and with a mech near the open edge
 // 99  the budget on the rooftop with three bodies: the split Twins against Tank, 1,800 frames
@@ -73,7 +78,7 @@ fn test_init() {
         p_mech[1] = Mech.Tank
     }
     enter_fight()
-    if SCENARIO >= 98 { return }
+    if SCENARIO == 98 || SCENARIO == 99 { return }
     skip_intro()
     match SCENARIO {
         90 => place(30.0, 33.0)
@@ -82,6 +87,10 @@ fn test_init() {
         93 => place(edge() - 6.0, lip(1))
         94 => place(6.0 - edge(), 3.0 - edge())
         95 => place(edge() - 5.0, edge() - 1.5)
+        112 => place(-9.0, 9.0)
+        113 => place(-14.0, 22.0)
+        114 => place(edge() - 9.0, edge() - 3.0)
+        115 => place(edge() - 5.0, edge() - 2.0)
         else => {}
     }
     for i in 0..2 { face_other(i) }
@@ -139,7 +148,7 @@ fn input_stick(n: s32) -> vec2 { return vec2(0.0, 0.0) }
 fn input_pad(n: s32) -> u32 {
     if SCENARIO == 97 { return menu_pad(n) }
     if st != St.Fight { return 0 }
-    if SCENARIO >= 98 {
+    if SCENARIO == 98 || SCENARIO == 99 {
         // the Twins split for the first half (three bodies), as scenario 69
         let p = cpu_pad(n, 2)
         if SCENARIO == 99 && n == 0 && fr < 900 { return p & ~L }
@@ -162,6 +171,7 @@ fn input_pad(n: s32) -> u32 {
             if n == 1 && t >= 320 && t < 440 { return LEFT }
         }
         95 => { if n == 0 && t == 5 && step == 0 { return DOWN | A } }
+        115 => { if n == 0 && t == 5 { return DOWN | A } }
         else => {}
     }
     return 0
@@ -216,7 +226,7 @@ fn test_hook() {
     }
     let s = stage_now()
     if stage_has_open(s) { cam_beyond = max(cam_beyond, cam_x + cam_w / 2 - s.half) }
-    if SCENARIO >= 98 {
+    if SCENARIO == 98 || SCENARIO == 99 {
         budget(f)
     } else {
         check()
@@ -232,6 +242,10 @@ private fn check() {
         93 => check_lip()
         94 => check_wall()
         95 => check_twins()
+        112 => check_view(40, 9.0)
+        113 => check_view(40, 36.0)
+        114 => check_view(60, 6.0)
+        115 => check_fall()
         else => {}
     }
 }
@@ -260,6 +274,8 @@ private fn check_hangar() {
         assert(s.props[0].mesh == ASSET_HANGAR_WALL_R && s.props[0].x == 36.0, "the right wall")
         assert(s.props[1].mesh == ASSET_HANGAR_WALL_L && s.props[1].x == -36.0, "the left wall")
         assert_eq(s.nevents, 0, "the hangar has events")
+        assert_eq(s.ncity, 0, "the hangar has a city")
+        assert(s.art.dark == 0x26 && s.art.clip_far == 300.0, "the hangar's layers and clip")
     }
     no_ring_out()
     let d = &fight.f[1]
@@ -490,6 +506,49 @@ private fn check_twins() {
         ok("the Twins: either twin over the edge costs the round")
     }
     if step < 3 && fr > 200 { assert(false, "no ring-out") }
+}
+
+// ---- 112-115: the city's views (pictures for the owner; the checks only keep them honest)
+
+// The fight on the rooftop at frame `at`, the mechs `gap` metres apart, the camera on them.
+private fn check_view(at: s32, gap: fixed) {
+    no_ring_out()
+    if fr == at {
+        assert_eq(fight.stage, ST_ROOFTOP, "not the rooftop")
+        let s = stage_now()
+        assert(s.ncity > 0 && s.art.dark & 8 != 0, "the rooftop's city (PL) is not in its layers")
+        assert_eq(s.art.prio >> 24 & 15, 1, "the city's layer (PL) is not behind the deck")
+        assert(s.art.prio >> 16 & 15 > s.art.prio >> 24 & 15, "the deck (BG2) is not in front of the city")
+        assert(s.art.prio >> 28 & 15 > s.art.prio >> 24 & 15, "the mechs (PH) are not in front of the city")
+        assert(abs(fight.f[1].x - fight.f[0].x) > gap - 0.5, "the mechs moved")
+        print("stages view: the mechs ")
+        print_fixed(fight.f[1].x - fight.f[0].x)
+        print(" m apart, the view ")
+        print_fixed(cam_w)
+        print(" m across at x ")
+        print_fixed(cam_x)
+        println("")
+        no_ring_out()
+        ok("the rooftop's view")
+    }
+}
+
+// 115: the Low Sweep at the lip; the loser 14 frames into its fall (the frame to look at).
+private fn check_fall() {
+    if step == 0 && evc[Ev.RingOut] > 0 {
+        step = 1
+        mark = fr
+    }
+    if step == 1 && fr == mark + 14 {
+        assert(fx[1].out, "the loser is not falling")
+        print("stages fall: frame ")
+        print_int(fr)
+        print(", the loser at y ")
+        print_fixed(fight.f[1].y)
+        println("")
+        ok("the rooftop's ring-out view")
+    }
+    if fr > 200 { assert(false, "no ring-out") }
 }
 
 // ---- 96: CPU against CPU on the rooftop

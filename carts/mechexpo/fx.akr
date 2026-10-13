@@ -990,7 +990,7 @@ fn fx_offset() {
     } else if fx_dark {
         let f = fight_get()
         let pf = fx_power(f.f[clamp(fx_dark_side, 0, 1)].mech)
-        layer_offset(0x26, pf.hall[0], pf.hall[1], pf.hall[2])     // BG1, BG2 and the backdrop
+        layer_offset(stage_now().art.dark, pf.hall[0], pf.hall[1], pf.hall[2])     // the stage: BG1, BG2 and the backdrop (and the rooftop's city, PL)
     } else {
         layer_offset(0, 0, 0, 0)
     }
