@@ -1,0 +1,30 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Phantom Grip, the grab (MOVES.md): Shadow lunges both claws forward, wide open, to close on the other's shoulders, the body pitched in over the front foot. Startup 5, active 2 (the catch box x 1.0-3.8, y 2-10, a fixed rectangle as every grab's), no recovery: a miss goes on into grab_whiff, a catch into throw. The claws are long: from frame 5 they reach past the box, talons hooking down.",
+  "base": "_body.anim.json",
+  "length": 7,
+  "phases": {"startup": 5, "active": 2, "recovery": 0},
+  "design": {"hit": [1.0, 2.0, 3.8, 10.0], "tolerance": 0.2,
+             "note": "MOVES.md, grab: x 1.0-3.8, y 2-10"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in"},
+    {"at": 2, "ease": "ease", "offset": [-0.2, -1.1],
+     "pose": {"pelvis": [0, 0, 0], "torso": [-10, 0, 0], "head": [12, 0, 0],
+              "upper_arm_r": [120, 0, 30], "forearm_r": [20, 0, 4], "hand_r": [-10, 0, 0],
+              "weapon_r": [25, 0, 0], "upper_arm_l": [120, 0, -30], "forearm_l": [20, 0, -4],
+              "hand_l": [-10, 0, 0], "weapon_l": [25, 0, 0], "pauldron_r": [30, 0, -14],
+              "pauldron_l": [30, 0, 16]}},
+    {"at": 5, "ease": "out", "offset": [-0.2, -1.2],
+     "pose": {"pelvis": [-6, 0, 0], "torso": [-20, 0, 0], "head": [20, 0, 0],
+              "upper_arm_r": [132.6, 0.0, 0.0], "forearm_r": [82.4, 0.0, 0.0],
+              "hand_r": [-20, 0, 0], "weapon_r": [-10, 0, 0], "upper_arm_l": [132.6, 0.0, 0.0],
+              "forearm_l": [82.4, 0.0, 0.0], "hand_l": [-20, 0, 0], "weapon_l": [-10, 0, 0],
+              "pauldron_r": [30, 0, -10], "pauldron_l": [30, 0, 12]},
+     "aim": {"weapon_r": [-30, 0], "weapon_l": [-30, 0]},
+     "boxes": {"grab": {"kind": "hit", "rect": [1.0, 2.0, 3.8, 10.0]}}},
+    {"at": 6, "offset": [-0.3, -1.2], "pose": {"weapon_r": [-30, 0, 0], "weapon_l": [-30, 0, 0]},
+     "aim": {"weapon_r": [-45, 0], "weapon_l": [-45, 0]}}
+  ],
+  "plant": {"foot_r": [[0, 6]], "foot_l": [[0, 6]]}
+}

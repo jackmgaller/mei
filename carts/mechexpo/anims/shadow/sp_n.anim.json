@@ -1,0 +1,33 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Hex Bolt (MOVES.md): frames 0-13: Shadow turns its right side away, hips and shoulders together, and draws the right claw back past its hip, the talons curled shut (the claw closed 35-40 degrees) where the light gathers; the left claw reaches forward low as a counterweight. Frame 15 (the release mark): the arm whips forward, elbow low as in the jab, and the claw opens level at chest height, its knuckles at x 3.5, y 6.2, where the fight starts the bolt (3.5 m ahead, y 4.5-7.5). The claw follows through a little higher (19) and it settles back into the guard over 20 frames. No hit box: the bolt is the fight's. Feet planted.",
+  "base": "_body.anim.json",
+  "length": 40,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease"},
+    {"at": 6, "ease": "ease", "offset": [-0.4, -1.3],
+     "pose": {"pelvis": [0, 18, 0], "torso": [-16, 6, 0], "head": [18, -16, 0],
+              "upper_arm_r": [-40, 0, -14], "forearm_r": [50, 0, 0], "hand_r": [-30, 0, 0],
+              "weapon_r": [-35, 0, 0], "upper_arm_l": [60, 0, 26], "forearm_l": [30, 0, -10],
+              "hand_l": [-20, 0, 0], "pauldron_r": [-6, 0, -12]}},
+    {"at": 13, "ease": "in", "offset": [-0.55, -1.45],
+     "pose": {"pelvis": [0, 22, 0], "torso": [-18, 8, 0], "head": [20, -20, 0],
+              "upper_arm_r": [-50, 0, -14], "forearm_r": [56, 0, 0], "hand_r": [-36, 0, 0],
+              "weapon_r": [-40, 0, 0], "upper_arm_l": [64, 0, 26], "forearm_l": [26, 0, -10],
+              "pauldron_r": [-10, 0, -12]}},
+    {"at": 15, "ease": "out", "offset": [0.1, -1.2],
+     "pose": {"pelvis": [0, -8, 0], "torso": [-18, -14, 0], "head": [20, 12, 0],
+              "upper_arm_r": [-21.7, 0.0, -14.0], "forearm_r": [123.1, 0.0, 0.0],
+              "hand_r": [0, 0, 0], "weapon_r": [30, 0, 0], "upper_arm_l": [20, 0, 26],
+              "forearm_l": [50, 0, -10], "hand_l": [-20, 0, 0], "pauldron_r": [26, 0, -12]},
+     "aim": {"weapon_r": [10, 0]}},
+    {"at": 19, "ease": "ease", "offset": [0.15, -1.2],
+     "pose": {"pelvis": [0, -10, 0], "torso": [-20, -16, 0], "head": [22, 14, 0],
+              "upper_arm_r": [-5.4, 0.0, -14.0], "forearm_r": [127.4, 0.0, 0.0],
+              "weapon_r": [30, 0, 0]}, "aim": {"weapon_r": [16, 0]}},
+    {"at": 39, "from": "guard"}
+  ],
+  "plant": {"foot_r": [[0, 39]], "foot_l": [[0, 39]]},
+  "marks": {"release": [15]}
+}

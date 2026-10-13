@@ -252,20 +252,20 @@ const AK_MOVES: [264]AnimMove = [
     AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow ko (stand-in)
     AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow win (stand-in)
     AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow intro (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow atk_n (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow atk_f (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow atk_d (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow atk_air (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow sp_n (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow sp_f (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow sp_u (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow sp_d (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow grab (stand-in)
+    AnimMove { len: 17, flags: 0, frames: 7643456, box_first: 7653792, boxes: 7653828, marks: 7658048, root: 7658116 },   // shadow atk_n
+    AnimMove { len: 36, flags: 0, frames: 7658252, box_first: 7680140, boxes: 7680216, marks: 7689176, root: 7689320 },   // shadow atk_f
+    AnimMove { len: 36, flags: 0, frames: 7689608, box_first: 7711496, boxes: 7711572, marks: 7716172, root: 7716316 },   // shadow atk_d
+    AnimMove { len: 26, flags: 2, frames: 7716604, box_first: 7732412, boxes: 7732468, marks: 7739988, root: 7740092 },   // shadow atk_air
+    AnimMove { len: 40, flags: 0, frames: 7740300, box_first: 7764620, boxes: 7764704, marks: 7775104, root: 7775264 },   // shadow sp_n
+    AnimMove { len: 50, flags: 0, frames: 7775584, box_first: 7805984, boxes: 7806088, marks: 7816608, root: 7816808 },   // shadow sp_f
+    AnimMove { len: 44, flags: 0, frames: 7817208, box_first: 7843960, boxes: 7844052, marks: 7854652, root: 7854828 },   // shadow sp_u
+    AnimMove { len: 26, flags: 0, frames: 7855180, box_first: 7870988, boxes: 7871044, marks: 7877804, root: 7877908 },   // shadow sp_d
+    AnimMove { len: 7, flags: 0, frames: 7878116, box_first: 7882372, boxes: 7882388, marks: 7884248, root: 7884276 },   // shadow grab
     AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow grab_whiff (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow throw (stand-in)
+    AnimMove { len: 44, flags: 0, frames: 7884332, box_first: 7911084, boxes: 7911176, marks: 7920856, root: 7921032 },   // shadow throw
     AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow thrown (stand-in)
     AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow grab_break (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow super (stand-in)
+    AnimMove { len: 106, flags: 0, frames: 7921384, box_first: 7985832, boxes: 7986048, marks: 8014048, root: 8014472 },   // shadow super
     AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow thrown_vault (stand-in)
     AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow thrown_slam (stand-in)
     AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow combine (stand-in)
