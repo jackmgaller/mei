@@ -42,7 +42,7 @@ const STATS: [len(Mech)]Stats = [
     Stats { health: 1000, walk_f: 0.062, walk_b: 0.058, pre: 5, jv: 0.6, grav: 0.03,
             jvx: 0.14, land: 6, land_air: 9, push: 1.7, power: Power.Chemical },
     // Tank (MOVES.md, "Tank"): the jump is 6 frames' crouch, 34 in the air, 4.5 m high
-    Stats { health: 1100, walk_f: 0.055, walk_b: 0.045, pre: 6, jv: 0.529412, grav: 0.031142,
+    Stats { health: 1150, walk_f: 0.055, walk_b: 0.045, pre: 6, jv: 0.529412, grav: 0.031142,
             jvx: 0.13, land: 7, land_air: 10, push: 2.4, power: Power.Nuclear },
     // the Twins (MOVES.md, "The Twins"): combined, 4 frames' crouch, 38 in the air, 6.0 m high
     Stats { health: 1000, walk_f: 0.080, walk_b: 0.065, pre: 4, jv: 0.631579, grav: 0.033241,

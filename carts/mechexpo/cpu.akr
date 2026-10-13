@@ -262,7 +262,8 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         // an attack starting in range
         if opp_attacking && !c.opp_active && dist < tip(op.body) + 2.0 && op.mv != Mv.grab {
             c.decided = true
-            if me.mech == Mech.Tank && roll(c, lv.punish / 2) { return tank_armour_through(dist, fwd) }
+            // (never against a super: armour does not take a super's hit, so it is blocked: mx-balance)
+            if me.mech == Mech.Tank && op.mv != Mv.super && roll(c, lv.punish / 2) { return tank_armour_through(dist, fwd) }
             if roll(c, lv.block) { return hold(c, R, 24) }
         }
     }

@@ -325,8 +325,8 @@ fn shadow_hold(i: s32, j: s32, t: s32) {
 
 fn shadow_hit(mv: Mv) -> Hit {
     return match mv {
-        atk_n => Hit { dmg: 45, hitstun: 15, blockstun: 11, stop: 7, kb: 0.08 }
-        atk_f => Hit { dmg: 100, hitstun: 25, blockstun: 18, stop: 10, power: 1, kb: 0.13 }
+        atk_n => Hit { dmg: 50, hitstun: 15, blockstun: 11, stop: 7, kb: 0.08 }
+        atk_f => Hit { dmg: 105, hitstun: 25, blockstun: 18, stop: 10, power: 1, kb: 0.13 }
         atk_d => Hit { dmg: 80, blockstun: 16, stop: 10, power: 1, kb: 0.09, kd: true, launch: 0.30 }
         atk_air => Hit { dmg: 85, hitstun: 19, blockstun: 14, stop: 10, power: 1, kb: 0.08 }
         sp_n => hex_hit()
