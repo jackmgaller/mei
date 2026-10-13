@@ -1731,8 +1731,8 @@ private fn tk_check_armour() {
     if stage == 0 && evc[Ev.Armour] > 0 {
         stage = 1
         assert(t.mv == Mv.atk_f, "the armour did not keep the Haymaker going")
-        assert_eq(t.health, 1100 - dmg(1, Mv.atk_n), "an absorbed hit's damage")
-        assert_eq(t.meter, dmg(1, Mv.atk_n) * 5 / 2, "the nuclear meter from the absorbed hit")
+        assert_eq(t.health, STATS[Mech.Tank].health - dmg(1, Mv.atk_n), "an absorbed hit's damage")
+        assert_eq(t.meter, dmg(1, Mv.atk_n) * NUC_NUM / NUC_DEN, "the nuclear meter from the absorbed hit")
         assert(!fx[1].contact, "an absorbed hit counts for the chain")
         assert_eq(fx[0].stun, 0, "hitstun through armour")
     }
@@ -1755,8 +1755,8 @@ private fn tk_check_armour_break() {
     if at(140) {
         assert_eq(evc[Ev.Throw], 1, "no throw")
         assert_eq(evc[Ev.Armour], 0, "the grab was absorbed")
-        assert_eq(t.health, 1100 - dmg(0, Mv.throw), "the Hero's throw on Tank")
-        assert_eq(t.meter, dmg(0, Mv.throw) * 5 / 2, "the meter from the throw")
+        assert_eq(t.health, STATS[Mech.Tank].health - dmg(0, Mv.throw), "the Hero's throw on Tank")
+        assert_eq(t.meter, dmg(0, Mv.throw) * NUC_NUM / NUC_DEN, "the meter from the throw")
         assert(tk_kd > 0, "Tank was not knocked down")
     }
     if at(150) {
@@ -1806,7 +1806,7 @@ private fn tk_check_nuclear() {
     let t = &fight.f[1]
     if at(60) {
         assert_eq(evc_side[0][Ev.Hit], 1, "the Tip Thrust missed")
-        assert_eq(t.meter, dmg(0, Mv.atk_f) * 5 / 2, "the nuclear meter from a hit")
+        assert_eq(t.meter, dmg(0, Mv.atk_f) * NUC_NUM / NUC_DEN, "the nuclear meter from a hit")
         assert_eq(fight.f[0].meter, KIN_HIT, "the Hero's kinetic meter")
         print("meter after one Tip Thrust ")
         print_int(t.meter)
@@ -1819,8 +1819,8 @@ private fn tk_check_nuclear() {
     if stage == 0 && evc[Ev.Ko] > 0 { stage = 1 }
     if stage == 1 && fight.phase == Phase.Intro {
         assert_eq(fight.round, 2, "round 2")
-        assert_eq(t.health, 1100, "health refilled")
-        assert_eq(t.meter, (dmg(0, Mv.atk_f) + 50) * 5 / 2, "the meter did not carry into round 2")
+        assert_eq(t.health, STATS[Mech.Tank].health, "health refilled")
+        assert_eq(t.meter, (dmg(0, Mv.atk_f) + 50) * NUC_NUM / NUC_DEN, "the meter did not carry into round 2")
         print("meter after 170 damage, in round 2 ")
         print_int(t.meter)
         println("")
@@ -1880,7 +1880,7 @@ private fn tk_check_thrown() {
     }
     if at(140) {
         assert_eq(evc[Ev.Throw], 1, "the Hero did not throw Tank")
-        assert_eq(t.health, 1100 - dmg(0, Mv.throw), "the Hero's throw on Tank")
+        assert_eq(t.health, STATS[Mech.Tank].health - dmg(0, Mv.throw), "the Hero's throw on Tank")
         assert(tk_kd > 0, "Tank was not knocked down")
         tk_restart(Mech.Doubleblade, Mech.Tank, 2.0)
         tk_part = 1
@@ -1888,8 +1888,8 @@ private fn tk_check_thrown() {
     }
     if at(290) {
         assert_eq(evc[Ev.Throw], 1, "the Double-blade Hero did not throw Tank")
-        assert_eq(t.health, 1100 - dmg(1, Mv.throw), "the Vault Throw on Tank")
-        assert_eq(t.meter, dmg(1, Mv.throw) * 5 / 2, "the meter from the throw")
+        assert_eq(t.health, STATS[Mech.Tank].health - dmg(1, Mv.throw), "the Vault Throw on Tank")
+        assert_eq(t.meter, dmg(1, Mv.throw) * NUC_NUM / NUC_DEN, "the meter from the throw")
         assert(t.x < fight.f[0].x, "the Vault Throw did not swap sides")
         assert(tk_kd > 0, "Tank was not knocked down")
         ok("Tank thrown by the Hero and vaulted by the Double-blade Hero")
@@ -2729,17 +2729,18 @@ private fn sh_check_siphon() {
             }
         }
         4 => {
-            // Tank's nuclear meter: Shadow gets half
+            // Tank's nuclear meter: Shadow gets a quarter
             if frames == mark + 2 { sh_pad[0] = A }
             if evc_side[0][Ev.Hit] > 0 {
                 let n = dmg(7, Mv.atk_n) * NUC_NUM / NUC_DEN
                 assert_eq(o.meter, 0, "the cursed Tank's meter filled")
                 assert_eq(o.siphoned, n, "the nuclear gain was not siphoned")
-                assert_eq(s.meter, (frames - mark) + ANTI_HIT + n / 2, "Shadow's regen, its hit and half the nuclear gain")
+                let g = n * SIPHON_NUC_NUM / SIPHON_NUC_DEN
+                assert_eq(s.meter, (frames - mark) + ANTI_HIT + g, "Shadow's regen, its hit and a quarter of the nuclear gain")
                 print("siphoned: Tank's nuclear gain ")
                 print_int(n)
                 print(", Shadow got ")
-                print_int(n / 2)
+                print_int(g)
                 println("")
                 sh_restart(Mech.Shadow, Mech.Twins, -8.0, 8.0)
                 fight.f[1].curse = CURSE_FRAMES
@@ -2754,10 +2755,12 @@ private fn sh_check_siphon() {
                 tw_combined(1)
             }
             if frames == mark + 120 {
-                assert_eq(o.siphoned, 60, "the combined Twins' fusion regen was not siphoned")
+                assert_eq(o.siphoned, 60 * FUS_REGEN, "the combined Twins' fusion regen was not siphoned")
                 assert_eq(o.meter, 0, "the cursed combined Twins' meter filled")
-                assert_eq(s.meter, 60 + 120, "Shadow's own 120 and the siphoned 60")
-                println("siphoned: the Twins, nothing split, 60 in 60 frames combined")
+                assert_eq(s.meter, 60 * FUS_REGEN + 120, "Shadow's own 120 and the siphoned regen")
+                print("siphoned: the Twins, nothing split, ")
+                print_int(60 * FUS_REGEN)
+                println(" in 60 frames combined")
                 ok("the Hex Bolt curses; the Siphon takes every kind of gain")
             }
         }

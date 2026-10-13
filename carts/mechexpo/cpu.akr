@@ -70,11 +70,7 @@ fn cpu_init(seed: s32) {
     for i in 0..2 {
         let m = fight.f[i].mech
         cpu_tip[m] = reach_of(m, Mv.atk_f)
-        cpu_moves_of(m)
-        if m == Mech.Twins {
-            cpu_tip[Mech.TwinA] = reach_of(Mech.TwinA, Mv.atk_f)
-            cpu_moves_of(Mech.TwinA)
-        }
+        if m == Mech.Twins { cpu_tip[Mech.TwinA] = reach_of(Mech.TwinA, Mv.atk_f) }
     }
     if stage_has_open(stage_now()) { cpu_edge_init() }     // mx-stages: the open edge
 }
@@ -95,37 +91,53 @@ private fn reach_of(m: Mech, mv: Mv) -> fixed {
     return best
 }
 
-// What the mine plans need of a mech's moves (cpu_init()).
-private fn cpu_moves_of(m: Mech) {
-    var bx: Boxes
-    var lo0 = 1000.0
-    var lo1 = 0.0
-    var step = 0.0
-    let n = mv_len(m, Mv.atk_d)
-    for f in 0..n {
-        mv_boxes(m, Mv.atk_d, f, &bx)
-        for k in 0..bx.n {
-            if bx.b[k].kind == BOX_HIT && bx.b[k].y0 < MINE_H {
-                lo0 = min(lo0, step + bx.b[k].x0)
-                lo1 = max(lo1, step + bx.b[k].x1)
+// Its jab's reach and what the mine plans need of a mech's moves, read from the data a frame of
+// a move at a time while the CPU plays (cpu_pad()), so that no frame pays for the whole scan (the
+// frame a fight starts on has little to spare); a mech's is read once and kept.
+const SCAN_MVS: [5]Mv = [Mv.atk_n, Mv.atk_d, Mv.sp_f, Mv.sp_d, Mv.atk_f]
+var cpu_scan_k: [len(Mech)]s32          // the move being read (5: all read), its frame, and the
+var cpu_scan_f: [len(Mech)]s32          // root motion so far
+var cpu_scan_x: [len(Mech)]fixed
+
+private fn cpu_scan(m: Mech) {
+    let k = cpu_scan_k[m]
+    if k >= len(SCAN_MVS) { return }
+    let mv = SCAN_MVS[k]
+    let f = cpu_scan_f[m]
+    if k == 0 && f == 0 {
+        cpu_lo0[m] = 1000.0
+        cpu_lo1[m] = 0.0
+    }
+    if f >= mv_len(m, mv) {
+        if mv == Mv.sp_f { cpu_trav_f[m] = cpu_scan_x[m] }
+        if mv == Mv.sp_d { cpu_trav_d[m] = cpu_scan_x[m] }
+        if mv == Mv.atk_f { cpu_trav_a[m] = cpu_scan_x[m] }
+        cpu_scan_k[m] = k + 1
+        cpu_scan_f[m] = 0
+        cpu_scan_x[m] = 0.0
+        return
+    }
+    if mv == Mv.atk_n || mv == Mv.atk_d {
+        var bx: Boxes
+        mv_boxes(m, mv, f, &bx)
+        for q in 0..bx.n {
+            let b = &bx.b[q]
+            if b.kind != BOX_HIT { continue }
+            if mv == Mv.atk_n { cpu_jab[m] = max(cpu_jab[m], cpu_scan_x[m] + b.x1) }
+            else if b.y0 < MINE_H {
+                cpu_lo0[m] = min(cpu_lo0[m], cpu_scan_x[m] + b.x0)
+                cpu_lo1[m] = max(cpu_lo1[m], cpu_scan_x[m] + b.x1)
             }
         }
-        step += mv_root(m, Mv.atk_d, f).x
     }
-    cpu_jab[m] = reach_of(m, Mv.atk_n)
-    cpu_lo0[m] = lo0
-    cpu_lo1[m] = lo1
-    cpu_trav_f[m] = travel_of(m, Mv.sp_f)
-    cpu_trav_d[m] = travel_of(m, Mv.sp_d)
-    cpu_trav_a[m] = travel_of(m, Mv.atk_f)
+    cpu_scan_x[m] += max(mv_root(m, mv, f).x, 0.0)
+    cpu_scan_f[m] = f + 1
 }
 
-// How far a move's root motion carries the mech forward.
-private fn travel_of(m: Mech, mv: Mv) -> fixed {
-    var d = 0.0
-    let n = mv_len(m, mv)
-    for f in 0..n { d += max(mv_root(m, mv, f).x, 0.0) }
-    return d
+// The jab's reach once it is read (until then a short one).
+private fn jab_reach(m: Mech) -> fixed {
+    if cpu_scan_k[m] > 0 { return cpu_jab[m] }
+    return 5.0
 }
 
 private fn roll(c: *Cpu, pct: s32) -> bool {
@@ -153,6 +165,9 @@ private fn tip(m: Mech) -> fixed { return cpu_tip[m] + 1.0 }
 // The buttons the CPU playing side i presses this frame: what it thinks, kept off the other's
 // Rift Mine.
 fn cpu_pad(i: s32, level: s32) -> u32 {
+    let m = fight.f[i].mech
+    cpu_scan(m)
+    if m == Mech.Twins { cpu_scan(Mech.TwinA) }
     let p = cpu_think(i, level)
     if rift[other(i)].on { return mine_wary(i, &CPU_LEVELS[clamp(level, 0, 3)], p) }
     return p
@@ -274,7 +289,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
             if me.mech == Mech.Tank { return tank_punish(dist, fwd) }
             if me.mech == Mech.Shadow { return shadow_punish(dist, fwd) }
             if super_wise(i) && dist < 12.0 && roll(c, 50) { return A | B }
-            if dist < cpu_jab[me.body] + 1.0 { return A }      // its jab's own reach (mx-balance)
+            if dist < jab_reach(me.body) + 1.0 { return A }    // its jab's own reach (mx-balance)
             if dist < tip(me.body) - 0.5 { return fwd | A }
             if dist < tip(me.body) + 3.0 { return fwd | B }
         }

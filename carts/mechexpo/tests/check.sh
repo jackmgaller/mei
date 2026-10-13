@@ -21,7 +21,7 @@ run() {       # scenario frames: the scenarios through the whole game cost about
     case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]) c=$((f * 8)) ;; 108) c=$((f * 40)) ;; *) c="$f" ;; esac
     pool_add "s$s" "$c" "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@"
 }
-run 1 700
+run 1 800
 run 2 4000
 run 3 420
 run 4 160
