@@ -40,7 +40,8 @@ import "fx_art.akr"
 
 private const TRAIL_N = 8                  // samples a weapon
 private const TRAILS = 4                   // two fighters, two weapons each
-const FXP_MAX = 96                        // the particle pool
+const FXP_MAX = 80                        // the particle pool
+const FXP_FRAME = 52                       // spawns a frame at most (the rest are dropped)
 const FX_Z: fixed = -1.2                   // particles' depth: a little in front of the mechs
 private const PXK: fixed = 207.8           // screen pixels a metre at view depth 1 (120 x 1.732)
 
@@ -209,7 +210,7 @@ const FX_POWERS: [5]PowerFx = [
     PowerFx { style: CH_STREAKS | CH_CHEVRONS | CH_SPARKS, core: 0x3070FF, hot: 0x60B0FF, cool: 0x1018B0,
               hall: [-6, -9, -10] },
     // antimatter: Umbral Research's violet, falling inward on a dark heart
-    PowerFx { style: CH_IMPLODE | CH_DARK, core: 0xFF60C0, hot: 0xFF70D0, cool: 0xFFD8FF,
+    PowerFx { style: CH_IMPLODE | CH_DARK, core: 0xFF60C0, hot: 0xFF80E0, cool: 0x601040,
               hall: [-7, -11, -5] },
     // chemical: Raiko's yellow; arcs and bubbles (ready for Beam, mx-beam)
     PowerFx { style: CH_ARCS | CH_BUBBLES | CH_SPARKS, core: 0x30E0FF, hot: 0x90FFFF, cool: 0x0080A0,
@@ -278,12 +279,15 @@ var fx_cycles: s32                 // CPU cycles of the last frame's fx_event()s
 var fx_ev_cycles: s32
 var fx_spawned: s32                // particles spawned since fx_reset (the tests read it)
 var fx_peak_n: s32                 // the most alive at once
+var fx_frame_n: s32                 // spawned this frame
+var fx_drop: Pt                    // where a dropped spawn goes
 var fx_c0: u32                     // fx_spray()'s colour override when not 0 (then reset)
 var fx_c1: u32
 
 fn fx_reset() {
     for i in 0..TRAILS { fx_trails[i].n = 0 }
     fx_n = 0
+    fx_frame_n = 0
     fx_over = 0
     fx_flash = 0
     fx_dark = false
@@ -322,6 +326,8 @@ private fn fx_i(n: s32) -> s32 { return (((fx_u() >> 16) as s32) * n) >> 16 }   
 // One particle of preset pr at (x, y) moving (vx, vy) metres a frame, at depth FX_Z. Its colours
 // are fx_c0, fx_c1 when those are set.
 fn fx_spawn(pr: Pre, x: fixed, y: fixed, vx: fixed, vy: fixed) -> *Pt {
+    if fx_frame_n >= FXP_FRAME { return &fx_drop }      // over the frame's budget: dropped
+    fx_frame_n += 1
     var i = fx_n
     if i >= FXP_MAX {
         i = fx_over
@@ -451,7 +457,7 @@ private fn fx_hit(x: fixed, y: fixed, dir: s32, pw: s32, victim: Mech) {
     g.s0 = 1.2 * k
     g.s1 = 3.0 * k
     let a = fx_ang(dir, 2)
-    fx_spray(Pre.Spark, 7 + pw * 5, x, y, a, 5 + pw, 0.5 + fixed(pw) * 0.12)
+    fx_spray(Pre.Spark, 7 + pw * 4, x, y, a, 5 + pw, 0.5 + fixed(pw) * 0.12)
     fx_spray(Pre.Ember, 2 + pw, x, y, a, 7, 0.22 + fixed(pw) * 0.05)
     if pw >= 1 {
         let r = fx_burst_at(Pre.Ring, x, y, 0, 0)
@@ -471,7 +477,7 @@ private fn fx_hit(x: fixed, y: fixed, dir: s32, pw: s32, victim: Mech) {
         let r2 = fx_burst_at(Pre.Ring, x, y, 0xFFFFFF, 0xC06020)
         r2.s1 = 14.0
         r2.dt = 1.0 / 18
-        fx_spray(Pre.Spark, 5, x, y, fx_ang(-dir, 2), 6, 0.3)
+        fx_spray(Pre.Spark, 4, x, y, fx_ang(-dir, 2), 6, 0.3)
     }
 }
 
@@ -521,12 +527,12 @@ fn fx_event(e: *Event, f: *Fight) {
             r.s1 = 12.0
             fx_c0 = 0xFFE8B0
             fx_c1 = 0x803010
-            fx_spray(Pre.Mote, 20, x, y, 8, 16, 0.22)
+            fx_spray(Pre.Mote, 14, x, y + 1.0, 8, 12, 0.22)
             fx_c0 = 0xFFF8E0
             fx_c1 = 0xE06010
-            fx_spray(Pre.Spark, 10, x, y, 8, 10, 0.32)
-            fx_spray(Pre.Dust, 4, x, 0.4, 0, 2, 0.12)
-            fx_spray(Pre.Dust, 4, x, 0.4, 16, 2, 0.12)
+            fx_spray(Pre.Spark, 8, x, y, 8, 10, 0.36)
+            fx_spray(Pre.Dust, 3, x, 0.6, 1, 1, 0.16)
+            fx_spray(Pre.Dust, 3, x, 0.6, 15, 1, 0.16)
         }
         Break => {
             let s = fx_burst_at(Pre.Star, x, y, 0xFFFFFF, 0x2060A0)
@@ -562,8 +568,8 @@ fn fx_event(e: *Event, f: *Fight) {
             r.s1 = 24.0
             r.dt = 1.0 / 20
             let g = fx_burst_at(Pre.Glow, f.f[side].x, 6.0, pf.core, 0)
-            g.s0 = 10.0
-            g.s1 = 16.0
+            g.s0 = 6.0
+            g.s1 = 10.0
             g.dt = 1.0 / 16
         }
         Ko => {
@@ -576,11 +582,11 @@ fn fx_event(e: *Event, f: *Fight) {
             let r = fx_burst_at(Pre.Ring, x, y, 0xFFF0D0, 0x804010)
             r.s1 = 18.0
             r.dt = 1.0 / 22
-            fx_spray(Pre.Spark, 10, x, y, 8, 16, 0.42)
+            fx_spray(Pre.Spark, 6, x, y, 8, 16, 0.42)
             fx_c0 = fx_plate(f.f[loser].mech)
             fx_c1 = fx_c0
-            fx_spray(Pre.Shard, 3, x, y, 8, 7, 0.38)
-            fx_spray(Pre.Smoke, 2, x, y, 8, 8, 0.08)
+            fx_spray(Pre.Shard, 2, x, y, 8, 7, 0.38)
+            fx_spray(Pre.Smoke, 1, x, y, 8, 8, 0.08)
             fx_flash_start(14)
             if e.side == 0 || e.side == 1 {
                 fx_ko_side = loser
@@ -718,7 +724,7 @@ private fn fx_charge(s: s32, pf: *PowerFx, c: vec3, t: s32) {
         fx_implode(Pre.Implode, 2, x, y, 8.0, pf.hot, pf.cool)
         if t % 8 == 0 {
             let r = fx_burst_at(Pre.Ring, x, y, pf.hot, pf.cool)
-            r.s0 = 16.0
+            r.s0 = 11.0
             r.s1 = 1.0
             r.dt = 1.0 / 14
         }
@@ -924,6 +930,7 @@ fn fx_update(f: *Fight) {
     if fx_flash > 0 { fx_flash -= 1 }
     fx_dark = f.flash_side >= 0 && f.freeze > 0
     if fx_dark { fx_dark_side = f.flash_side }
+    fx_frame_n = 0
     fx_cycles = cycle_count() - c0 + fx_ev_cycles
     fx_ev_cycles = 0
 }
@@ -1118,19 +1125,20 @@ private fn fx_draw_core(s: s32, f: *Fight) {
         return
     }
     let t = min(fixed(sd.charge) / 40, 1.0)
-    let d = ((3.0 + t * 7) * k) as s32
+    var d = ((3.0 + t * 7) * k) as s32
+    if (pf.style & CH_DARK) != 0 { d = ((2.5 + t * 4) * k) as s32 }
     let flick = fixed((fx_tick * 7) & 7) / 40           // 0 .. 0.18
     fx_spr(&FXP_GLOW[0], q.x, q.y, d, d, col_scale(pf.core, 0.8 + flick), BLEND_ADD, false)
+    let fl = ((6.0 + t * 10) * k) as s32
+    fx_spr(&FXP_FLARE[0], q.x, q.y, fl, fl / 2, col_scale(pf.hot, 0.5 + t / 2), BLEND_ADD, false)
     if (pf.style & CH_DARK) != 0 {
-        let dd = ((1.2 + t * 3) * k) as s32
+        let dd = ((1.4 + t * 3) * k) as s32
         fx_spr(&FXP_GLOW[0], q.x, q.y, dd, dd, 0x60FF60, BLEND_SUB, false)
         fx_spr(&FXP_GLOW[0], q.x, q.y, dd, dd, 0x40FF40, BLEND_SUB, false)
     } else {
         let dd = ((1.5 + t * 2) * k) as s32
         fx_spr(&FXP_STAR[0], q.x, q.y, dd * 2, dd * 2, 0xFFFFFF, BLEND_ADD, false)
     }
-    let fl = ((6.0 + t * 10) * k) as s32
-    fx_spr(&FXP_FLARE[0], q.x, q.y, fl, fl / 2, col_scale(pf.hot, 0.5 + t / 2), BLEND_ADD, false)
 }
 
 fn fx_draw_sprites(f: *Fight) {
@@ -1157,9 +1165,9 @@ fn fx_draw_sprites(f: *Fight) {
         let p = &fx_pts[i]
         if (p.flags & PF_BACK) != 0 { fx_draw_pt(p, i) }
     }
-    for s in 0..2 { fx_draw_core(s, f) }
     for i in 0..fx_n {
         let p = &fx_pts[i]
         if (p.flags & PF_BACK) == 0 { fx_draw_pt(p, i) }
     }
+    for s in 0..2 { fx_draw_core(s, f) }
 }

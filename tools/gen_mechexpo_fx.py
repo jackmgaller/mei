@@ -75,8 +75,8 @@ def flare(w, h):
 
 def ring(d):
     r = radius(d)
-    edge = np.clip(1 - np.abs(r - 0.86) * 11, 0, 1)
-    inner = np.clip(r / 0.86, 0, 1) ** 4 * (r < 0.86) * 0.35
+    edge = np.clip(1 - np.abs(r - 0.88) * 14, 0, 1)
+    inner = np.clip(r / 0.88, 0, 1) ** 5 * (r < 0.88) * 0.3
     return levels(edge + inner)
 
 
@@ -244,9 +244,9 @@ def main():
     if '--preview' in sys.argv:
         preview = sys.argv[sys.argv.index('--preview') + 1]
     sh = Sheet()
-    sh.place('GLOW', glow(32))
+    sh.place('GLOW', glow(64))
+    sh.place('RING', ring(64))
     sh.place('FLARE', flare(64, 32))
-    sh.place('RING', ring(32))
     sh.place('HEX', hexagon(32))
     sh.place('SMOKE0', puff(32, 7))
     sh.place('SMOKE1', puff(32, 11))
