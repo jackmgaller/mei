@@ -940,7 +940,8 @@ var fd_case: s32
 private fn frame_data() {
     if done { return }
     let n = len(FD_MOVES)
-    if fd_case >= ((Mech.Twins as s32) + 1) * 2 * n {
+    // the Twins twice: Twins the combined form, Twin A the split form (twin A alone)
+    if fd_case >= ((Mech.TwinA as s32) + 1) * 2 * n {
         ok("frame data")
         return
     }
@@ -951,8 +952,11 @@ private fn frame_data() {
     fd_case += 1
     if mv == Mv.atk_air { return }          // depends on the jump's height
     if m == Mech.Doubleblade && (mv == Mv.sp_n || mv == Mv.sp_d) && block { }
-    fight_init(m, Mech.Hero, FightMode.Versus, 0)
+    var fm = m
+    if m == Mech.TwinA { fm = Mech.Twins }
+    fight_init(fm, Mech.Hero, FightMode.Versus, 0)
     skip_intro()
+    if m == Mech.Twins { fight.f[0].body = Mech.Twins }
     place(-FD_DIST[k] / 2, FD_DIST[k] / 2)
     if mv == Mv.super {
         fight.f[0].meter = METER_BAR
@@ -2017,6 +2021,9 @@ private fn if_i(c: bool, a: s32, b: s32) -> s32 {
 // 67  CPU against CPU (level 2): the Twins against the Hero (twice: the same match), Tank
 //     against the Twins, the Twins against the Twins; every match finishes; prints the rounds,
 //     the form switches and the supers
+// 70  (a measurement, not in check.sh) CPU level 2 against level 2: the Twins against each
+//     other mech, 8 matches each (both sides, four seeds); prints the Twins' wins, their time
+//     combined and their supers
 
 var tw_part: s32
 var tw_at: [4]s32               // frames something was first seen
@@ -2029,7 +2036,54 @@ var tw_meter0: s32
 var tw_live: s32                // frames of play (not frozen) combined: the fusion meter's regen
 var tw_prev_freeze: s32
 
-private fn tw_scenario() -> bool { return SCENARIO >= 60 && SCENARIO <= 67 }
+private fn tw_scenario() -> bool { return SCENARIO >= 60 && SCENARIO <= 67 || SCENARIO == 70 }
+
+// scenario 70
+var tw_m: s32                   // the match
+var tw_wins: [4]s32             // the Twins' wins against each mech
+var tw_comb: s32                // frames of play combined, all matches
+var tw_play: s32
+var tw_sup: s32
+
+private fn tw_stat_start() {
+    let foe = (tw_m / 8) as Mech
+    if tw_m % 2 == 0 { fight_init(Mech.Twins, foe, FightMode.VsCpu, 2) }
+    else { fight_init(foe, Mech.Twins, FightMode.VsCpu, 2) }
+    cpu_init(91 + tw_m * 7919)
+}
+
+private fn tw_check_stats() {
+    let ts = if_i(fight.f[0].mech == Mech.Twins, 0, 1)
+    if fight.phase == Phase.Fight {
+        tw_play += 1
+        if fight.f[ts].body == Mech.Twins { tw_comb += 1 }
+    }
+    let ev = fight_events()
+    for e in 0..ev.n {
+        if ev.e[e].kind == Ev.Super && ev.e[e].side == ts { tw_sup += 1 }
+    }
+    if fight.phase != Phase.MatchOver { return }
+    if fight.winner == ts { tw_wins[tw_m / 8] += 1 }
+    tw_m += 1
+    if tw_m < 32 {
+        tw_stat_start()
+        return
+    }
+    let names: [4]*u8 = ["Hero", "Double-blade", "Beam", "Tank"]
+    for k in 0..4 {
+        print("Twins against ")
+        print(names[k])
+        print(": ")
+        print_int(tw_wins[k])
+        println(" of 8")
+    }
+    print("combined ")
+    print_int(tw_comb * 100 / max(tw_play, 1))
+    print(" % of the time, supers ")
+    print_int(tw_sup)
+    println("")
+    ok("the Twins' statistics")
+}
 
 // Puts the fighters at x0 and x1, each split Twins' partner on its spot.
 private fn tw_place(x0: fixed, x1: fixed) {
@@ -2071,9 +2125,13 @@ private fn tw_init() {
             fight_init(Mech.Twins, Mech.Hero, FightMode.VsCpu, 2)
             tick_per_frame = 40
         }
+        70 => {
+            tw_stat_start()
+            tick_per_frame = 40
+        }
         else => {}
     }
-    if SCENARIO != 67 { tw_skip_intro() }
+    if SCENARIO != 67 && SCENARIO != 70 { tw_skip_intro() }
     match SCENARIO {
         60 => tw_place(-6.0, 6.0)
         61 => tw_place(-10.0, 10.0)
@@ -2091,7 +2149,7 @@ private fn tw_init() {
 private fn tw_script(i: s32) -> u32 {
     let a = &fight.f[i]
     let fwd = if_u(a.facing > 0, RIGHT, LEFT)
-    if SCENARIO == 67 { return cpu_pad(i, 2) }
+    if SCENARIO == 67 || SCENARIO == 70 { return cpu_pad(i, 2) }
     if i == 0 {
         match SCENARIO {
             60 => { if at(5) || at(60) || at(121) { return L } }
@@ -2143,6 +2201,7 @@ private fn tw_check() {
         65 => tw_check_fusion()
         66 => tw_check_super()
         67 => tw_check_cpu()
+        70 => tw_check_stats()
         else => {}
     }
 }

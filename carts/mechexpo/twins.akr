@@ -18,7 +18,7 @@ import "fight.akr"
 
 const TW_DELAY = 6                  // the partner plays the leader's pad this many frames late
 const TW_HIST = 8                   // the pad history kept (more than TW_DELAY)
-const TW_SPOT: fixed = 2.5          // the partner's spot, behind the leader
+const TW_SPOT: fixed = 1.5          // the partner's spot, behind the leader
 const TW_NEAR: fixed = 1.0          // it walks back to its spot when further than this ...
 const TW_FAR: fixed = 4.0           // ... and whatever the stick says when further than this
 const TW_LEASH: fixed = 8.0         // never further than this from the leader

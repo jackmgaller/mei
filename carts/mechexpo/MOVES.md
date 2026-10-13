@@ -899,12 +899,12 @@ guard.
 |---|---|---|---|
 | 1–12 | crouches, the combined-only plates fold in, the seams flare | | |
 | **13** | **the flash** (`release`): the bodies swap. From here the twins are drawn | docked on top of twin B, as in `combine`'s frame 23 | folded as the legs |
-| 13–30 | | springs up off twin B's shoulders and lands in front on frame 22 at the root's spot (its root stays put), into its guard | unfolds and stands, then hops back 2.5 m: **the fight moves its root** to its spot behind twin A over frames 13–24 |
+| 13–30 | | springs up off twin B's shoulders and lands in front on frame 22 at the root's spot (its root stays put), into its guard | unfolds and stands, then hops back 1.5 m: **the fight moves its root** to its spot behind twin A over frames 13–24 |
 
 Vulnerable on frames 1–12 (a hit there stops it: it stays combined). **Invulnerable on 13–18.**
 Actionable after 30.
 
-The rounds start split (the twins walk out of the booth as two, twin B 2.5 m behind twin A).
+The rounds start split (the twins walk out of the booth as two, twin B 1.5 m behind twin A).
 The form is kept through the round and resets to split at the start of the next.
 
 ### The partner (twin B)
@@ -913,7 +913,8 @@ The form is kept through the round and resets to split at the start of the next.
   Never Y (the leader's grab), L or A + B. Directions are copied as forward and back (relative
   to the facing), so a twin on the far side still attacks the right way. The delay counts
   frames of play: the hitstop and the super's freeze do not eat into it.
-- **Its spot** is 2.5 m behind twin A. When twin B can act and the copied stick holds no
+- **Its spot** is 1.5 m behind twin A (close enough that its copy of a jab still reaches a mech
+  twin A is touching). When twin B can act and the copied stick holds no
   direction, it walks back to its spot if it is more than 1 m away; more than 4 m away, it
   walks to its spot whatever the stick says (it still copies the buttons).
 - **Leash.** Never more than 8 m from twin A (a hard stop, like the separation limit), never
@@ -960,6 +961,14 @@ and the meter stands still. Switching is a commitment (36 frames in, 30 out, vul
 the flash), so the right moments are the safe ones: after a knockdown, far away behind a jump,
 or split to press after the combined form's chain ender knocked the other down. A player who
 never switches is choosing between no meter and no pressure.
+
+### Frame advantage (measured)
+
+From the fight itself (`tests/run.sh 17`, the stand-in timings, against a standing Hero, one
+body alone: the partner's late copy is not counted, so a split string is safer than this):
+combined Coupler Jab −4 on block / +1 on hit, Fusion Straight −6 / +2, Sweep Kick −11, Binary
+Lariat −16, Coupling Rush −12, Twin Drill −21, Fusion Burst −28; twin A's Bit Jab −1 / +3,
+Byte Kick −2 / +4, Low Bit −7, Pulse Spin −12 / −8, Dash Kick −8, Rising Kick −24.
 
 ### Chains
 
