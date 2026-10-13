@@ -55,7 +55,7 @@ fn beam_hit(mv: Mv) -> Hit {
         atk_d => Hit { dmg: 85, blockstun: 16, stop: 11, power: 1, kb: 0.10, kd: true, launch: 0.30 }
         atk_air => Hit { dmg: 90, hitstun: 20, blockstun: 15, stop: 11, power: 1, kb: 0.08 }
         sp_n => orb_hit(1)
-        sp_f => Hit { dmg: 90, chip: 18, blockstun: 18, stop: 12, power: 2, kb: 0.20, kd: true, launch: 0.30 }
+        sp_f => Hit { dmg: 85, chip: 17, blockstun: 18, stop: 12, power: 2, kb: 0.20, kd: true, launch: 0.30 }
         sp_u => Hit { dmg: 110, chip: 22, blockstun: 14, stop: 12, power: 2, kb: 0.10, kd: true, launch: 0.55 }
         throw => Hit { dmg: 130, stop: 10, power: 2, kd: true, launch: 0.30 }
         super => Hit { dmg: 300, chip: 75, blockstun: 22, stop: 20, power: 3, kb: 0.25, kd: true, launch: 0.60 }

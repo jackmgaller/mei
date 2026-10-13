@@ -383,14 +383,14 @@ fn twins_hit(m: Mech, mv: Mv) -> Hit {
     }
     // twin A and twin B: one twin's hit (the partner's copy is a second hit)
     return match mv {
-        atk_n => Hit { dmg: 46, hitstun: 15, blockstun: 11, stop: 7, kb: 0.08 }
-        atk_f => Hit { dmg: 70, hitstun: 22, blockstun: 16, stop: 9, power: 1, kb: 0.11 }
-        atk_d => Hit { dmg: 62, blockstun: 14, stop: 9, power: 1, kb: 0.08, kd: true, launch: 0.28 }
-        atk_air => Hit { dmg: 56, hitstun: 16, blockstun: 12, stop: 9, power: 1, kb: 0.07 }
-        sp_n => Hit { dmg: 52, chip: 10, hitstun: 18, blockstun: 14, stop: 9, power: 1, kb: 0.10 }
-        sp_f => Hit { dmg: 92, chip: 18, blockstun: 14, stop: 11, power: 2, kb: 0.16, kd: true, launch: 0.32 }
-        sp_u => Hit { dmg: 80, chip: 16, blockstun: 12, stop: 11, power: 2, kb: 0.08, kd: true, launch: 0.50 }
-        throw => Hit { dmg: 115, stop: 10, power: 2, kd: true, launch: 0.30 }
+        atk_n => Hit { dmg: 50, hitstun: 15, blockstun: 11, stop: 7, kb: 0.08 }
+        atk_f => Hit { dmg: 76, hitstun: 22, blockstun: 16, stop: 9, power: 1, kb: 0.11 }
+        atk_d => Hit { dmg: 68, blockstun: 14, stop: 9, power: 1, kb: 0.08, kd: true, launch: 0.28 }
+        atk_air => Hit { dmg: 60, hitstun: 16, blockstun: 12, stop: 9, power: 1, kb: 0.07 }
+        sp_n => Hit { dmg: 56, chip: 11, hitstun: 18, blockstun: 14, stop: 9, power: 1, kb: 0.10 }
+        sp_f => Hit { dmg: 100, chip: 20, blockstun: 14, stop: 11, power: 2, kb: 0.16, kd: true, launch: 0.32 }
+        sp_u => Hit { dmg: 88, chip: 18, blockstun: 12, stop: 11, power: 2, kb: 0.08, kd: true, launch: 0.50 }
+        throw => Hit { dmg: 120, stop: 10, power: 2, kd: true, launch: 0.30 }
         else => HIT_NONE
     }
 }

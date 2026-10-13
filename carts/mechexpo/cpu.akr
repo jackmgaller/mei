@@ -51,6 +51,7 @@ struct Cpu {
     mine_x: fixed           // the other's Rift Mine it has a plan for (mine_wary()), and the plan:
     mine_plan: s32          // MP_*, kept for mine_t frames
     mine_t: s32
+    shot_seen: bool         // the other's shot on its way was reacted to (once, whatever it holds)
 }
 
 var cpu: [2]Cpu
@@ -192,9 +193,12 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
 
     // a chain on contact
     if fx[i].contact && is_attack(me.mv) {
+        // on a hit the chain goes on; on a block the special at the end would be blocked too
+        // (most are punishable), so it goes on half as often, and never into the super (mx-balance)
+        let landed = is_hurt(op.mv)
         if !c.chain_roll {
             c.chain_roll = true
-            c.chain_go = roll(c, lv.chain)
+            c.chain_go = roll(c, if_else(landed, lv.chain, lv.chain / 2))
         }
         if c.chain_go && (cur_marks(i) & MARK_CANCEL) != 0 && fx[i].t % 2 == 0 {
             if me.mv == Mv.atk_n {
@@ -202,9 +206,14 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
                 return fwd | A
             }
             if me.mv == Mv.atk_f {
-                if super_wise(i) && roll(c, 30) { return A | B }
-                if me.mech == Mech.Tank { return DOWN | B }             // Tank: the Bulldozer
+                if landed && super_wise(i) && roll(c, 30) { return A | B }
                 if me.mech == Mech.Shadow { return B }                  // Shadow: the Hex Bolt (the curse)
+                // not a dash onto the other's mine: the neutral special instead (mx-balance)
+                if me.mech == Mech.Tank {
+                    if mine_in_path(i, cpu_trav_d[me.body]) { return B }
+                    return DOWN | B                                     // Tank: the Bulldozer
+                }
+                if mine_in_path(i, cpu_trav_f[me.body]) { return B }
                 return fwd | B
             }
         }
@@ -270,13 +279,21 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
     // the wave on its way
     let s = &fight.shot[j]
     if s.on && abs(s.x - me.x) < 12.0 && sgn(me.x - s.x) == sgn(s.vx) {
-        if !c.decided || c.hold_t == 0 {
+        // (once a shot even while it holds a walk: walking into it was a blind spot, mx-balance)
+        if !c.decided || c.hold_t == 0 || !c.shot_seen {
             c.decided = true
+            c.shot_seen = true
             if s.y0 > WAVE_H { return shot_above(i, c, lv, s, fwd) }    // an orb or a bolt
+            // the wave along the floor: blocked while it is far, jumped only once it is close
+            // enough to pass under the jump (mx-balance)
+            let tt = ((abs(s.x - me.x) - s.half - STATS[me.body].push) / abs(s.vx)) as s32
+            if tt > 24 { return hold(c, R, min(tt - 20, 20)) }
             if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
-            if roll(c, lv.aa / 2) { return fwd | X }
+            if tt >= 8 && roll(c, lv.aa / 2) { return fwd | X }
             return hold(c, R, 20)
         }
+    } else {
+        c.shot_seen = false
     }
 
     // keep holding what was decided
@@ -626,9 +643,10 @@ private fn shadow_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
         return DOWN | B
     }
     // keep a curse up: the bolt at mid range when the curse is out or running out
-    // (not into a stronger shot on its way, which would eat it, nor inside the other's poke, where
-    // the bolt's 40 frames are a free hit: mx-balance)
-    let beaten = fight.shot[j].on && fight.shot[j].str > HEX_STR
+    // (mx-balance: not inside the other's poke, where the bolt's 40 frames are a free hit, nor at a
+    // mech with a stronger shot to answer it, the Hero's wave or Beam's charged orb: the bolt does
+    // not win a projectile war, so against them the curse comes from the chain)
+    let beaten = fires_shot(op.mech) && op.mech != Mech.Shadow
     let clear = dist > tip(op.body) + 2.0
     if !fight.shot[i].on && !beaten && clear && dist < 24.0 && op.curse < 60 && !down && roll(c, 30 + lv.special * 2) {
         return B
@@ -658,8 +676,9 @@ private fn shadow_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
         return hold(c, fwd, 8)
     }
     if dist < range + 6.0 && roll(c, lv.jump) { return fwd | X }
-    // with a mine out it waits behind it; without, it walks in
-    if mine && dist < 22.0 { return hold(c, 0, 8 + rnd_n(c, 8)) }
+    // with a mine out it waits behind it; without, it walks in (and against a mech with a shot,
+    // which it cannot outshoot, it waits only half the time: mx-balance)
+    if mine && dist < 22.0 && (!fires_shot(op.mech) || roll(c, 50)) { return hold(c, 0, 8 + rnd_n(c, 8)) }
     return hold(c, fwd, 10 + rnd_n(c, 16))
 }
 
@@ -673,6 +692,15 @@ const MP_CLEAR = 0
 const MP_JUMP = 1
 const MP_WAIT = 2
 const MINE_WARY: fixed = 0.8            // stops this far short of setting it off
+
+// Whether moving go metres forward would set off the other's mine (armed, or about to be).
+private fn mine_in_path(i: s32, go: fixed) -> bool {
+    let m = &rift[other(i)]
+    if !m.on || m.t < MINE_ARM - 20 { return false }
+    let me = &fight.f[i]
+    let gap = (m.x - me.x) * fixed(me.facing) - STATS[me.body].push - MINE_HALF
+    return gap > -0.5 && gap < go + 0.5
+}
 
 private fn mine_wary(i: s32, lv: *CpuLevel, p: u32) -> u32 {
     let j = other(i)
