@@ -1,0 +1,125 @@
+// Mech Expo 2000: Tank's effects and its HUD meter (mx-tank; MOVES.md, "The nuclear meter").
+// fx.akr is mx-fx's; Tank's own drawing is here, called with one line each from game.akr
+// (tank_fx_draw) and hud.akr (tank_meter_hud).
+//
+//   the reactor   Tank's reactor window (on its back) and chest vent glow green, brighter as the
+//                 nuclear meter climbs, pulsing from half a bar and flaring when full: the
+//                 threat shows on the mech, for both players
+//   armour        a hit absorbed by super armour: a bright ring and a glow at the contact
+//   the meter     the HUD's gauge: a green fill that heats toward white, a pulse from half a
+//                 bar, hazard hatching and SUPER when full
+
+private const TANK_FX_RINGS = 4
+private const TANK_RING_LIFE = 14
+
+private struct TankRing {
+    t: s32
+    pos: vec3
+    power: s32
+}
+
+var tank_rings: [TANK_FX_RINGS]TankRing
+var tank_ring_next: s32
+var tank_fx_tick: s32               // the fight's tick last seen (events are read once a tick)
+var tank_fx_frame: s32
+
+
+// Draws Tank's effects (after the mechs, on the interface list). Call once a frame in a fight.
+fn tank_fx_draw(f: *Fight) {
+    tank_fx_frame += 1
+    if f.ticks != tank_fx_tick {
+        tank_fx_tick = f.ticks
+        let ev = fight_events()
+        for k in 0..ev.n {
+            let e = &ev.e[k]
+            if e.kind == Ev.Armour {
+                let r = &tank_rings[tank_ring_next]
+                tank_ring_next = (tank_ring_next + 1) % TANK_FX_RINGS
+                r.t = 0
+                r.pos = vec3(e.x, e.y, -1.2)
+                r.power = e.power
+            }
+        }
+    }
+    for s in 0..2 {
+        let fi = &f.f[s]
+        if fi.mech != Mech.Tank { continue }
+        if (anim_marks(fi.mech, fi.mv, fi.frame as s32) & MARK_HIDE) != 0 { continue }
+        let root = anim_place(vec2(fi.x, fi.y), fi.facing)
+        let torso = anim_part(fi.mech, fi.mv, fi.frame, root, Part.torso)
+        let heat = clamp(fixed(max(fi.meter, 0)) / METER_BAR, 0.0, 1.0)
+        var glow = 0.25 + heat * 0.55
+        if heat >= 0.5 { glow = glow + sin(frame_angle(tank_fx_frame, 0.03 + heat * 0.04)) * 0.12 }
+        var col: u32 = 0x40FF60                         // reactor green (0xBBGGRR)
+        if fi.super_ok {
+            glow = 1.0
+            if (tank_fx_frame >> 2) & 1 == 0 { col = 0xC0FFD0 }
+        }
+        // the reactor's window and the chest vent, in the torso's frame (models/tank/make_tank.py)
+        tank_glow((torso * vec4(0.0, 2.55, 1.65, 1.0)) as vec3, 2.0 + heat * 2.5, col_scale(col, glow))
+        tank_glow((torso * vec4(0.0, 1.45, -1.75, 1.0)) as vec3, 1.2 + heat * 1.6, col_scale(col, glow * 0.8))
+    }
+    for k in 0..TANK_FX_RINGS {
+        let r = &tank_rings[k]
+        if r.t >= TANK_RING_LIFE { continue }
+        let q = project_point(r.pos)
+        r.t += 1
+        if q.z < 0 { continue }
+        let fade = 1.0 - fixed(r.t) / TANK_RING_LIFE
+        let px = fx_px(r.pos, 2.5 + fixed(r.power))
+        let d = (px * (0.4 + fixed(r.t) / TANK_RING_LIFE)) as s32
+        fx_sprite(&FX_RING[0], q.x, q.y, d, d, col_scale(0x60F0FF, fade), BLEND_ADD)       // gold
+        fx_sprite(&FX_GLOW[0], q.x, q.y, px, px, col_scale(0x80FFA0, fade), BLEND_ADD)    // green-white
+    }
+}
+
+private fn tank_glow(p: vec3, size: fixed, col: u32) {
+    let q = project_point(p)
+    if q.z < 0 { return }
+    let d = fx_px(p, size)
+    if d <= 0 { return }
+    fx_sprite(&FX_GLOW[0], q.x, q.y, d, d, col, BLEND_ADD)
+}
+
+// The nuclear meter's fill in its bezel (hud.akr's draw_meter calls it for Tank).
+fn tank_meter_hud(fi: *Fighter, s: s32, x0: s32, w: s32, l: s32, y: s32, h: s32) {
+    span_quad(s, x0, w, y, h, 0, l, 0x103008, 0x041004, BLEND_HALF)
+    let m = clamp(fi.meter, 0, METER_BAR)
+    let n = m * l / METER_BAR
+    let full = fi.meter >= METER_BAR
+    // heat: green at the bottom of the bar, toward white as it fills
+    let heat = fixed(m) / METER_BAR
+    var top = clerp(0x40D050, 0xD0FFF0, heat)
+    var bot = clerp(0x0A5010, 0x40C060, heat)
+    if m * 2 >= METER_BAR && !full {
+        // from half a bar: a slow pulse, quicker as it fills
+        let p = (sin(frame_angle(hud_tick, 0.02 + heat * 0.05)) + 1.0) / 2
+        top = clerp(top, 0xFFFFFF, p * 0.35)
+    }
+    if full {
+        if (hud_tick >> 2) & 1 == 0 { top = 0xFFFFFF } else { top = 0x80FFB0 }
+        bot = 0x30C050
+    }
+    span_quad(s, x0, w, y, h, 0, n, top, bot, BLEND_NONE)
+    // the fuel rods: dark ticks every quarter bar
+    for k in 1..4 {
+        let o = l * k / 4
+        if o < n { span_quad(s, x0, w, y, h, o, o + 1, 0x0A3010, 0x0A3010, BLEND_HALF) }
+    }
+    if n > 2 && !full { span_quad(s, x0, w, y, h, n - 2, n, 0xE0FFF0, 0xE0FFF0, BLEND_NONE) }
+    if full {
+        // hazard hatching across the full bar, marching
+        var o = (hud_tick / 2) % 8
+        while o + 3 < l {
+            span_quad(s, x0, w, y, h, o, o + 3, 0x19C4F0, 0x19C4F0, BLEND_HALF)
+            o += 8
+        }
+        var lx = x0 + w + 4
+        var al = ALIGN_LEFT
+        if s == 1 {
+            lx = x0 - 4
+            al = ALIGN_RIGHT
+        }
+        txt(FONT_LABEL, lx, y - 13, "SUPER", 0x60FF80, al)
+    }
+}

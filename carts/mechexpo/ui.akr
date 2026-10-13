@@ -146,7 +146,7 @@ fn mech_maker(m: Mech) -> *u8 {
     match m {
         Hero => return "MOMENTUM ROBOTICS"
         Doubleblade => return "UMBRAL RESEARCH"
-        Tank => return "HEARTLAND ATOMIC CO."
+        Tank => return "HEARTLAND ATOMIC"
     }
 }
 
