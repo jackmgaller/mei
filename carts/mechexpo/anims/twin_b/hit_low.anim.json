@@ -1,0 +1,66 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Hit low (twin B; stretched to the hitstun): hit high's jolt from the sumo squat. The hunched body is knocked upright and back on frame 0, the round head snapping back a beat later and the big fists flying apart, then it sinks back down into the crouch's last pose (the fight returns a crouching twin to crouch). Push box 4.8 m tall.",
+  "base": "_body.anim.json",
+  "length": 20,
+  "boxes": {"push": {"kind": "push", "rect": [-1.1, 0, 1.1, 4.8]}},
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "out",
+      "offset": [-0.6, -1.3],
+      "reach": {"foot_r": [0.4, 0.0], "foot_l": [-1.35, 0.0]},
+      "pose": {
+        "pelvis": [-4, -8, 0],
+        "torso": [6, -14, 4],
+        "head": [-4, 10, 0],
+        "thigh_r": [24, 0, -28], "thigh_l": [-16, 0, 28],
+        "upper_arm_r": [50, 0, -36], "forearm_r": [50, 0, 2], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [30, 0, 40], "forearm_l": [56, 0, -2], "hand_l": [-14, 0, 0],
+        "pauldron_r": [17.5, 0, -18], "pauldron_l": [10.5, 0, 20]
+      }
+    },
+    {
+      "at": 3,
+      "ease": "ease",
+      "offset": [-0.7, -1.3],
+      "pose": {
+        "pelvis": [-2, -10, 0],
+        "torso": [12, -16, 6],
+        "head": [-14, 12, 0],
+        "upper_arm_r": [58, 0, -40], "forearm_r": [40, 0, 2],
+        "upper_arm_l": [22, 0, 44], "forearm_l": [46, 0, -2],
+        "pauldron_r": [20.3, 0, -20], "pauldron_l": [7.7, 0, 22]
+      }
+    },
+    {
+      "at": 11,
+      "ease": "ease",
+      "offset": [-0.5, -1.36],
+      "pose": {
+        "pelvis": [-6, -6, 0],
+        "torso": [-16, -10, 2],
+        "head": [12, 8, 0],
+        "upper_arm_r": [46, 0, -28], "forearm_r": [80, 0, 2],
+        "upper_arm_l": [48, 0, 28], "forearm_l": [84, 0, -2],
+        "pauldron_r": [16, 0, -14], "pauldron_l": [16.8, 0, 14]
+      }
+    },
+    {
+      "at": 19,
+      "offset": [-0.42, -1.38],
+      "reach": {"foot_r": [0.4, 0.0], "foot_l": [-1.35, 0.0]},
+      "pose": {
+        "pelvis": [-8, -6, 0],
+        "torso": [-26, -10, 0],
+        "head": [21, 8, 0],
+        "upper_arm_r": [48, 0, -26], "forearm_r": [84, 0, 2], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [50, 0, 26], "forearm_l": [88, 0, -2], "hand_l": [-14, 0, 0],
+        "pauldron_r": [16, 0, -13], "pauldron_l": [17.5, 0, 13]
+      }
+    }
+  ],
+  "allow": [["torso", "thigh_r"], ["torso", "thigh_l"], ["pelvis", "shin_r"], ["torso", "shin_r"], ["pelvis", "shin_l"]]
+}

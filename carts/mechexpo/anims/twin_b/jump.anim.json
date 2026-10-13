@@ -1,0 +1,95 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Jump (twin B; up, forward and back share it, the fight moves the root: 3 frames on the floor, then 34 in the air, 6.0 m up at the top). A deep, squashed dip on frames 0-2 with the feet planted, a bounce off both feet with the stubby legs straight and both fists punched up (3-6); over the top it balls up round, knees splayed out wide and fists tucked in at the chest (12-25); then the legs drop under it, knees bent, ready to thump down.",
+  "base": "_body.anim.json",
+  "length": 37,
+  "air": true,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in"},
+    {
+      "at": 2,
+      "ease": "linear",
+      "offset": [-0.1, -1.0],
+      "pose": {
+        "pelvis": [-8, -6, 0],
+        "torso": [-14, -10, 0],
+        "head": [8, 8, 0],
+        "upper_arm_r": [6, 0, -26], "forearm_r": [70, 0, 2], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [8, 0, 26], "forearm_l": [74, 0, -2], "hand_l": [-14, 0, 0],
+        "pauldron_r": [2, 0, -13], "pauldron_l": [2.8, 0, 13]
+      }
+    },
+    {
+      "at": 3,
+      "ease": "out",
+      "offset": [0.0, -0.5]
+    },
+    {
+      "at": 5,
+      "ease": "out",
+      "offset": [0.05, 0.3],
+      "pose": {
+        "pelvis": [4, -6, 0],
+        "torso": [6, -10, 0],
+        "head": [-10, 8, 0],
+        "thigh_r": [8, 0, -10], "shin_r": [-8, 0, 0], "foot_r": [40, 0, 10],
+        "thigh_l": [-8, 0, 10], "shin_l": [-8, 0, 0], "foot_l": [40, 0, -10],
+        "upper_arm_r": [110, 0, 8], "forearm_r": [24, 0, 2], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [114, 0, -8], "forearm_l": [24, 0, -2], "hand_l": [-10, 0, 0],
+        "pauldron_r": [42, 0, -15], "pauldron_l": [43.4, 0, 15]
+      }
+    },
+    {
+      "at": 13,
+      "ease": "linear",
+      "offset": [0.0, 0.5],
+      "pose": {
+        "pelvis": [-8, -6, 0],
+        "torso": [-6, -10, 0],
+        "head": [2, 8, 0],
+        "thigh_r": [70, 0, -34], "shin_r": [-96, 0, 0], "foot_r": [30, 0, 10],
+        "thigh_l": [56, 0, 34], "shin_l": [-96, 0, 0], "foot_l": [30, 0, -10],
+        "upper_arm_r": [40, 0, -34], "forearm_r": [80, 0, 2], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [44, 0, 34], "forearm_l": [80, 0, -2], "hand_l": [-14, 0, 0],
+        "pauldron_r": [14, 0, -17], "pauldron_l": [15.4, 0, 17]
+      }
+    },
+    {
+      "at": 25,
+      "ease": "ease",
+      "offset": [0.0, 0.45],
+      "pose": {
+        "pelvis": [-6, -6, 0],
+        "torso": [-4, -10, 0],
+        "thigh_r": [64, 0, -32], "shin_r": [-90, 0, 0],
+        "thigh_l": [52, 0, 32], "shin_l": [-90, 0, 0]
+      }
+    },
+    {
+      "at": 33,
+      "ease": "ease",
+      "offset": [0.0, -0.1],
+      "pose": {
+        "pelvis": [-2, -6, 0],
+        "torso": [4, -10, 0],
+        "head": [-6, 8, 0],
+        "thigh_r": [30, 0, -12], "shin_r": [-40, 0, 0], "foot_r": [14, 0, 10],
+        "thigh_l": [-6, 0, 12], "shin_l": [-28, 0, 0], "foot_l": [30, 0, -10],
+        "upper_arm_r": [30, 0, -26], "forearm_r": [70, 0, 2], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [34, 0, 26], "forearm_l": [76, 0, -2], "hand_l": [-14, 0, 0],
+        "pauldron_r": [10.5, 0, -13], "pauldron_l": [12, 0, 13]
+      }
+    },
+    {
+      "at": 36,
+      "offset": [0.0, -0.2],
+      "pose": {
+        "thigh_r": [28, 0, -12], "shin_r": [-38, 0, 0], "foot_r": [12, 0, 10],
+        "thigh_l": [-10, 0, 12], "shin_l": [-26, 0, 0], "foot_l": [30, 0, -10]
+      }
+    }
+  ],
+  "plant": {"foot_r": [[0, 3]], "foot_l": [[0, 3]]},
+  "allow": [["torso", "thigh_r"], ["torso", "thigh_l"]]
+}

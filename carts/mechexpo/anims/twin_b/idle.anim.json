@@ -1,0 +1,51 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Idle (twin B, the 0): the brawler's guard, rocking from foot to foot: two heavy little bounces a second (0.18 m into the knees on 15 and 45), the barrel chest rolling a few degrees toward the weighted side each time and both big fists bobbing with it, the round head tucked and still. Feet planted.",
+  "base": "_body.anim.json",
+  "length": 60,
+  "loop": true,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease"},
+    {
+      "at": 15,
+      "ease": "ease",
+      "offset": [0.0, -0.5],
+      "pose": {
+        "pelvis": [-2, -6, -3],
+        "torso": [6, -12, 4],
+        "head": [-6, 9, -3],
+        "upper_arm_r": [24, 0, -22], "forearm_r": [74, 0, 2], "hand_r": [-12, 0, 0],
+        "upper_arm_l": [28, 0, 22], "forearm_l": [82, 0, -2],
+        "pauldron_r": [8.4, 0, -11], "pauldron_l": [9.8, 0, 11]
+      }
+    },
+    {
+      "at": 30,
+      "ease": "ease",
+      "offset": [0.0, -0.33],
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [9, -10, 0],
+        "head": [-9, 8, 0],
+        "upper_arm_r": [28, 0, -22], "forearm_r": [68, 0, 2], "hand_r": [-15, 0, 0],
+        "upper_arm_l": [32, 0, 22], "forearm_l": [76, 0, -2],
+        "pauldron_r": [9.8, 0, -11], "pauldron_l": [11.2, 0, 11]
+      }
+    },
+    {
+      "at": 45,
+      "ease": "ease",
+      "offset": [0.0, -0.5],
+      "pose": {
+        "pelvis": [-2, -6, 3],
+        "torso": [6, -8, -4],
+        "head": [-6, 7, 3],
+        "upper_arm_r": [24, 0, -22], "forearm_r": [74, 0, 2], "hand_r": [-12, 0, 0],
+        "upper_arm_l": [28, 0, 22], "forearm_l": [82, 0, -2],
+        "pauldron_r": [8.4, 0, -11], "pauldron_l": [9.8, 0, 11]
+      }
+    }
+  ],
+  "plant": {"foot_r": [[0, 59]], "foot_l": [[0, 59]]}
+}

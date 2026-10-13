@@ -2214,9 +2214,12 @@ private fn tw_check_switch() {
         let t = fx[0].t
         if t < TW_COMBINE_SWAP {
             assert(f.body == Mech.TwinA && twins_on(0), "combined before the swap")
-            assert(p.mv == Mv.combine, "twin B is not combining")
-            assert_eq(fx[2].t, t, "the twins' combine frames apart")
-            if t >= TW_RUN_IN { assert(abs(p.x - f.x) < 0.01, "twin B has not reached twin A") }
+            // a hit on twin B stops the combine: twin A stands back up on the next frame
+            assert(p.mv == Mv.combine || is_hurt(p.mv), "twin B is not combining")
+            if p.mv == Mv.combine {
+                assert_eq(fx[2].t, t, "the twins' combine frames apart")
+                if t >= TW_RUN_IN { assert(abs(p.x - f.x) < 0.01, "twin B has not reached twin A") }
+            }
         } else {
             assert(f.body == Mech.Twins && !twins_on(0), "not combined after the swap")
             if tw_at[1] == 0 {
@@ -2258,8 +2261,8 @@ private fn tw_check_switch() {
         assert_eq(tw_swaps, 2, "swaps")
         tw_place(-3.0, 3.0)
     }
-    // the combine at 121, hit during twin A's leap (combine frames 11-13) by the Hero's Guard Cut
-    // (pressed at 125)
+    // the combine at 121, hit by the Hero's Guard Cut (pressed at 125: combine frames 11-13, twin A
+    // leaping and twin B arriving under it)
     if at(200) {
         assert_eq(evc_side[1][Ev.Hit], 1, "the Guard Cut missed the combining twins")
         assert(f.body == Mech.TwinA && twins_on(0), "the combine went on through the hit")

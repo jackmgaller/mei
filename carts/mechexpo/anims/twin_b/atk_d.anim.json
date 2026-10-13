@@ -1,0 +1,118 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Low Bit (MOVES.md; twin B): the stubby-legged version of the spinning sweep. The back foot hops in under the body as it drops into a squat over it, the left fist slapping onto the floor (frames 0-6); then the round hips whip round and the short right leg swings out straight along the floor in a flat arc, the whole body flung low behind it for reach (active 7-9: the whole leg, x about 1.0-5.0, y 0-1.6). Knocks down. The leg folds back in and stamps down in its place (10-17), the twin pushes up off its fist and the back foot hops back out into the brawler's stance (18-27): slow enough to punish on block or a miss.",
+  "base": "_body.anim.json",
+  "length": 28,
+  "phases": {"startup": 7, "active": 3, "recovery": 18},
+  "design": {"hit": [1.0, 0.0, 5.0, 1.6], "tolerance": 0.5, "note": "MOVES.md, Low Bit: x 1.0-5.0, y 0-1.6"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in", "reach": {"foot_l": [-1.21, 0.0]}},
+    {
+      "at": 3,
+      "ease": "ease",
+      "offset": [0.4, -0.7],
+      "reach": {"foot_l": [-0.7, 0.4]},
+      "pose": {
+        "pelvis": [-8, -16, 0],
+        "torso": [-16, -10, 0],
+        "head": [10, 8, 0],
+        "upper_arm_r": [40, 0, -26], "forearm_r": [80, 0, 2], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [40, 0, 26], "forearm_l": [50, 0, -2], "hand_l": [-20, 0, 0],
+        "pauldron_r": [14, 0, -13], "pauldron_l": [14, 0, 13]
+      }
+    },
+    {
+      "at": 6,
+      "ease": "in",
+      "offset": [0.85, -1.25],
+      "reach": {"foot_l": [-0.1, 0.0]},
+      "pose": {
+        "pelvis": [-12, -22, 0],
+        "torso": [-30, -12, 0],
+        "head": [26, 10, 0],
+        "upper_arm_r": [60, 0, -24], "forearm_r": [80, 0, 2], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [70, 0, 20], "forearm_l": [16, 0, -2], "hand_l": [-50, 0, 0],
+        "pauldron_r": [21, 0, -12], "pauldron_l": [24.5, 0, 10]
+      }
+    },
+    {
+      "at": 7,
+      "ease": "linear",
+      "offset": [0.95, -1.38],
+      "boxes": {
+        "sole": {"kind": "hit", "part": "foot_r", "min": [-0.5, -0.8, -1.0], "max": [0.5, 0.25, 0.55]},
+        "shin": {"kind": "hit", "part": "shin_r", "grow": 0.1}
+      },
+      "pose": {
+        "pelvis": [-12, -30, 0],
+        "torso": [-30, 0, 0],
+        "thigh_r": [72, 62, -6], "shin_r": [-6, 0, 0], "foot_r": [10, 0, 0]
+      }
+    },
+    {
+      "at": 8,
+      "ease": "linear",
+      "offset": [0.95, -1.38],
+      "pose": {
+        "pelvis": [-12, -40, 0],
+        "torso": [-30, 10, 0],
+        "thigh_r": [76, 40, -4], "shin_r": [-4, 0, 0]
+      }
+    },
+    {
+      "at": 9,
+      "ease": "out",
+      "offset": [0.92, -1.36],
+      "pose": {
+        "pelvis": [-12, -48, 0],
+        "torso": [-30, 18, 0],
+        "thigh_r": [82, 14, 0], "shin_r": [-6, 0, 0]
+      }
+    },
+    {"at": 10, "boxes": {"sole": null, "shin": null}},
+    {
+      "at": 11,
+      "ease": "ease",
+      "offset": [0.85, -1.2],
+      "pose": {"pelvis": [-12, -36, 0], "torso": [-30, 6, 0], "thigh_r": [82, -20, -4], "shin_r": [-8, 0, 0], "foot_r": [20, 0, 0]}
+    },
+    {"at": 12, "reach": {"foot_r": [2.0, 0.35]}},
+    {
+      "at": 14,
+      "ease": "ease",
+      "offset": [0.7, -1.2],
+      "pose": {
+        "pelvis": [-12, -26, 0],
+        "torso": [-28, -8, 0],
+        "head": [24, 10, 0],
+        "thigh_r": [70, -10, -10], "shin_r": [-100, 0, 0], "foot_r": [30, 0, 10]
+      },
+      "reach": {"foot_r": [0.8, 0.4]}
+    },
+    {"at": 17, "reach": {"foot_r": [-0.02, 0.0], "foot_l": [-0.1, 0.0]}},
+    {
+      "at": 20,
+      "ease": "ease",
+      "offset": [0.25, -0.6],
+      "pose": {
+        "pelvis": [-6, -10, 0],
+        "torso": [-6, -10, 0],
+        "head": [2, 8, 0],
+        "thigh_r": [24, 0, -10],
+        "upper_arm_r": [30, 0, -22], "forearm_r": [70, 0, 2], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [34, 0, 22], "forearm_l": [76, 0, -2], "hand_l": [-14, 0, 0],
+        "pauldron_r": [10.5, 0, -11], "pauldron_l": [12, 0, 11]
+      }
+    },
+    {"at": 22, "reach": {"foot_l": [-0.65, 0.4]}},
+    {"at": 25, "reach": {"foot_l": [-1.21, 0.0]}},
+    {"at": 27, "from": "guard", "reach": {"foot_l": [-1.21, 0.0]}}
+  ],
+  "plant": {"foot_r": [[0, 6], [17, 27]]},
+  "marks": {"step": [6, 17, 25]},
+  "allow": [
+    ["torso", "thigh_r"], ["torso", "thigh_l"], ["pelvis", "shin_r"], ["torso", "shin_r"],
+    ["thigh_r", "foot_r"], ["thigh_l", "foot_l"], ["pelvis", "foot_r"], ["pelvis", "shin_l"]
+  ]
+}

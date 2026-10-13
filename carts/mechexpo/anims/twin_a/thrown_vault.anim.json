@@ -1,0 +1,138 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Twin A thrown by the Double-blade Hero's Vault Throw (the fight carries the root from 3.4 m in front of the thrower to 5 m behind it over frames 6-28 on an arc 2 m high, the victim facing the thrower; slam on 28, then hit_air): yanked forward by the shoulders (0-6), the body tips forward over the thrower's head, upside down at the top (17, the pelvis raised 9 m above the root), comes down on the far side and is slammed flat on its back (28), head towards the thrower. Airborne: no floor check.",
+  "base": "_body.anim.json",
+  "length": 40,
+  "air": true,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "ease",
+      "offset": [0.0, -0.7],
+      "pose": {
+        "pelvis": [-4, -2, 0],
+        "torso": [-6, 0, 0],
+        "head": [14, 0, 0],
+        "upper_arm_r": [70, 0, -16],
+        "forearm_r": [70, 0, 4],
+        "hand_r": [-30, 0, 0],
+        "upper_arm_l": [80, 0, 20],
+        "forearm_l": [60, 0, -6],
+        "pauldron_r": [6, 0, -20],
+        "pauldron_l": [6, 0, 22]
+      }
+    },
+    {
+      "at": 6,
+      "ease": "in",
+      "offset": [0.5, -0.4],
+      "pose": {
+        "pelvis": [-24, -2, 0],
+        "torso": [-16, 0, 0],
+        "head": [24, 0, 0],
+        "upper_arm_r": [120, 0, -10],
+        "forearm_r": [40, 0, 4],
+        "upper_arm_l": [124, 0, 12],
+        "forearm_l": [40, 0, -6],
+        "thigh_r": [-10, 0, -4],
+        "shin_r": [-20, 0, 0],
+        "foot_r": [50, 0, 4],
+        "thigh_l": [-20, 0, 4],
+        "shin_l": [-14, 0, 0],
+        "foot_l": [50, 0, -4]
+      }
+    },
+    {
+      "at": 12,
+      "ease": "linear",
+      "offset": [0.5, 3.5],
+      "pose": {
+        "pelvis": [-96, -2, 0],
+        "torso": [-10, 0, 0],
+        "head": [20, 0, 0],
+        "upper_arm_r": [150, 0, -10],
+        "forearm_r": [20, 0, 4],
+        "upper_arm_l": [150, 0, 12],
+        "forearm_l": [20, 0, -6],
+        "thigh_r": [-20, 0, -8],
+        "shin_r": [-30, 0, 0],
+        "foot_r": [30, 0, 4],
+        "thigh_l": [-6, 0, 8],
+        "shin_l": [-50, 0, 0],
+        "foot_l": [30, 0, -4]
+      }
+    },
+    {
+      "at": 17,
+      "ease": "linear",
+      "offset": [0.0, 8.0],
+      "pose": {
+        "pelvis": [-180, -2, 0],
+        "torso": [-6, 0, 0],
+        "head": [16, 0, 0],
+        "thigh_r": [-10, 0, -10],
+        "shin_r": [-20, 0, 0],
+        "thigh_l": [10, 0, 10],
+        "shin_l": [-40, 0, 0]
+      }
+    },
+    {
+      "at": 23,
+      "ease": "in",
+      "offset": [-0.8, 3.5],
+      "pose": {
+        "pelvis": [-236, -2, 0],
+        "torso": [4, 0, 0],
+        "head": [10, 0, 0],
+        "upper_arm_r": [160, 0, -14],
+        "forearm_r": [10, 0, 4],
+        "upper_arm_l": [160, 0, 16],
+        "forearm_l": [10, 0, -6],
+        "thigh_r": [10, 0, -10],
+        "shin_r": [-30, 0, 0],
+        "thigh_l": [24, 0, 10],
+        "shin_l": [-50, 0, 0]
+      }
+    },
+    {
+      "at": 28,
+      "ease": "out",
+      "offset": [-0.6, -2.44],
+      "pose": {
+        "pelvis": [-270, -2, 0],
+        "torso": [10, 0, 0],
+        "head": [0, 0, 0],
+        "upper_arm_r": [140, 0, -16],
+        "forearm_r": [10, 0, 4],
+        "upper_arm_l": [130, 0, 18],
+        "forearm_l": [20, 0, -6],
+        "thigh_r": [40, 0, -10],
+        "shin_r": [-50, 0, 0],
+        "foot_r": [30, 0, 4],
+        "thigh_l": [30, 0, 10],
+        "shin_l": [-40, 0, 0],
+        "foot_l": [30, 0, -4],
+        "hand_r": [-80, 0, 0]
+      }
+    },
+    {
+      "at": 32,
+      "ease": "ease",
+      "offset": [-0.6, -1.9],
+      "pose": {"pelvis": [-266, -2, 0], "thigh_r": [50, 0, -10], "thigh_l": [44, 0, 10]}
+    },
+    {
+      "at": 39,
+      "offset": [-0.6, -2.44],
+      "pose": {
+        "pelvis": [-270, -2, 0],
+        "thigh_r": [30, 0, -10],
+        "shin_r": [-30, 0, 0],
+        "thigh_l": [20, 0, 10],
+        "shin_l": [-30, 0, 0]
+      }
+    }
+  ]
+}

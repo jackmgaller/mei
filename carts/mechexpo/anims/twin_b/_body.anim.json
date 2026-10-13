@@ -1,14 +1,24 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Twin B, the 0 (the split form's partner): its hurt and push boxes, which every move starts from (\"base\"), and the stand-in for a move with no file yet: the guard pose, held. Not a loop itself: a move based on it says \"loop\": true if it loops (the exporter makes the stand-ins of idle, walk_f, walk_b, crouch and block loop). The torso box is the barrel chest, not the round cell on its back; the push box (1.1 m either side, 7.0 m high) is MOVES.md's.",
+  "note": "Twin B, the 0 (the split form's partner): its hurt and push boxes, which every move starts from (\"base\"), and the stand-in for a move with no file yet: the guard pose, held. Not a loop itself: a move based on it says \"loop\": true if it loops (the exporter makes the stand-ins of idle, walk_f, walk_b, crouch and block loop). The torso box is the barrel chest, not the round cell on its back; the head box reaches 0.72 m above the helmet, so twin B's hurt box stands about 7.3 m tall like twin A's (MOVES.md's 7.4 m) and chest-high attacks do not sail over it; the push box (1.1 m either side, 7.0 m high) is MOVES.md's.",
   "rig": "../../models/twin_b/twin_b.rig.json",
   "length": 60,
   "loop": false,
   "boxes": {
     "head": {
       "kind": "hurt",
-      "part": "head"
+      "part": "head",
+      "min": [
+        -0.53,
+        -0.08,
+        -0.58
+      ],
+      "max": [
+        0.53,
+        1.9,
+        0.49
+      ]
     },
     "torso": {
       "kind": "hurt",

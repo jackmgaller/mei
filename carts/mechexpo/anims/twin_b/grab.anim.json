@@ -1,0 +1,40 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Grab (MOVES.md; twin B). Only the leader (twin A) grabs, the partner never copies Y, so this is never played in a fight; it is twin A's dart and snatch on twin B's body, kept so that every move has an animation. Startup 4, active 2 (the grab box, a fixed rectangle x 0.8-3.2, y 1-7), no recovery.",
+  "base": "_body.anim.json",
+  "length": 6,
+  "phases": {"startup": 4, "active": 2, "recovery": 0},
+  "design": {"hit": [0.8, 1.0, 3.2, 7.0], "tolerance": 0.2, "note": "MOVES.md, Tag Toss grab: x 0.8-3.2, y 1-7"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in", "reach": {"foot_r": [-0.02, 0.0], "foot_l": [-1.21, 0.0]}},
+    {
+      "at": 2,
+      "ease": "ease",
+      "offset": [-0.1, -0.5],
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [-6, -6, 0],
+        "head": [2, 6, 0],
+        "upper_arm_r": [30, 0, -24], "forearm_r": [80, 0, 6], "hand_r": [-20, 0, 0],
+        "upper_arm_l": [36, 0, 30], "forearm_l": [80, 0, -10], "hand_l": [-20, 0, 0],
+        "pauldron_r": [10.5, 0, -12], "pauldron_l": [12.6, 0, 15]
+      }
+    },
+    {
+      "at": 4,
+      "offset": [0.45, -0.75],
+      "reach": {"foot_r": [0.5, 0.0], "foot_l": [-1.21, 0.0]},
+      "boxes": {"grab": {"kind": "hit", "rect": [0.8, 1.0, 3.2, 7.0]}},
+      "pose": {
+        "pelvis": [-6, -14, 0],
+        "torso": [-18, -8, 0],
+        "head": [16, 10, 0],
+        "upper_arm_r": [76, 10, -8], "forearm_r": [20, 0, 4], "hand_r": [-30, 0, 0],
+        "upper_arm_l": [70, -10, 12], "forearm_l": [24, 0, -6], "hand_l": [-20, 0, 0],
+        "pauldron_r": [26.6, 0, -4], "pauldron_l": [24.5, 0, 6]
+      }
+    },
+    {"at": 5, "offset": [0.5, -0.78], "reach": {"foot_r": [0.5, 0.0], "foot_l": [-1.21, 0.0]}}
+  ]
+}

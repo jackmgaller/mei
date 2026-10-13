@@ -1,0 +1,51 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Hit high (twin A; stretched by the fight to the hitstun, frame 0 held through the hitstop): the slim body is already snapped back from the waist on frame 0, the tall head whips back a beat later, both fists fly up and apart and the knees buckle; then it springs back into the guard. Feet planted (the fight's knockback slides the whole twin).",
+  "base": "_body.anim.json",
+  "length": 20,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "out",
+      "offset": [-0.25, -0.55],
+      "reach": {"foot_r": [0.13, 0.0], "foot_l": [-1.41, 0.0]},
+      "pose": {
+        "pelvis": [8, -12, 0],
+        "torso": [16, -22, 4],
+        "head": [6, 18, 0],
+        "upper_arm_r": [50, 0, -30], "forearm_r": [40, 0, 6], "hand_r": [-20, 0, 0],
+        "upper_arm_l": [10, 0, 34], "forearm_l": [60, 0, -10],
+        "pauldron_r": [17.5, 0, -15], "pauldron_l": [3.5, 0, 17]
+      }
+    },
+    {
+      "at": 3,
+      "ease": "ease",
+      "offset": [-0.4, -0.7],
+      "pose": {
+        "pelvis": [10, -14, 0],
+        "torso": [22, -24, 6],
+        "head": [26, 20, 0],
+        "upper_arm_r": [62, 0, -36], "forearm_r": [30, 0, 6], "hand_r": [-24, 0, 0],
+        "upper_arm_l": [2, 0, 40], "forearm_l": [46, 0, -10],
+        "pauldron_r": [21.7, 0, -18], "pauldron_l": [0.7, 0, 20]
+      }
+    },
+    {
+      "at": 10,
+      "ease": "ease",
+      "offset": [-0.15, -0.5],
+      "pose": {
+        "pelvis": [3, -11, 0],
+        "torso": [4, -18, 2],
+        "head": [4, 15, 0],
+        "upper_arm_r": [38, 0, -18], "forearm_r": [62, 0, 6], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [20, 0, 22], "forearm_l": [88, 0, -10],
+        "pauldron_r": [13.3, 0, -9], "pauldron_l": [7, 0, 11]
+      }
+    },
+    {"at": 19, "from": "guard", "reach": {"foot_r": [0.13, 0.0], "foot_l": [-1.41, 0.0]}}
+  ]
+}

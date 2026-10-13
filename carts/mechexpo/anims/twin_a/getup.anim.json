@@ -1,0 +1,60 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Get up (twin A; 20 frames, after knockdown; not hittable): from flat on its back it snaps up onto its seat, the knees drawn in and the right hand pushing off the floor (frames 0-5), rocks forward onto its feet in a crouch (10) and springs up into the guard (19).",
+  "base": "_body.anim.json",
+  "length": 20,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "ease",
+      "offset": [-0.6, -2.44],
+      "pose": {
+        "pelvis": [90, -2, 0],
+        "torso": [8, 0, 0],
+        "head": [8, 4, 0],
+        "upper_arm_r": [152, 0, 4], "forearm_r": [10, 0, 6], "hand_r": [-40, 0, 0],
+        "upper_arm_l": [142, 0, -4], "forearm_l": [20, 0, -10],
+        "thigh_r": [48, 0, -10], "shin_r": [-76, 0, 0], "foot_r": [40, 0, 4],
+        "thigh_l": [26, 0, 10], "shin_l": [-44, 0, 0], "foot_l": [30, 0, -4],
+        "pauldron_r": [52, 0, -9], "pauldron_l": [49, 0, 10]
+      }
+    },
+    {"at": 2, "reach": {"foot_r": [2.0, 0.6], "foot_l": [1.7, 0.3]}},
+    {"at": 3, "reach": {"foot_r": [2.1, 0.0], "foot_l": [1.8, 0.0]}},
+    {
+      "at": 5,
+      "ease": "ease",
+      "offset": [-0.7, -2.9],
+      "pose": {
+        "pelvis": [44, -6, 0],
+        "torso": [-36, -10, 0],
+        "head": [20, 8, 0],
+        "upper_arm_r": [-30, 0, -24], "forearm_r": [20, 0, 6], "hand_r": [-30, 0, 0],
+        "upper_arm_l": [60, 0, 24], "forearm_l": [60, 0, -10], "hand_l": [-10, 0, 0],
+        "pauldron_r": [-10.5, 0, -12], "pauldron_l": [21, 0, 12]
+      },
+      "reach": {"foot_r": [1.5, 0.0], "foot_l": [1.0, 0.0]}
+    },
+    {
+      "at": 10,
+      "ease": "ease",
+      "offset": [-0.3, -1.6],
+      "pose": {
+        "pelvis": [-6, -10, 0],
+        "torso": [-26, -16, 0],
+        "head": [24, 14, 0],
+        "upper_arm_r": [30, 0, -16], "forearm_r": [80, 0, 6], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [20, 0, 20], "forearm_l": [100, 0, -10], "hand_l": [-8, 0, 0],
+        "pauldron_r": [10.5, 0, -8], "pauldron_l": [7, 0, 10]
+      },
+      "reach": {"foot_r": [0.5, 0.0], "foot_l": [-1.0, 0.0]}
+    },
+    {"at": 19, "from": "guard", "reach": {"foot_r": [0.13, 0.0], "foot_l": [-1.41, 0.0]}}
+  ],
+  "marks": {"step": [10]},
+  "allow": [
+    ["torso", "thigh_r"], ["torso", "thigh_l"], ["pelvis", "shin_l"], ["pelvis", "shin_r"], ["forearm_r", "shin_r"]
+  ]
+}
