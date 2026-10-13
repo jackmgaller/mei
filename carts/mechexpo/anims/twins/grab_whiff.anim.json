@@ -1,0 +1,35 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Grab whiff (after grab's 7 frames, when nothing was caught): the Hero's (base) on the combined form's rig: the hands close on nothing, the weight carries on forward over the front foot and it stumbles half a step before it hauls itself back into the guard. Punishable: 22 frames.",
+  "base": "../hero/grab_whiff.anim.json",
+  "rig": "../../models/twins/twins.rig.json",
+  "keys": [
+    {
+      "at": 0,
+      "reach": {"foot_r": [0.7, 0.0], "foot_l": [-2.24, 0.0]},
+      "pose": {"hand_r": [-10, 0, 0]}
+    },
+    {
+      "at": 4,
+      "pose": {"hand_r": [-20, 0, 0], "torso": [-20, 6, 0]}
+    },
+    {
+      "at": 9,
+      "reach": {"foot_r": [0.7, 0.0], "foot_l": [-1.1, 0.0]},
+      "pose": {"hand_r": [-14, 0, 0], "torso": [-12, 0, 0], "pelvis": [-8, -2, 0], "head": [14, 0, 0]}
+    },
+    {
+      "at": 15,
+      "pose": {"hand_r": [-16, 0, 0], "forearm_r": [64, 0, 4]}
+    },
+    {
+      "at": 18,
+      "reach": {"foot_l": [-2.24, 0.0]}
+    },
+    {
+      "at": 21,
+      "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}
+    }
+  ]
+}

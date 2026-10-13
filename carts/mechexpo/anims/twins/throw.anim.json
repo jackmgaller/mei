@@ -1,0 +1,18 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Binary Buster (MOVES.md; the other plays thrown, held 3.4 m in front and lifted 0.1 m a frame to 3 m by the fight): the Hero's throw (base) on the combined form's rig, a frame sooner: both hands take the other's shoulders (frames 0-4, the break window to 10), the knees bend to take the weight and the arms press it up overhead as the legs straighten (4-22), the body rears back at the waist coupling (26) and heaves it forward and away (release mark on 29: the slam the fight acts on), following through low before it settles back into the guard.",
+  "base": "../hero/throw.anim.json",
+  "rig": "../../models/twins/twins.rig.json",
+  "keys": [
+    {"at": 0, "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}, "pose": {"hand_r": [-10, 0, 0]}},
+    {"at": 22, "pose": {"hand_r": [-10, 0, 0]}},
+    {"at": 27, "remove": true},
+    {"at": 26, "ease": "in", "offset": [-0.5, -1.1], "pose": {"pelvis": [6, -2, 0], "torso": [6, -2, 0], "head": [-14, 2, 0], "upper_arm_r": [130, 0, -6], "forearm_r": [36, 0, 4], "upper_arm_l": [130, 0, 8], "forearm_l": [36, 0, -6]}},
+    {"at": 30, "remove": true},
+    {"at": 29, "ease": "out", "offset": [0.3, -1.1], "pose": {"pelvis": [-8, -2, 0], "torso": [-14, -2, 0], "head": [16, 2, 0], "upper_arm_r": [150, 0, -6], "forearm_r": [10, 0, 4], "hand_r": [-10, 0, 0], "upper_arm_l": [150, 0, 8], "forearm_l": [10, 0, -6]}},
+    {"at": 35, "pose": {"hand_r": [-10, 0, 0]}},
+    {"at": 43, "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}}
+  ],
+  "marks": {"release": [29]}
+}
