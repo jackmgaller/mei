@@ -1,0 +1,117 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Scrap Heave (Tank's throw, on a catch; the other plays thrown). Animated against this placement of the other's root (fight-local, from Tank's): 3.6 m in front on the floor to frame 10, drawn in to 3.0 m and lifted to 1.6 m by 24 (smoothstep), then in to 2.6 m and up to 2.0 m by the release on 29; the fists stay on the other's shoulders throughout. Both clamp fists close on the shoulders and squeeze (0-10, the break window), the hull dipping on its struts and the torso hunching to take the load; Tank straightens and presses the other up (10-24), coiling under the weight with the arms bent, then throws its whole torso forward and hurls it with both arms straight (release mark on 29: MOVES.md's frame 30, counted from 1), following through low before it hauls itself back into the guard.",
+  "base": "_body.anim.json",
+  "length": 44,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "out",
+      "pose": {
+        "pelvis": [-4, 0, 0], "thigh_r": [4, 0, 0], "thigh_l": [4, 0, 0],
+        "torso": [-15, 0, 0], "head": [16, 0, 0],
+        "upper_arm_r": [88, 6, -4], "forearm_r": [94, 0, 0], "hand_r": [-50, 0, 0],
+        "upper_arm_l": [88, -6, 4], "forearm_l": [94, 0, 0], "hand_l": [-50, 0, 0],
+        "pauldron_r": [26, 0, -2], "pauldron_l": [26, 0, 2]
+      }
+    },
+    {
+      "at": 4,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [-4, 0, 0], "thigh_r": [4, 0, 0], "thigh_l": [4, 0, 0],
+        "torso": [-15, 0, 0], "head": [18, 0, 0],
+        "upper_arm_r": [91, 8, -6], "forearm_r": [86, 0, 0],
+        "upper_arm_l": [91, -8, 6], "forearm_l": [86, 0, 0],
+        "pauldron_r": [28, 0, -3], "pauldron_l": [28, 0, 3]
+      }
+    },
+    {
+      "at": 10,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [-7, 0, 0], "thigh_r": [7, 0, 0], "thigh_l": [7, 0, 0],
+        "torso": [-21, 0, 0], "head": [24, 0, 0],
+        "upper_arm_r": [103, 8, -6], "forearm_r": [99, 0, 0],
+        "upper_arm_l": [103, -8, 6], "forearm_l": [99, 0, 0],
+        "pauldron_r": [30, 0, -3], "pauldron_l": [30, 0, 3]
+      }
+    },
+    {
+      "at": 14,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [-2, 0, 0], "thigh_r": [2, 0, 0], "thigh_l": [2, 0, 0],
+        "torso": [-8, 0, 0], "head": [10, 0, 0],
+        "upper_arm_r": [100, 8, -6], "forearm_r": [64, 0, 0], "hand_r": [-46, 0, 0],
+        "upper_arm_l": [100, -8, 6], "forearm_l": [64, 0, 0], "hand_l": [-46, 0, 0],
+        "pauldron_r": [32, 0, -3], "pauldron_l": [32, 0, 3]
+      }
+    },
+    {
+      "at": 17,
+      "ease": "ease",
+      "pose": {
+        "upper_arm_r": [110.5, 8, -6], "forearm_r": [57.5, 0, 0],
+        "upper_arm_l": [110.5, -8, 6], "forearm_l": [57.5, 0, 0],
+        "pauldron_r": [34, 0, -3], "pauldron_l": [34, 0, 3]
+      }
+    },
+    {
+      "at": 20,
+      "ease": "ease",
+      "pose": {
+        "torso": [-12, 0, 0], "head": [6, 0, 0],
+        "upper_arm_r": [120, 8, -6], "forearm_r": [53, 0, 0], "hand_r": [-24, 0, 0],
+        "upper_arm_l": [120, -8, 6], "forearm_l": [53, 0, 0], "hand_l": [-24, 0, 0],
+        "pauldron_r": [36, 0, -3], "pauldron_l": [36, 0, 3]
+      }
+    },
+    {
+      "at": 24,
+      "ease": "in",
+      "pose": {
+        "pelvis": [-1, 0, 0], "thigh_r": [1, 0, 0], "thigh_l": [1, 0, 0],
+        "torso": [-11, 0, 0], "head": [-4, 0, 0],
+        "upper_arm_r": [138, 8, -6], "forearm_r": [23.5, 0, 0],
+        "upper_arm_l": [138, -8, 6], "forearm_l": [23.5, 0, 0],
+        "pauldron_r": [40, 0, -3], "pauldron_l": [40, 0, 3]
+      }
+    },
+    {
+      "at": 27,
+      "ease": "linear",
+      "pose": {
+        "pelvis": [-4, 0, 0], "thigh_r": [4, 0, 0], "thigh_l": [4, 0, 0],
+        "torso": [-22, 0, 0], "head": [14, 0, 0],
+        "upper_arm_r": [162.5, 8, -6], "forearm_r": [12, 0, 0], "hand_r": [-30, 0, 0],
+        "upper_arm_l": [162.5, -8, 6], "forearm_l": [12, 0, 0], "hand_l": [-30, 0, 0],
+        "pauldron_r": [40, 0, -3], "pauldron_l": [40, 0, 3]
+      }
+    },
+    {
+      "at": 29,
+      "ease": "out",
+      "pose": {
+        "upper_arm_r": [163.5, 8, -6], "forearm_r": [8, 0, 0],
+        "upper_arm_l": [163.5, -8, 6], "forearm_l": [8, 0, 0]
+      }
+    },
+    {
+      "at": 34,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [-8, -4, 0], "thigh_r": [8, 0, 0], "thigh_l": [8, 0, 0],
+        "torso": [-32, -6, 0], "head": [30, 4, 0],
+        "upper_arm_r": [86, 8, -10], "forearm_r": [16, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [80, -8, 10], "forearm_l": [20, 0, 0], "hand_l": [-10, 0, 0],
+        "pauldron_r": [30, 0, -5], "pauldron_l": [28, 0, 5]
+      }
+    },
+    {"at": 43, "from": "guard"}
+  ],
+  "marks": {"release": [29]},
+  "allow": [["pauldron_r", "forearm_r"], ["pauldron_l", "forearm_l"]]
+}
