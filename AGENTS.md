@@ -41,7 +41,9 @@ MeiNet gateway's tests, then `test_assetkit.py`, `test_worldpack.py`, `test_worl
 `tools/check_generated.sh` (what `make check-generated` runs: the generators that need only the standard library, and
 `gen_adpcm_vectors.py` when NumPy is there, into a temporary directory, compared with the
 committed files). `make test-carts` runs `carts/weather/tests/check.sh`,
-`carts/lantern/tests/check.sh`, `carts/fallline/tests/check.sh`, `carts/mechexpo/tests/check.sh`,
+`carts/lantern/tests/check.sh`, `carts/fallline/tests/check.sh`, `carts/mechexpo/tests/check.sh`
+(about 90 scenarios, run side by side, `JOBS` at a time: the CPU count unless set, through
+`carts/mechexpo/tests/pool.sh`), Mech Expo's long budget runs `carts/mechexpo/tests/budget.sh`,
 the Animation Kit's `carts/mechexpo/tests/anim/check.sh` and `test-world-carts`, which builds World Viewer and the
 movement garden (and so their worlds) first and runs both carts' `tests/check.sh`. A cart's scenarios are Akari files built by `tools/cart_scenario.sh` from
 the cart's `tests/harness.akr` and its game; `carts/*/tests/run.sh SCENARIO FRAMES OUT` runs one
