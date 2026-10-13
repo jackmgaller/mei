@@ -1,0 +1,107 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Thrown by the Double-blade Hero's Vault Throw (Tank as the victim; the fight carries the root from 3.4 m in front of the thrower to 5 m behind it over frames 6-28 on an arc 2 m high, the victim facing the thrower; slam on 28, then hit_air). Dead weight: hooked by the shoulder domes and hoisted (0-6, the treads hanging), the hull tips forward over the thrower's head, upside down at the top (16-18, the treads in the air), and comes down on the far side, slammed onto its back on 28, head towards the thrower. The pelvis follows the thrower's hands to frame 20; the last frames are hit_air's business after the release. Airborne: no floor check.",
+  "base": "_body.anim.json",
+  "length": 40,
+  "air": true,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "ease",
+      "offset": [-1.42, 0.8],
+      "pose": {
+        "pelvis": [-4, 0, 0], "torso": [0, 0, 0], "head": [16, 0, 0],
+        "upper_arm_r": [120, 0, 20], "forearm_r": [50, 0, 0], "hand_r": [-30, 0, 0],
+        "upper_arm_l": [124, 0, -20], "forearm_l": [46, 0, 0], "hand_l": [-30, 0, 0],
+        "pauldron_r": [18, 0, 10], "pauldron_l": [18, 0, -10]
+      }
+    },
+    {
+      "at": 6,
+      "ease": "in",
+      "offset": [-2.48, 0.63],
+      "pose": {
+        "pelvis": [-10, 0, 0], "thigh_r": [-6, 0, 0], "thigh_l": [-8, 0, 0], "shin_r": [-6, 0, 0], "shin_l": [-8, 0, 0],
+        "head": [22, 0, 0],
+        "upper_arm_r": [140, 0, 24], "forearm_r": [36, 0, 0],
+        "upper_arm_l": [144, 0, -24], "forearm_l": [32, 0, 0]
+      }
+    },
+    {
+      "at": 10,
+      "ease": "linear",
+      "offset": [-5.2, 3.66],
+      "pose": {
+        "pelvis": [-50, 0, 0], "thigh_r": [-12, 0, 0], "thigh_l": [-14, 0, 0], "shin_r": [-10, 0, 0], "shin_l": [-12, 0, 0],
+        "head": [20, 0, 0],
+        "upper_arm_r": [156, 0, 26], "forearm_r": [24, 0, 0],
+        "upper_arm_l": [158, 0, -26], "forearm_l": [22, 0, 0]
+      }
+    },
+    {
+      "at": 12,
+      "ease": "linear",
+      "offset": [-4.03, 8.75],
+      "pose": {"pelvis": [-96, 0, 0]}
+    },
+    {
+      "at": 14,
+      "ease": "linear",
+      "offset": [-2.32, 10.9],
+      "pose": {"pelvis": [-130, 0, 0], "thigh_r": [-6, 0, 0], "thigh_l": [-4, 0, 0]}
+    },
+    {
+      "at": 16,
+      "ease": "linear",
+      "offset": [0.2, 11.87],
+      "pose": {"pelvis": [-160, 0, 0], "thigh_r": [4, 0, 0], "thigh_l": [6, 0, 0], "shin_r": [4, 0, 0], "shin_l": [6, 0, 0]}
+    },
+    {
+      "at": 18,
+      "ease": "linear",
+      "offset": [2.82, 11.61],
+      "pose": {"pelvis": [-190, 0, 0], "thigh_r": [10, 0, 0], "thigh_l": [12, 0, 0], "shin_r": [8, 0, 0], "shin_l": [10, 0, 0]}
+    },
+    {
+      "at": 20,
+      "ease": "linear",
+      "offset": [4.68, 10.41],
+      "pose": {"pelvis": [-215, 0, 0], "head": [10, 0, 0]}
+    },
+    {
+      "at": 23,
+      "ease": "in",
+      "offset": [4.2, 7.2],
+      "pose": {
+        "pelvis": [-245, 0, 0], "head": [0, 0, 0],
+        "upper_arm_r": [150, 0, 30], "upper_arm_l": [146, 0, -30]
+      }
+    },
+    {
+      "at": 28,
+      "ease": "out",
+      "offset": [1.6, 0.18],
+      "pose": {
+        "pelvis": [-270, 2, 0], "thigh_r": [15, 0, 0], "thigh_l": [12, 0, 0], "shin_r": [10, 0, 0], "shin_l": [8, 0, 0],
+        "torso": [6, 0, 0], "head": [-6, 4, 0],
+        "upper_arm_r": [150, 0, 36], "forearm_r": [16, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [140, 0, -36], "forearm_l": [20, 0, 0], "hand_l": [-10, 0, 0],
+        "pauldron_r": [40, 0, 18], "pauldron_l": [40, 0, -18]
+      }
+    },
+    {
+      "at": 32,
+      "ease": "ease",
+      "offset": [1.6, 0.6],
+      "pose": {"pelvis": [-274, 2, 0], "thigh_r": [10, 0, 0], "thigh_l": [8, 0, 0]}
+    },
+    {
+      "at": 39,
+      "offset": [1.6, 0.18],
+      "pose": {"pelvis": [-270, 2, 0], "thigh_r": [12, 0, 0], "thigh_l": [10, 0, 0]}
+    }
+  ],
+  "allow": [["pauldron_r", "forearm_r"], ["pauldron_l", "forearm_l"], ["head", "forearm_r"], ["head", "forearm_l"], ["head", "hand_r"], ["head", "hand_l"]]
+}
