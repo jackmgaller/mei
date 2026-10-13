@@ -156,6 +156,10 @@ are B's models, placed by D.
   the menu page; texture slots 8 (fonts), 9 (UI sprites), 10 (effects); palettes 240–254 (244 is
   lent to the menu page and the hall's put back); a backdrop table at 0x582000; line channels 0,
   2 and 7. Priorities: BG2 0, BG1 1, the mechs 2, BG0 (the HUD's frame) 3, the interface list 4.
+- **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
+  (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. A pool of 80 particles,
+  at most 52 spawned a frame; at their busiest (scenarios 50–54) about 75,000 CPU cycles a frame
+  in a release build.
 - **Triangles:** a mech about 1,600–1,800 (the sketches are 1,632 and 1,734); the frame limit is
   4,000.
 - **Budgets a tick:** CPU 1,000,000 cycles, GPU 2,000,000 (`mei-headless --gpu-stats`). The
