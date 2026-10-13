@@ -10,7 +10,7 @@
       "at": 0,
       "from": "guard",
       "ease": "ease",
-      "offset": [-0.1, -0.7],
+      "offset": [-0.1, -0.35],
       "pose": {
         "pelvis": [4, -2, 0], "torso": [8, 0, 0], "head": [14, 0, 0],
         "upper_arm_r": [70, 0, -16], "forearm_r": [70, 0, 4], "hand_r": [-30, 0, 0],

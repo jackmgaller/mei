@@ -1,0 +1,14 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Thrown by Tank's Atomic Clinch or Chain Reaction: the Hero's (base), on the Double-blade Hero's rig.",
+  "base": "../hero/thrown_slam.anim.json",
+  "rig": "../../models/doubleblade/doubleblade.rig.json",
+  "allow": [
+    ["forearm_r", "weapon_r"],
+    ["forearm_l", "weapon_l"],
+    ["weapon_r", "weapon_l"],
+    ["hand_r", "weapon_l"],
+    ["hand_l", "weapon_r"]
+  ]
+}
