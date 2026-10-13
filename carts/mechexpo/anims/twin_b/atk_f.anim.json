@@ -1,0 +1,104 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Byte Kick (MOVES.md; twin B): twin A's hop kick done as a brawler's stamp. A squat (0-2), then a big bounding hop forward (the root 1.0 m over frames 2-10, the round body carried further forward over the landing foot), the right knee hauled up to the barrel chest (5-8) with both fists tucked in; the back foot lands on 8 and the stubby leg drives out flat-footed, a push kick, on 9, the whole body thrown back behind it to get the reach (active 9-11: the whole leg, x about 1.2-5.8, y 2.4-4.8), rising through the extension. Then the knee folds back, the foot stamps down in front (21) and the back foot shuffles back into the brawler's stance (21-26). Cancel window 9-17. The leg is hurtable while it is out.",
+  "base": "_body.anim.json",
+  "length": 27,
+  "phases": {"startup": 9, "active": 3, "recovery": 15},
+  "design": {"hit": [1.2, 2.4, 5.8, 4.8], "tolerance": 0.5, "note": "MOVES.md, Byte Kick: x 1.2-5.8, y 2.4-4.8"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease"},
+    {
+      "at": 2,
+      "ease": "out",
+      "offset": [-0.1, -0.75],
+      "pose": {
+        "pelvis": [-6, -8, 0],
+        "torso": [-6, -10, 0],
+        "head": [4, 8, 0],
+        "upper_arm_r": [20, 0, -24], "forearm_r": [86, 0, 2], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [22, 0, 24], "forearm_l": [90, 0, -2], "hand_l": [-14, 0, 0],
+        "pauldron_r": [7, 0, -12], "pauldron_l": [7.7, 0, 12]
+      },
+      "reach": {"foot_r": [-0.02, 0.0], "foot_l": [-1.21, 0.0]}
+    },
+    {"at": 4, "reach": {"foot_r": [0.5, 0.6], "foot_l": [-0.9, 0.5]}},
+    {"at": 6, "reach": {"foot_r": [1.0, 1.0], "foot_l": [-0.3, 0.4]}},
+    {
+      "at": 8,
+      "ease": "in",
+      "offset": [1.1, -0.3],
+      "pose": {
+        "pelvis": [16, -30, 0],
+        "torso": [-4, -6, 0],
+        "head": [-6, 20, 0],
+        "thigh_r": [90, 10, -10],
+        "upper_arm_r": [30, 0, -26], "forearm_r": [84, 0, 2], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [26, 0, 26], "forearm_l": [86, 0, -2],
+        "pauldron_r": [10.5, 0, -13], "pauldron_l": [9.1, 0, 13]
+      },
+      "reach": {"foot_r": [1.6, 1.25], "foot_l": [0.25, 0.0]}
+    },
+    {
+      "at": 9,
+      "ease": "linear",
+      "offset": [1.5, -0.4],
+      "boxes": {
+        "sole": {"kind": "hit", "part": "foot_r", "min": [-0.45, -0.95, -0.75], "max": [0.45, 0.3, 0.45]},
+        "shin": {"kind": "hit", "part": "shin_r"},
+        "thigh": {"kind": "hit", "part": "thigh_r"}
+      },
+      "pose": {
+        "pelvis": [30, -36, 0],
+        "torso": [-12, -4, 0],
+        "head": [-10, 24, 0],
+        "thigh_r": [72, 34, -4], "shin_r": [-4, 0, 0], "foot_r": [0, 0, 0],
+        "upper_arm_r": [40, 0, -26], "forearm_r": [86, 0, 2],
+        "upper_arm_l": [34, 0, 26], "forearm_l": [88, 0, -2],
+        "pauldron_r": [12.6, 0, -13], "pauldron_l": [10.5, 0, 13]
+      }
+    },
+    {
+      "at": 11,
+      "ease": "out",
+      "offset": [1.55, -0.42],
+      "pose": {
+        "pelvis": [32, -36, 0],
+        "thigh_r": [84, 34, -4], "shin_r": [-2, 0, 0], "foot_r": [-6, 0, 0]
+      }
+    },
+    {"at": 12, "boxes": {"sole": null, "shin": null, "thigh": null}},
+    {
+      "at": 16,
+      "ease": "ease",
+      "offset": [0.9, -0.5],
+      "pose": {
+        "pelvis": [10, -20, 0],
+        "torso": [0, -10, 0],
+        "head": [-4, 14, 0],
+        "thigh_r": [70, 20, -10], "shin_r": [-100, 0, 0], "foot_r": [30, 0, 10],
+        "upper_arm_r": [26, 0, -24], "forearm_r": [80, 0, 2],
+        "upper_arm_l": [30, 0, 24], "forearm_l": [82, 0, -2],
+        "pauldron_r": [9.1, 0, -12], "pauldron_l": [10.5, 0, 12]
+      }
+    },
+    {
+      "at": 21,
+      "ease": "ease",
+      "offset": [0.0, -0.45],
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [6, -10, 0],
+        "head": [-6, 8, 0],
+        "thigh_r": [24, 0, -10], "shin_r": [-55.87, 0, 0], "foot_r": [31.87, 0, 10]
+      },
+      "reach": {"foot_l": [0.1, 0.0]}
+    },
+    {"at": 23, "reach": {"foot_l": [-0.6, 0.35]}},
+    {"at": 26, "from": "guard", "reach": {"foot_l": [-1.21, 0.0]}}
+  ],
+  "motion": [{"from": 2, "to": 10, "by": [1.0, 0], "ease": "ease"}],
+  "plant": {"foot_r": [[0, 2], [20, 26]], "foot_l": [[0, 2], [8, 20]]},
+  "marks": {"step": [8, 20], "cancel": [[9, 17]]},
+  "allow": [["pauldron_r", "forearm_r"], ["pelvis", "shin_r"], ["pelvis", "foot_r"], ["thigh_r", "foot_r"], ["torso", "thigh_r"], ["torso", "thigh_l"]]
+}
