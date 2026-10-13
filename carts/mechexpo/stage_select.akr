@@ -9,7 +9,11 @@ var stage_done_t: s32              // the tick it was confirmed (0: not yet)
 
 // The stage of the fight about to start.
 fn stage_pick() -> s32 {
-    if game == Game.Arcade { return LADDER_STAGES[clamp(ladder, 0, LADDER_N - 1)] }
+    if game == Game.Arcade {
+        let n = len(LADDER_STAGES)
+        if ladder_final(ladder) { return LADDER_STAGES[n - 1] }
+        return LADDER_STAGES[clamp(ladder, 0, n - 2)]
+    }
     return stage_sel
 }
 

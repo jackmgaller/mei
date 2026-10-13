@@ -1,0 +1,245 @@
+// Mech Expo 2000's arcade ladder (mx-ladder; MOVES.md, "Decided by the owner (2026-10-13): the
+// arcade ladder"). A run is LADDER_N fights on the UAPC's programme:
+//
+//   the company fights  LADDER_N - 1 of them, each against the base mech of a rival company,
+//                       drawn by lot from the run's seed: never your own maker, never the final
+//                       opponent's maker, no company twice. Binary Mechanica's Twins are drawn
+//                       even while they are locked (the owner's tease)
+//   the final           your echo (as a base mech), or the original (as an echo, "defending its
+//                       title"); for a mech whose echo is not in the game yet, the UAPC's test
+//                       unit: a copy of your own mech in the UAPC's grey (anim.akr's anim_grey).
+//                       A real echo takes over by itself once its roster slot gets its mech
+//
+// The difficulty (DIFFS) is picked before the run and sets each fight's CPU level, ramping to
+// the final; clearing on any difficulty counts for every unlock rule, and each roster slot keeps
+// the difficulties it cleared (save.medals, the APPROVED stamps on the select and the catalogue).
+// Losing offers a continue as often as wanted: the same fight again, or the title.
+//
+// game.akr runs the flow (the schedule page, the final's reveal, the cover); menus.akr draws it.
+
+const LADDER_N = 3                  // fights a run: LADDER_N - 1 company fights, then the final
+
+const DIFF_EASY = 0
+const DIFF_NORMAL = 1
+const DIFF_HARD = 2
+const DIFF_N = 3
+
+struct Diff {
+    name: *u8           // EASY, NORMAL, HARD: what the menus show big
+    grade: *u8          // the expo's name for it, under the name
+    blurb: *u8          // the difficulty select's two lines
+    first: s32          // the CPU level of the first company fight (cpu.akr; CPU_NOVICE is -1)
+    last: s32           // of the last company fight (the levels ramp between the two)
+    final: s32          // of the final (the hardest fight of a run)
+    ink: u32            // its APPROVED stamp's ink (0xBBGGRR): bronze, silver, gold
+}
+
+const DIFFS: [3]Diff = [
+    Diff { name: "EASY", grade: "PUBLIC DEMO DAY", blurb: "FOR VISITORS: THE RIVAL\nUNITS HOLD BACK",
+           first: CPU_NOVICE, last: CPU_NOVICE, final: 0, ink: 0x3A78C0 },
+    Diff { name: "NORMAL", grade: "TRADE TRIAL", blurb: "THE STANDARD EVALUATION\nFOR EXHIBITORS",
+           first: 1, last: 1, final: 2, ink: 0xE8DCD0 },
+    Diff { name: "HARD", grade: "FULL UAPC AUDIT", blurb: "THE CLIENT'S OWN\nACCEPTANCE TEST",
+           first: 2, last: 3, final: 3, ink: 0x28B4F0 },
+]
+
+// The final's kinds.
+const FIN_ECHO = 0                  // a base mech meets its echo
+const FIN_ORIGINAL = 1              // an echo meets its original, defending its title
+const FIN_TEST = 2                  // no echo yet: the UAPC's test unit, your mech in grey
+
+const CO_UAPC = -2                  // the test unit's maker: the client itself
+
+struct Ladder {
+    seed: u32
+    diff: s32
+    me: Mech
+    foe: [LADDER_N]Mech
+    grey: [LADDER_N]bool            // the fight's opponent is the UAPC's test unit
+    maker: [LADDER_N]s32            // CO_*, or CO_UAPC
+    fin: s32                        // FIN_*
+}
+
+var run: Ladder
+
+private fn lad_rand(r: *u32, n: s32) -> s32 {
+    *r = *r * 1103515245 + 12345
+    return ((*r >> 16) & 0x7FFF) as s32 % max(n, 1)
+}
+
+// A new run for mech me at difficulty diff, its company fights drawn from seed.
+fn ladder_make(me: Mech, diff: s32, seed: u32) {
+    run.seed = seed
+    run.diff = clamp(diff, 0, DIFF_N - 1)
+    run.me = me
+    // the final: the slot above or below mine
+    let s = mech_slot(me)
+    var p = s + ROSTER_COLS
+    if s >= ROSTER_COLS { p = s - ROSTER_COLS }
+    let fin = LADDER_N - 1
+    if slot_has_mech(p) {
+        run.foe[fin] = slot_mech(p)
+        run.grey[fin] = false
+        run.maker[fin] = ROSTER[p].maker
+        run.fin = if_else(s >= ROSTER_COLS, FIN_ORIGINAL, FIN_ECHO)
+    } else {
+        run.foe[fin] = me
+        run.grey[fin] = true
+        run.maker[fin] = CO_UAPC
+        run.fin = FIN_TEST
+    }
+    // the company fights: the makers' base mechs (slots 0-4, a maker's column) in the game,
+    // neither mine nor the final's maker, drawn without repeats
+    var pool: [MAKERS_N]s32
+    var n = 0
+    let mine = ROSTER[s].maker
+    for k in 0..MAKERS_N {
+        if k == mine || k == run.maker[fin] || !slot_has_mech(k) || ROSTER[k].maker != k { continue }
+        pool[n] = k
+        n += 1
+    }
+    var r = seed * 2654435761 + 0x4C41
+    for i in 0..fin {
+        var k = 0
+        if n > i {
+            let j = i + lad_rand(&r, n - i)
+            let t = pool[i]
+            pool[i] = pool[j]
+            pool[j] = t
+            k = pool[i]
+        } else if n > 0 {
+            k = pool[i % n]             // fewer rivals than fights (not with today's roster)
+        }
+        run.foe[i] = slot_mech(k)
+        run.grey[i] = false
+        run.maker[i] = k
+    }
+}
+
+// The CPU level of fight n of the run.
+fn ladder_level(n: s32) -> s32 {
+    let d = &DIFFS[run.diff]
+    if n >= LADDER_N - 1 { return d.final }
+    if LADDER_N <= 2 { return d.first }
+    return d.first + (d.last - d.first) * n / (LADDER_N - 2)
+}
+
+fn ladder_final(n: s32) -> bool { return n >= LADDER_N - 1 }
+
+// ---- the units on show: a side's names, maker and colour, the test unit's included
+
+var p_grey: [2]bool                 // side s is the UAPC's test unit (drawn grey, named so)
+
+const TEST_NAME = "UAPC TEST UNIT"
+const TEST_SHORT = "TEST UNIT"
+const TEST_MAKER = "UAPC EVALUATION OFFICE"
+const TEST_MAKER_SHORT = "UAPC"
+const TEST_BOOTH = "CLIENT GALLERY"
+const TEST_COLOUR: u32 = 0x9C948C   // the test unit's grey (0xBBGGRR)
+
+fn unit_name(s: s32) -> *u8 {
+    if p_grey[s] { return TEST_NAME }
+    return mech_name(p_mech[s])
+}
+
+// What the HUD and the banners call side s (the Twins by their form).
+fn unit_short(f: *Fight, s: s32) -> *u8 {
+    if p_grey[s] { return TEST_SHORT }
+    return fighter_short(&f.f[s])
+}
+
+fn unit_maker(s: s32) -> *u8 {
+    if p_grey[s] { return TEST_MAKER }
+    return mech_maker(p_mech[s])
+}
+
+fn unit_maker_short(s: s32) -> *u8 {
+    if p_grey[s] { return TEST_MAKER_SHORT }
+    return mech_maker_short(p_mech[s])
+}
+
+fn unit_booth(s: s32) -> *u8 {
+    if p_grey[s] { return TEST_BOOTH }
+    return mech_booth(p_mech[s])
+}
+
+fn unit_colour(s: s32) -> u32 {
+    if p_grey[s] { return TEST_COLOUR }
+    return mech_colour(p_mech[s])
+}
+
+// Side s's emblem (24 x 24) at (x, y): the UAPC's roundel for the test unit.
+fn unit_emblem24(s: s32, x: s32, y: s32) {
+    if p_grey[s] {
+        ui_sprite(&UI_UAPC[0], PAL_LOGO, x, y, 0x808080, BLEND_NONE)
+        return
+    }
+    ui_slot_emblem(mech_slot(p_mech[s]), x, y, true, 0x808080)
+}
+
+// Fight n's opponent on the programme: its maker's name (or the UAPC's) and its unit.
+fn ladder_maker_name(n: s32) -> *u8 {
+    let k = run.maker[n]
+    if k == CO_UAPC { return TEST_MAKER_SHORT }
+    return MAKERS[max(k, 0)].name
+}
+
+fn ladder_unit_name(n: s32) -> *u8 {
+    if run.grey[n] { return TEST_NAME }
+    return mech_name(run.foe[n])
+}
+
+fn ladder_colour(n: s32) -> u32 {
+    if run.grey[n] { return TEST_COLOUR }
+    return mech_colour(run.foe[n])
+}
+
+fn ladder_emblem24(n: s32, x: s32, y: s32, tint: u32) {
+    if run.grey[n] {
+        ui_sprite(&UI_UAPC[0], PAL_LOGO, x, y, tint, BLEND_NONE)
+        return
+    }
+    ui_slot_emblem(mech_slot(run.foe[n]), x, y, true, tint)
+}
+
+// ---- the clears by difficulty (save.medals: bit 3 * slot + difficulty)
+
+fn medal_bit(slot: s32, d: s32) -> u32 { return (1 as u32) << (3 * slot + d) }
+
+fn slot_medal(slot: s32, d: s32) -> bool { return save.medals & medal_bit(slot, d) != 0 }
+
+fn slot_medals(slot: s32) -> s32 {
+    var n = 0
+    for d in 0..DIFF_N {
+        if slot_medal(slot, d) { n += 1 }
+    }
+    return n
+}
+
+// The run was cleared: the clear (every unlock rule counts it, roster_clear()) and its stamp.
+// Returns the slot unlocked now, or -1. The caller writes the save.
+fn ladder_cleared() -> s32 {
+    save.medals |= medal_bit(mech_slot(run.me), run.diff)
+    return roster_clear(run.me)
+}
+
+// A small APPROVED seal (UI_SEAL, 13 px, or UI_SEAL_S, 9 px; slot 12) for difficulty d, its
+// corner at (x, y), in the difficulty's ink; when not cleared, its outline only (off).
+fn medal_seal(d: s32, x: s32, y: s32, on: bool, small: bool) {
+    var r = &UI_SEAL[0]
+    if small { r = &UI_SEAL_S[0] }
+    if on {
+        menu_sprite(r, x, y, r[2], r[3], col_tint(DIFFS[d].ink), BLEND_NONE)
+        return
+    }
+    var o = &UI_SEAL_OFF[0]
+    if small { o = &UI_SEAL_S_OFF[0] }
+    menu_sprite(o, x, y, o[2], o[3], col_tint(0xA89888), BLEND_NONE)
+}
+
+// A second string buffer, for a line built while another (ui.akr's sb()) is in use.
+var ui_buf2: [64]u8
+fn sb2() -> *u8 {
+    ui_buf2[0] = 0
+    return &ui_buf2[0]
+}

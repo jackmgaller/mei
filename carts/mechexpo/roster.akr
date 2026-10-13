@@ -12,8 +12,10 @@
 // carries its maker, emblem, names, model, height and stats), as Beam's and Tank's rows do, and
 // check the row's names, model number, stats and blurb against what the mech became. Then the
 // HUD's names and meter icon (ui_power_icon(mech_src(m), x, y) in ui.akr), the spec sheet, the
-// card and the select all follow. An echo with no Mech in its slot is never a ladder opponent (ladder_foe falls back to
-// the Hero). The table must keep ten rows in this order: the select's cursor moves by slot.
+// card and the select all follow. A mech whose echo's slot has no Mech yet meets the UAPC's grey
+// test unit (a copy of itself) in the arcade's final instead (ladder.akr); the echo takes over
+// once its slot has a Mech. The table must keep ten rows in this order: the select's cursor
+// moves by slot.
 
 const SHOW_UNLOCK_HINTS = true      // locked slots tell how to unlock them (the pitch's open question)
 
@@ -218,18 +220,6 @@ fn roster_clear(m: Mech) -> s32 {
         }
     }
     return got
-}
-
-// The arcade ladder's opponent for fight n: the mirror, then the echo (or, as an echo, its
-// base); the Hero (or, as the Hero, the Double-blade Hero) when that slot has no mech yet.
-fn ladder_foe(me: Mech, n: s32) -> Mech {
-    if n == 0 { return me }
-    let s = mech_slot(me)
-    var p = s + ROSTER_COLS
-    if s >= ROSTER_COLS { p = s - ROSTER_COLS }
-    if slot_has_mech(p) { return slot_mech(p) }
-    if me == Mech.Hero { return Mech.Doubleblade }
-    return Mech.Hero
 }
 
 // The index in MAKERS of mech m's maker.

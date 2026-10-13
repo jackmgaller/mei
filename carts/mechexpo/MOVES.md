@@ -1446,6 +1446,50 @@ Void Step's gone frames, 7–18).
   shadow farther), Eclipse Rise (the anti-air), Phantom Grip (the side swap), Total Eclipse (the
   stage dark, a multi-hit with afterimages). Afterimages are visual only.
 
+## Decided by the owner (2026-10-13): the arcade ladder
+
+Built by mx-ladder; how it works is in [README.md](README.md#the-arcade-ladder).
+
+- **Length:** two company fights, then the final: three fights a run (`LADDER_N` in `ladder.akr`,
+  so it can become three company fights later).
+- **The company fights:** each against the base mech of a rival company, drawn at random per run
+  (from the run's seed, so scenarios replay), never your own maker and never the final
+  opponent's maker, no company twice. The Twins (Binary Mechanica) may be drawn while they are
+  still locked.
+- **The final:** your echo (as a base mech), or the original (as an echo: the Double-blade Hero
+  meets the Hero, "defending its title"). A mech whose echo does not exist yet (Shadow, Beam,
+  Tank, the Twins) meets the UAPC test unit: a copy of your own mech in the UAPC's plain grey,
+  the client's own evaluation unit (it sets up the secret boss: the UAPC builds its own mechs).
+  Its grey is made by the model pack's generator for every body (the Twins: both twins and the
+  combined form). A real echo takes over once its roster slot gets its mech.
+- **Difficulty:** chosen before a run: EASY, NORMAL, HARD (on screen with the expo's names PUBLIC
+  DEMO DAY, TRADE TRIAL, FULL UAPC AUDIT). EASY must be beatable by a novice who mashes: a new
+  CPU level below level 0 (the novice: slow reactions, rarely blocks, no chains, no supers,
+  rarely grabs), measured against a scripted masher (scenario 116). NORMAL is near the MVP's
+  ladder (levels 1 and 2); HARD ramps to level 3. The levels ramp within a run; the final is the
+  hardest fight.
+- **Any difficulty unlocks:** clearing the ladder on any difficulty counts for every unlock rule.
+- **Clear icons:** each roster slot keeps the difficulties cleared with it, shown as bronze,
+  silver and gold APPROVED seals on the select grid's card and the catalogue's spec sheet. The
+  save's version is 2; a version-1 save keeps its clears and unlocks, its clears (the MVP's
+  ladder at CPU levels 1-2) counted as NORMAL.
+- **Losing:** unlimited continues: the same fight again ("REQUEST ANOTHER DEMONSTRATION?"), or
+  the title. (Easy to change.)
+- **Tone:** no wrestling announcer and no hype MC on the VS card (its layout stays). Everyone is
+  plainly enjoying giant robots smashing each other, but it is all presented as dry, serious
+  procurement business. The round calls in that voice in every mode (TEST 1, COMMENCE,
+  CONCLUDED, TIME EXPIRED, OUT OF BOUNDS, MEETS THE REQUIREMENTS); a schedule page between
+  fights (the expo's programme for the day, earlier results stamped, the next highlighted); the
+  final's reveal played up, deadpan ("UMBRAL RESEARCH PRESENTS ITS COMPETING PRODUCT", "THE UAPC
+  WILL NOW EVALUATE YOUR PRODUCT AGAINST ITS OWN TEST UNIT", "MOMENTUM ROBOTICS DEFENDS ITS
+  TITLE").
+- **Endings are magazine covers:** after the final, your mech live in 3D in its win pose under a
+  masthead, a headline and side teasers: one layout, text per case (a base mech wins: CONTRACT
+  AWARDED; an echo beats its original: UPSET AT THE EXPO; a win over the test unit: EVALUATION
+  PASSED), teasers about what is still locked ("WHO IS BINARY MECHANICA?"). Then the unlock
+  screen if something unlocked, then the title. The masthead's name is the owner's to pick
+  (pitched: PROCUREMENT TODAY, on screen for now; MECHA MONTHLY; HEAVY METAL REVIEW).
+
 ## Balance patch (2026-10-13)
 
 Measured with `tests/balance/matrix.sh` (CPU level 2 against level 2, every pairing, the sides
@@ -1531,3 +1575,11 @@ health of the Double-blade Hero and Shadow (the owner's decisions).
   costs every mech's animator a move; proposed for later.
 - The Siphon's rates (all of every source, nuclear at a quarter) and the curse's length (6 s) want
   human play; so do Shadow's health (900) and the Rift Mine's snare (30 frames).
+- The arcade ladder's grades (mx-ladder): the scripted masher beats the novice, level 0 and
+  level 1 alike (94-97 % of matches) and level 2 only 38 % (README.md, "The arcade ladder"). So
+  EASY's final could take level 1 without getting hard, and NORMAL's final (level 2) is a big
+  step from its company fights (level 1); both want the owner's own play.
+- The cover's masthead: PROCUREMENT TODAY is on screen; MECHA MONTHLY and HEAVY METAL REVIEW are
+  the other names pitched.
+- The test unit's grey is one ramp for every body; a UAPC marking on it (a roundel on the
+  shoulder) would need a texture in the grey parts.

@@ -36,8 +36,10 @@ fn twins_fx_partners(f: *Fight) {
     for s in 0..2 {
         if !twins_on(s) { continue }
         let p = &f.f[s + 2]
+        anim_grey = p_grey[s]               // the UAPC's test unit (mx-ladder, ladder.akr)
         twins_draw_body(p.body, p.mv, p.frame, mat4_translate(vec3(0.0, 0.0, TW_Z)) * anim_place(vec2(p.x, p.y), p.facing))
     }
+    anim_grey = false
 }
 
 // The camera over every body in the fight.
