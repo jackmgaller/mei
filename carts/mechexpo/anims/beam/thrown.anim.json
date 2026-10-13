@@ -1,0 +1,13 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Thrown by the Hero's throw (and Beam's Shock Grip on Beam, whose fight placement is the Hero's): the Hero's (base) on Beam's rig: caught by the shoulders, lifted, the legs dangling and kicking, arched back as it is heaved. The cannon arm claws at the thrower with the cannon pointing up and away.",
+  "base": "../hero/thrown.anim.json",
+  "rig": "../../models/beam/beam.rig.json",
+  "keys": [
+    {"at": 0, "pose": {"forearm_r": [70, 0, 8], "hand_r": [10, 0, 0]}},
+    {"at": 6, "pose": {"forearm_r": [60, 0, 8]}},
+    {"at": 30, "pose": {"forearm_r": [30, 0, 8], "hand_r": [0, 0, 0]}}
+  ],
+  "allow": [["forearm_r", "weapon_r"]]
+}
