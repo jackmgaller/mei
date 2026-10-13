@@ -2695,7 +2695,9 @@ private fn sh_check_siphon() {
             if evc_side[1][Ev.Hit] > 0 {
                 assert_eq(o.meter, 0, "the cursed Hero gained meter")
                 assert_eq(o.siphoned, KIN_HIT, "the kinetic hit was not siphoned")
-                println("siphoned: the Hero's kinetic hit, 150")
+                print("siphoned: the Hero's kinetic hit, ")
+                print_int(KIN_HIT)
+                println("")
                 sh_restart(Mech.Shadow, Mech.Doubleblade, -4.0, 4.0)
                 fight.f[1].curse = CURSE_FRAMES
                 stage = 2
@@ -2706,7 +2708,7 @@ private fn sh_check_siphon() {
             if frames == mark + 60 {
                 assert_eq(o.meter, 0, "the cursed reactor filled")
                 assert_eq(o.siphoned, 60, "the reactor's 60 frames were not siphoned")
-                assert_eq(s.meter, 120, "Shadow's own 60 and the siphoned 60")
+                assert_eq(s.meter, 60 + 60 * SIPHON_ANTI_NUM / SIPHON_ANTI_DEN, "Shadow's own 60 and half the siphoned 60")
                 println("siphoned: the Double-blade Hero's reactor, 60 in 60 frames")
                 sh_restart(Mech.Shadow, Mech.Beam, -10.0, 10.0)
                 fight.f[1].curse = CURSE_FRAMES
@@ -2729,18 +2731,20 @@ private fn sh_check_siphon() {
             }
         }
         4 => {
-            // Tank's nuclear meter: Shadow gets a quarter
+            // Tank's nuclear meter: Shadow gets a quarter, the cursed Tank keeps the rest
             if frames == mark + 2 { sh_pad[0] = A }
             if evc_side[0][Ev.Hit] > 0 {
                 let n = dmg(7, Mv.atk_n) * NUC_NUM / NUC_DEN
-                assert_eq(o.meter, 0, "the cursed Tank's meter filled")
-                assert_eq(o.siphoned, n, "the nuclear gain was not siphoned")
                 let g = n * SIPHON_NUC_NUM / SIPHON_NUC_DEN
+                assert_eq(o.meter, n - g, "the cursed Tank kept more than Shadow left it")
+                assert_eq(o.siphoned, n, "the nuclear gain was not siphoned")
                 assert_eq(s.meter, (frames - mark) + ANTI_HIT + g, "Shadow's regen, its hit and a quarter of the nuclear gain")
                 print("siphoned: Tank's nuclear gain ")
                 print_int(n)
                 print(", Shadow got ")
                 print_int(g)
+                print(", Tank kept ")
+                print_int(n - g)
                 println("")
                 sh_restart(Mech.Shadow, Mech.Twins, -8.0, 8.0)
                 fight.f[1].curse = CURSE_FRAMES

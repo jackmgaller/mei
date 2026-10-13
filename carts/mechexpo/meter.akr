@@ -46,7 +46,9 @@ fn meter_tick(f: *Fighter) {
 
 fn meter_add(f: *Fighter, n: s32) {
     if n > 0 && f.curse > 0 {
-        shadow_siphon(f, n)             // cursed: the gain goes to Shadow (shadow.akr)
+        // cursed: the gain goes to Shadow (shadow.akr); nuclear keeps what Shadow does not take
+        let kept = n - shadow_siphon(f, n)
+        if meter_power(f.mech) == Power.Nuclear { f.meter = min(f.meter + kept, METER_BAR) }
         return
     }
     f.meter = min(f.meter + n, METER_BAR)

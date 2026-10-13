@@ -129,9 +129,9 @@ side rung out this round, −1 none, 2 both); the HUD shows RING OUT as it shows
 
 One bar of power, shown as a gauge, spent all at once on the super (A + B).
 
-**Kinetic (the Hero, Momentum Robotics): fills by landing hits.** +12.5 % of a bar for each hit
+**Kinetic (the Hero, Momentum Robotics): fills by landing hits.** About +10.4 % of a bar (125) for each hit
 that lands (+10 % for the wave), +5 % for a hit the other blocks, nothing for being hit or for
-missing. A bar takes about eight landed hits, about a round's worth. The meter carries over between rounds. Rewards
+missing. A bar takes about ten landed hits, about a round's worth. The meter carries over between rounds. Rewards
 pressing forward.
 
 **Antimatter (the Double-blade Hero, Umbral Research): borrows.** The reactor fills the meter by
@@ -151,10 +151,11 @@ round. The meter carries over between rounds; the super costs a bar. Rewards com
 right moment, then fighting freely.
 
 **The Siphon (Shadow's curse).** A mech hit by Shadow's Hex Bolt is cursed for 6 seconds: the
-meter it would gain goes to Shadow instead, whatever its source (nuclear's at half)
+meter it would gain goes to Shadow instead, whatever its source (antimatter's at half; of
+nuclear's Shadow takes a quarter and the cursed Tank keeps the rest)
 ([Shadow](#hex-bolt-sp_n-and-the-siphon)).
 
-**Fusion (the Twins, Binary Mechanica): fills only combined.** +1 a frame while the twins are
+**Fusion (the Twins, Binary Mechanica): fills only combined.** +2 a frame while the twins are
 combined, +5 % for each combined hit that lands, more from Fusion Focus; nothing while split.
 The super exists only combined ([the Twins](#the-fusion-meter)). Rewards switching forms at the
 right times.
@@ -187,7 +188,7 @@ Its stance is upright and square, the sword held out in front at chest height in
 | Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | On block / hit | Hit box |
 |---|---|---|---|---|---|---|---|---|
 | `atk_n` Guard Cut | 7 | 3 | 14 | 24 | 70 | 18 / 13 | −4 / +1 | x 2.0–7.2, y 6–9 |
-| `atk_f` Tip Thrust | 13 | 4 | 21 | 38 | 120 | 26 / 18 | −7 / +1 | x 4.0–10.4, y 6.5–8.5 |
+| `atk_f` Tip Thrust | 13 | 4 | 21 | 38 | 100 | 26 / 18 | −7 / +1 | x 4.0–10.4, y 6.5–8.5 |
 | `atk_d` Low Sweep | 11 | 4 | 24 | 39 | 90, knockdown | — / 16 | −12 / KD +42 | x 2.0–8.0, y 0–2 |
 | `atk_air` Falling Cleave | 8 | 6 | to landing | 30 | 100 | 20 / 15 | by height | x 1.0–6.5, y −2–4 (from the root, in the air) |
 
@@ -213,7 +214,7 @@ Its stance is upright and square, the sword held out in front at chest height in
 | Move | Startup | Active | Recovery | Total | Damage | Chip | Hitstun / blockstun | On block / hit |
 |---|---|---|---|---|---|---|---|---|
 | `sp_n` Kinetic Wave | 16 | the wave | 32 | 48 | 80 | 16 | 20 / 16 | −16 / −12 at the mech; safe far |
-| `sp_f` Charge Slash | 16 | 4 | 26 | 46 | 130, knockdown | 26 | — / 16 | −14 / KD +43 |
+| `sp_f` Charge Slash | 16 | 4 | 26 | 46 | 95, knockdown | 19 | — / 16 | −14 / KD +43 |
 | `sp_u` Rising Arc | 6 | 8 | 28 | 42 | 120, knockdown | 24 | — / 14 | −22 / KD +48 |
 | `sp_d` Parry | 3 | stance 21 | 18 | 42 (+24 riposte) | riposte 110, knockdown | — | — | — |
 
@@ -267,8 +268,8 @@ specials, the throw's direction and the super.
 
 | Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | On block / hit | Hit box |
 |---|---|---|---|---|---|---|---|---|
-| `atk_n` Twin Cut | 5 | 3 | 11 | 19 | 60 | 17 / 12 | −2 / +3 | x 1.8–5.8, y 5.5–9 |
-| `atk_f` Cross Lunge | 10 | 4 | 18 | 32 | 100 | 24 / 17 | −5 / +2 | x 2.5–7.6, y 5–9 |
+| `atk_n` Twin Cut | 5 | 3 | 11 | 19 | 65 | 17 / 12 | −2 / +3 | x 1.8–5.8, y 5.5–9 |
+| `atk_f` Cross Lunge | 10 | 4 | 18 | 32 | 110 | 24 / 17 | −5 / +2 | x 2.5–7.6, y 5–9 |
 | `atk_d` Low Sweep | 9 | 4 | 22 | 35 | 75, knockdown | — / 15 | −11 / KD +44 | x 1.8–6.6, y 0–2 |
 | `atk_air` Scissor Drop | 6 | 6 | to landing | 26 | 85 | 19 / 14 | by height | x 0.8–5.2, y −2.5–3.5 |
 
@@ -285,7 +286,7 @@ specials, the throw's direction and the super.
 | Move | Startup | Active | Recovery | Total | Damage | Chip | Hitstun / blockstun | On block / hit |
 |---|---|---|---|---|---|---|---|---|
 | `sp_n` Void Step | — | — | 10 | 28 | — | — | — | — |
-| `sp_f` Charge Slash | 13 | 4 | 24 | 41 | 110, knockdown | 22 | — / 15 | −13 / KD +45 |
+| `sp_f` Charge Slash | 13 | 4 | 24 | 41 | 120, knockdown | 24 | — / 15 | −13 / KD +45 |
 | `sp_u` Rising Arc | 5 | 8 | 26 | 39 | 100, knockdown | 20 | — / 14 | −20 / KD +47 |
 | `sp_d` Antimatter Slide | 5 | 17 | 18 | 40 | 90, knockdown | 18 | — / 14 | −21 (first frame) / KD +35 |
 
@@ -356,7 +357,7 @@ short and late off the ground.
 | Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | On block / hit | Hit box |
 |---|---|---|---|---|---|---|---|---|
 | `atk_n` Arc Jab | 6 | 3 | 15 | 24 | 65 | 19 / 14 | −4 / +1 | x 1.8–9.0, y 6–9 |
-| `atk_f` Static Lance | 14 | 4 | 22 | 40 | 110 | 26 / 19 | −7 / 0 | x 3.5–10.0, y 6–8.5 |
+| `atk_f` Static Lance | 14 | 4 | 22 | 40 | 100 | 26 / 19 | −7 / 0 | x 3.5–10.0, y 6–8.5 |
 | `atk_d` Ground Spark | 12 | 5 | 24 | 41 | 85, knockdown | — / 16 | −13 / KD +41 | x 1.5–7.5, y 0–2 |
 | `atk_air` Down Arc | 9 | 6 | to landing | 32 | 90 | 20 / 15 | by height | x 0.5–5.5, y −3–3 (from the root, in the air) |
 
@@ -391,7 +392,7 @@ boxes, against a standing Hero.)
 | `sp_n` Volt Orb (tap) | 18 | the orb | 26 | 45 | 70 | 14 | 20 / 16 | −11 / −7 at 6 m; safe far |
 | `sp_n` Volt Orb (charged) | 18 + 20–49 held | the orb | 26 | 65–94 | 90 | 18 | 22 / 18 | |
 | `sp_n` Volt Orb (full) | 18 + 50 held | the orb | 26 | 95 | 120, knockdown | 24 | — / 20 | |
-| `sp_f` Arc Lance | 18 | 6 | 20 | 44 | 100, knockdown | 20 | — / 18 | −8 / KD +44 (at 7 m) |
+| `sp_f` Arc Lance | 18 | 6 | 20 | 44 | 85, knockdown | 17 | — / 18 | −8 / KD +44 (at 7 m) |
 | `sp_u` Thunder Pillar | 7 | 8 | 27 | 42 | 110, knockdown | 22 | — / 14 | −21 / KD +49 |
 | `sp_d` Reaction Prime | — | — | 14 after the release | 44 | — | — | — | — |
 
@@ -522,7 +523,7 @@ open (see the open questions at the end).
 
 | | Tank |
 |---|---|
-| Health | 1,100 |
+| Health | 1,150 |
 | Walk forward | 0.055 m a frame (3.3 m/s) |
 | Walk back | 0.045 m a frame (2.7 m/s) |
 | Walk cycle | 32 frames, a loop with **no `step` marks**: the treads glide, nothing plants |
@@ -549,7 +550,7 @@ pitches the torso forward and rocks the treads nose-down 8°.
 | Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | On block / hit | Hit box |
 |---|---|---|---|---|---|---|---|---|
 | `atk_n` Rivet Jab | 8 | 3 | 14 | 25 | 80 | 18 / 13 | −4 / +1 | x 1.8–6.4, y 5–8.5 |
-| `atk_f` Piston Haymaker | 16 | 4 | 22 | 42 | 140 | 26 / 18 | −8 / +0 | x 2.0–7.6, y 5–9 |
+| `atk_f` Piston Haymaker | 16 | 4 | 22 | 42 | 150 | 26 / 18 | −8 / +0 | x 2.0–7.6, y 5–9 |
 | `atk_d` Track Hook | 11 | 4 | 24 | 39 | 90, knockdown | — / 16 | −12 / KD | x 1.8–6.8, y 0–2 |
 | `atk_air` Body Drop | 7 | to landing | landing 10 | 28 | 110 | 20 / 15 | by height | x −1.5–4.0, y −2.5–2.5 (from the root, in the air) |
 
@@ -681,8 +682,8 @@ are not parried, so neither is this.
 
 ### The nuclear meter
 
-Fills by **taking damage**: 5 meter for every 2 points of damage Tank takes, so a bar takes
-480 damage (about 44 % of its health, about four clean hits or a combo and a throw). Everything
+Fills by **taking damage**: 3 meter for every point of damage Tank takes, so a bar takes
+400 damage (about 35 % of its health, about four clean hits or a combo and a throw). Everything
 that costs health counts: hits, chip, absorbed hits, throws. Nothing else fills it: not
 landing hits, not blocking (a blocked normal does no damage), not time. It **carries over
 between rounds**, so a lost round leaves Tank with a bar or most of one for the next: the
@@ -802,10 +803,10 @@ mech already falling (knocked down, a mech can't be hit).
 
 | Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | Hit box |
 |---|---|---|---|---|---|---|---|
-| `atk_n` Bit Jab | 4 | 2 | 10 | 16 | 40 | 15 / 11 | x 1.0–4.4, y 3.8–6.2 |
-| `atk_f` Byte Kick | 9 | 3 | 15 | 27 | 60 | 22 / 16 | x 1.2–5.8, y 2.4–4.8 |
-| `atk_d` Low Bit | 7 | 3 | 18 | 28 | 55, knockdown | — / 14 | x 1.0–5.0, y 0–1.6 |
-| `atk_air` Drop Kick | 5 | to landing | landing 6 | 24 | 50 | 16 / 12 | x 0.3–3.8, y −2.0–1.8 (from the root, in the air) |
+| `atk_n` Bit Jab | 4 | 2 | 10 | 16 | 50 | 15 / 11 | x 1.0–4.4, y 3.8–6.2 |
+| `atk_f` Byte Kick | 9 | 3 | 15 | 27 | 76 | 22 / 16 | x 1.2–5.8, y 2.4–4.8 |
+| `atk_d` Low Bit | 7 | 3 | 18 | 28 | 68, knockdown | — / 14 | x 1.0–5.0, y 0–1.6 |
+| `atk_air` Drop Kick | 5 | to landing | landing 6 | 24 | 60 | 16 / 12 | x 0.3–3.8, y −2.0–1.8 (from the root, in the air) |
 
 - **Bit Jab** (`atk_n`): a straight jab with the leading fist at head height of a crouching
   big mech, and back. Frames 1–4 the shoulder turns in; 5–6 the arm is straight; 7–16 it comes
@@ -823,9 +824,9 @@ mech already falling (knocked down, a mech can't be hit).
 
 | Move | Startup | Active | Recovery | Total | Damage | Chip | Hitstun / blockstun |
 |---|---|---|---|---|---|---|---|
-| `sp_n` Pulse Spin | 8 | 10 | 16 | 34 | 45 | 9 | 18 / 14 |
-| `sp_f` Dash Kick | 10 | 4 | 18 | 32 | 80, knockdown | 16 | — / 14 |
-| `sp_u` Rising Kick | 4 | 8 | 22 | 34 | 70, knockdown | 14 | — / 12 |
+| `sp_n` Pulse Spin | 8 | 10 | 16 | 34 | 56 | 11 | 18 / 14 |
+| `sp_f` Dash Kick | 10 | 4 | 18 | 32 | 100, knockdown | 20 | — / 14 |
+| `sp_u` Rising Kick | 4 | 8 | 22 | 34 | 88, knockdown | 18 | — / 12 |
 | `sp_d` Low Roll | — | — | 8 | 28 | — | — | — |
 
 - **Pulse Spin** (`sp_n`): the twin plants and spins on the spot, arms straight out, a ring of
@@ -850,7 +851,7 @@ Only the leader grabs: the partner never copies Y. `grab` startup 4, active 2 (x
 y 1–7), 6 frames; a miss plays `grab_whiff` (18 frames). On a catch, `throw` (36 frames) on twin
 A and `thrown` on the other: twin A grabs the other mech's wrist and waist (frames 1–10, the
 break window), turns its hips and swings it overhead (11–23: the fight lifts the other's root to
-2 m, 2.6 m in front), and slings it forward on frame 24 (`release`): 100 damage, knockdown, the
+2 m, 2.6 m in front), and slings it forward on frame 24 (`release`): 120 damage, knockdown, the
 other flying about 8 m. Twin B carries on following meanwhile.
 
 ### Combined: attacks (A)
@@ -983,7 +984,7 @@ The form is kept through the round and resets to split at the start of the next.
 
 ### The fusion meter
 
-Fills **only while combined**: +1 a frame (a bar in 20 seconds of being combined), +60 (5 %)
+Fills **only while combined**: +2 a frame (a bar in 10 seconds of being combined), +60 (5 %)
 for each combined hit that lands, and Fusion Focus +6 a frame held (a quarter bar at most).
 **Nothing while split**: not by time, not by hits. It does not drain while split either, and
 it carries over between rounds. The super, Fusion Burst, costs a bar and exists only combined;
@@ -1100,8 +1101,8 @@ top and settle on landing.
 
 | Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | Hit box |
 |---|---|---|---|---|---|---|---|
-| `atk_n` Claw Jab | 3 | 2 | 12 | 17 | 45 | 15 / 11 | x 1.6–5.6, y 6.5–9.5 |
-| `atk_f` Lunging Claw | 12 | 4 | 20 | 36 | 100 | 25 / 18 | x 3.0–9.4, y 5.5–8.5 |
+| `atk_n` Claw Jab | 3 | 2 | 12 | 17 | 50 | 15 / 11 | x 1.6–5.6, y 6.5–9.5 |
+| `atk_f` Lunging Claw | 12 | 4 | 20 | 36 | 105 | 25 / 18 | x 3.0–9.4, y 5.5–8.5 |
 | `atk_d` Fade Sweep | 10 | 4 | 22 | 36 | 80, knockdown | — / 16 | x 1.5–7.2, y 0–1.8 |
 | `atk_air` Diving Claw | 7 | to landing | landing 8 | 26 | 85 | 19 / 14 | x 0.5–5.0, y −3.0–2.0 (from the root, in the air) |
 
@@ -1171,11 +1172,11 @@ claw sweeps forward and opens, flinging the bolt. 24 frames back to the guard.
 
   | Source | What the cursed mech would gain | What Shadow gets |
   |---|---|---|
-  | Kinetic (the Hero) | +150 a hit that lands, +120 the wave, +60 a blocked hit | all of it |
-  | Antimatter (the Double-blade Hero, a Shadow) | the reactor's +1 a frame, +60 a hit | all of it: a cursed mech in debt stops climbing out |
+  | Kinetic (the Hero) | +125 a hit that lands, +120 the wave, +60 a blocked hit | all of it |
+  | Antimatter (the Double-blade Hero, a Shadow) | the reactor's +1 a frame, +60 a hit | **half** (+1 every other frame, +30 a hit): the cursed mech gains nothing, so one in debt stops climbing out |
   | Chemical (Beam) | a running reaction's +2 a frame (the reaction keeps burning) | all of it: curse Beam during a reaction and the reaction is Shadow's |
-  | Nuclear (Tank) | 5 for every 2 damage it takes | **half**: 5 for every 4. Shadow's own hits already pay it; the half keeps a cursed Tank from paying twice in full |
-  | Fusion (the Twins) | combined only: +1 a frame, +60 a combined hit, Fusion Focus +6 a frame held | all of it. Split, the Twins gain nothing, so nothing is siphoned: **splitting is how the Twins sit a curse out** |
+  | Nuclear (Tank) | 3 for every point of damage it takes | **a quarter**: 3 for every 4, and the cursed Tank keeps the other three quarters. Shadow's own hits already pay Shadow; the curse only skims the reactor |
+  | Fusion (the Twins) | combined only: +2 a frame, +60 a combined hit, Fusion Focus +6 a frame held | all of it. Split, the Twins gain nothing, so nothing is siphoned: **splitting is how the Twins sit a curse out** |
 
   Training's meter refill is not a gain and is never siphoned.
 - **How it shows.** On the cursed mech: a violet glow pulses at its chest and violet motes rise
@@ -1459,9 +1460,9 @@ Void Step's gone frames, 7–18).
   "Ironside". The menus show TANK until it is decided.
 - Tank's armour absorbs every hit while its marks last (a chain cannot follow an absorbed hit,
   so in practice one). If that proves too strong, cap it at one hit a move.
-- The nuclear meter's rate (a bar per 480 damage taken) and whether it carries between rounds
+- The nuclear meter's rate (a bar per 400 damage taken) and whether it carries between rounds
   (it does) want human play.
-- The Twins' fusion rate (+1 a frame combined, a bar in 20 s) and whether every round should
+- The Twins' fusion rate (+2 a frame combined, a bar in 10 s) and whether every round should
   start split (it does) want human play; so does the partner's delay (6 frames).
 - Ring-outs (mx-stages's defaults, [Stages and ring-outs](#stages-and-ring-outs)): a ring-out
   ends the round outright; the alternatives are a heavy damage penalty, or a ring-out only
@@ -1473,5 +1474,5 @@ Void Step's gone frames, 7–18).
 - Shadow's snare holds the snared mech in the pose it had (cut to `idle`, frozen) with violet
   shadow binding its legs. A dedicated `snared` reaction for every mech would read better and
   costs every mech's animator a move; proposed for later.
-- The Siphon's rates (all of every source, nuclear at half) and the curse's length (6 s) want
+- The Siphon's rates (all of every source, nuclear at a quarter) and the curse's length (6 s) want
   human play; so do Shadow's health (900) and the Rift Mine's snare (30 frames).

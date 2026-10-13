@@ -5,7 +5,8 @@
 //   the Hex Bolt     a shot in fighter.akr's shot system (Shot.hex), slow, strength 1; on a hit
 //                    (or absorbed by armour) it curses the other side with the Siphon
 //   the Siphon       meter.akr's meter_add sends a cursed fighter's gains here: they go to the
-//                    other side (Shadow), nuclear's at half; 360 frames of play, refreshed
+//                    other side (Shadow), antimatter's at half and nuclear's at a quarter; 360
+//                    frames of play, refreshed
 //   the Rift Mine    one per side: laid on sp_d's release frame, armed after MINE_ARM frames, set
 //                    off by a body of the other side standing on it (a snare: the move cut, held
 //                    still SNARE_FRAMES with fx.pause, hittable and grabbable), destroyed by the
@@ -32,9 +33,11 @@ const HEX_HALF: fixed = 0.8
 const HEX_SPEED: fixed = 0.14       // m a frame: the slowest shot
 const HEX_LIFE = 200
 const HEX_STR = 1                   // against the other shots: the wave 2, the Volt Orb its level
-const CURSE_FRAMES = 300            // 5 s of play
+const CURSE_FRAMES = 360            // 6 s of play
 const SIPHON_NUC_NUM = 1            // nuclear's damage-taken gain is siphoned at a quarter
 const SIPHON_NUC_DEN = 4
+const SIPHON_ANTI_NUM = 1           // antimatter's (the reactor and its hits) at half
+const SIPHON_ANTI_DEN = 2
 
 // ---- the Rift Mine (sp_d)
 
@@ -83,6 +86,8 @@ var sneak_t0: s32                   // the travel's first frame and its charge f
 var sneak_t1: s32
 var dive_t: s32                     // the Diving Claw's first active frame
 var shadow_in_fight: bool           // a side is Shadow (fight_init): else shadow_tick does nothing
+var siph_rem: [2]s32                // what a partial rate left over, by the cursed side (the reactor's
+                                    // +1 a frame at half is +1 every other frame)
 
 // Whether f is cursed (its gains go to the other side).
 fn shadow_cursed(f: *Fighter) -> bool { return f.curse > 0 }
@@ -127,6 +132,7 @@ fn shadow_round() {
         rift[s].on = false
         fight.f[s].curse = 0
         fight.f[s].siphoned = 0
+        siph_rem[s] = 0
     }
     for b in 0..4 { snare_t[b] = 0 }
 }
@@ -158,15 +164,28 @@ fn shadow_hexed(i: s32, j: s32, s: *Shot) {
     ev_add(Ev.Curse, i, fight.f[j].x, 8.0, 1)
 }
 
-// The Siphon: a gain of n for the cursed fighter f goes to the other side instead (meter_add).
-fn shadow_siphon(f: *Fighter, n: s32) {
+// The Siphon: a gain of n for the cursed fighter f goes to the other side instead (meter_add);
+// returns what Shadow got (a cursed Tank keeps the rest of its nuclear gain).
+fn shadow_siphon(f: *Fighter, n: s32) -> s32 {
     var s = 0
     if f == &fight.f[1] || f == &fight.f[3] { s = 1 }
     let o = &fight.f[1 - s]
-    var g = n
-    if meter_power(f.mech) == Power.Nuclear { g = n * SIPHON_NUC_NUM / SIPHON_NUC_DEN }
+    var num = 1
+    var den = 1
+    if meter_power(f.mech) == Power.Nuclear {
+        num = SIPHON_NUC_NUM
+        den = SIPHON_NUC_DEN
+    }
+    if meter_power(f.mech) == Power.Antimatter {
+        num = SIPHON_ANTI_NUM
+        den = SIPHON_ANTI_DEN
+    }
+    let t = n * num + siph_rem[s]
+    let g = t / den
+    siph_rem[s] = t % den
     o.meter = min(o.meter + g, METER_BAR)
     fight.f[s].siphoned += n
+    return g
 }
 
 // ---- each frame (fight_tick, outside the freezes)
