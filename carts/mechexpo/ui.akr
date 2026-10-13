@@ -232,7 +232,7 @@ fn ui_pips(x: s32, y: s32, n: s32, col: u32) {
     for i in 0..5 {
         var c = 0xD8CCC0
         if i < n { c = col }
-        let px = x + i * 8
+        let px = x + i * 7
         quad_fill(px + 2, y, px + 8, y, px, y + 5, px + 6, y + 5, c, BLEND_NONE)
     }
 }

@@ -367,13 +367,14 @@ private fn draw_sheet(s: s32, x0: s32) {
     // the name bar
     rect_blend(x0, 24, 152, 15, col, BLEND_NONE)
     rect_blend(x0, 38, 152, 1, 0x200C06, BLEND_SUB)
+    let who = who_label(s)
+    let tw = max(txt_w(FONT_LABEL, who) + 6, 14)
     var name = "? ? ?"
     if known {
         name = r.name
-        if txt_w(FONT_HEAD, name) > 112 { name = r.short }
+        if txt_w(FONT_HEAD, name) > 140 - tw { name = r.short }
+        if txt_w(FONT_HEAD, name) > 140 - tw { name = r.card }
     }
-    let who = who_label(s)
-    let tw = max(txt_w(FONT_LABEL, who) + 6, 14)
     if s == 0 {
         txt(FONT_HEAD, x0 + 4, 24, name, ink, ALIGN_LEFT)
         tag(x0 + 146 - tw, 26, tw, who, pc, C_WHITE)
@@ -398,8 +399,8 @@ private fn draw_sheet(s: s32, x0: s32) {
     }
     // the caption: the unit's height (and width, where it matters), or the figure's number
     if known && r.height > 0 {
-        dim_caption(px + 3, 134, "HEIGHT ", r.height)
-        if r.width > 0 { dim_caption(px + 3, 126, "WIDTH ", r.width) }
+        dim_caption(px + 3, 134, r.height, " M TALL")
+        if r.width > 0 { dim_caption(px + 3, 126, r.width, " M WIDE") }
     } else {
         let fb = sb()
         str_append(fb, 64, "FIG. ")
@@ -411,7 +412,7 @@ private fn draw_sheet(s: s32, x0: s32) {
     if known {
         draw_specs(c, ix, has_maker)
     } else {
-        txt(FONT_MICRO, ix + 3, 41, "MAKER UNDISCLOSED", C_STEEL, ALIGN_LEFT)
+        txt(FONT_MICRO, ix + 3, 41, "MAKER: ?", C_STEEL, ALIGN_LEFT)
         txt(FONT_HEAD, ix + 3, 52, "? ? ?", C_INK, ALIGN_LEFT)
         rect_blend(ix + 4, 77, 74, 1, C_SILVER, BLEND_NONE)
         draw_hint(c, ix + 4, 81)
@@ -420,14 +421,13 @@ private fn draw_sheet(s: s32, x0: s32) {
     if ok && sel_moved[s] > sel_done_t[s] { ui_shine(ix, 24, 152, 15, tick - sel_moved[s], 1000) }
 }
 
-// "HEIGHT 12.0 M" from decimetres, in the photograph's corner.
-private fn dim_caption(x: s32, y: s32, k: *u8, dm: s32) {
+// "12.0 M TALL" from decimetres, in the photograph's corner.
+private fn dim_caption(x: s32, y: s32, dm: s32, k: *u8) {
     let b = sb()
-    str_append(b, 64, k)
     str_append_int(b, 64, dm / 10, 0, false)
     str_append(b, 64, ".")
     str_append_int(b, 64, dm % 10, 0, false)
-    str_append(b, 64, " M")
+    str_append(b, 64, k)
     txt(FONT_MICRO, x, y, b, C_WHITE, ALIGN_LEFT)
 }
 
@@ -441,7 +441,7 @@ private fn draw_specs(c: s32, ix: s32, has_maker: bool) {
         ui_slot_emblem(c, ix + 55, 52, true, 0x808080)
         txt(FONT_MICRO, ix + 3, 66, mk.booth_full, C_NAVY, ALIGN_LEFT)
         ui_power_icon(mk.src, ix + 3, 78)
-        txt(FONT_MICRO, ix + 22, 76, "POWER SOURCE", C_STEEL, ALIGN_LEFT)
+        txt(FONT_MICRO, ix + 22, 76, "SOURCE", C_STEEL, ALIGN_LEFT)
         txt(FONT_MICRO, ix + 22, 84, SRC_NAMES[mk.src], C_INK, ALIGN_LEFT)
     }
     txt(FONT_HEAD, ix + 3, 52, r.model, C_INK, ALIGN_LEFT)
@@ -452,10 +452,10 @@ private fn draw_specs(c: s32, ix: s32, has_maker: bool) {
     for k in 0..4 {
         let y = 97 + k * 9
         txt(FONT_MICRO, ix + 3, y - 1, STAT_NAMES[k], C_STEEL, ALIGN_LEFT)
-        ui_pips(ix + 38, y + 1, ((r.stats >> ((3 - k) * 4)) & 15) as s32, col)
+        ui_pips(ix + 44, y + 1, ((r.stats >> ((3 - k) * 4)) & 15) as s32, col)
     }
     if !slot_has_mech(c) {
-        txt_lines(FONT_MICRO, ix + 3, 132, "UNIT IN TRANSIT:\nON SHOW LATER", 8, C_RED, ALIGN_LEFT)
+        txt_lines(FONT_MICRO, ix + 3, 132, "IN TRANSIT:\nON SHOW LATER", 8, C_RED, ALIGN_LEFT)
     } else {
         txt_lines(FONT_MICRO, ix + 3, 132, r.blurb, 8, C_INK, ALIGN_LEFT)
     }
@@ -495,7 +495,10 @@ private fn draw_schedule(x0: s32) {
         str_append(b, 64, "DAY ")
         str_append_int(b, 64, n + 1, 0, false)
         txt(FONT_MICRO, x0 + 34, y + 1, b, C_NAVY, ALIGN_LEFT)
-        if n == LADDER_N - 1 { tag(x0 + 118, y + 2, 24, "FINAL", C_RED, C_WHITE) }
+        if n == LADDER_N - 1 {
+            let fw = txt_w(FONT_LABEL, "FINAL") + 6
+            tag(x0 + 142 - fw, y + 2, fw, "FINAL", C_RED, C_WHITE)
+        }
         if ok {
             let foe = ladder_foe(me, n)
             ui_slot_emblem(mech_slot(foe), x0 + 7, y + 3, true, 0x808080)

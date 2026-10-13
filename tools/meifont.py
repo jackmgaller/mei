@@ -234,28 +234,42 @@ def _shade(a, ink, shadow, levels=None):
     return out
 
 
-def ttf_glyphs(path, size, index=0, shadow=None, track=0, first=32, count=95, mono_digits=False):
-    """Antialiased glyphs from a TrueType/OpenType font: levels 2..15 (15 full ink)."""
+def ttf_glyphs(path, size, index=0, shadow=None, track=0, first=32, count=95, mono_digits=False, crisp=False):
+    """Antialiased glyphs from a TrueType/OpenType font: levels 2..15 (15 full ink). crisp: hinted
+    one-bit glyphs instead (FreeType's monochrome rendering, every pixel level 15), which stay
+    legible when drawn tinted dark on a light ground, where an antialiased ramp darkens with the
+    tint and fills the letters in."""
     from PIL import Image, ImageDraw, ImageFont
     font = ImageFont.truetype(path, size, index=index)
     S = 4
     big = ImageFont.truetype(path, size * S, index=index)
     asc, desc = font.getmetrics()
     H = asc + desc
-    digit_adv = max(font.getlength(str(d)) for d in range(10))
+    def length(t):                      # crisp: the hinted advances, which match the hinted glyphs
+        return font.getlength(t, mode='1') if crisp else font.getlength(t)
+    digit_adv = max(length(str(d)) for d in range(10))
     out = []
     for code in range(first, first + count):
         ch = chr(code)
-        adv = font.getlength(ch)
+        adv = length(ch)
+        if crisp and ch == ' ':
+            adv = max(adv, round(size / 3))     # a hinted space can shrink to 2 px: words run together
         ox = 1.0
         if mono_digits and ch.isdigit():
             ox += (digit_adv - adv) / 2
             adv = digit_adv
         cw = int(math.ceil(adv)) + 4
-        img = Image.new('L', (cw * S, H * S), 0)
-        ImageDraw.Draw(img).text((ox * S, 0), ch, font=big, fill=255)
-        a = np.asarray(img.resize((cw, H), Image.BOX), np.float32) / 255.0
-        a = np.clip((a - 0.1) / 0.75, 0, 1)        # firm the edges up a little
+        if crisp:
+            img = Image.new('L', (cw, H), 0)
+            d = ImageDraw.Draw(img)
+            d.fontmode = '1'
+            d.text((int(round(ox)), 0), ch, font=font, fill=255)
+            a = (np.asarray(img, np.float32) > 127).astype(np.float32)
+        else:
+            img = Image.new('L', (cw * S, H * S), 0)
+            ImageDraw.Draw(img).text((ox * S, 0), ch, font=big, fill=255)
+            a = np.asarray(img.resize((cw, H), Image.BOX), np.float32) / 255.0
+            a = np.clip((a - 0.1) / 0.75, 0, 1)    # firm the edges up a little
         idx = _shade(a, 15, shadow, levels=(2, 15))
         cols = np.where(idx.any(axis=0))[0]
         if len(cols) == 0:

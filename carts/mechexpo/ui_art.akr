@@ -23,7 +23,7 @@ embed UI_SAVE_ICON: SaveMeta = "art/ui_save_icon.bin"
 embed UI_MENU_TEX: u8 = "art/ui_menu.tex"                 // slot 12
 embed UI_PRINT_TILES: u8 = "art/ui_print.tiles"           // BG0 in the menus (ATLAS_2)
 
-const UI_FONTS_BYTES = 27520
+const UI_FONTS_BYTES = 26240
 const UI_SPRITES_BYTES = 17408
 const UI_FX_BYTES = 6144
 const UI_HUD_TILES_BYTES = 3072

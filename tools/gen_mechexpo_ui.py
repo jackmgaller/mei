@@ -5,9 +5,11 @@ stamps and lanyard strap, and the save icon.
 
 Writes, in carts/mechexpo/:
   art/ui_font_*.fnt      proportional fonts (stdlib font.akr blobs) in texture slot 8, palette 251:
-                         title (Figtree Black Italic 26, capitals), head (Figtree Black Italic 14),
-                         label (Sofia Sans Condensed SemiBold 12), num (Figtree Black Italic 22,
-                         digits and ':' for the timer)
+                         title (Figtree Black Italic 26, capitals), head (Figtree Black Italic 14,
+                         crisp), label (Figtree Bold 10, crisp), num (Figtree Black Italic 22,
+                         digits and ':' for the timer). Crisp: hinted one-bit glyphs, legible
+                         when tinted dark on the menus' paper, where an antialiased ramp darkens
+                         with the tint and fills the letters in
   art/ui_fonts.tex       slot 8's texels (the fonts' rows)
   art/ui_sprites.tex     slot 9: the logo, the makers' emblems (32 and 24 px), the five meter
                          icons, the "?" card, the round pips, the UAPC's roundel (UI_* rectangles
@@ -20,8 +22,8 @@ Writes, in carts/mechexpo/:
   art/ui_palettes.pal    palettes 250-254 (HUD, fonts, logo, emblems, effects), then the page's
                          palette (loaded into 244 while a menu shows; the hall's is put back),
                          then 196's (PAL_POWER: Raiko, Heartland and Binary Mechanica)
-  art/ui_menu.tex        slot 12: the small fonts (ui_font_micro.fnt, Sofia Sans Condensed
-                         SemiBold 10; ui_font_serif.fnt, Gelasio Bold Italic 12; palette 251),
+  art/ui_menu.tex        slot 12: the small fonts (ui_font_micro.fnt, Figtree Bold 9,
+                         crisp; ui_font_serif.fnt, Gelasio Bold Italic 12; palette 251),
                          the rubber stamps and the lanyard strap (white, tinted, palette 254)
   art/ui_print.tiles     BG0 in the menus (ATLAS_2): the print layer's tiles over a 15-shade
                          ramp that menus.akr writes into palettes 197-199
@@ -139,9 +141,9 @@ class Sheet:
 
 # ---- fonts
 
-def ttf_font(path, size, keep=None, mono_digits=False, track=0):
+def ttf_font(path, size, keep=None, mono_digits=False, track=0, crisp=False):
     glyphs, h, line = meifont.ttf_glyphs(path, size, first=32, count=95, mono_digits=mono_digits,
-                                         track=track)
+                                         track=track, crisp=crisp)
     if keep is not None:
         glyphs = [(img, adv) if chr(32 + i) in keep else (None, adv) for i, (img, adv) in enumerate(glyphs)]
     top, bot = h, 0
@@ -667,9 +669,9 @@ def main():
     caps = set('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !.-?\'/:&')
     g, h, line = ttf_font(F_BLACK, 26, keep=caps, track=1)
     place_font(fs, g, h, line, 'title', akr)
-    g, h, line = ttf_font(F_BLACK, 14, track=0)
+    g, h, line = ttf_font(F_BLACK, 14, track=0, crisp=True)
     place_font(fs, g, h, line, 'head', akr)
-    g, h, line = ttf_font(F_COND, 12)
+    g, h, line = ttf_font(F_BOLD, 10, crisp=True)
     place_font(fs, g, h, line, 'label', akr)
     g, h, line = ttf_font(F_BLACK, 22, keep=set('0123456789:'), mono_digits=True)
     place_font(fs, g, h, line, 'num', akr)
@@ -704,7 +706,7 @@ def main():
 
     # slot 12 (mx-menus): the small fonts, the stamps and the lanyard strap
     ms = Sheet(SLOT_MENU)
-    g, h, line = ttf_font(F_COND, 10)
+    g, h, line = ttf_font(F_BOLD, 9, crisp=True)
     place_font(ms, g, h, line, 'micro', akr)
     g, h, line = ttf_font(F_SERIF, 12)
     place_font(ms, g, h, line, 'serif', akr)
