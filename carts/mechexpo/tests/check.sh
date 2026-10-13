@@ -4,7 +4,9 @@
 # block, 5 grab breaks, 6 and 7 the chains, 8 the kinetic super, 9 the antimatter super and its
 # debt, 10 CPU against CPU twice (the same match), 11 the separation limit and the walls, 12 the
 # Parry and the anti-air, 13 the ladder's levels, 18 the Vault Throw, 15 training, 14 the budget
-# with both mechs drawn. MEIC and RUN as in tools/cart_scenario.sh.
+# with both mechs drawn; 50-54 the effects through the whole game (tests/fx/harness.akr: hits by
+# weight, the kinetic super and a KO, the Void Step and the antimatter super, the waves, CPU
+# against CPU), each with the effects' peak cost. MEIC and RUN as in tools/cart_scenario.sh.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 O="$HERE/out/check"
@@ -58,4 +60,9 @@ run 46 300
 run 47 340
 run 48 2000
 run 49 1800
+run 50 330
+run 51 210
+run 52 210
+run 53 390
+run 54 1810
 echo "all Mech Expo fight checks passed"

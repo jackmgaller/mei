@@ -242,6 +242,7 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_mechexpo_stage.py` | `carts/mechexpo/art/stage_*` and `stage_art.akr`: Mech Expo's hall (BG1) and floor (BG2) (`--preview DIR`) |
 | `gen_mechexpo_ui.py` | `carts/mechexpo/art/ui_*` and `ui_art.akr`: Mech Expo's fonts, sprites, effects, HUD frame, menu page, palettes and save icon (`--preview DIR`) |
 | `gen_mechexpo_audio.py` | `carts/mechexpo/audio/` and `carts/mechexpo/mu_data.akr`: Mech Expo's music and sound effects (`--preview DIR`: a WAV of each piece) |
+| `gen_mechexpo_fx.py` | `carts/mechexpo/art/fx_particles.tex`, `fx_particles.pal` and `fx_art.akr`: Mech Expo's particle sprites (texture slot 11, 4-bit palette 192) (`--preview DIR`) |
 | `fonts/make_fonts.py` | `tools/fonts/`: the generators' fonts as static weights cut to Latin, kana and the kanji in its `KANJI` list, and their licences (`OFL-*.txt`) |
 | `meinet/make_fixture.sh` | `tests/lang/data/broadcast.bin`, the canned broadcast the language tests replay (`meinet.py --fixture`) |
 | `carts/garden/shrinetown/art/water/draw_water.py` | The shrine town's water textures in `art/water/`: `water.png`, `pond_water.png`, `falls.png`, `water_ramps.akr` |

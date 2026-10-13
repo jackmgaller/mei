@@ -177,9 +177,12 @@ in `fighter.akr` carries both the Hero's wave and Beam's orb (`Shot.lvl`, `str`,
   the menu page; texture slots 8 (fonts), 9 (UI sprites), 10 (effects); palettes 240–254 (244 is
   lent to the menu page and the hall's put back); a backdrop table at 0x582000; line channels 0,
   2 and 7. Priorities: BG2 0, BG1 1, the mechs 2, BG0 (the HUD's frame) 3, the interface list 4.
-- **Palettes, as built with Beam:** the pack's 4-bit palettes are 0–11 and its texture palettes
-  colours 192–255, so it fills 8-bit palette 0 (4-bit palettes 0–15); a fourth mech takes it past
-  15.
+- **Palettes, as built with Beam and Tank:** the pack's 4-bit palettes are 0–17 (its surface,
+  emissive and texture palettes), counting up from 0; its 8-bit palettes would come down from 14.
+- **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
+  (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. A pool of 80 particles,
+  at most 52 spawned a frame; at their busiest (scenarios 50–54) about 75,000 CPU cycles a frame
+  in a release build.
 - **Triangles:** a mech about 1,600–1,800 (the sketches are 1,632 and 1,734); the frame limit is
   4,000.
 - **Budgets a tick:** CPU 1,000,000 cycles, GPU 2,000,000 (`mei-headless --gpu-stats`). The

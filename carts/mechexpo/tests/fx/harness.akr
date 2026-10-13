@@ -1,0 +1,209 @@
+// Mech Expo 2000's effects scenarios (mx-fx's): the real game (game.akr: the hangar, the camera,
+// the mechs, fx.akr and the HUD), driven through its test hooks (input_pad, test_init,
+// test_hook), each staging one of the fight's busiest moments for the effects. tests/run.sh
+// builds scenarios 50-54 from this file and ../../game.akr; tests/check.sh runs them. Each
+// prints the effects' peak cost (CPU cycles a frame: fx_event, fx_update and the drawing) and
+// the frames' peak CPU and GPU, and asserts they stay inside the budgets. SEQ="N FROM" with
+// run.sh saves the frames of a burst.
+//
+// 50  hits by weight: the Hero's chain on the Double-blade Hero (light, medium, heavy with a
+//     knockdown), a blocked Charge Slash (the shield flash, chip), a grab and its throw's landing
+// 51  the worst case: two Heroes close up, side 2's wave out, side 1's Momentum Drive (the
+//     kinetic charge-up during the flash, the trails, the crushing hit and the KO)
+// 52  antimatter: the Double-blade Hero's Void Step (vanish and reappear), then the Antimatter
+//     Rend's charge-up and its blocked hit on the Hero (the shield flash at super power)
+// 53  the waves: two waves cancelling, a blocked wave, a wave that hits
+// 54  the budget: CPU against CPU (level 2) for 1,800 frames through the real game, effects on
+
+var fr: s32                       // frames since the fight started
+var peak_fx: s32
+var peak_fx_at: s32
+var peak_upd: s32                  // fx_event + fx_update, their peak
+var peak_draw: s32                 // the drawing's peak
+var peak_cpu: s32
+var peak_gpu: s32
+var hits: [2]s32                  // Hit events by attacker
+var evn: [len(Ev)]s32
+var next_press: s32
+var started: bool
+
+const EVN: [len(Ev)]*u8 = [
+    "Hit", "Block", "Chip", "Whiff", "Grab", "Throw", "Break", "Land", "Step", "MeterFull",
+    "Super", "Ko", "TimeUp", "Shot", "Parry", "Clash", "Swing", "Armour",
+]
+
+fn test_init() {
+    game = Game.Versus
+    p_cpu = false
+    match SCENARIO {
+        50 => { p_mech[0] = Mech.Hero; p_mech[1] = Mech.Doubleblade }
+        51 => { p_mech[0] = Mech.Hero; p_mech[1] = Mech.Hero }
+        52 => { p_mech[0] = Mech.Doubleblade; p_mech[1] = Mech.Hero }
+        53 => { p_mech[0] = Mech.Hero; p_mech[1] = Mech.Hero }
+        54 => { p_mech[0] = Mech.Hero; p_mech[1] = Mech.Doubleblade }
+        else => {}
+    }
+    enter_fight()
+    if SCENARIO != 54 {
+        fight.phase = Phase.Fight
+        fight.phase_t = 100              // past the FIGHT! banner
+        set_mv(0, Mv.idle)
+        set_mv(1, Mv.idle)
+    }
+    match SCENARIO {
+        50 => fxt_place(-3.0, 3.0)
+        51 => {
+            fxt_place(-5.5, 5.5)
+            fight.f[0].meter = METER_BAR
+            fight.f[1].health = 200
+        }
+        52 => fxt_place(-14.0, 4.0)
+        53 => fxt_place(-12.0, 12.0)
+        else => {}
+    }
+    cam_reset(fight.f[0].x, fight.f[1].x)
+}
+
+private fn fxt_place(x0: fixed, x1: fixed) {
+    fight.f[0].x = x0
+    fight.f[1].x = x1
+}
+
+private fn fxt_fwd(i: s32) -> u32 {
+    if fight.f[i].facing > 0 { return RIGHT }
+    return LEFT
+}
+
+fn input_stick(n: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+fn input_pad(n: s32) -> u32 {
+    if SCENARIO == 54 {
+        if st != St.Fight { return 0 }
+        return cpu_pad(n, 2)
+    }
+    let t = fr + 1                         // the fight frame that will read the press
+    match SCENARIO {
+        50 => {
+            if n == 0 {
+                if t == 5 { return A }
+                if t == next_press && hits[0] == 1 { return fxt_fwd(0) | A }
+                if t == next_press && hits[0] == 2 { return fxt_fwd(0) | B }
+                if t == 150 { return fxt_fwd(0) | B }
+                if t == 240 { return Y }
+            } else {
+                if t >= 140 && t < 200 { return R }
+            }
+        }
+        51 => {
+            if n == 1 && t == 4 { return B }
+            if n == 0 && t == 24 { return A | B }
+        }
+        52 => {
+            if n == 0 && t == 5 { return B }
+            if n == 0 && t == 50 { return A | B }
+            if n == 1 && t >= 40 { return R }
+        }
+        53 => {
+            if t == 5 { return B }
+            if n == 0 && (t == 90 || t == 230) { return B }
+            if n == 1 && t >= 80 && t < 220 { return R }
+        }
+        else => {}
+    }
+    return 0
+}
+
+fn test_hook() {
+    if st != St.Fight { return }
+    if started {
+        // the last frame's costs (prof_fx is the drawing's, fx_cycles the events' and update's)
+        let c = prof_fx + fx_cycles
+        peak_upd = max(peak_upd, fx_cycles)
+        peak_draw = max(peak_draw, prof_fx)
+        if c > peak_fx {
+            peak_fx = c
+            peak_fx_at = fr
+        }
+        if fr > 3 {
+            peak_cpu = max(peak_cpu, cpu_used())
+            peak_gpu = max(peak_gpu, gpu_used())
+        }
+    }
+    started = true
+    let ev = fight_events()
+    for i in 0..ev.n {
+        let e = &ev.e[i]
+        evn[e.kind] += 1
+        if SCENARIO != 54 {
+            print("  event ")
+            print(EVN[e.kind])
+            print(" side ")
+            print_int(e.side)
+            print(" power ")
+            print_int(e.power)
+            print(" at tick ")
+            print_int(frame() as s32 - 1)
+            println("")
+        }
+        if e.kind == Ev.Hit && (e.side == 0 || e.side == 1) {
+            hits[e.side] += 1
+            next_press = fr + 7
+        }
+    }
+    fr += 1
+    if fr == fxt_end() { fxt_report() }
+}
+
+private fn fxt_end() -> s32 {
+    match SCENARIO {
+        50 => return 320
+        51 => return 200
+        52 => return 200
+        53 => return 380
+        54 => return 1800
+        else => {}
+    }
+    return 100
+}
+
+private fn fxt_report() {
+    print("peak effects ")
+    print_int(peak_fx)
+    print(" cycles (frame ")
+    print_int(peak_fx_at)
+    print(": events and update ")
+    print_int(peak_upd)
+    print(", drawing ")
+    print_int(peak_draw)
+    print("), particles at most ")
+    print_int(fx_peak_n)
+    print(", spawned ")
+    print_int(fx_spawned)
+    print(", peak cpu ")
+    print_int(peak_cpu)
+    print(", gpu ")
+    print_int(peak_gpu)
+    println("")
+    assert(peak_cpu <= CPU_BUDGET, "over the CPU budget")
+    assert(peak_gpu <= GPU_BUDGET, "over the GPU budget")
+    match SCENARIO {
+        50 => {
+            assert(evn[Ev.Hit] >= 3 && evn[Ev.Block] >= 1 && evn[Ev.Throw] == 1, "the chain, the block or the throw did not happen")
+            println("OK hits by weight")
+        }
+        51 => {
+            assert(evn[Ev.Super] == 1 && evn[Ev.Ko] == 1, "no super or no KO")
+            println("OK the kinetic super, the wave and the KO")
+        }
+        52 => {
+            assert(evn[Ev.Super] == 1 && evn[Ev.Block] >= 1, "no super or it was not blocked")
+            println("OK the Void Step and the antimatter super")
+        }
+        53 => {
+            assert(evn[Ev.Clash] == 1 && evn[Ev.Block] >= 1 && evn[Ev.Hit] >= 1, "the waves did not clash, get blocked and hit")
+            println("OK the waves")
+        }
+        54 => println("OK the effects' budget, CPU against CPU")
+        else => {}
+    }
+}
