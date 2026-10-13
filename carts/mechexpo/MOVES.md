@@ -1339,7 +1339,7 @@ impatience from far (the Sneak). Its weaknesses are plain: the lowest health (90
 apart from the Lunging Claw, a bolt that loses to the wave and a charged orb, and specials that
 are very punishable when read. The curse is its meter plan: antimatter lets it spend first and
 the Siphon pays the debt back. Against Tank it wants the mine (the Bulldozer and the Clinch's
-dash set it off) and the curse (half of the nuclear meter); against the Twins the curse forces
+dash set it off) and the curse (a quarter of the nuclear meter); against the Twins the curse forces
 them to stay split; against Beam the curse steals the reaction and the Sneak goes under the orbs.
 
 ### Reactions and the rest (Shadow)
@@ -1445,6 +1445,61 @@ Void Step's gone frames, 7–18).
   a time, a snare of about half a second, a hit destroys it), Shadow Sneak (holding B sends the
   shadow farther), Eclipse Rise (the anti-air), Phantom Grip (the side swap), Total Eclipse (the
   stage dark, a multi-hit with afterimages). Afterimages are visual only.
+
+## Balance patch (2026-10-13)
+
+Measured with `tests/balance/matrix.sh` (CPU level 2 against level 2, every pairing, the sides
+swapped every match, `table.py` prints the win rates and why), on the hangar, with Shadow fully
+animated. Before: across 60 matches a pairing (seeds 1 and 2) the Hero won 83 % overall and the
+Twins 20 %; the Hero beat Beam 95 % and Shadow 87 %, and the Twins beat no one more than 37 %.
+After: across 150 matches a pairing (seeds 1 to 5) every mech won 47-55 % overall and every
+pairing came out between 34 % and 66 %. The last two changes (the Siphon's antimatter and
+nuclear shares) were measured only on the Shadow pairings. A single run of 30 matches is ±9 %
+of noise, so one seed alone still puts a few pairings outside 35-65 %.
+
+**The CPU** (`cpu.akr`; mostly blind spots that made a mech lose a matchup by playing it badly):
+
+- Chains on a blocked hit go on half as often, and only a hit that landed is cancelled into the
+  super. Before, the CPU always threw its punishable special (or its super) after a blocked hit.
+  This was the biggest single change.
+- It keeps off the other's Rift Mine once it is about to arm: it clears the mine with its down
+  attack (the Hero with its wave), jumps it or waits, and a chain's dash or slide never ends on it.
+- A shot coming is reacted to even mid-walk. The wave is blocked while it is far and jumped only
+  once it is close. A shot above the floor (the orb, the bolt) is blocked or gone under: the Void
+  Step, Shadow Sneak, the split Twins' Low Roll, the Hero's wave against a tap orb or a bolt,
+  Beam's charged orb.
+- Beam fires orbs only from outside the other's poke, walks back only while there is room behind
+  it, and answers a far wave with a charged orb. Every CPU punishes with its jab out to the jab's
+  own reach (Beam's Arc Jab reaches 9 m).
+- Shadow ends its chain with the Hex Bolt (MOVES.md's chain) instead of the Sneak. It fires no
+  bolt in neutral inside the other's poke or at a mech with a stronger shot (the Hero, Beam), and
+  against those it lays a mine only while they are down.
+- The Twins, cursed, stay split until the curse ends and split from combined only when that is
+  safe; they roll under long pokes more often.
+- Tank blocks a super it sees coming instead of meeting it with armour.
+
+**The numbers:**
+
+| What | Was | Now | Why |
+|---|---|---|---|
+| The Hero's Tip Thrust | 120 | 100 | The Tip Thrust into Charge Slash at 9-11 m decided most of the Hero's matches |
+| The Hero's Charge Slash | 130, chip 26 | 95, chip 19 | The same |
+| Kinetic meter, a landed hit | 150 | 125 | The Hero's super came about every eight hits and landed almost every time |
+| The Double-blade Hero's Twin Cut / Cross Lunge / Charge Slash | 60 / 100 / 110 (chip 22) | 65 / 110 / 120 (chip 24) | It lost to everyone but the Twins |
+| Beam's Static Lance | 110 | 100 | Beam's mid range beat the rushdown mechs |
+| Beam's Arc Lance | 100, chip 20 | 85, chip 17 | The same |
+| Tank's health | 1,100 | 1,150 | Supers and combos landed on it at will |
+| Tank's Piston Haymaker | 140 | 150 | The same |
+| Nuclear meter | 5 for every 2 damage (a bar per 480) | 3 for every point (a bar per 400) | Tank's comeback came too late |
+| The split Twins: Bit Jab, Byte Kick, Low Bit, Drop Kick | 40, 60, 55, 50 | 50, 76, 68, 60 | Each twin's hit was too light to win a round |
+| Pulse Spin, Dash Kick, Rising Kick, Tag Toss | 45, 80, 70, 100 | 56, 100, 88, 120 (chip 11, 20, 18) | The same |
+| Fusion meter, combined | +1 a frame | +2 a frame (a bar in 10 s) | The Twins' super came about once in three rounds |
+| Shadow's Claw Jab / Lunging Claw | 45 / 100 | 50 / 105 | It lost to the Hero and Beam once its mine and bolt were played sensibly |
+| The Siphon on antimatter | all | half | The cursed Double-blade Hero's reactor fed Shadow's supers |
+| The Siphon on nuclear | half, Tank kept none | a quarter, Tank keeps the rest | Tank's comeback meter was frozen whenever it was cursed |
+
+Unchanged: every frame timing, box, root motion and mark; the curse's 6 s, the snare and the
+health of the Double-blade Hero and Shadow (the owner's decisions).
 
 ## Open questions
 
