@@ -237,39 +237,39 @@ const AK_MOVES: [264]AnimMove = [
     AnimMove { len: 56, flags: 2, frames: 7487796, box_first: 7521844, boxes: 7521960, marks: 7534280, root: 7534504 },   // twin_b thrown_slam
     AnimMove { len: 36, flags: 0, frames: 7534952, box_first: 7556840, boxes: 7556916, marks: 7564836, root: 7564980 },   // twin_b combine
     AnimMove { len: 30, flags: 0, frames: 7565268, box_first: 7583508, boxes: 7583572, marks: 7590172, root: 7590292 },   // twin_b split
-    AnimMove { len: 60, flags: 5, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow idle (stand-in)
-    AnimMove { len: 60, flags: 5, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow walk_f (stand-in)
-    AnimMove { len: 60, flags: 5, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow walk_b (stand-in)
-    AnimMove { len: 60, flags: 5, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow crouch (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow jump (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow land (stand-in)
-    AnimMove { len: 60, flags: 5, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow block (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow hit_high (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow hit_low (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow hit_air (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow knockdown (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow getup (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow ko (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow win (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow intro (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow atk_n (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow atk_f (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow atk_d (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow atk_air (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow sp_n (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow sp_f (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow sp_u (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow sp_d (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow grab (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow grab_whiff (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow throw (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow thrown (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow grab_break (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow super (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow thrown_vault (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow thrown_slam (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow combine (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow split (stand-in)
+    AnimMove { len: 60, flags: 1, frames: 7590532, box_first: 7627012, boxes: 7627136, marks: 7642736, root: 7642976 },   // shadow idle
+    AnimMove { len: 44, flags: 1, frames: 7643456, box_first: 7670208, boxes: 7670300, marks: 7681740, root: 7681916 },   // shadow walk_f
+    AnimMove { len: 44, flags: 1, frames: 7682268, box_first: 7709020, boxes: 7709112, marks: 7720552, root: 7720728 },   // shadow walk_b
+    AnimMove { len: 8, flags: 0, frames: 7721080, box_first: 7725944, boxes: 7725964, marks: 7728044, root: 7728076 },   // shadow crouch
+    AnimMove { len: 40, flags: 2, frames: 7728140, box_first: 7752460, boxes: 7752544, marks: 7762944, root: 7763104 },   // shadow jump
+    AnimMove { len: 8, flags: 0, frames: 7763424, box_first: 7768288, boxes: 7768308, marks: 7770388, root: 7770420 },   // shadow land
+    AnimMove { len: 4, flags: 0, frames: 7770484, box_first: 7772916, boxes: 7772928, marks: 7773968, root: 7773984 },   // shadow block
+    AnimMove { len: 20, flags: 0, frames: 7774016, box_first: 7786176, boxes: 7786220, marks: 7791420, root: 7791500 },   // shadow hit_high
+    AnimMove { len: 20, flags: 0, frames: 7791660, box_first: 7803820, boxes: 7803864, marks: 7809064, root: 7809144 },   // shadow hit_low
+    AnimMove { len: 30, flags: 2, frames: 7809304, box_first: 7827544, boxes: 7827608, marks: 7835408, root: 7835528 },   // shadow hit_air
+    AnimMove { len: 32, flags: 0, frames: 7835768, box_first: 7855224, boxes: 7855292, marks: 7863612, root: 7863740 },   // shadow knockdown
+    AnimMove { len: 20, flags: 0, frames: 7863996, box_first: 7876156, boxes: 7876200, marks: 7881400, root: 7881480 },   // shadow getup
+    AnimMove { len: 90, flags: 0, frames: 7881640, box_first: 7936360, boxes: 7936544, marks: 7959944, root: 7960304 },   // shadow ko
+    AnimMove { len: 120, flags: 0, frames: 7961024, box_first: 8033984, boxes: 8034228, marks: 8065428, root: 8065908 },   // shadow win
+    AnimMove { len: 90, flags: 0, frames: 8066868, box_first: 8121588, boxes: 8121772, marks: 8145172, root: 8145532 },   // shadow intro
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow atk_n (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow atk_f (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow atk_d (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow atk_air (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow sp_n (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow sp_f (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow sp_u (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow sp_d (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow grab (stand-in)
+    AnimMove { len: 22, flags: 0, frames: 8199176, box_first: 8212552, boxes: 8212600, marks: 8218320, root: 8218408 },   // shadow grab_whiff
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow throw (stand-in)
+    AnimMove { len: 44, flags: 2, frames: 8218584, box_first: 8245336, boxes: 8245428, marks: 8256868, root: 8257044 },   // shadow thrown
+    AnimMove { len: 20, flags: 0, frames: 8257396, box_first: 8269556, boxes: 8269600, marks: 8274800, root: 8274880 },   // shadow grab_break
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow super (stand-in)
+    AnimMove { len: 40, flags: 2, frames: 8275040, box_first: 8299360, boxes: 8299444, marks: 8309844, root: 8310004 },   // shadow thrown_vault
+    AnimMove { len: 56, flags: 2, frames: 8310324, box_first: 8344372, boxes: 8344488, marks: 8359048, root: 8359272 },   // shadow thrown_slam
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow combine (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 8146252, box_first: 8182732, boxes: 8182856, marks: 8198456, root: 8198696 },   // shadow split (stand-in)
 ]
 
 // each mech's part meshes in anim.akr's Part order (null: no mesh)
