@@ -274,6 +274,8 @@ private fn check_hangar() {
         assert(s.props[0].mesh == ASSET_HANGAR_WALL_R && s.props[0].x == 36.0, "the right wall")
         assert(s.props[1].mesh == ASSET_HANGAR_WALL_L && s.props[1].x == -36.0, "the left wall")
         assert_eq(s.nevents, 0, "the hangar has events")
+        assert_eq(s.ncity, 0, "the hangar has a city")
+        assert(s.art.dark == 0x26 && s.art.clip_far == 300.0, "the hangar's layers and clip")
     }
     no_ring_out()
     let d = &fight.f[1]
@@ -513,6 +515,11 @@ private fn check_view(at: s32, gap: fixed) {
     no_ring_out()
     if fr == at {
         assert_eq(fight.stage, ST_ROOFTOP, "not the rooftop")
+        let s = stage_now()
+        assert(s.ncity > 0 && s.art.dark & 8 != 0, "the rooftop's city (PL) is not in its layers")
+        assert_eq(s.art.prio >> 24 & 15, 1, "the city's layer (PL) is not behind the deck")
+        assert(s.art.prio >> 16 & 15 > s.art.prio >> 24 & 15, "the deck (BG2) is not in front of the city")
+        assert(s.art.prio >> 28 & 15 > s.art.prio >> 24 & 15, "the mechs (PH) are not in front of the city")
         assert(abs(fight.f[1].x - fight.f[0].x) > gap - 0.5, "the mechs moved")
         print("stages view: the mechs ")
         print_fixed(fight.f[1].x - fight.f[0].x)

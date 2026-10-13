@@ -245,7 +245,7 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_mechexpo_ui.py` | `carts/mechexpo/art/ui_*` and `ui_art.akr`: Mech Expo's fonts, sprites, effects, HUD frame, menu page, palettes and save icon (`--preview DIR`) |
 | `gen_mechexpo_audio.py` | `carts/mechexpo/audio/` (`music.adp`, `sfx.adp`) and `carts/mechexpo/mu_data.akr`: Mech Expo's music, its sound effects and their loops (`--preview DIR`: a WAV of each piece and each sound) |
 | `gen_mechexpo_fx.py` | `carts/mechexpo/art/fx_particles.tex`, `fx_particles.pal` and `fx_art.akr`: Mech Expo's particle sprites (texture slot 11, 4-bit palette 192) (`--preview DIR`) |
-| `gen_mechexpo_rooftop.py` | `carts/mechexpo/art/stage_roof_*` and `roof_art.akr`: Mech Expo's rooftop stage (the city on BG1, the roof deck on BG2); runs `props/rooftop/make_rooftop.py` and packs its props into `art/stage_roof_*` and `roof_props.akr` (texture slot 13, 4-bit palettes 200-203) (`--preview DIR`) |
+| `gen_mechexpo_rooftop.py` | `carts/mechexpo/art/stage_roof_*` and `roof_art.akr`: Mech Expo's rooftop stage (the horizon on BG1, the roof deck on BG2); runs `props/rooftop/make_rooftop.py` and packs its props into `art/stage_roof_*` and `roof_props.akr` (texture slot 13, 4-bit palettes 200-203); runs `props/rooftop_city/make_city.py` and packs the city into `art/stage_roof_city_*`, `art/stage_roof_city3d.*` and `roof_city3d.akr` (texture slot 14, palettes 204-211) (`--preview DIR`) |
 | `fonts/make_fonts.py` | `tools/fonts/`: the generators' fonts as static weights cut to Latin, kana and the kanji in its `KANJI` list, and their licences (`OFL-*.txt`) |
 | `meinet/make_fixture.sh` | `tests/lang/data/broadcast.bin`, the canned broadcast the language tests replay (`meinet.py --fixture`) |
 | `carts/garden/shrinetown/art/water/draw_water.py` | The shrine town's water textures in `art/water/`: `water.png`, `pond_water.png`, `falls.png`, `water_ramps.akr` |
@@ -268,8 +268,9 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/mechexpo/models/hangar_wall/make_hangar_wall.py` | `hangar_wall_r.asset.json`, `hangar_wall_l.asset.json`, `art/wall_sign.png`, `cameras.json` |
 | `carts/mechexpo/models/expo_banner/make_expo_banner.py` | `expo_banner.asset.json`, `art/banner_expo.png`, `art/banner_2000.png`, `cameras.json` |
 | `carts/mechexpo/props/rooftop/make_rooftop.py` | The rooftop's props: `roof_stairwell.asset.json`, `roof_parapet.asset.json`, `roof_kerb.asset.json`, `art/stair_door.png`, `art/stair_sign.png`, `cameras.json` (`gen_mechexpo_rooftop.py` runs it) |
+| `carts/mechexpo/props/rooftop_city/make_city.py` | The rooftop's city in polygons: `city_near`, `city_mid`, `city_umeda`, `city_lattice`, `city_hep` and `city_street` (`.asset.json`), the textures `art/city_*.png` (the windows by rank, kind and side; the wheel; the street) and `cameras.json` (`gen_mechexpo_rooftop.py` runs it) |
 
-The last nineteen are run by their path from the repository root, not as `tools/NAME.py`; the
+The last twenty are run by their path from the repository root, not as `tools/NAME.py`; the
 garden's two audio generators share `carts/garden/audio/garden_dsp.py`, and Mech Expo's models
 `carts/mechexpo/models/hero/mxpaint.py`, which write nothing.
 

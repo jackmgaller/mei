@@ -3,16 +3,20 @@
 
 The expo's tower in Osaka, 2000, at the blue hour: the fight is on its roof deck, the city
 below. The stairwell's housing closes the stage at x = -ROOF_HALF (a polygon prop,
-carts/mechexpo/models/rooftop/); at x = +ROOF_HALF the deck ends at a hazard-striped lip and
-drops to the street (the open edge: ring-outs, carts/mechexpo/MOVES.md).
+carts/mechexpo/props/rooftop/); at x = +ROOF_HALF the deck ends at a hazard-striped lip and
+drops to the street (the open edge: ring-outs, carts/mechexpo/MOVES.md). The city itself is
+in polygons (carts/mechexpo/props/rooftop_city/make_city.py: its buildings, landmarks and
+street); this script packs them (into texture slot 14 and palettes 204 up) and paints what is
+too far to have sides: the horizon's haze, a low skyline and the far city's lights on BG1.
 
 Writes, in carts/mechexpo/:
-  art/stage_roof_city.tiles  4-bit atlas of 8x8 tiles (ATLAS_1): the city behind the fight
+  art/stage_roof_city.tiles  4-bit atlas of 8x8 tiles (ATLAS_1): the horizon behind the city
   art/stage_roof_city.map    BG1 map, 64 x 32 entries (512 x 256 pixels); art row CITY_LINE sits
-                             on the deck's far edge (z = DECK_FAR) on screen. Above it: the
-                             skyline against the sky (the backdrop's gradient shows through)
-                             and the far city's lights down to the horizon; below it, the city
-                             at the tower's foot, seen only past the open edge
+                             on the deck's far edge (z = DECK_FAR) on screen. Above it: a low
+                             skyline in the haze against the sky (the backdrop's gradient shows
+                             through) and the far city's lights down to the horizon; below it,
+                             a dark carpet of street lights, seen only past the open edge where
+                             the polygons' ground (330 m deep) does not reach
   art/stage_roof_city.pal    its palettes (CITY_PALS x 16 colours, 15-bit), from PAL_HALL (244)
   art/stage_roof_deck.tiles  4-bit atlas of 8x8 tiles (ATLAS_0): the roof deck
   art/stage_roof_deck.map    BG2 map, 128 x 128 entries: DECK_S texels a metre, world (0, 0) at
@@ -20,13 +24,19 @@ Writes, in carts/mechexpo/:
                              edge, the far edge), so the city shows there
   art/stage_roof_deck.pal    its palettes (DECK_PALS x 16 colours), from PAL_FLOOR (240)
   roof_art.akr               the embeds and the constants stages.akr's rooftop row reads (the
-                             half-width, the deck's far edge, the parallax bands, the sky)
+                             half-width, the deck's far edge, the parallax bands, the sky, the
+                             layer priorities and the camera's far plane)
+  art/stage_roof_city_*.bin, art/stage_roof_city3d.*, roof_city3d.akr
+                             the city in polygons, packed from props/rooftop_city/ (below)
 
-The city (BG1), back to front: the skyline in blue-grey silhouettes with sparse warm windows and
-red aircraft lights (the Umeda Sky Building's twin towers and their floating garden, a lattice
-tower with a lit crown, HEP's red Ferris wheel on a roof), the far city's lights down to the
-horizon, and below the deck's level the streets at the foot of the tower: rooftops, an avenue's
-headlights and tail lights, a few neon signs. The deck (BG2): grey-blue concrete pavers, the
+The horizon (BG1), back to front: a low skyline in the haze with a few pale windows, the glow
+along the horizon, the far city's lights down to the deck's far edge, and below it a dark carpet
+of the street's lights. The city in front of it is polygons (props/rooftop_city/make_city.py):
+three ranks of buildings (the near one 48-66 m behind the fight plane, the middle one 100-150 m,
+with the landmarks: the Umeda Sky Building's twin towers and floating garden, a lattice tower
+with a lit crown, HEP's red Ferris wheel on a department store) and the street below the deck,
+past the open edge. Layers: the city is PL, behind the deck (BG2) and in front of BG1; the
+props and the mechs are PH (PRIO below; stage.akr's stage_props()). The deck (BG2): grey-blue concrete pavers, the
 floodlit showcase lane, the helipad (a yellow ring and a white H), the trial's lettering, the
 1P / 2P start marks at x = -+9, the yellow and black hazard band along the open edge and a dark
 gutter at the far edge. The stage stays cooler and quieter than the mechs (STYLE.md).
@@ -64,11 +74,21 @@ DECK_S = 8              # texels a metre
 DECK_N = 128            # map entries a side
 DECK_C = 512            # the texel of world 0
 DECK_VIEW = 100.0       # the floor's rows out to this view depth (the deck ends nearer)
+# the layers (PLN_PRIO nibbles: BG0 3 and its priority tiles 3, BG1 0, BG2 2, PL 1, PH 4): the city
+# in polygons is PL, behind the deck (BG2) and in front of the haze (BG1); the props and the mechs
+# are PH (stage.akr's stage_props()), in front of the deck and the HUD's frame
+PRIO = 0x41220033
+CLIP_FAR = 400.0        # the camera's far plane: the street's ground runs 330 m back (view depth 361)
 # the polygon props (props/rooftop/): their recipes, and where their pack goes
 PROPS = ['roof_stairwell', 'roof_parapet', 'roof_kerb']
 PROPS_PACK = 'stage_roof_props'
 PROPS_SLOT = 13         # D's free texture slot (README: D 8-14; 13 was unused)
 PROPS_PALETTE = 200     # 4-bit palettes from 200 (the models' pack counts up from 0)
+# the city in polygons (props/rooftop_city/make_city.py): its recipes, and where its pack goes
+CITY3D = ['city_near', 'city_mid', 'city_umeda', 'city_lattice', 'city_hep', 'city_street']
+CITY3D_PACK = 'stage_roof_city3d'
+CITY3D_SLOT = 14        # D's: texture slot 14 (free: README, "Rendering, VRAM and budgets")
+CITY3D_PALETTE = 204    # 4-bit palettes from 204
 # the backdrop's sky, rows above the deck's far edge on screen: deep blue to a dusky rose glow
 SKY = ['0e1228', '24264e', '52426e', '966a6e']          # #rrggbb
 SKY_DY = [-420, -200, -90, -26]
@@ -121,7 +141,7 @@ def cell_rand(x, y, salt):
     return ((v ^ (v >> 16)) & 0xFFFF) / 65536.0
 
 
-# ---- the city (BG1)
+# ---- the horizon (BG1)
 
 def windows(cv, x0, y0, x1, y1, lit, salt, cols=(W[1], W[0]), dark=None, step=4):
     """Window dots on a building face: rows every `step` px, columns every 4; a cell's windows
@@ -136,78 +156,35 @@ def windows(cv, x0, y0, x1, y1, lit, salt, cols=(W[1], W[0]), dark=None, step=4)
                 cv.rect(x, y, x + 2, y + 1, dark)
 
 
-def tower(cv, x, w, top, base, col, lit, salt, edge=None, crown=None):
-    cv.rect(x, top, x + w, base, col)
-    if edge:
-        cv.rect(x, top, x + 1, base, edge)
-    windows(cv, x, top + 3, x + w, base, lit, salt)
-    if crown:
-        cv.rect(x + w // 2 - 1, top - crown, x + w // 2 + 1, top, col)
-        cv.rect(x + w // 2 - 1, top - crown - 1, x + w // 2 + 1, top - crown, WH[0])
-
-
 def draw_city():
+    """The far city on BG1, behind the city in polygons (props/rooftop_city/): a low skyline
+    in the haze, the glow along the horizon, the far city's lights from there down to the deck's
+    far edge, and below that, past the open edge, a dark carpet of the street's lights (what the
+    polygons' ground does not reach: it ends 330 m back). Everything with a landmark or a
+    building near enough to have sides is a polygon; this is what is too far to have any."""
     cv = S.Canvas(CITY_W, CITY_H)
     rng = np.random.default_rng(1970)
     hz = HORIZON
     Wd = CITY_W
 
-    # -- the far skyline (band 0): a long low mass of blocks along the horizon, taller towers in
-    # front of it here and there, sparse windows; it wraps every 512 px
-    far = N[3]
+    # -- the far skyline (band 0): a long low mass of blocks along the horizon in the haze, taller
+    # ones here and there, a few pale windows; it wraps every 512 px
+    far, farther = H[3], H[1]
     x = 0
     while x < Wd:
         w = 8 * int(rng.integers(2, 6))
-        h = 8 * int(rng.integers(1, 4))
-        cv.rect(x, hz - h, min(x + w, Wd), hz, far)
-        windows(cv, x, hz - h, min(x + w, Wd), hz, 0.18, 1, cols=(W[3], N[6]))
+        h = 4 * int(rng.integers(1, 6))
+        cv.rect(x, hz - h, min(x + w, Wd), hz, farther if h > 12 else far)
+        windows(cv, x, hz - h, min(x + w, Wd), hz, 0.16, 1, cols=(H[4], H[0]), step=4)
         x += w
-    # towers (x, width, height): the far city's high-rises
-    for tx, tw, th in [(24, 16, 48), (56, 8, 32), (104, 24, 40), (176, 16, 56), (264, 8, 40),
-                       (296, 16, 64), (336, 24, 32), (384, 16, 48), (440, 24, 40), (480, 8, 56)]:
-        tower(cv, tx, tw, hz - th, hz, N[4], 0.22, 2, edge=N[5], crown=4 if th >= 56 else None)
-    # the Umeda Sky Building: two slabs joined at the top by the floating garden's ring
-    ux, uy = 208, hz - 80
-    cv.rect(ux, uy, ux + 16, hz, N[4])
-    cv.rect(ux + 32, uy, ux + 48, hz, N[4])
-    cv.rect(ux, uy, ux + 1, hz, N[6])
-    cv.rect(ux + 32, uy, ux + 33, hz, N[6])
-    windows(cv, ux, uy + 10, ux + 16, hz, 0.3, 3)
-    windows(cv, ux + 32, uy + 10, ux + 48, hz, 0.3, 4)
-    cv.rect(ux, uy - 2, ux + 48, uy + 8, N[5])                  # the bridge at the top
-    cv.ellipse(ux + 14, uy - 10, ux + 34, uy + 8, N[5])          # the ring's opening
-    cv.ellipse(ux + 18, uy - 6, ux + 30, uy + 4, H[0])
-    cv.rect(ux + 4, uy + 1, ux + 44, uy + 2, W[0])               # the observatory's lights
-    cv.rect(ux + 47, uy - 4, ux + 48, uy - 2, WH[0])
-    # a lattice tower with a lit crown (Tsutenkaku-like), at x 400
-    lx, ly = 408, hz - 72
-    for k in range(0, 72, 4):
-        y = ly + k
-        half = 3 + k // 10
-        cv.rect(lx - half, y, lx + half + 1, y + 1, N[5])
-        cv.rect(lx - half, y + 1, lx - half + 1, y + 4, N[5])
-        cv.rect(lx + half, y + 1, lx + half + 1, y + 4, N[5])
-    cv.rect(lx - 6, ly + 20, lx + 7, ly + 26, N[4])              # the observation deck
-    cv.rect(lx - 5, ly + 22, lx + 6, ly + 23, U[2])              # its lit band
-    cv.rect(lx - 3, ly - 8, lx + 4, ly, N[4])
-    cv.rect(lx - 2, ly - 7, lx + 3, ly - 4, U[1])                # the crown's light
-    cv.rect(lx, ly - 14, lx + 1, ly - 8, N[5])
-    cv.rect(lx, ly - 15, lx + 1, ly - 14, WH[0])
-    # HEP's red Ferris wheel on a department store's roof, at x 136
-    wx, wy, wr = 144, hz - 40, 18
-    cv.rect(wx - 24, hz - 22, wx + 24, hz, N[4])
-    windows(cv, wx - 24, hz - 22, wx + 24, hz, 0.35, 5)
-    for k in range(32):
-        a = k * math.pi * 2 / 32
-        px = wx + wr * math.cos(a)
-        py = wy + wr * math.sin(a)
-        cv.rect(int(px), int(py), int(px) + 2, int(py) + 2, WH[0])
-    for k in range(8):
-        a = k * math.pi / 4
-        cv.line([(wx, wy), (wx + wr * math.cos(a), wy + wr * math.sin(a))], WH[1], 1)
-    cv.rect(wx - 1, wy - 1, wx + 2, wy + 2, WH[3])
-    cv.line([(wx - 10, hz - 22), (wx, wy)], N[5], 1)
-    cv.line([(wx + 10, hz - 22), (wx, wy)], N[5], 1)
+    for tx, tw, th in [(24, 16, 36), (104, 24, 30), (176, 16, 40), (264, 8, 32), (296, 16, 44),
+                       (384, 16, 36), (440, 24, 30)]:
+        cv.rect(tx, hz - th, tx + tw, hz, farther)
+        cv.rect(tx, hz - th, tx + 1, hz, H[0])
+        windows(cv, tx, hz - th + 3, tx + tw, hz, 0.2, 2, cols=(H[4], H[0]))
+        if th >= 40:
+            cv.rect(tx + tw // 2, hz - th - 3, tx + tw // 2 + 1, hz - th, farther)
+            cv.rect(tx + tw // 2, hz - th - 4, tx + tw // 2 + 1, hz - th - 3, WH[0])
 
     # -- the far city's lights, from the horizon down to the deck's far edge (band 1)
     cv.rect(0, hz, Wd, CITY_LINE, N[1])
@@ -221,51 +198,23 @@ def draw_city():
                 c = W[0] if r < lit * 0.5 else (ST[0] if r < lit * 0.8 else N[7])
                 cv.rect(x, y, x + 1, y + 1, c)
 
-    # -- the city at the tower's foot (band 2): rooftops far below, an avenue, neon
+    # -- the street's lights past the open edge (band 2): a dark carpet, an avenue's lamps
     base = CITY_LINE
     cv.rect(0, base, Wd, CITY_H, N[0])
-    # blocks of buildings seen from above and the side: roofs, their lit faces
-    x = 0
-    while x < Wd:
-        w = 8 * int(rng.integers(3, 8))
-        top = base + 8 * int(rng.integers(1, 6))
-        roof = [N[2], N[3], N[2]][int(rng.integers(0, 3))]
-        cv.rect(x, top, min(x + w, Wd), top + 6, roof)
-        cv.rect(x, top + 6, min(x + w, Wd), CITY_H, N[1])
-        windows(cv, x, top + 6, min(x + w, Wd), CITY_H, 0.3, 11, cols=(W[0], W[3]))
-        # rooftop plant: an air-conditioning box, a water tank
-        if w >= 32:
-            cv.rect(x + 6, top - 4, x + 14, top, N[4])
-            cv.rect(x + w - 12, top - 6, x + w - 6, top, N[3])
-        x += w
-    # the avenue: a band of road across, lit both ways
+    for y in range(base + 2, CITY_H, 4):
+        for x in range(0, Wd, 3):
+            r = cell_rand(x * 4 + y, y, 11)
+            if r < 0.22:
+                cv.rect(x, y, x + 1, y + 1, W[3] if r < 0.12 else W[0])
     ay = 222
-    cv.rect(0, ay, Wd, ay + 14, N[1])
-    cv.rect(0, ay, Wd, ay + 1, N[3])
-    cv.rect(0, ay + 13, Wd, ay + 14, N[3])
-    for x in range(0, Wd, 16):
-        cv.rect(x, ay + 7, x + 8, ay + 8, N[5])                  # the centre line
+    cv.rect(0, ay, Wd, ay + 8, N[1])
     for x in range(0, Wd, 6):
         r = cell_rand(x * 8, ay, 13)
         if r < 0.55:
-            cv.rect(x, ay + 3, x + 2, ay + 5, ST[2] if r < 0.3 else ST[0])   # headlights
+            cv.rect(x, ay + 2, x + 2, ay + 3, ST[2] if r < 0.3 else ST[0])      # headlights
         r = cell_rand(x * 8, ay + 9, 17)
         if r < 0.5:
-            cv.rect(x, ay + 9, x + 2, ay + 11, ST[1])            # tail lights
-    # street lamps along it
-    for x in range(4, Wd, 32):
-        cv.rect(x, ay - 6, x + 1, ay, N[5])
-        cv.rect(x - 1, ay - 7, x + 3, ay - 6, W[0])
-    # neon signs on the buildings' faces: a few vertical bars and boards
-    for nx, ny, col in [(40, 178, NE[0]), (120, 190, NE[1]), (232, 172, NE[2]), (312, 186, NE[0]),
-                        (376, 176, NE[1]), (456, 192, NE[2])]:
-        cv.rect(nx, ny, nx + 6, ny + 24, NE[3] if col is NE[0] else NE[4])
-        for k in range(4):
-            cv.rect(nx + 1, ny + 2 + k * 6, nx + 5, ny + 5 + k * 6, col)
-    for nx, ny in [(168, 200), (400, 204)]:
-        cv.rect(nx, ny, nx + 32, ny + 10, NE[4])
-        cv.rect(nx + 2, ny + 2, nx + 30, ny + 8, NE[1])
-        cv.rect(nx + 4, ny + 4, nx + 28, ny + 6, NE[2])
+            cv.rect(x, ay + 5, x + 2, ay + 6, ST[1])                             # tail lights
 
     pals = [[None] + NIGHT + CITY_ACC[k] for k in CITY_ORDER]
     return cv, pals
@@ -409,6 +358,8 @@ def main():
     write('stage_roof_deck.map', deck_map.astype('<u2').tobytes())
     write('stage_roof_deck.pal', deck.pal_blob())
 
+    pack_props()
+    pack_city()
     n = len(CITY_BANDS)
     L = [HEADER,
          '// Mech Expo 2000\'s rooftop for the plane chip (tools/gen_mechexpo_rooftop.py): the city on',
@@ -438,6 +389,8 @@ def main():
          'const ROOF_DECK_C: fixed = %d.0        // the texel of world 0' % DECK_C,
          'const ROOF_DECK_VIEW: fixed = %.1f     // the floor\'s rows out to this view depth' % DECK_VIEW,
          'const ROOF_DECK_PALS = %d' % DECK_PALS,
+         'const ROOF_PRIO: u32 = 0x%08X      // PLN_PRIO: BG1 0, BG2 2, PL 1 (the city), BG0 3, PH 4 (props, mechs)' % PRIO,
+         'const ROOF_CLIP_FAR: fixed = %.1f    // the camera\'s far plane' % CLIP_FAR,
          'const ROOF_SKY: [4]u32 = [%s]   // 0xBBGGRR' % ', '.join(bgr(c) for c in SKY),
          'const ROOF_SKY_DY: [4]s32 = [%s]   // rows above the deck\'s far edge' % ', '.join(
              str(v) for v in SKY_DY),
@@ -445,7 +398,6 @@ def main():
     with open(os.path.join(CART, 'roof_art.akr'), 'w') as fh:
         fh.write('\n'.join(L) + '\n')
     print('city: %d tiles, deck: %d tiles' % (len(city.tiles), len(deck.tiles)))
-    pack_props()
 
 
 def pack_props():
@@ -453,39 +405,54 @@ def pack_props():
     `mei_assets.py pack` packs them on their own (texture slot PROPS_SLOT, 4-bit palettes from
     PROPS_PALETTE), so the models' pack (tools/gen_mechexpo_assets.py) is not touched. Writes
     art/stage_roof_* and roof_props.akr (stage_roof_props_load())."""
+    pack('rooftop', 'make_rooftop.py', PROPS, PROPS_PACK, PROPS_SLOT, PROPS_PALETTE,
+         'roof_props.akr', "The rooftop's polygon props (props/rooftop/make_rooftop.py)",
+         lambda p: any(p.startswith('stage_roof_' + n[5:] + '.') for n in PROPS))
+
+
+def pack_city():
+    """The city in polygons: props/rooftop_city/make_city.py writes the recipes and the windows'
+    textures, packed on their own in the same way (texture slot CITY3D_SLOT, 4-bit palettes from
+    CITY3D_PALETTE). Writes art/stage_roof_city_* (the meshes) and roof_city3d.akr
+    (stage_roof_city3d_load())."""
+    pack('rooftop_city', 'make_city.py', CITY3D, CITY3D_PACK, CITY3D_SLOT, CITY3D_PALETTE,
+         'roof_city3d.akr', "The rooftop's city in polygons (props/rooftop_city/make_city.py)",
+         lambda p: p.startswith('stage_roof_city_'))
+
+
+def pack(folder, script, names, pack_name, slot, palette, akr, what, mine):
     import json
     import re
     import shutil
     import subprocess
     import tempfile
-    props = os.path.join(CART, 'props', 'rooftop')
-    subprocess.run([sys.executable, os.path.join(props, 'make_rooftop.py')], check=True)
-    recipes = [os.path.join(props, n + '.asset.json') for n in PROPS]
+    props = os.path.join(CART, 'props', folder)
+    subprocess.run([sys.executable, os.path.join(props, script)], check=True)
+    recipes = [os.path.join(props, n + '.asset.json') for n in names]
     work = tempfile.mkdtemp(prefix='mechexpo-roof-')
     try:
         run = subprocess.run([sys.executable, os.path.join(S.ROOT, 'tools', 'mei_assets.py'), 'pack',
-                              *recipes, '-o', work, '--name', PROPS_PACK, '--slots', str(PROPS_SLOT),
-                              '--palette', str(PROPS_PALETTE), '--palette8', str(PROPS_SLOT)],
+                              *recipes, '-o', work, '--name', pack_name, '--slots', str(slot),
+                              '--palette', str(palette), '--palette8', str(slot)],
                              capture_output=True, text=True)
         result = json.loads(run.stdout)
         if not result.get('ok'):
             sys.exit('mei_assets.py pack failed:\n' + json.dumps(result, indent=2))
         for p in os.listdir(ART):
-            if p.startswith(PROPS_PACK) or any(p.startswith('stage_roof_' + n[5:] + '.') for n in PROPS):
+            if p.startswith(pack_name) or mine(p):
                 os.unlink(os.path.join(ART, p))
         for p in sorted(os.listdir(work)):
             if not p.endswith('.akr'):
                 shutil.copy2(os.path.join(work, p), os.path.join(ART, p))
-        akr = open(os.path.join(work, PROPS_PACK + '.akr')).read().splitlines()
         lines = [HEADER,
-                 '// The rooftop\'s polygon props (props/rooftop/make_rooftop.py), packed on their own by',
+                 '// %s, packed on their own by' % what,
                  '// tools/gen_mechexpo_rooftop.py: texture slot %d, 4-bit palettes from %d.' % (
-                     PROPS_SLOT, PROPS_PALETTE), '']
-        for line in akr:
+                     slot, palette), '']
+        for line in open(os.path.join(work, pack_name + '.akr')).read().splitlines():
             lines.append(re.sub(r'^(embed [^=]*= ")([^"]+)"', r'\1art/\2"', line))
-        with open(os.path.join(CART, 'roof_props.akr'), 'w') as fh:
+        with open(os.path.join(CART, akr), 'w') as fh:
             fh.write('\n'.join(lines) + '\n')
-        man = json.load(open(os.path.join(work, PROPS_PACK + '.pack.json')))
+        man = json.load(open(os.path.join(work, pack_name + '.pack.json')))
         for a in man['assets']:
             print('prop %s: %d triangles' % (a['name'], a['triangles']))
     finally:

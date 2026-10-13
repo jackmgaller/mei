@@ -739,4 +739,5 @@ fn draw_hangar(fighting: bool) {
             twins_fx_boxes(f)
         }
     }
+    stage_props_end()
 }

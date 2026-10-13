@@ -12,6 +12,7 @@
 import "stage_art.akr"          // the hangar's art (tools/gen_mechexpo_stage.py)
 import "roof_art.akr"           // the rooftop's (tools/gen_mechexpo_rooftop.py)
 import "roof_props.akr"         // and its props' pack (texture slot 13, palettes 200-203)
+import "roof_city3d.akr"        // and its city in polygons (texture slot 14, palettes 204-211)
 
 // What ends the stage on one side.
 enum Edge {
@@ -51,6 +52,9 @@ struct StageArt {
     sky: *u32                   // the backdrop: 4 colours (0xBBGGRR), top to the hall's line
     sky_dy: *s32                // at these rows above the hall's line
     prio: u32                   // PLN_PRIO in a fight
+    clip_far: fixed             // the camera's far plane (camera_clip): 300 m; the rooftop's city is further
+    dark: u32                   // the layers a super's darkening reaches (layer_offset): BG1, BG2 and the
+                                // backdrop; the rooftop adds PL, its city (the mechs are PH there)
 }
 
 // A polygon prop (B's models, assets.akr): drawn at (x, 0, z) turned by yaw, when the camera's
@@ -81,6 +85,7 @@ struct StageEvent {
 }
 
 const ST_PROPS_MAX = 6
+const ST_CITY_MAX = 8
 const ST_EVENTS_MAX = 4
 
 struct Stage {
@@ -96,6 +101,9 @@ struct Stage {
     art: StageArt
     nprops: s32
     props: [ST_PROPS_MAX]StageProp
+    ncity: s32                  // a city in polygons: meshes in the world's coordinates, drawn at the
+    city: [ST_CITY_MAX]*Mesh    // origin into the PL layer, behind BG2 (the stage's PLN_PRIO); the
+                                // props and the mechs then draw into PH (stage_props())
     music: s32                  // the fight's track: 0 the fight track (music_fight())
     nevents: s32
     events: [ST_EVENTS_MAX]StageEvent
@@ -116,19 +124,22 @@ const STAGES: [2]Stage = [
                             floor_map: STAGE_FLOOR_MAP, floor_pal: STAGE_FLOOR_PAL,
                             floor_pals: FLOOR_PALS, floor_s: FLOOR_S, floor_c: FLOOR_C,
                             floor_out: 0, floor_far: 260.0,
-                            sky: HANGAR_SKY, sky_dy: HANGAR_SKY_DY, prio: 0x42001133 },
+                            sky: HANGAR_SKY, sky_dy: HANGAR_SKY_DY, prio: 0x42001133,
+                            clip_far: 300.0, dark: 0x26 },
             nprops: 4, props: [
                 StageProp { mesh: ASSET_HANGAR_WALL_R, x: 36.0, near: 9.0 },
                 StageProp { mesh: ASSET_HANGAR_WALL_L, x: -36.0, near: 9.0 },
                 StageProp { mesh: ASSET_EXPO_BANNER, x: -21.0, z: 15.0, near: 8.0 },
                 StageProp { mesh: ASSET_EXPO_BANNER, x: 23.0, z: 19.0, near: 8.0 },
                 StageProp {}, StageProp {}],
+            ncity: 0, city: [null, null, null, null, null, null, null, null],
             music: 0, nevents: 0, events: [StageEvent {}, StageEvent {}, StageEvent {}, StageEvent {}] },
     // the rooftop showcase: the stairwell's housing at x = -26, the open edge at x = +26
     Stage { name: "ROOFTOP SHOWCASE", short: "ROOFTOP", venue: "EXPO TOWER // ROOF DECK", blurb: "ONE OPEN EDGE: KNOCK IT\nOVER TO WIN THE ROUND",
             colour: 0x7A3C5A, half: ROOF_HALF, edge: [Edge.Wall, Edge.Open],
-            // the city on BG1 behind the deck on BG2 (BG1 0, BG2 1): the deck is transparent past
-            // its edges (0x10000: PLANE_TRANSPARENT_OUT), so the city shows past the open edge
+            // the horizon on BG1, the city in polygons (PL) and the deck on BG2 (BG1 0, PL 1, BG2 2,
+            // props and mechs PH 4): the deck is transparent past its edges (0x10000:
+            // PLANE_TRANSPARENT_OUT), so the city shows past the open edge
             art: StageArt { hall_tiles: ROOF_CITY_TILES, hall_bytes: ROOF_CITY_TILES_BYTES,
                             hall_map: ROOF_CITY_MAP, hall_pal: ROOF_CITY_PAL, hall_pals: ROOF_CITY_PALS,
                             hall_w: ROOF_CITY_W, hall_line: ROOF_CITY_LINE, hall_z: ROOF_DECK_FAR,
@@ -137,9 +148,10 @@ const STAGES: [2]Stage = [
                             floor_map: ROOF_DECK_MAP, floor_pal: ROOF_DECK_PAL,
                             floor_pals: ROOF_DECK_PALS, floor_s: ROOF_DECK_S, floor_c: ROOF_DECK_C,
                             floor_out: 0x10000, floor_far: ROOF_DECK_VIEW,
-                            sky: ROOF_SKY, sky_dy: ROOF_SKY_DY, prio: 0x42110033 },
+                            sky: ROOF_SKY, sky_dy: ROOF_SKY_DY, prio: ROOF_PRIO,
+                            clip_far: ROOF_CLIP_FAR, dark: 0x2E },
             // the stairwell's housing (the wall), the far parapet and its floodlights, the open
-            // edge's kerb (props/rooftop/, roof_props.akr), the expo's banner towers
+            // edge's kerb (props/rooftop/, roof_props.akr), the expo's banner towers (all PH)
             nprops: 5, props: [
                 StageProp { mesh: ASSET_STAGE_ROOF_STAIRWELL, x: -ROOF_HALF, near: 12.0 },
                 StageProp { mesh: ASSET_STAGE_ROOF_KERB, x: ROOF_HALF, near: 10.0 },
@@ -147,6 +159,10 @@ const STAGES: [2]Stage = [
                 StageProp { mesh: ASSET_EXPO_BANNER, x: -13.0, z: 21.0, near: 8.0 },
                 StageProp { mesh: ASSET_EXPO_BANNER, x: 11.0, z: 25.0, near: 8.0 },
                 StageProp {}],
+            // the city: the ranks of buildings, the landmarks and the street (roof_city3d.akr)
+            ncity: 6, city: [ASSET_STAGE_ROOF_CITY_NEAR, ASSET_STAGE_ROOF_CITY_MID,
+                             ASSET_STAGE_ROOF_CITY_UMEDA, ASSET_STAGE_ROOF_CITY_LATTICE,
+                             ASSET_STAGE_ROOF_CITY_HEP, ASSET_STAGE_ROOF_CITY_STREET, null, null],
             music: 0, nevents: 0, events: [StageEvent {}, StageEvent {}, StageEvent {}, StageEvent {}] },
 ]
 

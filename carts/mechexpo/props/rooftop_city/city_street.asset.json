@@ -1,0 +1,304 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_roof_city_street",
+ "budget": {
+  "vertices": 2000,
+  "triangles": 600
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.62
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "n_rf": {
+   "color": "#141b33",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_n_rf.png",
+    "projection": "box",
+    "scale": [
+     19.2,
+     21.6
+    ]
+   }
+  },
+  "n_rs": {
+   "color": "#141b33",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_n_rs.png",
+    "projection": "box",
+    "scale": [
+     19.2,
+     21.6
+    ]
+   }
+  },
+  "n_of": {
+   "color": "#141b33",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_n_of.png",
+    "projection": "box",
+    "scale": [
+     19.2,
+     21.6
+    ]
+   }
+  },
+  "n_os": {
+   "color": "#141b33",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_n_os.png",
+    "projection": "box",
+    "scale": [
+     19.2,
+     21.6
+    ]
+   }
+  },
+  "n_df": {
+   "color": "#141b33",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_n_df.png",
+    "projection": "box",
+    "scale": [
+     19.2,
+     21.6
+    ]
+   }
+  },
+  "n_ds": {
+   "color": "#141b33",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_n_ds.png",
+    "projection": "box",
+    "scale": [
+     19.2,
+     21.6
+    ]
+   }
+  },
+  "n_roof": {
+   "color": "#292f50"
+  },
+  "plant": {
+   "color": "#2c3556"
+  },
+  "street": {
+   "color": "#0e1226",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_street.png",
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     64,
+     64
+    ]
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "ground",
+   "op": "box",
+   "size": [
+    320.0,
+    1.0,
+    330.0
+   ],
+   "material": "street",
+   "transform": {
+    "translate": [
+     184.0,
+     -48.5,
+     165.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "low_0",
+   "op": "box",
+   "size": [
+    25.6,
+    28.8,
+    12.8
+   ],
+   "material": "n_of",
+   "transform": {
+    "translate": [
+     46.8,
+     -33.6,
+     29.2
+    ]
+   },
+   "faces": {
+    "left": "n_os",
+    "top": "n_roof"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "low_1",
+   "op": "box",
+   "size": [
+    19.2,
+    14.4,
+    12.8
+   ],
+   "material": "n_df",
+   "transform": {
+    "translate": [
+     76.0,
+     -40.8,
+     29.2
+    ]
+   },
+   "faces": {
+    "left": "n_ds",
+    "top": "n_roof"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "low_1_p0",
+   "op": "box",
+   "size": [
+    2.4,
+    1.44,
+    3.6
+   ],
+   "material": "plant",
+   "transform": {
+    "translate": [
+     69.8101,
+     -32.9,
+     26.1956
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "low_1_p1",
+   "op": "box",
+   "size": [
+    4.8,
+    1.61,
+    2.4
+   ],
+   "material": "plant",
+   "transform": {
+    "translate": [
+     80.5732,
+     -32.815,
+     29.9264
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "low_2",
+   "op": "box",
+   "size": [
+    19.2,
+    28.8,
+    12.8
+   ],
+   "material": "n_rf",
+   "transform": {
+    "translate": [
+     102.0,
+     -33.6,
+     22.8
+    ]
+   },
+   "faces": {
+    "left": "n_rs",
+    "top": "n_roof"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "low_2_p0",
+   "op": "box",
+   "size": [
+    2.4,
+    2.16,
+    2.4
+   ],
+   "material": "plant",
+   "transform": {
+    "translate": [
+     100.7737,
+     -18.14,
+     21.3559
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "low_3",
+   "op": "box",
+   "size": [
+    12.8,
+    21.6,
+    19.2
+   ],
+   "material": "n_rf",
+   "transform": {
+    "translate": [
+     121.6,
+     -37.2,
+     38.8
+    ]
+   },
+   "faces": {
+    "left": "n_rs",
+    "top": "n_roof"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "right"
+   ]
+  }
+ ]
+}

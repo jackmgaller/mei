@@ -261,7 +261,7 @@ fn shadow_fx_offset(f: *Fight) {
     for s in 0..2 {
         let fi = &f.f[s]
         if fi.mech == Mech.Shadow && fi.mv == Mv.super && fx[s].t < ECLIPSE_A1[4] + 6 {
-            layer_offset(0x26, -13, -18, -8)        // BG1, BG2 and the backdrop, darkened to violet
+            layer_offset(stage_now().art.dark, -13, -18, -8)        // the stage's layers (BG1, BG2, the backdrop), darkened to violet
             return
         }
     }
