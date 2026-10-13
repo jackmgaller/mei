@@ -15,8 +15,9 @@ import "anim_data.akr"
 
 // Beam: Raikō's zoner, Tank: Heartland's grappler (appended). Twins: Binary Mechanica's combined
 // form and the mech the player picks; TwinA and TwinB: the split form's two bodies, for the
-// animations and the drawing only (never in the roster, never a fighter's mech; MOVES.md, "The Twins")
-enum Mech { Hero, Doubleblade, Beam, Tank, Twins, TwinA, TwinB }
+// animations and the drawing only (never in the roster, never a fighter's mech; MOVES.md, "The Twins").
+// Shadow: Umbral Research's trickster (appended; MOVES.md, "Shadow")
+enum Mech { Hero, Doubleblade, Beam, Tank, Twins, TwinA, TwinB, Shadow }
 
 // The move list (README.md, "Interfaces"): the same names for both mechs.
 enum Mv {

@@ -4,8 +4,8 @@
 // 68 and 69 from this file and ../../game.akr; tests/check.sh runs them.
 //
 // 68  the unlock rule: the Twins (slot 4, RULE_BASES) unlock once the arcade has been cleared
-//     with every base mech in the game (Hero, Beam, Tank: slots 0-3 with a mech, so not Shadow
-//     yet), not before; Shadow joins the rule when its slot gets a mech
+//     with every base mech in the game (Hero, Shadow, Beam, Tank: slots 0-3 with a mech), not
+//     before (Shadow joined the rule with its slot's mech, mx-shadow-fight)
 // 69  the budget with three bodies: CPU against CPU (level 2), the split Twins against Tank, for
 //     1,800 frames through the real game; the Twins forced split for the first 900 (three bodies
 //     on screen), then free to switch. Prints the peak CPU, GPU and triangles split and overall
@@ -112,7 +112,7 @@ private fn unlock_rule() {
     let tw = mech_slot(Mech.Twins)
     assert_eq(tw, 4, "the Twins are not in slot 4")
     assert(ROSTER[tw].rule == RULE_BASES, "the Twins' rule")
-    assert_eq(bases_in_game(), 3, "the base mechs in the game (Hero, Beam, Tank)")
+    assert_eq(bases_in_game(), 4, "the base mechs in the game (Hero, Shadow, Beam, Tank)")
     save.unlocked = 0
     assert(!slot_ok(tw), "the Twins open from the start")
     var got = roster_clear(Mech.Hero)
@@ -125,11 +125,14 @@ private fn unlock_rule() {
     got = roster_clear(Mech.Doubleblade)
     assert(!slot_ok(tw), "an echo's clear counted")
     got = roster_clear(Mech.Tank)
-    assert_eq(got, tw, "the Tank's clear (the last base mech) did not unlock the Twins")
+    assert(!slot_ok(tw), "the Twins unlocked after three base mechs (Shadow's clear missing)")
+    assert_eq(bases_cleared(), 3, "bases cleared")
+    got = roster_clear(Mech.Shadow)
+    assert_eq(got, tw, "Shadow's clear (the last base mech) did not unlock the Twins")
     assert(slot_ok(tw), "the Twins are not selectable")
     assert_eq(slot_mech(tw) as s32, Mech.Twins as s32, "slot 4's mech")
     // clearing with the Twins marks their own clear (their echo's rule, when it has a mech)
     got = roster_clear(Mech.Twins)
     assert(slot_cleared(tw), "the Twins' clear was not marked")
-    println("OK the unlock rule: the Twins after Hero, Beam and Tank (Shadow joins when it has a mech)")
+    println("OK the unlock rule: the Twins after Hero, Beam, Tank and Shadow")
 }

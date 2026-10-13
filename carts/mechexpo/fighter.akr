@@ -404,6 +404,7 @@ private fn advance(i: s32) {
         x.t += 1                        // loops, and the held states (cur_frame() holds them)
         return
     }
+    if f.mech == Mech.Shadow && shadow_advance(i) { return }   // Shadow Sneak's travel (shadow.akr)
     // a charge frame (Beam's Volt Orb) holds while B is held, up to ORB_CHARGE_MAX frames
     if (mv_marks(f.body, mv, x.t) & MARK_CHARGE) != 0 && (x.pad & B) != 0 && f.charge < ORB_CHARGE_MAX {
         f.charge += 1
@@ -557,7 +558,9 @@ fn throw_tick(i: s32) {
     }
     let rel = find_mark(f.body, Mv.throw, MARK_RELEASE)
     let ft = fixed(f.facing)
-    if f.mech == Mech.Twins {
+    if f.mech == Mech.Shadow {
+        shadow_hold(i, j, t)                    // shadow.akr: Phantom Grip's side swap
+    } else if f.mech == Mech.Twins {
         twins_hold(i, j, t)                     // twins.akr: the Tag Toss and the Binary Buster
     } else if f.mech == Mech.Tank {
         // Tank's Scrap Heave: held at its fists, lifted higher (MOVES.md)
@@ -585,6 +588,7 @@ fn throw_tick(i: s32) {
         if f.mech == Mech.Hero { fx[j].vx = ft * 0.30 } else if f.mech == Mech.Tank { fx[j].vx = ft * 0.34 } else { fx[j].vx = -ft * 0.08 }
         if f.mech == Mech.Beam { fx[j].vx = ft * 0.24 }        // the Shock Grip throws it off, about 9 m
         if f.mech == Mech.Twins { fx[j].vx = ft * twins_toss_vx(f.body) }
+        if f.mech == Mech.Shadow { fx[j].vx = ft * GRIP_TOSS_VX }   // flung back where Shadow came from
         fight.freeze = h.stop
         fight.flash_side = -1
         o.flash = h.stop
@@ -751,8 +755,10 @@ fn collide() {
 }
 
 // What body i's strike r (on body j) does.
-fn resolve(i: s32, j: s32, r: s32, h: Hit, mv: Mv) {
+fn resolve(i: s32, j: s32, r: s32, h0: Hit, mv: Mv) {
     if r == R_NONE { return }
+    var h = h0
+    if fight.f[i].mech == Mech.Shadow { h = shadow_hit_k(mv, c_hit[i], h0) }   // Total Eclipse's five hits
     fx[i].hits |= (1 as u32) << (c_hit[i] as u32)
     match r {
         R_GRAB => catch(i, j)
@@ -778,6 +784,7 @@ fn resolve(i: s32, j: s32, r: s32, h: Hit, mv: Mv) {
 private fn catch(i: s32, j: s32) {
     let f = &fight.f[i]
     vic[i] = j
+    fx[j].pause = 0                             // a snared mech (shadow.akr) is freed by the catch
     ev_add(Ev.Grab, i, (f.x + fight.f[j].x) / 2, 6.0, 1)
     if tank_grab_box(i) {
         tank_catch(i)                           // the command grabs: no break
@@ -879,10 +886,10 @@ fn blocked(i: s32, j: s32, h: Hit, mv: Mv, p: vec2, shot: bool) {
     }
 }
 
-// ---- the shots: the Hero's wave and Beam's Volt Orb (one each at a time)
+// ---- the shots: the Hero's wave, Beam's Volt Orb and Shadow's Hex Bolt (one each at a time)
 
 // Whether a mech's neutral special fires a shot.
-fn fires_shot(m: Mech) -> bool { return m == Mech.Hero || m == Mech.Beam }
+fn fires_shot(m: Mech) -> bool { return m == Mech.Hero || m == Mech.Beam || m == Mech.Shadow }
 
 // Fires side i's shot (on its neutral special's release frame).
 private fn shot_fire(i: s32) {
@@ -892,6 +899,11 @@ private fn shot_fire(i: s32) {
     s.on = true
     s.t = 0
     s.y = 0.0
+    s.hex = false
+    if f.mech == Mech.Shadow {
+        shadow_bolt_fire(i, s)                  // the Hex Bolt (shadow.akr)
+        return
+    }
     if f.mech == Mech.Beam {
         let lvl = orb_level(f.charge)
         s.lvl = lvl
@@ -918,6 +930,7 @@ private fn shot_fire(i: s32) {
 
 // What a shot does when it lands.
 private fn shot_hit(s: *Shot) -> Hit {
+    if s.hex { return hex_hit() }
     if s.lvl > 0 { return orb_hit(s.lvl) }
     return move_hit(Mech.Hero, Mv.sp_n)
 }
@@ -982,8 +995,10 @@ private fn shot_try(i: s32, j: s32) -> bool {
                 blocked(i, j, h, Mv.sp_n, p, true)
             } else if tank_armoured(j, Mv.sp_n) {
                 absorb(i, j, h, p, true)
+                shadow_hexed(i, j, s)           // the Hex Bolt curses through armour
             } else {
                 struck(i, j, h, p, true)
+                shadow_hexed(i, j, s)
             }
             return true
         }

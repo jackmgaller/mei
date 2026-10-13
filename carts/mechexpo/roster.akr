@@ -106,17 +106,18 @@ const ROSTER_COLS = 5
 
 // Names and numbers from MOVES.md where the mech exists: Beam is shown as BEAM MECH, model RC-03
 // (mx-beam); Tank's model is HA-57, product name open ("Homestead" proposed), 10.2 m tall and
-// 9.5 m across the fists (mx-tank). Shadow's and the twins' rows are placeholders.
+// 9.5 m across the fists (mx-tank); Shadow is SHADOW, UR-01, the lowest health (armour 1), the
+// Sneak's speed and the claws' reach (mx-shadow-fight).
 const ROSTER: [10]Slot = [
     // the base mechs
     Slot { maker: CO_MOMENTUM, mech: Mech.Hero as s32, rule: RULE_OPEN,
            emblem: UI_EMBLEM_HERO, emblem24: UI_EMBLEM24_MOMENTUM, epal: PAL_EMBLEM,
            name: "HERO MECH", short: "HERO", card: "HERO", model: "MR-01", height: 120, stats: 0x3343,
            blurb: "ALL-ROUNDER:\nA LONG SWORD", hint: "" },
-    Slot { maker: CO_UMBRAL, rule: RULE_OPEN,
+    Slot { maker: CO_UMBRAL, mech: Mech.Shadow as s32, rule: RULE_OPEN,
            emblem: UI_EMBLEM_ECHO, emblem24: UI_EMBLEM24_UMBRAL, epal: PAL_EMBLEM,
-           name: "SHADOW", short: "SHADOW", card: "SHADOW", model: "UR-01", stats: 0x2432,
-           blurb: "TRAPS, CURSES,\nAFTERIMAGES", hint: "" },
+           name: "SHADOW", short: "SHADOW", card: "SHADOW", model: "UR-01", height: 120, stats: 0x2431,
+           blurb: "THE TRICKSTER:\nMINES, CURSES", hint: "" },
     Slot { maker: CO_RAIKO, mech: Mech.Beam as s32, rule: RULE_OPEN,
            emblem: UI_EMBLEM_RAIKO, emblem24: UI_EMBLEM24_RAIKO, epal: PAL_POWER,
            name: "BEAM MECH", short: "BEAM", card: "BEAM", model: "RC-03", height: 120, stats: 0x3253,

@@ -1,0 +1,469 @@
+// Mech Expo 2000: Shadow (mx-shadow-fight). Umbral Research's trickster (MOVES.md, "Shadow"): what
+// its hits do, its stand-in timings, boxes and marks until its animations land (moves.akr asks
+// here for Mech.Shadow), and its rules:
+//
+//   the Hex Bolt     a shot in fighter.akr's shot system (Shot.hex), slow, strength 1; on a hit
+//                    (or absorbed by armour) it curses the other side with the Siphon
+//   the Siphon       meter.akr's meter_add sends a cursed fighter's gains here: they go to the
+//                    other side (Shadow), nuclear's at half; 360 frames of play, refreshed
+//   the Rift Mine    one per side: laid on sp_d's release frame, armed after MINE_ARM frames, set
+//                    off by a body of the other side standing on it (a snare: the move cut, held
+//                    still SNARE_FRAMES with fx.pause, hittable and grabbable), destroyed by the
+//                    other side's hit boxes or shots touching it, faded after MINE_LIFE
+//   Shadow Sneak     sp_f's travel: the fight moves the root SNEAK_SPEED a frame over the hidden
+//                    frames, holding on the charge frame while B is held (up to SNEAK_HOLD), and
+//                    stops it at the other mech's push box
+//   Phantom Grip     the throw: Shadow slides under the other to its far side and turns
+//   Total Eclipse    five hits, one per box `hit` index (shadow_hit_k)
+//   the Diving Claw  the fall steepens on the air attack's first active frame
+//
+// The shared files call these with a line each; the drawing is shadow_fx.akr's.
+// Frames here count from 0 (MOVES.md's tables count from 1).
+
+import "moves.akr"
+import "fight.akr"
+
+// ---- the Hex Bolt (sp_n) and the Siphon
+
+const HEX_X: fixed = 3.5            // where it starts, ahead of the mech
+const HEX_Y0: fixed = 4.5           // its box's height: chest height, over the slides and the roll
+const HEX_Y1: fixed = 7.5
+const HEX_HALF: fixed = 0.8
+const HEX_SPEED: fixed = 0.14       // m a frame: the slowest shot
+const HEX_LIFE = 200
+const HEX_STR = 1                   // against the other shots: the wave 2, the Volt Orb its level
+const CURSE_FRAMES = 360            // 6 s of play
+const SIPHON_NUC_NUM = 1            // nuclear's damage-taken gain is siphoned at half
+const SIPHON_NUC_DEN = 2
+
+// ---- the Rift Mine (sp_d)
+
+const MINE_ARM = 45                 // frames after it is laid
+const MINE_LIFE = 600               // then it fades
+const MINE_HALF: fixed = 1.0        // its box: x +- MINE_HALF, y 0..MINE_H
+const MINE_H: fixed = 1.0
+const SNARE_FRAMES = 30
+
+// ---- Shadow Sneak (sp_f)
+
+const SNEAK_SPEED: fixed = 0.5      // m a frame the shadow travels
+const SNEAK_HOLD = 24               // frames B may hold the charge frame (6 m tapped, 18 m held)
+const SNEAK_T0 = 8                  // the travel's frames, when the data has no marks for them:
+const SNEAK_T1 = 19                 // the first hidden frame and the charge frame
+
+// ---- Phantom Grip (throw)
+
+const GRIP_HIDE0 = 16               // Shadow gone, sliding under the other: GRIP_HIDE0..GRIP_HIDE1
+const GRIP_HIDE1 = 23
+const GRIP_TURN = 24                // it comes up behind and turns
+const GRIP_SLIDE: fixed = 6.0       // how far its shadow slides
+const GRIP_HOLD: fixed = 3.0        // the other held this far in front
+const GRIP_TOSS_VX: fixed = 0.22    // the fling
+
+// ---- the Diving Claw (atk_air)
+
+const DIVE_VY: fixed = -0.30        // the fall, at least
+const DIVE_VX: fixed = 0.04         // added forward
+
+// ---- Total Eclipse (super): the five hits' frames
+const ECLIPSE_A0: [5]s32 = [44, 49, 54, 59, 65]
+const ECLIPSE_A1: [5]s32 = [46, 51, 56, 61, 69]
+
+struct Rift {
+    on: bool
+    x: fixed
+    t: s32                          // frames since it was laid
+}
+
+var rift: [2]Rift                   // each side's mine
+var snare_t: [4]s32                 // frames left of each body's snare (the drawing reads it)
+var grip_x0: [2]fixed               // where Shadow's Phantom Grip started (the slide's start)
+var sh_found: bool
+var sneak_t0: s32                   // the travel's first frame and its charge frame, from the data
+var sneak_t1: s32
+var dive_t: s32                     // the Diving Claw's first active frame
+
+// Whether f is cursed (its gains go to the other side).
+fn shadow_cursed(f: *Fighter) -> bool { return f.curse > 0 }
+
+// Whether body b is held by a snare now.
+fn shadow_snared(b: s32) -> bool { return snare_t[b] > 0 && fx[b].pause > 0 }
+
+// The frames the rules need, found in the data once (fight_init).
+fn shadow_init() {
+    for s in 0..2 { rift[s].on = false }
+    for b in 0..4 { snare_t[b] = 0 }
+    if sh_found { return }
+    sh_found = true
+    let h = find_mark(Mech.Shadow, Mv.sp_f, MARK_HIDE)
+    let c = find_mark(Mech.Shadow, Mv.sp_f, MARK_CHARGE)
+    sneak_t0 = SNEAK_T0
+    sneak_t1 = SNEAK_T1
+    if h >= 0 && c >= h {
+        sneak_t0 = h
+        sneak_t1 = c
+    }
+    dive_t = 7
+    var bx: Boxes
+    let n = mv_len(Mech.Shadow, Mv.atk_air)
+    for f in 0..n {
+        mv_boxes(Mech.Shadow, Mv.atk_air, f, &bx)
+        var hit = false
+        for k in 0..bx.n {
+            if bx.b[k].kind == BOX_HIT { hit = true }
+        }
+        if hit {
+            dive_t = f
+            break
+        }
+    }
+}
+
+// The start of a round: no mines, no curses, no snares.
+fn shadow_round() {
+    for s in 0..2 {
+        rift[s].on = false
+        fight.f[s].curse = 0
+        fight.f[s].siphoned = 0
+    }
+    for b in 0..4 { snare_t[b] = 0 }
+}
+
+// ---- the Hex Bolt
+
+// Fires side i's bolt (fighter.akr's shot_fire, on sp_n's release frame).
+fn shadow_bolt_fire(i: s32, s: *Shot) {
+    let f = &fight.f[i]
+    let ft = fixed(f.facing)
+    s.hex = true
+    s.lvl = 0
+    s.str = HEX_STR
+    s.x = f.x + ft * HEX_X
+    s.vx = ft * HEX_SPEED
+    s.half = HEX_HALF
+    s.y0 = HEX_Y0
+    s.y1 = HEX_Y1
+    s.life = HEX_LIFE
+    ev_add(Ev.Shot, i, s.x, (HEX_Y0 + HEX_Y1) / 2, 0)
+}
+
+fn hex_hit() -> Hit { return Hit { dmg: 40, chip: 8, hitstun: 18, blockstun: 14, stop: 8, power: 1, kb: 0.08 } }
+
+// Side i's shot s landed on body j (a hit, or absorbed by armour): a bolt curses its side.
+fn shadow_hexed(i: s32, j: s32, s: *Shot) {
+    if !s.hex { return }
+    fight.f[j & 1].curse = CURSE_FRAMES
+    ev_add(Ev.Curse, i, fight.f[j].x, 8.0, 1)
+}
+
+// The Siphon: a gain of n for the cursed fighter f goes to the other side instead (meter_add).
+fn shadow_siphon(f: *Fighter, n: s32) {
+    var s = 0
+    if f == &fight.f[1] || f == &fight.f[3] { s = 1 }
+    let o = &fight.f[1 - s]
+    var g = n
+    if meter_power(f.mech) == Power.Nuclear { g = n * SIPHON_NUC_NUM / SIPHON_NUC_DEN }
+    o.meter = min(o.meter + g, METER_BAR)
+    fight.f[s].siphoned += n
+}
+
+// ---- each frame (fight_tick, outside the freezes)
+
+fn shadow_tick(live: bool) {
+    for i in 0..2 {
+        let f = &fight.f[i]
+        if live && f.curse > 0 { f.curse -= 1 }
+        if f.mech != Mech.Shadow { continue }
+        let x = &fx[i]
+        // the Rift Mine laid on sp_d's release frame
+        if f.mv == Mv.sp_d && x.pause == 0 && (cur_marks(i) & MARK_RELEASE) != 0 && x.t > 0 {
+            if rift[i].on { ev_add(Ev.MineGone, i, rift[i].x, 0.0, 0) }
+            rift[i] = Rift { on: true, x: f.x, t: 0 }
+            ev_add(Ev.Mine, i, f.x, 0.0, 0)
+        }
+        // the Diving Claw: the fall steepens on its first active frame
+        if f.mv == Mv.atk_air && x.air && x.t == dive_t {
+            x.vy = min(x.vy, DIVE_VY)
+            x.vx = x.vx + fixed(f.facing) * DIVE_VX
+        }
+    }
+    for s in 0..2 { mine_tick(s, live) }
+    for b in 0..4 {
+        if snare_t[b] > 0 {
+            snare_t[b] -= 1
+            if fx[b].pause == 0 { snare_t[b] = 0 }     // a hit or a catch freed it
+        }
+    }
+}
+
+private fn mine_gone(s: s32, power: s32) {
+    rift[s].on = false
+    ev_add(Ev.MineGone, s, rift[s].x, 0.0, power)
+}
+
+private fn mine_tick(s: s32, live: bool) {
+    let m = &rift[s]
+    if !m.on { return }
+    m.t += 1
+    if m.t > MINE_LIFE {
+        mine_gone(s, 0)
+        return
+    }
+    let bx = vec4(m.x - MINE_HALF, 0.0, m.x + MINE_HALF, MINE_H)
+    let o = other(s)
+    // destroyed by the other side's hit boxes and shots touching it
+    if mine_struck(o, bx) || (twins_on(o) && mine_struck(o + 2, bx)) {
+        mine_gone(s, 1)
+        return
+    }
+    let sh = &fight.shot[o]
+    if sh.on && overlap(vec4(sh.x - sh.half, sh.y0, sh.x + sh.half, sh.y1), bx) {
+        mine_gone(s, 1)
+        return
+    }
+    // armed: a body of the other side standing on it is snared
+    if m.t < MINE_ARM || !live { return }
+    if snare_try(s, o, bx) { return }
+    if twins_on(o) { snare_try(s, o + 2, bx) }
+}
+
+private fn mine_struck(b: s32, bx: vec4) -> bool {
+    let bb = &fbox[b]
+    for k in 0..bb.n {
+        if bb.b[k].kind != BOX_HIT { continue }
+        if overlap(world_box(b, &bb.b[k]), bx) { return true }
+    }
+    return false
+}
+
+// Body b steps on side s's mine (box bx): snared, if it is on the ground and free to be.
+private fn snare_try(s: s32, b: s32, bx: vec4) -> bool {
+    let f = &fight.f[b]
+    if !grounded(b) || !hittable(b) || is_hurt(f.mv) || fx[b].stun > 0 || fx[b].pause > 0 { return false }
+    if f.mv == Mv.grab_break || f.mv == Mv.ko { return false }
+    let bb = &fbox[b]
+    var on = false
+    for k in 0..bb.n {
+        if bb.b[k].kind != BOX_PUSH { continue }
+        if overlap(world_box(b, &bb.b[k]), bx) { on = true }
+    }
+    if !on { return false }
+    // the move cut, held still: hittable and grabbable (it stands), freed by the first hit or catch
+    set_mv(b, Mv.idle)
+    fx[b].pause = SNARE_FRAMES
+    fx[b].slide = 0.0
+    fx[b].slide_by = -1
+    fx[b].vx = 0.0
+    snare_t[b] = SNARE_FRAMES
+    rift[s].on = false
+    ev_add(Ev.Snare, s, f.x, 1.0, 1)
+    return true
+}
+
+// ---- Shadow Sneak: the travel (fighter.akr's advance asks here for Shadow first). Whether it
+// handled the frame.
+
+fn shadow_advance(i: s32) -> bool {
+    let f = &fight.f[i]
+    if f.mv != Mv.sp_f { return false }
+    let x = &fx[i]
+    if x.t < sneak_t0 || x.t > sneak_t1 { return false }
+    sneak_step(i)
+    if x.t == sneak_t1 && (x.pad & B) != 0 && f.charge < SNEAK_HOLD {
+        f.charge += 1
+        return true
+    }
+    x.t += 1
+    return true
+}
+
+// The shadow moves forward, stopping at the other mech's feet (it never passes it).
+private fn sneak_step(i: s32) {
+    let f = &fight.f[i]
+    let o = &fight.f[other(i)]
+    let gap = STATS[f.body].push + STATS[o.body].push
+    var nx = f.x + fixed(f.facing) * SNEAK_SPEED
+    if f.facing > 0 && f.x <= o.x { nx = min(nx, max(f.x, o.x - gap)) }
+    if f.facing < 0 && f.x >= o.x { nx = max(nx, min(f.x, o.x + gap)) }
+    f.x = nx
+}
+
+// ---- Phantom Grip: thrower i (Shadow) holding body j at frame t of its throw (throw_tick)
+
+fn shadow_hold(i: s32, j: s32, t: s32) {
+    let f = &fight.f[i]
+    let o = &fight.f[j]
+    let s = i & 1
+    if t < GRIP_HIDE0 {
+        grip_x0[s] = f.x
+        o.x = f.x + fixed(f.facing) * GRIP_HOLD
+        if t <= 10 { o.y = 1.5 * fixed(t) / 10 } else { o.y = 1.5 * fixed(GRIP_HIDE0 - t) / (GRIP_HIDE0 - 10) }
+        return
+    }
+    if t <= GRIP_HIDE1 {
+        // gone: its shadow slides under the other to the far side (a wall stops it)
+        let lim = FIGHT_WALL - STATS[f.body].push
+        let to = clamp(grip_x0[s] + fixed(f.facing) * GRIP_SLIDE, -lim, lim)
+        let k = fixed(t - GRIP_HIDE0 + 1) / (GRIP_HIDE1 - GRIP_HIDE0 + 1)
+        f.x = grip_x0[s] + (to - grip_x0[s]) * k
+        o.y = 0.0
+        return
+    }
+    if t == GRIP_TURN {
+        // up behind it, turned to face it; the other turned round to face Shadow
+        f.facing = -f.facing
+        o.facing = -f.facing
+    }
+    o.x = f.x + fixed(f.facing) * GRIP_HOLD
+    o.y = min(fixed(t - GRIP_TURN) * 0.5, 3.0)
+}
+
+// ---- what Shadow's hits do (MOVES.md's tables)
+
+fn shadow_hit(mv: Mv) -> Hit {
+    return match mv {
+        atk_n => Hit { dmg: 45, hitstun: 15, blockstun: 11, stop: 7, kb: 0.08 }
+        atk_f => Hit { dmg: 100, hitstun: 25, blockstun: 18, stop: 10, power: 1, kb: 0.13 }
+        atk_d => Hit { dmg: 80, blockstun: 16, stop: 10, power: 1, kb: 0.09, kd: true, launch: 0.30 }
+        atk_air => Hit { dmg: 85, hitstun: 19, blockstun: 14, stop: 10, power: 1, kb: 0.08 }
+        sp_n => hex_hit()
+        sp_f => Hit { dmg: 110, chip: 22, blockstun: 16, stop: 12, power: 2, kb: 0.16, kd: true, launch: 0.40 }
+        sp_u => Hit { dmg: 110, chip: 22, blockstun: 14, stop: 12, power: 2, kb: 0.10, kd: true, launch: 0.55 }
+        throw => Hit { dmg: 110, stop: 10, power: 2, kd: true, launch: 0.30 }
+        super => eclipse_hit(4)
+        else => HIT_NONE
+    }
+}
+
+// Total Eclipse's hit k (its boxes' `hit` index): four slashes, then the finisher.
+fn eclipse_hit(k: s32) -> Hit {
+    if k >= 4 { return Hit { dmg: 120, chip: 24, blockstun: 20, stop: 20, power: 3, kb: 0.25, kd: true, launch: 0.60 } }
+    return Hit { dmg: 70, chip: 14, hitstun: 30, blockstun: 30, stop: 6, power: 2, kb: 0.02 }
+}
+
+// The hit of Shadow's box with `hit` index k in move mv (fighter.akr's resolve()).
+fn shadow_hit_k(mv: Mv, k: s32, h: Hit) -> Hit {
+    if mv == Mv.super { return eclipse_hit(k) }
+    return h
+}
+
+// ---- the stand-in timings, boxes, marks and root motion (MOVES.md's tables, 0-based)
+
+fn shadow_tm(mv: Mv) -> Tm {
+    return match mv {
+        idle => Tm { len: 60, loops: true }
+        walk_f, walk_b => Tm { len: 44, loops: true }
+        crouch => Tm { len: 8, loops: true, shape: 1 }
+        jump => Tm { len: 40, shape: 2 }
+        atk_n => Tm { len: 17, a0: 3, a1: 4, hx0: 1.6, hy0: 6.5, hx1: 5.6, hy1: 9.5, c1: 10, reach: 3.0 }
+        atk_f => Tm { len: 36, a0: 12, a1: 15, hx0: 3.0, hy0: 5.5, hx1: 9.4, hy1: 8.5, c1: 21,
+                      m0: 2, m1: 10, dx: 0.222223, reach: 5.5 }
+        atk_d => Tm { len: 36, a0: 10, a1: 13, hx0: 1.5, hy0: 0.0, hx1: 7.2, hy1: 1.8, shape: 1, reach: 3.5 }
+        atk_air => Tm { len: 26, a0: 7, a1: 25, hx0: 0.5, hy0: -3.0, hx1: 5.0, hy1: 2.0, shape: 2 }
+        sp_n => Tm { len: 40, rel: 15 }
+        sp_f => Tm { len: 50, a0: 24, a1: 27, hx0: 0.5, hy0: 0.0, hx1: 4.5, hy1: 9.0, ch: SNEAK_T1 }
+        sp_u => Tm { len: 44, a0: 8, a1: 15, hx0: -1.0, hy0: 2.0, hx1: 3.5, hy1: 13.0, i0: 0, i1: 8,
+                     m0: 4, m1: 7, dx: 0.9 }
+        sp_d => Tm { len: 26, rel: 11 }
+        grab => Tm { len: 7, a0: 5, a1: 6, hx0: 1.0, hy0: 2.0, hx1: 3.8, hy1: 10.0 }
+        throw => Tm { len: 44, rel: 30 }
+        thrown => Tm { len: 44, rel: 30 }
+        thrown_vault => Tm { len: 40, rel: 28 }
+        super => Tm { len: 106, flash: 40, i0: 0, i1: 43, m0: 40, m1: 43, dx: 2.0 }
+        else => common_tm(mv)
+    }
+}
+
+// The root motion of frame f: the Tm's, and Eclipse Rise's rise (5 m over its active frames)
+// and fall (over its recovery).
+fn shadow_root(mv: Mv, f: s32) -> vec2 {
+    let t = shadow_tm(mv)
+    var r = vec2(0.0, 0.0)
+    if f >= t.m0 && f <= t.m1 { r = vec2(t.dx, t.dy) }
+    if mv == Mv.sp_u {
+        if f >= 8 && f <= 15 { r = r + vec2(0.0, 0.625) }
+        if f >= 16 && f <= 43 { r = r + vec2(0.0, -0.178572) }
+    }
+    return r
+}
+
+// The marks the Tm cannot say: hidden in the sinks (not `nopush`: the shadow keeps a push box).
+fn shadow_marks(mv: Mv, f: s32) -> u32 {
+    if mv == Mv.sp_f && f >= SNEAK_T0 && f <= SNEAK_T1 { return MARK_HIDE }
+    if mv == Mv.sp_u && f >= 4 && f <= 7 { return MARK_HIDE }
+    if mv == Mv.throw && f >= GRIP_HIDE0 && f <= GRIP_HIDE1 { return MARK_HIDE }
+    return 0
+}
+
+// Total Eclipse's hit index on frame f, or -1.
+private fn eclipse_k(f: s32) -> s32 {
+    for k in 0..5 {
+        if f >= ECLIPSE_A0[k] && f <= ECLIPSE_A1[k] { return k }
+    }
+    return -1
+}
+
+// The stand-in boxes: a tall, thin mech; low in the Fade Sweep's recovery and the sinks; only a
+// shadow on the floor in the Sneak's travel; five hit boxes in Total Eclipse.
+fn shadow_boxes(mv: Mv, f: s32, out: *Boxes) {
+    let t = shadow_tm(mv)
+    out.n = 0
+    var hx = 1.6
+    var hy0 = 0.0
+    var hy1 = 12.5
+    var py1 = 11.5
+    match t.shape {
+        1 => { hy1 = 8.0; py1 = 7.5 }
+        2 => { hx = 1.5; hy0 = 1.0; hy1 = 11.5 }
+        4 => { hx = 5.0; hy1 = 2.0; py1 = 2.0 }
+        else => {}
+    }
+    if mv == Mv.atk_d && f > t.a1 { hy1 = 4.0; py1 = 4.0 }        // dissolved into its shadow
+    if mv == Mv.sp_f && f < SNEAK_T0 { hy1 = 8.0; py1 = 7.5 }     // sinking
+    if mv == Mv.sp_f && f >= SNEAK_T0 && f <= SNEAK_T1 {          // the travelling shadow
+        hx = 1.5
+        hy1 = 1.0
+        py1 = 1.0
+    }
+    if mv == Mv.sp_u && f < 8 { hy1 = 4.0; py1 = 4.0 }            // sunk (and invulnerable)
+    let p = STATS[Mech.Shadow].push
+    sh_box(out, BOX_HURT, 0, -hx, hy0, hx, hy1)
+    sh_box(out, BOX_PUSH, 0, -p, 0.0, p, py1)
+    if mv == Mv.super {
+        let k = eclipse_k(f)
+        if k == 4 { sh_box(out, BOX_HIT, 4, 0.0, 0.0, 6.5, 12.0) }
+        else if k >= 0 { sh_box(out, BOX_HIT, k, 0.0, 3.0, 6.0, 10.0) }
+        return
+    }
+    if t.a0 >= 0 && f >= t.a0 && f <= t.a1 { sh_box(out, BOX_HIT, 0, t.hx0, t.hy0, t.hx1, t.hy1) }
+    // the claw reaching out: hurtable from the first active frame until it comes back
+    if t.reach > 0.0 && f >= t.a0 && f <= t.a1 + 10 {
+        sh_box(out, BOX_HURT, 0, 0.0, t.hy0 - 1.0, t.reach, t.hy1 + 1.0)
+    }
+}
+
+private fn sh_box(out: *Boxes, kind: u8, hit: s32, x0: fixed, y0: fixed, x1: fixed, y1: fixed) {
+    out.b[out.n] = Box { kind: kind, hit: hit as u8, x0: x0, y0: y0, x1: x1, y1: y1 }
+    out.n += 1
+}
+
+// ---- the training move list
+
+const SHADOW_MOVES = MoveList { n: 15, e: [
+    MoveEntry { name: "Claw Jab", input: "A" },
+    MoveEntry { name: "Lunging Claw", input: "FWD + A" },
+    MoveEntry { name: "Fade Sweep", input: "DOWN + A" },
+    MoveEntry { name: "Diving Claw", input: "A in the air" },
+    MoveEntry { name: "Hex Bolt", input: "B (curses: Siphon)" },
+    MoveEntry { name: "Shadow Sneak", input: "FWD + B (hold: farther)" },
+    MoveEntry { name: "Eclipse Rise", input: "UP + B" },
+    MoveEntry { name: "Rift Mine", input: "DOWN + B" },
+    MoveEntry { name: "Phantom Grip", input: "Y (swaps sides)" },
+    MoveEntry { name: "Break a grab", input: "Y when grabbed" },
+    MoveEntry { name: "Total Eclipse", input: "A + B, from zero" },
+    MoveEntry { name: "Block", input: "hold R" },
+    MoveEntry { name: "Jump", input: "X (+ FWD or BACK)" },
+    MoveEntry { name: "Chain", input: "A, FWD + A, B" },
+    MoveEntry { name: "Antimatter meter", input: "borrows; Siphon steals" },
+    MoveEntry {}
+] }

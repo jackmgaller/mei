@@ -7,6 +7,7 @@ import "anim.akr"
 import "beam_moves.akr"     // Beam's tables (mx-beam)
 import "tank.akr"               // Tank's data (mx-tank)
 import "twins.akr"              // the Twins' data and rules (mx-twins-fight)
+import "shadow.akr"             // Shadow's data and rules (mx-shadow-fight)
 
 // The stand-in data (below) is used for every move anim.akr still stands in for (it holds the
 // guard pose there: anim_standin()), and for all of them while STANDIN_ALL is set.
@@ -52,6 +53,9 @@ const STATS: [len(Mech)]Stats = [
             jvx: 0.20, land: 4, land_air: 6, push: 1.1, power: Power.Fusion },
     Stats { health: 1000, walk_f: 0.100, walk_b: 0.080, pre: 3, jv: 0.705882, grav: 0.041522,
             jvx: 0.20, land: 4, land_air: 6, push: 1.1, power: Power.Fusion },
+    // Shadow (MOVES.md, "Shadow"): 4 frames' crouch, 36 in the air, 6.2 m high; the lowest health
+    Stats { health: 900, walk_f: 0.085, walk_b: 0.068, pre: 4, jv: 0.688889, grav: 0.038272,
+            jvx: 0.17, land: 5, land_air: 8, push: 1.4, power: Power.Antimatter },
 ]
 
 // ---- what a hit does
@@ -88,6 +92,7 @@ fn move_hit(m: Mech, mv: Mv) -> Hit {
         }
     }
     if m == Mech.Tank { return tank_hit(mv) }
+    if m == Mech.Shadow { return shadow_hit(mv) }
     if m >= Mech.Twins { return twins_hit(m, mv) }
     return match mv {
         atk_n => Hit { dmg: 60, hitstun: 17, blockstun: 12, stop: 7, kb: 0.09 }
@@ -146,6 +151,7 @@ fn mv_loops(m: Mech, mv: Mv) -> bool {
 
 fn mv_root(m: Mech, mv: Mv, f: s32) -> vec2 {
     if !use_standin(m, mv) { return anim_root(m, mv, f) }
+    if m == Mech.Shadow { return shadow_root(mv, f) }
     let t = tm(m, mv)
     var r = vec2(0.0, 0.0)
     if f >= t.m0 && f <= t.m1 { r = vec2(t.dx, t.dy) }
@@ -168,6 +174,7 @@ fn mv_marks(m: Mech, mv: Mv, f: s32) -> u32 {
     if f >= t.r0 && f <= t.r1 { k |= MARK_ARMOUR }
     // Tank's treads glide: no steps
     if (mv == Mv.walk_f || mv == Mv.walk_b) && (f == 0 || f == t.len / 2) && m != Mech.Tank { k |= MARK_STEP }
+    if m == Mech.Shadow { k |= shadow_marks(mv, f) }    // its sinks: hidden, not passing through
     return k
 }
 
@@ -178,6 +185,10 @@ fn mv_boxes(m: Mech, mv: Mv, f: s32, out: *Boxes) {
     }
     if m == Mech.Tank {
         tank_boxes(mv, f, out)
+        return
+    }
+    if m == Mech.Shadow {
+        shadow_boxes(mv, f, out)
         return
     }
     if m >= Mech.Twins {
@@ -278,6 +289,7 @@ fn tm(m: Mech, mv: Mv) -> Tm {
         }
     }
     if m == Mech.Tank { return tank_tm(mv) }
+    if m == Mech.Shadow { return shadow_tm(mv) }
     if m >= Mech.Twins { return twins_tm(m, mv) }
     return match mv {
         idle => Tm { len: 60, loops: true }
