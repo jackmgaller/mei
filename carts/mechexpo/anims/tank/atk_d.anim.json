@@ -1,0 +1,86 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Track Hook (MOVES.md): from a crouch. The hull tips forward on its struts and the torso pitches 30 degrees over the treads, the left fist goes down on the floor to brace, the right arm swings back out to the side (0-8); then the whole mech lurches forward on its treads (the hull 1.8 m ahead of the root at the contact, no root motion: it drags itself back after) and the right fist hooks low along the floor in front of the treads, knuckles dragging (active 11-14: the fist, x about 1.8-6.8, y 0-2), sweeps through across the centre line and is dragged back; the torso comes up into the guard over the last 10 frames. Knocks down (the fight's). Slow, and very punishable when blocked or missed. Push box 6.5 m tall while low.",
+  "base": "_body.anim.json",
+  "length": 39,
+  "phases": {"startup": 11, "active": 4, "recovery": 24},
+  "design": {"hit": [1.8, 0.0, 6.8, 2.0], "tolerance": 0.5, "note": "MOVES.md, Track Hook: x 1.8-6.8, y 0-2"},
+  "allow": [["torso", "thigh_l"], ["torso", "thigh_r"], ["torso", "forearm_r"], ["forearm_r", "shin_r"]],
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease"},
+    {
+      "at": 4,
+      "ease": "ease",
+      "boxes": {"push": {"kind": "push", "rect": [-2.4, 0, 2.4, 6.5]}},
+      "pose": {
+        "pelvis": [-6, 6, 0], "thigh_r": [6, 0, 0], "thigh_l": [6, 0, 0],
+        "torso": [-34, 12, 0], "head": [30, -10, 0],
+        "upper_arm_r": [-6, 0, -46], "forearm_r": [40, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [34, 0, 22], "forearm_l": [10, 0, 0], "hand_l": [10, 0, 0],
+        "pauldron_r": [-2.1, 0, -23], "pauldron_l": [11.9, 0, 11]
+      }
+    },
+    {
+      "at": 8,
+      "ease": "in",
+      "offset": [0.2, 0],
+      "pose": {
+        "pelvis": [-7, 8, 0], "thigh_r": [7, 0, 0], "thigh_l": [7, 0, 0],
+        "torso": [-36, 18, 0], "head": [30, -14, 0],
+        "upper_arm_r": [-14, 0, -54], "forearm_r": [34, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [36, 0, 22], "forearm_l": [8, 0, 0], "hand_l": [10, 0, 0],
+        "pauldron_r": [-4.9, 0, -27], "pauldron_l": [12.6, 0, 11]
+      }
+    },
+    {
+      "at": 11,
+      "ease": "linear",
+      "offset": [0.3, 0],
+      "boxes": {"fist": {"kind": "hit", "part": "hand_r", "min": [-0.6, -1.1, -0.55], "max": [0.35, 0.1, 0.35], "grow": 0.1}},
+      "pose": {
+        "pelvis": [-9, -4, 0], "thigh_r": [9, 0, 0], "thigh_l": [9, 0, 0],
+        "torso": [-40, -2, 0], "head": [30, 2, 0],
+        "upper_arm_r": [34, 0, -14], "forearm_r": [0, 0, 0], "hand_r": [10, 0, 0],
+        "pauldron_r": [16.8, 0, -15]
+      }
+    },
+    {
+      "at": 14,
+      "ease": "out",
+      "offset": [1.5, 0],
+      "pose": {
+        "pelvis": [-10, -10, 0], "thigh_r": [10, 0, 0], "thigh_l": [10, 0, 0],
+        "torso": [-40, -38, 0], "head": [30, 28, 0],
+        "upper_arm_r": [50, 0, -6], "forearm_r": [0, 0, 0], "hand_r": [24, 0, 0],
+        "pauldron_r": [22.4, 0, -5]
+      }
+    },
+    {"at": 15, "boxes": {"fist": null}},
+    {
+      "at": 20,
+      "ease": "ease",
+      "offset": [1.2, 0],
+      "pose": {
+        "pelvis": [-8, -12, 0], "thigh_r": [8, 0, 0], "thigh_l": [8, 0, 0],
+        "torso": [-36, -38, 0], "head": [30, 28, 0],
+        "upper_arm_r": [40, 10, 10], "forearm_r": [20, 0, 0], "hand_r": [10, 0, 0],
+        "pauldron_r": [21.7, 0, 5]
+      }
+    },
+    {
+      "at": 28,
+      "ease": "ease",
+      "offset": [0.2, 0],
+      "pose": {
+        "pelvis": [-6, -6, 0], "thigh_r": [6, 0, 0], "thigh_l": [6, 0, 0],
+        "torso": [-32, -24, 0], "head": [28, 18, 0],
+        "upper_arm_r": [44, 0, -10], "forearm_r": [30, 0, 0], "hand_r": [4, 0, 0],
+        "upper_arm_l": [30, 0, 22], "forearm_l": [20, 0, 0], "hand_l": [4, 0, 0],
+        "pauldron_r": [15.4, 0, -5], "pauldron_l": [10.5, 0, 11]
+      }
+    },
+    {"at": 31, "boxes": {"push": {"kind": "push", "rect": [-2.4, 0, 2.4, 10.0]}}},
+    {"at": 38, "from": "guard"}
+  ]
+}

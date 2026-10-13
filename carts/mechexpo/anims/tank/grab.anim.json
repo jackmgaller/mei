@@ -1,0 +1,44 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Grab (Scrap Heave's catch, MOVES.md): both clamp fists swing up and out from the guard and lunge for the other's shoulders, the torso squaring up and pitching forward over the treads, the hull dipping on its struts. Startup 5, active 2 (the grab box x 1.0-4.0, y 2-10, a fixed rectangle: Tank's arms are long), no recovery: a miss goes on into grab_whiff, a catch into throw (whose frame 0 has the fists on the other's shoulders).",
+  "base": "_body.anim.json",
+  "length": 7,
+  "phases": {"startup": 5, "active": 2, "recovery": 0},
+  "design": {"hit": [1.0, 2.0, 4.0, 10.0], "tolerance": 0.2, "note": "MOVES.md, grab: x 1.0-4.0, y 2-10"},
+  "allow": [["pauldron_r", "forearm_r"], ["pauldron_l", "forearm_l"]],
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in"},
+    {
+      "at": 2,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [1, 0, 0], "thigh_r": [-1, 0, 0], "thigh_l": [-1, 0, 0],
+        "torso": [-8, -4, 0], "head": [10, 2, 0],
+        "upper_arm_r": [50, 20, -10], "forearm_r": [80, 0, 0], "hand_r": [-20, 0, 0],
+        "upper_arm_l": [50, -20, 10], "forearm_l": [80, 0, 0], "hand_l": [-20, 0, 0],
+        "pauldron_r": [12, 0, -5], "pauldron_l": [12, 0, 5]
+      }
+    },
+    {
+      "at": 5,
+      "boxes": {"grab": {"kind": "hit", "rect": [1.0, 2.0, 4.0, 10.0]}},
+      "pose": {
+        "pelvis": [-4, 0, 0], "thigh_r": [4, 0, 0], "thigh_l": [4, 0, 0],
+        "torso": [-14, 0, 0], "head": [16, 0, 0],
+        "upper_arm_r": [88, 6, -4], "forearm_r": [92, 0, 0], "hand_r": [-50, 0, 0],
+        "upper_arm_l": [88, -6, 4], "forearm_l": [92, 0, 0], "hand_l": [-50, 0, 0],
+        "pauldron_r": [26, 0, -2], "pauldron_l": [26, 0, 2]
+      }
+    },
+    {
+      "at": 6,
+      "pose": {
+        "pelvis": [-4, 0, 0], "thigh_r": [4, 0, 0], "thigh_l": [4, 0, 0],
+        "torso": [-15, 0, 0],
+        "upper_arm_r": [88, 6, -4], "forearm_r": [94, 0, 0],
+        "upper_arm_l": [88, -6, 4], "forearm_l": [94, 0, 0]
+      }
+    }
+  ]
+}

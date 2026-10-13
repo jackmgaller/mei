@@ -1,0 +1,34 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Idle: the engine idling under load. The hull rocks a degree forward on its struts and back (the treads stay flat), the shoulders rise and fall with the torso, the fists bob a little behind them and the cab head keeps its eyes on the other mech. Treads and sprockets still.",
+  "base": "_body.anim.json",
+  "length": 60,
+  "loop": true,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease"},
+    {
+      "at": 22,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [-1.5, 0, 0], "thigh_r": [1.5, 0, 0], "thigh_l": [1.5, 0, 0],
+        "torso": [-7, -13, 0.6],
+        "head": [9, 9, 0],
+        "upper_arm_r": [22, 0, -17], "forearm_r": [78, 0, 0], "hand_r": [-15, 0, 0],
+        "upper_arm_l": [16, 0, 19], "forearm_l": [84, 0, 0], "hand_l": [-19, 0, 0],
+        "pauldron_r": [7.7, 0, -8.5], "pauldron_l": [5.6, 0, 9.5]
+      }
+    },
+    {
+      "at": 36,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [-1.2, 0, 0], "thigh_r": [1.2, 0, 0], "thigh_l": [1.2, 0, 0],
+        "torso": [-7.5, -13, 0.4],
+        "head": [9.5, 9, 0],
+        "upper_arm_r": [21, 0, -17], "forearm_r": [79, 0, 0],
+        "upper_arm_l": [15, 0, 19], "forearm_l": [85, 0, 0]
+      }
+    }
+  ]
+}

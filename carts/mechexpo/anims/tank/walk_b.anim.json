@@ -1,0 +1,60 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Walk back: the glide in reverse (32 frames, a loop; the fight slides the root back 0.045 m a frame). No steps, no step marks: the sprockets turn backward a quarter turn a cycle (-2.8 degrees a frame; a loop must turn a multiple of the spokes' 90 degrees; MOVES.md asks about -3.3), the hull settles back a degree and a half on its struts, the torso sits up a little behind the fists, rolling a slow 2 degrees, the fists bobbing out of phase. Linear keys every 8 frames.",
+  "base": "_body.anim.json",
+  "length": 32,
+  "loop": true,
+  "keys": [
+    {
+      "at": 0, "ease": "linear",
+      "pose": {
+        "pelvis": [1.5, -1, 0], "thigh_r": [-1.5, 0, 0], "thigh_l": [-1.5, 0, 0], "foot_r": [0, 0, 0], "foot_l": [0, 0, 0],
+        "torso": [-9, -15, -1], "head": [12, 10, 1],
+        "upper_arm_r": [22, 0, -16], "forearm_r": [78, 0, 0], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [16, 0, 18], "forearm_l": [84, 0, 0], "hand_l": [-18, 0, 0],
+        "pauldron_r": [7.7, 0, -8], "pauldron_l": [5.6, 0, 9]
+      }
+    },
+    {
+      "at": 8, "ease": "linear",
+      "pose": {
+        "pelvis": [2, 0, 0], "thigh_r": [-2, 0, 0], "thigh_l": [-2, 0, 0], "foot_r": [-22.5, 0, 0], "foot_l": [-22.5, 0, 0],
+        "torso": [-9, -15, 0], "head": [12, 10, 0],
+        "upper_arm_r": [23, 0, -16], "forearm_r": [77, 0, 0],
+        "upper_arm_l": [15, 0, 18], "forearm_l": [85, 0, 0],
+        "pauldron_r": [8, 0, -8], "pauldron_l": [5.3, 0, 9]
+      }
+    },
+    {
+      "at": 16, "ease": "linear",
+      "pose": {
+        "pelvis": [1.5, 1, 0], "thigh_r": [-1.5, 0, 0], "thigh_l": [-1.5, 0, 0], "foot_r": [-45, 0, 0], "foot_l": [-45, 0, 0],
+        "torso": [-9, -15, 1], "head": [12, 10, -1],
+        "upper_arm_r": [22, 0, -16], "forearm_r": [78, 0, 0],
+        "upper_arm_l": [16, 0, 18], "forearm_l": [84, 0, 0],
+        "pauldron_r": [7.7, 0, -8], "pauldron_l": [5.6, 0, 9]
+      }
+    },
+    {
+      "at": 24, "ease": "linear",
+      "pose": {
+        "pelvis": [2, 0, 0], "thigh_r": [-2, 0, 0], "thigh_l": [-2, 0, 0], "foot_r": [-67.5, 0, 0], "foot_l": [-67.5, 0, 0],
+        "torso": [-9, -15, 0], "head": [12, 10, 0],
+        "upper_arm_r": [21, 0, -16], "forearm_r": [79, 0, 0],
+        "upper_arm_l": [17, 0, 18], "forearm_l": [83, 0, 0],
+        "pauldron_r": [7.4, 0, -8], "pauldron_l": [6, 0, 9]
+      }
+    },
+    {
+      "at": 31, "ease": "linear",
+      "pose": {
+        "pelvis": [1.56, -0.88, 0], "thigh_r": [-1.56, 0, 0], "thigh_l": [-1.56, 0, 0], "foot_r": [-87.19, 0, 0], "foot_l": [-87.19, 0, 0],
+        "torso": [-9, -15, -0.88], "head": [12, 10, 0.88],
+        "upper_arm_r": [21.9, 0, -16], "forearm_r": [78.1, 0, 0],
+        "upper_arm_l": [16.1, 0, 18], "forearm_l": [83.9, 0, 0],
+        "pauldron_r": [7.7, 0, -8], "pauldron_l": [5.6, 0, 9]
+      }
+    }
+  ]
+}

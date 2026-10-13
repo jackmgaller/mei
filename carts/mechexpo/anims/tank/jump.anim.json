@@ -1,0 +1,69 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Jump (40 frames; up, forward and back share it; the fight moves the root: 6 frames on the floor, then 34 in the air, 4.5 m up at the top). A heave, not a spring: the hull dips forward on its struts and the torso pitches 15 degrees down, both arms swinging back (0-5, the treads flat on the floor); the launch throws both arms up overhead (6-10), the treads hanging level under the hull; over the top the arms come down and spread out for balance and the torso hunches, ready for the hard landing (land).",
+  "base": "_body.anim.json",
+  "length": 40,
+  "air": true,
+  "allow": [["pauldron_l", "forearm_l"], ["pauldron_r", "forearm_r"]],
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in"},
+    {
+      "at": 5,
+      "ease": "out",
+      "pose": {
+        "pelvis": [-5, -4, 0], "thigh_r": [5, 0, 0], "thigh_l": [5, 0, 0],
+        "torso": [-25, -10, 0], "head": [24, 8, 0],
+        "upper_arm_r": [-36, 0, -22], "forearm_r": [40, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [-32, 0, 24], "forearm_l": [44, 0, 0], "hand_l": [-10, 0, 0],
+        "pauldron_r": [-12.6, 0, -11], "pauldron_l": [-11.2, 0, 12]
+      }
+    },
+    {
+      "at": 10,
+      "ease": "ease",
+      "offset": [0.0, 0.2],
+      "pose": {
+        "pelvis": [2, -4, 0], "thigh_r": [-2, 0, 0], "thigh_l": [-2, 0, 0],
+        "torso": [6, -8, 0], "head": [-6, 6, 0],
+        "upper_arm_r": [150, 0, 22], "forearm_r": [24, 0, 0], "hand_r": [-20, 0, 0],
+        "upper_arm_l": [146, 0, -22], "forearm_l": [26, 0, 0], "hand_l": [-20, 0, 0],
+        "pauldron_r": [40, 0, 6], "pauldron_l": [40, 0, -6]
+      }
+    },
+    {
+      "at": 21,
+      "ease": "ease",
+      "offset": [0.0, 0.25],
+      "pose": {
+        "pelvis": [0, -4, 0], "thigh_r": [0, 0, 0], "thigh_l": [0, 0, 0],
+        "torso": [-2, -10, 0], "head": [4, 8, 0],
+        "upper_arm_r": [96, 34, -10], "forearm_r": [40, 0, 0], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [92, -34, 10], "forearm_l": [42, 0, 0], "hand_l": [-14, 0, 0],
+        "pauldron_r": [20, 0, -5], "pauldron_l": [20, 0, 5]
+      }
+    },
+    {
+      "at": 32,
+      "ease": "ease",
+      "offset": [0.0, 0.1],
+      "pose": {
+        "pelvis": [-2, -4, 0],
+        "torso": [-10, -12, 0], "head": [12, 9, 0],
+        "upper_arm_r": [40, 0, -46], "forearm_r": [40, 0, 0], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [36, 0, 46], "forearm_l": [44, 0, 0], "hand_l": [-16, 0, 0],
+        "pauldron_r": [14, 0, -23], "pauldron_l": [12.6, 0, 23]
+      }
+    },
+    {
+      "at": 39,
+      "offset": [0.0, 0.0],
+      "pose": {
+        "pelvis": [-2, -4, 0],
+        "torso": [-12, -12, 0], "head": [13, 9, 0],
+        "upper_arm_r": [36, 0, -44], "forearm_r": [44, 0, 0],
+        "upper_arm_l": [32, 0, 44], "forearm_l": [48, 0, 0]
+      }
+    }
+  ]
+}

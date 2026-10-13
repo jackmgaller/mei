@@ -1,0 +1,100 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Win (120 frames, the last frame held): a show-floor pose. Tank rears back on its struts and throws both clamp fists up overhead (0-16), holds them there shaking them as the stacks belch (16-60; the smoke is tank_fx.akr's), then drops the left fist onto its hip and pushes the right one out towards the crowd at shoulder height, the clamp turned on its side: the thumbs-up (66-80), the cab head tipping in a nod (90), held.",
+  "base": "_body.anim.json",
+  "length": 120,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in"},
+    {
+      "at": 6,
+      "ease": "out",
+      "pose": {
+        "pelvis": [-4, 0, 0], "thigh_r": [4, 0, 0], "thigh_l": [4, 0, 0],
+        "torso": [-24, -6, 0], "head": [22, 4, 0],
+        "upper_arm_r": [10, 0, -30], "forearm_r": [100, 0, 0], "hand_r": [-20, 0, 0],
+        "upper_arm_l": [10, 0, 30], "forearm_l": [100, 0, 0], "hand_l": [-20, 0, 0],
+        "pauldron_r": [3.5, 0, -15], "pauldron_l": [3.5, 0, 15]
+      }
+    },
+    {
+      "at": 16,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [4, 0, 0], "thigh_r": [-4, 0, 0], "thigh_l": [-4, 0, 0],
+        "torso": [12, 0, 0], "head": [-16, 0, 0],
+        "upper_arm_r": [168, 0, 18], "forearm_r": [20, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [168, 0, -18], "forearm_l": [20, 0, 0], "hand_l": [-10, 0, 0],
+        "pauldron_r": [40, 0, 9], "pauldron_l": [40, 0, -9]
+      }
+    },
+    {
+      "at": 24,
+      "ease": "ease",
+      "pose": {
+        "torso": [14, 2, 0], "head": [-18, -4, 0],
+        "upper_arm_r": [160, 0, 24], "forearm_r": [34, 0, 0],
+        "upper_arm_l": [170, 0, -14], "forearm_l": [14, 0, 0]
+      }
+    },
+    {
+      "at": 32,
+      "ease": "ease",
+      "pose": {
+        "torso": [12, -2, 0], "head": [-16, 4, 0],
+        "upper_arm_r": [170, 0, 14], "forearm_r": [14, 0, 0],
+        "upper_arm_l": [160, 0, -24], "forearm_l": [34, 0, 0]
+      }
+    },
+    {
+      "at": 40,
+      "ease": "ease",
+      "pose": {
+        "torso": [14, 2, 0], "head": [-18, -4, 0],
+        "upper_arm_r": [160, 0, 24], "forearm_r": [34, 0, 0],
+        "upper_arm_l": [170, 0, -14], "forearm_l": [14, 0, 0]
+      }
+    },
+    {
+      "at": 48,
+      "ease": "ease",
+      "pose": {
+        "torso": [12, -2, 0], "head": [-16, 4, 0],
+        "upper_arm_r": [170, 0, 14], "forearm_r": [14, 0, 0],
+        "upper_arm_l": [160, 0, -24], "forearm_l": [34, 0, 0]
+      }
+    },
+    {
+      "at": 60,
+      "ease": "ease",
+      "pose": {
+        "torso": [12, 0, 0], "head": [-14, 0, 0],
+        "upper_arm_r": [166, 0, 18], "forearm_r": [22, 0, 0],
+        "upper_arm_l": [166, 0, -18], "forearm_l": [22, 0, 0]
+      }
+    },
+    {
+      "at": 72,
+      "ease": "out",
+      "pose": {
+        "pelvis": [1, -6, 0], "thigh_r": [-1, 0, 0], "thigh_l": [-1, 0, 0],
+        "torso": [2, -20, 0], "head": [2, 16, 0],
+        "upper_arm_r": [86, 6, -10], "forearm_r": [24, 0, 0], "hand_r": [-10, 0, -70],
+        "upper_arm_l": [-6, 0, 40], "forearm_l": [96, 0, 0], "hand_l": [-30, 0, 0],
+        "pauldron_r": [30, 0, -5], "pauldron_l": [-2, 0, 20]
+      }
+    },
+    {
+      "at": 80,
+      "ease": "ease",
+      "pose": {
+        "torso": [4, -22, 0], "head": [0, 18, 0],
+        "upper_arm_r": [84, 6, -10], "forearm_r": [30, 0, 0], "hand_r": [-14, 0, -80]
+      }
+    },
+    {"at": 88, "ease": "ease", "pose": {"head": [16, 18, 0]}},
+    {"at": 94, "ease": "ease", "pose": {"head": [2, 18, 0]}},
+    {"at": 119, "pose": {"head": [4, 18, 0], "torso": [4, -22, 0]}}
+  ],
+  "allow": [["pauldron_r", "forearm_r"], ["pauldron_l", "forearm_l"], ["head", "forearm_r"], ["head", "forearm_l"], ["torso", "forearm_l"], ["torso", "hand_l"], ["pelvis", "hand_l"], ["pelvis", "forearm_l"]]
+}

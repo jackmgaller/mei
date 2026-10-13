@@ -1,0 +1,66 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Knockdown (32 frames, after hit_air lands): Tank topples the rest of the way backwards off its treads and slams down flat on its back, the reactor vessel taking the weight (frames 0-3), the treads swinging up into the air; it bounces 0.5 m (7) and comes down again (11), the arms flung out over the head, then lies still, the treads settling. Not hittable: the hurt boxes simply follow the parts. Then getup.",
+  "base": "_body.anim.json",
+  "length": 32,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "in",
+      "offset": [-0.4, 0.4],
+      "pose": {
+        "pelvis": [62, 6, 0], "thigh_r": [14, 0, 0], "thigh_l": [10, 0, 0], "shin_r": [12, 0, 0], "shin_l": [10, 0, 0],
+        "torso": [12, -4, 4], "head": [-10, 6, 0],
+        "upper_arm_r": [140, 0, 30], "forearm_r": [20, 0, 0], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [124, 0, -30], "forearm_l": [26, 0, 0], "hand_l": [-14, 0, 0],
+        "pauldron_r": [40, 0, 15], "pauldron_l": [40, 0, -15]
+      }
+    },
+    {
+      "at": 3,
+      "ease": "out",
+      "offset": [-0.8, 0.18],
+      "pose": {
+        "pelvis": [90, 2, 0], "thigh_r": [15, 0, 0], "thigh_l": [12, 0, 0], "shin_r": [10, 0, 0], "shin_l": [8, 0, 0],
+        "torso": [6, 0, 0], "head": [-6, 4, 0],
+        "upper_arm_r": [150, 0, 36], "forearm_r": [16, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [140, 0, -36], "forearm_l": [20, 0, 0], "hand_l": [-10, 0, 0],
+        "pauldron_r": [40, 0, 18], "pauldron_l": [40, 0, -18]
+      }
+    },
+    {
+      "at": 7,
+      "ease": "in",
+      "offset": [-0.8, 0.68],
+      "pose": {
+        "pelvis": [84, 2, 0], "thigh_r": [10, 0, 0], "thigh_l": [8, 0, 0], "shin_r": [4, 0, 0], "shin_l": [2, 0, 0],
+        "torso": [4, 0, 0], "head": [-12, 4, 0],
+        "upper_arm_r": [140, 0, 34], "upper_arm_l": [132, 0, -34]
+      }
+    },
+    {
+      "at": 11,
+      "ease": "out",
+      "offset": [-0.8, 0.18],
+      "pose": {
+        "pelvis": [90, 2, 0], "thigh_r": [15, 0, 0], "thigh_l": [13, 0, 0], "shin_r": [12, 0, 0], "shin_l": [10, 0, 0],
+        "torso": [6, 0, 0], "head": [-4, 4, 0],
+        "upper_arm_r": [152, 0, 36], "upper_arm_l": [142, 0, -36]
+      }
+    },
+    {
+      "at": 18,
+      "ease": "ease",
+      "offset": [-0.8, 0.18],
+      "pose": {"thigh_r": [10, 0, 0], "thigh_l": [8, 0, 0], "shin_r": [6, 0, 0], "shin_l": [4, 0, 0], "head": [2, 8, 0]}
+    },
+    {
+      "at": 31,
+      "offset": [-0.8, 0.18],
+      "pose": {"thigh_r": [8, 0, 0], "thigh_l": [6, 0, 0], "shin_r": [4, 0, 0], "shin_l": [2, 0, 0], "head": [4, 10, 0]}
+    }
+  ],
+  "allow": [["pauldron_r", "forearm_r"], ["pauldron_l", "forearm_l"]]
+}
