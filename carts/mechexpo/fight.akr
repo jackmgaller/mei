@@ -119,6 +119,7 @@ fn fight_init(p1: Mech, p2: Mech, mode: FightMode, cpu_level: s32) {
     fight.f[1].meter = 0
     fight_opts = TrainOpts { dummy: Dummy.Stand, refill_health: true, refill_meter: false }
     cpu_init(0x5EED + (p1 as s32) * 7 + (p2 as s32) * 13 + cpu_level * 101)
+    tank_find()                     // Tank's slam frames, once, outside the fight's frames
     start_round()
 }
 

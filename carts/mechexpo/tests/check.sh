@@ -13,7 +13,7 @@ run() {       # scenario frames
     s="$1"; f="$2"; shift 2
     "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@" > "$O/s$s.log" 2>&1 || { echo "FAILED scenario $s"; tail -8 "$O/s$s.log"; exit 1; }
     grep -q '^OK' "$O/s$s.log" || { echo "FAILED scenario $s: no OK"; tail -8 "$O/s$s.log"; exit 1; }
-    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak)' "$O/s$s.log"
+    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Tank|clinched|Hero thrown|anti-air|late)' "$O/s$s.log"
 }
 run 1 700
 run 2 4000
@@ -31,4 +31,17 @@ run 13 3000
 run 18 110
 run 15 1500
 run 14 1800
+# Tank (mx-tank): 40 armour, 41 armour broken, 42 the Atomic Clinch, 43 the nuclear meter,
+# 44 Chain Reaction, 45 the Scrap Heave, 46 Tank thrown, 47 the slam and the anti-air, 48 CPU
+# against CPU, 49 the budget with Tank drawn
+run 40 120
+run 41 320
+run 42 320
+run 43 500
+run 44 320
+run 45 300
+run 46 300
+run 47 340
+run 48 2000
+run 49 1800
 echo "all Mech Expo fight checks passed"

@@ -1019,7 +1019,7 @@ var tank_found: bool
 var tank_rip: [2]s32            // MARK_RIPOSTE: the section's first frame
 var tank_rel: [2]s32            // MARK_RELEASE: the slam
 
-private fn tank_find() {
+fn tank_find() {
     if tank_found { return }
     tank_rip[0] = find_mark(Mech.Tank, Mv.sp_f, MARK_RIPOSTE)
     tank_rel[0] = find_mark(Mech.Tank, Mv.sp_f, MARK_RELEASE)
@@ -1066,10 +1066,10 @@ fn tank_super_catches(i: s32, j: s32) -> bool {
 fn tank_catch(i: s32) {
     let j = other(i)
     let f = &fight.f[i]
-    ev_add(Ev.Grab, i, (f.x + fight.f[j].x) / 2, 6.0, 2)
-    let rip = tank_slam_rip(f.mv)
+    let rip = tank_slam_rip(f.mv)          // (catch() reported the Grab)
     if rip >= 0 { fx[i].t = rip }
     fx[i].riposte = true
+    fx[i].contact = true                    // a catch, not a whiff
     fx[i].slide = 0.0
     let combo = fx[j].combo
     set_mv(j, Mv.thrown_slam)

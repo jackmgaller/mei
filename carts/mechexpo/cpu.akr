@@ -145,6 +145,7 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
             }
             if me.mv == Mv.atk_f {
                 if super_wise(i) && roll(c, 30) { return A | B }
+                if me.mech == Mech.Tank { return DOWN | B }             // Tank: the Bulldozer
                 return fwd | B
             }
         }
@@ -172,6 +173,7 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
         // an attack starting in range
         if opp_attacking && !c.opp_active && dist < tip(op.mech) + 2.0 && op.mv != Mv.grab {
             c.decided = true
+            if me.mech == Mech.Tank && roll(c, lv.punish / 2) { return tank_armour_through(dist, fwd) }
             if roll(c, lv.block) { return hold(c, R, 24) }
         }
     }
@@ -179,6 +181,7 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
     if seen && !c.punish_rolled && is_attack(op.mv) && c.opp_active && !fx[j].had_hit && grounded(j) {
         c.punish_rolled = true
         if roll(c, lv.punish) {
+            if me.mech == Mech.Tank { return tank_punish(dist, fwd) }
             if super_wise(i) && dist < 12.0 && roll(c, 50) { return A | B }
             if dist < 6.0 { return A }
             if dist < tip(me.mech) - 0.5 { return fwd | A }
@@ -205,6 +208,7 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
     if c.think_t > 0 { return c.hold }
     c.think_t = lv.think + rnd_n(c, lv.think)
 
+    if me.mech == Mech.Tank { return tank_neutral(i, c, lv, dist, fwd, back) }
     // neutral: footsies around the tip of its forward attack
     let range = tip(me.mech)
     if dist < tip(op.mech) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
@@ -272,4 +276,60 @@ fn dummy_pad(i: s32) -> u32 {
         Block => return R
         Cpu => return cpu_pad(i, 1)
     }
+}
+
+// ---- Tank's CPU (mx-tank): close the distance carefully, armour through pokes, clinch a mech
+// that blocks, Chain Reaction on a mech standing still or blocking in reach
+
+const TANK_CLINCH_SEP: fixed = 9.5      // the Atomic Clinch reaches a mech this far away
+const TANK_CLOSE: fixed = 5.5
+
+// The other is starting an attack: meet it with armour.
+private fn tank_armour_through(dist: fixed, fwd: u32) -> u32 {
+    if dist < TANK_CLOSE { return B }                   // the Reactor Vent
+    return fwd | A                                      // the Piston Haymaker
+}
+
+private fn tank_punish(dist: fixed, fwd: u32) -> u32 {
+    if dist < 6.0 { return A }
+    if dist < 8.5 { return fwd | A }
+    return DOWN | B                                     // the Bulldozer
+}
+
+private fn tank_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, back: u32) -> u32 {
+    let j = other(i)
+    let op = &fight.f[j]
+    let standing = grounded(j) && !is_attack(op.mv) && op.mv != Mv.grab
+    if super_wise(i) && dist < TANK_CLINCH_SEP - 2.0 && standing && roll(c, 30) { return A | B }
+    if dist < TANK_CLOSE {
+        if c.blocks_seen >= 1 && roll(c, lv.grab) {
+            c.blocks_seen = 0
+            if roll(c, 50) { return Y }
+            return fwd | B
+        }
+        let r = rnd_n(c, 100)
+        if r < 25 { return A }
+        if r < 38 { return Y }
+        if r < 48 { return B }
+        if r < 58 { return fwd | A }
+        if r < 64 { return DOWN | A }
+        if r < 82 { return hold(c, R, 10 + rnd_n(c, 10)) }
+        return hold(c, back, 8)
+    }
+    if dist < TANK_CLINCH_SEP {
+        if c.blocks_seen >= 1 && standing && roll(c, lv.grab) {
+            c.blocks_seen = 0
+            return fwd | B
+        }
+        let r = rnd_n(c, 100)
+        if r < lv.poke { return fwd | A }
+        if r < lv.poke + lv.special && standing { return fwd | B }
+        if r < lv.poke + lv.special + 25 { return hold(c, R, 12 + rnd_n(c, 12)) }
+        return hold(c, fwd, 8 + rnd_n(c, 8))
+    }
+    // far: walk in behind the guard; now and then the Bulldozer from its reach
+    if dist < 12.5 && roll(c, lv.special) { return DOWN | B }
+    if dist < 16.0 && roll(c, lv.guard / 2) { return hold(c, R, 10) }
+    if roll(c, lv.jump) { return fwd | X }
+    return hold(c, fwd, 14 + rnd_n(c, 20))
 }

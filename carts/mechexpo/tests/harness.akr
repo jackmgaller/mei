@@ -35,6 +35,8 @@
 //     on hit against a standing mech, from the engine itself (MOVES.md's tables)
 // 18  the Vault Throw: the Double-blade Hero's victim plays thrown_vault, lands behind it
 //     (the sides swap), knocked down
+// 40-49 Tank's (mx-tank): armour, its grabs and throws, the nuclear meter, its super, the CPU
+//     and the budget; listed with their code at the end of this file
 // 15  training: the dummy blocking, standing (health refills after a moment, meter kept full),
 //     the dummy's CPU, no clock, no KO; the move lists; a super cancelled from a chain, and A
 //     then B two frames apart (the Guard Cut becomes the super)
@@ -103,6 +105,10 @@ fn init() {
             train(Dummy.Block, true)
         }
         else => {}
+    }
+    if tk_scenario() {
+        tk_init()
+        return
     }
     if SCENARIO == 10 || SCENARIO == 13 || SCENARIO == 16 { tick_per_frame = 40 }
     if SCENARIO >= 1 && SCENARIO <= 9 || SCENARIO == 11 || SCENARIO == 12 || SCENARIO == 18 { skip_intro() }
@@ -182,6 +188,7 @@ fn update() {
 private fn at(f: s32) -> bool { return frames == f }
 
 private fn script1() -> u32 {
+    if tk_scenario() { return tk_script(0) }
     let a = &fight.f[0]
     let fwd = if_u(a.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -232,6 +239,7 @@ private fn script1() -> u32 {
 }
 
 private fn script2() -> u32 {
+    if tk_scenario() { return tk_script(1) }
     let b = &fight.f[1]
     let fwd = if_u(b.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -326,7 +334,7 @@ private fn check() {
         15 => check_training()
         16 => check_stats()
         18 => check_vault()
-        else => {}
+        else => { if tk_scenario() { tk_check() } }
     }
 }
 
@@ -966,7 +974,7 @@ private fn draw_box(i: s32, b: *Box, cx: fixed) {
 }
 
 fn draw() {
-    if SCENARIO == 14 {
+    if SCENARIO == 14 || SCENARIO == 49 {
         draw_mechs()
         return
     }
@@ -1044,4 +1052,434 @@ private fn draw_mechs() {
         anim_draw(f.mech, f.mv, f.frame, anim_place(vec2(f.x, f.y), f.facing))
     }
     hud()
+}
+
+// ---- Tank's scenarios, 40-49 (mx-tank; MOVES.md, "Tank")
+//
+// 40  super armour absorbs a hit: the Double-blade Hero's Twin Cut lands on the Piston
+//     Haymaker's armour (damage, the nuclear meter, no hitstun, no chain), and the Haymaker hits
+// 41  armour broken: the Hero grabs Tank out of its armoured Haymaker; then the Hero's super
+//     lands through the armour as a normal hit
+// 42  the Atomic Clinch: it catches a blocking Hero from 9 m and cannot be broken (Y mashed);
+//     it misses a mech in the air and Tank recovers
+// 43  the nuclear meter: it fills from damage taken (a bar per 480) and carries into round 2
+// 44  Chain Reaction: Rivet Jab, Piston Haymaker, the super catches the Hero in hitstun; the
+//     scaled damage, the bar spent
+// 45  Tank's Scrap Heave on the Hero, then on the Double-blade Hero
+// 46  Tank thrown: by the Hero (thrown), then by the Double-blade Hero's Vault Throw
+// 47  the Atomic Clinch on the Double-blade Hero (thrown_slam); the Smokestack Uppercut knocks
+//     a jumping Hero down
+// 48  CPU against CPU (level 2): Tank against the Hero, then against the Double-blade Hero; both
+//     matches finish
+// 49  the budget: CPU against CPU with Tank drawn against the Hero, then the Double-blade Hero
+
+var tk_part: s32                // the scenario's second half has started
+var tk_kd: s32                  // a knockdown was seen
+var tk_matches: s32
+var tk_peak_cpu: [2]s32
+var tk_peak_gpu: [2]s32
+var tk_peak_tris: [2]s32
+
+private fn tk_scenario() -> bool { return SCENARIO >= 40 && SCENARIO <= 49 }
+
+private fn tk_init() {
+    match SCENARIO {
+        40, 47 => fight_init(Mech.Tank, Mech.Doubleblade, FightMode.Versus, 0)
+        41, 43, 46 => fight_init(Mech.Hero, Mech.Tank, FightMode.Versus, 0)
+        42, 44, 45 => fight_init(Mech.Tank, Mech.Hero, FightMode.Versus, 0)
+        48, 49 => fight_init(Mech.Tank, Mech.Hero, FightMode.VsCpu, 2)
+        else => {}
+    }
+    if SCENARIO == 48 { tick_per_frame = 40 }
+    if SCENARIO != 48 && SCENARIO != 49 { skip_intro() }
+    match SCENARIO {
+        40 => place(-3.0, 3.0)
+        41 => place(-2.0, 2.0)
+        42 => place(-4.5, 4.5)
+        43 => place(-4.0, 4.0)
+        44 => { place(-2.5, 2.5); fight.f[0].meter = METER_BAR }
+        45, 46 => place(-2.0, 2.0)
+        47 => place(-4.0, 4.0)
+        else => {}
+    }
+}
+
+// A fresh fight halfway through a scenario.
+private fn tk_restart(a: Mech, b: Mech, x: fixed) {
+    fight_init(a, b, FightMode.Versus, 0)
+    skip_intro()
+    place(-x, x)
+    for k in 0..len(Ev) {
+        evc[k] = 0
+        evc_side[0][k] = 0
+        evc_side[1][k] = 0
+    }
+    tk_kd = 0
+}
+
+private fn tk_script(i: s32) -> u32 {
+    let a = &fight.f[i]
+    let fwd = if_u(a.facing > 0, RIGHT, LEFT)
+    match SCENARIO {
+        40 => {
+            if i == 0 && at(3) { return fwd | A }
+            if i == 1 && at(5) { return A }
+        }
+        41 => {
+            if i == 1 && at(5) { return fwd | A }
+            if i == 0 && at(10) { return Y }
+            if i == 1 && at(155) { return fwd | A }
+            if i == 0 && at(160) { return A | B }
+        }
+        42 => {
+            if i == 1 && frames < 150 {
+                // blocking; once caught, mashing the break
+                if a.mv == Mv.thrown_slam && frames % 2 == 0 { return Y }
+                return R
+            }
+            if i == 0 && at(5) { return fwd | B }
+            if i == 1 && at(200) { return X }
+            if i == 0 && at(206) { return fwd | B }
+        }
+        43 => {
+            if i == 0 && (at(5) || at(95)) { return fwd | A }
+        }
+        44 => {
+            if i != 0 { return 0 }
+            if at(5) { return A }
+            if frames == next_at {
+                let hits = evc_side[0][Ev.Hit]
+                if hits == 1 { return fwd | A }
+                if hits == 2 { return A | B }
+            }
+        }
+        45 => {
+            if i == 0 && (at(5) || at(155)) { return Y }
+        }
+        46 => {
+            if i == 0 && (at(5) || at(155)) { return Y }
+        }
+        47 => {
+            if i == 0 && at(5) { return fwd | B }
+            // the anti-air: the Hero (side 1) jumps in at Tank, cleaving on the way down
+            if i == 1 && at(205) { return fwd | X }
+            // (the fight never starts an air attack: decide() only presses buttons on the ground,
+            // so the jump-in has no Falling Cleave for the armour to take; see the report)
+            if i == 0 && fight.f[1].mv == Mv.jump && fx[1].vy < 0.0 && fight.f[1].y < 6.0 && stage == 0 {
+                stage = 1
+                return UP | B
+            }
+        }
+        48, 49 => return cpu_pad(i, 2)
+        else => {}
+    }
+    return 0
+}
+
+private fn tk_check() {
+    if fight.f[0].mv == Mv.knockdown || fight.f[1].mv == Mv.knockdown { tk_kd += 1 }
+    match SCENARIO {
+        40 => tk_check_armour()
+        41 => tk_check_armour_break()
+        42 => tk_check_clinch()
+        43 => tk_check_nuclear()
+        44 => tk_check_super()
+        45 => tk_check_heave()
+        46 => tk_check_thrown()
+        47 => tk_check_slam_aa()
+        48 => tk_check_cpu()
+        49 => tk_check_budget()
+        else => {}
+    }
+}
+
+private fn tk_check_armour() {
+    let t = &fight.f[0]
+    let d = &fight.f[1]
+    if stage == 0 && evc[Ev.Armour] > 0 {
+        stage = 1
+        assert(t.mv == Mv.atk_f, "the armour did not keep the Haymaker going")
+        assert_eq(t.health, 1100 - dmg(1, Mv.atk_n), "an absorbed hit's damage")
+        assert_eq(t.meter, dmg(1, Mv.atk_n) * 5 / 2, "the nuclear meter from the absorbed hit")
+        assert(!fx[1].contact, "an absorbed hit counts for the chain")
+        assert_eq(fx[0].stun, 0, "hitstun through armour")
+    }
+    if at(80) {
+        assert_eq(evc[Ev.Armour], 1, "the Twin Cut was not absorbed")
+        assert_eq(evc_side[1][Ev.Hit], 0, "the Twin Cut hit through the armour")
+        assert_eq(evc_side[0][Ev.Hit], 1, "the Haymaker did not land after the armour")
+        assert_eq(d.health, dbh() - dmg(2, Mv.atk_f), "the Haymaker's damage")
+        show_state()
+        ok("super armour absorbs the Twin Cut; the Haymaker lands")
+    }
+}
+
+private fn tk_check_armour_break() {
+    let t = &fight.f[1]
+    if evc[Ev.Grab] == 1 && stage == 0 {
+        stage = 1
+        assert(t.mv == Mv.thrown, "the armoured Tank was not grabbed")
+    }
+    if at(140) {
+        assert_eq(evc[Ev.Throw], 1, "no throw")
+        assert_eq(evc[Ev.Armour], 0, "the grab was absorbed")
+        assert_eq(t.health, 1100 - dmg(0, Mv.throw), "the Hero's throw on Tank")
+        assert_eq(t.meter, dmg(0, Mv.throw) * 5 / 2, "the meter from the throw")
+        assert(tk_kd > 0, "Tank was not knocked down")
+    }
+    if at(150) {
+        assert(actionable(0) && actionable(1), "not ready for the super")
+        place(-6.0, 6.0)
+        fight.f[0].meter = METER_BAR
+        mark_h = t.health
+    }
+    if at(300) {
+        assert_eq(evc[Ev.Super], 1, "no super")
+        assert_eq(evc[Ev.Armour], 0, "the super was absorbed")
+        assert_eq(evc_side[0][Ev.Hit], 1, "the super did not hit through the armour")
+        assert_eq(t.health, mark_h - dmg(0, Mv.super), "the super's damage")
+        ok("armour broken by a grab and by the super")
+    }
+}
+
+private fn tk_check_clinch() {
+    let h = &fight.f[1]
+    if evc[Ev.Grab] == 1 && stage == 0 {
+        stage = 1
+        assert(h.mv == Mv.thrown_slam, "the clinched mech does not play thrown_slam")
+        assert(fx[1].break_t == 0, "a break window on the command grab")
+        print("clinched from ")
+        print_fixed(dist())
+        println(" m")
+    }
+    if at(150) {
+        assert_eq(evc[Ev.Grab], 1, "the Clinch did not catch the blocking Hero")
+        assert_eq(evc[Ev.Break], 0, "the command grab was broken")
+        assert_eq(evc[Ev.Throw], 1, "no slam")
+        assert_eq(h.health, 1000 - dmg(2, Mv.sp_f), "the Clinch's damage")
+        assert(tk_kd > 0, "not knocked down")
+        place(-4.5, 4.5)
+        tk_kd = 0
+    }
+    if at(199) { assert(actionable(0) && actionable(1), "not ready for the second Clinch") }
+    if at(300) {
+        assert_eq(evc[Ev.Grab], 1, "the Clinch caught a mech in the air")
+        assert_eq(h.health, 1000 - dmg(2, Mv.sp_f), "damage from a missed Clinch")
+        assert(actionable(0), "Tank did not recover from the missed Clinch")
+        ok("the Atomic Clinch beats block, cannot be broken, misses a jump")
+    }
+}
+
+private fn tk_check_nuclear() {
+    let t = &fight.f[1]
+    if at(60) {
+        assert_eq(evc_side[0][Ev.Hit], 1, "the Tip Thrust missed")
+        assert_eq(t.meter, dmg(0, Mv.atk_f) * 5 / 2, "the nuclear meter from a hit")
+        assert_eq(fight.f[0].meter, KIN_HIT, "the Hero's kinetic meter")
+        print("meter after one Tip Thrust ")
+        print_int(t.meter)
+        println("")
+    }
+    if at(80) {
+        t.health = 50
+        place(-4.0, 4.0)
+    }
+    if stage == 0 && evc[Ev.Ko] > 0 { stage = 1 }
+    if stage == 1 && fight.phase == Phase.Intro {
+        assert_eq(fight.round, 2, "round 2")
+        assert_eq(t.health, 1100, "health refilled")
+        assert_eq(t.meter, (dmg(0, Mv.atk_f) + 50) * 5 / 2, "the meter did not carry into round 2")
+        print("meter after 170 damage, in round 2 ")
+        print_int(t.meter)
+        println("")
+        ok("the nuclear meter fills from damage taken and carries over")
+    }
+}
+
+private fn tk_check_super() {
+    let ev = fight_events()
+    for e in 0..ev.n {
+        if ev.e[e].kind == Ev.Hit && ev.e[e].side == 0 { next_at = frames + 3 }
+    }
+    if evc[Ev.Super] == 1 && stage == 0 {
+        stage = 1
+        assert_eq(fight.f[0].meter, 0, "the bar was not spent")
+    }
+    if at(300) {
+        let h = &fight.f[1]
+        assert_eq(evc[Ev.Super], 1, "no super")
+        assert_eq(evc[Ev.Grab], 1, "Chain Reaction did not catch the mech in hitstun")
+        assert_eq(evc[Ev.Throw], 1, "no slam")
+        assert_eq(h.health, 1000 - (dmg(2, Mv.atk_n) + dmg(2, Mv.atk_f) * 80 / 100 + dmg(2, Mv.super) * 65 / 100),
+                  "the chain's scaled damage")
+        print("chain into Chain Reaction: damage ")
+        print_int(1000 - h.health)
+        println("")
+        ok("Chain Reaction ends the chain")
+    }
+}
+
+private fn tk_check_heave() {
+    if at(140) {
+        assert_eq(evc[Ev.Throw], 1, "no Scrap Heave on the Hero")
+        assert_eq(fight.f[1].health, 1000 - dmg(2, Mv.throw), "the Scrap Heave's damage")
+        assert(tk_kd > 0, "the Hero was not knocked down")
+        assert(dist() > 8.0, "the Hero was not thrown forward")
+        print("Hero thrown to ")
+        print_fixed(dist())
+        println(" m")
+        tk_restart(Mech.Tank, Mech.Doubleblade, 2.0)
+    }
+    if at(290) {
+        assert_eq(evc[Ev.Throw], 1, "no Scrap Heave on the Double-blade Hero")
+        assert_eq(fight.f[1].health, dbh() - dmg(2, Mv.throw), "its damage")
+        assert(tk_kd > 0, "not knocked down")
+        ok("Tank's Scrap Heave on the Hero and the Double-blade Hero")
+    }
+}
+
+private fn tk_check_thrown() {
+    let t = &fight.f[1]
+    if evc[Ev.Grab] == 1 && stage == 0 {
+        stage = 1
+        if tk_part == 0 { assert(t.mv == Mv.thrown, "Tank is not in thrown") }
+        else { assert(t.mv == Mv.thrown_vault, "Tank is not in thrown_vault") }
+    }
+    if at(140) {
+        assert_eq(evc[Ev.Throw], 1, "the Hero did not throw Tank")
+        assert_eq(t.health, 1100 - dmg(0, Mv.throw), "the Hero's throw on Tank")
+        assert(tk_kd > 0, "Tank was not knocked down")
+        tk_restart(Mech.Doubleblade, Mech.Tank, 2.0)
+        tk_part = 1
+        stage = 0
+    }
+    if at(290) {
+        assert_eq(evc[Ev.Throw], 1, "the Double-blade Hero did not throw Tank")
+        assert_eq(t.health, 1100 - dmg(1, Mv.throw), "the Vault Throw on Tank")
+        assert_eq(t.meter, dmg(1, Mv.throw) * 5 / 2, "the meter from the throw")
+        assert(t.x < fight.f[0].x, "the Vault Throw did not swap sides")
+        assert(tk_kd > 0, "Tank was not knocked down")
+        ok("Tank thrown by the Hero and vaulted by the Double-blade Hero")
+    }
+}
+
+private fn tk_check_slam_aa() {
+    if evc[Ev.Grab] == 1 && tk_part == 0 && mark == 0 {
+        mark = 1
+        assert(fight.f[1].mv == Mv.thrown_slam, "the Double-blade Hero is not in thrown_slam")
+    }
+    if at(150) {
+        assert_eq(evc[Ev.Throw], 1, "no slam")
+        assert_eq(fight.f[1].health, dbh() - dmg(2, Mv.sp_f), "the Clinch on the Double-blade Hero")
+        assert(tk_kd > 0, "not knocked down")
+        tk_restart(Mech.Tank, Mech.Hero, 4.5)
+        tk_part = 1
+        stage = 0
+    }
+    if at(330) {
+        print("anti-air: absorbed ")
+        print_int(evc[Ev.Armour])
+        print(", Tank hits ")
+        print_int(evc_side[0][Ev.Hit])
+        print(", Hero hits ")
+        print_int(evc_side[1][Ev.Hit])
+        println("")
+        assert_eq(evc_side[1][Ev.Hit], 0, "the jump-in hit through the uppercut")
+        assert_eq(evc_side[0][Ev.Hit], 1, "the Smokestack Uppercut missed")
+        assert(tk_kd > 0, "the jumper was not knocked down")
+        ok("the Clinch on the Double-blade Hero; the Smokestack Uppercut")
+    }
+}
+
+private fn tk_check_cpu() {
+    if fight.phase == Phase.Fight && fight.phase_t == 1 { round_start = frames }
+    if fight.phase == Phase.Ko && fight.phase_t == 1 {
+        print("  round ")
+        print_int(fight.round)
+        print(": ")
+        if fight.timer <= 0 { print("time up") } else { print("KO") }
+        print(" after ")
+        print_int((frames - round_start) / 60)
+        print(" s, winner ")
+        print_int(fight.round_winner)
+        print(", health ")
+        print_int(fight.f[0].health)
+        print(" / ")
+        print_int(fight.f[1].health)
+        print(", Tank's meter ")
+        print_int(fight.f[0].meter)
+        println("")
+    }
+    if fight.phase == Phase.MatchOver {
+        print("run ")
+        print_int(tk_matches + 1)
+        print(": Tank against ")
+        print(if_s(fight.f[1].mech == Mech.Hero, "the Hero", "the Double-blade Hero"))
+        print(", winner ")
+        print_int(fight.winner)
+        print(" after ")
+        print_int(frames)
+        print(" frames; hits ")
+        print_int(evc_side[0][Ev.Hit])
+        print(" / ")
+        print_int(evc_side[1][Ev.Hit])
+        print(", absorbed ")
+        print_int(evc[Ev.Armour])
+        print(", grabs ")
+        print_int(evc_side[0][Ev.Grab])
+        print(" / ")
+        print_int(evc_side[1][Ev.Grab])
+        print(", supers ")
+        print_int(evc_side[0][Ev.Super])
+        println("")
+        tk_matches += 1
+        if tk_matches == 1 {
+            fight_init(Mech.Tank, Mech.Doubleblade, FightMode.VsCpu, 2)
+            for k in 0..len(Ev) {
+                evc[k] = 0
+                evc_side[0][k] = 0
+                evc_side[1][k] = 0
+            }
+            frames = 0
+            return
+        }
+        ok("CPU against CPU: Tank's matches finish")
+    }
+}
+
+private fn tk_check_budget() {
+    let k = if_i(frames > 900, 1, 0)
+    if frames > 3 && frames != 901 && frames != 902 {
+        if frame_ticks() > 1 { late += 1 }
+        tk_peak_cpu[k] = max(tk_peak_cpu[k], cpu_used())
+        tk_peak_gpu[k] = max(tk_peak_gpu[k], gpu_used())
+        tk_peak_tris[k] = max(tk_peak_tris[k], tris_drawn())
+    }
+    if frames == 900 { fight_init(Mech.Tank, Mech.Doubleblade, FightMode.VsCpu, 2) }
+    if frames == 1800 {
+        for m in 0..2 {
+            print(if_s(m == 0, "Tank and the Hero: ", "Tank and the Double-blade Hero: "))
+            print("peak cpu ")
+            print_int(tk_peak_cpu[m])
+            print(", gpu ")
+            print_int(tk_peak_gpu[m])
+            print(", triangles ")
+            print_int(tk_peak_tris[m])
+            println("")
+            assert(tk_peak_cpu[m] <= CPU_BUDGET, "over the CPU budget")
+            assert(tk_peak_gpu[m] <= GPU_BUDGET, "over the GPU budget")
+            assert(tk_peak_tris[m] < 4000, "over 4,000 triangles")
+        }
+        print("late frames ")
+        print_int(late)
+        print(", the fight's peak ")
+        print_int(peak_fight)
+        println(" cycles")
+        ok("the budget with Tank drawn")
+    }
+}
+
+private fn if_i(c: bool, a: s32, b: s32) -> s32 {
+    if c { return a }
+    return b
 }
