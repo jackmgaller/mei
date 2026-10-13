@@ -8,7 +8,7 @@ Writes, in carts/mechexpo/:
   art/fx_particles.pal   the palette: 0 transparent, 1-15 a grey ramp (17 to 255)
   fx_art.akr             the embeds, fx_art_load() and the rectangles (FXP_*: u, v, w, h)
 
-The sprites: a glow with a hot core, a soft dot, a twinkle star, the impact flare (a star with an
+The sprites: a glow with a hot core, the hit's starburst, a soft dot, a twinkle star, the impact flare (a star with an
 anamorphic streak, 1999 lens-flare style), a thin ring, the shield's hexagon, two smoke puffs, a
 flattened dust puff, a speed streak, a chevron, a bubble, two electric arcs and eight frames of
 a spinning metal shard (shaded: lit edge, body, dark edge; drawn opaque and tinted).
@@ -73,6 +73,27 @@ def flare(w, h):
     return levels(streak + spike + core)
 
 
+def burst(d, seed=4):
+    """The hit's starburst: a dozen sharp rays of uneven length round a hot core (the 1990s
+    fighting-game hit spark)."""
+    rng = np.random.default_rng(seed)
+    y, x = np.mgrid[0:d, 0:d]
+    c = (d - 1) / 2
+    dx, dy = (x - c) / (d / 2), (y - c) / (d / 2)
+    r = np.hypot(dx, dy)
+    a = np.arctan2(dy, dx)
+    v = np.zeros((d, d))
+    n = 12
+    for k in range(n):
+        ang = 2 * math.pi * k / n + rng.uniform(-0.15, 0.15)
+        ln = rng.uniform(0.55, 1.0) if k % 2 else rng.uniform(0.85, 1.0)
+        da = np.abs((a - ang + math.pi) % (2 * math.pi) - math.pi)
+        width = 0.34 * (1 - np.clip(r / ln, 0, 1)) ** 0.8
+        v = np.maximum(v, np.clip(1 - da / np.maximum(width, 1e-3), 0, 1) * (r < ln))
+    core = np.clip(1 - r * 2.6, 0, 1) ** 0.8
+    return levels(np.maximum(v * 0.95, core * 1.2))
+
+
 def ring(d):
     r = radius(d)
     edge = np.clip(1 - np.abs(r - 0.88) * 14, 0, 1)
@@ -121,7 +142,7 @@ def puff(d, seed, hd=None):
         v += np.exp(-(((x - cx) / rr) ** 2 + ((y - cy) / (rr * hd / d)) ** 2)) * rng.uniform(0.5, 1.0)
     v = v / v.max()
     fall = np.clip(1 - radius(d, hd), 0, 1) ** 0.8
-    return levels(v * fall * 1.25, 0.06)
+    return levels((v * fall) ** 0.7 * 1.1, 0.06)
 
 
 def speed(w, h):
@@ -247,6 +268,7 @@ def main():
     sh.place('GLOW', glow(64))
     sh.place('RING', ring(64))
     sh.place('FLARE', flare(64, 32))
+    sh.place('BURST', burst(48))
     sh.place('HEX', hexagon(32))
     sh.place('SMOKE0', puff(32, 7))
     sh.place('SMOKE1', puff(32, 11))

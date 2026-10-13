@@ -46,7 +46,7 @@ const FX_Z: fixed = -1.2                   // particles' depth: a little in fron
 private const PXK: fixed = 207.8           // screen pixels a metre at view depth 1 (120 x 1.732)
 
 // How a particle is drawn.
-enum Pk: u8 { Dot, Glow, Streak, Shard, Smoke, Dust, Flare, Ring, Floor, Hex, Star, Chevron, Speed, Bubble, Bolt }
+enum Pk: u8 { Dot, Glow, Streak, Shard, Smoke, Dust, Flare, Ring, Floor, Hex, Star, Chevron, Speed, Bubble, Bolt, Burst }
 
 const PF_FLOOR: u8 = 1        // bounces and skids on the floor
 const PF_FLICKER: u8 = 2      // blinks
@@ -94,14 +94,14 @@ struct FxPre {
 
 enum Pre {
     Spark, Ember, Shard, Flare, Glow, Ring, Smoke, Dust, Puff, Pebble, Floor, Shield, ShieldSpark,
-    Chip, Clank, Mote, Void, VoidMote, Steam, Arc, Bubble, Chevron, Speed, Star, Implode, Scrape
+    Chip, Clank, Mote, Void, VoidMote, Steam, Arc, Bubble, Chevron, Speed, Star, Implode, Scrape, Burst
 }
 
 // 0xBBGGRR. Sprite colours are tints (0x80 a channel: as drawn; up to 0xFF: twice as bright).
 const PRES: [len(Pre)]FxPre = [
     // Spark: a hot streak that flies, falls and skids (literal colours: white-yellow to red)
     FxPre { kind: Pk.Streak, blend: BLEND_ADD, flags: PF_FLOOR, life: 14, life_rnd: 14, speed_rnd: 0.65,
-            s0: 0.32, s1: 0.2, grav: 0.02, drag: 0.95, c0: 0xD8FCFF, c1: 0x0838E0 },
+            s0: 0.32, s1: 0.2, grav: 0.02, drag: 0.95, c0: 0x90F4FF, c1: 0x0040F0 },
     // Ember: a small hot dot drifting down
     FxPre { kind: Pk.Dot, blend: BLEND_ADD, flags: PF_FLOOR, life: 18, life_rnd: 16, speed_rnd: 0.7,
             s0: 0.55, s1: 0.25, grav: 0.012, drag: 0.94, c0: 0x90D0FF, c1: 0x1030C0 },
@@ -122,10 +122,10 @@ const PRES: [len(Pre)]FxPre = [
             s0: 2.0, s1: 5.5, grav: -0.002, drag: 0.94, c0: 0x40484C, c1: 0x181C20 },
     // Dust: a flattened puff along the floor, lit grey-brown
     FxPre { kind: Pk.Dust, blend: BLEND_ADD, flags: PF_BACK, life: 26, life_rnd: 14, speed_rnd: 0.5,
-            s0: 2.4, s1: 7.0, grav: -0.003, drag: 0.92, c0: 0x48586A, c1: 0x182028 },
+            s0: 3.5, s1: 11.0, grav: -0.004, drag: 0.92, c0: 0x202A36, c1: 0x0C1014 },
     // Puff: a small round dust puff (steps, landings)
     FxPre { kind: Pk.Smoke, blend: BLEND_ADD, flags: PF_BACK, life: 14, life_rnd: 6, speed_rnd: 0.5,
-            s0: 0.8, s1: 2.4, grav: -0.003, drag: 0.9, c0: 0x3C4850, c1: 0x101418 },
+            s0: 1.0, s1: 3.2, grav: -0.003, drag: 0.9, c0: 0x28323E, c1: 0x0C1014 },
     // Pebble: a chip of floor or plating thrown up by a slam
     FxPre { kind: Pk.Shard, blend: BLEND_NONE, flags: PF_FLOOR | PF_STILL, life: 30, life_rnd: 16, speed_rnd: 0.6,
             s0: 0.6, s1: 0.4, grav: 0.03, drag: 0.98, c0: 0x6A6660, c1: 0x6A6660, spin: 1 },
@@ -177,6 +177,9 @@ const PRES: [len(Pre)]FxPre = [
     // Scrape: a low spark scraped along the floor
     FxPre { kind: Pk.Streak, blend: BLEND_ADD, flags: PF_FLOOR, life: 10, life_rnd: 8, speed_rnd: 0.5,
             s0: 0.25, s1: 0.15, grav: 0.02, drag: 0.95, c0: 0xA0E0FF, c1: 0x0828B0 },
+    // Burst: the hit's starburst, white-hot into orange
+    FxPre { kind: Pk.Burst, blend: BLEND_ADD, life: 6, s0: 4.0, s1: 5.0, drag: 1.0,
+            c0: 0xE0FFFF, c1: 0x0860E0 },
 ]
 
 // ---- power sources: the super's charge-up and the full meter's glow, one row each
@@ -238,6 +241,7 @@ private struct Trail {
     tip: [TRAIL_N]vec3
     idle: s32                      // frames since the weapon was last swinging
     shed: s32                      // samples since the tip last shed a mote
+    lit: fixed                     // brightness: dims while the blade stands still (hitstop)
 }
 
 private struct TrailMesh {
@@ -456,6 +460,11 @@ private fn fx_hit(x: fixed, y: fixed, dir: s32, pw: s32, victim: Mech) {
     let g = fx_burst_at(Pre.Glow, x, y, 0, 0)
     g.s0 = 1.2 * k
     g.s1 = 3.0 * k
+    let b = fx_burst_at(Pre.Burst, x, y, 0, 0)
+    b.s0 = 2.6 + fixed(pw) * 1.8
+    b.s1 = b.s0 * 5 / 4
+    b.dt = 1.0 / (4 + pw * 2)
+    if fx_u() & 1 != 0 { b.flags |= PF_FLIP }
     let a = fx_ang(dir, 2)
     fx_spray(Pre.Spark, 7 + pw * 4, x, y, a, 5 + pw, 0.5 + fixed(pw) * 0.12)
     fx_spray(Pre.Ember, 2 + pw, x, y, a, 7, 0.22 + fixed(pw) * 0.05)
@@ -621,11 +630,19 @@ private fn fx_slam(x: fixed, k: fixed, m: Mech) {
     let fr = fx_burst_at(Pre.Floor, x, 0.05, 0, 0)
     fr.s1 = 14.0 * k
     let n = (6.0 * k) as s32
-    fx_spray(Pre.Dust, n, x - 1.5, 0.8, 15, 1, 0.24 * k)
-    fx_spray(Pre.Dust, n, x + 1.5, 0.8, 1, 1, 0.24 * k)
-    fx_c0 = 0x485868
-    fx_c1 = 0x101820
-    fx_spray(Pre.Smoke, n / 2, x, 1.5, 8, 3, 0.1 * k)
+    // dust rolling out both ways, each puff from its own place along the body
+    for i in 0..n {
+        var side = 1.0
+        if (i & 1) != 0 { side = -1.0 }
+        let sp = (0.1 + fx_f() / 5) * k
+        fx_spawn(Pre.Dust, x + side * (0.5 + fx_f() * 3), 0.6 + fx_f(), side * sp, fx_f() / 30)
+    }
+    for i in 0..n / 2 {
+        let p = fx_spawn(Pre.Puff, x + fx_sf() * 3, 1.0, fx_sf() / 20, 0.06 + fx_f() / 16)
+        p.s0 = 2.5 * k
+        p.s1 = 8.0 * k
+        p.dt = 1.0 / (24 + fx_i(12))
+    }
     fx_spray(Pre.Pebble, n, x, 0.5, 8, 5, 0.34 * k)
     fx_c0 = fx_plate(m)
     fx_c1 = fx_c0
@@ -661,7 +678,10 @@ private fn trail_sample(t: *Trail, m: mat4, b0: fixed, b1: fixed, on: bool, mech
     t.idle = 0
     if t.n > 0 {
         let d = tip - t.tip[t.head]
-        if abs(d.x) + abs(d.y) < 0.05 { return }       // hitstop: nothing moved
+        if abs(d.x) + abs(d.y) < 0.05 {                 // hitstop: nothing moved; the trail dims
+            t.lit = max(t.lit - 0.1, 0.3)
+            return
+        }
         // the tip sheds a mote every other sample
         t.shed += 1
         if t.shed >= 2 && abs(d.x) + abs(d.y) > 0.6 {
@@ -675,6 +695,7 @@ private fn trail_sample(t: *Trail, m: mat4, b0: fixed, b1: fixed, on: bool, mech
             fx_c1 = 0
         }
     }
+    t.lit = 1.0
     t.head = (t.head + 1) % TRAIL_N
     t.base[t.head] = base
     t.tip[t.head] = tip
@@ -959,8 +980,8 @@ fn fx_draw_trails(f: *Fight) {
         let t = &fx_trails[i]
         if t.n < 2 { continue }
         let mech = f.f[i / 2].mech
-        let c0 = fx_trail_tip(mech)
-        let c1 = col_scale(fx_trail_mid(mech), 0.35)
+        let c0 = col_scale(fx_trail_tip(mech), t.lit)
+        let c1 = col_scale(fx_trail_mid(mech), t.lit * 7 / 20)
         let v0 = nv
         for k in 0..t.n {
             let j = (t.head - k + TRAIL_N) % TRAIL_N
@@ -1097,6 +1118,7 @@ private fn fx_draw_pt(p: *Pt, n: s32) {
         Chevron => fx_spr(&FXP_CHEVRON[0], sx, sy, d, d, c, mode, flip)
         Speed => fx_spr(&FXP_SPEED[0], sx, sy, d, d / 4, c, mode, flip)
         Bubble => fx_spr(&FXP_BUBBLE[0], sx, sy, d, d, c, mode, false)
+        Burst => fx_spr(&FXP_BURST[0], sx, sy, d, d, c, mode, flip)
         Bolt => {
             if (p.rot & 1) != 0 {
                 fx_spr(&FXP_BOLT1[0], sx, sy, d, d / 2, c, mode, flip)
