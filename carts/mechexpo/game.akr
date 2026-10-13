@@ -29,6 +29,7 @@ import "fx.akr"
 import "menus.akr"
 import "beam_hud.akr"       // mx-beam: the chemical meter
 import "beam_fx.akr"        // mx-beam: Beam's effects
+import "tank_fx.akr"        // mx-tank: Tank's reactor glow, armour sparks and HUD meter
 
 // Input, replaced by the tests.
 weak fn input_pad(n: s32) -> u32 {
@@ -282,7 +283,7 @@ fn update_mode() {
 }
 
 // The mech under card c (the locked card is no mech).
-fn card_ok(c: s32) -> bool { return c != 1 || echo_unlocked() }   // card 2: Beam, a base mech
+fn card_ok(c: s32) -> bool { return c != (Mech.Doubleblade as s32) || echo_unlocked() }   // Beam and Tank: base mechs
 
 fn update_select() {
     // pad 2 joins in Versus
@@ -308,7 +309,7 @@ fn update_select() {
             sel_cur[side] -= 1
             sfx_menu_move()
         }
-        if d & RIGHT != 0 && sel_cur[side] < 2 {
+        if d & RIGHT != 0 && sel_cur[side] < len(Mech) - 1 {
             sel_cur[side] += 1
             sfx_menu_move()
         }
@@ -429,6 +430,10 @@ fn sound_event(e: *Event, f: *Fight) {
         Ko => sfx_ko()
         TimeUp => sfx_round()
         Shot => sfx_swing(f.f[clamp(e.side, 0, 1)].mech)
+        Armour => {
+            sfx_pan(e.x)
+            sfx_block()                 // a clank off Tank's armour (its own sound: next audio round)
+        }
         else => {}
     }
 }
@@ -637,6 +642,7 @@ fn draw_hangar(fighting: bool) {
         let c1 = cycle_count()
         fx_draw_trails(f)
         fx_draw_sprites(f)
+        tank_fx_draw(f)
         fx_offset()
         prof_fx = cycle_count() - c1
         if show_boxes && game == Game.Training {

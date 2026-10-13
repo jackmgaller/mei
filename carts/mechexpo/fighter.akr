@@ -158,7 +158,7 @@ fn is_hurt(mv: Mv) -> bool {
         || mv == Mv.getup || mv == Mv.ko || is_thrown(mv)
 }
 
-fn is_thrown(mv: Mv) -> bool { return mv == Mv.thrown || mv == Mv.thrown_vault }
+fn is_thrown(mv: Mv) -> bool { return mv == Mv.thrown || mv == Mv.thrown_vault || mv == Mv.thrown_slam }
 
 fn actionable(i: s32) -> bool {
     let f = &fight.f[i]
@@ -397,6 +397,10 @@ private fn advance(i: s32) {
         let rip = find_mark(f.mech, Mv.sp_d, MARK_RIPOSTE)
         if rip >= 0 && x.t >= rip { end_move(i); return }
     }
+    if f.mech == Mech.Tank && !x.riposte && tank_cmd_grab(mv) {
+        let rip = tank_slam_rip(mv)             // a missed command grab ends at its slam section
+        if rip >= 0 && x.t >= rip { end_move(i); return }
+    }
     if x.t >= mv_len(f.mech, mv) { end_move(i) }
 }
 
@@ -504,6 +508,10 @@ private fn decide(i: s32) {
 
 fn throw_tick(i: s32) {
     let f = &fight.f[i]
+    if tank_holding(i) {
+        tank_slam_tick(i)
+        return
+    }
     if f.mv != Mv.throw { return }
     let j = other(i)
     let o = &fight.f[j]
@@ -521,7 +529,11 @@ fn throw_tick(i: s32) {
     }
     let rel = find_mark(f.mech, Mv.throw, MARK_RELEASE)
     let ft = fixed(f.facing)
-    if f.mech != Mech.Doubleblade {
+    if f.mech == Mech.Tank {
+        // Tank's Scrap Heave: held at its fists, lifted higher (MOVES.md)
+        o.x = f.x + ft * 3.8
+        o.y = clamp(fixed(t - 10) * 0.3, 0.0, 4.0)
+    } else if f.mech != Mech.Doubleblade {
         // held in front at arm's length, lifted (the Hero's throw, Beam's Shock Grip)
         o.x = f.x + ft * 3.4
         o.y = min(fixed(t) * 0.1, 3.0)
@@ -540,7 +552,7 @@ fn throw_tick(i: s32) {
         fx[j].t = mv_len(o.mech, Mv.hit_air) - 1
         fx[j].air = true
         fx[j].vy = h.launch
-        if f.mech == Mech.Hero { fx[j].vx = ft * 0.30 } else { fx[j].vx = -ft * 0.08 }
+        if f.mech == Mech.Hero { fx[j].vx = ft * 0.30 } else if f.mech == Mech.Tank { fx[j].vx = ft * 0.34 } else { fx[j].vx = -ft * 0.08 }
         if f.mech == Mech.Beam { fx[j].vx = ft * 0.24 }        // the Shock Grip throws it off, about 9 m
         fight.freeze = h.stop
         fight.flash_side = -1
@@ -573,11 +585,13 @@ fn grab_break(i: s32) {
 
 fn damage(j: s32, dmg: s32, can_ko: bool) {
     let o = &fight.f[j]
+    let before = o.health
     o.health -= dmg
     var floor = 0
     if !can_ko { floor = 1 }
     if fight.mode == FightMode.Training { floor = 1 }
     if o.health < floor { o.health = floor }
+    meter_on_damage(o, before - o.health)
     fx[j].calm = 0
 }
 
@@ -609,7 +623,7 @@ private fn overlap(a: vec4, b: vec4) -> bool {
 fn hittable(j: s32) -> bool {
     let o = &fight.f[j]
     if is_hurt(o.mv) && o.mv != Mv.hit_high && o.mv != Mv.hit_low { return false }
-    if o.mv == Mv.throw || o.mv == Mv.intro || o.mv == Mv.win { return false }
+    if o.mv == Mv.throw || o.mv == Mv.intro || o.mv == Mv.win || tank_holding(j) { return false }
     if cur_marks(j) & (MARK_INVULN | MARK_NOPUSH) != 0 { return false }
     return true
 }
@@ -617,6 +631,7 @@ fn hittable(j: s32) -> bool {
 private fn grabbable(j: s32) -> bool {
     let o = &fight.f[j]
     if !grounded(j) { return false }
+    if cur_marks(j) & MARK_ARMOUR != 0 { return true }      // grabs break super armour
     if o.mv == Mv.block { return fx[j].stun == 0 }
     // a mech grabbing too: the first to catch wins, two at once break (collide())
     return o.mv == Mv.idle || o.mv == Mv.walk_f || o.mv == Mv.walk_b || o.mv == Mv.crouch
@@ -650,8 +665,10 @@ private fn strike(i: s32) -> s32 {
         if hb.kind != BOX_HIT { continue }
         if (fx[i].hits & ((1 as u32) << (hb.hit as u32))) != 0 { continue }
         let w = world_box(i, hb)
-        if f.mv == Mv.grab {
-            if !grabbable(j) || cur_marks(j) & (MARK_INVULN | MARK_NOPUSH) != 0 { continue }
+        let grabbing = f.mv == Mv.grab || tank_grab_box(i)
+        if grabbing {
+            if !(grabbable(j) || tank_super_catches(i, j)) || cur_marks(j) & (MARK_INVULN | MARK_NOPUSH) != 0 { continue }
+            if tank_holding(j) || fight.f[j].mv == Mv.throw { continue }
         } else if !hittable(j) {
             continue
         }
@@ -662,7 +679,7 @@ private fn strike(i: s32) -> s32 {
             if overlap(w, u) {
                 c_hit[i] = hb.hit as s32
                 c_pt[i] = vec2((max(w.x, u.x) + min(w.z, u.z)) / 2, (max(w.y, u.y) + min(w.w, u.w)) / 2)
-                if f.mv == Mv.grab { return R_GRAB }
+                if grabbing { return R_GRAB }
                 if parrying(j) && f.mv != Mv.super { return R_PARRY }
                 if fight.f[j].mv == Mv.block { return R_BLOCK }
                 return R_HIT
@@ -704,8 +721,12 @@ private fn resolve(i: s32, r: s32, h: Hit, mv: Mv) {
             blocked(i, j, h, mv, c_pt[i], false)
         }
         else => {
-            fx[i].contact = true
-            struck(i, j, h, c_pt[i], false)
+            if tank_armoured(j, mv) {
+                absorb(i, j, h, c_pt[i], false)  // super armour: no contact for the chain
+            } else {
+                fx[i].contact = true
+                struck(i, j, h, c_pt[i], false)
+            }
         }
     }
 }
@@ -714,6 +735,10 @@ private fn catch(i: s32) {
     let j = other(i)
     let f = &fight.f[i]
     ev_add(Ev.Grab, i, (f.x + fight.f[j].x) / 2, 6.0, 1)
+    if tank_grab_box(i) {
+        tank_catch(i)                           // the command grabs: no break
+        return
+    }
     let early = fx[j].age[BI_Y] <= BREAK_EARLY
     set_mv(i, Mv.throw)
     // the Vault Throw's victim has its own animation (flipped over the thrower's head)
@@ -904,6 +929,8 @@ fn shots_tick() {
                     ev_add(Ev.Parry, j, p.x, p.y, 1)
                 } else if fight.f[j].mv == Mv.block {
                     blocked(i, j, h, Mv.sp_n, p, true)
+                } else if tank_armoured(j, Mv.sp_n) {
+                    absorb(i, j, h, p, true)
                 } else {
                     struck(i, j, h, p, true)
                 }
@@ -940,7 +967,7 @@ fn bound() {
     load_boxes()
     let f0 = &fight.f[0]
     let f1 = &fight.f[1]
-    let busy = f0.mv == Mv.throw || f1.mv == Mv.throw
+    let busy = f0.mv == Mv.throw || f1.mv == Mv.throw || tank_holding(0) || tank_holding(1)
     // push apart on the ground
     let p0 = push_half(0)
     let p1 = push_half(1)
@@ -1023,4 +1050,140 @@ fn draw_frame(i: s32) -> fixed {
     }
     if f.mv == Mv.block && x.stun > 0 { return fixed(n - 1) }
     return fixed(cur_frame(i))
+}
+
+// ---- Tank (mx-tank): super armour and the command grabs (MOVES.md, "Tank")
+
+// Whether a hit from move mv on j is absorbed by super armour: j on an armour frame, on the
+// ground, and the hit not a super's.
+fn tank_armoured(j: s32, mv: Mv) -> bool {
+    if mv == Mv.super || !grounded(j) { return false }
+    return cur_marks(j) & MARK_ARMOUR != 0
+}
+
+// i's hit h is absorbed by j's armour at p: j takes the damage (unscaled) and keeps its move;
+// both freeze for the hitstop; the attacker gets a blocked hit's meter and no chain.
+fn absorb(i: s32, j: s32, h: Hit, p: vec2, shot: bool) {
+    let a = &fight.f[i]
+    let d = &fight.f[j]
+    damage(j, meter_damage(d, h.dmg), true)
+    meter_on_hit(a, false, shot)
+    fight.freeze = max(fight.freeze, h.stop)
+    fight.flash_side = -1
+    d.flash = h.stop
+    fight.shake = fixed(h.power + 1) * 0.1
+    ev_add(Ev.Armour, i, p.x, p.y, h.power)
+    if d.health <= 0 { knock_out(j) }
+}
+
+// Tank's command grabs: the Atomic Clinch and Chain Reaction.
+fn tank_cmd_grab(mv: Mv) -> bool { return mv == Mv.sp_f || mv == Mv.super }
+
+// The slam sections' frames, found in the data once: [0] the Clinch, [1] Chain Reaction.
+var tank_found: bool
+var tank_rip: [2]s32            // MARK_RIPOSTE: the section's first frame
+var tank_rel: [2]s32            // MARK_RELEASE: the slam
+
+fn tank_find() {
+    if tank_found { return }
+    tank_rip[0] = find_mark(Mech.Tank, Mv.sp_f, MARK_RIPOSTE)
+    tank_rel[0] = find_mark(Mech.Tank, Mv.sp_f, MARK_RELEASE)
+    tank_rip[1] = find_mark(Mech.Tank, Mv.super, MARK_RIPOSTE)
+    tank_rel[1] = find_mark(Mech.Tank, Mv.super, MARK_RELEASE)
+    tank_found = true
+}
+
+// The frame the move's slam section starts (MARK_RIPOSTE), or -1.
+fn tank_slam_rip(mv: Mv) -> s32 {
+    tank_find()
+    if mv == Mv.sp_f { return tank_rip[0] }
+    if mv == Mv.super { return tank_rip[1] }
+    return -1
+}
+
+private fn tank_slam_rel(mv: Mv) -> s32 {
+    tank_find()
+    if mv == Mv.sp_f { return tank_rel[0] }
+    if mv == Mv.super { return tank_rel[1] }
+    return -1
+}
+
+// Whether i's hit boxes this frame are a command grab's catch.
+fn tank_grab_box(i: s32) -> bool {
+    let f = &fight.f[i]
+    return f.mech == Mech.Tank && tank_cmd_grab(f.mv) && !fx[i].riposte
+}
+
+// Whether i is in a slam section, holding the other.
+fn tank_holding(i: s32) -> bool {
+    let f = &fight.f[i]
+    return f.mech == Mech.Tank && tank_cmd_grab(f.mv) && fx[i].riposte
+}
+
+// Chain Reaction also catches a mech in hit- or blockstun on the ground.
+fn tank_super_catches(i: s32, j: s32) -> bool {
+    if fight.f[i].mech != Mech.Tank || fight.f[i].mv != Mv.super || !grounded(j) { return false }
+    let o = &fight.f[j]
+    return o.mv == Mv.hit_high || o.mv == Mv.hit_low || (o.mv == Mv.block && fx[j].stun > 0)
+}
+
+// A command grab caught: the animation jumps to the slam section, the other is held.
+fn tank_catch(i: s32) {
+    let j = other(i)
+    let f = &fight.f[i]
+    let rip = tank_slam_rip(f.mv)          // (catch() reported the Grab)
+    if rip >= 0 { fx[i].t = rip }
+    fx[i].riposte = true
+    fx[i].contact = true                    // a catch, not a whiff
+    fx[i].slide = 0.0
+    let combo = fx[j].combo
+    set_mv(j, Mv.thrown_slam)
+    fx[j].combo = combo                     // Chain Reaction after a chain is scaled
+    fx[j].stun = 0
+    fx[j].slide = 0.0
+    fx[j].break_t = 0                       // no break
+    fight.f[j].facing = -f.facing
+}
+
+// One frame of the slam: the other lifted overhead, held, slammed down in front (MOVES.md,
+// "thrown_slam"); the damage on the slam.
+fn tank_slam_tick(i: s32) {
+    let f = &fight.f[i]
+    let j = other(i)
+    let o = &fight.f[j]
+    if o.mv != Mv.thrown_slam { return }
+    let rip = tank_slam_rip(f.mv)
+    let rel = tank_slam_rel(f.mv)
+    let s = fx[i].t - rip
+    fx[j].t = s
+    let ft = fixed(f.facing)
+    if s <= 14 {
+        let k = fixed(s) / 14
+        o.x = f.x + ft * (3.0 - 2.2 * k)
+        o.y = 6.5 * k
+    } else if s <= 24 {
+        o.x = f.x + ft * 0.8
+        o.y = 6.5
+    } else {
+        let k = clamp(fixed(s - 24) / 9, 0.0, 1.0)
+        o.x = f.x + ft * (0.8 + 2.8 * k)
+        o.y = 6.5 * (1.0 - k)
+    }
+    if fx[i].t == rel {
+        let h = move_hit(Mech.Tank, f.mv)
+        damage(j, meter_damage(o, combo_scale(h.dmg, fx[j].combo)), true)
+        meter_on_hit(f, true, false)
+        o.y = 0.0
+        o.mv = Mv.hit_air
+        fx[j].t = mv_len(o.mech, Mv.hit_air) - 1
+        fx[j].air = true
+        fx[j].vy = h.launch
+        fx[j].vx = ft * 0.06
+        fight.freeze = h.stop
+        fight.flash_side = -1
+        o.flash = h.stop
+        fight.shake = fixed(h.power) * 0.3
+        ev_add(Ev.Throw, i, o.x, 0.0, h.power)
+        if o.health <= 0 { knock_out(j) }
+    }
 }

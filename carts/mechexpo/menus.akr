@@ -113,7 +113,8 @@ private fn draw_footer(s: *u8) {
 
 // ---- character select
 
-const SEL_CARD_X: [3]s32 = [104, 144, 184]     // Hero, Double-blade, Beam
+// The card of mech c, the cards centred (two: 124 and 164).
+fn sel_card_x(c: s32) -> s32 { return 144 - (len(Mech) - 1) * 20 + c * 40 }
 const SEL_CARD_Y = 178
 
 fn draw_select() {
@@ -140,8 +141,8 @@ fn draw_select() {
     draw_spec(0, 4, 56)
     if game != Game.Arcade { draw_spec(1, 218, 56) } else { draw_ladder_card(218, 56) }
     // the roster cards
-    for c in 0..3 {
-        let x = SEL_CARD_X[c]
+    for c in 0..len(Mech) {
+        let x = sel_card_x(c)
         let y = SEL_CARD_Y
         panel_card(x - 2, y - 2, 36, 44)
         if c == 2 {
@@ -155,7 +156,7 @@ fn draw_select() {
     // the cursors
     for s in 0..2 {
         if s == 1 && game == Game.Arcade { continue }
-        let x = SEL_CARD_X[sel_cur[s]] - 4
+        let x = sel_card_x(sel_cur[s]) - 4
         let y = SEL_CARD_Y - 4 + s * 2
         var col = C_RED
         var lab = "1P"
@@ -211,6 +212,7 @@ private fn draw_spec(s: s32, x: s32, y: s32) {
     var model = "MR-01"
     if m == Mech.Doubleblade { model = "UR-02" }
     if m == Mech.Beam { model = "RC-03" }
+    if m == Mech.Tank { model = "HA-57" }
     txt(FONT_LABEL, x + 94, y + 5, mech_booth(m), C_STEEL, ALIGN_RIGHT)
     txt(FONT_HEAD, x + 5, y + 19, model, C_INK, ALIGN_LEFT)
     txt(FONT_LABEL, x + 5, y + 34, mech_name(m), C_INK, ALIGN_LEFT)

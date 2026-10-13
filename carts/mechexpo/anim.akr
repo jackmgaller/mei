@@ -13,14 +13,15 @@
 // face +x or -x in the world.
 import "anim_data.akr"
 
-enum Mech { Hero, Doubleblade, Beam }   // Beam: Raikō's zoner (appended)
+enum Mech { Hero, Doubleblade, Beam, Tank }   // Beam: Raikō's zoner, Tank: Heartland's grappler (appended)
 
 // The move list (README.md, "Interfaces"): the same names for both mechs.
 enum Mv {
     idle, walk_f, walk_b, crouch, jump, land, block, hit_high, hit_low, hit_air, knockdown,
     getup, ko, win, intro, atk_n, atk_f, atk_d, atk_air, sp_n, sp_f, sp_u, sp_d, grab,
     grab_whiff, throw, thrown, grab_break, super,
-    thrown_vault       // the victim of the Double-blade Hero's Vault Throw (added last: the numbering stays)
+    thrown_vault,      // the victim of the Double-blade Hero's Vault Throw (added last: the numbering stays)
+    thrown_slam        // the victim of Tank's Atomic Clinch and Chain Reaction (added last)
 }
 
 // The rigs' parts (models/NAME/NAME.rig.json), one numbering for both mechs. A mech without a

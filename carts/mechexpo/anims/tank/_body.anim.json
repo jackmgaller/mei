@@ -1,0 +1,21 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Tank's body: its hurt and push boxes, which every move starts from (\"base\"), and the stand-in for a move with no file yet: the guard pose, held. Not a loop itself: a move based on it says \"loop\": true if it loops (the exporter makes the stand-ins of idle, walk_f, walk_b, crouch and block loop). The treads are hurtable along their whole length (they stick out 2.7 m ahead and behind); the push box is 2.4 m either side, so the other mech's toes come just over the tread's nose.",
+  "rig": "../../models/tank/tank.rig.json",
+  "length": 60,
+  "loop": false,
+  "boxes": {
+    "head": {"kind": "hurt", "part": "head"},
+    "torso": {"kind": "hurt", "part": "torso", "min": [-2.5, -0.25, -1.85], "max": [2.5, 4.6, 1.6]},
+    "pelvis": {"kind": "hurt", "part": "pelvis"},
+    "forearm_r": {"kind": "hurt", "part": "forearm_r"},
+    "forearm_l": {"kind": "hurt", "part": "forearm_l"},
+    "hand_r": {"kind": "hurt", "part": "hand_r"},
+    "hand_l": {"kind": "hurt", "part": "hand_l"},
+    "shin_r": {"kind": "hurt", "part": "shin_r"},
+    "shin_l": {"kind": "hurt", "part": "shin_l"},
+    "push": {"kind": "push", "rect": [-2.4, 0, 2.4, 10.0]}
+  },
+  "keys": [{"at": 0, "from": "guard"}]
+}

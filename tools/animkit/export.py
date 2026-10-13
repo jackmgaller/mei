@@ -13,10 +13,11 @@ from .move import Move, KINDS
 from .rig import AnimError, PARTS, load_rig
 
 # anim.akr's enums, in order
-MECHS = ['hero', 'doubleblade', 'beam']
+MECHS = ['hero', 'doubleblade', 'beam', 'tank']
 MOVES = ['idle', 'walk_f', 'walk_b', 'crouch', 'jump', 'land', 'block', 'hit_high', 'hit_low', 'hit_air',
          'knockdown', 'getup', 'ko', 'win', 'intro', 'atk_n', 'atk_f', 'atk_d', 'atk_air', 'sp_n', 'sp_f', 'sp_u',
-         'sp_d', 'grab', 'grab_whiff', 'throw', 'thrown', 'grab_break', 'super', 'thrown_vault']
+         'sp_d', 'grab', 'grab_whiff', 'throw', 'thrown', 'grab_break', 'super', 'thrown_vault',
+         'thrown_slam']
 BODY = '_body.anim.json'
 LOOPING = {'idle', 'walk_f', 'walk_b', 'crouch', 'block'}   # stand-ins for these loop
 XF_BYTES = 32           # anim.akr's PartXf: [10]fixed16 (9 used), [3]fixed
