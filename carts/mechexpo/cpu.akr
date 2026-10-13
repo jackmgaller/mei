@@ -163,6 +163,8 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
     }
     // the Twins' Fusion Focus: B held for the frames it chose
     if me.mech == Mech.Twins && me.mv == Mv.sp_d && me.body == Mech.Twins && me.charge < c.charge_want { return B }
+    // Shadow Sneak: B held while the shadow is still short of the other mech
+    if me.mech == Mech.Shadow && me.mv == Mv.sp_f && dist > SH_SNEAK_STOP { return B }
     if !actionable(i) {
         c.hold = 0
         c.hold_t = 0
@@ -171,6 +173,10 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
             if roll(c, 50) { return A }
         }
         return 0
+    }
+    // Shadow: a mech its mine snared is punished at once (once seen)
+    if me.mech == Mech.Shadow && shadow_snared(j) && snare_t[j] <= SNARE_FRAMES - lv.react / 2 {
+        return shadow_snare_punish(i, c, dist, fwd)
     }
 
     // reactions to the other's move, once it has been seen long enough
@@ -194,6 +200,7 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
         c.punish_rolled = true
         if roll(c, lv.punish) {
             if me.mech == Mech.Tank { return tank_punish(dist, fwd) }
+            if me.mech == Mech.Shadow { return shadow_punish(dist, fwd) }
             if super_wise(i) && dist < 12.0 && roll(c, 50) { return A | B }
             if dist < 6.0 { return A }
             if dist < tip(me.body) - 0.5 { return fwd | A }
@@ -225,6 +232,7 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
     if me.mech == Mech.Beam { return beam_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Tank { return tank_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Twins { return twins_neutral(i, c, lv, dist, fwd, back) }
+    if me.mech == Mech.Shadow { return shadow_neutral(i, c, lv, dist, fwd, back) }
     // neutral: footsies around the tip of its forward attack
     let range = tip(me.body)
     if dist < tip(op.body) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
@@ -304,7 +312,7 @@ private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, b
     let incoming = fight.shot[other(i)].on
     // the prime while the other is down: the safest moment there is
     let down = op.mv == Mv.knockdown || op.mv == Mv.getup || op.mv == Mv.hit_air
-    if down && me.react == 0 && me.meter < METER_BAR && dist > 6.0 && roll(c, lv.special * 6) { return DOWN | B }
+    if down && me.react == 0 && me.meter < METER_BAR && dist > 6.0 && me.curse == 0 && roll(c, lv.special * 6) { return DOWN | B }
     if dist < tip(op.body) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
     if dist < 5.5 {
         if c.blocks_seen >= 2 && roll(c, lv.grab) { c.blocks_seen = 0; return Y }
@@ -316,7 +324,7 @@ private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, b
         return hold(c, R, 10)
     }
     if dist > 12.0 && me.react == 0 && me.meter < METER_BAR && !incoming && !is_attack(op.mv)
-        && roll(c, lv.special * 4) {
+        && me.curse == 0 && roll(c, lv.special * 4) {
         return DOWN | B
     }
     if super_wise(i) && dist < 28.0 && roll(c, 4) { return A | B }
@@ -414,7 +422,9 @@ private fn twins_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, 
         if me.meter >= METER_BAR && dist > 9.0 && !threat && roll(c, 25) { return L }
     } else {
         if super_wise(i) && dist < 13.0 && grounded(j) && !down && roll(c, 8) { return A | B }
-        if down && dist > 11.0 && me.meter < METER_BAR && roll(c, lv.special * 4) {
+        // cursed by Shadow: combined, every gain is Shadow's; split, there is nothing to take
+        if me.curse > 60 && !threat && dist > 5.0 && roll(c, lv.special * 4) { return L }
+        if down && dist > 11.0 && me.meter < METER_BAR && me.curse == 0 && roll(c, lv.special * 4) {
             c.charge_want = 20 + rnd_n(c, 30)
             return DOWN | B
         }
@@ -443,5 +453,73 @@ private fn twins_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, 
     // split, outside its reach but inside the other's: roll in under it
     if split && dist < tip(op.body) + 3.0 && roll(c, lv.special * 2) { return DOWN | B }
     if dist < range + 6.0 && roll(c, lv.jump) { return fwd | X }
+    return hold(c, fwd, 10 + rnd_n(c, 16))
+}
+
+// ---- Shadow's CPU (mx-shadow-fight): lay mines where the other must walk and stand behind
+// them, keep a curse up with the bolt at mid range, sneak in to punish from far, grab a mech
+// that blocks, punish a snared one at once
+
+const SH_SNEAK_STOP: fixed = 4.5        // the Sneak's hold is let go this close (it erupts in reach)
+
+private fn shadow_punish(dist: fixed, fwd: u32) -> u32 {
+    if dist < 6.0 { return A }
+    if dist < 10.0 { return fwd | A }
+    if dist < 19.0 { return fwd | B }                   // the Sneak, held as far as it needs
+    return 0
+}
+
+private fn shadow_snare_punish(i: s32, c: *Cpu, dist: fixed, fwd: u32) -> u32 {
+    if dist < 4.5 && roll(c, 40) { return Y }           // Phantom Grip: the side swap too
+    if dist < 6.0 { return A }                          // the chain follows on contact
+    if dist < 10.5 { return fwd | A }
+    if dist < 13.0 { return fwd | B }
+    if !fight.shot[i].on { return B }                   // too far to hit: curse it
+    return 0
+}
+
+private fn shadow_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, back: u32) -> u32 {
+    let me = &fight.f[i]
+    let j = other(i)
+    let op = &fight.f[j]
+    let mine = rift[i].on
+    let threat = is_attack(op.mv) || op.mv == Mv.grab || fight.shot[j].on
+    let down = op.mv == Mv.knockdown || op.mv == Mv.getup || op.mv == Mv.hit_air
+    if super_wise(i) && dist < 10.0 && grounded(j) && !down && roll(c, 6) { return A | B }
+    // a mine where the other must walk: laid in the open between them, or while it is down
+    if !mine && ((down && dist > 4.0) || (dist > 8.0 && dist < 20.0 && !threat)) && roll(c, lv.special * 4) {
+        return DOWN | B
+    }
+    // keep a curse up: the bolt at mid range when the curse is out or running out
+    if !fight.shot[i].on && dist > 7.0 && dist < 24.0 && op.curse < 60 && !down && roll(c, 30 + lv.special * 2) {
+        return B
+    }
+    // in front of its mine: step back behind it, so the other has to cross it
+    if mine && sgn(op.x - rift[i].x) == me.facing && abs(me.x - rift[i].x) < 3.0 && dist < 16.0 && roll(c, 50) {
+        return hold(c, back, 10 + rnd_n(c, 10))
+    }
+    if dist < tip(op.body) + 2.0 && roll(c, lv.guard) { return hold(c, R, 16 + rnd_n(c, 20)) }
+    if dist < 5.0 {
+        if c.blocks_seen >= 1 && roll(c, lv.grab) { c.blocks_seen = 0; return Y }   // grabs beat block
+        let r = rnd_n(c, 100)
+        if r < 32 { return A }
+        if r < 44 { return Y }
+        if r < 56 { return fwd | A }
+        if r < 62 && !mine { return DOWN | B }
+        if r < 80 { return hold(c, back, 12) }
+        return hold(c, R, 10)
+    }
+    let range = tip(me.body)
+    if dist < range + 0.5 {
+        let r = rnd_n(c, 100)
+        if r < lv.poke { return fwd | A }
+        if r < lv.poke + 8 { return DOWN | A }
+        if r < lv.poke + 30 { return hold(c, back, 10) }
+        if r < lv.poke + 40 { return hold(c, R, 12) }
+        return hold(c, fwd, 8)
+    }
+    if dist < range + 6.0 && roll(c, lv.jump) { return fwd | X }
+    // with a mine out it waits behind it; without, it walks in
+    if mine && dist < 22.0 { return hold(c, 0, 8 + rnd_n(c, 8)) }
     return hold(c, fwd, 10 + rnd_n(c, 16))
 }

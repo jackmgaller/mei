@@ -38,6 +38,9 @@
 // 19  the air attack: a jumping Hero's Falling Cleave, pressed on the way down, hits a standing
 //     Double-blade Hero, and the Hero lands with the air attack's landing; then the same against
 //     a Double-blade Hero holding block (no damage)
+// 100-108 Shadow's (mx-shadow-fight): the Hex Bolt and the Siphon, the curse's time, the Rift
+//     Mine, Shadow Sneak, Eclipse Rise, Phantom Grip, Total Eclipse, throws with Tank and the
+//     Twins, the CPU; listed with their code at the end (109 is in tests/shadow/harness.akr)
 // 40-49 Tank's (mx-tank): armour, its grabs and throws, the nuclear meter, its super, the CPU
 //     and the budget; listed with their code at the end of this file
 // 60-67 the Twins' (mx-twins-fight): combining and splitting, the partner, hits and throws on and
@@ -122,6 +125,10 @@ fn init() {
         tw_init()
         return
     }
+    if sh_scenario() {
+        sh_init()
+        return
+    }
     if SCENARIO == 10 || SCENARIO == 13 || SCENARIO == 16 { tick_per_frame = 40 }
     if SCENARIO >= 1 && SCENARIO <= 9 || SCENARIO == 11 || SCENARIO == 12 || SCENARIO == 18 || SCENARIO == 19 { skip_intro() }
     match SCENARIO {
@@ -204,6 +211,7 @@ private fn script1() -> u32 {
     if SCENARIO >= 30 && SCENARIO <= 39 { return beam_script(0) }
     if tk_scenario() { return tk_script(0) }
     if tw_scenario() { return tw_script(0) }
+    if sh_scenario() { return sh_script(0) }
     let a = &fight.f[0]
     let fwd = if_u(a.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -265,6 +273,7 @@ private fn script2() -> u32 {
     if SCENARIO >= 30 && SCENARIO <= 39 { return beam_script(1) }
     if tk_scenario() { return tk_script(1) }
     if tw_scenario() { return tw_script(1) }
+    if sh_scenario() { return sh_script(1) }
     let b = &fight.f[1]
     let fwd = if_u(b.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -365,6 +374,7 @@ private fn check() {
         else => {
             if tk_scenario() { tk_check() }
             if tw_scenario() { tw_check() }
+            if sh_scenario() { sh_check() }
         }
     }
 }
@@ -942,7 +952,7 @@ private fn frame_data() {
     if done { return }
     let n = len(FD_MOVES)
     // the Twins twice: Twins the combined form, Twin A the split form (twin A alone)
-    if fd_case >= ((Mech.TwinA as s32) + 1) * 2 * n {
+    if fd_case >= len(Mech) * 2 * n {
         ok("frame data")
         return
     }
@@ -951,6 +961,7 @@ private fn frame_data() {
     let block = fd_case % 2 == 0
     let mv = FD_MOVES[k]
     fd_case += 1
+    if m == Mech.TwinB { return }           // the partner, not a fighter
     if mv == Mv.atk_air { return }          // depends on the jump's height
     if m == Mech.Doubleblade && (mv == Mv.sp_n || mv == Mv.sp_d) && block { }
     var fm = m
@@ -1056,6 +1067,10 @@ fn draw() {
         rect(rx - 1, ry - 1, 3, 3, rgb(255, 255, 255))
         rect(rx, ry - 40, f.facing * 8, 2, rgb(255, 255, 255))
         if i >= 2 { continue }
+        if rift[i].on {
+            rect_blend(sx(rift[i].x - MINE_HALF, cx), sy(MINE_H), (MINE_HALF * 2 * PX) as s32, (MINE_H * PX) as s32,
+                       rgb(200, 80, 255), BLEND_ADD)
+        }
         let s = &fight.shot[i]
         if s.on {
             rect_blend(sx(s.x - WAVE_HALF, cx), sy(WAVE_H), (WAVE_HALF * 2 * PX) as s32, (WAVE_H * PX) as s32,
@@ -2538,4 +2553,695 @@ private fn tw_check_cpu() {
         tw_prev_body[1] = fight.f[1].body
         frames = 0
     }
+}
+
+// ---- Shadow's scenarios, 100-108 (mx-shadow-fight; MOVES.md, "Shadow"); 109 needs the whole
+// game and is in tests/shadow/harness.akr
+//
+// 100 the Hex Bolt curses the Hero (its damage, the curse's length); the Siphon takes each kind
+//     of gain: the Hero's kinetic hit, the Double-blade Hero's reactor, Beam's reaction, Tank's
+//     nuclear damage-taken (Shadow gets half), the Twins' fusion (nothing split, all combined)
+// 101 the curse runs out after 360 frames of play; a second bolt refreshes it (not stacked);
+//     once it is out, the Hero's hits fill its own meter again
+// 102 the Rift Mine: laid at Shadow's feet, inert until armed (45 frames), then a Hero standing
+//     on it is snared (held, its presses ignored) and Shadow's Lunging Claw lands unscaled;
+//     Shadow's own mine never snares Shadow; the Hero's Low Sweep destroys a mine; a mine fades
+// 103 Shadow Sneak: tapped it travels 6 m, held 18 m and the strike lands; held at 14 m it stops
+//     at the Hero's feet; it goes under Beam's Volt Orb; the Hero's wave hits the travelling shadow
+// 104 Eclipse Rise against a jump: the Hero jumps in with a Falling Cleave, Shadow's anti-air
+//     (invulnerable at the start) knocks it down and takes nothing
+// 105 Phantom Grip: the sides swap; a cornered Shadow leaves the corner and puts the Hero in it;
+//     against the far wall Shadow comes up at the wall and the Hero is moved in front of it
+// 106 Total Eclipse from zero: five hits (294, scaled), the bar of debt, 25 % more damage taken
+//     in debt; blocked, five blocks and 80 chip
+// 107 throws on and by Shadow against Tank (Phantom Grip; Scrap Heave, Atomic Clinch, Chain
+//     Reaction) and the Twins (Phantom Grip on both forms; the Tag Toss, the Binary Buster)
+// 108 CPU against CPU (level 2): Shadow against each other mech, both sides; every match finishes;
+//     prints the rounds, the curses, mines, snares and supers
+
+var sh_pad: [2]u32              // pressed next tick (the checks script the pads)
+var sh_hold: [2]u32             // held until cleared
+var sh_part: s32
+var sh_x0: fixed
+var sh_flag: bool
+var sh_prev_mv: Mv
+var sh_prev_t: s32
+var sh_matches: s32
+var sh_stat: [4]s32             // scenario 108: curses, mines, snares, Shadow's supers
+
+private fn sh_scenario() -> bool { return SCENARIO >= 100 && SCENARIO <= 108 }
+
+private fn sh_restart(a: Mech, b: Mech, x0: fixed, x1: fixed) {
+    fight_init(a, b, FightMode.Versus, 0)
+    tw_skip_intro()
+    tw_place(x0, x1)
+    for k in 0..len(Ev) {
+        evc[k] = 0
+        evc_side[0][k] = 0
+        evc_side[1][k] = 0
+    }
+    sh_hold[0] = 0
+    sh_hold[1] = 0
+    sh_flag = false
+    mark = frames
+}
+
+private fn sh_init() {
+    match SCENARIO {
+        100, 102, 104, 105, 106 => sh_restart(Mech.Shadow, Mech.Hero, -4.0, 4.0)
+        101 => sh_restart(Mech.Shadow, Mech.Hero, -8.0, 8.0)
+        103 => sh_restart(Mech.Shadow, Mech.Hero, -12.0, 12.0)
+        107 => sh_restart(Mech.Shadow, Mech.Tank, -1.9, 1.9)
+        108 => {
+            fight_init(Mech.Shadow, Mech.Hero, FightMode.VsCpu, 2)
+            tick_per_frame = 40
+        }
+        else => {}
+    }
+    if SCENARIO == 102 { place(-6.0, 6.0) }
+    if SCENARIO == 105 { place(-2.0, 2.0) }
+}
+
+private fn sh_script(i: s32) -> u32 {
+    if SCENARIO == 108 { return cpu_pad(i, 2) }
+    let p = sh_pad[i] | sh_hold[i]
+    sh_pad[i] = 0
+    return p
+}
+
+private fn sh_fwd(i: s32) -> u32 { return if_u(fight.f[i].facing > 0, RIGHT, LEFT) }
+
+private fn sh_check() {
+    match SCENARIO {
+        100 => sh_check_siphon()
+        101 => sh_check_curse()
+        102 => sh_check_mine()
+        103 => sh_check_sneak()
+        104 => sh_check_rise()
+        105 => sh_check_grip()
+        106 => sh_check_eclipse()
+        107 => sh_check_throws()
+        108 => sh_check_cpu()
+        else => {}
+    }
+    sh_prev_mv = fight.f[0].mv
+    sh_prev_t = fx[0].t
+}
+
+private fn sh_check_siphon() {
+    let s = &fight.f[0]
+    let o = &fight.f[1]
+    match stage {
+        0 => {
+            if at(5) { sh_pad[0] = B }
+            if evc[Ev.Curse] > 0 {
+                assert(o.curse >= CURSE_FRAMES - 1, "the bolt did not curse")
+                assert_eq(o.health, 1000 - dmg(7, Mv.sp_n), "the bolt's damage")
+                assert_eq(evc_side[0][Ev.Hit], 1, "the bolt's hit")
+                print("the Hex Bolt cursed the Hero on frame ")
+                print_int(frames)
+                print(", curse ")
+                print_int(o.curse)
+                println("")
+                stage = 1
+                mark = frames
+            }
+        }
+        1 => {
+            // the cursed Hero's Guard Cut: its kinetic gain goes to Shadow
+            if frames == mark + 30 { sh_pad[1] = A }
+            if evc_side[1][Ev.Hit] > 0 {
+                assert_eq(o.meter, 0, "the cursed Hero gained meter")
+                assert_eq(o.siphoned, KIN_HIT, "the kinetic hit was not siphoned")
+                println("siphoned: the Hero's kinetic hit, 150")
+                sh_restart(Mech.Shadow, Mech.Doubleblade, -4.0, 4.0)
+                fight.f[1].curse = CURSE_FRAMES
+                stage = 2
+            }
+        }
+        2 => {
+            // the Double-blade Hero's reactor
+            if frames == mark + 60 {
+                assert_eq(o.meter, 0, "the cursed reactor filled")
+                assert_eq(o.siphoned, 60, "the reactor's 60 frames were not siphoned")
+                assert_eq(s.meter, 120, "Shadow's own 60 and the siphoned 60")
+                println("siphoned: the Double-blade Hero's reactor, 60 in 60 frames")
+                sh_restart(Mech.Shadow, Mech.Beam, -10.0, 10.0)
+                fight.f[1].curse = CURSE_FRAMES
+                stage = 3
+            }
+        }
+        3 => {
+            // Beam's reaction
+            if frames == mark + 2 { sh_pad[1] = DOWN | B }
+            if o.react > 0 && mark2 < mark { mark2 = frames }
+            if mark2 > mark && frames == mark2 + 60 {
+                assert_eq(o.meter, 0, "the cursed reaction filled Beam's meter")
+                assert_eq(o.siphoned, (REACT_FRAMES - o.react) * REACT_FILL, "the reaction was not siphoned")
+                print("siphoned: Beam's reaction, ")
+                print_int(o.siphoned)
+                println(" in 60 frames")
+                sh_restart(Mech.Shadow, Mech.Tank, -2.5, 2.5)
+                fight.f[1].curse = CURSE_FRAMES
+                stage = 4
+            }
+        }
+        4 => {
+            // Tank's nuclear meter: Shadow gets half
+            if frames == mark + 2 { sh_pad[0] = A }
+            if evc_side[0][Ev.Hit] > 0 {
+                let n = dmg(7, Mv.atk_n) * NUC_NUM / NUC_DEN
+                assert_eq(o.meter, 0, "the cursed Tank's meter filled")
+                assert_eq(o.siphoned, n, "the nuclear gain was not siphoned")
+                assert_eq(s.meter, (frames - mark) + ANTI_HIT + n / 2, "Shadow's regen, its hit and half the nuclear gain")
+                print("siphoned: Tank's nuclear gain ")
+                print_int(n)
+                print(", Shadow got ")
+                print_int(n / 2)
+                println("")
+                sh_restart(Mech.Shadow, Mech.Twins, -8.0, 8.0)
+                fight.f[1].curse = CURSE_FRAMES
+                stage = 5
+            }
+        }
+        5 => {
+            // the Twins: split, nothing to take; combined, the fusion regen
+            if frames == mark + 60 {
+                assert_eq(o.siphoned, 0, "the split Twins were siphoned")
+                assert_eq(o.meter, 0, "the split Twins' meter moved")
+                tw_combined(1)
+            }
+            if frames == mark + 120 {
+                assert_eq(o.siphoned, 60, "the combined Twins' fusion regen was not siphoned")
+                assert_eq(o.meter, 0, "the cursed combined Twins' meter filled")
+                assert_eq(s.meter, 60 + 120, "Shadow's own 120 and the siphoned 60")
+                println("siphoned: the Twins, nothing split, 60 in 60 frames combined")
+                ok("the Hex Bolt curses; the Siphon takes every kind of gain")
+            }
+        }
+        else => {}
+    }
+}
+
+private fn sh_check_curse() {
+    let o = &fight.f[1]
+    match stage {
+        0 => {
+            if at(5) { sh_pad[0] = B }
+            if evc[Ev.Curse] == 1 { stage = 1 }
+        }
+        1 => {
+            if o.curse <= 150 && !fight.shot[0].on && actionable(0) && !sh_flag {
+                sh_pad[0] = B
+                sh_flag = true
+            }
+            if evc[Ev.Curse] == 2 {
+                assert(o.curse >= CURSE_FRAMES - 1 && o.curse <= CURSE_FRAMES, "the curse was not refreshed to 360 (or it stacked)")
+                print("refreshed on frame ")
+                print_int(frames)
+                print(": curse ")
+                print_int(o.curse)
+                println("")
+                mark = frames
+                stage = 2
+            }
+        }
+        2 => {
+            if o.curse == 0 {
+                let n = frames - mark
+                print("the curse ran out ")
+                print_int(n)
+                println(" frames after the refresh")
+                assert(n >= CURSE_FRAMES - 1 && n <= CURSE_FRAMES + 20, "the curse's length (360 frames of play)")
+                mark2 = o.siphoned
+                place(-3.0, 3.0)
+                sh_pad[1] = A
+                stage = 3
+            }
+        }
+        3 => {
+            if evc_side[1][Ev.Hit] > 0 {
+                assert_eq(o.meter, KIN_HIT, "the Hero's own meter did not fill after the curse")
+                assert_eq(o.siphoned, mark2, "siphoned after the curse ran out")
+                ok("the curse runs out after 6 s, refreshes, never stacks")
+            }
+        }
+        else => {}
+    }
+}
+
+private fn sh_check_mine() {
+    let s = &fight.f[0]
+    let o = &fight.f[1]
+    match stage {
+        0 => {
+            if at(5) { sh_pad[0] = DOWN | B }
+            if evc[Ev.Mine] == 1 {
+                assert(rift[0].on, "no mine")
+                assert(rift[0].x == s.x, "the mine is not at Shadow's feet")
+                print("mine laid on frame ")
+                print_int(frames)
+                println("")
+                // Shadow steps away; the Hero stands on the mine while it arms
+                s.x = rift[0].x - 5.0
+                o.x = rift[0].x + 2.0
+                mark = frames
+                stage = 1
+            }
+        }
+        1 => {
+            if evc[Ev.Snare] > 0 {
+                let n = frames - mark
+                print("armed and set off ")
+                print_int(n)
+                println(" frames after it was laid")
+                assert(n >= MINE_ARM - 1 && n <= MINE_ARM, "the mine set off before (or long after) arming")
+                assert(o.mv == Mv.idle && fx[1].pause == SNARE_FRAMES, "the Hero is not held")
+                assert(!rift[0].on, "the mine is still there")
+                sh_pad[0] = sh_fwd(0) | A
+                sh_pad[1] = A
+                sh_x0 = o.x
+                mark = frames
+                stage = 2
+            }
+        }
+        2 => {
+            if evc_side[0][Ev.Hit] == 0 {
+                assert(o.mv == Mv.idle && o.x == sh_x0, "the snared Hero moved or acted")
+            } else {
+                print("snared: the Lunging Claw landed ")
+                print_int(frames - mark)
+                println(" frames into the snare")
+                assert(frames - mark <= SNARE_FRAMES, "the hit came after the snare")
+                assert_eq(o.health, 1000 - dmg(7, Mv.atk_f), "the hit on a snared mech is scaled")
+                sh_restart(Mech.Shadow, Mech.Hero, -6.0, 6.0)
+                stage = 3
+            }
+        }
+        3 => {
+            // Shadow stands on its own mine while it arms and after
+            if frames == mark + 2 { sh_pad[0] = DOWN | B }
+            if rift[0].on && rift[0].t == MINE_ARM + 20 {
+                assert_eq(evc[Ev.Snare], 0, "Shadow's own mine snared it")
+                // the Hero's Low Sweep over the mine
+                o.x = rift[0].x + 5.0
+                sh_pad[1] = DOWN | A
+                stage = 4
+            }
+        }
+        4 => {
+            if evc[Ev.MineGone] > 0 {
+                assert(!rift[0].on, "the swept mine is still there")
+                println("the Low Sweep destroyed the mine")
+                rift[0] = Rift { on: true, x: 20.0, t: MINE_LIFE - 2 }
+                mark = frames
+                stage = 5
+            }
+        }
+        5 => {
+            if frames == mark + 3 {
+                assert(!rift[0].on, "the mine did not fade")
+                assert_eq(evc[Ev.MineGone], 2, "no fade event")
+                ok("the Rift Mine arms, snares, ignores Shadow, is destroyed, fades")
+            }
+        }
+        else => {}
+    }
+}
+
+private fn sh_check_sneak() {
+    let s = &fight.f[0]
+    let o = &fight.f[1]
+    let travel_end = s.mv == Mv.sp_f && fx[0].t == sneak_t1 + 1 && !sh_flag
+    match stage {
+        0 => {
+            if frames == mark + 2 {
+                sh_pad[0] = sh_fwd(0) | B
+                sh_x0 = s.x
+            }
+            if s.mv == Mv.sp_f && fx[0].t >= sneak_t0 && fx[0].t <= sneak_t1 {
+                assert((cur_marks(0) & MARK_HIDE) != 0, "Shadow is not hidden in the travel")
+            }
+            if travel_end {
+                sh_flag = true
+                print("tapped: the shadow travelled ")
+                print_fixed(s.x - sh_x0)
+                println(" m")
+                assert(abs(s.x - sh_x0 - SNEAK_SPEED * (sneak_t1 - sneak_t0 + 1)) < 0.01, "the tapped Sneak's distance")
+            }
+            if sh_flag && s.mv != Mv.sp_f {
+                sh_restart(Mech.Shadow, Mech.Hero, -12.0, 12.0)
+                stage = 1
+            }
+        }
+        1 => {
+            if frames == mark + 2 {
+                sh_hold[0] = sh_fwd(0) | B
+                sh_x0 = s.x
+            }
+            if travel_end {
+                sh_flag = true
+                sh_hold[0] = 0
+                print("held: the shadow travelled ")
+                print_fixed(s.x - sh_x0)
+                println(" m")
+                assert_eq(s.charge, SNEAK_HOLD, "the hold's frames")
+                assert(abs(s.x - sh_x0 - SNEAK_SPEED * (sneak_t1 - sneak_t0 + 1 + SNEAK_HOLD)) < 0.01, "the held Sneak's distance")
+            }
+            if sh_flag && s.mv != Mv.sp_f {
+                assert_eq(evc_side[0][Ev.Hit], 1, "the held Sneak's strike missed")
+                assert_eq(o.health, 1000 - dmg(7, Mv.sp_f), "the Sneak's damage")
+                sh_restart(Mech.Shadow, Mech.Hero, -7.0, 7.0)
+                stage = 2
+            }
+        }
+        2 => {
+            if frames == mark + 2 { sh_hold[0] = sh_fwd(0) | B }
+            if travel_end {
+                sh_flag = true
+                sh_hold[0] = 0
+                print("held at 14 m: stopped ")
+                print_fixed(o.x - s.x)
+                println(" m from the Hero")
+                assert(s.x < o.x, "the shadow passed the Hero")
+                assert(abs(o.x - s.x - STATS[Mech.Shadow].push - STATS[Mech.Hero].push) < 0.01, "it did not stop at the Hero's feet")
+            }
+            if sh_flag && s.mv != Mv.sp_f {
+                sh_restart(Mech.Shadow, Mech.Beam, -10.0, 10.0)
+                mark2 = 0
+                stage = 3
+            }
+        }
+        3 => {
+            // under a tapped Volt Orb
+            if frames == mark + 2 { sh_pad[1] = B }
+            if frames == mark + 12 { sh_hold[0] = sh_fwd(0) | B }
+            let sh = &fight.shot[1]
+            if s.mv == Mv.sp_f && fx[0].t >= sneak_t0 && fx[0].t <= sneak_t1 && sh.on && sh.x < s.x { mark2 = 1 }
+            if travel_end {
+                sh_flag = true
+                sh_hold[0] = 0
+            }
+            if sh_flag && s.mv != Mv.sp_f {
+                assert_eq(mark2, 1, "the orb did not pass over the travelling shadow")
+                assert_eq(evc_side[1][Ev.Hit], 0, "the orb hit the travelling shadow")
+                println("the Sneak went under the Volt Orb")
+                sh_restart(Mech.Shadow, Mech.Hero, -10.0, 10.0)
+                stage = 4
+            }
+        }
+        4 => {
+            // into the Hero's wave: the low shadow is hit
+            if frames == mark + 2 { sh_pad[1] = B }
+            if frames == mark + 12 { sh_hold[0] = sh_fwd(0) | B }
+            if evc_side[1][Ev.Hit] > 0 && !sh_flag {
+                sh_flag = true
+                sh_hold[0] = 0
+                assert(sh_prev_mv == Mv.sp_f && sh_prev_t >= sneak_t0 && sh_prev_t <= sneak_t1 + 1,
+                       "the wave did not hit the travelling shadow")
+                println("the wave hit the travelling shadow")
+                ok("Shadow Sneak: tapped, held, stopped at the feet, under the orb, hit by the wave")
+            }
+        }
+        else => {}
+    }
+}
+
+private fn sh_check_rise() {
+    let o = &fight.f[1]
+    if frames == mark + 2 { sh_pad[1] = sh_fwd(1) | X }
+    // the Hero's Falling Cleave on the way down
+    if o.mv == Mv.jump && fx[1].air && fx[1].vy < 0.0 && stage == 0 {
+        stage = 1
+        sh_pad[1] = A
+    }
+    if stage == 1 && fx[1].air && fx[1].vy < 0.0 && o.y < 6.0 {
+        stage = 2
+        sh_pad[0] = UP | B
+    }
+    if stage == 2 && fight.f[0].mv == Mv.sp_u && fx[0].t <= 9 {
+        assert((cur_marks(0) & MARK_INVULN) != 0, "Eclipse Rise is not invulnerable at the start")
+    }
+    if stage == 2 && evc_side[0][Ev.Hit] > 0 {
+        stage = 3
+        assert(o.mv == Mv.hit_air, "the jumper was not knocked down")
+        print("Eclipse Rise hit the jumping Hero at height ")
+        print_fixed(o.y)
+        print(", ")
+        print_fixed(dist())
+        println(" m away")
+    }
+    if stage == 3 && o.mv == Mv.knockdown {
+        assert_eq(fight.f[0].health, 900, "Shadow was hit")
+        assert_eq(o.health, 1000 - dmg(7, Mv.sp_u), "Eclipse Rise's damage")
+        ok("Eclipse Rise beats a jump-in")
+    }
+}
+
+private fn sh_check_grip() {
+    let s = &fight.f[0]
+    let o = &fight.f[1]
+    if frames == mark + 2 { sh_pad[0] = Y }
+    if evc[Ev.Throw] == 1 && !sh_flag {
+        sh_flag = true
+        assert(o.health == 1000 - dmg(7, Mv.throw), "Phantom Grip's damage")
+        assert(o.facing == -s.facing, "the two do not face each other")
+    }
+    if !sh_flag || o.mv != Mv.knockdown { return }
+    match stage {
+        0 => {
+            print("open floor: Shadow ")
+            print_fixed(s.x)
+            print(", the Hero lands at ")
+            print_fixed(o.x)
+            println("")
+            assert(s.x > o.x, "the sides did not swap")
+            assert(s.facing < 0, "Shadow does not face the Hero")
+            sh_restart(Mech.Shadow, Mech.Hero, -(FIGHT_WALL - STATS[Mech.Shadow].push), -31.0)
+            stage = 1
+        }
+        1 => {
+            print("cornered: Shadow out to ")
+            print_fixed(s.x)
+            print(", the Hero lands at ")
+            print_fixed(o.x)
+            println("")
+            assert(s.x > o.x, "the sides did not swap in the corner")
+            assert(o.x < -30.0 && s.x > -30.0, "Shadow did not leave the corner")
+            sh_restart(Mech.Shadow, Mech.Hero, 31.0, 34.0)
+            stage = 2
+        }
+        2 => {
+            print("the far wall: Shadow comes up at ")
+            print_fixed(s.x)
+            print(", the Hero lands at ")
+            print_fixed(o.x)
+            println("")
+            assert(s.x > o.x, "the sides did not swap at the far wall")
+            ok("Phantom Grip swaps sides, out of a corner")
+        }
+        else => {}
+    }
+}
+
+private fn sh_check_eclipse() {
+    let s = &fight.f[0]
+    let o = &fight.f[1]
+    match stage {
+        0 => {
+            if frames == mark + 2 { sh_pad[0] = A | B }
+            if evc[Ev.Super] == 1 && !sh_flag {
+                sh_flag = true
+                assert(s.meter <= -METER_BAR + 1, "the bar of debt")
+            }
+            if sh_flag && s.mv != Mv.super {
+                let want = 70 + 70 * COMBO_2 / 100 + 70 * COMBO_3 / 100 * 2 + 120 * COMBO_3 / 100
+                print("Total Eclipse: ")
+                print_int(evc_side[0][Ev.Hit])
+                print(" hits, ")
+                print_int(1000 - o.health)
+                print(" damage, Shadow's meter ")
+                print_int(s.meter)
+                println("")
+                assert_eq(evc_side[0][Ev.Hit], 5, "five hits")
+                assert_eq(1000 - o.health, want, "the five hits' scaled damage")
+                assert(s.meter < 0, "not in debt")
+                sh_flag = false
+                stage = 1
+            }
+        }
+        1 => {
+            // in debt: the Hero's Guard Cut does a quarter more
+            if actionable(1) && actionable(0) && !sh_flag {
+                place(-3.0, 3.0)
+                sh_pad[1] = A
+                sh_flag = true
+                mark_h = s.health
+            }
+            if sh_flag && evc_side[1][Ev.Hit] > 0 {
+                assert_eq(mark_h - s.health, dmg(0, Mv.atk_n) * DEBT_DMG_NUM / DEBT_DMG_DEN, "the debt's extra damage")
+                print("in debt Shadow took ")
+                print_int(mark_h - s.health)
+                println(" from a Guard Cut")
+                sh_restart(Mech.Shadow, Mech.Hero, -4.0, 4.0)
+                sh_hold[1] = R
+                stage = 2
+            }
+        }
+        2 => {
+            if frames == mark + 2 { sh_pad[0] = A | B }
+            if evc[Ev.Super] == 1 && !sh_flag { sh_flag = true }
+            if sh_flag && s.mv != Mv.super {
+                print("blocked: ")
+                print_int(evc[Ev.Block])
+                print(" blocks, chip ")
+                print_int(1000 - o.health)
+                println("")
+                assert_eq(evc[Ev.Block], 5, "five blocks")
+                assert_eq(1000 - o.health, 14 * 4 + 24, "the chip")
+                ok("Total Eclipse: five hits, the debt; blocked, the chip")
+            }
+        }
+        else => {}
+    }
+}
+
+// Scenario 107's parts: who throws whom.
+private fn sh_part_start(k: s32) {
+    match k {
+        0 => sh_restart(Mech.Shadow, Mech.Tank, -1.9, 1.9)
+        1 => sh_restart(Mech.Tank, Mech.Shadow, -1.9, 1.9)
+        2 => sh_restart(Mech.Tank, Mech.Shadow, -4.0, 4.0)
+        3 => {
+            sh_restart(Mech.Tank, Mech.Shadow, -3.0, 3.0)
+            fight.f[0].meter = METER_BAR
+        }
+        4 => sh_restart(Mech.Shadow, Mech.Twins, -2.0, 2.0)
+        5 => {
+            sh_restart(Mech.Shadow, Mech.Twins, -2.0, 2.0)
+            tw_combined(1)
+        }
+        6 => sh_restart(Mech.Twins, Mech.Shadow, -2.0, 2.0)
+        7 => {
+            sh_restart(Mech.Twins, Mech.Shadow, -2.0, 2.0)
+            tw_combined(0)
+        }
+        else => {}
+    }
+}
+
+const SH_THROW_NAMES: [8]*u8 = [
+    "Phantom Grip on Tank", "Tank's Scrap Heave on Shadow", "Tank's Atomic Clinch on Shadow",
+    "Tank's Chain Reaction on Shadow", "Phantom Grip on the split Twins", "Phantom Grip on the combined Twins",
+    "the Tag Toss on Shadow", "the Binary Buster on Shadow",
+]
+
+private fn sh_check_throws() {
+    let a = &fight.f[0]
+    let d = &fight.f[1]
+    if frames == mark + 2 {
+        match sh_part {
+            2 => sh_pad[0] = sh_fwd(0) | B
+            3 => sh_pad[0] = A | B
+            else => sh_pad[0] = Y
+        }
+    }
+    if d.mv == Mv.thrown_slam { sh_flag = true }
+    if evc[Ev.Throw] == 0 || frames < mark2 { return }
+    if mark2 < mark {
+        mark2 = frames + 60          // let it land
+        return
+    }
+    if frames != mark2 { return }
+    var want = 0
+    match sh_part {
+        0, 4, 5 => want = dmg(7, Mv.throw)
+        1 => want = dmg(3, Mv.throw)
+        2 => want = dmg(3, Mv.sp_f)
+        3 => want = dmg(3, Mv.super)
+        6 => want = move_hit(Mech.TwinA, Mv.throw).dmg
+        7 => want = move_hit(Mech.Twins, Mv.throw).dmg
+        else => {}
+    }
+    print(SH_THROW_NAMES[sh_part])
+    print(": ")
+    print_int(d.health_max - d.health)
+    print(" damage, the thrower at ")
+    print_fixed(a.x)
+    print(", the thrown at ")
+    print_fixed(d.x)
+    println("")
+    assert_eq(d.health_max - d.health, want, "the throw's damage")
+    assert(is_hurt(d.mv), "the thrown mech is not down")
+    if sh_part == 0 || sh_part == 4 || sh_part == 5 { assert(a.x > d.x, "Phantom Grip did not swap sides") }
+    if sh_part == 0 { assert_eq(d.meter, want * NUC_NUM / NUC_DEN, "Tank's nuclear meter from the throw") }
+    if sh_part == 2 || sh_part == 3 { assert(sh_flag, "Shadow did not play thrown_slam") }
+    sh_part += 1
+    if sh_part == 8 {
+        ok("throws on and by Shadow against Tank and the Twins")
+        return
+    }
+    sh_part_start(sh_part)
+}
+
+private fn sh_check_cpu() {
+    let s = if_i(fight.f[0].mech == Mech.Shadow, 0, 1)
+    if fight.phase == Phase.Fight && fight.phase_t == 1 { round_start = frames }
+    let ev = fight_events()
+    for e in 0..ev.n {
+        let k = &ev.e[e]
+        if k.side != s { continue }
+        if k.kind == Ev.Curse { sh_stat[0] += 1 }
+        if k.kind == Ev.Mine { sh_stat[1] += 1 }
+        if k.kind == Ev.Snare { sh_stat[2] += 1 }
+        if k.kind == Ev.Super { sh_stat[3] += 1 }
+    }
+    if fight.phase == Phase.Ko && fight.phase_t == 1 {
+        print("  round ")
+        print_int(fight.round)
+        print(": ")
+        if fight.timer <= 0 { print("time up") } else { print("KO") }
+        print(" after ")
+        print_int((frames - round_start) / 60)
+        print(" s, winner ")
+        print_int(fight.round_winner)
+        print(", health ")
+        print_int(fight.f[0].health)
+        print(" / ")
+        print_int(fight.f[1].health)
+        println("")
+    }
+    if fight.phase != Phase.MatchOver { return }
+    print("run ")
+    print_int(sh_matches + 1)
+    print(": ")
+    print(MECH_NAMES[fight.f[0].mech])
+    print(" against ")
+    print(MECH_NAMES[fight.f[1].mech])
+    print(", winner ")
+    print_int(fight.winner)
+    print(" after ")
+    print_int(frames)
+    print(" frames; Shadow's curses ")
+    print_int(sh_stat[0])
+    print(", mines ")
+    print_int(sh_stat[1])
+    print(", snares ")
+    print_int(sh_stat[2])
+    print(", supers ")
+    print_int(sh_stat[3])
+    print(", meter siphoned ")
+    print_int(fight.f[1 - s].siphoned)
+    println("")
+    sh_matches += 1
+    if sh_matches == 5 {
+        ok("CPU against CPU: Shadow's matches finish")
+        return
+    }
+    let foes: [5]Mech = [Mech.Hero, Mech.Doubleblade, Mech.Beam, Mech.Tank, Mech.Twins]
+    let foe = foes[sh_matches]
+    if sh_matches % 2 == 1 { fight_init(foe, Mech.Shadow, FightMode.VsCpu, 2) }
+    else { fight_init(Mech.Shadow, foe, FightMode.VsCpu, 2) }
+    for k in 0..4 { sh_stat[k] = 0 }
+    frames = 0
 }

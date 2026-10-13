@@ -82,6 +82,7 @@ var sh_found: bool
 var sneak_t0: s32                   // the travel's first frame and its charge frame, from the data
 var sneak_t1: s32
 var dive_t: s32                     // the Diving Claw's first active frame
+var shadow_in_fight: bool           // a side is Shadow (fight_init): else shadow_tick does nothing
 
 // Whether f is cursed (its gains go to the other side).
 fn shadow_cursed(f: *Fighter) -> bool { return f.curse > 0 }
@@ -91,6 +92,7 @@ fn shadow_snared(b: s32) -> bool { return snare_t[b] > 0 && fx[b].pause > 0 }
 
 // The frames the rules need, found in the data once (fight_init).
 fn shadow_init() {
+    shadow_in_fight = fight.f[0].mech == Mech.Shadow || fight.f[1].mech == Mech.Shadow
     for s in 0..2 { rift[s].on = false }
     for b in 0..4 { snare_t[b] = 0 }
     if sh_found { return }
@@ -170,6 +172,7 @@ fn shadow_siphon(f: *Fighter, n: s32) {
 // ---- each frame (fight_tick, outside the freezes)
 
 fn shadow_tick(live: bool) {
+    if !shadow_in_fight { return }
     for i in 0..2 {
         let f = &fight.f[i]
         if live && f.curse > 0 { f.curse -= 1 }

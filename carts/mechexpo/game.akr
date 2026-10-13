@@ -32,6 +32,7 @@ import "beam_hud.akr"       // mx-beam: the chemical meter
 import "beam_fx.akr"        // mx-beam: Beam's effects
 import "tank_fx.akr"        // mx-tank: Tank's reactor glow, armour sparks and HUD meter
 import "twins_fx.akr"       // mx-twins-fight: the Twins' partner, the swap's flash, the fusion meter
+import "shadow_fx.akr"      // mx-shadow-fight: Shadow's bolt, mines, curse, afterimages, the siphon
 
 // Input, replaced by the tests.
 weak fn input_pad(n: s32) -> u32 {
@@ -643,7 +644,9 @@ fn draw_hangar(fighting: bool) {
         fx_draw_sprites(f)
         tank_fx_draw(f)
         twins_fx_draw(f)
+        shadow_fx_draw(f)
         fx_offset()
+        shadow_fx_offset(f)             // Total Eclipse keeps the stage dark
         prof_fx = cycle_count() - c1
         if show_boxes && game == Game.Training {
             for s in 0..2 {

@@ -432,6 +432,7 @@ private fn fx_plate(m: Mech) -> u32 {
     if m == Mech.Doubleblade { return 0x602848 }    // Umbral black-violet
     if m == Mech.Beam { return 0x18B8E0 }           // Raikō yellow
     if m == Mech.Tank { return 0x406A4C }           // Heartland faded green
+    if m == Mech.Shadow { return 0x401830 }         // Umbral black-violet, darker
     return 0x9C9690
 }
 
@@ -662,10 +663,12 @@ fn is_swing(mv: Mv) -> bool {
 // The trail's colours (sprite-free: the colours drawn): at the blade's edge, and the motes it sheds.
 private fn fx_trail_tip(m: Mech) -> u32 {
     if m == Mech.Doubleblade { return 0xFFB8F0 }    // violet-white
+    if m == Mech.Shadow { return 0xFFA0C8 }         // the claws: a bluer violet-white
     return 0xFFF4D0                                  // white into cyan
 }
 private fn fx_trail_mid(m: Mech) -> u32 {
     if m == Mech.Doubleblade { return 0x900C60 }
+    if m == Mech.Shadow { return 0xA01048 }
     return 0xC06010
 }
 
@@ -870,6 +873,12 @@ fn fx_update(f: *Fight) {
             // no blades: Beam's discharges are beam_fx.akr's, Tank's and the Twins' fists leave no trail
             fx_trails[s * 2].n = 0
             fx_trails[s * 2 + 1].n = 0
+        } else if fi.mech == Mech.Shadow {
+            // the claws' talons, violet (mx-shadow-fight; MOVES.md, "For the animators (Shadow)")
+            let cr = anim_part(fi.mech, fi.mv, fi.frame, root, Part.weapon_r)
+            trail_sample(&fx_trails[s * 2], cr, 0.3, 2.8, on, fi.mech)
+            let cl = anim_part(fi.mech, fi.mv, fi.frame, root, Part.weapon_l)
+            trail_sample(&fx_trails[s * 2 + 1], cl, 0.3, 2.8, on, fi.mech)
         } else if fi.mech == Mech.Doubleblade {
             let mr = anim_part(fi.mech, fi.mv, fi.frame, root, Part.weapon_r)
             trail_sample(&fx_trails[s * 2], mr, 0.6, 3.2, on, fi.mech)
@@ -921,8 +930,8 @@ fn fx_update(f: *Fight) {
         }
         // the wave
         let sh = &f.shot[s]
-        if sh.on { fx_wave(sh) }
-        if sd.shot_on && !sh.on { fx_wave_end(sd.shot_x, sd.shot_y) }
+        if sh.on && !sh.hex { fx_wave(sh) }        // (Shadow's Hex Bolt: shadow_fx.akr)
+        if sd.shot_on && !sh.on && !sh.hex { fx_wave_end(sd.shot_x, sd.shot_y) }
         sd.shot_on = sh.on
         sd.shot_x = sh.x
         sd.shot_y = sh.y
@@ -1177,6 +1186,7 @@ fn fx_draw_sprites(f: *Fight) {
     for s in 0..2 {
         let sh = &f.shot[s]
         if !sh.on { continue }
+        if sh.hex { shadow_fx_bolt(sh); continue }          // Shadow's Hex Bolt (shadow_fx.akr)
         if sh.lvl > 0 { beam_fx_orb(sh); continue }        // Beam's Volt Orb (beam_fx.akr)
         let p = vec3(sh.x, sh.y + 3.0, -0.5)
         let q = project_point(p)
