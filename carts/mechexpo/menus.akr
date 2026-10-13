@@ -660,7 +660,8 @@ fn draw_fight_overlay() {
             if t < 50 && !training { hud_banner("FIGHT!", null, t, C_YELLOW) }
         }
         Ko => {
-            if f.timer <= 0 { hud_banner("TIME UP", null, t, C_TANGERINE) }
+            if f.ringout >= 0 { hud_banner("RING OUT", null, t, C_TANGERINE) }
+            else if f.timer <= 0 { hud_banner("TIME UP", null, t, C_TANGERINE) }
             else { hud_banner("K.O.", null, t, C_WHITE) }
         }
         RoundOver => {
@@ -960,4 +961,99 @@ fn draw_unlock() {
     txt(FONT_SERIF, 160, 214, "...joins the show floor. On sale to the UAPC.", C_WHITE, ALIGN_CENTRE)
     if t > 90 && !save_writing { txt(FONT_MICRO, 312, 229, "PRESS A", C_CYAN, ALIGN_RIGHT) }
     draw_save_status(84, 196)
+}
+
+// ---- the stage select (mx-stages): the venue guide, a card a stage (stage_select.akr)
+
+fn draw_stage_select() {
+    page_scroll()
+    masthead("VENUE GUIDE", "STAGE")
+    print_clear()
+    let n = STAGES_N
+    let cw = ((312 / n) / 8) * 8 - 8       // whole tiles, for the photograph
+    for i in 0..n {
+        let s = stage_row(i)
+        let x = 8 + i * (cw + 8)
+        let on = i == stage_sel
+        // the name bar in the venue's colour
+        rect_blend(x, 32, cw, 15, s.colour, BLEND_NONE)
+        rect_blend(x, 46, cw, 1, 0x200C06, BLEND_SUB)
+        var name = s.name
+        if txt_w(FONT_HEAD, name) > cw - 8 { name = s.short }
+        txt(FONT_HEAD, x + 4, 32, name, C_WHITE, ALIGN_LEFT)
+        // the photograph (the print layer): the venue's colour, its floor and edges over it
+        let k = min(i, 2)
+        print_ramp(k, s.colour)
+        print_photo(x / 8, 6, cw / 8, 10, k)
+        stage_diagram(s, x + 8, 52, cw - 16, 72)
+        // the sheet
+        paper(x, 128, cw, 80)
+        txt(FONT_MICRO, x + 6, 130, s.venue, C_STEEL, ALIGN_LEFT)
+        rect_blend(x + 6, 142, cw - 12, 1, C_SILVER, BLEND_NONE)
+        txt(FONT_MICRO, x + 6, 146, "EDGES", C_STEEL, ALIGN_LEFT)
+        let eb = sb()
+        str_append(eb, 64, edge_name(s, 0))
+        str_append(eb, 64, "  //  ")
+        str_append(eb, 64, edge_name(s, 1))
+        txt(FONT_MICRO, x + cw - 6, 146, eb, C_NAVY, ALIGN_RIGHT)
+        txt_lines(FONT_MICRO, x + 6, 160, s.blurb, 9, C_INK, ALIGN_LEFT)
+        if stage_open(s, 0) || stage_open(s, 1) {
+            let tw = txt_w(FONT_LABEL, "RING-OUTS") + 6
+            tag(x + cw - 6 - tw, 190, tw, "RING-OUTS", C_RED, C_WHITE)
+        }
+        if on {
+            rect_outline(x - 3, 29, cw + 6, 182, C_RED, BLEND_NONE)
+            if stage_done_t > 0 || (tick >> 3) & 1 == 0 { rect_outline(x - 2, 30, cw + 4, 180, C_RED, BLEND_NONE) }
+            tag(x - 6, 25, 14, "1P", C_RED, C_WHITE)
+            ui_shine(x, 32, cw, 15, tick - stage_moved, 90)
+            if stage_done_t > 0 { ui_stamp(&UI_STAMP_READY[0], x + cw / 2, 84, C_RED) }
+        }
+    }
+    footer("LEFT/RIGHT CHOOSE  //  A CONFIRM  //  B BACK", "P. 08")
+}
+
+// "WALL" or "OPEN" for side k of a stage (0: the left).
+private fn edge_name(s: *Stage, k: s32) -> *u8 {
+    if stage_open(s, k) { return "OPEN" }
+    return "WALL"
+}
+
+// A side elevation of a stage in (x, y, w, h): the floor, a wall as a pillar, an open edge as the
+// floor's end with its hazard line and the drop.
+private fn stage_diagram(s: *Stage, x: s32, y: s32, w: s32, h: s32) {
+    let fy = y + h - 18
+    var x0 = x + 8
+    var x1 = x + w - 8
+    if stage_open(s, 0) { x0 += 14 }
+    if stage_open(s, 1) { x1 -= 14 }
+    rect_blend(x0, fy, x1 - x0, 3, C_INK, BLEND_NONE)
+    rect_blend(x0, fy + 3, x1 - x0, 6, 0x6A4A2E, BLEND_NONE)
+    // the start marks
+    let mid = (x0 + x1) / 2
+    rect_blend(mid - 22, fy - 7, 3, 7, C_RED, BLEND_NONE)
+    rect_blend(mid + 19, fy - 7, 3, 7, C_BLUE, BLEND_NONE)
+    for k in 0..2 {
+        var ex = x0
+        var d = -1
+        if k == 1 {
+            ex = x1
+            d = 1
+        }
+        if stage_open(s, k) {
+            // the hazard line at the lip, and the drop
+            for j in 0..3 {
+                var c = C_INK
+                if j % 2 == 0 { c = C_YELLOW }
+                rect_blend(ex - d * (2 + j * 4) - 1, fy - 2, 2, 2, c, BLEND_NONE)
+            }
+            let ax = ex + d * 8
+            rect_blend(ax - 1, fy - 2, 2, 14, C_WHITE, BLEND_NONE)
+            tri_fill(ax - 4, fy + 12, ax + 4, fy + 12, ax, fy + 17, C_WHITE, BLEND_NONE)
+        } else {
+            var px = ex
+            if k == 0 { px = ex - 5 }
+            rect_blend(px, y + 10, 5, fy - y - 7, C_INK, BLEND_NONE)
+            rect_blend(px, y + 10, 5, 2, C_SILVER, BLEND_NONE)
+        }
+    }
 }

@@ -78,13 +78,52 @@ the hitstun's frames (the animation is stretched to fit). A hit in the air, and 
 frames on the floor) and `getup` (20 frames). Knocked down and getting up, a mech can't be hit.
 Each hit pushes the defender back along the floor (the knockback slide).
 
-**The separation limit and the walls.** The mechs are never more than 36 m apart, and the
-hangar's walls are at x = ±36. Either stops a mech walking, jumping or being knocked further;
-both are corners.
+**The separation limit and the walls.** The mechs are never more than 36 m apart, on every
+stage, and the stage's edges are its own: the hangar's walls are at x = ±36. A wall or the
+limit stops a mech walking, jumping or being knocked further; both are corners. An open edge
+is a lip, with ring-outs ([Stages and ring-outs](#stages-and-ring-outs)).
 
 **Facing.** A mech turns to face the other whenever it is on the ground and idle, walking,
 crouching or blocking; during a move or in the air it keeps its facing (a jump over the other
 mech lands facing the wrong way and turns on landing).
+
+## Stages and ring-outs
+
+A stage (`stages.akr`, [README.md](README.md#stages)) has a half-width and two edges, each a
+**wall** or **open**. The demo hangar has walls at x = ±36; the rooftop showcase has the
+stairwell's housing (a wall) at x = −26 and an open edge at x = +26. The rules at an open edge
+(`fighter.akr`, the ring-out block at its end):
+
+- **The lip.** A mech stops at an open edge as at a wall, its push box against it (x = 26 − 1.5
+  for the Double-blade Hero): walking, jumping, a move's root motion, a blocked hit's pushback
+  and a hit's knockback slide all stop there, and a sliding defender stopped at the lip passes
+  the rest of the slide to its attacker, as at a wall. **A blocked hit never rings out, and
+  neither does a hit that leaves the mech standing** (`hit_high`, `hit_low`).
+- **Over the edge.** Only a mech carried by a knockdown, a launch or a throw goes over: one in
+  `hit_air` (a knockdown hit, a hit in the air, a throw's or a slam's release). It flies its
+  arc unhindered by the lip, and once its root is past the edge there is no floor: it falls, out
+  of the camera's sight within about 40 frames, and **its side loses the round, RING OUT**, at
+  once, whatever the health bars say. Both sides over on the same frame is a draw. The throws
+  carry furthest (the Hero's throw lands the other about 10 m in front of the thrower, the
+  Vault Throw about 5 m behind it), a knockdown hit 2–4 m (the Low Sweep 2 m, a super's launch
+  4 m): near the open edge every knockdown and every throw is a threat.
+- **A knocked-out mech** (health gone) may fly off the edge too; the KO stands.
+- **The Twins** are one fighter with one health bar: **either twin falling costs the round**.
+  Twin B's leash (8 m) does not save it (a falling twin is not pulled back); since the leash
+  keeps it within 8 m of twin A, twin B is only at risk when twin A is near the edge.
+- **The separation limit and the camera** still apply. The camera may look up to 10 m past an
+  open edge (a metre past a wall), so the drop is in view when a mech is near it.
+- **Training:** a mech that falls is put back on the deck 10 m inside the edge after 100
+  frames; the round goes on.
+- **The CPU** (`cpu.akr`, its end): backed up within 7 m of an open edge with the other in
+  reach, it jumps out over the other, blocks, throws it or walks out; within 11 m it walks out
+  more often; it blocks a coming attack more often at the lip; with the other within 9 m of the
+  edge it throws it up close and uses a knockdown (its down attack) when the other is near the
+  lip, and walks the other toward the edge from further out. Its dice are rolled only on a
+  stage with an open edge, so the hangar's matches are unchanged.
+
+Events: `Ev.RingOut` (side: the winner; x: where the mech went over), and `fight.ringout` (the
+side rung out this round, −1 none, 2 both); the HUD shows RING OUT as it shows K.O.
 
 ## The meters
 
@@ -1078,3 +1117,10 @@ Void Step's gone frames, 7–18).
   (it does) want human play.
 - The Twins' fusion rate (+1 a frame combined, a bar in 20 s) and whether every round should
   start split (it does) want human play; so does the partner's delay (6 frames).
+- Ring-outs (mx-stages's defaults, [Stages and ring-outs](#stages-and-ring-outs)): a ring-out
+  ends the round outright; the alternatives are a heavy damage penalty, or a ring-out only
+  below some health. The rooftop starts 2P with its back to the drop (17 m from the edge, 1P
+  17 m from the wall); swapping the starting sides each round would even it. Twin B falling
+  costs the round (the other choice: twin B always pulled back by its leash). CPU against CPU
+  rarely rings out (none in 20 rounds of scenario 96: the fights drift away from the edge);
+  the CPU's edge play wants tuning with human play.

@@ -12,5 +12,6 @@ case "$1" in
     5[0-4]) SC_HEAD="$SC_HEAD" SC_APP="../../game.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE/fx" "$@" ;;
     6[89]) SC_HEAD="$SC_HEAD" SC_APP="../../game.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE/twins" "$@" ;;
     8[0-9]) SC_HEAD="$SC_HEAD" SC_APP="../../game.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE/sfx" "$@" ;;
+    9[0-9]) SC_HEAD="$SC_HEAD" SC_APP="../../game.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE/stages" "$@" ;;
 esac
 SC_HEAD="$SC_HEAD" SC_APP="../fight.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE" "$@"

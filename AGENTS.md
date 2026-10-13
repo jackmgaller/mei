@@ -243,6 +243,7 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_mechexpo_ui.py` | `carts/mechexpo/art/ui_*` and `ui_art.akr`: Mech Expo's fonts, sprites, effects, HUD frame, menu page, palettes and save icon (`--preview DIR`) |
 | `gen_mechexpo_audio.py` | `carts/mechexpo/audio/` (`music.adp`, `sfx.adp`) and `carts/mechexpo/mu_data.akr`: Mech Expo's music, its sound effects and their loops (`--preview DIR`: a WAV of each piece and each sound) |
 | `gen_mechexpo_fx.py` | `carts/mechexpo/art/fx_particles.tex`, `fx_particles.pal` and `fx_art.akr`: Mech Expo's particle sprites (texture slot 11, 4-bit palette 192) (`--preview DIR`) |
+| `gen_mechexpo_rooftop.py` | `carts/mechexpo/art/stage_roof_*` and `roof_art.akr`: Mech Expo's rooftop stage (the city on BG1, the roof deck on BG2); runs `props/rooftop/make_rooftop.py` and packs its props into `art/stage_roof_*` and `roof_props.akr` (texture slot 13, 4-bit palettes 200-203) (`--preview DIR`) |
 | `fonts/make_fonts.py` | `tools/fonts/`: the generators' fonts as static weights cut to Latin, kana and the kanji in its `KANJI` list, and their licences (`OFL-*.txt`) |
 | `meinet/make_fixture.sh` | `tests/lang/data/broadcast.bin`, the canned broadcast the language tests replay (`meinet.py --fixture`) |
 | `carts/garden/shrinetown/art/water/draw_water.py` | The shrine town's water textures in `art/water/`: `water.png`, `pond_water.png`, `falls.png`, `water_ramps.akr` |
@@ -263,8 +264,9 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/mechexpo/models/twins/make_twins.py` | The Twins' three bodies, each in its folder (`models/twins/`, `models/twin_a/`, `models/twin_b/`): `NAME.asset.json`, `NAME_rest`, `NAME_flex`, `parts/NAME_*.asset.json`, `NAME.rig.json`, `cameras*.json`, `asset-preview.json`; and in `models/twins/` the docking review (`twins_docking`, `twins_docked`, `cameras_docking.json`) and `binary_emblem.png` (it imports `make_hero.py`'s helpers) |
 | `carts/mechexpo/models/hangar_wall/make_hangar_wall.py` | `hangar_wall_r.asset.json`, `hangar_wall_l.asset.json`, `art/wall_sign.png`, `cameras.json` |
 | `carts/mechexpo/models/expo_banner/make_expo_banner.py` | `expo_banner.asset.json`, `art/banner_expo.png`, `art/banner_2000.png`, `cameras.json` |
+| `carts/mechexpo/props/rooftop/make_rooftop.py` | The rooftop's props: `roof_stairwell.asset.json`, `roof_parapet.asset.json`, `roof_kerb.asset.json`, `art/stair_door.png`, `art/stair_sign.png`, `cameras.json` (`gen_mechexpo_rooftop.py` runs it) |
 
-The last eighteen are run by their path from the repository root, not as `tools/NAME.py`; the
+The last nineteen are run by their path from the repository root, not as `tools/NAME.py`; the
 garden's two audio generators share `carts/garden/audio/garden_dsp.py`, and Mech Expo's models
 `carts/mechexpo/models/hero/mxpaint.py`, which write nothing.
 

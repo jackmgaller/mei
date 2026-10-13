@@ -1,112 +1,124 @@
-// The stage (D's): the demo hangar at the expo, on the plane chip and in polygons.
+// The stage (D's): the current fight's stage (stages.akr: a row of STAGES, its art and props)
+// on the plane chip and in polygons.
 //
-//   backdrop  the hangar's dark roof, a gradient on line channel 0, placed by the hall's line
-//   BG2       the floor, a Mode 7 plane (plane_floor) at FLOOR_S texels a metre
-//   BG1       the hall behind the fight: trusses, banners, booths, the crowd (stage_art.akr),
-//             its bottom row on the floor line at z = HALL_Z, in parallax bands (channel 2)
+//   backdrop  the stage's sky (the hangar's dark roof), a gradient on line channel 0, placed by
+//             the hall's line
+//   BG2       the floor, a Mode 7 plane (plane_floor) at the art's texels a metre
+//   BG1       the hall behind the fight (the hangar's trusses, banners, booths and crowd), its
+//             bottom row on the floor line at z = hall_z, in parallax bands (channel 2)
 //   PL        the mechs, the walls and props (B's models), the effects, with the depth test
 //   BG0       the HUD's frame (hud.akr), in front of the mechs
 //   PH        the interface list: the HUD's fills and text, the menus
 //
-// Priorities (PLN_PRIO): BG2 0, BG1 1, PL 2, BG0 3, PH 4. The plane chip costs no CPU or GPU
-// beyond the tables: about 14,000 cycles for the floor's rows, 300 for the hall's scroll table.
+// Priorities (PLN_PRIO, the stage's art.prio): the hangar BG2 0, BG1 1, PL 2, BG0 3, PH 4. The
+// plane chip costs no CPU or GPU beyond the tables: about 14,000 cycles for the floor's rows, 300
+// for the hall's scroll table.
 //
 // VRAM: ATLAS_0 the floor, ATLAS_1 the hall, ATLAS_2 the HUD frame, ATLAS_3 the menus' page;
 // MAP_BG2, MAP_BG1, MAP_BG0; line tables LT_BACKDROP (channel 0), LT_BG1 (2), LT_AFFINE (7) and
 // the backdrop's long table at ST_SKY_TAB (VRAM_FREE). Palettes 240-243 the floor, 244-249 the
-// hall (244 lent to the menus' page).
+// hall (244 lent to the menus' page). One stage's art is loaded at a time (stage_show()).
 
 const ST_SKY_TAB = 0x582000       // 1,024 words in the free VRAM: row i is hall-line-relative i - ST_SKY_ZERO
 const ST_SKY_ZERO = 700
-const ST_PRIO: u32 = 0x42001133   // PH 4, PL 2, BG2 0, BG1 1 (both kinds of tile), BG0 3
-const ST_FAR: fixed = 260.0       // the floor's rows out to this view depth (the hall hides beyond)
-const ST_SKY: [4]u32 = [0x0A0806, 0x221810, 0x3A2C20, 0x4A3A2C]   // 0xBBGGRR: the roof's dark
-const ST_SKY_DY: [4]s32 = [-420, -260, -200, -160]                // rows above the hall's line
 
 var st_line: s32                  // the hall's floor line this frame (screen row)
 var st_floor_top: s32             // the floor's first row
 var st_cycles: s32
 var st_hall_loaded: bool
+var st_loaded: s32 = -1           // the stage whose floor and sky are loaded
 
 fn stage_boot() {
-    // the backdrop's long table: the roof darkens upward
+    stage_roof_props_load()             // the rooftop's props: slot 13 and palettes 200-203, once
+    stage_load(stage_now())
+}
+
+// The stage's floor atlas, its palettes and the backdrop's long table (the sky darkens upward),
+// once each time the stage changes.
+private fn stage_load(s: *Stage) {
+    let id = fight.stage
+    if id == st_loaded { return }
+    st_loaded = id
+    let a = &s.art
     let t = ST_SKY_TAB as *u32
     for i in 0..1024 {
         let d = i - ST_SKY_ZERO
-        var c = ST_SKY[0]
-        if d >= ST_SKY_DY[3] {
-            c = ST_SKY[3]
-        } else if d > ST_SKY_DY[0] {
+        var c = a.sky[0]
+        if d >= a.sky_dy[3] {
+            c = a.sky[3]
+        } else if d > a.sky_dy[0] {
             var k = 0
-            while d >= ST_SKY_DY[k + 1] { k += 1 }
-            let f = fixed(d - ST_SKY_DY[k]) / (ST_SKY_DY[k + 1] - ST_SKY_DY[k])
-            c = clerp(ST_SKY[k], ST_SKY[k + 1], f)
+            while d >= a.sky_dy[k + 1] { k += 1 }
+            let f = fixed(d - a.sky_dy[k]) / (a.sky_dy[k + 1] - a.sky_dy[k])
+            c = clerp(a.sky[k], a.sky[k + 1], f)
         }
         t[i] = c
     }
-    atlas_load(ATLAS_0, STAGE_FLOOR_TILES, FLOOR_TILES_BYTES)
-    load_palette(PAL_FLOOR * 16, STAGE_FLOOR_PAL, FLOOR_PALS * 16)
+    atlas_load(ATLAS_0, a.floor_tiles, a.floor_bytes as u32)
+    load_palette(PAL_FLOOR * 16, a.floor_pal, a.floor_pals * 16)
 }
 
-// The hangar's planes on (entering a fight, or the title's attract view).
+// The stage's planes on (entering a fight, or the title's attract view).
 fn stage_show() {
-    atlas_load(ATLAS_1, STAGE_HALL_TILES, HALL_TILES_BYTES)
-    load_palette(PAL_HALL * 16, STAGE_HALL_PAL, HALL_PALS * 16)
+    let s = stage_now()
+    let a = &s.art
+    stage_load(s)
+    atlas_load(ATLAS_1, a.hall_tiles, a.hall_bytes as u32)
+    load_palette(PAL_HALL * 16, a.hall_pal, a.hall_pals * 16)
     plane(BG1, ATLAS_1, MAP_BG1, 64, 32, 0, PAL_HALL)
-    map_load(BG1, STAGE_HALL_MAP)
-    plane(BG2, ATLAS_0, MAP_BG2, FLOOR_N, FLOOR_N, PLANE_WRAP, PAL_FLOOR)
-    map_load(BG2, STAGE_FLOOR_MAP)
+    map_load(BG1, a.hall_map)
+    plane(BG2, ATLAS_0, MAP_BG2, FLOOR_N, FLOOR_N, a.floor_out, PAL_FLOOR)
+    map_load(BG2, a.floor_map)
     plane_window(BG1, 0, 0, 320, 240)
-    PLN_PRIO = ST_PRIO
+    PLN_PRIO = a.prio
     st_hall_loaded = true
 }
 
 // The planes for this frame, after cam_apply(): the hall's line and parallax, the floor.
 fn stage_frame() {
     let c0 = cycle_count()
+    let a = &stage_now().art
     // the hall's floor line: the lower of its two ends on screen (the angled view slopes it a
     // few pixels; the barrier covers the floor's far edge either way)
-    let pl = project_point(vec3(cam_x - 40.0, 0.0, HALL_Z))
-    let pr = project_point(vec3(cam_x + 40.0, 0.0, HALL_Z))
+    let pl = project_point(vec3(cam_x - 40.0, 0.0, a.hall_z))
+    let pr = project_point(vec3(cam_x + 40.0, 0.0, a.hall_z))
     let line = max(pl.y, pr.y)
     st_line = line
     // the backdrop: channel 0 at the long table's rows for this line
     let h = clamp(line, 240 - 1024 + ST_SKY_ZERO, ST_SKY_ZERO)
     line_channel(0, LC_BD_COLOR, 1, (ST_SKY_TAB + (ST_SKY_ZERO - h) * 4) as u32)
     // the hall: one vertical scroll; each band's x from where world x = 0 falls at its depth
-    let sy = (HALL_H - 1 - line) as u32 & 0xFFFF
+    let sy = (a.hall_line - line) as u32 & 0xFFFF
     let tbl = LT_BG1 as *u32
     var y = 0
-    for b in 0..HALL_BANDS {
-        let p = project_point(vec3(0.0, 0.0, HALL_Z + HALL_BAND_Z[b]))
-        let sx = (HALL_W / 2 - p.x) as u32 & 0xFFFF
+    for b in 0..a.bands {
+        let p = project_point(vec3(0.0, 0.0, a.hall_z + a.band_z[b]))
+        let sx = (a.hall_w / 2 - p.x) as u32 & 0xFFFF
         let w = sx | (sy << 16)
         var y1 = 240
-        if b + 1 < HALL_BANDS { y1 = clamp(line - (HALL_H - 1) + HALL_BAND_Y[b + 1], 0, 240) }
+        if b + 1 < a.bands { y1 = clamp(line - a.hall_line + a.band_y[b + 1], 0, 240) }
         while y < y1 {
             tbl[y] = w
             y += 1
         }
     }
     plane_scroll(BG1, 0, sy as s32)
+    plane_window(BG1, 0, clamp(line - a.hall_line, 0, 240), 320, 240)     // nothing above the art's top
     line_channel(2, lc_scroll(BG1), 1, LT_BG1)
     // the floor
-    st_floor_top = plane_floor(0.0, FLOOR_S, FLOOR_C, FLOOR_C, ST_FAR)
+    st_floor_top = plane_floor(0.0, a.floor_s, a.floor_c, a.floor_c, a.floor_far)
     st_cycles = cycle_count() - c0
 }
 
-// B's polygon props (assets.akr): the walls at x = +-36 (each only when the view reaches it)
-// and the expo's lightbox banner towers in the midground, behind the fight plane.
-const ST_BANNERS = 2
-const ST_BANNER_POS: [2]vec3 = [vec3(-21.0, 0.0, 15.0), vec3(23.0, 0.0, 19.0)]
-
+// The stage's polygon props (B's models, assets.akr), each only when the view comes within its
+// `near` metres of it: the hangar's walls at x = +-36 and the expo's lightbox banner towers in
+// the midground, behind the fight plane.
 fn stage_props() {
+    let s = stage_now()
     let reach = cam_w * 0.75 + 4.0
-    if cam_x + reach > CAM_WALL - 9.0 { mesh_at(ASSET_HANGAR_WALL_R, vec3(CAM_WALL, 0.0, 0.0), 0.0) }
-    if cam_x - reach < 9.0 - CAM_WALL { mesh_at(ASSET_HANGAR_WALL_L, vec3(-CAM_WALL, 0.0, 0.0), 0.0) }
-    for i in 0..ST_BANNERS {
-        let p = ST_BANNER_POS[i]
-        if abs(p.x - cam_x) < reach + 8.0 { mesh_at(ASSET_EXPO_BANNER, p, 0.0) }
+    for i in 0..s.nprops {
+        let p = &s.props[i]
+        if abs(p.x - cam_x) < reach + p.near { mesh_at(p.mesh, vec3(p.x, 0.0, p.z), p.yaw) }
     }
 }
 

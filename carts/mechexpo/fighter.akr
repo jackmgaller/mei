@@ -64,6 +64,8 @@ struct Fx {
     calm: s32                   // training: frames since last hurt
     prev_x: fixed               // x at the start of the frame (the separation limit)
     l_age: s32                  // frames since L was pressed (the Twins switch forms on it)
+    out: bool                   // rung out: falling past an open edge (the end of this file)
+    out_t: s32                  // frames since
 }
 
 // The bodies: 0 and 1 the two fighters, 2 and 3 their partners (the split Twins' twin B, of
@@ -454,10 +456,11 @@ private fn end_move(i: s32) {
 private fn air_step(i: s32) {
     let f = &fight.f[i]
     let x = &fx[i]
+    if x.out && f.y < OUT_DEPTH { return }      // fallen out of sight
     f.x += x.vx
     f.y += x.vy
     x.vy -= STATS[f.body].grav
-    if f.y <= 0.0 && x.vy < 0.0 {
+    if f.y <= 0.0 && x.vy < 0.0 && !off_edge(i) {   // past an open edge there is no floor
         f.y = 0.0
         x.air = false
         x.vy = 0.0
@@ -935,7 +938,8 @@ fn shots_tick() {
         if !s.on { continue }
         s.x += s.vx
         s.t += 1
-        if s.t > s.life || s.x > FIGHT_WALL || s.x < -FIGHT_WALL { s.on = false }
+        let half = stage_now().half
+        if s.t > s.life || s.x > half || s.x < -half { s.on = false }
     }
     // two shots that meet: the weaker goes, both if they are as strong (two waves both go)
     let s0 = &fight.shot[0]
@@ -1044,9 +1048,9 @@ fn bound() {
         let c = wall_clamp(i)
         if c != 0.0 { pass_back(i, c) }
     }
-    // the separation limit
+    // the separation limit (not for a mech falling from the stage)
     let sep = abs(f1.x - f0.x)
-    if sep > FIGHT_MAX_SEP {
+    if sep > FIGHT_MAX_SEP && !fx[0].out && !fx[1].out {
         let excess = sep - FIGHT_MAX_SEP
         let s = sgn(f1.x - f0.x)                // f0 is on the -s side
         let out0 = (fx[0].prev_x - f0.x) * s    // how far each moved outward this frame
@@ -1068,14 +1072,17 @@ fn bound() {
         if fx[1].slide_by >= 0 && g1 > 0.0 { pass_back(1, -fixed(s) * g1) }
     }
     if twins_in_fight { twins_bound() }     // the partners: walls, leash, the other mech's push box
+    if stage_has_open(stage_now()) { ring_outs() }
 }
 
-// Keeps i inside the walls; returns how far it was moved back (signed).
+// Keeps i inside the stage's edges; returns how far it was moved back (signed). An open edge
+// stops a mech at its lip as a wall does, unless the mech is carried over it (carried()).
 fn wall_clamp(i: s32) -> fixed {
     let f = &fight.f[i]
-    let lim = FIGHT_WALL - STATS[f.body].push
-    if f.x > lim { let c = lim - f.x; f.x = lim; return c }
-    if f.x < -lim { let c = -lim - f.x; f.x = -lim; return c }
+    let s = stage_now()
+    let lim = s.half - STATS[f.body].push
+    if f.x > lim && !(s.edge[1] == Edge.Open && carried(i)) { let c = lim - f.x; f.x = lim; return c }
+    if f.x < -lim && !(s.edge[0] == Edge.Open && carried(i)) { let c = -lim - f.x; f.x = -lim; return c }
     return 0.0
 }
 
@@ -1238,4 +1245,78 @@ fn tank_slam_tick(i: s32) {
         ev_add(Ev.Throw, i, o.x, 0.0, h.power)
         if hp(j) <= 0 { knock_out(j) }
     }
+}
+
+// ---- ring-outs (mx-stages): a stage's open edge (stages.akr; MOVES.md, "Stages and ring-outs")
+//
+// A mech stops at an open edge's lip as at a wall: walking, jumping, root motion, a blocked hit's
+// pushback and a hit's knockback slide all stop there (wall_clamp()). Only a mech carried by a
+// knockdown, a launch or a throw's release (in hit_air) goes over: once its root is past the
+// edge it falls, and its side loses the round (both: a draw). The Twins are one fighter: either
+// twin falling costs the round. Outside the fight's live phase (after a KO) a mech still falls,
+// but the round's result stands. In training a fallen mech is put back.
+
+const OUT_DEPTH: fixed = -40.0      // a fallen mech stops here, far below the camera
+const OUT_BACK = 100                // training: frames before a fallen mech is put back
+const OUT_SAFE: fixed = 10.0        // and how far inside the edge
+
+// Whether body i's root is past an open edge, where there is no floor.
+fn off_edge(i: s32) -> bool {
+    let s = stage_now()
+    let x = fight.f[i].x
+    if x > s.half { return s.edge[1] == Edge.Open }
+    if x < -s.half { return s.edge[0] == Edge.Open }
+    return false
+}
+
+// Whether body i goes over an open edge's lip instead of stopping at it: knocked down,
+// launched or thrown (hit_air, the throws' release included), or already falling.
+fn carried(i: s32) -> bool { return fx[i].out || fight.f[i].mv == Mv.hit_air }
+
+// After the bounds: the bodies past an open edge fall, and the round goes to the other side.
+private fn ring_outs() {
+    var lost0 = false
+    var lost1 = false
+    var at = 0.0
+    for i in 0..BODIES {
+        if i >= 2 && !twins_on(i - 2) { continue }
+        let x = &fx[i]
+        if x.out {
+            x.out_t += 1
+            if fight.mode == FightMode.Training && x.out_t >= OUT_BACK { put_back(i) }
+            continue
+        }
+        if !off_edge(i) { continue }
+        x.out = true
+        x.out_t = 0
+        x.slide = 0.0
+        at = fight.f[i].x
+        if (i & 1) == 0 { lost0 = true } else { lost1 = true }
+    }
+    if !lost0 && !lost1 { return }
+    fight.shake = max(fight.shake, 0.5)
+    if fight.phase != Phase.Fight || fight.mode == FightMode.Training { return }
+    var w = 2
+    if !lost0 { w = 0 }
+    if !lost1 { w = 1 }
+    fight.ringout = 2
+    if w == 0 { fight.ringout = 1 }
+    if w == 1 { fight.ringout = 0 }
+    fight.round_winner = w
+    fight.phase = Phase.Ko
+    fight.phase_t = 0
+    ev_add(Ev.RingOut, w, at, 0.0, 3)
+}
+
+// Training: a fallen mech back on the stage, OUT_SAFE inside the edge it fell from, standing.
+private fn put_back(i: s32) {
+    let f = &fight.f[i]
+    let s = stage_now()
+    var x = s.half - OUT_SAFE
+    if f.x < 0.0 { x = -x }
+    fx_clear(i)
+    f.x = x
+    f.y = 0.0
+    set_mv(i, Mv.idle)
+    face_other(i)
 }
