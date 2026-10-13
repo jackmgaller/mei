@@ -1,0 +1,172 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Combine, twin A (36 frames; MOVES.md, \"Switching forms\"): the leader stays on its root while the fight slides twin B's root in under it (frames 0-11). A drops into a crouch, the head and chest turned back over its shoulder for its twin and the left arm thrown up to wave it in (0-5), swings both arms back as the crouch deepens (5-8), then springs: the arms whip up overhead, the legs drive off the floor (8-11), the pelvis rises 4.7 m above the crouch to the top of the leap on 15 with the legs folding up behind, and it drops onto twin B's shoulders, the arms coming forward into the docked guard and the legs folded up the back as fins, squashing a touch on 20 and settling into the rig's docked pose on 22. The swap (release) is on 23, hidden by the flash; this body is not drawn from 23 on and holds the docked pose. Invulnerable 23-29. No root motion.",
+  "base": "_body.anim.json",
+  "length": 36,
+  "plant": {
+    "foot_r": [[0, 9]],
+    "foot_l": [[0, 9]]
+  },
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease"},
+    {
+      "at": 5,
+      "ease": "ease",
+      "offset": [-0.1, -0.9],
+      "pose": {
+        "pelvis": [6, 4, 0],
+        "torso": [-16, 34, 0],
+        "head": [6, 56, 0],
+        "upper_arm_r": [-30, 0, -14],
+        "forearm_r": [60, 0, 6],
+        "hand_r": [-6, 0, 0],
+        "upper_arm_l": [150, 0, 26],
+        "forearm_l": [30, 0, -10],
+        "hand_l": [10, 0, 0],
+        "pauldron_r": [-8, 0, -6],
+        "pauldron_l": [40, 0, 14],
+        "thigh_r": [60, 0, -4],
+        "shin_r": [-100, 0, 0],
+        "foot_r": [40, 0, 4],
+        "thigh_l": [20, 0, 4],
+        "shin_l": [-80, 0, 0],
+        "foot_l": [60, 0, -4]
+      }
+    },
+    {
+      "at": 8,
+      "ease": "in",
+      "offset": [-0.05, -1.45],
+      "pose": {
+        "pelvis": [10, 0, 0],
+        "torso": [-30, 10, 0],
+        "head": [14, 20, 0],
+        "upper_arm_r": [-56, 0, -16],
+        "forearm_r": [30, 0, 6],
+        "hand_r": [-10, 0, 0],
+        "upper_arm_l": [-50, 0, 16],
+        "forearm_l": [30, 0, -10],
+        "hand_l": [-10, 0, 0],
+        "pauldron_r": [-12, 0, -6],
+        "pauldron_l": [-12, 0, 8],
+        "thigh_r": [80, 0, -4],
+        "shin_r": [-120, 0, 0],
+        "foot_r": [40, 0, 4],
+        "thigh_l": [40, 0, 4],
+        "shin_l": [-110, 0, 0],
+        "foot_l": [70, 0, -4]
+      }
+    },
+    {
+      "at": 11,
+      "ease": "out",
+      "offset": [0.0, 1.4],
+      "pose": {
+        "pelvis": [-4, 0, 0],
+        "torso": [4, 0, 0],
+        "head": [-8, 0, 0],
+        "upper_arm_r": [160, 0, 24],
+        "forearm_r": [10, 0, 6],
+        "hand_r": [0, 0, 0],
+        "upper_arm_l": [160, 0, -24],
+        "forearm_l": [10, 0, -10],
+        "hand_l": [0, 0, 0],
+        "pauldron_r": [40, 0, -10],
+        "pauldron_l": [40, 0, 10],
+        "thigh_r": [6, 0, -4],
+        "shin_r": [-14, 0, 0],
+        "foot_r": [50, 0, 4],
+        "thigh_l": [-4, 0, 4],
+        "shin_l": [-10, 0, 0],
+        "foot_l": [50, 0, -4]
+      }
+    },
+    {
+      "at": 13,
+      "pose": {
+        "thigh_r": [-12, 0, -5],
+        "shin_r": [-96, 0, 0],
+        "foot_r": [46, 0, 2],
+        "thigh_l": [-12, 0, 5],
+        "shin_l": [-96, 0, 0],
+        "foot_l": [46, 0, -2],
+        "upper_arm_r": [152, 0, 28],
+        "upper_arm_l": [152, 0, -28]
+      },
+      "ease": "ease",
+      "offset": [0.0, 2.65]
+    },
+    {
+      "at": 15,
+      "ease": "ease",
+      "offset": [0.0, 3.25],
+      "pose": {
+        "pelvis": [0, 0, 0],
+        "torso": [0, 0, 0],
+        "head": [2, 0, 0],
+        "upper_arm_r": [140, 0, 30],
+        "forearm_r": [20, 0, 6],
+        "upper_arm_l": [140, 0, -30],
+        "forearm_l": [20, 0, -10],
+        "pauldron_r": [32, 0, -14],
+        "pauldron_l": [32, 0, 14],
+        "thigh_r": [-60, 0, -6],
+        "shin_r": [-110, 0, 0],
+        "foot_r": [40, 0, 0],
+        "thigh_l": [-60, 0, 6],
+        "shin_l": [-110, 0, 0],
+        "foot_l": [40, 0, 0]
+      }
+    },
+    {
+      "at": 19,
+      "ease": "in",
+      "offset": [0.0, 2.2],
+      "pose": {
+        "pelvis": [0, 0, 0],
+        "torso": [-6, 0, 0],
+        "head": [8, 0, 0],
+        "upper_arm_r": [60, 0, -30],
+        "forearm_r": [50, 0, 0],
+        "hand_r": [0, 0, 0],
+        "upper_arm_l": [60, 0, 30],
+        "forearm_l": [50, 0, 0],
+        "hand_l": [0, 0, 0],
+        "pauldron_r": [16, 0, -18],
+        "pauldron_l": [16, 0, 18],
+        "thigh_r": [-96, 0, -8],
+        "shin_r": [-128, 0, 0],
+        "foot_r": [40, 0, 0],
+        "thigh_l": [-96, 0, 8],
+        "shin_l": [-128, 0, 0],
+        "foot_l": [40, 0, 0]
+      }
+    },
+    {
+      "at": 20,
+      "ease": "ease",
+      "offset": [0.0, 1.45],
+      "pose": {
+        "pelvis": [0, 0, 0],
+        "torso": [-8, 0, 0],
+        "head": [10, 0, 0],
+        "upper_arm_r": [14, 0, -40],
+        "forearm_r": [64, 0, 0],
+        "upper_arm_l": [14, 0, 40],
+        "forearm_l": [64, 0, 0],
+        "pauldron_r": [5, 0, -19],
+        "pauldron_l": [5, 0, 19],
+        "thigh_r": [-100, 0, -8],
+        "shin_r": [-130, 0, 0],
+        "thigh_l": [-100, 0, 8],
+        "shin_l": [-130, 0, 0]
+      }
+    },
+    {"at": 22, "from": "docked", "ease": "hold"}
+  ],
+  "marks": {
+    "release": [23],
+    "invuln": [[23, 29]]
+  }
+}
