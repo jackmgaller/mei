@@ -173,12 +173,17 @@ fn sfx_attack(m: Mech, mv: Mv) {
         TwinA => sx_play(SFX_SWING_TWIN, 4, 2, true, 1.0, 256, p)
         TwinB => sx_play(SFX_SWING_TWIN, 4, 2, true, 0.92, 240, p)
         Doubleblade => sx_play(SFX_SWING_DBLADE, 4, 2, true, 1.0, 256, p)
+        Shadow => sx_play(SFX_SWING_DBLADE, 4, 2, true, 0.82, 230, p)     // the claws: the blades' hiss, lower
         else => sx_play(SFX_SWING_HERO, 4, 2, true, 1.0, 256, p)
     }
 }
 // A shot fired: the Hero's wave (its sword's swing), Beam's Volt Orb by level (1 a tap, 2
 // charged, 3 full: lower and louder).
 fn sfx_shot(m: Mech, lvl: s32) {
+    if m == Mech.Shadow {
+        sx_play(SFX_VOID_IN, 6, 1, false, 0.72, 240, sx_take_pan())     // the Hex Bolt (a stand-in)
+        return
+    }
     if m != Mech.Beam {
         sfx_swing(m)
         return
@@ -233,7 +238,7 @@ fn sfx_meter_full() { sx_one(SFX_METER_FULL, 5, 1, false) }
 fn sfx_super(m: Mech) {
     var c = SFX_CHARGE_KINETIC
     match m {
-        Doubleblade => c = SFX_CHARGE_ANTIMATTER
+        Doubleblade, Shadow => c = SFX_CHARGE_ANTIMATTER
         Beam => c = SFX_CHARGE_CHEMICAL
         Tank => c = SFX_CHARGE_NUCLEAR
         Twins, TwinA, TwinB => c = SFX_CHARGE_FUSION
@@ -404,5 +409,21 @@ fn sfx_tick() {
         } else {
             sound_vol(lp_ch[k], lp_vl[k] * lp_fade[k] >> 8, lp_vr[k] * lp_fade[k] >> 8)
         }
+    }
+}
+
+// Shadow's events (mx-shadow-fight), from existing sounds until its own are made: the Hex Bolt's
+// curse (kind 0), a Rift Mine laid (1), a snare (2), a mine destroyed (3) or faded (4).
+fn sfx_shadow(kind: s32) {
+    let p = sx_take_pan()
+    match kind {
+        0 => sx_play(SFX_VOID_OUT, 6, 1, false, 0.66, 256, p)
+        1 => sx_play(SFX_VOID_IN, 4, 1, false, 0.80, 200, p)
+        2 => {
+            sx_play(SFX_GRAB, 6, 1, false, 0.80, 256, p)
+            sx_play(SFX_VOID_OUT, 5, 1, false, 0.90, 220, 0)
+        }
+        3 => sx_play(SFX_ORB_FIZZLE, 5, 1, false, 0.80, 220, p)
+        else => sx_play(SFX_VOID_OUT, 3, 1, false, 1.20, 120, p)
     }
 }

@@ -1,0 +1,25 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Shadow's body (Umbral Research): its hurt and push boxes, which every move starts from (\"base\"), and the stand-in for a move with no file yet: the guard pose, held. Not a loop itself: a move based on it says \"loop\": true if it loops (the exporter makes the stand-ins of idle, walk_f, walk_b, crouch and block loop). The claws (weapon_r, weapon_l) and the big hands are hurtable, so reaching with them is a risk; the cape is not: the torso box is the chest, not the cape plates on its back, and the pauldrons (and their cape plates) have none. 13 boxes (the hips are covered by the torso box, which runs down to the hip axle, and the thighs), so a move has 3 left for its hits. The push box is narrow (1.4 m either side: a thin mech), 11.5 m high like the others'; the fight's design may change it.",
+  "rig": "../../models/shadow/shadow.rig.json",
+  "length": 60,
+  "loop": false,
+  "boxes": {
+    "head": {"kind": "hurt", "part": "head", "min": [-0.44, -0.1, -0.9], "max": [0.44, 1.5, 0.58]},
+    "torso": {"kind": "hurt", "part": "torso", "min": [-1.25, -0.8, -0.82],
+              "max": [1.25, 3.45, 0.8]},
+    "forearm_r": {"kind": "hurt", "part": "forearm_r"},
+    "forearm_l": {"kind": "hurt", "part": "forearm_l"},
+    "hand_r": {"kind": "hurt", "part": "hand_r"},
+    "hand_l": {"kind": "hurt", "part": "hand_l"},
+    "weapon_r": {"kind": "hurt", "part": "weapon_r"},
+    "weapon_l": {"kind": "hurt", "part": "weapon_l"},
+    "thigh_r": {"kind": "hurt", "part": "thigh_r"},
+    "thigh_l": {"kind": "hurt", "part": "thigh_l"},
+    "shin_r": {"kind": "hurt", "part": "shin_r"},
+    "shin_l": {"kind": "hurt", "part": "shin_l"},
+    "push": {"kind": "push", "rect": [-1.4, 0, 1.4, 11.5]}
+  },
+  "keys": [{"at": 0, "from": "guard"}]
+}

@@ -43,6 +43,8 @@ struct Fighter {
     debt: bool              // antimatter below zero: takes a quarter more damage
     react: s32              // chemical: frames left of the running reaction (0: none; REACT_FRAMES at the start)
     charge: s32             // Beam: frames B has held the Volt Orb on its charge frame (the muzzle's glow)
+    curse: s32              // frames left of Shadow's Siphon curse: its gains go to the other side (shadow.akr)
+    siphoned: s32           // meter siphoned from it this round (the HUD's stream)
 }
 
 struct Shot {               // a projectile (the Hero's wave)
@@ -57,6 +59,7 @@ struct Shot {               // a projectile (the Hero's wave)
     y0: fixed
     y1: fixed
     life: s32               // frames before it fades
+    hex: bool               // Shadow's Hex Bolt (shadow.akr): it curses on a hit
 }
 
 struct Fight {
@@ -90,8 +93,12 @@ struct Fight {
 enum Ev { Hit, Block, Chip, Whiff, Grab, Throw, Break, Land, Step, MeterFull, Super, Ko, TimeUp,
           Shot, Parry, Clash, Swing,
           Armour,       // a hit absorbed by Tank's super armour (side: the attacker; power: the hit's)
-          RingOut }     // a mech fell from an open edge: the round ends (side: the winner, or 2
+          RingOut,      // a mech fell from an open edge: the round ends (side: the winner, or 2
                         // for a draw; x: where it went over)
+          Curse,        // Shadow's Hex Bolt cursed the other (side: Shadow's; x, y: the cursed mech)
+          Mine,         // Shadow laid a Rift Mine (side: Shadow's; x: the mine)
+          Snare,        // a mine snared a mech (side: the mine's; x: the snared mech)
+          MineGone }    // a mine was destroyed (power 1) or faded (power 0) (side: the mine's; x: the mine)
 
 struct Event {
     kind: Ev
@@ -146,6 +153,7 @@ fn fight_init(p1: Mech, p2: Mech, mode: FightMode, cpu_level: s32) {
     cpu_init(0x5EED + (p1 as s32) * 7 + (p2 as s32) * 13 + cpu_level * 101)
     tank_find()                     // Tank's slam frames, once, outside the fight's frames
     twins_init()                    // whether a side is the Twins (twins.akr)
+    shadow_init()                   // Shadow's frames, once; no mines (shadow.akr)
     start_round()
 }
 
@@ -153,6 +161,7 @@ private fn start_round() {
     fighter_reset(0, -FIGHT_START_X, 1)
     fighter_reset(1, FIGHT_START_X, -1)
     if twins_in_fight { twins_reset() }     // the rounds start split: twin B behind twin A
+    shadow_round()                          // no mines, curses or snares (shadow.akr)
     fight.shot[0].on = false
     fight.shot[1].on = false
     fight.timer = ROUND_FRAMES
@@ -230,6 +239,7 @@ fn fight_tick(pad1: u32, pad2: u32, st1: vec2, st2: vec2) {
     collide()
     shots_tick()
     react_tick()
+    shadow_tick(live)                       // Shadow's mines, the curses, the dive (shadow.akr)
     swings()
     if live {
         meter_tick(&fight.f[0])
@@ -414,5 +424,6 @@ fn fight_moves(m: Mech) -> *MoveList {
     if m == Mech.Twins { return twins_moves() }        // the form the Twins are in now (twins.akr)
     if m == Mech.Hero { move_list = HERO_MOVES } else if m == Mech.Tank { move_list = TANK_MOVES } else { move_list = DB_MOVES }
     if m == Mech.Beam { move_list = BEAM_MOVES }
+    if m == Mech.Shadow { move_list = SHADOW_MOVES }
     return &move_list
 }

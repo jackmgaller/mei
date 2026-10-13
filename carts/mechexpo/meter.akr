@@ -3,7 +3,8 @@
 // and borrows: the super is there whenever the meter is at zero or above, the meter may go a
 // bar into debt, and in debt the mech takes a quarter more damage. Nuclear (Tank) fills from
 // the damage the mech takes (meter_on_damage) and carries over between rounds. Fusion (the
-// Twins) fills only while combined (twins.akr's fusion_*), and its super is only combined.
+// Twins) fills only while combined (twins.akr's fusion_*), and its super is only combined. A
+// mech under Shadow's Siphon curse gains nothing: meter_add sends the gain to Shadow.
 
 import "moves.akr"
 
@@ -44,6 +45,10 @@ fn meter_tick(f: *Fighter) {
 }
 
 fn meter_add(f: *Fighter, n: s32) {
+    if n > 0 && f.curse > 0 {
+        shadow_siphon(f, n)             // cursed: the gain goes to Shadow (shadow.akr)
+        return
+    }
     f.meter = min(f.meter + n, METER_BAR)
 }
 

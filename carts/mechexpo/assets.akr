@@ -5,7 +5,7 @@
 // once. Draw the meshes with the depth test on (render_depth(true),
 // render_perspective(true)).
 
-// Mei Asset Kit pack: beam_pelvis, beam_torso, beam_head, beam_pauldron_r, beam_upper_arm_r, beam_forearm_r, beam_hand_r, beam_cannon, beam_pauldron_l, beam_upper_arm_l, beam_forearm_l, beam_hand_l, beam_thigh_r, beam_shin_r, beam_foot_r, beam_thigh_l, beam_shin_l, beam_foot_l, doubleblade_pelvis, doubleblade_torso, doubleblade_head, doubleblade_pauldron_r, doubleblade_upper_arm_r, doubleblade_forearm_r, doubleblade_hand_r, doubleblade_dagger, doubleblade_pauldron_l, doubleblade_upper_arm_l, doubleblade_forearm_l, doubleblade_hand_l, doubleblade_thigh_r, doubleblade_shin_r, doubleblade_foot_r, doubleblade_thigh_l, doubleblade_shin_l, doubleblade_foot_l, expo_banner, hangar_wall_l, hangar_wall_r, hero_pelvis, hero_torso, hero_head, hero_pauldron_r, hero_upper_arm_r, hero_forearm_r, hero_hand_r, hero_sword, hero_pauldron_l, hero_upper_arm_l, hero_forearm_l, hero_hand_l, hero_thigh_r, hero_shin_r, hero_foot_r, hero_thigh_l, hero_shin_l, hero_foot_l, tank_pelvis, tank_torso, tank_head, tank_pauldron_r, tank_upper_arm_r, tank_forearm_r, tank_hand_r, tank_pauldron_l, tank_upper_arm_l, tank_forearm_l, tank_hand_l, tank_thigh_r, tank_shin_r, tank_foot_r, tank_thigh_l, tank_shin_l, tank_foot_l, twin_a_pelvis, twin_a_torso, twin_a_head, twin_a_pauldron_r, twin_a_upper_arm_r, twin_a_forearm_r, twin_a_hand_r, twin_a_pauldron_l, twin_a_upper_arm_l, twin_a_forearm_l, twin_a_hand_l, twin_a_thigh_r, twin_a_shin_r, twin_a_foot_r, twin_a_thigh_l, twin_a_shin_l, twin_a_foot_l, twin_b_pelvis, twin_b_torso, twin_b_head, twin_b_pauldron_r, twin_b_upper_arm_r, twin_b_forearm_r, twin_b_hand_r, twin_b_pauldron_l, twin_b_upper_arm_l, twin_b_forearm_l, twin_b_hand_l, twin_b_thigh_r, twin_b_shin_r, twin_b_foot_r, twin_b_thigh_l, twin_b_shin_l, twin_b_foot_l, twins_pelvis, twins_torso, twins_head, twins_pauldron_r, twins_upper_arm_r, twins_forearm_r, twins_hand_r, twins_pauldron_l, twins_upper_arm_l, twins_forearm_l, twins_hand_l, twins_thigh_r, twins_shin_r, twins_foot_r, twins_thigh_l, twins_shin_l, twins_foot_l. Call mx_pack_load() once before drawing.
+// Mei Asset Kit pack: beam_pelvis, beam_torso, beam_head, beam_pauldron_r, beam_upper_arm_r, beam_forearm_r, beam_hand_r, beam_cannon, beam_pauldron_l, beam_upper_arm_l, beam_forearm_l, beam_hand_l, beam_thigh_r, beam_shin_r, beam_foot_r, beam_thigh_l, beam_shin_l, beam_foot_l, doubleblade_pelvis, doubleblade_torso, doubleblade_head, doubleblade_pauldron_r, doubleblade_upper_arm_r, doubleblade_forearm_r, doubleblade_hand_r, doubleblade_dagger, doubleblade_pauldron_l, doubleblade_upper_arm_l, doubleblade_forearm_l, doubleblade_hand_l, doubleblade_thigh_r, doubleblade_shin_r, doubleblade_foot_r, doubleblade_thigh_l, doubleblade_shin_l, doubleblade_foot_l, expo_banner, hangar_wall_l, hangar_wall_r, hero_pelvis, hero_torso, hero_head, hero_pauldron_r, hero_upper_arm_r, hero_forearm_r, hero_hand_r, hero_sword, hero_pauldron_l, hero_upper_arm_l, hero_forearm_l, hero_hand_l, hero_thigh_r, hero_shin_r, hero_foot_r, hero_thigh_l, hero_shin_l, hero_foot_l, shadow_pelvis, shadow_torso, shadow_head, shadow_pauldron_r, shadow_upper_arm_r, shadow_forearm_r, shadow_hand_r, shadow_claw, shadow_pauldron_l, shadow_upper_arm_l, shadow_forearm_l, shadow_hand_l, shadow_thigh_r, shadow_shin_r, shadow_foot_r, shadow_thigh_l, shadow_shin_l, shadow_foot_l, tank_pelvis, tank_torso, tank_head, tank_pauldron_r, tank_upper_arm_r, tank_forearm_r, tank_hand_r, tank_pauldron_l, tank_upper_arm_l, tank_forearm_l, tank_hand_l, tank_thigh_r, tank_shin_r, tank_foot_r, tank_thigh_l, tank_shin_l, tank_foot_l, twin_a_pelvis, twin_a_torso, twin_a_head, twin_a_pauldron_r, twin_a_upper_arm_r, twin_a_forearm_r, twin_a_hand_r, twin_a_pauldron_l, twin_a_upper_arm_l, twin_a_forearm_l, twin_a_hand_l, twin_a_thigh_r, twin_a_shin_r, twin_a_foot_r, twin_a_thigh_l, twin_a_shin_l, twin_a_foot_l, twin_b_pelvis, twin_b_torso, twin_b_head, twin_b_pauldron_r, twin_b_upper_arm_r, twin_b_forearm_r, twin_b_hand_r, twin_b_pauldron_l, twin_b_upper_arm_l, twin_b_forearm_l, twin_b_hand_l, twin_b_thigh_r, twin_b_shin_r, twin_b_foot_r, twin_b_thigh_l, twin_b_shin_l, twin_b_foot_l, twins_pelvis, twins_torso, twins_head, twins_pauldron_r, twins_upper_arm_r, twins_forearm_r, twins_hand_r, twins_pauldron_l, twins_upper_arm_l, twins_forearm_l, twins_hand_l, twins_thigh_r, twins_shin_r, twins_foot_r, twins_thigh_l, twins_shin_l, twins_foot_l. Call mx_pack_load() once before drawing.
 embed ASSET_BEAM_PELVIS: Mesh = "art/beam_pelvis.bin"
 embed ASSET_BEAM_TORSO: Mesh = "art/beam_torso.bin"
 const ASSET_BEAM_TORSO_EMISSIVE = 1
@@ -87,12 +87,34 @@ embed ASSET_HERO_FOOT_R: Mesh = "art/hero_foot_r.bin"
 embed ASSET_HERO_THIGH_L: Mesh = "art/hero_thigh_l.bin"
 embed ASSET_HERO_SHIN_L: Mesh = "art/hero_shin_l.bin"
 embed ASSET_HERO_FOOT_L: Mesh = "art/hero_foot_l.bin"
+embed ASSET_SHADOW_PELVIS: Mesh = "art/shadow_pelvis.bin"
+embed ASSET_SHADOW_TORSO: Mesh = "art/shadow_torso.bin"
+embed ASSET_SHADOW_HEAD: Mesh = "art/shadow_head.bin"
+const ASSET_SHADOW_HEAD_EMISSIVE = 193
+const ASSET_SHADOW_HEAD_EMISSIVE_COUNT = 1
+embed ASSET_SHADOW_PAULDRON_R: Mesh = "art/shadow_pauldron_r.bin"
+embed ASSET_SHADOW_UPPER_ARM_R: Mesh = "art/shadow_upper_arm_r.bin"
+embed ASSET_SHADOW_FOREARM_R: Mesh = "art/shadow_forearm_r.bin"
+embed ASSET_SHADOW_HAND_R: Mesh = "art/shadow_hand_r.bin"
+embed ASSET_SHADOW_CLAW: Mesh = "art/shadow_claw.bin"
+const ASSET_SHADOW_CLAW_EMISSIVE = 209
+const ASSET_SHADOW_CLAW_EMISSIVE_COUNT = 1
+embed ASSET_SHADOW_PAULDRON_L: Mesh = "art/shadow_pauldron_l.bin"
+embed ASSET_SHADOW_UPPER_ARM_L: Mesh = "art/shadow_upper_arm_l.bin"
+embed ASSET_SHADOW_FOREARM_L: Mesh = "art/shadow_forearm_l.bin"
+embed ASSET_SHADOW_HAND_L: Mesh = "art/shadow_hand_l.bin"
+embed ASSET_SHADOW_THIGH_R: Mesh = "art/shadow_thigh_r.bin"
+embed ASSET_SHADOW_SHIN_R: Mesh = "art/shadow_shin_r.bin"
+embed ASSET_SHADOW_FOOT_R: Mesh = "art/shadow_foot_r.bin"
+embed ASSET_SHADOW_THIGH_L: Mesh = "art/shadow_thigh_l.bin"
+embed ASSET_SHADOW_SHIN_L: Mesh = "art/shadow_shin_l.bin"
+embed ASSET_SHADOW_FOOT_L: Mesh = "art/shadow_foot_l.bin"
 embed ASSET_TANK_PELVIS: Mesh = "art/tank_pelvis.bin"
 embed ASSET_TANK_TORSO: Mesh = "art/tank_torso.bin"
-const ASSET_TANK_TORSO_EMISSIVE = 193
+const ASSET_TANK_TORSO_EMISSIVE = 225
 const ASSET_TANK_TORSO_EMISSIVE_COUNT = 1
 embed ASSET_TANK_HEAD: Mesh = "art/tank_head.bin"
-const ASSET_TANK_HEAD_EMISSIVE = 209
+const ASSET_TANK_HEAD_EMISSIVE = 241
 const ASSET_TANK_HEAD_EMISSIVE_COUNT = 1
 embed ASSET_TANK_PAULDRON_R: Mesh = "art/tank_pauldron_r.bin"
 embed ASSET_TANK_UPPER_ARM_R: Mesh = "art/tank_upper_arm_r.bin"
@@ -110,10 +132,10 @@ embed ASSET_TANK_SHIN_L: Mesh = "art/tank_shin_l.bin"
 embed ASSET_TANK_FOOT_L: Mesh = "art/tank_foot_l.bin"
 embed ASSET_TWIN_A_PELVIS: Mesh = "art/twin_a_pelvis.bin"
 embed ASSET_TWIN_A_TORSO: Mesh = "art/twin_a_torso.bin"
-const ASSET_TWIN_A_TORSO_EMISSIVE = 225
+const ASSET_TWIN_A_TORSO_EMISSIVE = 257
 const ASSET_TWIN_A_TORSO_EMISSIVE_COUNT = 1
 embed ASSET_TWIN_A_HEAD: Mesh = "art/twin_a_head.bin"
-const ASSET_TWIN_A_HEAD_EMISSIVE = 241
+const ASSET_TWIN_A_HEAD_EMISSIVE = 273
 const ASSET_TWIN_A_HEAD_EMISSIVE_COUNT = 1
 embed ASSET_TWIN_A_PAULDRON_R: Mesh = "art/twin_a_pauldron_r.bin"
 embed ASSET_TWIN_A_UPPER_ARM_R: Mesh = "art/twin_a_upper_arm_r.bin"
@@ -131,10 +153,10 @@ embed ASSET_TWIN_A_SHIN_L: Mesh = "art/twin_a_shin_l.bin"
 embed ASSET_TWIN_A_FOOT_L: Mesh = "art/twin_a_foot_l.bin"
 embed ASSET_TWIN_B_PELVIS: Mesh = "art/twin_b_pelvis.bin"
 embed ASSET_TWIN_B_TORSO: Mesh = "art/twin_b_torso.bin"
-const ASSET_TWIN_B_TORSO_EMISSIVE = 257
+const ASSET_TWIN_B_TORSO_EMISSIVE = 289
 const ASSET_TWIN_B_TORSO_EMISSIVE_COUNT = 1
 embed ASSET_TWIN_B_HEAD: Mesh = "art/twin_b_head.bin"
-const ASSET_TWIN_B_HEAD_EMISSIVE = 273
+const ASSET_TWIN_B_HEAD_EMISSIVE = 305
 const ASSET_TWIN_B_HEAD_EMISSIVE_COUNT = 1
 embed ASSET_TWIN_B_PAULDRON_R: Mesh = "art/twin_b_pauldron_r.bin"
 embed ASSET_TWIN_B_UPPER_ARM_R: Mesh = "art/twin_b_upper_arm_r.bin"
@@ -151,13 +173,13 @@ embed ASSET_TWIN_B_THIGH_L: Mesh = "art/twin_b_thigh_l.bin"
 embed ASSET_TWIN_B_SHIN_L: Mesh = "art/twin_b_shin_l.bin"
 embed ASSET_TWIN_B_FOOT_L: Mesh = "art/twin_b_foot_l.bin"
 embed ASSET_TWINS_PELVIS: Mesh = "art/twins_pelvis.bin"
-const ASSET_TWINS_PELVIS_EMISSIVE = 289
+const ASSET_TWINS_PELVIS_EMISSIVE = 321
 const ASSET_TWINS_PELVIS_EMISSIVE_COUNT = 2
 embed ASSET_TWINS_TORSO: Mesh = "art/twins_torso.bin"
-const ASSET_TWINS_TORSO_EMISSIVE = 305
+const ASSET_TWINS_TORSO_EMISSIVE = 337
 const ASSET_TWINS_TORSO_EMISSIVE_COUNT = 2
 embed ASSET_TWINS_HEAD: Mesh = "art/twins_head.bin"
-const ASSET_TWINS_HEAD_EMISSIVE = 321
+const ASSET_TWINS_HEAD_EMISSIVE = 353
 const ASSET_TWINS_HEAD_EMISSIVE_COUNT = 1
 embed ASSET_TWINS_PAULDRON_R: Mesh = "art/twins_pauldron_r.bin"
 embed ASSET_TWINS_UPPER_ARM_R: Mesh = "art/twins_upper_arm_r.bin"
@@ -180,8 +202,8 @@ embed MX_PACK_SWATCH: u8 = "art/mx_pack.swatch"
 
 // Copies the textures, the swatch and the palettes into VRAM.
 fn mx_pack_load() {
-    memcpy((VRAM_TEXTURES + 0 * TEXTURE_SLOT_SIZE + 0) as *u8, MX_PACK_TEX0, 20608)
-    load_palette(336, &MX_PACK_TEXPAL[0], 80)
+    memcpy((VRAM_TEXTURES + 0 * TEXTURE_SLOT_SIZE + 0) as *u8, MX_PACK_TEX0, 22656)
+    load_palette(368, &MX_PACK_TEXPAL[0], 80)
     memcpy((VRAM_TEXTURES + 0 * TEXTURE_SLOT_SIZE) as *u8, MX_PACK_SWATCH, 8)
     load_palette(0, &MX_PACK_PALETTE[0], 16)
     load_palette(16, &MX_PACK_PALETTE[16], 16)
@@ -204,6 +226,8 @@ fn mx_pack_load() {
     load_palette(288, &MX_PACK_PALETTE[288], 16)
     load_palette(304, &MX_PACK_PALETTE[304], 16)
     load_palette(320, &MX_PACK_PALETTE[320], 16)
+    load_palette(336, &MX_PACK_PALETTE[336], 16)
+    load_palette(352, &MX_PACK_PALETTE[352], 16)
 }
 
 fn assets_load() {

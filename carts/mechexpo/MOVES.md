@@ -150,6 +150,10 @@ frame spoils it (no reaction). Hits give no meter. The reaction keeps running wh
 round. The meter carries over between rounds; the super costs a bar. Rewards committing at the
 right moment, then fighting freely.
 
+**The Siphon (Shadow's curse).** A mech hit by Shadow's Hex Bolt is cursed for 6 seconds: the
+meter it would gain goes to Shadow instead, whatever its source (nuclear's at half)
+([Shadow](#hex-bolt-sp_n-and-the-siphon)).
+
 **Fusion (the Twins, Binary Mechanica): fills only combined.** +1 a frame while the twins are
 combined, +5 % for each combined hit that lands, more from Fusion Focus; nothing while split.
 The super exists only combined ([the Twins](#the-fusion-meter)). Rewards switching forms at the
@@ -1055,6 +1059,335 @@ its own.
   jab at y 3.8–6.2, a crouching big mech's head height). The partner is drawn 1.2 m further
   from the camera: nothing to do in the animation.
 
+## Shadow (Umbral Research, antimatter)
+
+Umbral Research's base mech, the roster's trickster: it plants things, makes the other mech
+respect them, and punishes impatience. It controls the floor with the **Rift Mine**, makes an
+approach cost something with the slow **Hex Bolt**, steals the other mech's meter with the
+bolt's **Siphon** curse, and punishes from far with **Shadow Sneak**. Block still stops every
+attack from either side (no high or low, no cross-ups), so its tricks come from timing, grabs,
+space and the meter, never from appearing behind a mech that is blocking. In exchange it has
+the lowest health in the game, light hits and few combos. Its stance is tall and leaning
+forward, both claws held low and wide like a mantis, the talons nearly touching the floor in
+front of it; the single violet eye looks over them.
+
+Code name `Shadow` (`enum Mech`, index 7, appended after `TwinB`); shown as SHADOW, model UR-01.
+On the shared skeleton (`enum Part`); the claws are the weapon parts
+([For the animators](#for-the-animators-shadow)). Its power source is Umbral's antimatter, the
+Double-blade Hero's: the super is there at zero or above, debt down to one bar, 25 % more
+damage taken in debt.
+
+### Movement and stats
+
+| | Shadow |
+|---|---|
+| Health | 900: the lowest |
+| Walk forward | 0.085 m a frame (5.1 m/s): between the Hero's and the Double-blade Hero's |
+| Walk back | 0.068 m a frame (4.1 m/s) |
+| Walk cycle | 44 frames, two steps (3.7 m forward) |
+| Jump | 4 frames' crouch, then 36 in the air, 6.2 m high at the top (`jump` is 40 frames) |
+| Diagonal jump | 0.17 m a frame across (6.1 m) |
+| Landing | 5 frames (8 after an air attack) |
+| Push box | 1.4 m either side of the root, 11.5 m tall (7.5 crouching): the thinnest |
+| Hurt box (standing) | 1.6 m either side, 12.5 m tall (8 crouching) |
+
+The walk is a long, gliding stride: the knees stay bent, the body barely rises and falls, the
+claws trail low and sway a little out of phase with the steps (a `step` mark on each plant, but
+a light one). The jump is a crouch deep onto the claws and a spring; the cape plates lift at the
+top and settle on landing.
+
+### Attacks (A)
+
+| Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | Hit box |
+|---|---|---|---|---|---|---|---|
+| `atk_n` Claw Jab | 3 | 2 | 12 | 17 | 45 | 15 / 11 | x 1.6–5.6, y 6.5–9.5 |
+| `atk_f` Lunging Claw | 12 | 4 | 20 | 36 | 100 | 25 / 18 | x 3.0–9.4, y 5.5–8.5 |
+| `atk_d` Fade Sweep | 10 | 4 | 22 | 36 | 80, knockdown | — / 16 | x 1.5–7.2, y 0–1.8 |
+| `atk_air` Diving Claw | 7 | to landing | landing 8 | 26 | 85 | 19 / 14 | x 0.5–5.0, y −3.0–2.0 (from the root, in the air) |
+
+- **Claw Jab** (`atk_n`): the game's fastest button (startup 3) and the chain's start. The
+  leading (right) claw flicks straight out at chest height and back, the talons opening as they
+  reach: frames 1–3 the elbow drops and the wrist cocks, 4–5 the arm is straight, the claw open,
+  6–17 it draws back to the guard. Light damage; its job is to stop a walk-in and to start the
+  chain (cancel window frames 4–11). The arm is hurtable out to 3 m from the first active frame
+  until 10 frames after the last.
+- **Lunging Claw** (`atk_f`): the footsie tool. A long glide forward (2.0 m over frames 3–11,
+  the body dropping low and leaning in, the cape plates streaming back) into a full-length thrust
+  of the right claw, talons together like a spear point, at 7 m high: frames 13–16 the contact
+  pose (the arm and the claw in one straight line, the left claw drawn back by the hip). The
+  claw's tip does the hitting; the arm is hurtable out to 5.5 m until 10 frames after the last
+  active frame. Recovery: the claw is drawn back and the body rises (frames 17–36). Cancel window
+  frames 13–22.
+- **Fade Sweep** (`atk_d`): from a crouch, the left claw rakes along the floor in a wide arc in
+  front (frames 11–14, the talons scraping), knocking down. Then **it dissolves**: through the
+  recovery (frames 15–36) Shadow stays sunk low into its own shadow, the body folded over the
+  claws and the cape plates spread over it like a shell, rising only at the end. The hurt box in
+  the recovery is 4 m tall (x −1.6–1.6, y 0–4), so a punish has to be low or reach the floor:
+  a Guard Cut or an Arc Jab passes over it, a Low Sweep or a Charge Slash does not. Slow and
+  punishable on block (−10, measured) by anything that reaches it.
+- **Diving Claw** (`atk_air`): in the air, both claws swing down and forward together, talons
+  first, and **Shadow dives**: on its first active frame the fall steepens (the fight sets the
+  fall to at least 0.30 m a frame and adds 0.04 m a frame forward), so it comes down sooner and
+  further than the jump would. Out until landing; once a jump. A jump-in that is hard to time an
+  anti-air against, but it lands sooner, so it lands close: blocked, the 8-frame landing leaves
+  Shadow in reach.
+
+### Specials (B)
+
+| Move | Startup | Active | Recovery | Total | Damage | Chip | Hitstun / blockstun |
+|---|---|---|---|---|---|---|---|
+| `sp_n` Hex Bolt | 15 (fired on 16) | the bolt | 24 | 40 | 40, curses | 8 | 18 / 14 |
+| `sp_f` Shadow Sneak | 24 (tapped) to 48 (held) | 4 | 22 | 50 to 74 | 110, knockdown | 22 | — / 16 |
+| `sp_u` Eclipse Rise | 8 | 8 | 28 | 44 | 110, knockdown | 22 | — / 14 |
+| `sp_d` Rift Mine | — | — | 14 after the mine | 26 | — | — | — |
+
+#### Hex Bolt (`sp_n`) and the Siphon
+
+Frames 1–15: Shadow draws the right claw back past its hip and cups it; violet light gathers
+between the talons (the eye flares on 12). **Frame 16 (the `release` mark, 15 from 0)**: the
+claw sweeps forward and opens, flinging the bolt. 24 frames back to the guard.
+
+- **The bolt**: a slow ball of shadow with a violet core and a ragged dark halo, at chest height:
+  it starts 3.5 m in front and flies at **0.14 m a frame** (8.4 m/s: slower than the Hero's
+  wave, 0.22, and a tapped Volt Orb, 0.24), a box **1.6 m wide (x ± 0.8), from y 4.5 to 7.5**,
+  for **200 frames** (28 m), and vanishes at a wall. So it hits a standing or crouching mech
+  (8 m tall crouching) and either split twin (7.4 m), and passes over the Antimatter Slide
+  (4.6 m), the Twins' Low Roll (3.0 m) and Shadow Sneak's travelling shadow (1 m).
+- **One bolt at a time**: B while Shadow's bolt is out does nothing (the Hero's and Beam's rule).
+- **Against the other shots** (they meet when their boxes overlap in x, as the wave and the orb
+  do): the bolt is **strength 1**. The Hero's wave (2) and a charged (2) or full (3) Volt Orb
+  dissolve it and carry on; a tapped orb (1) and the bolt both go; two bolts both go. Shadow's
+  bolt does not win a projectile war: it is a hex, not a fireball.
+- **What it does on hit**: 40 damage, a short hitstun (18), no knockdown, and the **Siphon**
+  curse. On block it chips 8 and curses nothing (block stops every attack). **The Parry catches
+  it** like the wave (no curse). The Void Step passes through it. **Tank's armour absorbs the
+  hit but not the curse**: an absorbed bolt still curses (the hex is in the touch, not the
+  impact).
+- **The Siphon**: for **360 frames (6 s)** of play (not counting the hitstop, the super's freeze
+  or the time between rounds), every bit of meter the cursed mech would gain goes to Shadow
+  instead. A second bolt that lands **refreshes** the curse to 360; curses never stack, and a
+  curse ends with the round. Shadow's meter stops at one bar as always (what does not fit is
+  lost). Exactly what is siphoned, by power source:
+
+  | Source | What the cursed mech would gain | What Shadow gets |
+  |---|---|---|
+  | Kinetic (the Hero) | +150 a hit that lands, +120 the wave, +60 a blocked hit | all of it |
+  | Antimatter (the Double-blade Hero, a Shadow) | the reactor's +1 a frame, +60 a hit | all of it: a cursed mech in debt stops climbing out |
+  | Chemical (Beam) | a running reaction's +2 a frame (the reaction keeps burning) | all of it: curse Beam during a reaction and the reaction is Shadow's |
+  | Nuclear (Tank) | 5 for every 2 damage it takes | **half**: 5 for every 4. Shadow's own hits already pay it; the half keeps a cursed Tank from paying twice in full |
+  | Fusion (the Twins) | combined only: +1 a frame, +60 a combined hit, Fusion Focus +6 a frame held | all of it. Split, the Twins gain nothing, so nothing is siphoned: **splitting is how the Twins sit a curse out** |
+
+  Training's meter refill is not a gain and is never siphoned.
+- **How it shows.** On the cursed mech: a violet glow pulses at its chest and violet motes rise
+  off it and drift toward Shadow; in the curse's last second the glow flickers. On the HUD: the
+  cursed mech's meter is overlaid with violet chain hatching that marches toward the screen's
+  centre, its label reads **SIPHON**, a thin violet bar under the gauge shrinks with the curse's
+  time, and whenever meter is taken, violet motes stream along the bottom of the screen from the
+  cursed mech's gauge to Shadow's, which flashes where they land.
+
+#### Shadow Sneak (`sp_f`)
+
+Shadow sinks into its own shadow, a dark shadow races forward along the floor, and Shadow erupts
+from its end with a rising claw. **Holding B sends the shadow farther.**
+
+| Frames (tapped) | |
+|---|---|
+| 1–8 | **the sink**: Shadow folds down into a pool of shadow at its feet, the cape plates closing over it last. Vulnerable: the hurt box is a crouching one |
+| 9–20 | **the travel**: Shadow is gone (the `hide` mark); only its shadow moves, **0.5 m a frame**, flat on the floor. The fight moves the root (no root motion in the animation). **Frame 20 is the charge frame** (the `charge` mark, Beam's): while B is held the move holds there, up to **24 frames**, the shadow still travelling |
+| 21–24 | **the eruption**: Shadow rises out of the shadow claws first, the talons leading |
+| 25–28 | active: a rising two-claw rake from the floor upward, x 0.5–4.5, y 0–9 |
+| 29–50 | recovery (22): the claws come down and it settles into the guard |
+
+- **Distance**: tapped, the shadow travels **6 m** (12 frames); held the whole 24 frames,
+  **18 m**. Held less, anything between: 6 m + 0.5 m a frame held.
+- **The shadow stops at the other mech's feet**: it never passes through or under it (the
+  push boxes, as in a walk), nor through a wall. So Shadow always erupts in front of the other
+  mech, never behind it, and a strike that reaches is blocked as any other.
+- **The travelling shadow can be hit**, low: its hurt box is x −1.5–1.5, y 0–1 (and its push
+  box is that low too). Low attacks, sweeps, slides and the Hero's wave (y 0–3) hit it and knock
+  Shadow out of it (it reappears in its hit reaction); anything higher passes over it: Beam's
+  Volt Orb (y 4.8–6.6), the Hex Bolt, every standing attack. So **the Sneak goes under a Volt
+  Orb**, and is stopped by a wave.
+- The strike: 110 damage, knockdown, chip 22. On block −10 (measured): punishable by a jab.
+- **Afterimages** (visual only): as Shadow erupts, two violet afterimages of it stand along the
+  shadow's path behind it, fading over 12 frames.
+- What it is for: a punish from far (it reaches a whiffed Charge Slash or a blocked Bulldozer
+  from 18 m), and a way past a Volt Orb. Read on reaction it is very punishable: the shadow is
+  plain to see on the floor for 12 frames or more before the strike.
+
+#### Eclipse Rise (`sp_u`)
+
+The anti-air. Frames 1–4: Shadow drops straight down into its shadow (it is **invulnerable
+on frames 1–9**: the sink, the time under the floor and the first active frame). Frames 5–8:
+under the floor (`hide`), its shadow slides **3.6 m forward** (root motion 0.9 m a frame; the
+push boxes stop it at a mech on the ground, but it goes on under a mech in the air), then
+frames 9–16 it **erupts straight up** under the other mech, both claws raised overhead, talons
+together: the box x −1.0–3.5, y 2–13 from the root, which rises 5 m over the active frames
+(root motion 0.625 m a frame), then falls back to the floor over the 28 frames of recovery,
+cape plates spread. 110 damage, knockdown.
+
+- **Reach**: it hits up to about 7 m in front of where Shadow started and 18 m up at the top of
+  the rise: further out than the Rising Arc, so it takes a jump-in that would land in front of
+  Shadow, not only one that lands on it. The invulnerability covers 9 frames against the Rising
+  Arc's 7, but it is 2 frames slower to hit (startup 8).
+- Very punishable on block or a miss (about −22).
+
+#### Rift Mine (`sp_d`)
+
+Frames 1–11: Shadow crouches and drives the left claw's talons into the floor in front of its
+feet; a violet sigil spreads out from them. **Frame 12 (`release`, 11 from 0): the mine is
+laid**, on the floor at Shadow's root. Frames 13–26: back up into the guard. Not an attack.
+
+- **The mine**: a flat violet sigil on the floor. It **arms 45 frames** after it is laid (the
+  sigil's ring closes and it glows); before that it does nothing.
+- **Its trigger**: the floor around it, **x ± 1.0 m, y 0–1 m**. An armed mine is set off by a
+  mech of the other side whose push box touches it while that mech is on the ground: standing,
+  walking, crouching, blocking, attacking or landing on it; either of the split Twins. It is
+  not set off by a mech in the air, in hitstun or blockstun, knocked down or getting up, thrown,
+  invulnerable, or with no push box (the Void Step); nor by Shadow (**Shadow never sets off its
+  own mine**, and Shadow's attacks never destroy it).
+- **The snare**: the mech that sets it off is **held in place for 30 frames** (half a second):
+  whatever it was doing stops (the move is cut, it stands), and it cannot move or act; violet
+  shadow binds its legs. It can be hit (the hit lands as a hit: it is not blocking) and grabbed
+  (it is standing). The first hit or catch frees it into its reaction at once; a snare is not a
+  hit, so a combo started on a snared mech is not scaled for it.
+- **What destroys it**: any hit box of the other side that touches the mine's box (x ± 1.0,
+  y 0–1): the low attacks, the sweeps, the slides, the Bulldozer, the Reactor Vent (not the
+  Pulse Spin, which starts 1.5 m up); and the other side's shots at floor height (the Hero's
+  wave). A mine set off or destroyed is gone. It also fades after **600 frames (10 s)**
+  and at the round's end.
+- **One mine at a time**: laying a new one removes the old one.
+- What it is for: Shadow lays it between itself and the other mech and steps back; the other
+  must walk over it, jump it (and meet Eclipse Rise), or clear it with a low attack (a slow,
+  punishable one). Snared, it eats a Lunging Claw, a Sneak or a Phantom Grip.
+
+### Grab and throw (Y): Phantom Grip
+
+`grab`: startup 5, active 2 (the catch box x 1.0–3.8, y 2–10: the claws are long), 7 frames;
+a miss plays `grab_whiff` (22). Breakable as every Y grab (Y within 10 frames). On a catch,
+`throw` (44 frames) on Shadow and `thrown` (44, the Hero's throw's victim move) on the other:
+Shadow pulls the other into its shadow and comes up **behind it**: the sides swap.
+
+| Frames | Shadow | The other (the fight places it) |
+|---|---|---|
+| 1–10 | the claws close on the other's shoulders (the break window) | 3.0 m in front, lifted to 1.5 m |
+| 11–16 | Shadow sinks into its shadow, dragging the other down | lowered to the floor |
+| 17–24 | gone (`hide`): its shadow slides **6 m** under the other to its far side (0.75 m a frame; the fight moves the root, stopped by a wall) | held standing where it was, shadow binding its legs |
+| 25 | Shadow erupts behind it and **turns** to face it; the other is turned round to face Shadow | placed 3.0 m in front of Shadow's new spot |
+| 25–30 | the claws hook into its back and lift | lifted to 3 m |
+| 31 (`release`, 30 from 0) | the claws fling it away | 110 damage, knockdown, about 5.5 m (it lands about 8.5 m from Shadow), **toward the side Shadow came from** |
+| 32–44 | recovery into the guard | |
+
+So a cornered Shadow that grabs leaves the corner and puts the other mech in it: the Vault
+Throw's corner escape, by shadow instead of a vault. Against a wall behind the other there is
+no room behind it: Shadow comes up at the wall and the other is moved back 3.0 m in front of it
+(the sides still swap). Less damage than the other throws; the side swap is the point.
+
+### Super (A + B): Total Eclipse
+
+The flash (frames 1–40: the world freezes, Shadow alone moves: it rises to full height, spreads
+both claws wide, the cape plates fanning out, and the eye flares white; **the stage goes dark**,
+the hall and the floor darkened with Umbral's violet through the colour offset). The dark stays
+until the last hit. Then:
+
+| Frames | |
+|---|---|
+| 41–44 | Shadow lunges 8 m forward (root motion 2.0 m a frame), stopping at the other mech |
+| 45–47 | hit 1: a right-claw slash across, x 0–6, y 3–10 |
+| 50–52 | hit 2: a left-claw slash back |
+| 55–57 | hit 3: right |
+| 60–62 | hit 4: left |
+| 66–70 | hit 5, the finisher: both claws rake up from the floor, x 0–6.5, y 0–12, knockdown |
+| 71–106 | recovery (36): the claws come down, the cape plates settle, the stage lights return |
+
+- **Invulnerable from frame 1 to 44.** Each hit is its own (the boxes' `hit` index 0–4).
+- Hits 1–4: 70 damage each, chip 14, hitstun and blockstun 30 (the other stays in reach and in
+  its reaction between the hits), a short hitstop (6), knockback 0.02. Hit 5: 120 damage, chip 24,
+  knockdown, the super's hitstop (20), blockstun 20. Scaled as any combo: 70 + 56 + 45 + 45 + 78
+  = **294** from a clean start. Chip through a block: 80 in all, which can finish a round.
+  −21 on block (measured).
+- **Afterimages** (visual only): on each hit a violet afterimage of Shadow appears on alternate
+  sides of the other mech, mid-slash, and fades over 10 frames, so in the dark it looks struck
+  from everywhere at once. Shadow itself stays in front: the hits are blocked as any other.
+- **The debt**: it costs one bar, as every antimatter super. From zero that is a full bar of
+  debt: 25 % more damage taken until the reactor (a bar in 20 s) climbs back to zero. Each hit
+  that lands repays 5 % (antimatter's hit gain), a quarter of a bar if all five land; the Siphon
+  is the other way out of debt.
+
+### Chains
+
+The shared chain: Claw Jab, then Lunging Claw, then a special or the super. **The Hex Bolt
+combos from a Lunging Claw** up close (the bolt starts 3.5 m out and touches at once): the
+chain's payoff is the curse, not the damage. Eclipse Rise combos from a Claw Jab close up. The
+Sneak never combos (the shadow is too slow); the Rift Mine can be cancelled into (a blocked
+Lunging Claw into a mine at the other's feet: it arms after it recovers).
+
+### Frame advantage (measured)
+
+From the fight itself (`tests/run.sh 17`, the stand-in timings, against a standing Hero): Claw
+Jab −3 on block / +1 on hit, Lunging Claw −6 / +1, Fade Sweep −10 (knockdown on hit), Hex Bolt
+−11 / −7 at 6 m (safe from further out), Shadow Sneak −10 (tapped, at 7 m), Eclipse Rise −22,
+Total Eclipse −21.
+
+### Balance intent
+
+A setup character: it controls space (the mine), taxes an approach (the slow bolt, which
+cannot win a projectile war but does not need to), steals meter (the curse) and punishes
+impatience from far (the Sneak). Its weaknesses are plain: the lowest health (900), light hits
+(a clean round takes Shadow eight to ten hits where the Hero takes six to eight), short buttons
+apart from the Lunging Claw, a bolt that loses to the wave and a charged orb, and specials that
+are very punishable when read. The curse is its meter plan: antimatter lets it spend first and
+the Siphon pays the debt back. Against Tank it wants the mine (the Bulldozer and the Clinch's
+dash set it off) and the curse (half of the nuclear meter); against the Twins the curse forces
+them to stay split; against Beam the curse steals the reaction and the Sneak goes under the orbs.
+
+### Reactions and the rest (Shadow)
+
+As the shared list below, with Shadow's lengths: `walk_f`, `walk_b` 44; `jump` 40; `land` 8;
+`throw` 44; `thrown` 44, `thrown_vault` 40, `thrown_slam` 56 (Shadow as the victim: long and
+light, the claws dragging). `idle` (60): a slow sway, the talons flexing one by one, the eye
+dimming and brightening. `block` (4): both claws crossed in front of the head and chest, the
+cape plates swung forward round it. `knockdown` (32): it folds and drops like cloth, the plates
+clattering. `win` (120): it sinks into its shadow and rises again behind its own spot, claws
+spread, the eye flaring. `intro` (90): its shadow slides out of the booth's spot lights and
+Shadow rises out of it into the stance.
+
+### For the animators (Shadow)
+
+- **The skeleton is the shared one** (`enum Part`; `models/shadow/shadow.rig.json` from
+  `models/shadow/make_shadow.py`). Long thin arms; the hands as big as the forearms. **The claws
+  are `weapon_r` and `weapon_l`**, on the hand mounts, their talons running along the part's +Y
+  (as the Hero's blade does) and glowing violet at the tips: the effects' claw trails sample
+  the points (0, 0.3, 0) to (0, 2.8, 0) in each claw's frame, so a talon tip should be about
+  2.8 m from the mount. The cape plates hang rigid from `pauldron_r`, `pauldron_l` and `torso`
+  (no joints of their own): keep them clear of the thighs in the crouch, the Fade Sweep and the
+  sinks.
+- **Sinking into the shadow.** The Sneak, Eclipse Rise and Phantom Grip sink Shadow into the
+  floor: there is no floor to hide behind (the floor is a plane drawn behind the mechs), so a
+  sink is a fold: the knees and hips collapse, the torso folds over, the cape plates close over
+  the top, the whole body ending under 3 m tall by the last frame before a `hide`. The fight
+  hides the mech on `hide` frames and the effects draw the shadow. Rising is the same in reverse,
+  claws first.
+- **Root motion**: `atk_f` 2.0 m over frames 3–11; `sp_u` 3.6 m forward over 5–8 (0.9 a frame),
+  then up 5 m over 9–16 (0.625 a frame) and back down over the recovery; `super` 8 m over 41–44
+  (2.0 a frame). **None** in `sp_f` and `throw`: the fight moves the root in the Sneak's travel
+  and the Grip's slide.
+- **Marks** (frames from 0, as the files count): `cancel` on `atk_n` 3–10 and `atk_f` 12–21;
+  `invuln` on `sp_u` 0–8 and `super` 0–43; `flash` on `super` 0–39; `release` on `sp_n` 15 (the
+  bolt), `sp_d` 11 (the mine) and `throw` 30; `charge` on `sp_f` 19; `hide` on `sp_f` 8–19 (the
+  travel), `sp_u` 4–7 and `throw` 16–23; `step` on the walks' plants. Not `nopush` on any of the
+  `hide` frames: the shadow keeps a push box (it must stop at the other mech) and, in the Sneak,
+  a low hurt box.
+- **Boxes**: the Fade Sweep's recovery (frames 14–35 from 0) has a hurt box only 4 m tall; the
+  Sneak's travel a hurt box x −1.5–1.5, y 0–1 and a push box as low; Total Eclipse's five hit
+  boxes carry `hit` 0 to 4 (the fight's damage table is by that index).
+- **The throw's turn**: Shadow's facing turns on `throw` frame 25 (24 from 0): animate the
+  rise behind the other as if still facing the same way and the fight turns the root; the other
+  mech's `thrown` is played from the same frame number, and is turned round too.
+- Shadow is about 12 m tall: tall and thin, the claws dominating the silhouette, reading apart
+  from the Double-blade Hero (also black and violet) by its height, the cape, the single eye and
+  the claws in place of blades.
+
 ## Reactions and the rest of the list
 
 | Move | Length | Notes |
@@ -1099,6 +1432,19 @@ Void Step's gone frames, 7–18).
 - Beam's Arc Jab hits as far as its cannon reaches (x 1.8–9.0); the cannon is hurtable to its
   muzzle on frames 6–14.
 
+## Decided by the owner (2026-10-13): Shadow
+
+- Shadow is Umbral Research's base mech (antimatter), slot 1, SHADOW, model UR-01; about 900
+  health (the lowest), a walk between the Hero's and the Double-blade Hero's.
+- Block stops every attack from either side: Shadow's tricks come from timing, grabs, space (the
+  mine) and the meter (the curse), never from teleporting behind.
+- Exaggerated shadowy claws (the weapon parts), a tall thin body, rigid cape plates, one violet
+  eye.
+- The Hex Bolt and its Siphon curse (about 6 s, refreshed, never stacked), the Rift Mine (one at
+  a time, a snare of about half a second, a hit destroys it), Shadow Sneak (holding B sends the
+  shadow farther), Eclipse Rise (the anti-air), Phantom Grip (the side swap), Total Eclipse (the
+  stage dark, a multi-hit with afterimages). Afterimages are visual only.
+
 ## Open questions
 
 - The Double-blade Hero's second Twin Cut: one animation played twice, or an `atk_n` variant?
@@ -1124,3 +1470,8 @@ Void Step's gone frames, 7–18).
   costs the round (the other choice: twin B always pulled back by its leash). CPU against CPU
   rarely rings out (none in 20 rounds of scenario 96: the fights drift away from the edge);
   the CPU's edge play wants tuning with human play.
+- Shadow's snare holds the snared mech in the pose it had (cut to `idle`, frozen) with violet
+  shadow binding its legs. A dedicated `snared` reaction for every mech would read better and
+  costs every mech's animator a move; proposed for later.
+- The Siphon's rates (all of every source, nuclear at half) and the curse's length (6 s) want
+  human play; so do Shadow's health (900) and the Rift Mine's snare (30 frames).

@@ -215,6 +215,29 @@ frames late; combined, they are one mid-weight brawler; L switches, a move each 
   build): 521,418 CPU cycles and 560,514 GPU cycles at the peak, 1,768 triangles drawn; the
   three bodies' drawing (`prof_mechs`) about 396,000 cycles.
 
+## Shadow
+
+Shadow (Umbral Research, antimatter; `Mech.Shadow`, roster slot 1, SHADOW UR-01) is the
+trickster: the Rift Mine, the Hex Bolt and its Siphon curse, Shadow Sneak, Eclipse Rise, Phantom
+Grip and Total Eclipse. The design is [MOVES.md](MOVES.md#shadow-umbral-research-antimatter).
+
+- **Files:** `models/shadow/make_shadow.py` (the model and rig), `anims/shadow/`, `shadow.akr`
+  (its hits, the stand-in timings, boxes and marks, and its rules: the bolt in the shot system
+  (`Shot.hex`), the Siphon (`meter_add` sends a cursed fighter's gains to `shadow_siphon`), the
+  mines and snares, the Sneak's travel and hold, Phantom Grip's side swap, Total Eclipse's five
+  hits by box index, the Diving Claw's dive), `shadow_fx.akr` (the bolt, the mines, the Sneak's
+  shadow, the curse's glow, the snare, the afterimages, Total Eclipse's dark, the HUD's siphon),
+  Shadow's CPU at the end of `cpu.akr`. The shared files call these with a line each; the fight
+  state gains `Fighter.curse`, `Fighter.siphoned` and `Shot.hex`, and `enum Ev` gains `Curse`,
+  `Mine`, `Snare` and `MineGone` (appended).
+- **Tests:** scenarios 100-108 and 110 (the rooftop) in `tests/harness.akr`, 109 (the budget,
+  through the real game) in `tests/shadow/harness.akr`; 111 is a measurement (Shadow's wins
+  against each mech, CPU against CPU).
+- **The budget** (scenario 109, CPU against CPU, a debug build, a mine and a bolt kept out, the
+  other cursed, Total Eclipse forced twice): against the split Twins 613,403 CPU cycles and
+  805,917 GPU cycles at the peak, 1,914 triangles; against Beam 557,418 and 740,850, 1,820
+  triangles; Shadow's effects (`prof_fx`, with fx.akr's) at most about 76,000 cycles.
+
 ## Stages
 
 Stages are data (the pitch: "a floor (flat for now), edges (walls or open), and an optional list

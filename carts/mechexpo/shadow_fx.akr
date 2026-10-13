@@ -1,0 +1,331 @@
+// Mech Expo 2000: Shadow's effects and its HUD siphon (mx-shadow-fight; MOVES.md, "Shadow"). fx.akr
+// is mx-fx's; Shadow's own drawing is here, called with one line each from game.akr
+// (shadow_fx_draw, shadow_fx_offset), fx.akr (shadow_fx_bolt) and hud.akr (shadow_siphon_hud).
+// Additive and subtractive sprites on the interface list (fx.akr's effect sprites, slot 10, and
+// its particles), violet: Umbral's colour.
+//
+//   the Hex Bolt     a ball of shadow: a dark halo (subtracted), a violet glow, a flickering
+//                    white-violet core and a ring, motes falling off behind it
+//   the Rift Mine    a flat sigil on the floor: dim and thin while it arms, then a bright ring
+//                    pulsing over a glow; a burst when laid, set off or destroyed
+//   the Sneak        while Shadow is gone, its shadow on the floor: a dark pool with a violet rim
+//                    shedding motes; afterimages behind it as it erupts
+//   the curse        the cursed mech glows violet at the chest, motes rising off it; flickering
+//                    in the last second
+//   the snare        violet shadow binding the snared mech's legs
+//   Total Eclipse    the stage held dark through the hits (the colour offset), an afterimage on
+//                    alternate sides of the other mech at each hit
+//   the HUD          the cursed mech's gauge chained over in violet, SIPHON, the curse's time
+//                    under it, motes streaming to Shadow's gauge whenever meter is taken
+
+const SHX_VIOLET: u32 = 0xFF50B0        // 0xBBGGRR: Umbral violet, bright
+const SHX_DEEP: u32 = 0x801048          // deep violet
+const SHX_CORE: u32 = 0xFFD0F0          // white-violet
+const SHX_DARK: u32 = 0x60A060          // subtracted: darkens toward violet (less green)
+const SHX_GHOST = 13                    // the parts an afterimage is drawn from
+const SHX_GHOST_PARTS: [13]Part = [
+    Part.head, Part.torso, Part.pelvis, Part.upper_arm_r, Part.forearm_r, Part.weapon_r,
+    Part.upper_arm_l, Part.forearm_l, Part.weapon_l, Part.thigh_r, Part.shin_r, Part.thigh_l, Part.shin_l,
+]
+const SHX_MOTES = 12                    // the HUD's siphon stream
+
+private struct HudMote {
+    t: s32                              // frames left (0: free)
+    side: s32                           // the cursed side it leaves
+}
+
+var shx_tick: s32                       // the fight's tick last seen (events and spawns once a tick)
+var shx_frame: s32
+var shx_ghost: [SHX_GHOST]vec3          // the afterimage's points, this frame
+var shx_siph_last: [2]s32               // siphoned last seen, per side
+var shx_recv: [2]s32                    // frames of Shadow's gauge flashing
+var shx_motes: [SHX_MOTES]HudMote
+var shx_mote_next: s32
+
+// ---- small helpers
+
+private fn shx_glow(p: vec3, size: fixed, w_k: fixed, col: u32, mode: s32) {
+    let q = project_point(p)
+    if q.z < 0 { return }
+    let d = fx_px(p, size)
+    if d <= 0 { return }
+    fx_sprite(&FX_GLOW[0], q.x, q.y, (fixed(d) * w_k) as s32, d, col, mode)
+}
+
+private fn shx_ring(p: vec3, size: fixed, flat: s32, col: u32) {
+    let q = project_point(p)
+    if q.z < 0 { return }
+    let d = fx_px(p, size)
+    if d <= 0 { return }
+    fx_sprite(&FX_RING[0], q.x, q.y, d, max(d / flat, 1), col, BLEND_ADD)
+}
+
+private fn shx_motes_at(n: s32, x: fixed, y: fixed, vy: fixed) {
+    fx_c0 = SHX_CORE
+    fx_c1 = SHX_DEEP
+    for k in 0..n {
+        let p = fx_spawn(Pre.VoidMote, x + fixed(k - n / 2) * 0.4, y, fixed(k - n / 2) / 60, vy)
+        p.dt = 1.0 / 20
+    }
+    fx_c0 = 0
+    fx_c1 = 0
+}
+
+// ---- the Hex Bolt (fx.akr's shot loop hands it any shot with hex set)
+
+fn shadow_fx_bolt(sh: *Shot) {
+    let p = vec3(sh.x, (sh.y0 + sh.y1) / 2, -0.5)
+    let q = project_point(p)
+    if q.z < 0 { return }
+    let px = fx_px(p, 1.0)
+    let d = (fixed(px) * sh.half * 2) as s32
+    let flick = ((sh.t * 5) % 4) as s32
+    fx_sprite(&FX_GLOW[0], q.x, q.y, d * 3, d * 3, SHX_DARK, BLEND_SUB)          // the dark halo
+    fx_sprite(&FX_GLOW[0], q.x, q.y, d * 2, d * 2, SHX_DEEP, BLEND_ADD)
+    fx_sprite(&FX_GLOW[0], q.x, q.y, d + flick, d + flick, SHX_VIOLET, BLEND_ADD)
+    fx_sprite(&FX_SPARK[0], q.x, q.y, d / 2 + flick, d / 2 + flick, SHX_CORE, BLEND_ADD)
+    let rr = d + (sh.t % 10) * px / 5
+    fx_sprite(&FX_RING[0], q.x, q.y, rr, rr, col_scale(SHX_VIOLET, 0.5), BLEND_ADD)
+}
+
+// ---- once a frame in a fight (after the mechs, with fx.akr's effects)
+
+fn shadow_fx_draw(f: *Fight) {
+    if !shadow_in_fight { return }                  // no Shadow in this fight
+    shx_frame += 1
+    let tick = f.ticks != shx_tick
+    if tick {
+        shx_tick = f.ticks
+        let ev = fight_events()
+        for k in 0..ev.n { shx_event(&ev.e[k], f) }
+    }
+    // the bolts, the mines
+    for s in 0..2 {
+        let sh = &f.shot[s]
+        if tick && sh.on && sh.hex && sh.t % 3 == 0 {
+            fx_c0 = SHX_VIOLET
+            fx_c1 = SHX_DEEP
+            let p = fx_spawn(Pre.VoidMote, sh.x - sgn(sh.vx) as fixed * 0.8, (sh.y0 + sh.y1) / 2,
+                             -sh.vx / 3, -0.02)
+            p.dt = 1.0 / 18
+            fx_c0 = 0
+            fx_c1 = 0
+        }
+        let m = &rift[s]
+        if !m.on { continue }
+        let mp = vec3(m.x, 0.05, -0.2)
+        if m.t < MINE_ARM {
+            // arming: the sigil drawn in, dim
+            let k = fixed(m.t) / MINE_ARM
+            shx_ring(mp, 1.0 + k * 1.2, 5, col_scale(SHX_DEEP, 0.4 + k * 0.6))
+        } else {
+            let pulse = (sin(frame_angle(shx_frame, 0.05)) + 1.0) / 2
+            shx_glow(mp, 2.6, 1.0, col_scale(SHX_DEEP, 0.6 + pulse * 0.4), BLEND_ADD)
+            shx_ring(mp, 2.2 + pulse * 0.3, 5, SHX_VIOLET)
+            shx_ring(mp, 1.2, 5, col_scale(SHX_CORE, 0.5 + pulse / 2))
+            if tick && f.ticks % 12 == 0 { shx_motes_at(1, m.x, 0.3, 0.05) }
+        }
+    }
+    for i in 0..4 {
+        if i >= 2 && !twins_on(i - 2) { continue }
+        let fi = &f.f[i]
+        // the curse: the cursed mech glows violet (a split Twins' partner too)
+        let c = &f.f[i & 1]
+        if c.curse > 0 && (c.curse > 60 || (shx_frame >> 2) & 1 == 0) {
+            let root = anim_place(vec2(fi.x, fi.y), fi.facing)
+            let tor = (anim_part(fi.body, fi.mv, fi.frame, root, Part.torso) * vec4(0.0, 1.5, 0.0, 1.0)) as vec3
+            let pulse = (sin(frame_angle(shx_frame, 0.04)) + 1.0) / 2
+            let pt = vec3(tor.x, tor.y, -1.4)
+            shx_glow(pt, 4.0 + pulse * 1.5, 0.8, col_scale(SHX_DEEP, 0.7 + pulse * 0.3), BLEND_ADD)
+            shx_glow(pt, 1.6, 1.0, col_scale(SHX_VIOLET, 0.5 + pulse / 2), BLEND_ADD)
+            if tick && f.ticks % 5 == i {
+                fx_c0 = SHX_VIOLET
+                fx_c1 = SHX_DEEP
+                let toward = fixed(sgn(f.f[1 - (i & 1)].x - fi.x)) * 0.03
+                let p = fx_spawn(Pre.VoidMote, tor.x, tor.y - 2.0, toward, 0.06)
+                p.dt = 1.0 / 30
+                fx_c0 = 0
+                fx_c1 = 0
+            }
+        }
+        // the snare: violet shadow binding the legs
+        if snare_t[i] > 0 {
+            let w = ((shx_frame * 3) % 7) as fixed / 10
+            for k in 0..3 {
+                let y = 0.6 + fixed(k) * 1.4
+                shx_glow(vec3(fi.x + w - 0.3, fi.y + y, -1.4), 2.4 - fixed(k) * 0.4, 1.6, SHX_VIOLET, BLEND_ADD)
+            }
+            shx_ring(vec3(fi.x, 0.05, -0.2), 4.0, 5, SHX_VIOLET)
+            shx_glow(vec3(fi.x, 0.1, -0.2), 4.5, 1.0, SHX_DARK, BLEND_SUB)
+        }
+        if i >= 2 || fi.mech != Mech.Shadow { continue }
+        let t = fx[i].t
+        // the Sneak's shadow on the floor while Shadow is gone
+        if fi.mv == Mv.sp_f && t >= sneak_t0 && t <= sneak_t1 {
+            let sp = vec3(fi.x, 0.1, -0.2)
+            shx_glow(sp, 4.5, 1.0, SHX_DARK, BLEND_SUB)
+            shx_glow(sp, 4.5, 1.0, SHX_DARK, BLEND_SUB)
+            shx_ring(sp, 3.6, 5, col_scale(SHX_VIOLET, 0.8))
+            if tick && f.ticks % 2 == 0 { shx_motes_at(1, fi.x, 0.4, 0.07) }
+        }
+        // afterimages: the Sneak's eruption (two behind it, along its path)
+        if fi.mv == Mv.sp_f && t > sneak_t1 && t <= sneak_t1 + 12 {
+            let fade = 1.0 - fixed(t - sneak_t1) / 13
+            shx_ghost_sample(fi)
+            for g in 1..3 {
+                shx_ghost_draw(-fixed(fi.facing) * 2.2 * fixed(g), 0.0, false, fi.x, col_scale(SHX_VIOLET, fade / fixed(g)))
+            }
+        }
+        // Total Eclipse: an afterimage on alternate sides of the other at each hit
+        if fi.mv == Mv.super && t >= ECLIPSE_A0[0] && t <= ECLIPSE_A1[4] + 8 {
+            var k = 0
+            for h in 0..5 {
+                if t >= ECLIPSE_A0[h] { k = h }
+            }
+            let age = t - ECLIPSE_A0[k]
+            if age <= 10 {
+                shx_ghost_sample(fi)
+                let ox = f.f[other(i)].x
+                let fade = 1.0 - fixed(age) / 11
+                if k % 2 == 0 {
+                    shx_ghost_draw(0.0, 0.0, true, ox, col_scale(SHX_VIOLET, fade))      // behind it, mirrored
+                } else {
+                    shx_ghost_draw(0.0, 3.0, false, ox, col_scale(SHX_CORE, fade * 0.7))  // above, leaping
+                }
+            }
+        }
+    }
+}
+
+// The events: bursts where the curse lands, a mine is laid, set off or destroyed.
+private fn shx_event(e: *Event, f: *Fight) {
+    match e.kind {
+        Curse => {
+            let r = fx_burst_at(Pre.Ring, e.x, e.y, SHX_VIOLET, SHX_DEEP)
+            r.s0 = 2.0
+            r.s1 = 9.0
+            fx_burst_at(Pre.Glow, e.x, e.y, SHX_VIOLET, SHX_DEEP)
+            shx_motes_at(8, e.x, e.y, 0.08)
+        }
+        Mine => {
+            let r = fx_burst_at(Pre.Floor, e.x, 0.05, SHX_VIOLET, SHX_DEEP)
+            r.s1 = 6.0
+            shx_motes_at(4, e.x, 0.4, 0.06)
+        }
+        Snare => {
+            let r = fx_burst_at(Pre.Floor, e.x, 0.05, SHX_CORE, SHX_DEEP)
+            r.s1 = 10.0
+            let g = fx_burst_at(Pre.Glow, e.x, 2.0, SHX_VIOLET, SHX_DEEP)
+            g.s1 = 7.0
+            shx_motes_at(10, e.x, 0.5, 0.12)
+        }
+        MineGone => {
+            if e.power > 0 {
+                let r = fx_burst_at(Pre.Ring, e.x, 0.5, SHX_VIOLET, SHX_DEEP)
+                r.s1 = 5.0
+                shx_motes_at(6, e.x, 0.4, 0.1)
+            } else {
+                shx_motes_at(3, e.x, 0.3, 0.04)
+            }
+        }
+        else => {}
+    }
+}
+
+// The afterimage's points: Shadow's parts this frame.
+private fn shx_ghost_sample(fi: *Fighter) {
+    let root = anim_place(vec2(fi.x, fi.y), fi.facing)
+    for k in 0..SHX_GHOST {
+        let pt = SHX_GHOST_PARTS[k]
+        var lp = vec4(0.0, 0.0, 0.0, 1.0)
+        if pt == Part.weapon_r || pt == Part.weapon_l { lp = vec4(0.0, 1.8, 0.0, 1.0) }   // along the claw
+        shx_ghost[k] = (anim_part(fi.body, fi.mv, fi.frame, root, pt) * lp) as vec3
+    }
+}
+
+// An afterimage: the sampled points moved by (dx, dy), or mirrored about x = ox, as glows.
+private fn shx_ghost_draw(dx: fixed, dy: fixed, mirror: bool, ox: fixed, col: u32) {
+    for k in 0..SHX_GHOST {
+        var p = shx_ghost[k]
+        if mirror { p.x = ox * 2 - p.x }
+        p = vec3(p.x + dx, p.y + dy, -0.8)
+        shx_glow(p, 2.6, 0.7, col, BLEND_ADD)
+    }
+}
+
+// ---- the colour offset: Total Eclipse keeps the stage dark through its hits (after fx_offset)
+
+fn shadow_fx_offset(f: *Fight) {
+    if !shadow_in_fight { return }                  // no Shadow in this fight
+    if fx_flash > 0 { return }
+    for s in 0..2 {
+        let fi = &f.f[s]
+        if fi.mech == Mech.Shadow && fi.mv == Mv.super && fx[s].t < ECLIPSE_A1[4] + 6 {
+            layer_offset(0x26, -13, -18, -8)        // BG1, BG2 and the backdrop, darkened to violet
+            return
+        }
+    }
+}
+
+// ---- the HUD (hud.akr's hud_draw calls it after each side's meter)
+
+fn shadow_siphon_hud(f: *Fight, s: s32) {
+    if !shadow_in_fight { return }                  // no Shadow in this fight
+    let fi = &f.f[s]
+    let x0 = meter_x(s)
+    let w = HUD_METER_W
+    let l = w - HUD_SLANT
+    let y = HUD_METER_Y
+    let h = HUD_METER_H
+    // meter taken this frame: a mote leaves the cursed gauge for Shadow's, which flashes
+    if fi.siphoned != shx_siph_last[s] {
+        if fi.siphoned > shx_siph_last[s] {
+            let m = &shx_motes[shx_mote_next]
+            shx_mote_next = (shx_mote_next + 1) % SHX_MOTES
+            m.t = 24
+            m.side = s
+            shx_recv[1 - s] = 8
+        }
+        shx_siph_last[s] = fi.siphoned
+    }
+    if shx_recv[s] > 0 {
+        shx_recv[s] -= 1
+        span_quad(s, x0, w, y, h, 0, l, col_scale(SHX_CORE, fixed(shx_recv[s]) / 10), 0, BLEND_ADD)
+    }
+    // the stream: motes along the bottom of the screen from the cursed gauge to the other
+    for k in 0..SHX_MOTES {
+        let m = &shx_motes[k]
+        if m.t <= 0 || m.side != s { continue }
+        m.t -= 1
+        let a = 1.0 - fixed(m.t) / 24
+        var xa = meter_x(0) + HUD_METER_W / 2
+        var xb = meter_x(1) + HUD_METER_W / 2
+        if s == 1 {
+            let tmp = xa
+            xa = xb
+            xb = tmp
+        }
+        let mx = xa + ((xb - xa) as fixed * a) as s32
+        let my = y + h / 2 - (sin(a * 3.1416) * 10.0) as s32
+        rect_blend(mx - 1, my - 1, 3, 3, SHX_VIOLET, BLEND_ADD)
+        rect_blend(mx - 3, my, 2, 1, SHX_DEEP, BLEND_ADD)
+    }
+    if fi.curse <= 0 { return }
+    // cursed: violet chains marching over the gauge, the curse's time under it, SIPHON
+    var o = (hud_tick / 2) % 6
+    while o + 2 < l {
+        span_quad(s, x0, w, y, h, o, o + 2, SHX_DEEP, SHX_DEEP, BLEND_HALF)
+        o += 6
+    }
+    let tl = fi.curse * l / CURSE_FRAMES
+    span_quad(s, x0, w, y + h + 2, 2, 0, tl, SHX_VIOLET, SHX_VIOLET, BLEND_NONE)
+    if fi.curse > 60 || (hud_tick >> 2) & 1 == 0 {
+        var lx = x0
+        var al = ALIGN_LEFT
+        if s == 1 {
+            lx = x0 + w
+            al = ALIGN_RIGHT
+        }
+        txt(FONT_LABEL, lx, y - 13, "SIPHON", C_VIOLET, al)
+    }
+}

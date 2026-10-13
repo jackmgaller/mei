@@ -14,11 +14,11 @@ mkdir -p "$O"
 POOL_DIR="$O"
 . "$HERE/pool.sh"
 pool_report() {
-    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages)' "$O/$1.log"
+    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb)' "$O/$1.log"
 }
 run() {       # scenario frames: the scenarios through the whole game cost about 8 times a frame
     s="$1"; f="$2"; shift 2
-    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]) c=$((f * 8)) ;; *) c="$f" ;; esac
+    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]) c=$((f * 8)) ;; 108) c=$((f * 40)) ;; *) c="$f" ;; esac
     pool_add "s$s" "$c" "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@"
 }
 run 1 700
@@ -103,6 +103,20 @@ run 86 300
 run 87 121
 run 88 421
 run 89 321
+# Shadow (mx-shadow-fight): 100 the Hex Bolt and the Siphon on every power source, 101 the curse's
+# time and refresh, 102 the Rift Mine, 103 Shadow Sneak, 104 Eclipse Rise, 105 Phantom Grip,
+# 106 Total Eclipse and its debt, 107 throws with Tank and the Twins, 108 CPU against CPU, 110
+# the rooftop (109, the budget through the real game, is in budget.sh)
+run 100 900
+run 101 1100
+run 102 700
+run 103 900
+run 104 300
+run 105 600
+run 106 900
+run 107 1600
+run 108 2500
+run 110 900
 pool_run
 echo "all Mech Expo fight checks passed"
 # 55-59: the menus (mx-menus), the whole game with scripted pads: tests/menus/check.sh
