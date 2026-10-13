@@ -1,11 +1,11 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Static Lance (MOVES.md): the footsie poke. Frames 0-9: Beam sits back on its hips and draws the cannon in to the chest, tipped up, the left hand coming onto the capacitor body; a half step (root motion 0.8 m over 4-13, the right foot sliding forward, the left planted); 10-14: both arms drive the cannon out level at chest height, the left palm shoving the cannon's body, the hips and shoulders turning in behind it. The hit box is the arc that jumps from the coils to the target (a fixed rectangle, x 3.5-9.4, y 6-8.5, frames 14-17); the thrust is held to frame 27 (the arms hurtable out to the fist at 5.3 m), then pulled back slowly over the last 12 frames while the back foot steps up.",
+  "note": "Static Lance (MOVES.md): the footsie poke. Frames 0-9: Beam sits back on its hips and draws the cannon in to the chest, tipped up, the left hand coming onto the capacitor body; a half step (root motion 0.8 m over 4-13, the right foot sliding forward, the left planted); 10-14: both arms drive the cannon out level at chest height, the left palm shoving the cannon's body, the hips and shoulders turning in behind it. The hit box is the arc that jumps from the coils to the target (a fixed rectangle, x 3.5-10.0, y 6-8.5, frames 14-17); the thrust is held to frame 27 (the arms hurtable out to the fist at 5.3 m), then pulled back slowly over the last 12 frames while the back foot steps up.",
   "base": "_body.anim.json",
   "length": 40,
   "phases": {"startup": 14, "active": 4, "recovery": 22},
-  "design": {"hit": [3.5, 6.0, 9.4, 8.5], "tolerance": 0.2, "note": "MOVES.md, Static Lance: x 3.5-9.4, y 6-8.5"},
+  "design": {"hit": [3.5, 6.0, 10.0, 8.5], "tolerance": 0.2, "note": "MOVES.md, Static Lance: x 3.5-10.0, y 6-8.5"},
   "keys": [
     {"at": 0, "from": "guard", "ease": "ease", "reach": {"foot_r": [0.03, 0.0]}},
     {"at": 4, "reach": {"foot_r": [0.03, 0.0]}},
@@ -48,7 +48,7 @@
       "ease": "out",
       "offset": [0.3, -1.2],
       "boxes": {
-        "arc": {"kind": "hit", "rect": [3.5, 6.0, 9.4, 8.5]}
+        "arc": {"kind": "hit", "rect": [3.5, 6.0, 10.0, 8.5]}
       },
       "pose": {
         "pelvis": [-6, -14, 0],

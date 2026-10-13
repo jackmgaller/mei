@@ -85,17 +85,17 @@ const AK_MOVES: [90]AnimMove = [
     AnimMove { len: 40, flags: 0, frames: 2454040, box_first: 2478360, boxes: 2478444, marks: 2487324, root: 2487484 },   // beam atk_f
     AnimMove { len: 41, flags: 0, frames: 2487804, box_first: 2512732, boxes: 2512816, marks: 2521936, root: 2522100 },   // beam atk_d
     AnimMove { len: 32, flags: 2, frames: 2522428, box_first: 2541884, boxes: 2541952, marks: 2549112, root: 2549240 },   // beam atk_air
-    AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam sp_n (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam sp_f (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam sp_u (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam sp_d (stand-in)
-    AnimMove { len: 7, flags: 0, frames: 2549496, box_first: 2553752, boxes: 2553768, marks: 2555348, root: 2555376 },   // beam grab
-    AnimMove { len: 22, flags: 0, frames: 2555432, box_first: 2568808, boxes: 2568856, marks: 2573696, root: 2573784 },   // beam grab_whiff
-    AnimMove { len: 46, flags: 0, frames: 2573960, box_first: 2601928, boxes: 2602024, marks: 2612144, root: 2612328 },   // beam throw
-    AnimMove { len: 44, flags: 2, frames: 2612696, box_first: 2639448, boxes: 2639540, marks: 2649220, root: 2649396 },   // beam thrown
-    AnimMove { len: 20, flags: 0, frames: 2649748, box_first: 2661908, boxes: 2661952, marks: 2666352, root: 2666432 },   // beam grab_break
+    AnimMove { len: 45, flags: 0, frames: 2549496, box_first: 2576856, boxes: 2576948, marks: 2586848, root: 2587028 },   // beam sp_n
+    AnimMove { len: 44, flags: 0, frames: 2587388, box_first: 2614140, boxes: 2614232, marks: 2624352, root: 2624528 },   // beam sp_f
+    AnimMove { len: 42, flags: 0, frames: 2624880, box_first: 2650416, boxes: 2650504, marks: 2659904, root: 2660072 },   // beam sp_u
+    AnimMove { len: 44, flags: 0, frames: 2660408, box_first: 2687160, boxes: 2687252, marks: 2696932, root: 2697108 },   // beam sp_d
+    AnimMove { len: 7, flags: 0, frames: 2697460, box_first: 2701716, boxes: 2701732, marks: 2703312, root: 2703340 },   // beam grab
+    AnimMove { len: 22, flags: 0, frames: 2703396, box_first: 2716772, boxes: 2716820, marks: 2721660, root: 2721748 },   // beam grab_whiff
+    AnimMove { len: 46, flags: 0, frames: 2721924, box_first: 2749892, boxes: 2749988, marks: 2760108, root: 2760292 },   // beam throw
+    AnimMove { len: 44, flags: 2, frames: 2760660, box_first: 2787412, boxes: 2787504, marks: 2797184, root: 2797360 },   // beam thrown
+    AnimMove { len: 20, flags: 0, frames: 2797712, box_first: 2809872, boxes: 2809916, marks: 2814316, root: 2814396 },   // beam grab_break
     AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam super (stand-in)
-    AnimMove { len: 40, flags: 2, frames: 2666592, box_first: 2690912, boxes: 2690996, marks: 2699796, root: 2699956 },   // beam thrown_vault
+    AnimMove { len: 40, flags: 2, frames: 2814556, box_first: 2838876, boxes: 2838960, marks: 2847760, root: 2847920 },   // beam thrown_vault
 ]
 
 // each mech's part meshes in anim.akr's Part order (null: no mesh)
