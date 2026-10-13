@@ -18,7 +18,7 @@ pool_report() {
 }
 run() {       # scenario frames: the scenarios through the whole game cost about 8 times a frame
     s="$1"; f="$2"; shift 2
-    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]) c=$((f * 8)) ;; 108) c=$((f * 40)) ;; *) c="$f" ;; esac
+    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]) c=$((f * 8)) ;; 108) c=$((f * 40)) ;; *) c="$f" ;; esac
     pool_add "s$s" "$c" "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@"
 }
 run 1 800
@@ -85,6 +85,12 @@ run 94 470
 run 95 130
 run 96 1500
 run 97 171
+# 112-115: the rooftop's city seen from the fight's start, fully out, at the open edge and in a
+# ring-out (the stage's pictures)
+run 112 45
+run 113 45
+run 114 65
+run 115 120
 run 50 330
 run 51 210
 run 52 210
