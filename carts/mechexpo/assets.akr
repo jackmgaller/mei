@@ -5,7 +5,7 @@
 // once. Draw the meshes with the depth test on (render_depth(true),
 // render_perspective(true)).
 
-// Mei Asset Kit pack: beam_pelvis, beam_torso, beam_head, beam_pauldron_r, beam_upper_arm_r, beam_forearm_r, beam_hand_r, beam_cannon, beam_pauldron_l, beam_upper_arm_l, beam_forearm_l, beam_hand_l, beam_thigh_r, beam_shin_r, beam_foot_r, beam_thigh_l, beam_shin_l, beam_foot_l, doubleblade_pelvis, doubleblade_torso, doubleblade_head, doubleblade_pauldron_r, doubleblade_upper_arm_r, doubleblade_forearm_r, doubleblade_hand_r, doubleblade_dagger, doubleblade_pauldron_l, doubleblade_upper_arm_l, doubleblade_forearm_l, doubleblade_hand_l, doubleblade_thigh_r, doubleblade_shin_r, doubleblade_foot_r, doubleblade_thigh_l, doubleblade_shin_l, doubleblade_foot_l, expo_banner, hangar_wall_l, hangar_wall_r, hero_pelvis, hero_torso, hero_head, hero_pauldron_r, hero_upper_arm_r, hero_forearm_r, hero_hand_r, hero_sword, hero_pauldron_l, hero_upper_arm_l, hero_forearm_l, hero_hand_l, hero_thigh_r, hero_shin_r, hero_foot_r, hero_thigh_l, hero_shin_l, hero_foot_l, shadow_pelvis, shadow_torso, shadow_head, shadow_pauldron_r, shadow_upper_arm_r, shadow_forearm_r, shadow_hand_r, shadow_claw, shadow_pauldron_l, shadow_upper_arm_l, shadow_forearm_l, shadow_hand_l, shadow_thigh_r, shadow_shin_r, shadow_foot_r, shadow_thigh_l, shadow_shin_l, shadow_foot_l, tank_pelvis, tank_torso, tank_head, tank_pauldron_r, tank_upper_arm_r, tank_forearm_r, tank_hand_r, tank_pauldron_l, tank_upper_arm_l, tank_forearm_l, tank_hand_l, tank_thigh_r, tank_shin_r, tank_foot_r, tank_thigh_l, tank_shin_l, tank_foot_l, twin_a_pelvis, twin_a_torso, twin_a_head, twin_a_pauldron_r, twin_a_upper_arm_r, twin_a_forearm_r, twin_a_hand_r, twin_a_pauldron_l, twin_a_upper_arm_l, twin_a_forearm_l, twin_a_hand_l, twin_a_thigh_r, twin_a_shin_r, twin_a_foot_r, twin_a_thigh_l, twin_a_shin_l, twin_a_foot_l, twin_b_pelvis, twin_b_torso, twin_b_head, twin_b_pauldron_r, twin_b_upper_arm_r, twin_b_forearm_r, twin_b_hand_r, twin_b_pauldron_l, twin_b_upper_arm_l, twin_b_forearm_l, twin_b_hand_l, twin_b_thigh_r, twin_b_shin_r, twin_b_foot_r, twin_b_thigh_l, twin_b_shin_l, twin_b_foot_l, twins_pelvis, twins_torso, twins_head, twins_pauldron_r, twins_upper_arm_r, twins_forearm_r, twins_hand_r, twins_pauldron_l, twins_upper_arm_l, twins_forearm_l, twins_hand_l, twins_thigh_r, twins_shin_r, twins_foot_r, twins_thigh_l, twins_shin_l, twins_foot_l. Call mx_pack_load() once before drawing.
+// Mei Asset Kit pack: beam_pelvis, beam_torso, beam_head, beam_pauldron_r, beam_upper_arm_r, beam_forearm_r, beam_hand_r, beam_cannon, beam_pauldron_l, beam_upper_arm_l, beam_forearm_l, beam_hand_l, beam_thigh_r, beam_shin_r, beam_foot_r, beam_thigh_l, beam_shin_l, beam_foot_l, doubleblade_pelvis, doubleblade_torso, doubleblade_head, doubleblade_pauldron_r, doubleblade_upper_arm_r, doubleblade_forearm_r, doubleblade_hand_r, doubleblade_dagger, doubleblade_pauldron_l, doubleblade_upper_arm_l, doubleblade_forearm_l, doubleblade_hand_l, doubleblade_thigh_r, doubleblade_shin_r, doubleblade_foot_r, doubleblade_thigh_l, doubleblade_shin_l, doubleblade_foot_l, expo_banner, hangar_wall_l, hangar_wall_r, hero_pelvis, hero_torso, hero_head, hero_pauldron_r, hero_upper_arm_r, hero_forearm_r, hero_hand_r, hero_sword, hero_pauldron_l, hero_upper_arm_l, hero_forearm_l, hero_hand_l, hero_thigh_r, hero_shin_r, hero_foot_r, hero_thigh_l, hero_shin_l, hero_foot_l, shadow_pelvis, shadow_torso, shadow_head, shadow_pauldron_r, shadow_upper_arm_r, shadow_forearm_r, shadow_hand_r, shadow_claw, shadow_pauldron_l, shadow_upper_arm_l, shadow_forearm_l, shadow_hand_l, shadow_thigh_r, shadow_shin_r, shadow_foot_r, shadow_thigh_l, shadow_shin_l, shadow_foot_l, tank_pelvis, tank_torso, tank_head, tank_pauldron_r, tank_upper_arm_r, tank_forearm_r, tank_hand_r, tank_pauldron_l, tank_upper_arm_l, tank_forearm_l, tank_hand_l, tank_thigh_r, tank_shin_r, tank_foot_r, tank_thigh_l, tank_shin_l, tank_foot_l, twin_a_pelvis, twin_a_torso, twin_a_head, twin_a_pauldron_r, twin_a_upper_arm_r, twin_a_forearm_r, twin_a_hand_r, twin_a_pauldron_l, twin_a_upper_arm_l, twin_a_forearm_l, twin_a_hand_l, twin_a_thigh_r, twin_a_shin_r, twin_a_foot_r, twin_a_thigh_l, twin_a_shin_l, twin_a_foot_l, twin_b_pelvis, twin_b_torso, twin_b_head, twin_b_pauldron_r, twin_b_upper_arm_r, twin_b_forearm_r, twin_b_hand_r, twin_b_pauldron_l, twin_b_upper_arm_l, twin_b_forearm_l, twin_b_hand_l, twin_b_thigh_r, twin_b_shin_r, twin_b_foot_r, twin_b_thigh_l, twin_b_shin_l, twin_b_foot_l, twins_pelvis, twins_torso, twins_head, twins_pauldron_r, twins_upper_arm_r, twins_forearm_r, twins_hand_r, twins_pauldron_l, twins_upper_arm_l, twins_forearm_l, twins_hand_l, twins_thigh_r, twins_shin_r, twins_foot_r, twins_thigh_l, twins_shin_l, twins_foot_l, grey_shadow_pelvis, grey_shadow_torso, grey_shadow_head, grey_shadow_pauldron_r, grey_shadow_upper_arm_r, grey_shadow_forearm_r, grey_shadow_hand_r, grey_shadow_claw, grey_shadow_pauldron_l, grey_shadow_upper_arm_l, grey_shadow_forearm_l, grey_shadow_hand_l, grey_shadow_thigh_r, grey_shadow_shin_r, grey_shadow_foot_r, grey_shadow_thigh_l, grey_shadow_shin_l, grey_shadow_foot_l, grey_beam_pelvis, grey_beam_torso, grey_beam_head, grey_beam_pauldron_r, grey_beam_upper_arm_r, grey_beam_forearm_r, grey_beam_hand_r, grey_beam_cannon, grey_beam_pauldron_l, grey_beam_upper_arm_l, grey_beam_forearm_l, grey_beam_hand_l, grey_beam_thigh_r, grey_beam_shin_r, grey_beam_foot_r, grey_beam_thigh_l, grey_beam_shin_l, grey_beam_foot_l, grey_tank_pelvis, grey_tank_torso, grey_tank_head, grey_tank_pauldron_r, grey_tank_upper_arm_r, grey_tank_forearm_r, grey_tank_hand_r, grey_tank_pauldron_l, grey_tank_upper_arm_l, grey_tank_forearm_l, grey_tank_hand_l, grey_tank_thigh_r, grey_tank_shin_r, grey_tank_foot_r, grey_tank_thigh_l, grey_tank_shin_l, grey_tank_foot_l, grey_twins_pelvis, grey_twins_torso, grey_twins_head, grey_twins_pauldron_r, grey_twins_upper_arm_r, grey_twins_forearm_r, grey_twins_hand_r, grey_twins_pauldron_l, grey_twins_upper_arm_l, grey_twins_forearm_l, grey_twins_hand_l, grey_twins_thigh_r, grey_twins_shin_r, grey_twins_foot_r, grey_twins_thigh_l, grey_twins_shin_l, grey_twins_foot_l, grey_twin_a_pelvis, grey_twin_a_torso, grey_twin_a_head, grey_twin_a_pauldron_r, grey_twin_a_upper_arm_r, grey_twin_a_forearm_r, grey_twin_a_hand_r, grey_twin_a_pauldron_l, grey_twin_a_upper_arm_l, grey_twin_a_forearm_l, grey_twin_a_hand_l, grey_twin_a_thigh_r, grey_twin_a_shin_r, grey_twin_a_foot_r, grey_twin_a_thigh_l, grey_twin_a_shin_l, grey_twin_a_foot_l, grey_twin_b_pelvis, grey_twin_b_torso, grey_twin_b_head, grey_twin_b_pauldron_r, grey_twin_b_upper_arm_r, grey_twin_b_forearm_r, grey_twin_b_hand_r, grey_twin_b_pauldron_l, grey_twin_b_upper_arm_l, grey_twin_b_forearm_l, grey_twin_b_hand_l, grey_twin_b_thigh_r, grey_twin_b_shin_r, grey_twin_b_foot_r, grey_twin_b_thigh_l, grey_twin_b_shin_l, grey_twin_b_foot_l. Call mx_pack_load() once before drawing.
 embed ASSET_BEAM_PELVIS: Mesh = "art/beam_pelvis.bin"
 embed ASSET_BEAM_TORSO: Mesh = "art/beam_torso.bin"
 const ASSET_BEAM_TORSO_EMISSIVE = 1
@@ -195,6 +195,138 @@ embed ASSET_TWINS_FOOT_R: Mesh = "art/twins_foot_r.bin"
 embed ASSET_TWINS_THIGH_L: Mesh = "art/twins_thigh_l.bin"
 embed ASSET_TWINS_SHIN_L: Mesh = "art/twins_shin_l.bin"
 embed ASSET_TWINS_FOOT_L: Mesh = "art/twins_foot_l.bin"
+embed ASSET_GREY_SHADOW_PELVIS: Mesh = "art/grey_shadow_pelvis.bin"
+embed ASSET_GREY_SHADOW_TORSO: Mesh = "art/grey_shadow_torso.bin"
+embed ASSET_GREY_SHADOW_HEAD: Mesh = "art/grey_shadow_head.bin"
+const ASSET_GREY_SHADOW_HEAD_EMISSIVE = 369
+const ASSET_GREY_SHADOW_HEAD_EMISSIVE_COUNT = 1
+embed ASSET_GREY_SHADOW_PAULDRON_R: Mesh = "art/grey_shadow_pauldron_r.bin"
+embed ASSET_GREY_SHADOW_UPPER_ARM_R: Mesh = "art/grey_shadow_upper_arm_r.bin"
+embed ASSET_GREY_SHADOW_FOREARM_R: Mesh = "art/grey_shadow_forearm_r.bin"
+embed ASSET_GREY_SHADOW_HAND_R: Mesh = "art/grey_shadow_hand_r.bin"
+embed ASSET_GREY_SHADOW_CLAW: Mesh = "art/grey_shadow_claw.bin"
+const ASSET_GREY_SHADOW_CLAW_EMISSIVE = 385
+const ASSET_GREY_SHADOW_CLAW_EMISSIVE_COUNT = 1
+embed ASSET_GREY_SHADOW_PAULDRON_L: Mesh = "art/grey_shadow_pauldron_l.bin"
+embed ASSET_GREY_SHADOW_UPPER_ARM_L: Mesh = "art/grey_shadow_upper_arm_l.bin"
+embed ASSET_GREY_SHADOW_FOREARM_L: Mesh = "art/grey_shadow_forearm_l.bin"
+embed ASSET_GREY_SHADOW_HAND_L: Mesh = "art/grey_shadow_hand_l.bin"
+embed ASSET_GREY_SHADOW_THIGH_R: Mesh = "art/grey_shadow_thigh_r.bin"
+embed ASSET_GREY_SHADOW_SHIN_R: Mesh = "art/grey_shadow_shin_r.bin"
+embed ASSET_GREY_SHADOW_FOOT_R: Mesh = "art/grey_shadow_foot_r.bin"
+embed ASSET_GREY_SHADOW_THIGH_L: Mesh = "art/grey_shadow_thigh_l.bin"
+embed ASSET_GREY_SHADOW_SHIN_L: Mesh = "art/grey_shadow_shin_l.bin"
+embed ASSET_GREY_SHADOW_FOOT_L: Mesh = "art/grey_shadow_foot_l.bin"
+embed ASSET_GREY_BEAM_PELVIS: Mesh = "art/grey_beam_pelvis.bin"
+embed ASSET_GREY_BEAM_TORSO: Mesh = "art/grey_beam_torso.bin"
+const ASSET_GREY_BEAM_TORSO_EMISSIVE = 401
+const ASSET_GREY_BEAM_TORSO_EMISSIVE_COUNT = 1
+embed ASSET_GREY_BEAM_HEAD: Mesh = "art/grey_beam_head.bin"
+const ASSET_GREY_BEAM_HEAD_EMISSIVE = 417
+const ASSET_GREY_BEAM_HEAD_EMISSIVE_COUNT = 1
+embed ASSET_GREY_BEAM_PAULDRON_R: Mesh = "art/grey_beam_pauldron_r.bin"
+embed ASSET_GREY_BEAM_UPPER_ARM_R: Mesh = "art/grey_beam_upper_arm_r.bin"
+embed ASSET_GREY_BEAM_FOREARM_R: Mesh = "art/grey_beam_forearm_r.bin"
+embed ASSET_GREY_BEAM_HAND_R: Mesh = "art/grey_beam_hand_r.bin"
+embed ASSET_GREY_BEAM_CANNON: Mesh = "art/grey_beam_cannon.bin"
+const ASSET_GREY_BEAM_CANNON_EMISSIVE = 433
+const ASSET_GREY_BEAM_CANNON_EMISSIVE_COUNT = 1
+embed ASSET_GREY_BEAM_PAULDRON_L: Mesh = "art/grey_beam_pauldron_l.bin"
+embed ASSET_GREY_BEAM_UPPER_ARM_L: Mesh = "art/grey_beam_upper_arm_l.bin"
+embed ASSET_GREY_BEAM_FOREARM_L: Mesh = "art/grey_beam_forearm_l.bin"
+embed ASSET_GREY_BEAM_HAND_L: Mesh = "art/grey_beam_hand_l.bin"
+embed ASSET_GREY_BEAM_THIGH_R: Mesh = "art/grey_beam_thigh_r.bin"
+embed ASSET_GREY_BEAM_SHIN_R: Mesh = "art/grey_beam_shin_r.bin"
+embed ASSET_GREY_BEAM_FOOT_R: Mesh = "art/grey_beam_foot_r.bin"
+embed ASSET_GREY_BEAM_THIGH_L: Mesh = "art/grey_beam_thigh_l.bin"
+embed ASSET_GREY_BEAM_SHIN_L: Mesh = "art/grey_beam_shin_l.bin"
+embed ASSET_GREY_BEAM_FOOT_L: Mesh = "art/grey_beam_foot_l.bin"
+embed ASSET_GREY_TANK_PELVIS: Mesh = "art/grey_tank_pelvis.bin"
+embed ASSET_GREY_TANK_TORSO: Mesh = "art/grey_tank_torso.bin"
+const ASSET_GREY_TANK_TORSO_EMISSIVE = 449
+const ASSET_GREY_TANK_TORSO_EMISSIVE_COUNT = 1
+embed ASSET_GREY_TANK_HEAD: Mesh = "art/grey_tank_head.bin"
+const ASSET_GREY_TANK_HEAD_EMISSIVE = 465
+const ASSET_GREY_TANK_HEAD_EMISSIVE_COUNT = 1
+embed ASSET_GREY_TANK_PAULDRON_R: Mesh = "art/grey_tank_pauldron_r.bin"
+embed ASSET_GREY_TANK_UPPER_ARM_R: Mesh = "art/grey_tank_upper_arm_r.bin"
+embed ASSET_GREY_TANK_FOREARM_R: Mesh = "art/grey_tank_forearm_r.bin"
+embed ASSET_GREY_TANK_HAND_R: Mesh = "art/grey_tank_hand_r.bin"
+embed ASSET_GREY_TANK_PAULDRON_L: Mesh = "art/grey_tank_pauldron_l.bin"
+embed ASSET_GREY_TANK_UPPER_ARM_L: Mesh = "art/grey_tank_upper_arm_l.bin"
+embed ASSET_GREY_TANK_FOREARM_L: Mesh = "art/grey_tank_forearm_l.bin"
+embed ASSET_GREY_TANK_HAND_L: Mesh = "art/grey_tank_hand_l.bin"
+embed ASSET_GREY_TANK_THIGH_R: Mesh = "art/grey_tank_thigh_r.bin"
+embed ASSET_GREY_TANK_SHIN_R: Mesh = "art/grey_tank_shin_r.bin"
+embed ASSET_GREY_TANK_FOOT_R: Mesh = "art/grey_tank_foot_r.bin"
+embed ASSET_GREY_TANK_THIGH_L: Mesh = "art/grey_tank_thigh_l.bin"
+embed ASSET_GREY_TANK_SHIN_L: Mesh = "art/grey_tank_shin_l.bin"
+embed ASSET_GREY_TANK_FOOT_L: Mesh = "art/grey_tank_foot_l.bin"
+embed ASSET_GREY_TWINS_PELVIS: Mesh = "art/grey_twins_pelvis.bin"
+const ASSET_GREY_TWINS_PELVIS_EMISSIVE = 481
+const ASSET_GREY_TWINS_PELVIS_EMISSIVE_COUNT = 1
+embed ASSET_GREY_TWINS_TORSO: Mesh = "art/grey_twins_torso.bin"
+const ASSET_GREY_TWINS_TORSO_EMISSIVE = 497
+const ASSET_GREY_TWINS_TORSO_EMISSIVE_COUNT = 1
+embed ASSET_GREY_TWINS_HEAD: Mesh = "art/grey_twins_head.bin"
+const ASSET_GREY_TWINS_HEAD_EMISSIVE = 513
+const ASSET_GREY_TWINS_HEAD_EMISSIVE_COUNT = 1
+embed ASSET_GREY_TWINS_PAULDRON_R: Mesh = "art/grey_twins_pauldron_r.bin"
+embed ASSET_GREY_TWINS_UPPER_ARM_R: Mesh = "art/grey_twins_upper_arm_r.bin"
+embed ASSET_GREY_TWINS_FOREARM_R: Mesh = "art/grey_twins_forearm_r.bin"
+embed ASSET_GREY_TWINS_HAND_R: Mesh = "art/grey_twins_hand_r.bin"
+embed ASSET_GREY_TWINS_PAULDRON_L: Mesh = "art/grey_twins_pauldron_l.bin"
+embed ASSET_GREY_TWINS_UPPER_ARM_L: Mesh = "art/grey_twins_upper_arm_l.bin"
+embed ASSET_GREY_TWINS_FOREARM_L: Mesh = "art/grey_twins_forearm_l.bin"
+embed ASSET_GREY_TWINS_HAND_L: Mesh = "art/grey_twins_hand_l.bin"
+embed ASSET_GREY_TWINS_THIGH_R: Mesh = "art/grey_twins_thigh_r.bin"
+embed ASSET_GREY_TWINS_SHIN_R: Mesh = "art/grey_twins_shin_r.bin"
+embed ASSET_GREY_TWINS_FOOT_R: Mesh = "art/grey_twins_foot_r.bin"
+embed ASSET_GREY_TWINS_THIGH_L: Mesh = "art/grey_twins_thigh_l.bin"
+embed ASSET_GREY_TWINS_SHIN_L: Mesh = "art/grey_twins_shin_l.bin"
+embed ASSET_GREY_TWINS_FOOT_L: Mesh = "art/grey_twins_foot_l.bin"
+embed ASSET_GREY_TWIN_A_PELVIS: Mesh = "art/grey_twin_a_pelvis.bin"
+embed ASSET_GREY_TWIN_A_TORSO: Mesh = "art/grey_twin_a_torso.bin"
+const ASSET_GREY_TWIN_A_TORSO_EMISSIVE = 529
+const ASSET_GREY_TWIN_A_TORSO_EMISSIVE_COUNT = 1
+embed ASSET_GREY_TWIN_A_HEAD: Mesh = "art/grey_twin_a_head.bin"
+const ASSET_GREY_TWIN_A_HEAD_EMISSIVE = 545
+const ASSET_GREY_TWIN_A_HEAD_EMISSIVE_COUNT = 1
+embed ASSET_GREY_TWIN_A_PAULDRON_R: Mesh = "art/grey_twin_a_pauldron_r.bin"
+embed ASSET_GREY_TWIN_A_UPPER_ARM_R: Mesh = "art/grey_twin_a_upper_arm_r.bin"
+embed ASSET_GREY_TWIN_A_FOREARM_R: Mesh = "art/grey_twin_a_forearm_r.bin"
+embed ASSET_GREY_TWIN_A_HAND_R: Mesh = "art/grey_twin_a_hand_r.bin"
+embed ASSET_GREY_TWIN_A_PAULDRON_L: Mesh = "art/grey_twin_a_pauldron_l.bin"
+embed ASSET_GREY_TWIN_A_UPPER_ARM_L: Mesh = "art/grey_twin_a_upper_arm_l.bin"
+embed ASSET_GREY_TWIN_A_FOREARM_L: Mesh = "art/grey_twin_a_forearm_l.bin"
+embed ASSET_GREY_TWIN_A_HAND_L: Mesh = "art/grey_twin_a_hand_l.bin"
+embed ASSET_GREY_TWIN_A_THIGH_R: Mesh = "art/grey_twin_a_thigh_r.bin"
+embed ASSET_GREY_TWIN_A_SHIN_R: Mesh = "art/grey_twin_a_shin_r.bin"
+embed ASSET_GREY_TWIN_A_FOOT_R: Mesh = "art/grey_twin_a_foot_r.bin"
+embed ASSET_GREY_TWIN_A_THIGH_L: Mesh = "art/grey_twin_a_thigh_l.bin"
+embed ASSET_GREY_TWIN_A_SHIN_L: Mesh = "art/grey_twin_a_shin_l.bin"
+embed ASSET_GREY_TWIN_A_FOOT_L: Mesh = "art/grey_twin_a_foot_l.bin"
+embed ASSET_GREY_TWIN_B_PELVIS: Mesh = "art/grey_twin_b_pelvis.bin"
+embed ASSET_GREY_TWIN_B_TORSO: Mesh = "art/grey_twin_b_torso.bin"
+const ASSET_GREY_TWIN_B_TORSO_EMISSIVE = 561
+const ASSET_GREY_TWIN_B_TORSO_EMISSIVE_COUNT = 1
+embed ASSET_GREY_TWIN_B_HEAD: Mesh = "art/grey_twin_b_head.bin"
+const ASSET_GREY_TWIN_B_HEAD_EMISSIVE = 577
+const ASSET_GREY_TWIN_B_HEAD_EMISSIVE_COUNT = 1
+embed ASSET_GREY_TWIN_B_PAULDRON_R: Mesh = "art/grey_twin_b_pauldron_r.bin"
+embed ASSET_GREY_TWIN_B_UPPER_ARM_R: Mesh = "art/grey_twin_b_upper_arm_r.bin"
+embed ASSET_GREY_TWIN_B_FOREARM_R: Mesh = "art/grey_twin_b_forearm_r.bin"
+embed ASSET_GREY_TWIN_B_HAND_R: Mesh = "art/grey_twin_b_hand_r.bin"
+embed ASSET_GREY_TWIN_B_PAULDRON_L: Mesh = "art/grey_twin_b_pauldron_l.bin"
+embed ASSET_GREY_TWIN_B_UPPER_ARM_L: Mesh = "art/grey_twin_b_upper_arm_l.bin"
+embed ASSET_GREY_TWIN_B_FOREARM_L: Mesh = "art/grey_twin_b_forearm_l.bin"
+embed ASSET_GREY_TWIN_B_HAND_L: Mesh = "art/grey_twin_b_hand_l.bin"
+embed ASSET_GREY_TWIN_B_THIGH_R: Mesh = "art/grey_twin_b_thigh_r.bin"
+embed ASSET_GREY_TWIN_B_SHIN_R: Mesh = "art/grey_twin_b_shin_r.bin"
+embed ASSET_GREY_TWIN_B_FOOT_R: Mesh = "art/grey_twin_b_foot_r.bin"
+embed ASSET_GREY_TWIN_B_THIGH_L: Mesh = "art/grey_twin_b_thigh_l.bin"
+embed ASSET_GREY_TWIN_B_SHIN_L: Mesh = "art/grey_twin_b_shin_l.bin"
+embed ASSET_GREY_TWIN_B_FOOT_L: Mesh = "art/grey_twin_b_foot_l.bin"
 embed MX_PACK_TEX0: u8 = "art/mx_pack.slot0.tex"
 embed MX_PACK_TEXPAL: u16 = "art/mx_pack.tpal"
 embed MX_PACK_PALETTE: u16 = "art/mx_pack.pal"
@@ -202,8 +334,8 @@ embed MX_PACK_SWATCH: u8 = "art/mx_pack.swatch"
 
 // Copies the textures, the swatch and the palettes into VRAM.
 fn mx_pack_load() {
-    memcpy((VRAM_TEXTURES + 0 * TEXTURE_SLOT_SIZE + 0) as *u8, MX_PACK_TEX0, 22656)
-    load_palette(368, &MX_PACK_TEXPAL[0], 80)
+    memcpy((VRAM_TEXTURES + 0 * TEXTURE_SLOT_SIZE + 0) as *u8, MX_PACK_TEX0, 30848)
+    load_palette(592, &MX_PACK_TEXPAL[0], 112)
     memcpy((VRAM_TEXTURES + 0 * TEXTURE_SLOT_SIZE) as *u8, MX_PACK_SWATCH, 8)
     load_palette(0, &MX_PACK_PALETTE[0], 16)
     load_palette(16, &MX_PACK_PALETTE[16], 16)
@@ -228,7 +360,237 @@ fn mx_pack_load() {
     load_palette(320, &MX_PACK_PALETTE[320], 16)
     load_palette(336, &MX_PACK_PALETTE[336], 16)
     load_palette(352, &MX_PACK_PALETTE[352], 16)
+    load_palette(368, &MX_PACK_PALETTE[368], 16)
+    load_palette(384, &MX_PACK_PALETTE[384], 16)
+    load_palette(400, &MX_PACK_PALETTE[400], 16)
+    load_palette(416, &MX_PACK_PALETTE[416], 16)
+    load_palette(432, &MX_PACK_PALETTE[432], 16)
+    load_palette(448, &MX_PACK_PALETTE[448], 16)
+    load_palette(464, &MX_PACK_PALETTE[464], 16)
+    load_palette(480, &MX_PACK_PALETTE[480], 16)
+    load_palette(496, &MX_PACK_PALETTE[496], 16)
+    load_palette(512, &MX_PACK_PALETTE[512], 16)
+    load_palette(528, &MX_PACK_PALETTE[528], 16)
+    load_palette(544, &MX_PACK_PALETTE[544], 16)
+    load_palette(560, &MX_PACK_PALETTE[560], 16)
+    load_palette(576, &MX_PACK_PALETTE[576], 16)
 }
+
+// The UAPC's test units (mx-ladder): each part of shadow, beam, tank, twins, twin_a, twin_b and
+// its grey copy (GREY_BODIES in the generator); anim.akr draws a fighter grey through these.
+const GREY_N = 104
+const GREY_FROM: [104]*Mesh = [
+    ASSET_SHADOW_PELVIS,
+    ASSET_SHADOW_TORSO,
+    ASSET_SHADOW_HEAD,
+    ASSET_SHADOW_PAULDRON_R,
+    ASSET_SHADOW_UPPER_ARM_R,
+    ASSET_SHADOW_FOREARM_R,
+    ASSET_SHADOW_HAND_R,
+    ASSET_SHADOW_CLAW,
+    ASSET_SHADOW_PAULDRON_L,
+    ASSET_SHADOW_UPPER_ARM_L,
+    ASSET_SHADOW_FOREARM_L,
+    ASSET_SHADOW_HAND_L,
+    ASSET_SHADOW_THIGH_R,
+    ASSET_SHADOW_SHIN_R,
+    ASSET_SHADOW_FOOT_R,
+    ASSET_SHADOW_THIGH_L,
+    ASSET_SHADOW_SHIN_L,
+    ASSET_SHADOW_FOOT_L,
+    ASSET_BEAM_PELVIS,
+    ASSET_BEAM_TORSO,
+    ASSET_BEAM_HEAD,
+    ASSET_BEAM_PAULDRON_R,
+    ASSET_BEAM_UPPER_ARM_R,
+    ASSET_BEAM_FOREARM_R,
+    ASSET_BEAM_HAND_R,
+    ASSET_BEAM_CANNON,
+    ASSET_BEAM_PAULDRON_L,
+    ASSET_BEAM_UPPER_ARM_L,
+    ASSET_BEAM_FOREARM_L,
+    ASSET_BEAM_HAND_L,
+    ASSET_BEAM_THIGH_R,
+    ASSET_BEAM_SHIN_R,
+    ASSET_BEAM_FOOT_R,
+    ASSET_BEAM_THIGH_L,
+    ASSET_BEAM_SHIN_L,
+    ASSET_BEAM_FOOT_L,
+    ASSET_TANK_PELVIS,
+    ASSET_TANK_TORSO,
+    ASSET_TANK_HEAD,
+    ASSET_TANK_PAULDRON_R,
+    ASSET_TANK_UPPER_ARM_R,
+    ASSET_TANK_FOREARM_R,
+    ASSET_TANK_HAND_R,
+    ASSET_TANK_PAULDRON_L,
+    ASSET_TANK_UPPER_ARM_L,
+    ASSET_TANK_FOREARM_L,
+    ASSET_TANK_HAND_L,
+    ASSET_TANK_THIGH_R,
+    ASSET_TANK_SHIN_R,
+    ASSET_TANK_FOOT_R,
+    ASSET_TANK_THIGH_L,
+    ASSET_TANK_SHIN_L,
+    ASSET_TANK_FOOT_L,
+    ASSET_TWINS_PELVIS,
+    ASSET_TWINS_TORSO,
+    ASSET_TWINS_HEAD,
+    ASSET_TWINS_PAULDRON_R,
+    ASSET_TWINS_UPPER_ARM_R,
+    ASSET_TWINS_FOREARM_R,
+    ASSET_TWINS_HAND_R,
+    ASSET_TWINS_PAULDRON_L,
+    ASSET_TWINS_UPPER_ARM_L,
+    ASSET_TWINS_FOREARM_L,
+    ASSET_TWINS_HAND_L,
+    ASSET_TWINS_THIGH_R,
+    ASSET_TWINS_SHIN_R,
+    ASSET_TWINS_FOOT_R,
+    ASSET_TWINS_THIGH_L,
+    ASSET_TWINS_SHIN_L,
+    ASSET_TWINS_FOOT_L,
+    ASSET_TWIN_A_PELVIS,
+    ASSET_TWIN_A_TORSO,
+    ASSET_TWIN_A_HEAD,
+    ASSET_TWIN_A_PAULDRON_R,
+    ASSET_TWIN_A_UPPER_ARM_R,
+    ASSET_TWIN_A_FOREARM_R,
+    ASSET_TWIN_A_HAND_R,
+    ASSET_TWIN_A_PAULDRON_L,
+    ASSET_TWIN_A_UPPER_ARM_L,
+    ASSET_TWIN_A_FOREARM_L,
+    ASSET_TWIN_A_HAND_L,
+    ASSET_TWIN_A_THIGH_R,
+    ASSET_TWIN_A_SHIN_R,
+    ASSET_TWIN_A_FOOT_R,
+    ASSET_TWIN_A_THIGH_L,
+    ASSET_TWIN_A_SHIN_L,
+    ASSET_TWIN_A_FOOT_L,
+    ASSET_TWIN_B_PELVIS,
+    ASSET_TWIN_B_TORSO,
+    ASSET_TWIN_B_HEAD,
+    ASSET_TWIN_B_PAULDRON_R,
+    ASSET_TWIN_B_UPPER_ARM_R,
+    ASSET_TWIN_B_FOREARM_R,
+    ASSET_TWIN_B_HAND_R,
+    ASSET_TWIN_B_PAULDRON_L,
+    ASSET_TWIN_B_UPPER_ARM_L,
+    ASSET_TWIN_B_FOREARM_L,
+    ASSET_TWIN_B_HAND_L,
+    ASSET_TWIN_B_THIGH_R,
+    ASSET_TWIN_B_SHIN_R,
+    ASSET_TWIN_B_FOOT_R,
+    ASSET_TWIN_B_THIGH_L,
+    ASSET_TWIN_B_SHIN_L,
+    ASSET_TWIN_B_FOOT_L,
+]
+const GREY_TO: [104]*Mesh = [
+    ASSET_GREY_SHADOW_PELVIS,
+    ASSET_GREY_SHADOW_TORSO,
+    ASSET_GREY_SHADOW_HEAD,
+    ASSET_GREY_SHADOW_PAULDRON_R,
+    ASSET_GREY_SHADOW_UPPER_ARM_R,
+    ASSET_GREY_SHADOW_FOREARM_R,
+    ASSET_GREY_SHADOW_HAND_R,
+    ASSET_GREY_SHADOW_CLAW,
+    ASSET_GREY_SHADOW_PAULDRON_L,
+    ASSET_GREY_SHADOW_UPPER_ARM_L,
+    ASSET_GREY_SHADOW_FOREARM_L,
+    ASSET_GREY_SHADOW_HAND_L,
+    ASSET_GREY_SHADOW_THIGH_R,
+    ASSET_GREY_SHADOW_SHIN_R,
+    ASSET_GREY_SHADOW_FOOT_R,
+    ASSET_GREY_SHADOW_THIGH_L,
+    ASSET_GREY_SHADOW_SHIN_L,
+    ASSET_GREY_SHADOW_FOOT_L,
+    ASSET_GREY_BEAM_PELVIS,
+    ASSET_GREY_BEAM_TORSO,
+    ASSET_GREY_BEAM_HEAD,
+    ASSET_GREY_BEAM_PAULDRON_R,
+    ASSET_GREY_BEAM_UPPER_ARM_R,
+    ASSET_GREY_BEAM_FOREARM_R,
+    ASSET_GREY_BEAM_HAND_R,
+    ASSET_GREY_BEAM_CANNON,
+    ASSET_GREY_BEAM_PAULDRON_L,
+    ASSET_GREY_BEAM_UPPER_ARM_L,
+    ASSET_GREY_BEAM_FOREARM_L,
+    ASSET_GREY_BEAM_HAND_L,
+    ASSET_GREY_BEAM_THIGH_R,
+    ASSET_GREY_BEAM_SHIN_R,
+    ASSET_GREY_BEAM_FOOT_R,
+    ASSET_GREY_BEAM_THIGH_L,
+    ASSET_GREY_BEAM_SHIN_L,
+    ASSET_GREY_BEAM_FOOT_L,
+    ASSET_GREY_TANK_PELVIS,
+    ASSET_GREY_TANK_TORSO,
+    ASSET_GREY_TANK_HEAD,
+    ASSET_GREY_TANK_PAULDRON_R,
+    ASSET_GREY_TANK_UPPER_ARM_R,
+    ASSET_GREY_TANK_FOREARM_R,
+    ASSET_GREY_TANK_HAND_R,
+    ASSET_GREY_TANK_PAULDRON_L,
+    ASSET_GREY_TANK_UPPER_ARM_L,
+    ASSET_GREY_TANK_FOREARM_L,
+    ASSET_GREY_TANK_HAND_L,
+    ASSET_GREY_TANK_THIGH_R,
+    ASSET_GREY_TANK_SHIN_R,
+    ASSET_GREY_TANK_FOOT_R,
+    ASSET_GREY_TANK_THIGH_L,
+    ASSET_GREY_TANK_SHIN_L,
+    ASSET_GREY_TANK_FOOT_L,
+    ASSET_GREY_TWINS_PELVIS,
+    ASSET_GREY_TWINS_TORSO,
+    ASSET_GREY_TWINS_HEAD,
+    ASSET_GREY_TWINS_PAULDRON_R,
+    ASSET_GREY_TWINS_UPPER_ARM_R,
+    ASSET_GREY_TWINS_FOREARM_R,
+    ASSET_GREY_TWINS_HAND_R,
+    ASSET_GREY_TWINS_PAULDRON_L,
+    ASSET_GREY_TWINS_UPPER_ARM_L,
+    ASSET_GREY_TWINS_FOREARM_L,
+    ASSET_GREY_TWINS_HAND_L,
+    ASSET_GREY_TWINS_THIGH_R,
+    ASSET_GREY_TWINS_SHIN_R,
+    ASSET_GREY_TWINS_FOOT_R,
+    ASSET_GREY_TWINS_THIGH_L,
+    ASSET_GREY_TWINS_SHIN_L,
+    ASSET_GREY_TWINS_FOOT_L,
+    ASSET_GREY_TWIN_A_PELVIS,
+    ASSET_GREY_TWIN_A_TORSO,
+    ASSET_GREY_TWIN_A_HEAD,
+    ASSET_GREY_TWIN_A_PAULDRON_R,
+    ASSET_GREY_TWIN_A_UPPER_ARM_R,
+    ASSET_GREY_TWIN_A_FOREARM_R,
+    ASSET_GREY_TWIN_A_HAND_R,
+    ASSET_GREY_TWIN_A_PAULDRON_L,
+    ASSET_GREY_TWIN_A_UPPER_ARM_L,
+    ASSET_GREY_TWIN_A_FOREARM_L,
+    ASSET_GREY_TWIN_A_HAND_L,
+    ASSET_GREY_TWIN_A_THIGH_R,
+    ASSET_GREY_TWIN_A_SHIN_R,
+    ASSET_GREY_TWIN_A_FOOT_R,
+    ASSET_GREY_TWIN_A_THIGH_L,
+    ASSET_GREY_TWIN_A_SHIN_L,
+    ASSET_GREY_TWIN_A_FOOT_L,
+    ASSET_GREY_TWIN_B_PELVIS,
+    ASSET_GREY_TWIN_B_TORSO,
+    ASSET_GREY_TWIN_B_HEAD,
+    ASSET_GREY_TWIN_B_PAULDRON_R,
+    ASSET_GREY_TWIN_B_UPPER_ARM_R,
+    ASSET_GREY_TWIN_B_FOREARM_R,
+    ASSET_GREY_TWIN_B_HAND_R,
+    ASSET_GREY_TWIN_B_PAULDRON_L,
+    ASSET_GREY_TWIN_B_UPPER_ARM_L,
+    ASSET_GREY_TWIN_B_FOREARM_L,
+    ASSET_GREY_TWIN_B_HAND_L,
+    ASSET_GREY_TWIN_B_THIGH_R,
+    ASSET_GREY_TWIN_B_SHIN_R,
+    ASSET_GREY_TWIN_B_FOOT_R,
+    ASSET_GREY_TWIN_B_THIGH_L,
+    ASSET_GREY_TWIN_B_SHIN_L,
+    ASSET_GREY_TWIN_B_FOOT_L,
+]
 
 fn assets_load() {
     mx_pack_load()

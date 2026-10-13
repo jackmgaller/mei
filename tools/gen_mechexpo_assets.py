@@ -42,6 +42,74 @@ FOREIGN = ('stage_', 'ui_', 'fx_')  # art/stage_* and art/ui_* are D's, art/fx_*
 MECH_LIMIT = 1800           # README: a mech about 1,600-1,800 triangles
 PROP_LIMIT = {'wall': 300, 'banner': 260}
 
+# The UAPC's test units (the arcade's final for a mech with no echo yet, mx-ladder): each of these
+# bodies' parts again, the same geometry in the UAPC's plain grey (grey_recipe() below), packed
+# after everything else as GREY_<PART> (ASSET_GREY_SHADOW_TORSO ...). assets.akr lists them in
+# GREY_FROM / GREY_TO, which anim.akr turns into a grey mesh table. The Hero and the Double-blade
+# Hero have each other as their finals and need none.
+GREY_BODIES = ('shadow', 'beam', 'tank', 'twins', 'twin_a', 'twin_b')
+GREY_DARK = (0x26, 0x29, 0x2f)      # a neutral colour of luminance 0 (gunmetal)
+GREY_LIGHT = (0xe4, 0xe7, 0xeb)     # and of luminance 1 (white primer)
+GREY_PAINT = ((0x86, 0x8d, 0x97), (0xc2, 0xc8, 0xcf))   # a maker's colour: the UAPC's paint, by luminance
+GREY_GLOW = '#9fd6ff'               # the emissive glows: the UAPC's pale blue
+
+
+def grey_colour(c):
+    """A material colour (#rrggbb) in the test unit's grey: a maker's saturated colour becomes the
+    UAPC's grey paint (lighter for a lighter colour), a neutral one keeps its lightness on a
+    gunmetal-to-primer ramp, with a cool cast."""
+    r, g, b = (int(c[i:i + 2], 16) / 255.0 for i in (1, 3, 5))
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
+    mx, mn = max(r, g, b), min(r, g, b)
+    sat = (mx - mn) / mx if mx > 0 else 0.0
+    if sat > 0.25 and mx > 0.3:
+        lo, hi = GREY_PAINT
+        t = min(max((lum - 0.25) / 0.6, 0.0), 1.0)
+    else:
+        lo, hi = GREY_DARK, GREY_LIGHT
+        t = lum ** 0.9
+    return '#%02x%02x%02x' % tuple(round(lo[i] + (hi[i] - lo[i]) * t) for i in range(3))
+
+
+def grey_recipe(path):
+    """Part recipe `path` as the test unit's: named grey_NAME, every colour through grey_colour()
+    (textures' colours too), the emissive glows GREY_GLOW."""
+    r = json.loads(path.read_text())
+    r['name'] = 'grey_' + r['name']
+    for m in r.get('materials', {}).values():
+        if m.get('class') == 'emissive':
+            m['color'] = GREY_GLOW
+            continue
+        if 'color' in m:
+            m['color'] = grey_colour(m['color'])
+        tex = m.get('texture')
+        if isinstance(tex, dict) and 'colors' in tex:
+            tex['colors'] = [grey_colour(c) for c in tex['colors']]
+    return r
+
+
+def grey_recipes(rigs, out):
+    """Writes the test units' part recipes into `out`; returns [(model, path)] to pack and
+    [(asset, grey asset)] (ASSET_ names)."""
+    found, pairs = [], []
+    out.mkdir(parents=True, exist_ok=True)
+    for model in GREY_BODIES:
+        rig = rigs.get(model)
+        if not rig:
+            continue
+        seen = []
+        for part in rig['parts']:
+            p = CART/'models'/model/part['recipe']
+            if p in seen:
+                continue
+            seen.append(p)
+            g = grey_recipe(p)
+            q = out/f'{g["name"]}.asset.json'
+            q.write_text(json.dumps(g, indent=1))
+            found.append((model, q))
+            pairs.append((part['asset'], 'ASSET_' + g['name'].upper()))
+    return found, pairs
+
 
 def rig_of(folder):
     p = folder/f'{folder.name}.rig.json'
@@ -88,7 +156,8 @@ def run_pack(found, work, skipped):
         if bad is None:
             sys.exit('mei_assets.py pack failed:\n'+json.dumps(result, indent=2))
         _, path = found.pop(bad)
-        skipped.append(f'{path.relative_to(CART)}: {errors[0].get("message", "")[:240]}')
+        name = path.relative_to(CART) if path.is_relative_to(CART) else path.name
+        skipped.append(f'{name}: {errors[0].get("message", "")[:240]}')
     return None
 
 
@@ -167,8 +236,13 @@ def probe(build, manifest, rigs):
         views.append((f'{mech}_rest', side, draw_mech(rig, names)))
         if 'guard' in rig.get('poses', {}):
             views.append((f'{mech}_guard', side, draw_mech(rig, names, 'guard')))
+    for mech in GREY_BODIES:          # the test units, in their guard poses
+        rig = rigs.get(mech)
+        if rig and 'guard' in rig.get('poses', {}):
+            grey = dict(rig, parts=[dict(p, asset='ASSET_GREY_' + p['asset'][6:]) for p in rig['parts']])
+            views.append((f'grey_{mech}_guard', side, draw_mech(grey, names, 'guard')))
     props = [a['name'] for a in manifest['assets']
-             if not any(a['name'].startswith(m+'_') for m in rigs)]
+             if not any(a['name'].startswith(m+'_') or a['name'].startswith('grey_'+m+'_') for m in rigs)]
     for n in props:
         views.append((n, 'camera_look(vec3(-24.0, 9.0, -30.0), 0.65, -0.05)',
                       [f'        mesh_at(ASSET_{n.upper()}, vec3(0.0, 0.0, 0.0), 0.0)']))
@@ -229,7 +303,10 @@ def main():
     found, rigs = recipes()
     skipped, warnings = [], []
     work = Path(tempfile.mkdtemp(prefix='mechexpo-pack-'))
+    grey_dir = Path(tempfile.mkdtemp(prefix='mechexpo-grey-'))
     try:
+        grey_found, grey_pairs = grey_recipes(rigs, grey_dir)
+        found += grey_found
         manifest = run_pack(found, work, skipped) if found else None
 
         lines = [HEADER,
@@ -243,6 +320,16 @@ def main():
                 lines.append(re.sub(r'^(embed [^=]*= ")([^"]+)"', r'\1art/\2"', line))
         else:
             lines.append('// No recipes yet.')
+        if manifest:
+            names = {'ASSET_' + a['name'].upper() for a in manifest['assets']}
+            grey = [(a, g) for a, g in grey_pairs if a in names and g in names]
+            lines += ['', '// The UAPC\'s test units (mx-ladder): each part of ' + ', '.join(GREY_BODIES) + ' and',
+                      '// its grey copy (GREY_BODIES in the generator); anim.akr draws a fighter grey through these.',
+                      f'const GREY_N = {len(grey)}',
+                      f'const GREY_FROM: [{max(len(grey), 1)}]*Mesh = [',
+                      *([f'    {a},' for a, _ in grey] or ['    null,']), ']',
+                      f'const GREY_TO: [{max(len(grey), 1)}]*Mesh = [',
+                      *([f'    {g},' for _, g in grey] or ['    null,']), ']']
         lines += ['', 'fn assets_load() {']
         if manifest:
             lines.append(f'    {PACK_NAME}_load()')
@@ -265,7 +352,7 @@ def main():
                 print(f'{flag}{mech+" (drawn, all parts)":28} {total:5}  ({MECH_LIMIT})')
             for a in manifest['assets']:
                 kind = next((k for k in PROP_LIMIT if k in a['name']), None)
-                if kind and not any(a['name'].startswith(m+'_') for m in rigs) \
+                if kind and not any(a['name'].startswith(m+'_') or a['name'].startswith('grey_'+m+'_') for m in rigs) \
                         and a['triangles'] > PROP_LIMIT[kind]:
                     warnings.append(f'{a["name"]}: {a["triangles"]} triangles, over {PROP_LIMIT[kind]}')
             tex = manifest.get('textures') or {}
@@ -306,6 +393,7 @@ def main():
             probe(check, manifest, rigs)
     finally:
         shutil.rmtree(work, ignore_errors=True)
+        shutil.rmtree(grey_dir, ignore_errors=True)
 
 
 if __name__ == '__main__':
