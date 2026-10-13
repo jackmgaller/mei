@@ -5,55 +5,20 @@
   "base": "../hero/jump.anim.json",
   "rig": "../../models/twins/twins.rig.json",
   "keys": [
-    {
-      "at": 3,
-      "pose": {
-        "pelvis": [-10, -8, 0],
-        "torso": [-10, -14, 0],
-        "head": [14, 12, 0],
-        "upper_arm_r": [30, 0, -16],
-        "forearm_r": [84, 0, 4],
-        "hand_r": [-16, 0, 0],
-        "upper_arm_l": [30, 0, 20],
-        "forearm_l": [96, 0, -6]
-      },
-      "offset": [-0.2, -1.65]
-    },
-    {
-      "at": 6,
-      "pose": {
-        "upper_arm_r": [40, 0, -16],
-        "forearm_r": [70, 0, 4],
-        "hand_r": [-16, 0, 0],
-        "upper_arm_l": [50, 0, 24],
-        "forearm_l": [76, 0, -6]
-      }
-    },
-    {
-      "at": 16,
-      "pose": {
-        "thigh_r": [66, 0, -7],
-        "shin_r": [-104, 0, 0],
-        "upper_arm_r": [40, 0, -16],
-        "forearm_r": [76, 0, 4],
-        "hand_r": [-16, 0, 0],
-        "upper_arm_l": [44, 0, 20],
-        "forearm_l": [88, 0, -6]
-      }
-    },
-    {
-      "at": 27,
-      "pose": {"thigh_r": [62, 0, -7], "shin_r": [-98, 0, 0], "upper_arm_r": [38, 0, -16]}
-    },
-    {
-      "at": 37,
-      "pose": {
-        "upper_arm_r": [32, 0, -16],
-        "forearm_r": [74, 0, 4],
-        "hand_r": [-16, 0, 0],
-        "upper_arm_l": [40, 0, 20],
-        "forearm_l": [88, 0, -6]
-      }
-    }
+    {"at": 3, "offset": [-0.2, -1.65],
+     "pose": {"pelvis": [-10, -8, 0], "torso": [-10, -14, 0], "head": [14, 12, 0],
+              "upper_arm_r": [30, 0, -16], "forearm_r": [84, 0, 4], "hand_r": [-16, 0, 0],
+              "upper_arm_l": [30, 0, 20], "forearm_l": [96, 0, -6]}},
+    {"at": 6,
+     "pose": {"upper_arm_r": [40, 0, -16], "forearm_r": [70, 0, 4], "hand_r": [-16, 0, 0],
+              "upper_arm_l": [50, 0, 24], "forearm_l": [76, 0, -6]}},
+    {"at": 16,
+     "pose": {"thigh_r": [66, 0, -7], "shin_r": [-104, 0, 0], "upper_arm_r": [40, 0, -16],
+              "forearm_r": [76, 0, 4], "hand_r": [-16, 0, 0], "upper_arm_l": [44, 0, 20],
+              "forearm_l": [88, 0, -6]}},
+    {"at": 27, "pose": {"thigh_r": [62, 0, -7], "shin_r": [-98, 0, 0], "upper_arm_r": [38, 0, -16]}},
+    {"at": 37,
+     "pose": {"upper_arm_r": [32, 0, -16], "forearm_r": [74, 0, 4], "hand_r": [-16, 0, 0],
+              "upper_arm_l": [40, 0, 20], "forearm_l": [88, 0, -6]}}
   ]
 }

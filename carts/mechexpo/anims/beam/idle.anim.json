@@ -7,22 +7,10 @@
   "loop": true,
   "keys": [
     {"at": 0, "from": "guard", "ease": "ease"},
-    {
-      "at": 30,
-      "ease": "ease",
-      "offset": [0.0, -0.62],
-      "pose": {
-        "pelvis": [0, -6, 0],
-        "torso": [-1, -7, 0],
-        "head": [1, 11, 0],
-        "upper_arm_r": [2, 0, -10],
-        "forearm_r": [85, 0, 8],
-        "hand_r": [0, 0, 0],
-        "upper_arm_l": [20, 0, 12],
-        "forearm_l": [90, 0, -24],
-        "pauldron_l": [6.7, 0, 6.0]
-      }
-    }
+    {"at": 30, "ease": "ease", "offset": [0.0, -0.62],
+     "pose": {"pelvis": [0, -6, 0], "torso": [-1, -7, 0], "head": [1, 11, 0],
+              "upper_arm_r": [2, 0, -10], "forearm_r": [85, 0, 8], "hand_r": [0, 0, 0],
+              "upper_arm_l": [20, 0, 12], "forearm_l": [90, 0, -24], "pauldron_l": [6.7, 0, 6.0]}}
   ],
   "plant": {"foot_r": [[0, 59]], "foot_l": [[0, 59]]}
 }

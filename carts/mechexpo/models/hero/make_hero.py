@@ -703,7 +703,13 @@ def part_facts(recipe_data):
                        'max': [round(c, 4) for c in rep['bounds']['max']]}}
 
 
-def write_rig(folder, name, stance, drop, weapons, part_recipes):
+# Pairs of parts every move may pass into each other (the Animation Kit's verify; a move's "allow"
+# adds its own): a bent wrist puts the weapon's grip and guard into the forearm's cuff, and a
+# raised knee takes the thigh's top up under the torso's skirt.
+ALLOW = [['forearm_r', 'weapon_r'], ['forearm_l', 'weapon_l'], ['torso', 'thigh_r'], ['torso', 'thigh_l']]
+
+
+def write_rig(folder, name, stance, drop, weapons, part_recipes, allow=ALLOW):
     """NAME.rig.json: the skeleton (README, "Rig (B) -> Animation Kit (A)")."""
     parts = []
     for jid, parent, offset, rest, part, side in skeleton(weapons):
@@ -737,6 +743,9 @@ def write_rig(folder, name, stance, drop, weapons, part_recipes):
         'mounts': mounts,
         'poses': {'guard': {'drop': round(drop, 4), 'rotate': st,
                             'note': 'the fighting stance the sketch was built in: both soles on y = 0'}},
+        'allow': allow,
+        'allow_note': 'pairs of parts every move may pass into each other (a move\'s "allow" adds more): '
+                      'the weapon\'s grip in the forearm\'s cuff, a raised thigh under the torso\'s skirt',
         'triangles': sum(p['triangles'] for p in parts),
     }
     write(folder/f'{name}.rig.json', rig)

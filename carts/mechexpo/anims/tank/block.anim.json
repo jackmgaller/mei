@@ -4,18 +4,14 @@
   "note": "Block: 4 frames to raise the guard, then the last frame is held (the fight shakes it in blockstun). Tank blocks with its arms: both forearms come up crossed in front of the cab head and the chest, the cooling packs outward, the hull settles back on its struts and the torso hunches down behind the arms, the head tucked.",
   "base": "_body.anim.json",
   "length": 4,
-  "allow": [["pauldron_l", "forearm_l"]],
   "keys": [
     {"at": 0, "from": "guard", "ease": "out"},
-    {
-      "at": 3,
-      "pose": {
-        "pelvis": [2, -2, 0], "thigh_r": [-2, 0, 0], "thigh_l": [-2, 0, 0],
-        "torso": [-12, -8, 0], "head": [10, 4, 0],
-        "upper_arm_r": [80, 0, 4], "forearm_r": [96, 0, 0], "hand_r": [0, 0, 0],
-        "upper_arm_l": [74, 0, -2], "forearm_l": [100, 0, 0], "hand_l": [0, 0, 0],
-        "pauldron_r": [14, 0, 2], "pauldron_l": [12, 0, -1]
-      }
-    }
-  ]
+    {"at": 3,
+     "pose": {"pelvis": [2, -2, 0], "thigh_r": [-2, 0, 0], "thigh_l": [-2, 0, 0],
+              "torso": [-12, -8, 0], "head": [10, 4, 0], "upper_arm_r": [80, 0, 4],
+              "forearm_r": [96, 0, 0], "hand_r": [0, 0, 0], "upper_arm_l": [74, 0, -2],
+              "forearm_l": [100, 0, 0], "hand_l": [0, 0, 0], "pauldron_r": [14, 0, 2],
+              "pauldron_l": [12, 0, -1]}}
+  ],
+  "allow": [["pauldron_l", "forearm_l"]]
 }

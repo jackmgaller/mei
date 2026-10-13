@@ -5,73 +5,38 @@
   "base": "_body.anim.json",
   "length": 32,
   "loop": true,
-  "marks": {"step": [0, 16]},
   "keys": [
-    {
-      "at": 0,
-      "ease": "out",
-      "offset": [-0.1, -0.55],
-      "pose": {
-        "pelvis": [2, -4, -5],
-        "torso": [12, -10, 5],
-        "head": [-12, 8, -3],
-        "upper_arm_r": [30, 0, -20], "forearm_r": [74, 0, 2], "hand_r": [-14, 0, 0],
-        "upper_arm_l": [30, 0, 20], "forearm_l": [84, 0, -2], "hand_l": [-14, 0, 0],
-        "pauldron_r": [10.5, 0, -10], "pauldron_l": [10.5, 0, 10]
-      },
-      "reach": {"foot_r": [-0.7, 0.0], "foot_l": [0.58, 0.0]}
-    },
+    {"at": 0, "ease": "out", "offset": [-0.1, -0.55],
+     "pose": {"pelvis": [2, -4, -5], "torso": [12, -10, 5], "head": [-12, 8, -3],
+              "upper_arm_r": [30, 0, -20], "forearm_r": [74, 0, 2], "hand_r": [-14, 0, 0],
+              "upper_arm_l": [30, 0, 20], "forearm_l": [84, 0, -2], "hand_l": [-14, 0, 0],
+              "pauldron_r": [10.5, 0, -10], "pauldron_l": [10.5, 0, 10]},
+     "reach": {"foot_r": [-0.7, 0.0], "foot_l": [0.58, 0.0]}},
     {"at": 1, "ease": "linear", "reach": {"foot_r": [-0.62, 0.0], "foot_l": [0.66, 0.0]}},
     {"at": 3, "ease": "linear", "reach": {"foot_l": [0.55, 0.25]}},
     {"at": 7, "ease": "linear", "reach": {"foot_l": [0.0, 0.42]}},
-    {
-      "at": 8,
-      "ease": "in",
-      "offset": [-0.1, -0.32],
-      "pose": {
-        "pelvis": [1, -6, -1],
-        "torso": [11, -10, 1],
-        "head": [-11, 8, -1],
-        "upper_arm_r": [29, 0, -20], "forearm_r": [72, 0, 2],
-        "upper_arm_l": [31, 0, 20], "forearm_l": [80, 0, -2],
-        "pauldron_r": [10.2, 0, -10], "pauldron_l": [10.9, 0, 10]
-      }
-    },
+    {"at": 8, "ease": "in", "offset": [-0.1, -0.32],
+     "pose": {"pelvis": [1, -6, -1], "torso": [11, -10, 1], "head": [-11, 8, -1],
+              "upper_arm_r": [29, 0, -20], "forearm_r": [72, 0, 2], "upper_arm_l": [31, 0, 20],
+              "forearm_l": [80, 0, -2], "pauldron_r": [10.2, 0, -10], "pauldron_l": [10.9, 0, 10]}},
     {"at": 11, "ease": "linear", "reach": {"foot_l": [-0.5, 0.32]}},
     {"at": 14, "ease": "linear", "reach": {"foot_l": [-0.68, 0.1]}},
     {"at": 15, "ease": "linear", "reach": {"foot_l": [-0.69, 0.03]}},
-    {
-      "at": 16,
-      "ease": "out",
-      "offset": [-0.1, -0.55],
-      "pose": {
-        "pelvis": [2, -8, 5],
-        "torso": [12, -10, -5],
-        "head": [-12, 8, 3],
-        "upper_arm_r": [30, 0, -20], "forearm_r": [74, 0, 2],
-        "upper_arm_l": [30, 0, 20], "forearm_l": [84, 0, -2],
-        "pauldron_r": [10.5, 0, -10], "pauldron_l": [10.5, 0, 10]
-      },
-      "reach": {"foot_l": [-0.7, 0.0]}
-    },
+    {"at": 16, "ease": "out", "offset": [-0.1, -0.55],
+     "pose": {"pelvis": [2, -8, 5], "torso": [12, -10, -5], "head": [-12, 8, 3],
+              "upper_arm_r": [30, 0, -20], "forearm_r": [74, 0, 2], "upper_arm_l": [30, 0, 20],
+              "forearm_l": [84, 0, -2], "pauldron_r": [10.5, 0, -10], "pauldron_l": [10.5, 0, 10]},
+     "reach": {"foot_l": [-0.7, 0.0]}},
     {"at": 17, "ease": "linear", "reach": {"foot_r": [0.66, 0.0], "foot_l": [-0.62, 0.0]}},
     {"at": 19, "ease": "linear", "reach": {"foot_r": [0.55, 0.25]}},
     {"at": 23, "ease": "linear", "reach": {"foot_r": [0.0, 0.42]}},
-    {
-      "at": 24,
-      "ease": "in",
-      "offset": [-0.1, -0.32],
-      "pose": {
-        "pelvis": [1, -6, 1],
-        "torso": [11, -10, -1],
-        "head": [-11, 8, 1],
-        "upper_arm_r": [29, 0, -20], "forearm_r": [72, 0, 2],
-        "upper_arm_l": [31, 0, 20], "forearm_l": [80, 0, -2],
-        "pauldron_r": [10.2, 0, -10], "pauldron_l": [10.9, 0, 10]
-      }
-    },
+    {"at": 24, "ease": "in", "offset": [-0.1, -0.32],
+     "pose": {"pelvis": [1, -6, 1], "torso": [11, -10, -1], "head": [-11, 8, 1],
+              "upper_arm_r": [29, 0, -20], "forearm_r": [72, 0, 2], "upper_arm_l": [31, 0, 20],
+              "forearm_l": [80, 0, -2], "pauldron_r": [10.2, 0, -10], "pauldron_l": [10.9, 0, 10]}},
     {"at": 27, "ease": "linear", "reach": {"foot_r": [-0.5, 0.32]}},
     {"at": 30, "ease": "linear", "reach": {"foot_r": [-0.68, 0.1]}},
     {"at": 31, "ease": "linear", "reach": {"foot_r": [-0.69, 0.03], "foot_l": [0.5, 0.0]}}
-  ]
+  ],
+  "marks": {"step": [0, 16]}
 }

@@ -4,193 +4,26 @@
   "note": "Low Sweep (MOVES.md): the Hero's (base), quicker and shorter, with the leading blade: the step through to one knee and the flat sweep across the shins, the hips driving forward over the front knee as it cuts (active 9-12), the left blade held up behind. Knocks down.",
   "base": "../hero/atk_d.anim.json",
   "rig": "../../models/doubleblade/doubleblade.rig.json",
-  "length": 35,
-  "plant": {"foot_r": [[0, 6], [29, 34]]},
+  "retime": [[0, 0], [3, 2], [6, 5], [9, 7], [11, 9], [15, 13], [19, 17], [26, 23], [30, 27],
+             [31, 28], [33, 29], [34, 30], [38, 34]],
   "phases": {"startup": 9, "active": 4, "recovery": 22},
-  "design": {"hit": [1.8, 0.0, 6.6, 2.0], "tolerance": 0.5, "note": "MOVES.md, Low Sweep: x 1.8-6.6, y 0-2"},
-  "allow": [
-    ["torso", "thigh_r"],
-    ["torso", "thigh_l"],
-    ["forearm_r", "weapon_r"],
-    ["forearm_l", "weapon_l"],
-    ["weapon_r", "forearm_l"],
-    ["pelvis", "shin_r"],
-    ["pelvis", "shin_l"]
-  ],
+  "design": {"hit": [1.8, 0.0, 6.6, 2.0], "tolerance": 0.5,
+             "note": "MOVES.md, Low Sweep: x 1.8-6.6, y 0-2"},
+  "boxes": {"push": {"kind": "push", "rect": [-1.5, 0, 1.5, 7.5]}},
   "keys": [
-    {"at": 0, "remove": true},
-    {"at": 3, "remove": true},
     {"at": 6, "remove": true},
-    {"at": 8, "remove": true},
-    {"at": 9, "remove": true},
-    {"at": 11, "remove": true},
-    {"at": 12, "remove": true},
-    {"at": 13, "remove": true},
-    {"at": 14, "remove": true},
-    {"at": 15, "remove": true},
-    {"at": 19, "remove": true},
-    {"at": 26, "remove": true},
-    {"at": 30, "remove": true},
-    {"at": 31, "remove": true},
-    {"at": 32, "remove": true},
-    {"at": 33, "remove": true},
-    {"at": 34, "remove": true},
-    {"at": 38, "remove": true},
-    {"at": 0, "from": "guard", "ease": "in", "reach": {"foot_l": [-2.94, 0.0]}},
-    {
-      "at": 2,
-      "ease": "ease",
-      "offset": [-0.1, -1.4],
-      "reach": {"foot_l": [-1.0, 0.9]},
-      "pose": {
-        "pelvis": [-4, -4, 0],
-        "torso": [-14, -6, 0],
-        "head": [12, 8, 0],
-        "upper_arm_r": [30, 0, -18],
-        "forearm_r": [50, 0, 0],
-        "hand_r": [-20, 40, 0],
-        "upper_arm_l": [30, 0, 26],
-        "forearm_l": [70, 0, -6]
-      }
-    },
-    {
-      "at": 5,
-      "ease": "ease",
-      "offset": [-0.25, -2.1],
-      "reach": {"foot_l": [1.4, 0.0]},
-      "pose": {"pelvis": [-8, 0, 0], "torso": [-26, -8, 0]}
-    },
-    {
-      "at": 7,
-      "pose": {
-        "thigh_r": [4, 0, -5],
-        "shin_r": [-94, 0, 0],
-        "foot_r": [-46, 0, 5],
-        "pelvis": [-10, 0, 0],
-        "torso": [-34, 0, 0],
-        "head": [38, 8, 0],
-        "upper_arm_r": [48, 0, 0],
-        "forearm_r": [-6, 0, 0],
-        "hand_r": [0, 66, 0],
-        "upper_arm_l": [60, 0, 30],
-        "forearm_l": [50, 0, -6],
-        "pauldron_r": [16, 0, -10],
-        "pauldron_l": [24, 0, 10]
-      },
-      "offset": [-0.2, -2.43],
-      "ease": "in",
-      "reach": {"foot_l": [1.4, 0.0]}
-    },
-    {
-      "at": 9,
-      "ease": "linear",
-      "offset": [-0.2, -2.43],
-      "boxes": {
-        "blade": {"kind": "hit", "part": "weapon_r", "min": [-0.12, 0.4, -1.3], "max": [0.12, 3.4, 0.6], "split": 2},
-        "arm": {"kind": "hurt", "part": "weapon_r", "min": [-0.3, -0.8, -0.5], "max": [0.3, 0.6, 0.5]}
-      },
-      "pose": {
-        "pelvis": [-10, 0, 0],
-        "torso": [-34, 0, 0],
-        "head": [38, 10, 0],
-        "upper_arm_r": [48, 0, 0],
-        "forearm_r": [-4, 0, 0],
-        "hand_r": [0, 60, 0]
-      }
-    },
-    {
-      "at": 10,
-      "ease": "linear",
-      "pose": {"torso": [-34, 0, 0], "upper_arm_r": [48, 0, 0], "hand_r": [0, 28, 0]},
-      "offset": [0.5, -2.43]
-    },
-    {
-      "at": 11,
-      "ease": "linear",
-      "pose": {"torso": [-34, 0, 0], "upper_arm_r": [49, 0, 0], "hand_r": [0, -30, 0]},
-      "offset": [1.1, -2.43]
-    },
-    {
-      "at": 12,
-      "ease": "out",
-      "pose": {
-        "pelvis": [-10, 0, 0],
-        "torso": [-34, 0, 0],
-        "upper_arm_r": [50, 0, 0],
-        "hand_r": [0, -70, 0],
-        "upper_arm_l": [80, 0, 34],
-        "forearm_l": [44, 0, -6]
-      },
-      "offset": [1.15, -2.43]
-    },
-    {"at": 13, "boxes": {"blade": null}},
-    {
-      "at": 17,
-      "ease": "ease",
-      "offset": [0.6, -2.43],
-      "pose": {
-        "torso": [-30, -20, 0],
-        "upper_arm_r": [70, 0, -16],
-        "forearm_r": [30, 0, 0],
-        "hand_r": [20, -80, 0],
-        "upper_arm_l": [100, 0, 34],
-        "forearm_l": [40, 0, -6]
-      }
-    },
-    {
-      "at": 23,
-      "ease": "ease",
-      "offset": [0.3, -2.35],
-      "boxes": {"arm": null},
-      "pose": {
-        "pelvis": [-8, 2, 0],
-        "torso": [-22, -14, 0],
-        "head": [24, 12, 0],
-        "upper_arm_r": [34, 0, -14],
-        "forearm_r": [40, 0, 2],
-        "hand_r": [-20, -20, 0],
-        "upper_arm_l": [40, 0, 24],
-        "forearm_l": [74, 0, -6]
-      }
-    },
-    {
-      "at": 27,
-      "ease": "ease",
-      "offset": [0.0, -2.05],
-      "pose": {
-        "thigh_r": [4, 0, -5],
-        "shin_r": [-94, 0, 0],
-        "foot_r": [-46, 0, 5],
-        "pelvis": [-4, -4, 0],
-        "torso": [-14, -14, 0],
-        "head": [10, 12, 0]
-      }
-    },
-    {
-      "at": 28,
-      "ease": "ease",
-      "pose": {"thigh_r": [60, 0, -5], "shin_r": [-105, 0, 0], "foot_r": [50, 0, 5]},
-      "offset": [-0.25, -1.9]
-    },
-    {
-      "at": 29,
-      "ease": "ease",
-      "offset": [-0.15, -1.2],
-      "pose": {
-        "thigh_r": [32, 0, -5],
-        "shin_r": [-56.38, 0, 0],
-        "foot_r": [24.38, 0, 5],
-        "pelvis": [-2, -6, 0],
-        "torso": [-8, -16, 0],
-        "head": [0, 14, 0],
-        "upper_arm_r": [28, 0, -14],
-        "forearm_r": [42, 0, 4],
-        "hand_r": [-22, 0, 0]
-      },
-      "reach": {"foot_l": [1.4, 0.0]}
-    },
-    {"at": 30, "reach": {"foot_l": [0.0, 0.8]}},
-    {"at": 34, "from": "guard", "reach": {"foot_l": [-2.94, 0.0]}}
+    {"at": 7, "offset": [-0.2, -2.43]},
+    {"at": 9, "offset": [-0.2, -2.43],
+     "boxes": {"blade": {"kind": "hit", "part": "weapon_r", "min": [-0.12, 0.4, -1.3],
+                         "max": [0.12, 3.4, 0.6], "split": 2},
+               "arm": {"kind": "hurt", "part": "weapon_r", "min": [-0.3, -0.8, -0.5],
+                       "max": [0.3, 0.6, 0.5]}}},
+    {"at": 10, "offset": [0.5, -2.43]},
+    {"at": 11, "offset": [1.1, -2.43]},
+    {"at": 12, "offset": [1.15, -2.43]},
+    {"at": 17, "offset": [0.6, -2.43]},
+    {"at": 23, "offset": [0.3, -2.35]},
+    {"at": 27, "offset": [0.0, -2.05]}
   ],
-  "boxes": {"push": {"kind": "push", "rect": [-1.5, 0, 1.5, 7.5]}}
+  "allow": [["pelvis", "shin_r"], ["pelvis", "shin_l"]]
 }

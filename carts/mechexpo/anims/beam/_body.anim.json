@@ -5,10 +5,7 @@
   "base": "../hero/_body.anim.json",
   "rig": "../../models/beam/beam.rig.json",
   "boxes": {
-    "push": {
-      "kind": "push",
-      "rect": [-1.7, 0, 1.7, 11.5],
-      "note": "MOVES.md: 1.7 m either side of the root for Beam"
-    }
+    "push": {"kind": "push", "rect": [-1.7, 0, 1.7, 11.5],
+             "note": "MOVES.md: 1.7 m either side of the root for Beam"}
   }
 }

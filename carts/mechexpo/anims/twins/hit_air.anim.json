@@ -5,23 +5,11 @@
   "base": "../hero/hit_air.anim.json",
   "rig": "../../models/twins/twins.rig.json",
   "keys": [
-    {
-      "at": 0,
-      "pose": {"torso": [4, -14, 0], "forearm_r": [40, 0, 4], "hand_r": [-16, 0, 0]}
-    },
-    {
-      "at": 6,
-      "pose": {"torso": [6, -12, 0], "upper_arm_r": [100, 0, -10], "upper_arm_l": [70, 0, 30]}
-    },
-    {
-      "at": 29,
-      "pose": {
-        "torso": [4, -10, 0],
-        "upper_arm_r": [140, 0, 16],
-        "upper_arm_l": [120, 0, -16],
-        "forearm_r": [16, 0, 4],
-        "forearm_l": [26, 0, -6]
-      }
-    }
+    {"at": 0, "pose": {"torso": [4, -14, 0], "forearm_r": [40, 0, 4], "hand_r": [-16, 0, 0]}},
+    {"at": 6,
+     "pose": {"torso": [6, -12, 0], "upper_arm_r": [100, 0, -10], "upper_arm_l": [70, 0, 30]}},
+    {"at": 29,
+     "pose": {"torso": [4, -10, 0], "upper_arm_r": [140, 0, 16], "upper_arm_l": [120, 0, -16],
+              "forearm_r": [16, 0, 4], "forearm_l": [26, 0, -6]}}
   ]
 }

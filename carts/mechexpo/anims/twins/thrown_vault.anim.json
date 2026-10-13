@@ -8,6 +8,7 @@
     {"at": 6, "pose": {"upper_arm_r": [120, 0, 10], "upper_arm_l": [124, 0, -10]}},
     {"at": 12, "pose": {"upper_arm_r": [150, 0, 16], "upper_arm_l": [150, 0, -16]}},
     {"at": 23, "pose": {"upper_arm_r": [160, 0, 18], "upper_arm_l": [160, 0, -18]}},
-    {"at": 28, "pose": {"upper_arm_r": [140, 0, 20], "upper_arm_l": [130, 0, -20], "hand_r": [-20, 0, 0]}}
+    {"at": 28,
+     "pose": {"upper_arm_r": [140, 0, 20], "upper_arm_l": [130, 0, -20], "hand_r": [-20, 0, 0]}}
   ]
 }

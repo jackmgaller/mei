@@ -5,8 +5,11 @@
   "base": "../hero/ko.anim.json",
   "rig": "../../models/twins/twins.rig.json",
   "keys": [
-    {"at": 0, "offset": [-0.3, -1.6], "pose": {"torso": [4, -10, 0], "upper_arm_r": [140, 0, 16], "upper_arm_l": [120, 0, -16], "forearm_r": [16, 0, 4]}},
-    {"at": 3, "pose": {"upper_arm_r": [140, 0, 20], "upper_arm_l": [130, 0, -20], "hand_r": [-20, 0, 0]}},
+    {"at": 0, "offset": [-0.3, -1.6],
+     "pose": {"torso": [4, -10, 0], "upper_arm_r": [140, 0, 16], "upper_arm_l": [120, 0, -16],
+              "forearm_r": [16, 0, 4]}},
+    {"at": 3,
+     "pose": {"upper_arm_r": [140, 0, 20], "upper_arm_l": [130, 0, -20], "hand_r": [-20, 0, 0]}},
     {"at": 7, "pose": {"upper_arm_r": [130, 0, 20], "upper_arm_l": [120, 0, -20]}},
     {"at": 11, "pose": {"upper_arm_r": [142, 0, 20], "upper_arm_l": [132, 0, -20]}},
     {"at": 40, "pose": {"upper_arm_r": [142, 0, 20]}},

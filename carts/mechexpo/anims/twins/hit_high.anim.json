@@ -5,43 +5,16 @@
   "base": "../hero/hit_high.anim.json",
   "rig": "../../models/twins/twins.rig.json",
   "keys": [
-    {
-      "at": 0,
-      "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]},
-      "pose": {
-        "pelvis": [12, -14, 0],
-        "torso": [2, -10, 4],
-        "hand_r": [-16, 0, 0],
-        "forearm_r": [60, 0, 4],
-        "forearm_l": [70, 0, -6]
-      },
-      "offset": [-0.3, -0.7]
-    },
-    {
-      "at": 3,
-      "pose": {
-        "pelvis": [16, -16, 0],
-        "torso": [2, -10, 6],
-        "hand_r": [-20, 0, 0],
-        "forearm_r": [52, 0, 4],
-        "forearm_l": [62, 0, -6]
-      },
-      "offset": [-0.4, -0.78]
-    },
-    {
-      "at": 10,
-      "pose": {
-        "pelvis": [6, -11, 0],
-        "torso": [-2, -12, 2],
-        "hand_r": [-16, 0, 0],
-        "forearm_r": [64, 0, 4],
-        "forearm_l": [84, 0, -6]
-      },
-      "offset": [-0.2, -0.68]
-    },
-    {
-      "at": 19,
-      "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}
-    }
+    {"at": 0, "offset": [-0.3, -0.7],
+     "pose": {"pelvis": [12, -14, 0], "torso": [2, -10, 4], "hand_r": [-16, 0, 0],
+              "forearm_r": [60, 0, 4], "forearm_l": [70, 0, -6]},
+     "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}},
+    {"at": 3, "offset": [-0.4, -0.78],
+     "pose": {"pelvis": [16, -16, 0], "torso": [2, -10, 6], "hand_r": [-20, 0, 0],
+              "forearm_r": [52, 0, 4], "forearm_l": [62, 0, -6]}},
+    {"at": 10, "offset": [-0.2, -0.68],
+     "pose": {"pelvis": [6, -11, 0], "torso": [-2, -12, 2], "hand_r": [-16, 0, 0],
+              "forearm_r": [64, 0, 4], "forearm_l": [84, 0, -6]}},
+    {"at": 19, "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}}
   ]
 }

@@ -4,16 +4,6 @@
   "note": "Get up: the Hero's (base), on the Double-blade Hero's rig, rising into its own lower guard.",
   "base": "../hero/getup.anim.json",
   "rig": "../../models/doubleblade/doubleblade.rig.json",
-  "allow": [
-    ["forearm_r", "weapon_r"],
-    ["forearm_l", "weapon_l"],
-    ["weapon_r", "weapon_l"],
-    ["hand_r", "weapon_l"],
-    ["hand_l", "weapon_r"],
-    ["torso", "thigh_r"],
-    ["torso", "thigh_l"],
-    ["pelvis", "shin_l"],
-    ["pelvis", "shin_r"]
-  ],
-  "keys": [{"at": 0, "offset": [-0.6, -2.66]}, {"at": 19, "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}}]
+  "keys": [{"at": 0, "offset": [-0.6, -2.66]}],
+  "allow": [["weapon_r", "weapon_l"], ["hand_r", "weapon_l"], ["hand_l", "weapon_r"]]
 }

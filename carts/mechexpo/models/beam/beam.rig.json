@@ -590,5 +590,24 @@
    "note": "the fighting stance the sketch was built in: both soles on y = 0"
   }
  },
+ "allow": [
+  [
+   "forearm_r",
+   "weapon_r"
+  ],
+  [
+   "forearm_l",
+   "weapon_l"
+  ],
+  [
+   "torso",
+   "thigh_r"
+  ],
+  [
+   "torso",
+   "thigh_l"
+  ]
+ ],
+ "allow_note": "pairs of parts every move may pass into each other (a move's \"allow\" adds more): the weapon's grip in the forearm's cuff, a raised thigh under the torso's skirt",
  "triangles": 1794
 }

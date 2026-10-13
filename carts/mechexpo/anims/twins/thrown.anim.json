@@ -4,7 +4,5 @@
   "note": "Thrown by the Hero's throw, Beam's Shock Grip and the Binary Buster (the fight holds the root 3.4 m in front of the thrower and lifts it to 3 m by the release): the Hero's (base) on the combined form's rig: caught by the shoulders, the pauldrons shoved up and the head knocked back, the fists clawing at the thrower's forearms; lifted, the legs dangle and kick; heaved, the body arches back.",
   "base": "../hero/thrown.anim.json",
   "rig": "../../models/twins/twins.rig.json",
-  "keys": [
-    {"at": 0, "pose": {"hand_r": [-16, 0, 0]}}
-  ]
+  "keys": [{"at": 0, "pose": {"hand_r": [-16, 0, 0]}}]
 }

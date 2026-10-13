@@ -114,6 +114,12 @@ class Rig:
             self.poses[name] = {'rotate': {j: vec(r, 3, f'/rig/poses/{name}/rotate/{j}')
                                            for j, r in pose.get('rotate', {}).items() if j in self.joints},
                                 'offset': [0.0, -float(pose.get('drop', 0.0))]}
+        # pairs of parts every move of the rig may pass into each other (a move's "allow" adds more)
+        self.allow = set()
+        for k, pair in enumerate(data.get('allow', [])):
+            if not (isinstance(pair, list) and len(pair) == 2 and all(isinstance(v, str) for v in pair)):
+                raise AnimError(f'/rig/allow/{k}', 'allow lists pairs of parts ["forearm_r", "weapon_r"].')
+            self.allow.add(frozenset(pair))
         self.data = data
         self._proxies = None
 

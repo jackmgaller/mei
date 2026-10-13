@@ -3,9 +3,5 @@
   "version": 1,
   "note": "Land: the Hero's (base), on the Double-blade Hero's rig; its landing lag is 4 frames (7 after an air attack), so frames 4-7 settle.",
   "base": "../hero/land.anim.json",
-  "rig": "../../models/doubleblade/doubleblade.rig.json",
-  "keys": [
-    {"at": 0, "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}},
-    {"at": 7, "reach": {"foot_r": [-0.13, 0.0], "foot_l": [-2.94, 0.0]}}
-  ]
+  "rig": "../../models/doubleblade/doubleblade.rig.json"
 }

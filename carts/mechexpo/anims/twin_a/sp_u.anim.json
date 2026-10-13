@@ -5,98 +5,47 @@
   "base": "_body.anim.json",
   "length": 34,
   "phases": {"startup": 4, "active": 8, "recovery": 22},
-  "design": {"hit": [0.3, 2.0, 3.6, 8.0], "tolerance": 0.5, "note": "MOVES.md, Rising Kick: x 0.3-3.6, y 2.0-8.0 from the root"},
+  "design": {"hit": [0.3, 2.0, 3.6, 8.0], "tolerance": 0.5,
+             "note": "MOVES.md, Rising Kick: x 0.3-3.6, y 2.0-8.0 from the root"},
   "keys": [
     {"at": 0, "from": "guard", "ease": "in"},
-    {
-      "at": 3,
-      "ease": "linear",
-      "offset": [-0.1, -1.3],
-      "pose": {
-        "pelvis": [-12, -10, 0],
-        "torso": [-22, -14, 0],
-        "head": [20, 14, 0],
-        "upper_arm_r": [10, 0, -20], "forearm_r": [70, 0, 6], "hand_r": [-10, 0, 0],
-        "upper_arm_l": [0, 0, 22], "forearm_l": [80, 0, -10], "hand_l": [-8, 0, 0],
-        "pauldron_r": [3.5, 0, -10], "pauldron_l": [0, 0, 11]
-      }
-    },
-    {
-      "at": 4,
-      "ease": "linear",
-      "offset": [-0.35, 0.1],
-      "boxes": {
-        "sole": {"kind": "hit", "part": "foot_r", "min": [-0.4, -0.8, -1.0], "max": [0.4, 0.25, 0.55]},
-        "shin": {"kind": "hit", "part": "shin_r", "grow": 0.1}
-      },
-      "pose": {
-        "pelvis": [0, -8, 0],
-        "torso": [-6, -12, 0],
-        "head": [0, 12, 0],
-        "thigh_r": [78, 0, -4], "shin_r": [-30, 0, 0], "foot_r": [20, 0, 4],
-        "thigh_l": [-6, 0, 4], "shin_l": [-6, 0, 0], "foot_l": [40, 0, -4],
-        "upper_arm_r": [-20, 0, -24], "forearm_r": [40, 0, 6],
-        "upper_arm_l": [-30, 0, 26], "forearm_l": [40, 0, -10],
-        "pauldron_r": [-7, 0, -12], "pauldron_l": [-10.5, 0, 13]
-      }
-    },
-    {
-      "at": 8,
-      "ease": "out",
-      "offset": [-0.3, -0.1],
-      "pose": {
-        "pelvis": [24, -6, 0],
-        "torso": [4, -8, 0],
-        "head": [-14, 8, 0],
-        "thigh_r": [128, 0, -4], "shin_r": [-4, 0, 0], "foot_r": [-10, 0, 4],
-        "thigh_l": [-14, 0, 4], "shin_l": [-24, 0, 0], "foot_l": [44, 0, -4],
-        "upper_arm_r": [-40, 0, -30], "forearm_r": [30, 0, 6],
-        "upper_arm_l": [-46, 0, 30], "forearm_l": [30, 0, -10],
-        "pauldron_r": [-14, 0, -15], "pauldron_l": [-16, 0, 15]
-      }
-    },
-    {
-      "at": 11,
-      "ease": "ease",
-      "offset": [-0.1, 0.0],
-      "pose": {
-        "pelvis": [26, -6, 0],
-        "torso": [6, -8, 0],
-        "head": [-18, 8, 0],
-        "thigh_r": [128, 0, -4], "shin_r": [-8, 0, 0]
-      }
-    },
+    {"at": 3, "ease": "linear", "offset": [-0.1, -1.3],
+     "pose": {"pelvis": [-12, -10, 0], "torso": [-22, -14, 0], "head": [20, 14, 0],
+              "upper_arm_r": [10, 0, -20], "forearm_r": [70, 0, 6], "hand_r": [-10, 0, 0],
+              "upper_arm_l": [0, 0, 22], "forearm_l": [80, 0, -10], "hand_l": [-8, 0, 0],
+              "pauldron_r": [3.5, 0, -10], "pauldron_l": [0, 0, 11]}},
+    {"at": 4, "ease": "linear", "offset": [-0.35, 0.1],
+     "pose": {"pelvis": [0, -8, 0], "torso": [-6, -12, 0], "head": [0, 12, 0],
+              "thigh_r": [78, 0, -4], "shin_r": [-30, 0, 0], "foot_r": [20, 0, 4],
+              "thigh_l": [-6, 0, 4], "shin_l": [-6, 0, 0], "foot_l": [40, 0, -4],
+              "upper_arm_r": [-20, 0, -24], "forearm_r": [40, 0, 6], "upper_arm_l": [-30, 0, 26],
+              "forearm_l": [40, 0, -10], "pauldron_r": [-7, 0, -12], "pauldron_l": [-10.5, 0, 13]},
+     "boxes": {"sole": {"kind": "hit", "part": "foot_r", "min": [-0.4, -0.8, -1.0],
+                        "max": [0.4, 0.25, 0.55]},
+               "shin": {"kind": "hit", "part": "shin_r", "grow": 0.1}}},
+    {"at": 8, "ease": "out", "offset": [-0.3, -0.1],
+     "pose": {"pelvis": [24, -6, 0], "torso": [4, -8, 0], "head": [-14, 8, 0],
+              "thigh_r": [128, 0, -4], "shin_r": [-4, 0, 0], "foot_r": [-10, 0, 4],
+              "thigh_l": [-14, 0, 4], "shin_l": [-24, 0, 0], "foot_l": [44, 0, -4],
+              "upper_arm_r": [-40, 0, -30], "forearm_r": [30, 0, 6], "upper_arm_l": [-46, 0, 30],
+              "forearm_l": [30, 0, -10], "pauldron_r": [-14, 0, -15], "pauldron_l": [-16, 0, 15]}},
+    {"at": 11, "ease": "ease", "offset": [-0.1, 0.0],
+     "pose": {"pelvis": [26, -6, 0], "torso": [6, -8, 0], "head": [-18, 8, 0],
+              "thigh_r": [128, 0, -4], "shin_r": [-8, 0, 0]}},
     {"at": 12, "boxes": {"sole": null, "shin": null}},
-    {
-      "at": 17,
-      "ease": "ease",
-      "offset": [0.0, 0.3],
-      "pose": {
-        "pelvis": [6, -8, 0],
-        "torso": [-8, -12, 0],
-        "head": [4, 12, 0],
-        "thigh_r": [86, 0, -6], "shin_r": [-120, 0, 0], "foot_r": [36, 0, 4],
-        "thigh_l": [60, 0, 6], "shin_l": [-110, 0, 0], "foot_l": [40, 0, -4],
-        "upper_arm_r": [20, 0, -24], "forearm_r": [80, 0, 6], "hand_r": [-10, 0, 0],
-        "upper_arm_l": [10, 0, 26], "forearm_l": [90, 0, -10],
-        "pauldron_r": [7, 0, -12], "pauldron_l": [3.5, 0, 13]
-      }
-    },
-    {
-      "at": 28,
-      "ease": "ease",
-      "offset": [0.0, 0.1],
-      "pose": {
-        "pelvis": [-2, -10, 0],
-        "torso": [-8, -16, 0],
-        "head": [0, 14, 0],
-        "thigh_r": [34, 0, -4], "shin_r": [-40, 0, 0], "foot_r": [20, 0, 4],
-        "thigh_l": [-6, 0, 4], "shin_l": [-26, 0, 0], "foot_l": [34, 0, -4],
-        "upper_arm_r": [40, 0, -18], "forearm_r": [70, 0, 6],
-        "upper_arm_l": [36, 0, 22], "forearm_l": [90, 0, -10],
-        "pauldron_r": [14, 0, -9], "pauldron_l": [12.6, 0, 11]
-      }
-    },
+    {"at": 17, "ease": "ease", "offset": [0.0, 0.3],
+     "pose": {"pelvis": [6, -8, 0], "torso": [-8, -12, 0], "head": [4, 12, 0],
+              "thigh_r": [86, 0, -6], "shin_r": [-120, 0, 0], "foot_r": [36, 0, 4],
+              "thigh_l": [60, 0, 6], "shin_l": [-110, 0, 0], "foot_l": [40, 0, -4],
+              "upper_arm_r": [20, 0, -24], "forearm_r": [80, 0, 6], "hand_r": [-10, 0, 0],
+              "upper_arm_l": [10, 0, 26], "forearm_l": [90, 0, -10], "pauldron_r": [7, 0, -12],
+              "pauldron_l": [3.5, 0, 13]}},
+    {"at": 28, "ease": "ease", "offset": [0.0, 0.1],
+     "pose": {"pelvis": [-2, -10, 0], "torso": [-8, -16, 0], "head": [0, 14, 0],
+              "thigh_r": [34, 0, -4], "shin_r": [-40, 0, 0], "foot_r": [20, 0, 4],
+              "thigh_l": [-6, 0, 4], "shin_l": [-26, 0, 0], "foot_l": [34, 0, -4],
+              "upper_arm_r": [40, 0, -18], "forearm_r": [70, 0, 6], "upper_arm_l": [36, 0, 22],
+              "forearm_l": [90, 0, -10], "pauldron_r": [14, 0, -9], "pauldron_l": [12.6, 0, 11]}},
     {"at": 33, "from": "guard"}
   ],
   "motion": [

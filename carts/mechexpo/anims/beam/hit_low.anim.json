@@ -6,27 +6,22 @@
   "rig": "../../models/beam/beam.rig.json",
   "boxes": {"push": {"kind": "push", "rect": [-1.7, 0, 1.7, 7.5]}},
   "keys": [
-    {
-      "at": 0,
-      "reach": {"foot_r": [0.03, 0.0]},
-      "pose": {"upper_arm_r": [38, 0, -22], "forearm_r": [70, 0, 8], "hand_r": [6, 0, 0], "forearm_l": [76, 0, -24], "pauldron_r": [12.7, 0, -11]}
-    },
-    {"at": 3, "pose": {"upper_arm_r": [46, 0, -26], "forearm_r": [70, 0, 8], "hand_r": [10, 0, 0], "forearm_l": [66, 0, -24], "pauldron_r": [15.3, 0, -13]}},
-    {"at": 11, "pose": {"upper_arm_r": [18, 0, -14], "forearm_r": [110, 0, 8], "hand_r": [-10, 0, 0], "forearm_l": [100, 0, -24], "pauldron_r": [6, 0, -7]}},
-    {
-      "at": 19,
-      "reach": {"foot_r": [0.03, 0.0]},
-      "pose": {
-        "upper_arm_r": [6, 0, -10],
-        "forearm_r": [128, 0, 8],
-        "hand_r": [-17, 0, 0],
-        "upper_arm_l": [35, 0, 12],
-        "forearm_l": [121, 0, -24],
-        "hand_l": [-10, 0, 0],
-        "pauldron_r": [2, 0, -5],
-        "pauldron_l": [11.7, 0, 6]
-      }
-    }
+    {"at": 0,
+     "pose": {"upper_arm_r": [38, 0, -22], "forearm_r": [70, 0, 8], "hand_r": [6, 0, 0],
+              "forearm_l": [76, 0, -24], "pauldron_r": [12.7, 0, -11]},
+     "reach": {"foot_r": [0.03, 0.0]}},
+    {"at": 3,
+     "pose": {"upper_arm_r": [46, 0, -26], "forearm_r": [70, 0, 8], "hand_r": [10, 0, 0],
+              "forearm_l": [66, 0, -24], "pauldron_r": [15.3, 0, -13]}},
+    {"at": 11,
+     "pose": {"upper_arm_r": [18, 0, -14], "forearm_r": [110, 0, 8], "hand_r": [-10, 0, 0],
+              "forearm_l": [100, 0, -24], "pauldron_r": [6, 0, -7]}},
+    {"at": 19,
+     "pose": {"upper_arm_r": [6, 0, -10], "forearm_r": [128, 0, 8], "hand_r": [-17, 0, 0],
+              "upper_arm_l": [35, 0, 12], "forearm_l": [121, 0, -24], "hand_l": [-10, 0, 0],
+              "pauldron_r": [2, 0, -5], "pauldron_l": [11.7, 0, 6]},
+     "reach": {"foot_r": [0.03, 0.0]}}
   ],
-  "allow": [["forearm_r", "weapon_r"], ["torso", "thigh_r"], ["torso", "thigh_l"], ["pelvis", "shin_r"]]
+  "allow": [["forearm_r", "weapon_r"], ["torso", "thigh_r"], ["torso", "thigh_l"],
+            ["pelvis", "shin_r"]]
 }

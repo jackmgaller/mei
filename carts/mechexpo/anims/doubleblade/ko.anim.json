@@ -4,13 +4,6 @@
   "note": "KO: the Hero's (base), on the Double-blade Hero's rig, lying 0.18 m higher on its deeper back.",
   "base": "../hero/ko.anim.json",
   "rig": "../../models/doubleblade/doubleblade.rig.json",
-  "allow": [
-    ["forearm_r", "weapon_r"],
-    ["forearm_l", "weapon_l"],
-    ["weapon_r", "weapon_l"],
-    ["hand_r", "weapon_l"],
-    ["hand_l", "weapon_r"]
-  ],
   "keys": [
     {"at": 0, "offset": [-0.4, -1.6]},
     {"at": 3, "offset": [-0.6, -2.66]},
@@ -20,5 +13,6 @@
     {"at": 40, "offset": [-0.6, -2.66]},
     {"at": 75, "offset": [-0.6, -2.66]},
     {"at": 89, "offset": [-0.6, -2.66]}
-  ]
+  ],
+  "allow": [["weapon_r", "weapon_l"], ["hand_r", "weapon_l"], ["hand_l", "weapon_r"]]
 }

@@ -5,10 +5,7 @@
   "base": "../hero/_body.anim.json",
   "rig": "../../models/doubleblade/doubleblade.rig.json",
   "boxes": {
-    "push": {
-      "kind": "push",
-      "rect": [-1.5, 0, 1.5, 11.5],
-      "note": "MOVES.md: 1.5 m either side of the root for the Double-blade Hero"
-    }
+    "push": {"kind": "push", "rect": [-1.5, 0, 1.5, 11.5],
+             "note": "MOVES.md: 1.5 m either side of the root for the Double-blade Hero"}
   }
 }

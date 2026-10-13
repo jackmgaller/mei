@@ -4,83 +4,29 @@
   "note": "Hit low: from the crouch's squat, the chest is knocked up and back at the waist coupling and the head snaps back, the fists flung up off the chin (0-3), then it hunkers back down into the squat by 19 (the crouch's last frame: the fight goes back to crouch). The right foot is planted, the left at the crouch's place.",
   "base": "_body.anim.json",
   "length": 20,
-  "plant": {
-    "foot_r": [[0, 19]]
-  },
+  "boxes": {"push": {"kind": "push", "rect": [-1.6, 0, 1.6, 7.5]}},
   "keys": [
-    {
-      "at": 0,
-      "from": "guard",
-      "ease": "out",
-      "offset": [-0.62, -1.75],
-      "reach": {"foot_l": [-2.75, 0.0]},
-      "pose": {
-        "pelvis": [-18, -8, 0],
-        "torso": [-6, -11, 0],
-        "head": [20, 16, 0],
-        "upper_arm_r": [50, 0, -24],
-        "forearm_r": [56, 0, 4],
-        "hand_r": [-20, 0, 0],
-        "upper_arm_l": [30, 0, 30],
-        "forearm_l": [66, 0, -6],
-        "hand_l": [-12, 0, 0],
-        "pauldron_r": [16, 0, -10],
-        "pauldron_l": [10, 0, 12]
-      }
-    },
-    {
-      "at": 3,
-      "ease": "ease",
-      "offset": [-0.68, -1.72],
-      "pose": {
-        "pelvis": [-18, -8, 0],
-        "torso": [-5, -10, 0],
-        "head": [30, 20, 0],
-        "upper_arm_r": [58, 0, -28],
-        "forearm_r": [48, 0, 4],
-        "hand_r": [-24, 0, 0],
-        "upper_arm_l": [22, 0, 34],
-        "forearm_l": [56, 0, -6]
-      }
-    },
-    {
-      "at": 11,
-      "ease": "ease",
-      "offset": [-0.6, -1.9],
-      "pose": {
-        "pelvis": [-18, -8, 0],
-        "torso": [-9, -12, 0],
-        "head": [24, 13, 0],
-        "upper_arm_r": [42, 0, -18],
-        "forearm_r": [80, 0, 4],
-        "hand_r": [-18, 0, 0],
-        "upper_arm_l": [40, 0, 20],
-        "forearm_l": [92, 0, -6],
-        "hand_l": [-12, 0, 0],
-        "pauldron_r": [14, 0, -8],
-        "pauldron_l": [14, 0, 9]
-      }
-    },
-    {
-      "at": 19,
-      "offset": [-0.58, -1.92],
-      "reach": {"foot_l": [-2.75, 0.0]},
-      "pose": {
-        "pelvis": [-18, -8, 0],
-        "torso": [-11, -12, 0],
-        "head": [26, 12, 0],
-        "upper_arm_r": [38, 0, -16],
-        "forearm_r": [86, 0, 4],
-        "hand_r": [-18, 0, 0],
-        "upper_arm_l": [42, 0, 18],
-        "forearm_l": [98, 0, -6],
-        "hand_l": [-12, 0, 0],
-        "pauldron_r": [13, 0, -8],
-        "pauldron_l": [15, 0, 9]
-      }
-    }
+    {"at": 0, "from": "guard", "ease": "out", "offset": [-0.62, -1.75],
+     "pose": {"pelvis": [-18, -8, 0], "torso": [-6, -11, 0], "head": [20, 16, 0],
+              "upper_arm_r": [50, 0, -24], "forearm_r": [56, 0, 4], "hand_r": [-20, 0, 0],
+              "upper_arm_l": [30, 0, 30], "forearm_l": [66, 0, -6], "hand_l": [-12, 0, 0],
+              "pauldron_r": [16, 0, -10], "pauldron_l": [10, 0, 12]},
+     "reach": {"foot_l": [-2.75, 0.0]}},
+    {"at": 3, "ease": "ease", "offset": [-0.68, -1.72],
+     "pose": {"pelvis": [-18, -8, 0], "torso": [-5, -10, 0], "head": [30, 20, 0],
+              "upper_arm_r": [58, 0, -28], "forearm_r": [48, 0, 4], "hand_r": [-24, 0, 0],
+              "upper_arm_l": [22, 0, 34], "forearm_l": [56, 0, -6]}},
+    {"at": 11, "ease": "ease", "offset": [-0.6, -1.9],
+     "pose": {"pelvis": [-18, -8, 0], "torso": [-9, -12, 0], "head": [24, 13, 0],
+              "upper_arm_r": [42, 0, -18], "forearm_r": [80, 0, 4], "hand_r": [-18, 0, 0],
+              "upper_arm_l": [40, 0, 20], "forearm_l": [92, 0, -6], "hand_l": [-12, 0, 0],
+              "pauldron_r": [14, 0, -8], "pauldron_l": [14, 0, 9]}},
+    {"at": 19, "offset": [-0.58, -1.92],
+     "pose": {"pelvis": [-18, -8, 0], "torso": [-11, -12, 0], "head": [26, 12, 0],
+              "upper_arm_r": [38, 0, -16], "forearm_r": [86, 0, 4], "hand_r": [-18, 0, 0],
+              "upper_arm_l": [42, 0, 18], "forearm_l": [98, 0, -6], "hand_l": [-12, 0, 0],
+              "pauldron_r": [13, 0, -8], "pauldron_l": [15, 0, 9]},
+     "reach": {"foot_l": [-2.75, 0.0]}}
   ],
-  "boxes": {
-    "push": {"kind": "push", "rect": [-1.6, 0, 1.6, 7.5]}
-  }
+  "plant": {"foot_r": [[0, 19]]}
 }

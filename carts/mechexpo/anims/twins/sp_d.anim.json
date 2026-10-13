@@ -4,37 +4,25 @@
   "note": "Fusion Focus (MOVES.md): the meter's charge, not an attack. The combined form sets its feet wider and sinks (0-6), bringing both fists together in front of the waist coupling, knuckles touching, elbows out, the head bowed over them and the pauldrons lifted off the shoulders like vents; frame 7 is the charge frame (the charge mark: the move holds there while B is held, up to 50 frames, the coupling glowing), then it straightens back up into the guard over 12 frames (8-19). Fully exposed throughout.",
   "base": "_body.anim.json",
   "length": 20,
-  "plant": {"foot_r": [[0, 19]]},
   "keys": [
     {"at": 0, "from": "guard", "ease": "out", "reach": {"foot_l": [-2.24, 0.0]}},
     {"at": 3, "reach": {"foot_l": [-2.3, 0.4]}},
     {"at": 5, "reach": {"foot_l": [-2.5, 0.0]}},
-    {
-      "at": 7,
-      "ease": "hold",
-      "offset": [-0.4, -1.3],
-      "reach": {"foot_l": [-2.5, 0.0]},
-      "pose": {
-        "pelvis": [-6, -4, 0], "torso": [-6, -4, 0], "head": [22, 2, 0],
-        "upper_arm_r": [28, 0, -40], "forearm_r": [70, 0, 30], "hand_r": [0, 0, 0],
-        "upper_arm_l": [28, 0, 40], "forearm_l": [70, 0, -30], "hand_l": [0, 0, 0],
-        "pauldron_r": [22, 0, -26], "pauldron_l": [22, 0, 26]
-      }
-    },
-    {
-      "at": 8,
-      "ease": "ease",
-      "offset": [-0.4, -1.3],
-      "pose": {
-        "pelvis": [-6, -4, 0], "torso": [-6, -4, 0], "head": [22, 2, 0],
-        "upper_arm_r": [28, 0, -40], "forearm_r": [70, 0, 30], "hand_r": [0, 0, 0],
-        "upper_arm_l": [28, 0, 40], "forearm_l": [70, 0, -30], "hand_l": [0, 0, 0],
-        "pauldron_r": [22, 0, -26], "pauldron_l": [22, 0, 26]
-      }
-    },
+    {"at": 7, "ease": "hold", "offset": [-0.4, -1.3],
+     "pose": {"pelvis": [-6, -4, 0], "torso": [-6, -4, 0], "head": [22, 2, 0],
+              "upper_arm_r": [28, 0, -40], "forearm_r": [70, 0, 30], "hand_r": [0, 0, 0],
+              "upper_arm_l": [28, 0, 40], "forearm_l": [70, 0, -30], "hand_l": [0, 0, 0],
+              "pauldron_r": [22, 0, -26], "pauldron_l": [22, 0, 26]},
+     "reach": {"foot_l": [-2.5, 0.0]}},
+    {"at": 8, "ease": "ease", "offset": [-0.4, -1.3],
+     "pose": {"pelvis": [-6, -4, 0], "torso": [-6, -4, 0], "head": [22, 2, 0],
+              "upper_arm_r": [28, 0, -40], "forearm_r": [70, 0, 30], "hand_r": [0, 0, 0],
+              "upper_arm_l": [28, 0, 40], "forearm_l": [70, 0, -30], "hand_l": [0, 0, 0],
+              "pauldron_r": [22, 0, -26], "pauldron_l": [22, 0, 26]}},
     {"at": 13, "reach": {"foot_l": [-2.5, 0.0]}},
     {"at": 16, "reach": {"foot_l": [-2.35, 0.35]}},
     {"at": 19, "from": "guard", "reach": {"foot_l": [-2.24, 0.0]}}
   ],
+  "plant": {"foot_r": [[0, 19]]},
   "marks": {"charge": [7], "step": [5, 19]}
 }

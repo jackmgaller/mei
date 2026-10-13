@@ -6,42 +6,23 @@
   "length": 30,
   "air": true,
   "keys": [
-    {
-      "at": 0,
-      "from": "guard",
-      "ease": "out",
-      "offset": [-0.2, 0.2],
-      "pose": {
-        "pelvis": [14, 4, 0],
-        "torso": [10, -6, 4], "head": [4, 4, 0],
-        "upper_arm_r": [50, 0, -30], "forearm_r": [40, 0, 0], "hand_r": [-26, 0, 0],
-        "upper_arm_l": [40, 0, 32], "forearm_l": [50, 0, 0], "hand_l": [-26, 0, 0],
-        "pauldron_r": [17.5, 0, -15], "pauldron_l": [14, 0, 16]
-      }
-    },
-    {
-      "at": 6,
-      "ease": "ease",
-      "offset": [-0.3, 0.6],
-      "pose": {
-        "pelvis": [30, 6, 0], "thigh_r": [8, 0, 0], "thigh_l": [6, 0, 0], "shin_r": [8, 0, 0], "shin_l": [6, 0, 0],
-        "torso": [14, -2, 6], "head": [-14, 0, 0],
-        "upper_arm_r": [100, 0, 14], "forearm_r": [30, 0, 0], "hand_r": [-20, 0, 0],
-        "upper_arm_l": [80, 0, 8], "forearm_l": [36, 0, 0], "hand_l": [-20, 0, 0],
-        "pauldron_r": [30, 0, 7], "pauldron_l": [24, 0, 4]
-      }
-    },
-    {
-      "at": 29,
-      "offset": [-0.4, 1.0],
-      "pose": {
-        "pelvis": [58, 6, 0], "thigh_r": [14, 0, 0], "thigh_l": [10, 0, 0], "shin_r": [12, 0, 0], "shin_l": [10, 0, 0],
-        "torso": [12, -4, 4], "head": [-10, 6, 0],
-        "upper_arm_r": [140, 0, 30], "forearm_r": [20, 0, 0], "hand_r": [-14, 0, 0],
-        "upper_arm_l": [124, 0, -30], "forearm_l": [26, 0, 0], "hand_l": [-14, 0, 0],
-        "pauldron_r": [40, 0, 15], "pauldron_l": [40, 0, -15]
-      }
-    }
+    {"at": 0, "from": "guard", "ease": "out", "offset": [-0.2, 0.2],
+     "pose": {"pelvis": [14, 4, 0], "torso": [10, -6, 4], "head": [4, 4, 0],
+              "upper_arm_r": [50, 0, -30], "forearm_r": [40, 0, 0], "hand_r": [-26, 0, 0],
+              "upper_arm_l": [40, 0, 32], "forearm_l": [50, 0, 0], "hand_l": [-26, 0, 0],
+              "pauldron_r": [17.5, 0, -15], "pauldron_l": [14, 0, 16]}},
+    {"at": 6, "ease": "ease", "offset": [-0.3, 0.6],
+     "pose": {"pelvis": [30, 6, 0], "thigh_r": [8, 0, 0], "thigh_l": [6, 0, 0], "shin_r": [8, 0, 0],
+              "shin_l": [6, 0, 0], "torso": [14, -2, 6], "head": [-14, 0, 0],
+              "upper_arm_r": [100, 0, 14], "forearm_r": [30, 0, 0], "hand_r": [-20, 0, 0],
+              "upper_arm_l": [80, 0, 8], "forearm_l": [36, 0, 0], "hand_l": [-20, 0, 0],
+              "pauldron_r": [30, 0, 7], "pauldron_l": [24, 0, 4]}},
+    {"at": 29, "offset": [-0.4, 1.0],
+     "pose": {"pelvis": [58, 6, 0], "thigh_r": [14, 0, 0], "thigh_l": [10, 0, 0],
+              "shin_r": [12, 0, 0], "shin_l": [10, 0, 0], "torso": [12, -4, 4], "head": [-10, 6, 0],
+              "upper_arm_r": [140, 0, 30], "forearm_r": [20, 0, 0], "hand_r": [-14, 0, 0],
+              "upper_arm_l": [124, 0, -30], "forearm_l": [26, 0, 0], "hand_l": [-14, 0, 0],
+              "pauldron_r": [40, 0, 15], "pauldron_l": [40, 0, -15]}}
   ],
   "allow": [["pauldron_r", "forearm_r"], ["pauldron_l", "forearm_l"]]
 }

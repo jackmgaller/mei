@@ -246,7 +246,8 @@ class Checker:
                 if y < -FLOOR_TOLERANCE and not mv.air:
                     s = sunk.setdefault(pid, {'frames': [], 'depth': 0.0})
                     s['frames'].append(f)
-                    s['depth'] = max(s['depth'], -y)
+                    if -y > s['depth']:
+                        s['depth'], s['frame'] = -y, f
             low.append(round(lowest, 3))
             travel = mv.root_travel(f)
             for p in feet:
@@ -256,8 +257,14 @@ class Checker:
                 fx, _ = fight_xy((m[0][3], m[1][3], m[2][3]))
                 foot_track[p].append((y, fx+travel[0]))
         for pid, s in sunk.items():
-            self.fail('floor', f'{pid} goes {s["depth"]:.2f} m into the floor on frames {ranges(s["frames"])}.',
-                      part=pid, frames=s['frames'], depth=round(s['depth'], 3))
+            # what the pelvis needs on the worst frame: its offset's up raised by the depth (a key
+            # there with "floor": true sets it)
+            up = mv.pose_at(s['frame'])[1][1]
+            self.fail('floor', f'{pid} goes {s["depth"]:.2f} m into the floor on frames {ranges(s["frames"])}: on frame '
+                      f'{s["frame"]} the pelvis needs an offset up of {up+s["depth"]:.2f} (now {up:.2f}); a key there '
+                      f'with "floor": true sets it.',
+                      part=pid, frames=s['frames'], depth=round(s['depth'], 3), frame=s['frame'],
+                      offset_up=round(up+s['depth'], 3))
         self.checks['lowest'] = min(low)
         for p, track in foot_track.items():
             slid = [f for f in range(1, len(track)) if track[f][0] < ON_FLOOR and track[f-1][0] < ON_FLOOR
@@ -304,7 +311,7 @@ def verify(path, tolerance=0.12):
     c.boxes(frames)
     c.parts(frames)
     c.floor(frames)
-    warnings = [{'check': 'format', **w} for w in move.warnings]+c.warnings
+    warnings = move.warnings+c.warnings
     return {'ok': not c.failures, 'move': str(path), 'name': move.name, 'rig': move.rig.name,
             'verdict': 'pass' if not c.failures else ', '.join(sorted({f['check'] for f in c.failures})),
             'length': move.length, 'keys': [k[0] for k in move.pose_keys], 'phases': move.phases,

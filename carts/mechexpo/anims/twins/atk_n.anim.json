@@ -5,88 +5,32 @@
   "base": "_body.anim.json",
   "length": 23,
   "phases": {"startup": 6, "active": 3, "recovery": 14},
-  "design": {"hit": [1.8, 6.0, 6.6, 9.0], "tolerance": 0.5, "note": "MOVES.md, Coupler Jab: x 1.8-6.6, y 6.0-9.0"},
+  "design": {"hit": [1.8, 6.0, 6.6, 9.0], "tolerance": 0.5,
+             "note": "MOVES.md, Coupler Jab: x 1.8-6.6, y 6.0-9.0"},
   "keys": [
-    {
-      "at": 0,
-      "from": "guard",
-      "ease": "ease",
-      "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}
-    },
-    {
-      "at": 2,
-      "ease": "in",
-      "offset": [-0.05, -0.62],
-      "pose": {
-        "pelvis": [0, -4, 0],
-        "torso": [-6, -6, 0],
-        "head": [-2, 6, 0],
-        "upper_arm_r": [18, 0, -18],
-        "forearm_r": [96, 0, 4],
-        "hand_r": [-14, 0, 0],
-        "pauldron_r": [6, 0, -8]
-      }
-    },
-    {
-      "at": 6,
-      "ease": "linear",
-      "offset": [0.45, -0.8],
-      "boxes": {
-        "fist": {"kind": "hit", "part": "hand_r", "grow": 0.3},
-        "jab": {"kind": "hit", "part": "forearm_r", "grow": 0.25},
-        "drive": {"kind": "hit", "part": "upper_arm_r", "grow": 0.2}
-      },
-      "pose": {
-        "pelvis": [-2, -16, 0],
-        "torso": [-8, -36, 0],
-        "head": [0, 32, 0],
-        "upper_arm_r": [84, 24, -4],
-        "forearm_r": [6, 0, 4],
-        "hand_r": [-8, 0, 0],
-        "upper_arm_l": [36, 0, 20],
-        "forearm_l": [92, 0, -6],
-        "hand_l": [-12, 0, 0],
-        "pauldron_r": [34, 0, -2],
-        "pauldron_l": [12, 0, 9]
-      }
-    },
-    {
-      "at": 8,
-      "ease": "ease",
-      "offset": [0.5, -0.82],
-      "pose": {
-        "pelvis": [-2, -17, 0],
-        "torso": [-8, -38, 0],
-        "upper_arm_r": [76, 24, -4],
-        "forearm_r": [10, 0, 4],
-        "hand_r": [-4, 0, 0]
-      }
-    },
-    {
-      "at": 9,
-      "boxes": {"fist": null, "jab": null, "drive": null}
-    },
-    {
-      "at": 14,
-      "ease": "ease",
-      "offset": [0.1, -0.66],
-      "pose": {
-        "pelvis": [0, -10, 0],
-        "torso": [-7, -18, 0],
-        "head": [-4, 14, 0],
-        "upper_arm_r": [40, 0, -14],
-        "forearm_r": [64, 0, 4],
-        "hand_r": [-14, 0, 0],
-        "pauldron_r": [16, 0, -6]
-      }
-    },
-    {
-      "at": 22,
-      "from": "guard",
-      "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}
-    }
+    {"at": 0, "from": "guard", "ease": "ease",
+     "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}},
+    {"at": 2, "ease": "in", "offset": [-0.05, -0.62],
+     "pose": {"pelvis": [0, -4, 0], "torso": [-6, -6, 0], "head": [-2, 6, 0],
+              "upper_arm_r": [18, 0, -18], "forearm_r": [96, 0, 4], "hand_r": [-14, 0, 0],
+              "pauldron_r": [6, 0, -8]}},
+    {"at": 6, "ease": "linear", "offset": [0.45, -0.8],
+     "pose": {"pelvis": [-2, -16, 0], "torso": [-8, -36, 0], "head": [0, 32, 0],
+              "upper_arm_r": [84, 24, -4], "forearm_r": [6, 0, 4], "hand_r": [-8, 0, 0],
+              "upper_arm_l": [36, 0, 20], "forearm_l": [92, 0, -6], "hand_l": [-12, 0, 0],
+              "pauldron_r": [34, 0, -2], "pauldron_l": [12, 0, 9]},
+     "boxes": {"fist": {"kind": "hit", "part": "hand_r", "grow": 0.3},
+               "jab": {"kind": "hit", "part": "forearm_r", "grow": 0.25},
+               "drive": {"kind": "hit", "part": "upper_arm_r", "grow": 0.2}}},
+    {"at": 8, "ease": "ease", "offset": [0.5, -0.82],
+     "pose": {"pelvis": [-2, -17, 0], "torso": [-8, -38, 0], "upper_arm_r": [76, 24, -4],
+              "forearm_r": [10, 0, 4], "hand_r": [-4, 0, 0]}},
+    {"at": 9, "boxes": {"fist": null, "jab": null, "drive": null}},
+    {"at": 14, "ease": "ease", "offset": [0.1, -0.66],
+     "pose": {"pelvis": [0, -10, 0], "torso": [-7, -18, 0], "head": [-4, 14, 0],
+              "upper_arm_r": [40, 0, -14], "forearm_r": [64, 0, 4], "hand_r": [-14, 0, 0],
+              "pauldron_r": [16, 0, -6]}},
+    {"at": 22, "from": "guard", "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}}
   ],
-  "marks": {
-    "cancel": [[6, 14]]
-  }
+  "marks": {"cancel": [[6, 14]]}
 }

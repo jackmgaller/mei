@@ -5,13 +5,16 @@
   "base": "../hero/hit_high.anim.json",
   "rig": "../../models/beam/beam.rig.json",
   "keys": [
-    {
-      "at": 0,
-      "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]},
-      "pose": {"upper_arm_r": [40, 0, -24], "forearm_r": [60, 0, 8], "hand_r": [10, 0, 0], "forearm_l": [70, 0, -24], "pauldron_r": [13.3, 0, -12]}
-    },
-    {"at": 3, "pose": {"upper_arm_r": [48, 0, -28], "forearm_r": [62, 0, 8], "hand_r": [14, 0, 0], "forearm_l": [60, 0, -24], "pauldron_r": [16, 0, -14]}},
-    {"at": 10, "pose": {"upper_arm_r": [16, 0, -14], "forearm_r": [80, 0, 8], "hand_r": [4, 0, 0], "forearm_l": [90, 0, -24], "pauldron_r": [5.3, 0, -7]}},
+    {"at": 0,
+     "pose": {"upper_arm_r": [40, 0, -24], "forearm_r": [60, 0, 8], "hand_r": [10, 0, 0],
+              "forearm_l": [70, 0, -24], "pauldron_r": [13.3, 0, -12]},
+     "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}},
+    {"at": 3,
+     "pose": {"upper_arm_r": [48, 0, -28], "forearm_r": [62, 0, 8], "hand_r": [14, 0, 0],
+              "forearm_l": [60, 0, -24], "pauldron_r": [16, 0, -14]}},
+    {"at": 10,
+     "pose": {"upper_arm_r": [16, 0, -14], "forearm_r": [80, 0, 8], "hand_r": [4, 0, 0],
+              "forearm_l": [90, 0, -24], "pauldron_r": [5.3, 0, -7]}},
     {"at": 19, "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}}
   ],
   "allow": [["forearm_r", "weapon_r"], ["torso", "thigh_r"]]

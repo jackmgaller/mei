@@ -7,38 +7,15 @@
   "loop": true,
   "keys": [
     {"at": 0, "from": "guard", "ease": "ease"},
-    {
-      "at": 15,
-      "ease": "ease",
-      "offset": [0.0, -1.14],
-      "pose": {
-        "torso": [-14, -7, 0],
-        "head": [16, 7, 0],
-        "upper_arm_r": [41, 0, -12],
-        "hand_r": [-20, 0, 0],
-        "upper_arm_l": [25, 0, 17],
-        "hand_l": [-38, 0, 0],
-        "pauldron_r": [14, 0, -6.5],
-        "pauldron_l": [8.5, 0, 8.5]
-      }
-    },
+    {"at": 15, "ease": "ease", "offset": [0.0, -1.14],
+     "pose": {"torso": [-14, -7, 0], "head": [16, 7, 0], "upper_arm_r": [41, 0, -12],
+              "hand_r": [-20, 0, 0], "upper_arm_l": [25, 0, 17], "hand_l": [-38, 0, 0],
+              "pauldron_r": [14, 0, -6.5], "pauldron_l": [8.5, 0, 8.5]}},
     {"at": 30, "from": "guard", "ease": "ease"},
-    {
-      "at": 45,
-      "ease": "ease",
-      "offset": [0.0, -1.13],
-      "pose": {
-        "torso": [-14, -9, 0],
-        "head": [16, 9, 0],
-        "upper_arm_r": [42, 0, -12],
-        "hand_r": [-28, 0, 0],
-        "upper_arm_l": [26, 0, 16],
-        "hand_l": [-30, 0, 0],
-        "pauldron_r": [14, 0, -6.5],
-        "pauldron_l": [8.5, 0, 8.5]
-      }
-    }
+    {"at": 45, "ease": "ease", "offset": [0.0, -1.13],
+     "pose": {"torso": [-14, -9, 0], "head": [16, 9, 0], "upper_arm_r": [42, 0, -12],
+              "hand_r": [-28, 0, 0], "upper_arm_l": [26, 0, 16], "hand_l": [-30, 0, 0],
+              "pauldron_r": [14, 0, -6.5], "pauldron_l": [8.5, 0, 8.5]}}
   ],
-  "plant": {"foot_r": [[0, 59]], "foot_l": [[0, 59]]},
-  "allow": [["forearm_r", "weapon_r"], ["forearm_l", "weapon_l"]]
+  "plant": {"foot_r": [[0, 59]], "foot_l": [[0, 59]]}
 }

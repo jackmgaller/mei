@@ -7,7 +7,8 @@
   "keys": [
     {"at": 23, "pose": {"upper_arm_r": [120, 0, 14], "upper_arm_l": [116, 0, -14]}},
     {"at": 28, "pose": {"upper_arm_r": [150, 0, 18], "upper_arm_l": [146, 0, -18]}},
-    {"at": 33, "pose": {"upper_arm_r": [140, 0, 20], "upper_arm_l": [130, 0, -20], "hand_r": [-20, 0, 0]}},
+    {"at": 33,
+     "pose": {"upper_arm_r": [140, 0, 20], "upper_arm_l": [130, 0, -20], "hand_r": [-20, 0, 0]}},
     {"at": 37, "pose": {"upper_arm_r": [130, 0, 20], "upper_arm_l": [120, 0, -20]}},
     {"at": 41, "pose": {"upper_arm_r": [142, 0, 20], "upper_arm_l": [132, 0, -20]}}
   ]
