@@ -1,0 +1,28 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Hit high (stretched by the fight to the hitstun's length, frame 0 held through the hitstop): the chest is already snapped back from the waist on frame 0 and the head whips back a beat later; the long arms are flung up and out, the claws thrown wide behind the hands, talons splayed, and the cape plates swing out; the knees buckle. Then it gathers the claws back in and hauls itself into the guard. Feet planted (the fight's knockback slides the whole mech).",
+  "base": "_body.anim.json",
+  "length": 20,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "offset": [-0.35, -1.3],
+     "pose": {"pelvis": [16, -10, 0], "torso": [-8, -6, 0], "head": [6, 10, 0],
+              "upper_arm_r": [84, 0, -40], "forearm_r": [22, 0, 12], "hand_r": [-36, 0, 0],
+              "weapon_r": [24, 0, 0], "upper_arm_l": [20, 0, 46], "forearm_l": [30, 0, -10],
+              "hand_l": [-30, 0, 0], "weapon_l": [24, 0, 0], "pauldron_r": [30, 0, -30],
+              "pauldron_l": [8, 0, 44]}, "reach": {"foot_r": "guard", "foot_l": "guard"}},
+    {"at": 3, "ease": "ease", "offset": [-0.55, -1.9],
+     "pose": {"pelvis": [24, -12, 0], "torso": [-6, -6, 0], "head": [30, 12, 0],
+              "upper_arm_r": [110, 0, -50], "forearm_r": [14, 0, 12], "hand_r": [-50, 0, 0],
+              "weapon_r": [28, 0, 0], "upper_arm_l": [6, 0, 54], "forearm_l": [22, 0, -10],
+              "hand_l": [-40, 0, 0], "weapon_l": [28, 0, 0], "pauldron_r": [38, 0, -36],
+              "pauldron_l": [2, 0, 52]}},
+    {"at": 10, "ease": "ease", "offset": [-0.25, -1.3],
+     "pose": {"pelvis": [6, -9, 0], "torso": [-12, -6, 0], "head": [10, 8, 0],
+              "upper_arm_r": [72, 0, -32], "forearm_r": [30, 0, 12], "hand_r": [-30, 0, 0],
+              "weapon_r": [10, 0, 0], "upper_arm_l": [28, 0, 36], "forearm_l": [40, 0, -10],
+              "hand_l": [-16, 0, 0], "weapon_l": [10, 0, 0], "pauldron_r": [24, 0, -18],
+              "pauldron_l": [10, 0, 20]}},
+    {"at": 19, "from": "guard", "reach": {"foot_r": "guard", "foot_l": "guard"}}
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Crouch: 8 frames down, then the last frame is held by the fight. Shadow folds on its long legs like a mantis settling: both feet stay planted, the knees fold deep, the body pitches forward over them with the head up and the eye on the other mech, the claws come down low in front, the talons reaching forward just over the floor, and the cape plates fall over the back. Push box 7.5 m tall (MOVES.md); the hurt boxes top out at about 8 m.",
+  "base": "_body.anim.json",
+  "length": 8,
+  "boxes": {"push": {"kind": "push", "rect": [-1.4, 0, 1.4, 7.5]}},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in"},
+    {"at": 3, "ease": "out", "offset": [-0.08, -2.9],
+     "pose": {"pelvis": [-6, -8, 0], "torso": [-46, -8, 0], "head": [48, 8, 0],
+              "upper_arm_r": [46, 0, -30], "forearm_r": [44, 0, 12], "hand_r": [-10, 0, 0],
+              "upper_arm_l": [30, 0, 26], "forearm_l": [50, 0, -10], "hand_l": [-6, 0, 0],
+              "pauldron_r": [16, 0, -14], "pauldron_l": [10, 0, 14]},
+     "aim": {"weapon_r": [16, 8], "weapon_l": [14, 20]}},
+    {"at": 7, "offset": [-0.05, -2.85],
+     "pose": {"pelvis": [-6, -8, 0], "torso": [-44, -8, 0], "head": [46, 8, 0],
+              "upper_arm_r": [48, 0, -30], "forearm_r": [42, 0, 12], "hand_r": [-14, 0, 0],
+              "upper_arm_l": [32, 0, 26], "forearm_l": [50, 0, -10], "hand_l": [-8, 0, 0],
+              "pauldron_r": [17, 0, -14], "pauldron_l": [11, 0, 14]},
+     "aim": {"weapon_r": [10, 8], "weapon_l": [8, 20]}}
+  ],
+  "plant": {"foot_r": [[0, 7]], "foot_l": [[0, 7]]}
+}

@@ -1,0 +1,27 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Grab break (both mechs; the fight slides each back about 3 m): the long arms shove out hard at chest height on frames 0-3, the claws flat and open like two palms, then the recoil throws the body back onto its back foot as it slides, the claws flung up and wide and the cape plates swinging out, before it gathers itself into the guard by 19.",
+  "base": "_body.anim.json",
+  "length": 20,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "offset": [0.2, -1.1],
+     "pose": {"pelvis": [-4, -2, 0], "torso": [-16, 0, 0], "head": [16, 0, 0],
+              "upper_arm_r": [60, 0, -18], "forearm_r": [60, 0, 12], "hand_r": [-30, 0, 0],
+              "upper_arm_l": [56, 0, 20], "forearm_l": [64, 0, -10], "hand_l": [-30, 0, 0]},
+     "reach": {"foot_r": "guard", "foot_l": "guard"}},
+    {"at": 3, "ease": "ease", "offset": [-0.2, -1.2],
+     "pose": {"pelvis": [6, -2, 0], "torso": [-8, 0, 0], "head": [6, 0, 0],
+              "upper_arm_r": [96, 0, -10], "forearm_r": [8, 0, 12], "hand_r": [-70, 0, 0],
+              "weapon_r": [24, 0, 0], "upper_arm_l": [94, 0, 12], "forearm_l": [8, 0, -10],
+              "hand_l": [-70, 0, 0], "weapon_l": [24, 0, 0], "pauldron_r": [30, 0, -20],
+              "pauldron_l": [30, 0, 22]}},
+    {"at": 9, "ease": "ease", "offset": [-0.5, -1.4],
+     "pose": {"pelvis": [14, -6, 0], "torso": [-8, -6, 0], "head": [14, 6, 0],
+              "upper_arm_r": [116, 0, 10], "forearm_r": [30, 0, 12], "hand_r": [-30, 0, 0],
+              "weapon_r": [28, 0, 0], "upper_arm_l": [60, 0, 40], "forearm_l": [40, 0, -10],
+              "hand_l": [-20, 0, 0], "weapon_l": [28, 0, 0], "pauldron_r": [36, 0, -34],
+              "pauldron_l": [20, 0, 36]}},
+    {"at": 19, "from": "guard", "reach": {"foot_r": "guard", "foot_l": "guard"}}
+  ]
+}
