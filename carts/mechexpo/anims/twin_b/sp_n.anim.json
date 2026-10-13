@@ -1,7 +1,7 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Pulse Spin (MOVES.md; twin B): the twin draws its feet together under it and coils, hips and shoulders wound back, arms gathered across the chest (frames 0-7); then it uncoils into a spin on the spot, arms flung straight out at the shoulders, two full turns in the active frames (8-17: the hit box is the ring of cyan light round it, a fixed rectangle x -3.2-3.2, y 1.5-6.0, front and back, so it hits a mech that jumped over; the ring itself is the effects'). It overshoots a quarter turn, wobbles back with its arms dipping, and settles into the guard (18-33). No knockdown. Angles stay within a turn, so the spin wraps between frames 18 and 19 (360 to -360 over 8-18, then 318 on 19: the frames are what is baked); it ends at 350, the guard's -10.",
+  "note": "Pulse Spin (MOVES.md; twin B): the twin draws its feet together under it and coils, the barrel chest wound back and both big fists gathered in (frames 0-7); then it uncoils into a spin on the spot up on its toes, the stubby arms flung straight out from the shoulder domes, two full turns in the active frames (8-17: the hit box is the ring of light round it, a fixed rectangle x -3.2-3.2, y 1.5-6.0, front and back, so it hits a mech that jumped over). It overshoots a quarter turn, wobbles back with its arms dipping, and settles into the brawler's guard (18-33). No knockdown. Angles stay within a turn, so the spin wraps between frames 18 and 19 (360 to -360 over 8-18, then 318 on 19: the frames are what is baked); it ends at 350 (the pelvis's guard turn, as twin A's).",
   "base": "_body.anim.json",
   "length": 34,
   "phases": {"startup": 8, "active": 10, "recovery": 16},

@@ -1,7 +1,7 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Rising Kick (MOVES.md; twin B): the anti-air. A snap crouch with the arms dropped (frames 0-3, invulnerable 0-4), then it springs straight up off both feet (the root rises 4.5 m over the active frames 4-11) and the right leg swings up from low in front to straight over its head, the long body laid back under it and the arms flung down and back (the leg's boxes follow the arc, x about 0.3-3.6, y 2.0-8.0 from the root). It hangs a moment at the top with the leg high, then drops (the root falls 4.5 m over 12-33, accelerating) with the knees tucked, and reaches for the floor with soft legs, landing in the guard. Knocks down. Very punishable on a miss.",
+  "note": "Rising Kick (MOVES.md; twin B): the anti-air. A snap squat with the fists dropped (frames 0-3, invulnerable 0-4), then it bounces straight up off both feet (the root rises 4.5 m over the active frames 4-11, and the stocky body stretches up a further 1.5 m off it to get the short leg high enough) as the right leg swings up from low in front to over its head, the round body laid back under it (the leg's boxes follow the arc, x about 0.3-3.6, y 2.0-8.0 from the root). It hangs at the top, then drops (the root falls 4.5 m over 12-33, accelerating) with the knees tucked, and reaches for the floor, landing in the guard. Knocks down. Very punishable on a miss.",
   "base": "_body.anim.json",
   "length": 34,
   "phases": {"startup": 4, "active": 8, "recovery": 22},
