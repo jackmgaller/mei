@@ -27,6 +27,8 @@ import "stage.akr"
 import "hud.akr"
 import "fx.akr"
 import "menus.akr"
+import "beam_hud.akr"       // mx-beam: the chemical meter
+import "beam_fx.akr"        // mx-beam: Beam's effects
 
 // Input, replaced by the tests.
 weak fn input_pad(n: s32) -> u32 {
@@ -280,7 +282,7 @@ fn update_mode() {
 }
 
 // The mech under card c (the locked card is no mech).
-fn card_ok(c: s32) -> bool { return c == 0 || echo_unlocked() }
+fn card_ok(c: s32) -> bool { return c != 1 || echo_unlocked() }   // card 2: Beam, a base mech
 
 fn update_select() {
     // pad 2 joins in Versus
@@ -306,7 +308,7 @@ fn update_select() {
             sel_cur[side] -= 1
             sfx_menu_move()
         }
-        if d & RIGHT != 0 && sel_cur[side] < 1 {
+        if d & RIGHT != 0 && sel_cur[side] < 2 {
             sel_cur[side] += 1
             sfx_menu_move()
         }

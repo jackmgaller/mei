@@ -1,0 +1,68 @@
+// Mech Expo 2000: the HUD's chemical meter (mx-beam; hud.akr's draw_meter() calls it for a
+// chemical mech). The bar is a glass tube filling with Raikō's reagent, yellow into green, with
+// bubbles rising through it. While a reaction runs, the bubbles boil, the liquid's front fizzes
+// and a thin strip under the bar drains with the reaction's time left, so both players can see
+// it; with a full bar it flashes and says SUPER.
+
+const CHEM_TOP: u32 = 0x40FFD0          // 0xBBGGRR: the reagent, yellow-green on top
+const CHEM_BOT: u32 = 0x109868          // olive underneath
+const CHEM_FIZZ: u32 = 0xC0FFFF         // the front while reacting
+const CHEM_LEFT: u32 = 0x30F0A0         // the reaction's time left
+
+fn draw_chemical(fi: *Fighter, s: s32, x0: s32, w: s32, l: s32, y: s32, h: s32) {
+    span_quad(s, x0, w, y, h, 0, l, 0x301408, 0x100804, BLEND_HALF)
+    let n = clamp(fi.meter, 0, METER_BAR) * l / METER_BAR
+    let full = fi.meter >= METER_BAR
+    let reacting = fi.react > 0
+    if full && (hud_tick >> 2) & 1 == 0 {
+        span_quad(s, x0, w, y, h, 0, l, 0xFFFFFF, 0x80FFE0, BLEND_NONE)
+    } else {
+        span_quad(s, x0, w, y, h, 0, n, CHEM_TOP, CHEM_BOT, BLEND_NONE)
+        // bubbles rising through the liquid: a few at rest, a boil while reacting
+        var nb = 3
+        var rise = 1
+        if reacting {
+            nb = 8
+            rise = 2
+        }
+        if n > 3 {
+            for k in 0..nb {
+                let bx = (k * 29 + (hud_tick * (1 + k % 2)) / 5) % (n - 2)
+                let by = h - 1 - ((hud_tick * rise / 2 + k * 3) % h)
+                span_quad(s, x0, w, y + by, 1, bx, bx + 1, 0xF0FFFF, 0xF0FFFF, BLEND_ADD)
+            }
+        }
+        if reacting && n > 2 {
+            var c = CHEM_FIZZ
+            if (hud_tick >> 1) & 1 == 0 { c = CHEM_TOP }
+            span_quad(s, x0, w, y, h, max(n - 3, 0), n, c, c, BLEND_NONE)
+        }
+    }
+    if reacting {
+        let m = fi.react * l / REACT_FRAMES
+        span_quad(s, x0, w, y + h + 1, 2, 0, m, CHEM_LEFT, CHEM_LEFT, BLEND_NONE)
+    }
+    var lx = x0 + w + 4
+    var al = ALIGN_LEFT
+    if s == 1 {
+        lx = x0 - 4
+        al = ALIGN_RIGHT
+    }
+    if full {
+        txt(FONT_LABEL, lx, y - 13, "SUPER", C_YELLOW, al)
+    } else if reacting && (hud_tick >> 3) & 1 == 0 {
+        txt(FONT_LABEL, lx, y - 13, "REACTING", 0x40FFB0, al)
+    }
+}
+
+// The character select's card for Beam (until mx-menus draws Raikō's emblem as a sprite): a
+// yellow plate with a charcoal hexagon and a bolt through it, in the emblem's 32 x 32 place.
+fn beam_card(x: s32, y: s32) {
+    rect_blend(x, y + 4, 32, 32, C_YELLOW, BLEND_NONE)
+    quad_fill(x + 9, y + 12, x + 23, y + 12, x + 9, y + 24, x + 23, y + 24, 0x312C2A, BLEND_NONE)
+    quad_fill(x + 16, y + 6, x + 25, y + 12, x + 7, y + 12, x + 16, y + 6, 0x312C2A, BLEND_NONE)
+    quad_fill(x + 7, y + 24, x + 25, y + 24, x + 16, y + 30, x + 16, y + 30, 0x312C2A, BLEND_NONE)
+    // the bolt through it
+    quad_fill(x + 19, y + 9, x + 21, y + 9, x + 13, y + 20, x + 16, y + 20, C_YELLOW, BLEND_NONE)
+    quad_fill(x + 16, y + 18, x + 19, y + 18, x + 11, y + 28, x + 13, y + 28, C_YELLOW, BLEND_NONE)
+}

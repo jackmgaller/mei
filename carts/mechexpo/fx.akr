@@ -166,6 +166,7 @@ fn fx_update(f: *Fight) {
     fx_tick += 1
     for s in 0..2 {
         let fi = &f.f[s]
+        if fi.mech == Mech.Beam { fx_trails[s * 2].n = 0; fx_trails[s * 2 + 1].n = 0; continue }   // Beam: beam_fx.akr
         let root = anim_place(vec2(fi.x, fi.y), fi.facing)
         let on = is_swing(fi.mv)
         if fi.mech == Mech.Hero {
@@ -266,6 +267,7 @@ fn fx_draw_sprites(f: *Fight) {
     for s in 0..2 {
         let sh = &f.shot[s]
         if !sh.on { continue }
+        if sh.lvl > 0 { beam_fx_orb(sh); continue }        // Beam's Volt Orb (beam_fx.akr)
         let p = vec3(sh.x, sh.y + 3.0, -0.5)
         let q = project_point(p)
         if q.z < 0 { continue }
@@ -277,6 +279,7 @@ fn fx_draw_sprites(f: *Fight) {
         fx_sprite(&FX_WAVE[0], q.x, q.y, w, px * (6 + flick / 2), 0xFFE8A0, BLEND_ADD)
         fx_sprite(&FX_STREAK[0], q.x - w / 2, q.y + px * 2, w, px, 0xC09040, BLEND_ADD)
     }
+    beam_fx_draw(f)                                     // Beam's discharges (beam_fx.akr)
     for i in 0..SPARKS {
         let s = &fx_sparks[i]
         if s.t >= s.life { continue }
