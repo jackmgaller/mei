@@ -1,0 +1,14 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Thrown by Tank's Atomic Clinch or Chain Reaction (56 frames, slam on 33): the Hero's (base) on the combined form's rig, the root's path its motion: caught by the shoulders, hauled up and tipped back over Tank's head, held overhead face up and struggling, swung down and slammed flat on its back, a bounce, then still in the knockdown's pose. The arms reach up past the head spread clear of it.",
+  "base": "../hero/thrown_slam.anim.json",
+  "rig": "../../models/twins/twins.rig.json",
+  "keys": [
+    {"at": 23, "pose": {"upper_arm_r": [120, 0, 14], "upper_arm_l": [116, 0, -14]}},
+    {"at": 28, "pose": {"upper_arm_r": [150, 0, 18], "upper_arm_l": [146, 0, -18]}},
+    {"at": 33, "pose": {"upper_arm_r": [140, 0, 20], "upper_arm_l": [130, 0, -20], "hand_r": [-20, 0, 0]}},
+    {"at": 37, "pose": {"upper_arm_r": [130, 0, 20], "upper_arm_l": [120, 0, -20]}},
+    {"at": 41, "pose": {"upper_arm_r": [142, 0, 20], "upper_arm_l": [132, 0, -20]}}
+  ]
+}

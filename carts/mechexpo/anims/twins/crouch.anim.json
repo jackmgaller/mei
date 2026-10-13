@@ -1,0 +1,62 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Crouch: 8 frames down into a deep boxer squat, the last held. The right foot stays planted, the left steps a half metre further back (2-4) to widen the base, the pelvis drops 1.9 m and tips forward, the chest leans in over the knees with the waist coupling folded, the fists stay up at the chin and the head comes up to keep the other mech in view. Push box 1.6 m either side, 7.5 m tall.",
+  "base": "_body.anim.json",
+  "length": 8,
+  "boxes": {
+    "push": {"kind": "push", "rect": [-1.6, 0, 1.6, 7.5]}
+  },
+  "plant": {
+    "foot_r": [[0, 7]]
+  },
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "in",
+      "reach": {"foot_l": [-2.24, 0.0]}
+    },
+    {
+      "at": 2,
+      "reach": {"foot_l": [-2.5, 0.35]}
+    },
+    {
+      "at": 4,
+      "ease": "out",
+      "offset": [-0.6, -1.95],
+      "pose": {
+        "pelvis": [-18, -8, 0],
+        "torso": [-12, -12, 0],
+        "head": [28, 12, 0],
+        "upper_arm_r": [40, 0, -16],
+        "forearm_r": [84, 0, 4],
+        "hand_r": [-18, 0, 0],
+        "upper_arm_l": [44, 0, 18],
+        "forearm_l": [98, 0, -6],
+        "hand_l": [-12, 0, 0],
+        "pauldron_r": [14, 0, -8],
+        "pauldron_l": [16, 0, 9]
+      },
+      "reach": {"foot_l": [-2.75, 0.0]}
+    },
+    {
+      "at": 7,
+      "offset": [-0.58, -1.92],
+      "pose": {
+        "pelvis": [-18, -8, 0],
+        "torso": [-11, -12, 0],
+        "head": [26, 12, 0],
+        "upper_arm_r": [38, 0, -16],
+        "forearm_r": [86, 0, 4],
+        "hand_r": [-18, 0, 0],
+        "upper_arm_l": [42, 0, 18],
+        "forearm_l": [98, 0, -6],
+        "hand_l": [-12, 0, 0],
+        "pauldron_r": [13, 0, -8],
+        "pauldron_l": [15, 0, 9]
+      },
+      "reach": {"foot_l": [-2.75, 0.0]}
+    }
+  ]
+}

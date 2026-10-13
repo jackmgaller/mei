@@ -2175,7 +2175,7 @@ private fn tw_script(i: s32) -> u32 {
         }
     } else {
         match SCENARIO {
-            60 => { if at(120) { return A } }
+            60 => { if at(125) { return A } }
             62 => { if at(5) || at(85) || at(165) { return A } }
             63 => { if at(5) || at(155) || at(305) { return Y } }
             else => {}
@@ -2258,7 +2258,8 @@ private fn tw_check_switch() {
         assert_eq(tw_swaps, 2, "swaps")
         tw_place(-3.0, 3.0)
     }
-    // the combine at 121, hit at 127 by the Hero's Guard Cut (pressed at 120)
+    // the combine at 121, hit during twin A's leap (combine frames 11-13) by the Hero's Guard Cut
+    // (pressed at 125)
     if at(200) {
         assert_eq(evc_side[1][Ev.Hit], 1, "the Guard Cut missed the combining twins")
         assert(f.body == Mech.TwinA && twins_on(0), "the combine went on through the hit")

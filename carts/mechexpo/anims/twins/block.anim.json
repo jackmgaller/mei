@@ -1,0 +1,21 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Block: 4 frames to raise the guard, then the last frame is held (the fight shakes it in blockstun). A boxer's high shell: both forearms come up vertical in front of the face and chest, the big gauntlets side by side as a wall, the pauldrons rolled forward over the shoulders and the head ducked behind the fists; the body sinks onto bent knees and leans into it. Feet at the guard's places.",
+  "base": "_body.anim.json",
+  "length": 4,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}},
+    {
+      "at": 3,
+      "offset": [-0.25, -1.0],
+      "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]},
+      "pose": {
+        "pelvis": [-4, -6, 0], "torso": [-10, -8, 0], "head": [10, 6, 0],
+        "upper_arm_r": [46, 0, -8], "forearm_r": [116, 0, 4], "hand_r": [-6, 0, 0],
+        "upper_arm_l": [52, 0, 8], "forearm_l": [114, 0, -4], "hand_l": [-6, 0, 0],
+        "pauldron_r": [18, 0, -8], "pauldron_l": [20, 0, 8]
+      }
+    }
+  ]
+}

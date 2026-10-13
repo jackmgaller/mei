@@ -1,0 +1,27 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Hit in the air (and the start of every knockdown): the Hero's (base) on the combined form's rig: the body jolts back and keeps rotating back about the pelvis to about 60 degrees, the chest kept square on the coupling (the twin A half and the twin B half stay locked), limbs loose, the arms flung up and back past the head, the legs swinging forward and apart.",
+  "base": "../hero/hit_air.anim.json",
+  "rig": "../../models/twins/twins.rig.json",
+  "keys": [
+    {
+      "at": 0,
+      "pose": {"torso": [4, -14, 0], "forearm_r": [40, 0, 4], "hand_r": [-16, 0, 0]}
+    },
+    {
+      "at": 6,
+      "pose": {"torso": [6, -12, 0], "upper_arm_r": [100, 0, -10], "upper_arm_l": [70, 0, 30]}
+    },
+    {
+      "at": 29,
+      "pose": {
+        "torso": [4, -10, 0],
+        "upper_arm_r": [140, 0, 16],
+        "upper_arm_l": [120, 0, -16],
+        "forearm_r": [16, 0, 4],
+        "forearm_l": [26, 0, -6]
+      }
+    }
+  ]
+}

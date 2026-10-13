@@ -1,0 +1,49 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Get up: the Hero's (base) on the combined form's rig: from flat on its back it rolls up onto its seat with the knees drawn in and the right fist pushing off the floor (0-6), rocks forward over its feet into a deep crouch (11) and drives up into the combined guard (19).",
+  "base": "../hero/getup.anim.json",
+  "rig": "../../models/twins/twins.rig.json",
+  "keys": [
+    {
+      "at": 0,
+      "pose": {"upper_arm_r": [142, 0, 20], "upper_arm_l": [132, 0, -20], "hand_r": [-20, 0, 0]}
+    },
+    {
+      "at": 3,
+      "reach": {"foot_r": [2.4, 0.0], "foot_l": [2.1, 0.0]}
+    },
+    {
+      "at": 6,
+      "offset": [-0.6, -3.35],
+      "reach": {"foot_r": [1.9, 0.0], "foot_l": [1.5, 0.0]},
+      "pose": {"torso": [-22, -6, 0], "forearm_r": [40, 0, 4]}
+    },
+    {
+      "at": 9,
+      "reach": {"foot_l": [-0.6, 0.7]}
+    },
+    {
+      "at": 11,
+      "offset": [-0.45, -2.0],
+      "reach": {"foot_r": [0.9, 0.0], "foot_l": [-1.8, 0.0]},
+      "pose": {"pelvis": [-10, -8, 0], "torso": [-14, -14, 0], "forearm_r": [60, 0, 4], "forearm_l": [80, 0, -6]}
+    },
+    {
+      "at": 15,
+      "reach": {"foot_r": [0.6, 0.0], "foot_l": [-2.1, 0.0]}
+    },
+    {
+      "at": 19,
+      "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}
+    }
+  ],
+  "allow": [
+    ["torso", "thigh_r"],
+    ["torso", "thigh_l"],
+    ["pelvis", "shin_l"],
+    ["pelvis", "shin_r"],
+    ["thigh_l", "foot_l"],
+    ["pelvis", "foot_l"]
+  ]
+}

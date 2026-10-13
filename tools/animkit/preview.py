@@ -15,6 +15,11 @@ CART = ROOT/'carts'/'mechexpo'
 FONT_W = 8
 
 
+def enum_name(mech):
+    """anim.akr's Mech variant for a rig name: 'hero' Hero, 'twin_a' TwinA."""
+    return ''.join(w.capitalize() for w in mech.split('_'))
+
+
 def cart_source(mech, mv, length, keys, phases, marks, camera, boxes=True, ground=True, title=''):
     """The preview cart: frame f drawn on tick f, labelled. keys: the key frames; phases:
     (startup, active) or None; marks: per frame bits."""
@@ -45,9 +50,9 @@ fn draw() {{
     camera_clip(0.5, 200.0)
     camera(vec3({ex:.3f}, {ey:.3f}, {ez:.3f}), 0.0)
     {'draw_ground()' if ground else ''}
-    anim_draw(Mech.{mech.capitalize()}, Mv.{mv}, fixed(f), anim_place(vec2(root_x, 0.0), 1))
+    anim_draw(Mech.{enum_name(mech)}, Mv.{mv}, fixed(f), anim_place(vec2(root_x, 0.0), 1))
     let cpu = anim_cpu
-    {f'anim_draw_boxes(Mech.{mech.capitalize()}, Mv.{mv}, f, vec2(root_x, 0.0), 1)' if boxes else ''}
+    {f'anim_draw_boxes(Mech.{enum_name(mech)}, Mv.{mv}, f, vec2(root_x, 0.0), 1)' if boxes else ''}
     text(4, 4, "{title}", 0xFFFFFF)
     var x = text_int(4, 228, f, 0xFFFFFF)
     var key = false
@@ -65,7 +70,7 @@ fn draw() {{
         }}
     }}
     text_int(264, 228, cpu, 0x909090)
-    if tick < {length - 1} {{ root_x += anim_root(Mech.{mech.capitalize()}, Mv.{mv}, f).x }}
+    if tick < {length - 1} {{ root_x += anim_root(Mech.{enum_name(mech)}, Mv.{mv}, f).x }}
     tick += 1
 }}
 
