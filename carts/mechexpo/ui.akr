@@ -145,7 +145,7 @@ fn mech_maker(m: Mech) -> *u8 {
     match m {
         Hero => return "MOMENTUM ROBOTICS"
         Doubleblade => return "UMBRAL RESEARCH"
-        Beam => return "RAIKO CHEMICAL GROUP"
+        Beam => return "RAIKO CHEMICAL"
     }
 }
 
@@ -153,7 +153,7 @@ fn mech_maker_short(m: Mech) -> *u8 {
     match m {
         Hero => return "MOMENTUM ROBO."
         Doubleblade => return "UMBRAL RESEARCH"
-        Beam => return "RAIKO CHEMICAL"
+        Beam => return "RAIKO CHEM."
     }
 }
 

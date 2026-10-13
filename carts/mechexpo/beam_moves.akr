@@ -72,12 +72,12 @@ fn beam_tm(mv: Mv) -> Tm {
         crouch => Tm { len: 8, loops: true, shape: 1 }
         jump => Tm { len: 45, shape: 2 }
         atk_n => Tm { len: 24, a0: 6, a1: 8, hx0: 1.8, hy0: 6.0, hx1: 5.6, hy1: 9.0, c1: 14, reach: 3.0 }
-        atk_f => Tm { len: 40, a0: 14, a1: 17, hx0: 3.5, hy0: 6.0, hx1: 9.4, hy1: 8.5, c1: 23,
+        atk_f => Tm { len: 40, a0: 14, a1: 17, hx0: 3.5, hy0: 6.0, hx1: 10.0, hy1: 8.5, c1: 23,
                       m0: 3, m1: 12, dx: 0.08, reach: 4.5 }
         atk_d => Tm { len: 41, a0: 12, a1: 16, hx0: 1.5, hy0: 0.0, hx1: 7.5, hy1: 2.0, shape: 1, reach: 3.5 }
         atk_air => Tm { len: 32, a0: 9, a1: 31, hx0: 0.5, hy0: -3.0, hx1: 5.5, hy1: 3.0, shape: 2 }
         sp_n => Tm { len: 45, rel: 18, ch: 10 }
-        sp_f => Tm { len: 50, a0: 20, a1: 25, hx0: 2.5, hy0: 6.0, hx1: 15.0, hy1: 8.0, reach: 5.5 }
+        sp_f => Tm { len: 44, a0: 18, a1: 23, hx0: 2.5, hy0: 6.0, hx1: 15.0, hy1: 8.0, reach: 5.5 }
         sp_u => Tm { len: 42, a0: 7, a1: 14, hx0: 0.5, hy0: 6.0, hx1: 5.0, hy1: 16.0, i0: 0, i1: 6 }
         sp_d => Tm { len: 44, rel: 30 }
         grab => Tm { len: 7, a0: 5, a1: 6, hx0: 1.0, hy0: 2.0, hx1: 3.6, hy1: 10.0 }

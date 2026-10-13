@@ -308,7 +308,7 @@ short and late off the ground.
 | Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | On block / hit | Hit box |
 |---|---|---|---|---|---|---|---|---|
 | `atk_n` Arc Jab | 6 | 3 | 15 | 24 | 65 | 19 / 14 | −4 / +1 | x 1.8–5.6, y 6–9 |
-| `atk_f` Static Lance | 14 | 4 | 22 | 40 | 110 | 26 / 19 | −7 / 0 | x 3.5–9.4, y 6–8.5 |
+| `atk_f` Static Lance | 14 | 4 | 22 | 40 | 110 | 26 / 19 | −7 / 0 | x 3.5–10.0, y 6–8.5 |
 | `atk_d` Ground Spark | 12 | 5 | 24 | 41 | 85, knockdown | — / 16 | −13 / KD +41 | x 1.5–7.5, y 0–2 |
 | `atk_air` Down Arc | 9 | 6 | to landing | 32 | 90 | 20 / 15 | by height | x 0.5–5.5, y −3–3 (from the root, in the air) |
 
@@ -340,7 +340,7 @@ boxes, against a standing Hero.)
 | `sp_n` Volt Orb (tap) | 18 | the orb | 26 | 45 | 70 | 14 | 20 / 16 | −11 / −7 at 6 m; safe far |
 | `sp_n` Volt Orb (charged) | 18 + 20–49 held | the orb | 26 | 65–94 | 90 | 18 | 22 / 18 | |
 | `sp_n` Volt Orb (full) | 18 + 50 held | the orb | 26 | 95 | 120, knockdown | 24 | — / 20 | |
-| `sp_f` Arc Lance | 20 | 6 | 24 | 50 | 100, knockdown | 20 | — / 18 | −12 / KD +40 (at 7 m) |
+| `sp_f` Arc Lance | 18 | 6 | 20 | 44 | 100, knockdown | 20 | — / 18 | −8 / KD +44 (at 7 m) |
 | `sp_u` Thunder Pillar | 7 | 8 | 27 | 42 | 110, knockdown | 22 | — / 14 | −21 / KD +49 |
 | `sp_d` Reaction Prime | — | — | 14 after the release | 44 | — | — | — | — |
 
@@ -366,9 +366,9 @@ boxes, against a standing Hero.)
     close enough to reach). The Void Step passes through it (scenario 38).
 - **Arc Lance** (`sp_f`): the long-range beam, and the chain's ender. No root motion: Beam plants,
   levels the cannon with both hands on frames 1–12 (anticipation: the body sinks 0.4 m, the
-  coils charge), and the beam fires from the muzzle on frame 21: a straight bolt out to 15 m (a
+  coils charge), and the beam fires from the muzzle on frame 19: a straight bolt out to 15 m (a
   box from x 2.5 to 15, y 6 to 8), held for 6 frames, the body pushed back by the recoil, then
-  24 frames of recovery with the barrel smoking. The arm and the muzzle are hurtable to 5.5 m
+  20 frames of recovery with the barrel smoking. The arm and the muzzle are hurtable to 5.5 m
   out from the first active frame until 10 after. Knocks down. Too slow to use on reaction from
   close; it catches a mech walking or jumping in at mid range. The Antimatter Slide (4.6 m tall)
   passes under the beam; the Parry catches it.

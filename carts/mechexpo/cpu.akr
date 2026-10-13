@@ -290,6 +290,9 @@ private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, b
     let me = &fight.f[i]
     let op = &fight.f[other(i)]
     let incoming = fight.shot[other(i)].on
+    // the prime while the other is down: the safest moment there is
+    let down = op.mv == Mv.knockdown || op.mv == Mv.getup || op.mv == Mv.hit_air
+    if down && me.react == 0 && me.meter < METER_BAR && dist > 6.0 && roll(c, lv.special * 6) { return DOWN | B }
     if dist < tip(op.mech) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
     if dist < 5.5 {
         if c.blocks_seen >= 2 && roll(c, lv.grab) { c.blocks_seen = 0; return Y }
@@ -300,12 +303,12 @@ private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, b
         if r < 85 { return hold(c, back, 16) }
         return hold(c, R, 10)
     }
-    if dist > 15.0 && me.react == 0 && me.meter < METER_BAR && !incoming && !is_attack(op.mv)
+    if dist > 12.0 && me.react == 0 && me.meter < METER_BAR && !incoming && !is_attack(op.mv)
         && roll(c, lv.special * 4) {
         return DOWN | B
     }
     if super_wise(i) && dist < 28.0 && roll(c, 4) { return A | B }
-    if dist > 10.0 && !fight.shot[i].on && roll(c, 35) {
+    if dist > 8.0 && !fight.shot[i].on && roll(c, 45) {
         c.charge_want = 0
         if dist > 20.0 && roll(c, 40) { c.charge_want = ORB_CHARGE_MAX }
         else if roll(c, 35) { c.charge_want = ORB_CHARGE_HALF + 4 }

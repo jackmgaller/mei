@@ -1,0 +1,136 @@
+// Mech Expo 2000: Beam's effects (mx-beam; fx.akr calls these). Additive sprites on the
+// interface list, from the fight's state, in fx.akr's effect sprites (slot 10):
+//   the Volt Orb      a ball of lightning: a glow, a flickering spark star and, charged, a ring;
+//                     bigger and whiter with its level
+//   the charge        a glow at the cannon's muzzle growing while B is held
+//   the discharges    while one of Beam's attacks has a hit box out, its electricity drawn over
+//                     the box: streaks for the Static Lance, the Arc Lance and the Overload's
+//                     beam, a stack of glows for the Thunder Pillar, sparks for the jab, the
+//                     Ground Spark and the Down Arc
+//   the reaction      while a reaction runs, the back tanks glow green and pulse
+
+const BEAM_MUZZLE = vec4(0.0, 0.8, -4.4, 1.0)      // models/beam/make_beam.py's MUZZLE (weapon_r)
+const BFX_ORB: u32 = 0xFFF0C0                      // 0xBBGGRR: blue-white lightning
+const BFX_ORB_HALO: u32 = 0x30C060                 // the reagent's green
+const BFX_ARC: u32 = 0xFFE8A0
+const BFX_GREEN: u32 = 0x40FF90
+
+// The orb (fx.akr's shot loop hands it any shot with a level).
+fn beam_fx_orb(sh: *Shot) {
+    let p = vec3(sh.x, (sh.y0 + sh.y1) / 2, -0.5)
+    let q = project_point(p)
+    if q.z < 0 { return }
+    let px = fx_px(p, 1.0)
+    let r = sh.half * 2
+    let d = (fixed(px) * r) as s32
+    let flick = ((sh.t * 7) % 5) as s32
+    fx_sprite(&FX_GLOW[0], q.x, q.y, d * 2, d * 2, BFX_ORB_HALO, BLEND_ADD)
+    fx_sprite(&FX_GLOW[0], q.x, q.y, d + flick, d + flick, BFX_ORB, BLEND_ADD)
+    var sw = d + px / 2
+    if (sh.t & 2) != 0 { sw = -sw }
+    fx_sprite(&FX_SPARK[0], q.x, q.y, sw, d + px / 2, 0xFFFFFF, BLEND_ADD)
+    if sh.lvl >= 2 {
+        let rr = d + (sh.t % 12) * px / 6
+        fx_sprite(&FX_RING[0], q.x, q.y, rr, rr, col_scale(BFX_ORB, 0.6), BLEND_ADD)
+    }
+    // a tail of sparks behind it
+    var back = -1.0
+    if sh.vx < 0.0 { back = 1.0 }
+    let tp = vec3(sh.x + back * r * 0.9, p.y, -0.5)
+    let tq = project_point(tp)
+    if tq.z >= 0 {
+        fx_sprite(&FX_STREAK[0], (q.x + tq.x) / 2, q.y, abs(tq.x - q.x) * 2, px, col_scale(BFX_ARC, 0.7), BLEND_ADD)
+    }
+}
+
+// A streak over a world rectangle (x0..x1, y0..y1 at z), its brightness k.
+private fn bfx_streak(x0: fixed, y0: fixed, x1: fixed, y1: fixed, col: u32, flick: s32) {
+    let a = project_point(vec3(x0, (y0 + y1) / 2, -0.5))
+    let b = project_point(vec3(x1, (y0 + y1) / 2, -0.5))
+    if a.z < 0 || b.z < 0 { return }
+    let px = fx_px(vec3((x0 + x1) / 2, y0, -0.5), 1.0)
+    let hh = max((fixed(px) * (y1 - y0)) as s32, 2)
+    let w = abs(b.x - a.x)
+    let cx = (a.x + b.x) / 2
+    fx_sprite(&FX_GLOW[0], cx, a.y, w + hh, hh * 2, col_scale(BFX_GREEN, 0.5), BLEND_ADD)
+    fx_sprite(&FX_STREAK[0], cx, a.y, w, hh / 2 + flick, col, BLEND_ADD)
+    fx_sprite(&FX_STREAK[0], cx, a.y + flick - 1, w, max(hh / 4, 1), 0xFFFFFF, BLEND_ADD)
+}
+
+fn beam_fx_draw(f: *Fight) {
+    for s in 0..2 {
+        let fi = &f.f[s]
+        if fi.mech != Mech.Beam { continue }
+        let flick = ((fx_tick + s * 3) % 3) as s32
+        let root = anim_place(vec2(fi.x, fi.y), fi.facing)
+        // the charge: a glow at the muzzle
+        if fi.mv == Mv.sp_n && fi.charge > 0 {
+            let m = anim_part(fi.mech, fi.mv, fi.frame, root, Part.weapon_r)
+            let mz = m * BEAM_MUZZLE
+            let p = vec3(mz.x, mz.y, mz.z)
+            let q = project_point(p)
+            if q.z >= 0 {
+                let px = fx_px(p, 1.0)
+                let d = px * (1 + fi.charge / 10) + flick
+                var col = BFX_ORB
+                if fi.charge >= ORB_CHARGE_MAX { col = 0xFFFFFF }
+                fx_sprite(&FX_GLOW[0], q.x, q.y, d * 2, d * 2, BFX_ORB_HALO, BLEND_ADD)
+                fx_sprite(&FX_SPARK[0], q.x, q.y, d, d, col, BLEND_ADD)
+            }
+        }
+        // the reaction: the back tanks glow and pulse
+        if fi.react > 0 {
+            let p = vec3(fi.x - fixed(fi.facing) * 2.2, fi.y + 9.4, 1.0)
+            let q = project_point(p)
+            if q.z >= 0 {
+                let px = fx_px(p, 1.0)
+                let pulse = ((fx_tick >> 1) % 8) as s32
+                let d = px * 3 + pulse * px / 4
+                fx_sprite(&FX_GLOW[0], q.x, q.y, d, d * 3 / 2, col_scale(BFX_GREEN, 0.55), BLEND_ADD)
+            }
+        }
+        // the discharges, over this frame's hit boxes
+        if !is_attack(fi.mv) || fi.mv == Mv.grab { continue }
+        var bx: Boxes
+        fight_boxes(s, &bx)
+        for k in 0..bx.n {
+            let b = &bx.b[k]
+            if b.kind != BOX_HIT { continue }
+            var x0 = fi.x + b.x0
+            var x1 = fi.x + b.x1
+            if fi.facing < 0 {
+                x0 = fi.x - b.x1
+                x1 = fi.x - b.x0
+            }
+            let y0 = fi.y + b.y0
+            let y1 = fi.y + b.y1
+            match fi.mv {
+                sp_f, atk_f => bfx_streak(x0, y0, x1, y1, BFX_ARC, flick)
+                super => bfx_streak(x0, y0, x1, y1, 0xFFFFFF, flick * 2)
+                sp_u => {
+                    var y = y0
+                    while y < y1 {
+                        let p = vec3((x0 + x1) / 2, y, -0.5)
+                        let q = project_point(p)
+                        if q.z >= 0 {
+                            let px = fx_px(p, 1.0)
+                            let d = px * 3 + flick * px / 2
+                            fx_sprite(&FX_GLOW[0], q.x, q.y, d, d, col_scale(BFX_GREEN, 0.6), BLEND_ADD)
+                            fx_sprite(&FX_SPARK[0], q.x + flick - 1, q.y, d * 2 / 3, d, BFX_ARC, BLEND_ADD)
+                        }
+                        y += 2.5
+                    }
+                }
+                else => {
+                    let p = vec3((x0 + x1) / 2, (y0 + y1) / 2, -0.5)
+                    let q = project_point(p)
+                    if q.z >= 0 {
+                        let px = fx_px(p, 1.0)
+                        let d = px * 3 + flick * px
+                        fx_sprite(&FX_SPARK[0], q.x, q.y, d, d, BFX_ARC, BLEND_ADD)
+                    }
+                }
+            }
+        }
+    }
+}
