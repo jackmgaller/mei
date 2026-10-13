@@ -141,6 +141,18 @@ imports `anim.akr` for `Mech`.
 `tools/gen_mechexpo_assets.py`) defines every `ASSET_*` and `assets_load()`. The stage props
 are B's models, placed by D.
 
+## Beam, the third mech
+
+Beam (Raikō Chemical Group, chemical; `Mech.Beam`) is the first mech after the MVP, a base
+mech available from the start: its design and frame data are in [MOVES.md](MOVES.md#beam-raikō-chemical-group-chemical).
+Its own files: `models/beam/make_beam.py` (the model on the Hero's skeleton, 1,794 triangles),
+`anims/beam/_body.anim.json` (the stand-in for every move until its animations land; the fight
+plays it on the stand-in timings and boxes in `beam_moves.akr`), `beam_moves.akr` (its hits,
+timings, the Volt Orb and the reaction), `beam_hud.akr` (the chemical meter and its select card)
+and `beam_fx.akr` (its effects). The shared files call these with a line each; the shot system
+in `fighter.akr` carries both the Hero's wave and Beam's orb (`Shot.lvl`, `str`, `half`, `y0`,
+`y1`, `life`). Tests: scenarios 30–39 in `tests/harness.akr`.
+
 ## Rendering, VRAM and budgets
 
 - **Depth buffer and perspective texturing**; every recipe has
@@ -156,6 +168,9 @@ are B's models, placed by D.
   the menu page; texture slots 8 (fonts), 9 (UI sprites), 10 (effects); palettes 240–254 (244 is
   lent to the menu page and the hall's put back); a backdrop table at 0x582000; line channels 0,
   2 and 7. Priorities: BG2 0, BG1 1, the mechs 2, BG0 (the HUD's frame) 3, the interface list 4.
+- **Palettes, as built with Beam:** the pack's 4-bit palettes are 0–11 and its texture palettes
+  colours 192–255, so it fills 8-bit palette 0 (4-bit palettes 0–15); a fourth mech takes it past
+  15.
 - **Triangles:** a mech about 1,600–1,800 (the sketches are 1,632 and 1,734); the frame limit is
   4,000.
 - **Budgets a tick:** CPU 1,000,000 cycles, GPU 2,000,000 (`mei-headless --gpu-stats`). The
