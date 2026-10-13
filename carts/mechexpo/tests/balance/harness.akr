@@ -1,0 +1,433 @@
+// Mech Expo 2000's balance measurement (mx-balance): CPU level 2 against CPU level 2 for one
+// pairing of mechs, NMATCH matches, the sides swapped every match (so neither mech always starts
+// on the left, or with its back to the rooftop's drop), each match with its own seed. Prints one
+// MATCHUP line and a MECH line for each of the two mechs, which tests/balance/table.py reads:
+// wins, rounds, their length, time-ups and ring-outs, the damage each dealt by the kind of move,
+// and what explains it (supers, throws, blocks, parries, armour, curses, mines, snares, the
+// Twins' forms). tests/balance/matrix.sh runs every pairing side by side.
+//
+// The constants come from the scenario's head (tests/balance/run.sh): MA and MB the two mechs
+// (Mech's indices), NMATCH, STAGE (ST_HANGAR or ST_ROOFTOP), SEED (varies the dice), TRACE
+// (a match to trace, -1 none: its events and the CPUs' presses are printed, a tick a frame, and
+// the fight is drawn as boxes, for --dump-every; TRACE_FROM the frame its trace starts).
+
+var tick_per_frame = 40
+var frames: s32
+var done: bool
+var match_n: s32                 // the match being played
+var slot_side: [2]s32            // which side each mech plays this match (slot 0 is MA)
+var trace_frame: s32 = -1        // the frame the traced match started
+
+// per mech (slot 0: MA, slot 1: MB)
+var wins: [2]s32
+var rwins: [2]s32
+var dmg: [2][8]s32               // damage dealt, by kind (DK_*)
+var evn: [2][len(Ev)]s32         // events by the side the event names
+var absorbed: [2]s32             // hits this mech's armour absorbed
+var mines_broken: [2]s32         // mines of this mech's destroyed by the other
+var siph: [2]s32                 // meter siphoned from this mech
+var cursed_t: [2]s32             // frames it spent cursed
+var debt_t: [2]s32               // frames in debt (antimatter)
+var comb_t: [2]s32               // the Twins: frames combined
+var comb_curse_t: [2]s32         //   frames combined while cursed
+var switches: [2]s32             //   form switches
+var snared_by: [2]s32            // snares this mech walked into
+var supers_hit: [2]s32           // supers that landed (a Hit of power 3)
+var meter_end: [2]s32            // the meter at each round's end, summed
+
+var fight_t: s32                 // frames of fighting, in all
+var rounds: s32
+var round_len: s32
+var timeups: s32
+var ringouts: s32
+var draws: s32
+var prev_body: [2]Mech
+
+// The kinds of damage: normals, specials (not the shot), the shot, throws and command grabs,
+// supers, chip through a block, the rest.
+const DK_N = 0
+const DK_S = 1
+const DK_P = 2
+const DK_T = 3
+const DK_X = 4
+const DK_C = 5
+const DK_O = 6
+const DK_NAMES: [7]*u8 = ["N", "S", "P", "T", "X", "C", "O"]
+
+const NAMES: [8]*u8 = ["Hero", "Doubleblade", "Beam", "Tank", "Twins", "TwinA", "TwinB", "Shadow"]
+const EV_NAMES: [len(Ev)]*u8 = [
+    "Hit", "Block", "Chip", "Whiff", "Grab", "Throw", "Break", "Land", "Step", "MeterFull",
+    "Super", "Ko", "TimeUp", "Shot", "Parry", "Clash", "Swing", "Armour", "RingOut", "Curse", "Mine",
+    "Snare", "MineGone",
+]
+const MV_NAMES: [len(Mv)]*u8 = [
+    "idle", "walk_f", "walk_b", "crouch", "jump", "land", "block", "hit_high", "hit_low",
+    "hit_air", "knockdown", "getup", "ko", "win", "intro", "atk_n", "atk_f", "atk_d", "atk_air",
+    "sp_n", "sp_f", "sp_u", "sp_d", "grab", "grab_whiff", "throw", "thrown", "grab_break", "super",
+    "thrown_vault", "thrown_slam", "combine", "split",
+]
+
+fn init() {
+    fight_stage(STAGE)
+    start_match()
+}
+
+private fn start_match() {
+    // the sides swap every match: slot 0 on the left in the even ones
+    if match_n % 2 == 0 {
+        slot_side[0] = 0
+        slot_side[1] = 1
+        fight_init(MA as Mech, MB as Mech, FightMode.VsCpu, 2)
+    } else {
+        slot_side[0] = 1
+        slot_side[1] = 0
+        fight_init(MB as Mech, MA as Mech, FightMode.VsCpu, 2)
+    }
+    cpu_init(SEED * 7919 + 131 + match_n * 104729 + MA * 31 + MB * 1009)
+    for s in 0..2 { prev_body[s] = fight.f[s].body }
+    if match_n == TRACE {
+        tick_per_frame = 1
+        trace_frame = frames
+        print("trace: match ")
+        print_int(match_n)
+        print(" from frame ")
+        print_int(frames)
+        print(", side 0 ")
+        print(NAMES[fight.f[0].mech])
+        print(", side 1 ")
+        println(NAMES[fight.f[1].mech])
+    } else {
+        tick_per_frame = 40
+    }
+}
+
+// The slot (0 MA, 1 MB) of side s.
+private fn slot(s: s32) -> s32 {
+    if slot_side[0] == s { return 0 }
+    return 1
+}
+
+fn update() {
+    for k in 0..tick_per_frame {
+        if done { return }
+        tick()
+    }
+    frames += 1
+}
+
+// The move side i is attacking with (its partner's, when the leader isn't attacking).
+private fn attack_mv(i: s32) -> Mv {
+    let mv = fight.f[i].mv
+    if is_attack(mv) || mv == Mv.throw { return mv }
+    if twins_on(i) { return fight.f[i + 2].mv }
+    return mv
+}
+
+private fn dmg_kind(i: s32, shot_gone: bool, blocking: bool) -> s32 {
+    if blocking { return DK_C }
+    let f = &fight.f[i]
+    let mv = attack_mv(i)
+    if mv == Mv.super { return DK_X }
+    if mv == Mv.throw { return DK_T }
+    if f.mech == Mech.Tank && mv == Mv.sp_f { return DK_T }
+    if shot_gone { return DK_P }
+    if mv >= Mv.atk_n && mv <= Mv.atk_air { return DK_N }
+    if is_special(mv) { return DK_S }
+    return DK_O
+}
+
+private fn tick() {
+    var h0: [2]s32
+    var blk: [2]bool
+    var shot_on: [2]bool
+    for s in 0..2 {
+        h0[s] = fight.f[s].health
+        blk[s] = fight.f[s].mv == Mv.block || (twins_on(s) && fight.f[s + 2].mv == Mv.block)
+        shot_on[s] = fight.shot[s].on
+    }
+    let p1 = cpu_pad(0, 2)
+    fight_tick(p1, 0, vec2(0.0, 0.0), vec2(0.0, 0.0))
+    let live = fight.phase == Phase.Fight
+    // the damage each side dealt this frame, by kind
+    for j in 0..2 {
+        let lost = h0[j] - fight.f[j].health
+        if lost <= 0 { continue }
+        let i = 1 - j
+        let gone = shot_on[i] && !fight.shot[i].on
+        dmg[slot(i)][dmg_kind(i, gone, blk[j])] += lost
+    }
+    let ev = fight_events()
+    for e in 0..ev.n {
+        let k = &ev.e[e]
+        if k.side != 0 && k.side != 1 { continue }
+        let sl = slot(k.side)
+        evn[sl][k.kind] += 1
+        if k.kind == Ev.Armour { absorbed[1 - sl] += 1 }
+        if k.kind == Ev.MineGone && k.power == 1 { mines_broken[sl] += 1 }
+        if k.kind == Ev.Snare { snared_by[1 - sl] += 1 }
+        if (k.kind == Ev.Hit || k.kind == Ev.Throw) && k.power == 3 { supers_hit[sl] += 1 }
+        if match_n == TRACE && k.kind != Ev.Step && k.kind != Ev.Swing && k.kind != Ev.Land {
+            print("  t ")
+            print_int(fight.ticks)
+            print(" ev ")
+            print(EV_NAMES[k.kind])
+            print(" side ")
+            print_int(k.side)
+            print(" pw ")
+            print_int(k.power)
+            print(" | ")
+            trace_state()
+        }
+    }
+    if live {
+        fight_t += 1
+        for s in 0..2 {
+            let f = &fight.f[s]
+            let sl = slot(s)
+            if f.curse > 0 { cursed_t[sl] += 1 }
+            if f.meter < 0 { debt_t[sl] += 1 }
+            if f.mech == Mech.Twins && f.body == Mech.Twins {
+                comb_t[sl] += 1
+                if f.curse > 0 { comb_curse_t[sl] += 1 }
+            }
+            if f.body != prev_body[s] {
+                switches[sl] += 1
+                prev_body[s] = f.body
+            }
+        }
+        if match_n == TRACE { trace_pads() }
+    } else {
+        for s in 0..2 { prev_body[s] = fight.f[s].body }
+    }
+    // a round's end
+    if fight.phase == Phase.Ko && fight.phase_t == 1 {
+        rounds += 1
+        round_len += ROUND_FRAMES - fight.timer
+        if fight.ringout >= 0 { ringouts += 1 }
+        else if fight.timer <= 0 { timeups += 1 }
+        let w = fight.round_winner
+        if w == 0 || w == 1 { rwins[slot(w)] += 1 }
+        for s in 0..2 {
+            siph[slot(s)] += fight.f[s].siphoned
+            meter_end[slot(s)] += fight.f[s].meter
+        }
+        if match_n == TRACE {
+            print("  round over: winner ")
+            print_int(w)
+            print(" timer ")
+            print_int(fight.timer)
+            print(" ringout ")
+            print_int(fight.ringout)
+            print(" | ")
+            trace_state()
+        }
+    }
+    if fight.phase != Phase.MatchOver { return }
+    let w = fight.winner
+    if w == 0 || w == 1 { wins[slot(w)] += 1 } else { draws += 1 }
+    if match_n == TRACE {
+        print("trace: match over, winner side ")
+        print_int(w)
+        print(" at frame ")
+        print_int(frames)
+        println("")
+    }
+    match_n += 1
+    if match_n < NMATCH {
+        start_match()
+        return
+    }
+    report()
+    done = true
+}
+
+// ---- the trace
+
+var tr_pad: [2]u32
+
+private fn trace_state() {
+    for s in 0..2 {
+        let f = &fight.f[s]
+        print(NAMES[f.body])
+        print(" ")
+        print(MV_NAMES[f.mv])
+        print(" x ")
+        print_fixed(f.x)
+        print(" h ")
+        print_int(f.health)
+        print(" m ")
+        print_int(f.meter)
+        if f.curse > 0 { print(" CURSED") }
+        if twins_on(s) {
+            print(" [B ")
+            print(MV_NAMES[fight.f[s + 2].mv])
+            print(" x ")
+            print_fixed(fight.f[s + 2].x)
+            print("]")
+        }
+        if s == 0 { print(" | ") }
+    }
+    if rift[0].on || rift[1].on {
+        for s in 0..2 {
+            if rift[s].on {
+                print(" | mine")
+                print_int(s)
+                print(" x ")
+                print_fixed(rift[s].x)
+                print(" t ")
+                print_int(rift[s].t)
+            }
+        }
+    }
+    println("")
+}
+
+private fn trace_pads() {
+    for s in 0..2 {
+        let p = fx[s].pad
+        let pressed = p & ~tr_pad[s]
+        tr_pad[s] = p
+        if (pressed & (A | B | X | Y | L | R)) == 0 { continue }
+        print("  t ")
+        print_int(fight.ticks)
+        print(" side ")
+        print_int(s)
+        print(" press")
+        if p & LEFT != 0 { print(" L<") }
+        if p & RIGHT != 0 { print(" R>") }
+        if p & UP != 0 { print(" up") }
+        if p & DOWN != 0 { print(" down") }
+        if pressed & A != 0 { print(" A") }
+        if pressed & B != 0 { print(" B") }
+        if pressed & X != 0 { print(" X") }
+        if pressed & Y != 0 { print(" Y") }
+        if pressed & L != 0 { print(" L") }
+        if pressed & R != 0 { print(" R") }
+        print(" dist ")
+        print_fixed(abs(fight.f[1].x - fight.f[0].x))
+        print(" | ")
+        trace_state()
+    }
+}
+
+// ---- the report
+
+private fn kv(k: *u8, v: s32) {
+    print(" ")
+    print(k)
+    print("=")
+    print_int(v)
+}
+
+private fn report() {
+    print("MATCHUP a=")
+    print(NAMES[MA])
+    print(" b=")
+    print(NAMES[MB])
+    kv("stage", STAGE)
+    kv("matches", NMATCH)
+    kv("draws", draws)
+    kv("rounds", rounds)
+    kv("round_frames", round_len)
+    kv("timeups", timeups)
+    kv("ringouts", ringouts)
+    kv("fight_frames", fight_t)
+    println("")
+    for sl in 0..2 {
+        print("MECH slot=")
+        print_int(sl)
+        print(" name=")
+        if sl == 0 { print(NAMES[MA]) } else { print(NAMES[MB]) }
+        kv("wins", wins[sl])
+        kv("rwins", rwins[sl])
+        for k in 0..7 {
+            print(" dmg")
+            print(DK_NAMES[k])
+            print("=")
+            print_int(dmg[sl][k])
+        }
+        kv("hits", evn[sl][Ev.Hit])
+        kv("blocked", evn[sl][Ev.Block])
+        kv("throws", evn[sl][Ev.Throw])
+        kv("breaks", evn[sl][Ev.Break])
+        kv("whiffs", evn[sl][Ev.Whiff])
+        kv("supers", evn[sl][Ev.Super])
+        kv("supers_hit", supers_hit[sl])
+        kv("parries", evn[sl][Ev.Parry])
+        kv("shots", evn[sl][Ev.Shot])
+        kv("absorbed", absorbed[sl])
+        kv("curses", evn[sl][Ev.Curse])
+        kv("mines", evn[sl][Ev.Mine])
+        kv("snares", evn[sl][Ev.Snare])
+        kv("snared", snared_by[sl])
+        kv("mines_broken", mines_broken[sl])
+        kv("siphoned", siph[sl])
+        kv("cursed_t", cursed_t[sl])
+        kv("debt_t", debt_t[sl])
+        kv("comb_t", comb_t[sl])
+        kv("comb_curse_t", comb_curse_t[sl])
+        kv("switches", switches[sl])
+        kv("meter_end", meter_end[sl])
+        println("")
+    }
+    println("OK balance")
+}
+
+// ---- the view (the traced match only): the fighters as boxes
+
+const PX: fixed = 4.0           // pixels a metre
+const FLOOR_Y = 200
+
+private fn sx(x: fixed, cx: fixed) -> s32 { return 160 + ((x - cx) * PX) as s32 }
+private fn sy(y: fixed) -> s32 { return FLOOR_Y - (y * PX) as s32 }
+
+private fn draw_box(i: s32, b: *Box, cx: fixed) {
+    let w = world_box(i, b)
+    let x0 = sx(w.x, cx)
+    let x1 = sx(w.z, cx)
+    let y1 = sy(w.y)
+    let y0 = sy(w.w)
+    var col = rgb(90, 170, 255)
+    if b.kind == BOX_HIT { col = rgb(255, 60, 50) }
+    if b.kind == BOX_PUSH { col = rgb(240, 220, 60) }
+    rect_outline(x0, y0, max(x1 - x0, 1), max(y1 - y0, 1), col, BLEND_NONE)
+}
+
+fn draw() {
+    if match_n != TRACE || done { return }
+    cls(rgb(24, 28, 40))
+    let cx = 0.0
+    rect(0, FLOOR_Y, 320, 240 - FLOOR_Y, rgb(50, 56, 70))
+    for k in 0..2 {
+        var wx = stage_now().half
+        if k == 0 { wx = -wx }
+        rect(sx(wx, cx) - 1, 60, 3, FLOOR_Y - 60, rgb(110, 110, 130))
+    }
+    var bx: Boxes
+    for i in 0..4 {
+        if i >= 2 && !twins_on(i - 2) { continue }
+        let f = &fight.f[i]
+        mv_boxes(f.body, f.mv, cur_frame(i), &bx)
+        for k in 0..bx.n { draw_box(i, &bx.b[k], cx) }
+        if i >= 2 { continue }
+        text(sx(f.x, cx) - 12, 46 + i * 8, MV_NAMES[f.mv], rgb(220, 220, 240))
+        if rift[i].on {
+            rect(sx(rift[i].x - MINE_HALF, cx), sy(MINE_H), (MINE_HALF * 2 * PX) as s32, (MINE_H * PX) as s32,
+                 rgb(200, 80, 255))
+        }
+        let s = &fight.shot[i]
+        if s.on {
+            rect(sx(s.x - s.half, cx), sy(s.y1), max((s.half * 2 * PX) as s32, 1), max(((s.y1 - s.y0) * PX) as s32, 1),
+                 rgb(80, 200, 255))
+        }
+    }
+    for i in 0..2 {
+        let f = &fight.f[i]
+        let x = 10 + i * 180
+        rect(x, 10, f.health * 120 / f.health_max, 6, rgb(240, 200, 40))
+        rect(x, 20, max(f.meter, 0) * 120 / METER_BAR, 3, rgb(80, 200, 255))
+        if f.curse > 0 { text(x, 26, "CURSED", rgb(200, 80, 255)) }
+        text(x, 34, NAMES[f.body], rgb(255, 255, 255))
+    }
+    text_int(152, 10, (fight.timer + 59) / 60, rgb(255, 255, 255))
+}
