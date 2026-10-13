@@ -141,21 +141,17 @@ private fn draw_meter(f: *Fight, s: s32) {
     // the icon
     var ix = x0 - 21
     if s == 1 { ix = x0 + w + 5 }
+    ui_power_icon(mech_src(fi.mech), ix, y - 4)
     if meter_power(fi.mech) == Power.Chemical {
-        // stand-in icon: UI_ICON_CHEMICAL when mx-menus adds it
-        ui_sprite(&UI_ICON_KINETIC[0], PAL_EMBLEM, ix, y - 4, 0x808080, BLEND_NONE)
         draw_chemical(fi, s, x0, w, l, y, h)
         return
     }
     if fi.mech == Mech.Tank {
-        // nuclear (tank_fx.akr); the icon a stand-in until mx-menus' UI_ICON_NUCLEAR
-        ui_sprite(&UI_ICON_KINETIC[0], PAL_EMBLEM, ix, y - 4, 0x808080, BLEND_NONE)
+        // nuclear (tank_fx.akr)
         tank_meter_hud(fi, s, x0, w, l, y, h)
     } else if mech_kinetic(fi.mech) {
-        ui_sprite(&UI_ICON_KINETIC[0], PAL_EMBLEM, ix, y - 4, 0x808080, BLEND_NONE)
         draw_kinetic(fi, s, x0, w, l, y, h)
     } else {
-        ui_sprite(&UI_ICON_ANTIMATTER[0], PAL_EMBLEM, ix, y - 4, 0x808080, BLEND_NONE)
         draw_antimatter(fi, s, x0, w, l, y, h)
     }
 }

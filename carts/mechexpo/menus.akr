@@ -1,16 +1,32 @@
-// The menus and the fight's overlays (D's), at placeholder quality but already the expo's
-// brochure: a pale catalogue page (BG1, a technical grid with a big faint "2000") over a
-// white-blue backdrop, translucent cards with navy rules, spec sheets, lanyard badges and booth
-// numbers, set in Figtree and Sofia Sans Condensed (ui_art.akr). The title is the hangar itself
-// with the logo over it.
+// The menus and the fight's overlays (D's; the brochure by mx-menus). The menus are the expo's
+// brochure: a pale catalogue page (BG1: a technical grid with a big faint "2000") under a navy
+// masthead, white printed cards with navy rules, spec sheets, lanyards, booth numbers, a press
+// pass and rubber stamps, set in Figtree, Sofia Sans Condensed and Gelasio (ui_art.akr).
+//
+// The print layer: in the menus BG0 (the HUD's frame in a fight) holds the brochure's coloured
+// panels behind the mechs, the "photographs" of the catalogue: 8 x 8 tiles over a 15-shade ramp
+// (ui_print.tiles in ATLAS_2) in palettes 197-199, each ramp written from a maker's colour when
+// it is drawn. Priorities in the menus: BG1 and BG0 1 (BG0 wins the tie), the mechs (PL) 2, the
+// interface (PH) 4. The interface list is drawn after the mechs, so whatever must sit behind a
+// mech is on BG0.
+//
+// Screens: the title (the hangar, the show's logo with a shine, a press pass on its lanyard that
+// says PRESS START, the exhibitors), mode select (the visitor guide's floor map and its index
+// tabs), the character select (the exhibitor catalogue: a spec sheet per side with the mech on a
+// turntable in its photograph, the 5 x 2 grid of roster.akr below), the VS screen (the
+// programme's next demonstration), pause (a translucent clipboard), results (the UAPC's judging
+// sheet), the unlock (a press release) and the memory card's messages.
 
 const PAGE_SKY: [3]u32 = [0xF6EEE6, 0xEADCCC, 0xD6C0A8]   // 0xBBGGRR: white into pale blue
 const PAGE_SKY_Y: [3]s32 = [0, 120, 240]
-const PAGE_PRIO: u32 = 0x42001133
+const PAGE_PRIO: u32 = 0x42001111   // PH 4, PL 2, BG0 1 (wins the tie with BG1), BG1 1, BG2 0
+const PAPER: u32 = 0xF8F4F0         // the brochure's paper, rgb(240, 244, 248)
+const PAPER2: u32 = 0xEADFD6
+const DEEP: u32 = 0x200C06          // the darkest shade of a ramp
 
 // ---- the backgrounds
 
-// The menus' page: the hall's planes off, the brochure's pattern on BG1.
+// The menus' page: the hall's planes off, the brochure's pattern on BG1, the print layer on BG0.
 fn menus_page() {
     stage_hide()
     hud_show(false)
@@ -22,6 +38,7 @@ fn menus_page() {
     plane_window(BG1, 0, 0, 320, 240)
     line_off(2)
     sky_gradient(&PAGE_SKY[0], &PAGE_SKY_Y[0], 3)
+    print_on()
     PLN_PRIO = PAGE_PRIO
 }
 
@@ -33,151 +50,264 @@ fn menus_hangar() {
 
 private fn page_scroll() { plane_scroll(BG1, tick / 3, tick / 5) }
 
-// The menus' 3D view: a fixed camera on mechs standing at x = +-sep, their feet at screen row
-// feet_y; a dark disc under each (their turntables).
-private fn menu_camera(dist: fixed, feet_y: s32) {
-    camera_look(vec3(0.0, 6.5, -dist), 0.0, -0.05)
-    let p = project_point(vec3(0.0, 0.0, 0.0))
-    camera_pan(0, feet_y - p.y)
+// ---- the print layer (BG0 in the menus)
+
+// BG0 on with the print tiles (hud_show(true) puts the HUD's frame back for a fight).
+private fn print_on() {
+    atlas_load(ATLAS_2, UI_PRINT_TILES, UI_PRINT_TILES_BYTES)
+    plane(BG0, ATLAS_2, MAP_BG0, 64, 32, 0, PAL_PRINT)
+    plane_scroll(BG0, 0, 0)
+    print_clear()
 }
 
-private fn menu_mech(m: Mech, mv: Mv, x: fixed, facing: s32) {
-    let q = project_point(vec3(x, 0.0, 0.0))
-    let w = (6.0 * 207.8 / view_depth(vec3(x, 0.0, 0.0))) as s32
-    fx_sprite(&FX_GLOW[0], q.x, q.y, w * 2, w / 2, 0x705030, BLEND_SUB)
+private fn print_clear() { map_fill(BG0, 0, 0, 40, 30, 0) }
+
+// Ramp k (0-2) from colour c: shades 1-8 from the paper into c, 9-15 from c into the dark.
+private fn print_ramp(k: s32, c: u32) {
+    let p = palette_ptr((PAL_PRINT + k) * 16)
+    for i in 1..16 {
+        var col = c
+        if i < 8 { col = col_mix(PAPER, c, fixed(i) / 8) }
+        else if i > 8 { col = col_mix(c, DEEP, fixed(i - 8) / 9) }
+        p[i] = rgb15(col) as u16
+    }
+}
+
+// Whole tiles (tx, ty, tw, th) in ramp k, shade s0 at the top row to s1 at the bottom, in half
+// shades (the dither tiles between).
+private fn print_grad(tx: s32, ty: s32, tw: s32, th: s32, k: s32, s0: s32, s1: s32) {
+    for r in 0..th {
+        let l = 2 * s0 + 2 * (s1 - s0) * r / max(th - 1, 1)
+        var t = PT_SOLID + l / 2
+        if l % 2 == 1 { t = PT_DITHER + l / 2 }
+        map_fill(BG0, tx, ty + r, tw, 1, tile(t, k, 0))
+    }
+}
+
+private fn print_fill(tx: s32, ty: s32, tw: s32, th: s32, k: s32, t: s32) {
+    map_fill(BG0, tx, ty, tw, th, tile(t, k, 0))
+}
+
+// A catalogue photograph in ramp k: a studio sweep, light at the top, and a dotted floor.
+private fn print_photo(tx: s32, ty: s32, tw: s32, th: s32, k: s32) {
+    print_grad(tx, ty, tw, th - 3, k, 1, 5)
+    print_fill(tx, ty + th - 3, tw, 1, k, PT_DITHER + 6)
+    print_grad(tx, ty + th - 2, tw, 2, k, 8, 9)
+}
+
+// ---- the mechs in the menus
+
+// Mech m, posed by mv, standing at screen (sx, feet_y), as tall as a camera dist metres away
+// makes it, facing +x (facing 1) or -x, turned further by yaw (a turntable). One camera each.
+private fn menu_mech_at(m: Mech, mv: Mv, sx: s32, feet_y: s32, dist: fixed, facing: s32, yaw: fixed) {
+    camera_look(vec3(0.0, 6.0, -dist), 0.0, -0.04)
+    let p = project_point(vec3(0.0, 0.0, 0.0))
+    camera_pan(sx - p.x, feet_y - p.y)
+    var a = -HALF_PI
+    if facing < 0 { a = HALF_PI }
     let n = max(anim_len(m, mv), 1)
-    anim_draw(m, mv, fixed(tick % n), anim_place(vec2(x, 0.0), facing))
+    anim_draw(m, mv, fixed(tick % n), mat4_rotate_y(a + yaw))
+}
+
+// The turntable's slow swing.
+private fn turntable(phase: s32) -> fixed { return sin(frame_angle(tick + phase, 0.021)) * 0.42 }
+
+// ---- the brochure's furniture
+
+// The masthead: a navy band with the page's title and a cyan section tab.
+private fn masthead(title: *u8, tab: *u8) {
+    rect_grad(0, 0, 320, 21, C_NAVY, C_GLASS, BLEND_NONE)
+    rect_blend(0, 21, 320, 1, C_CYAN, BLEND_NONE)
+    rect_blend(0, 22, 320, 1, C_WHITE, BLEND_NONE)
+    txt(FONT_HEAD, 8, 3, title, C_WHITE, ALIGN_LEFT)
+    let w = txt_w(FONT_HEAD, tab) + 16
+    quad_fill(318 - w, 3, 318, 3, 312 - w, 18, 312, 18, C_CYAN, BLEND_NONE)
+    txt(FONT_HEAD, 315 - w / 2 - 3, 3, tab, C_INK, ALIGN_CENTRE)
+    if txt_w(FONT_HEAD, title) + 24 < 306 - w - txt_w(FONT_MICRO, "MECH EXPO 2000") {
+        txt(FONT_MICRO, 306 - w, 6, "MECH EXPO 2000", C_SKY, ALIGN_RIGHT)
+    }
+}
+
+// The footer: the buttons on the left, the brochure's page number on the right.
+private fn footer(s: *u8, page: *u8) {
+    rect_blend(0, 227, 320, 13, C_NAVY, BLEND_NONE)
+    rect_blend(0, 227, 320, 1, C_CYAN, BLEND_NONE)
+    txt(FONT_MICRO, 8, 229, s, C_WHITE, ALIGN_LEFT)
+    txt(FONT_MICRO, 312, 229, page, C_SKY, ALIGN_RIGHT)
+}
+
+// A sheet of the brochure's paper with a drop shadow.
+private fn paper(x: s32, y: s32, w: s32, h: s32) {
+    rect_blend(x + 3, y + 3, w, h, 0x402010, BLEND_SUB)
+    rect_grad(x, y, w, h, PAPER, PAPER2, BLEND_NONE)
+}
+
+// The colour a player's things are in: 1P red, 2P blue.
+private fn side_colour(s: s32) -> u32 {
+    if s == 0 { return C_RED }
+    return C_BLUE
 }
 
 // ---- the title
 
 fn draw_title() {
-    // the logo over a glass band
-    rect_grad(0, 26, 320, 92, 0x301008, 0x100400, BLEND_HALF)
-    rect_blend(0, 26, 320, 1, C_CYAN, BLEND_NONE)
-    rect_blend(0, 117, 320, 1, C_CYAN, BLEND_NONE)
-    ui_sprite(&UI_LOGO[0], PAL_LOGO, 160 - UI_LOGO[2] / 2, 36, 0x808080, BLEND_NONE)
-    txt(FONT_LABEL, 8, 28, "EXPO HALL 1 // DEMO HANGAR", C_SKY, ALIGN_LEFT)
-    txt(FONT_LABEL, 312, 28, "OSAKA 2000.10.12", C_SKY, ALIGN_RIGHT)
-    barcode(8, 104, 16, 8, C_SILVER)
-    if (tick / 20) & 1 == 0 || st_t < 30 {
-        txt_sh(FONT_HEAD, 160, 186, "PRESS START", C_WHITE, C_INK, 1, ALIGN_CENTRE)
-    }
-    rect_blend(0, 222, 320, 14, C_GLASS, BLEND_HALF)
-    txt(FONT_LABEL, 160, 223, "FIVE MAKERS  //  ONE CONTRACT  //  DEMO HANGAR 1", C_SILVER, ALIGN_CENTRE)
+    let t = tick
+    // the logo on a glass band, a shine across its chrome now and then
+    rect_grad(0, 22, 320, 92, 0x301008, 0x100400, BLEND_HALF)
+    rect_blend(0, 22, 320, 1, C_CYAN, BLEND_NONE)
+    rect_blend(0, 113, 320, 1, C_CYAN, BLEND_NONE)
+    let lx = 160 - UI_LOGO[2] / 2
+    ui_sprite(&UI_LOGO[0], PAL_LOGO, lx, 36, 0x808080, BLEND_NONE)
+    ui_shine(lx + 4, 38, 232, 34, t, 150)
+    txt(FONT_MICRO, 8, 25, "EXPO HALL 1 // DEMO HANGAR", C_SKY, ALIGN_LEFT)
+    txt(FONT_MICRO, 312, 25, "OSAKA 2000.10.12", C_SKY, ALIGN_RIGHT)
+    barcode(8, 102, 16, 7, C_SILVER)
+    txt(FONT_MICRO, 312, 101, "ADMIT ONE // PRESS", C_SILVER, ALIGN_RIGHT)
+    // the press pass, hung from the band on its lanyard, swaying a little
+    let sw = (sin(frame_angle(t, 0.045)) * 3.0) as s32
+    let px = 160 + sw
+    ui_strap(132, 113, px - 5, 147, 6, C_RED)
+    ui_strap(188, 113, px + 5, 147, 6, C_RED)
+    draw_pass(px - 58, 150, (t / 24) & 1 == 0 || st_t < 30)
+    // the exhibitors
+    rect_blend(0, 214, 320, 26, C_GLASS, BLEND_HALF)
+    rect_blend(0, 214, 320, 1, C_CYAN, BLEND_NONE)
+    txt(FONT_MICRO, 8, 216, "EXHIBITORS", C_SKY, ALIGN_LEFT)
+    txt(FONT_MICRO, 8, 226, "FIVE MAKERS", C_SILVER, ALIGN_LEFT)
+    for k in 0..MAKERS_N { ui_emblem(k, 98 + k * 28, 215, true, 0x808080) }
+    txt(FONT_MICRO, 312, 216, "ONE CONTRACT", C_SKY, ALIGN_RIGHT)
+    txt(FONT_MICRO, 312, 226, "DEMO HANGAR 1", C_SILVER, ALIGN_RIGHT)
 }
 
-// ---- mode select
+// The press pass (116 x 60): a navy PRESS header with the lanyard's slot, PRESS START, a
+// holographic seal, a barcode and the pass's number.
+private fn draw_pass(x: s32, y: s32, lit: bool) {
+    let w = 116
+    let h = 60
+    paper(x, y, w, h)
+    rect_grad(x, y, w, 15, C_NAVY, C_GLASS, BLEND_NONE)
+    rect_blend(x + w / 2 - 9, y + 3, 18, 4, 0x200C06, BLEND_NONE)          // the slot
+    ui_chrome(x + w / 2 - 6, y - 4, 12, 8)                                   // the clip
+    txt(FONT_HEAD, x + 6, y + 1, "PRESS", C_WHITE, ALIGN_LEFT)
+    txt(FONT_MICRO, x + w - 5, y + 3, "ALL AREAS", C_CYAN, ALIGN_RIGHT)
+    var col = C_INK
+    if lit { col = C_RED }
+    txt(FONT_HEAD, x + 46, y + 22, "PRESS START", col, ALIGN_CENTRE)
+    // the seal
+    rect_grad4(x + w - 22, y + 20, 16, 16, 0xF0D830, 0xC040F0, 0xFFFFFF, 0x19C4F0, BLEND_NONE)
+    rect_outline(x + w - 22, y + 20, 16, 16, C_SILVER, BLEND_NONE)
+    ui_shine(x + w - 22, y + 20, 16, 16, tick, 60)
+    rect_blend(x + 6, y + 39, w - 12, 1, C_SILVER, BLEND_NONE)
+    barcode(x + 6, y + 43, 11, 10, C_INK)
+    txt(FONT_MICRO, x + w - 6, y + 42, "NO. 2000-1012", C_STEEL, ALIGN_RIGHT)
+    txt(FONT_MICRO, x + w - 6, y + 50, "MECH EXPO 2000", C_NAVY, ALIGN_RIGHT)
+}
+
+// ---- mode select: the visitor guide's floor map and its index tabs
 
 const MODE_NAMES: [3]*u8 = ["ARCADE", "VERSUS", "TRAINING"]
 const MODE_INFO: [3]*u8 = [
-    "TWO DEMONSTRATIONS AGAINST THE CPU",
-    "1P AGAINST 2P, OR THE CPU",
-    "A DUMMY, THE MOVES, THE HIT BOXES",
+    "TWO DEMONSTRATIONS\nAGAINST THE CPU, FOR\nTHE UAPC'S CONTRACT",
+    "1P AGAINST 2P,\nOR AGAINST THE CPU",
+    "A DUMMY, THE MOVE\nLIST AND THE HIT BOXES",
 ]
 const MODE_CODES: [3]*u8 = ["HALL A", "HALL B", "HALL C"]
+const MODE_LETTERS: [3]*u8 = ["A", "B", "C"]
+const MODE_COLS: [3]u32 = [0x281EC8, 0xD86A3A, 0x19A0D8]     // red, blue, amber
+// the halls on the map: x, y, w, h
+const HALLS: [3][4]s32 = [[20, 50, 56, 52], [84, 50, 56, 52], [20, 108, 56, 40]]
+
+var mode_slide: [3]s32               // each tab's pull, in 1/16 px
 
 fn draw_mode() {
     page_scroll()
-    draw_header("PROGRAMME", "VISITOR GUIDE")
+    masthead("VISITOR GUIDE", "FLOOR MAP")
+    print_clear()
+    // the map: the three halls either side of the central aisle, the booths, the stage
+    paper(8, 30, 144, 190)
+    txt(FONT_MICRO, 14, 33, "EXPO HALL 1 // FLOOR PLAN", C_STEEL, ALIGN_LEFT)
+    rect_outline(16, 46, 128, 154, C_NAVY, BLEND_NONE)
+    rect_outline(17, 47, 126, 152, C_NAVY, BLEND_NONE)
+    // the way from the entrance up the aisle to the chosen hall, under the halls
+    let hy = HALLS[mode_sel][1] + HALLS[mode_sel][3] / 2
+    let dash = (tick / 3) % 6
+    var y = 194 - dash
+    while y > hy {
+        rect_blend(79, y, 2, 3, MODE_COLS[mode_sel], BLEND_NONE)
+        y -= 6
+    }
+    var ax = 76
+    var dx = -5
+    if HALLS[mode_sel][0] > 80 {
+        ax = 83
+        dx = 5
+    }
     for i in 0..3 {
-        let y = 70 + i * 44
+        let hx = HALLS[i][0]
+        let hy2 = HALLS[i][1]
+        let hw = HALLS[i][2]
+        let hh = HALLS[i][3]
         let on = i == mode_sel
-        var x = 40
-        if on { x = 52 }
-        panel_card(x, y, 220, 36)
         if on {
-            rect_blend(x, y, 6, 36, C_RED, BLEND_NONE)
-            quad_fill(x - 14, y + 12, x - 6, y + 18, x - 14, y + 24, x - 6, y + 18, C_RED, BLEND_NONE)
-        }
-        txt(FONT_HEAD, x + 14, y + 6, MODE_NAMES[i], C_INK, ALIGN_LEFT)
-        txt(FONT_LABEL, x + 14, y + 21, MODE_INFO[i], C_STEEL, ALIGN_LEFT)
-        txt(FONT_LABEL, x + 214, y + 6, MODE_CODES[i], C_NAVY, ALIGN_RIGHT)
-    }
-    draw_footer("UP / DOWN CHOOSE  //  A ENTER  //  B BACK")
-}
-
-private fn draw_header(title: *u8, sub: *u8) {
-    rect_blend(0, 0, 320, 44, C_NAVY, BLEND_NONE)
-    rect_blend(0, 44, 320, 2, C_CYAN, BLEND_NONE)
-    rect_blend(0, 46, 320, 1, C_WHITE, BLEND_NONE)
-    txt(FONT_TITLE, 12, 9, title, C_WHITE, ALIGN_LEFT)
-    txt(FONT_LABEL, 308, 6, "MECH EXPO 2000", C_CYAN, ALIGN_RIGHT)
-    txt(FONT_HEAD, 308, 20, sub, C_WHITE, ALIGN_RIGHT)
-}
-
-private fn draw_footer(s: *u8) {
-    rect_blend(0, 226, 320, 14, C_NAVY, BLEND_NONE)
-    txt(FONT_LABEL, 160, 226, s, C_WHITE, ALIGN_CENTRE)
-}
-
-// ---- character select
-
-// The card of mech c, the cards centred (two: 124 and 164).
-fn sel_card_x(c: s32) -> s32 { return 144 - (len(Mech) - 1) * 20 + c * 40 }
-const SEL_CARD_Y = 178
-
-fn draw_select() {
-    page_scroll()
-    let gname = MODE_NAMES[game as s32]
-    draw_header("DEMO UNITS", gname)
-    // the two mechs under the cursors, on their turntables
-    menu_camera(27.0, 150)
-    for s in 0..2 {
-        if s == 1 && game == Game.Arcade { continue }
-        let c = sel_cur[s]
-        if !card_ok(c) { continue }
-        var x = -5.5
-        var fc = 1
-        if s == 1 {
-            x = 5.5
-            fc = -1
-        }
-        var mv = Mv.idle
-        if sel_done[s] { mv = Mv.win }
-        menu_mech(c as Mech, mv, x, fc)
-    }
-    // the spec sheets
-    draw_spec(0, 4, 56)
-    if game != Game.Arcade { draw_spec(1, 218, 56) } else { draw_ladder_card(218, 56) }
-    // the roster cards
-    for c in 0..len(Mech) {
-        let x = sel_card_x(c)
-        let y = SEL_CARD_Y
-        panel_card(x - 2, y - 2, 36, 44)
-        if c == 2 {
-            beam_card(x, y)
-        } else if card_ok(c) {
-            ui_sprite(mech_emblem(c as Mech), PAL_EMBLEM, x, y + 4, 0x808080, BLEND_NONE)
+            rect_blend(hx, hy2, hw, hh, MODE_COLS[i], BLEND_NONE)
+            if (tick >> 4) & 1 == 0 { rect_outline(hx - 2, hy2 - 2, hw + 4, hh + 4, MODE_COLS[i], BLEND_NONE) }
         } else {
-            ui_sprite_sz(&UI_LOCK[0], PAL_LOGO, x, y, 32, 40, 0x808080, BLEND_NONE)
+            rect_blend(hx, hy2, hw, hh, 0xE6D8CC, BLEND_NONE)
+            rect_outline(hx, hy2, hw, hh, C_STEEL, BLEND_NONE)
+        }
+        var tc = C_NAVY
+        if on { tc = C_WHITE }
+        txt(FONT_TITLE, hx + hw / 2, hy2 + hh / 2 - 16, MODE_LETTERS[i], tc, ALIGN_CENTRE)
+        txt(FONT_MICRO, hx + hw / 2, hy2 + hh / 2 + 6, MODE_NAMES[i], tc, ALIGN_CENTRE)
+    }
+    tri_fill(ax, hy - 4, ax, hy + 4, ax + dx, hy, C_INK, BLEND_NONE)
+    // the makers' booths
+    rect_outline(84, 108, 56, 40, C_STEEL, BLEND_NONE)
+    for b in 0..MAKERS_N {
+        var bx = 88 + b * 17
+        var by = 112
+        if b >= 3 {
+            bx = 96 + (b - 3) * 17
+            by = 130
+        }
+        rect_blend(bx, by, 14, 14, MAKERS[b].colour, BLEND_NONE)
+        rect_outline(bx, by, 14, 14, C_INK, BLEND_NONE)
+    }
+    // the stage and the press room
+    rect_blend(20, 154, 56, 30, 0xD0C4BA, BLEND_NONE)
+    txt(FONT_MICRO, 48, 164, "MAIN STAGE", C_NAVY, ALIGN_CENTRE)
+    rect_blend(84, 154, 56, 30, 0xD0C4BA, BLEND_NONE)
+    txt(FONT_MICRO, 112, 164, "PRESS ROOM", C_NAVY, ALIGN_CENTRE)
+    // the entrance
+    rect_blend(68, 198, 24, 3, PAPER, BLEND_NONE)
+    txt(FONT_MICRO, 80, 204, "ENTRANCE", C_NAVY, ALIGN_CENTRE)
+    // the index tabs
+    for i in 0..3 {
+        var target = 0
+        if i == mode_sel { target = 10 * 16 }
+        mode_slide[i] += (target - mode_slide[i]) / 3
+        let x = 170 - mode_slide[i] / 16
+        let y = 32 + i * 64
+        let on = i == mode_sel
+        paper(x, y, 140, 58)
+        rect_blend(x + 140, y + 8 + i * 14, 8, 22, MODE_COLS[i], BLEND_NONE)     // the tab
+        txt(FONT_MICRO, x + 144, y + 14 + i * 14, MODE_LETTERS[i], C_WHITE, ALIGN_CENTRE)
+        rect_blend(x, y, 4, 58, MODE_COLS[i], BLEND_NONE)
+        var tc = C_INK
+        if !on { tc = C_STEEL }
+        txt(FONT_HEAD, x + 10, y + 4, MODE_NAMES[i], tc, ALIGN_LEFT)
+        txt(FONT_MICRO, x + 134, y + 6, MODE_CODES[i], C_NAVY, ALIGN_RIGHT)
+        rect_blend(x + 10, y + 20, 124, 1, C_SILVER, BLEND_NONE)
+        txt(FONT_MICRO, x + 10, y + 23, MODE_INFO[i], tc, ALIGN_LEFT)
+        if on {
+            quad_fill(x - 12, y + 22, x - 4, y + 29, x - 12, y + 36, x - 4, y + 29, MODE_COLS[i], BLEND_NONE)
+            ui_shine(x + 4, y, 136, 20, tick, 120)
         }
     }
-    // the cursors
-    for s in 0..2 {
-        if s == 1 && game == Game.Arcade { continue }
-        let x = sel_card_x(sel_cur[s]) - 4
-        let y = SEL_CARD_Y - 4 + s * 2
-        var col = C_RED
-        var lab = "1P"
-        if s == 1 {
-            col = C_BLUE
-            lab = who_label(1)
-        }
-        let blink = sel_done[s] || (tick >> 3) & 1 == 0
-        if blink {
-            rect_outline(x, y, 40, 48 - s * 4, col, BLEND_NONE)
-            rect_outline(x + 1, y + 1, 38, 46 - s * 4, col, BLEND_NONE)
-        }
-        var tx = x - 2
-        if s == 1 { tx = x + 22 }
-        tag(tx, y - 13, 18, lab, col, C_WHITE)
-    }
-    if game == Game.Versus && !sel_human2 && !sel_done[1] {
-        if (tick >> 4) & 1 == 0 { txt(FONT_LABEL, 268, 210, "2P: PRESS A TO JOIN", C_NAVY, ALIGN_CENTRE) }
-    }
-    draw_footer("LEFT / RIGHT CHOOSE  //  A CONFIRM  //  B BACK")
+    footer("UP/DOWN CHOOSE  //  A ENTER  //  B BACK", "P. 02")
 }
+
+// ---- character select: the exhibitor catalogue
 
 // Who plays side s: 1P, 2P, CPU or DUMMY.
 fn who_label(s: s32) -> *u8 {
@@ -190,104 +320,334 @@ fn who_label(s: s32) -> *u8 {
     return "CPU"
 }
 
-// A catalogue spec sheet for the mech under side s's cursor, hung on a lanyard.
-private fn draw_spec(s: s32, x: s32, y: s32) {
+// The grid of roster.akr's ten slots: cards 48 x 34, base mechs on top, echoes below.
+const SEL_GX = 34
+const SEL_GY = 154
+const SEL_CW = 48
+const SEL_CH = 34
+const SEL_PX = 52
+const SEL_PY = 37
+const STAT_NAMES: [4]*u8 = ["POWER", "SPEED", "REACH", "ARMOUR"]
+
+fn draw_select() {
+    page_scroll()
+    masthead("EXHIBITOR CATALOGUE", MODE_NAMES[game as s32])
+    print_clear()
+    draw_sheet(0, 4)
+    if game == Game.Arcade { draw_schedule(164) } else { draw_sheet(1, 164) }
+    draw_grid()
+    if game == Game.Versus && !sel_human2 && !sel_done[1] && (tick >> 4) & 1 == 0 {
+        footer("ARROWS CHOOSE  //  A CONFIRM  //  B BACK", "2P: PRESS A TO JOIN")
+    } else {
+        footer("ARROWS CHOOSE  //  A CONFIRM  //  B BACK", "P. 07")
+    }
+}
+
+// Side s's catalogue page (152 x 124 from (x0, 24)): the name bar, the photograph (BG0, the
+// mech on its turntable) and the spec sheet. 1P's photograph is on the left, 2P's on the right.
+private fn draw_sheet(s: s32, x0: s32) {
     let c = sel_cur[s]
-    var col = C_RED
-    if s == 1 { col = C_BLUE }
-    // the lanyard
-    line_ex(x + 30, 46, x + 44, y, 3, col, col, BLEND_NONE)
-    line_ex(x + 60, 46, x + 46, y, 3, col, col, BLEND_NONE)
-    panel_card(x, y, 98, 96)
-    rect_blend(x + 42, y - 3, 14, 6, C_SILVER, BLEND_NONE)
-    tag(x + 4, y + 6, 18, who_label(s), col, C_WHITE)
-    if !card_ok(c) {
-        txt(FONT_HEAD, x + 49, y + 30, "? ? ?", C_INK, ALIGN_CENTRE)
-        txt(FONT_LABEL, x + 49, y + 50, "CLASSIFIED", C_STEEL, ALIGN_CENTRE)
-        txt(FONT_LABEL, x + 49, y + 64, "CLEAR THE ARCADE", C_NAVY, ALIGN_CENTRE)
-        txt(FONT_LABEL, x + 49, y + 74, "AS THE HERO", C_NAVY, ALIGN_CENTRE)
+    let r = &ROSTER[c]
+    let known = slot_known(c)
+    let mk = slot_maker(c)
+    let has_maker = known && mk != null
+    var col = C_STEEL
+    var ink = C_WHITE
+    if has_maker {
+        col = mk.colour
+        ink = mk.ink
+    }
+    let pc = side_colour(s)
+    var px = x0 + 4                     // the photograph: 64 x 104, whole tiles
+    var ix = x0 + 70                    // the spec sheet: 82 x 108
+    if s == 1 {
+        px = x0 + 84
+        ix = x0
+    }
+    // the name bar
+    rect_blend(x0, 24, 152, 15, col, BLEND_NONE)
+    rect_blend(x0, 38, 152, 1, 0x200C06, BLEND_SUB)
+    var name = "? ? ?"
+    if known {
+        name = r.name
+        if txt_w(FONT_HEAD, name) > 112 { name = r.short }
+    }
+    let who = who_label(s)
+    let tw = max(txt_w(FONT_LABEL, who) + 6, 14)
+    if s == 0 {
+        txt(FONT_HEAD, x0 + 4, 24, name, ink, ALIGN_LEFT)
+        tag(x0 + 146 - tw, 26, tw, who, pc, C_WHITE)
+    } else {
+        txt(FONT_HEAD, x0 + 148, 24, name, ink, ALIGN_RIGHT)
+        tag(x0 + 2, 26, tw, who, pc, C_WHITE)
+    }
+    // the photograph
+    print_ramp(s, col)
+    print_photo(px / 8, 5, 8, 13, s)
+    let ok = slot_ok(c)
+    if ok {
+        var mv = Mv.idle
+        if sel_done[s] { mv = Mv.win }
+        var fc = 1
+        if s == 1 { fc = -1 }
+        menu_mech_at(slot_mech(c), mv, px + 32, 137, 33.0, fc, turntable(s * 90))
+    } else {
+        txt_sh(FONT_TITLE, px + 32, 70, "?", C_WHITE, col, 2, ALIGN_CENTRE)
+        if known { ui_stamp(&UI_STAMP_IN_TRANSIT[0], px + 32, 112, C_RED) }
+        else { ui_stamp(&UI_STAMP_CLASSIFIED[0], px + 32, 112, C_RED) }
+    }
+    // the caption: the unit's height (and width, where it matters), or the figure's number
+    if known && r.height > 0 {
+        dim_caption(px + 3, 134, "HEIGHT ", r.height)
+        if r.width > 0 { dim_caption(px + 3, 126, "WIDTH ", r.width) }
+    } else {
+        let fb = sb()
+        str_append(fb, 64, "FIG. ")
+        str_append_int(fb, 64, c + 1, 2, true)
+        txt(FONT_MICRO, px + 3, 134, fb, C_WHITE, ALIGN_LEFT)
+    }
+    // the spec sheet
+    paper(ix, 40, 82, 108)
+    if known {
+        draw_specs(c, ix, has_maker)
+    } else {
+        txt(FONT_MICRO, ix + 3, 41, "MAKER UNDISCLOSED", C_STEEL, ALIGN_LEFT)
+        txt(FONT_HEAD, ix + 3, 52, "? ? ?", C_INK, ALIGN_LEFT)
+        rect_blend(ix + 4, 77, 74, 1, C_SILVER, BLEND_NONE)
+        draw_hint(c, ix + 4, 81)
+    }
+    if sel_done[s] { ui_stamp(&UI_STAMP_READY[0], px + 32, 120, pc) }
+    if ok && sel_moved[s] > sel_done_t[s] { ui_shine(ix, 24, 152, 15, tick - sel_moved[s], 1000) }
+}
+
+// "HEIGHT 12.0 M" from decimetres, in the photograph's corner.
+private fn dim_caption(x: s32, y: s32, k: *u8, dm: s32) {
+    let b = sb()
+    str_append(b, 64, k)
+    str_append_int(b, 64, dm / 10, 0, false)
+    str_append(b, 64, ".")
+    str_append_int(b, 64, dm % 10, 0, false)
+    str_append(b, 64, " M")
+    txt(FONT_MICRO, x, y, b, C_WHITE, ALIGN_LEFT)
+}
+
+// The spec sheet's rows for a known slot.
+private fn draw_specs(c: s32, ix: s32, has_maker: bool) {
+    let r = &ROSTER[c]
+    if has_maker {
+        let mk = &MAKERS[r.maker]
+        txt(FONT_MICRO, ix + 3, 41, mk.short, C_INK, ALIGN_LEFT)
+        rect_blend(ix + 3, 51, 22, 2, mk.colour, BLEND_NONE)
+        ui_slot_emblem(c, ix + 55, 52, true, 0x808080)
+        txt(FONT_MICRO, ix + 3, 66, mk.booth_full, C_NAVY, ALIGN_LEFT)
+        ui_power_icon(mk.src, ix + 3, 78)
+        txt(FONT_MICRO, ix + 22, 76, "POWER SOURCE", C_STEEL, ALIGN_LEFT)
+        txt(FONT_MICRO, ix + 22, 84, SRC_NAMES[mk.src], C_INK, ALIGN_LEFT)
+    }
+    txt(FONT_HEAD, ix + 3, 52, r.model, C_INK, ALIGN_LEFT)
+    rect_blend(ix + 3, 75, 76, 1, C_SILVER, BLEND_NONE)
+    rect_blend(ix + 3, 95, 76, 1, C_SILVER, BLEND_NONE)
+    var col = C_NAVY
+    if has_maker { col = MAKERS[r.maker].colour }
+    for k in 0..4 {
+        let y = 97 + k * 9
+        txt(FONT_MICRO, ix + 3, y - 1, STAT_NAMES[k], C_STEEL, ALIGN_LEFT)
+        ui_pips(ix + 38, y + 1, ((r.stats >> ((3 - k) * 4)) & 15) as s32, col)
+    }
+    if !slot_has_mech(c) {
+        txt_lines(FONT_MICRO, ix + 3, 132, "UNIT IN TRANSIT:\nON SHOW LATER", 8, C_RED, ALIGN_LEFT)
+    } else {
+        txt_lines(FONT_MICRO, ix + 3, 132, r.blurb, 8, C_INK, ALIGN_LEFT)
+    }
+}
+
+// How a locked slot unlocks (or only "CLASSIFIED", with the hints off).
+private fn draw_hint(c: s32, x: s32, y: s32) {
+    if !SHOW_UNLOCK_HINTS {
+        txt(FONT_HEAD, x + 37, y + 14, "CLASSIFIED", C_RED, ALIGN_CENTRE)
         return
     }
-    let m = c as Mech
-    var model = "MR-01"
-    if m == Mech.Doubleblade { model = "UR-02" }
-    if m == Mech.Beam { model = "RC-03" }
-    if m == Mech.Tank { model = "HA-57" }
-    txt(FONT_LABEL, x + 94, y + 5, mech_booth(m), C_STEEL, ALIGN_RIGHT)
-    txt(FONT_HEAD, x + 5, y + 19, model, C_INK, ALIGN_LEFT)
-    txt(FONT_LABEL, x + 5, y + 34, mech_name(m), C_INK, ALIGN_LEFT)
-    txt(FONT_LABEL, x + 5, y + 44, mech_maker(m), mech_colour(m), ALIGN_LEFT)
-    rect_blend(x + 5, y + 56, 88, 1, C_STEEL, BLEND_NONE)
-    txt(FONT_LABEL, x + 5, y + 58, "POWER", C_STEEL, ALIGN_LEFT)
-    txt(FONT_LABEL, x + 94, y + 58, mech_power(m), C_INK, ALIGN_RIGHT)
-    txt(FONT_LABEL, x + 5, y + 69, "HEIGHT", C_STEEL, ALIGN_LEFT)
-    txt(FONT_LABEL, x + 94, y + 69, "12.0 M", C_INK, ALIGN_RIGHT)
-    if sel_done[s] { tag(x + 58, y + 82, 34, "READY", C_CYAN, C_INK) }
-    barcode(x + 5, y + 84, 9, 7, C_INK)
-}
-
-// The arcade's right-hand card: the ladder.
-private fn draw_ladder_card(x: s32, y: s32) {
-    line_ex(x + 30, 46, x + 44, y, 3, C_STEEL, C_STEEL, BLEND_NONE)
-    line_ex(x + 60, 46, x + 46, y, 3, C_STEEL, C_STEEL, BLEND_NONE)
-    panel_card(x, y, 98, 96)
-    txt(FONT_LABEL, x + 5, y + 6, "ARCADE LADDER", C_NAVY, ALIGN_LEFT)
-    let me = sel_cur[0] as Mech
-    for n in 0..LADDER_N {
-        let yy = y + 24 + n * 26
+    txt(FONT_MICRO, x, y, "TO UNLOCK:", C_STEEL, ALIGN_LEFT)
+    txt_lines(FONT_MICRO, x, y + 10, ROSTER[c].hint, 9, C_INK, ALIGN_LEFT)
+    if ROSTER[c].rule == RULE_BASES {
         let b = sb()
-        str_append(b, 64, "DEMO ")
-        str_append_int(b, 64, n + 1, 0, false)
-        txt(FONT_LABEL, x + 5, yy, b, C_STEEL, ALIGN_LEFT)
-        if card_ok(sel_cur[0]) {
-            txt(FONT_LABEL, x + 5, yy + 9, mech_name(ladder_foe(me, n)), C_INK, ALIGN_LEFT)
-        } else {
-            txt(FONT_LABEL, x + 5, yy + 9, "?", C_INK, ALIGN_LEFT)
-        }
+        str_append_int(b, 64, bases_cleared(), 0, false)
+        str_append(b, 64, " OF 4 CLEARED")
+        txt(FONT_MICRO, x, y + 44, b, C_NAVY, ALIGN_LEFT)
     }
 }
 
-// ---- VS
+// The arcade's right-hand page: the demonstration schedule (the ladder).
+private fn draw_schedule(x0: s32) {
+    rect_blend(x0, 24, 152, 15, C_NAVY, BLEND_NONE)
+    txt(FONT_HEAD, x0 + 148, 24, "SCHEDULE", C_WHITE, ALIGN_RIGHT)
+    tag(x0 + 2, 26, 22, "CPU", C_STEEL, C_WHITE)
+    paper(x0, 40, 152, 108)
+    txt(FONT_MICRO, x0 + 5, 42, "YOUR DEMONSTRATIONS", C_STEEL, ALIGN_LEFT)
+    let ok = slot_ok(sel_cur[0])
+    let me = slot_mech(sel_cur[0])
+    for n in 0..LADDER_N {
+        let y = 54 + n * 34
+        rect_blend(x0 + 5, y, 142, 30, 0xE6DCD2, BLEND_NONE)
+        let b = sb()
+        str_append(b, 64, "DAY ")
+        str_append_int(b, 64, n + 1, 0, false)
+        txt(FONT_MICRO, x0 + 34, y + 1, b, C_NAVY, ALIGN_LEFT)
+        if n == LADDER_N - 1 { tag(x0 + 118, y + 2, 24, "FINAL", C_RED, C_WHITE) }
+        if ok {
+            let foe = ladder_foe(me, n)
+            ui_slot_emblem(mech_slot(foe), x0 + 7, y + 3, true, 0x808080)
+            txt(FONT_LABEL, x0 + 34, y + 9, mech_name(foe), C_INK, ALIGN_LEFT)
+            if n == 0 { txt(FONT_MICRO, x0 + 146, y + 19, "MIRROR MATCH", C_STEEL, ALIGN_RIGHT) }
+            else { txt(FONT_MICRO, x0 + 146, y + 19, "YOUR RIVAL", C_STEEL, ALIGN_RIGHT) }
+        } else {
+            txt(FONT_LABEL, x0 + 34, y + 9, "?", C_INK, ALIGN_LEFT)
+        }
+    }
+    rect_blend(x0 + 5, 124, 142, 1, C_SILVER, BLEND_NONE)
+    ui_sprite(&UI_UAPC[0], PAL_LOGO, x0 + 6, 126, 0x808080, BLEND_NONE)
+    txt(FONT_MICRO, x0 + 34, 127, "THE PRIZE:", C_STEEL, ALIGN_LEFT)
+    txt(FONT_MICRO, x0 + 34, 136, "THE UAPC'S CONTRACT", C_INK, ALIGN_LEFT)
+}
+
+// The ten cards and the cursors.
+private fn draw_grid() {
+    txt(FONT_MICRO, 4, 160, "BASE", C_NAVY, ALIGN_LEFT)
+    txt(FONT_MICRO, 4, 168, "UNITS", C_STEEL, ALIGN_LEFT)
+    txt(FONT_MICRO, 4, 197, "ECHO", C_NAVY, ALIGN_LEFT)
+    txt(FONT_MICRO, 4, 205, "UNITS", C_STEEL, ALIGN_LEFT)
+    for i in 0..ROSTER_N { draw_card(i, SEL_GX + (i % ROSTER_COLS) * SEL_PX, SEL_GY + (i / ROSTER_COLS) * SEL_PY) }
+    for s in 0..2 {
+        if s == 1 && game == Game.Arcade { continue }
+        let c = sel_cur[s]
+        let x = SEL_GX + (c % ROSTER_COLS) * SEL_PX
+        let y = SEL_GY + (c / ROSTER_COLS) * SEL_PY
+        let col = side_colour(s)
+        var k = 3
+        if s == 1 && sel_cur[0] == c && game != Game.Arcade { k = 1 }
+        rect_outline(x - k, y - k, SEL_CW + 2 * k, SEL_CH + 2 * k, col, BLEND_NONE)
+        if sel_done[s] || (tick >> 3) & 1 == 0 {
+            rect_outline(x - k + 1, y - k + 1, SEL_CW + 2 * k - 2, SEL_CH + 2 * k - 2, col, BLEND_NONE)
+        }
+        ui_shine(x, y, SEL_CW, SEL_CH, tick - sel_moved[s], 90)
+        if s == 0 { tag(x - 6, y - 7, 14, "1P", col, C_WHITE) }
+        else { tag(x + SEL_CW - 10, y - 7, 14, who_tag(1), col, C_WHITE) }
+    }
+}
+
+// 2P's short tag on the grid.
+private fn who_tag(s: s32) -> *u8 {
+    let w = who_label(s)
+    if w[0] == 'D' { return "DM" }
+    if w[0] == 'C' { return "CP" }
+    return w
+}
+
+private fn draw_card(i: s32, x: s32, y: s32) {
+    let r = &ROSTER[i]
+    if slot_known(i) && r.maker >= 0 {
+        let mk = &MAKERS[r.maker]
+        let has = slot_has_mech(i)
+        rect_blend(x + 2, y + 2, SEL_CW, SEL_CH, 0x402010, BLEND_SUB)
+        rect_grad(x, y, SEL_CW, SEL_CH, PAPER, PAPER2, BLEND_NONE)
+        rect_blend(x, y, SEL_CW, 3, mk.colour, BLEND_NONE)
+        var tint = 0x808080
+        var tc = C_INK
+        if !has {
+            tint = 0x484848
+            tc = C_STEEL
+        }
+        ui_slot_emblem(i, x + 12, y + 3, true, tint)
+        txt(FONT_MICRO, x + SEL_CW / 2, y + 24, r.card, tc, ALIGN_CENTRE)
+        if !has {
+            rect_blend(x + 4, y + 11, 40, 9, C_STEEL, BLEND_NONE)
+            txt(FONT_MICRO, x + SEL_CW / 2, y + 10, "SOON", C_WHITE, ALIGN_CENTRE)
+        }
+    } else {
+        rect_blend(x + 2, y + 2, SEL_CW, SEL_CH, 0x402010, BLEND_SUB)
+        rect_grad(x, y, SEL_CW, SEL_CH, 0x9A4A24, 0x4A1A0A, BLEND_NONE)
+        rect_outline(x, y, SEL_CW, SEL_CH, 0xE0A060, BLEND_NONE)
+        txt(FONT_TITLE, x + SEL_CW / 2, y + 4, "?", C_SKY, ALIGN_CENTRE)
+    }
+}
+
+// ---- VS: the programme's next demonstration
+
+const VS_TIMES: [2]*u8 = ["11:00", "15:00"]
 
 fn draw_vs() {
     page_scroll()
     let t = st_t
-    // the two halves slide in
+    masthead("PROGRAMME", "NEXT DEMONSTRATION")
+    print_clear()
+    // the two booths' backdrops open out from their middle rows
+    let rows = min(1 + t, 10)
+    for s in 0..2 {
+        print_ramp(s, mech_colour(p_mech[s]))
+        var tx = 1
+        if s == 1 { tx = 25 }
+        print_grad(tx, 14 - rows, 14, rows, s, 1, 4)
+        print_grad(tx, 14, 14, rows, s, 4, 9)
+    }
     let k = min(t, 16)
     let off = (16 - k) * 12
-    quad_fill(-off, 30, 176 - off, 30, -off, 200, 144 - off, 200, mech_colour(p_mech[0]), BLEND_HALF)
-    quad_fill(176 + off, 30, 320 + off, 30, 144 + off, 200, 320 + off, 200, mech_colour(p_mech[1]), BLEND_HALF)
-    rect_blend(0, 30, 320, 2, C_WHITE, BLEND_NONE)
-    rect_blend(0, 198, 320, 2, C_WHITE, BLEND_NONE)
-    menu_camera(26.0, 186)
-    menu_mech(p_mech[0], Mv.intro, -9.0, 1)
-    menu_mech(p_mech[1], Mv.intro, 9.0, -1)
-    // names and makers
-    txt_sh(FONT_HEAD, 10 - off, 40, mech_name(p_mech[0]), C_WHITE, C_INK, 1, ALIGN_LEFT)
-    txt(FONT_LABEL, 10 - off, 56, mech_maker(p_mech[0]), C_SILVER, ALIGN_LEFT)
-    tag(10 - off, 70, 18, who_label(0), C_RED, C_WHITE)
-    txt_sh(FONT_HEAD, 310 + off, 168, mech_name(p_mech[1]), C_WHITE, C_INK, 1, ALIGN_RIGHT)
-    txt(FONT_LABEL, 310 + off, 184, mech_maker(p_mech[1]), C_SILVER, ALIGN_RIGHT)
-    tag(286 + off, 154, 18, who_label(1), C_BLUE, C_WHITE)
-    if t > 16 {
-        let s = 2 + max(0, 24 - t) / 4
-        txt_sh(FONT_TITLE, 160, 96 - s, "VS", C_YELLOW, C_INK, s, ALIGN_CENTRE)
+    if t > 4 {
+        menu_mech_at(p_mech[0], Mv.intro, 64, 184, 25.0, 1, 0.3)
+        menu_mech_at(p_mech[1], Mv.intro, 256, 184, 25.0, -1, -0.3)
     }
-    // the header
-    rect_blend(0, 0, 320, 26, C_NAVY, BLEND_NONE)
+    // the programme card
+    let cy = 30 + off / 4
+    paper(118, cy, 84, 150)
+    rect_blend(118, cy, 84, 14, C_NAVY, BLEND_NONE)
+    txt(FONT_MICRO, 160, cy + 2, "MAIN STAGE", C_WHITE, ALIGN_CENTRE)
+    var when = VS_TIMES[0]
+    if game == Game.Arcade { when = VS_TIMES[min(ladder, 1)] }
+    txt(FONT_HEAD, 160, cy + 16, when, C_INK, ALIGN_CENTRE)
+    let b = sb()
     if game == Game.Arcade {
-        let b = sb()
-        str_append(b, 64, "ARCADE // DEMONSTRATION ")
+        str_append(b, 64, "DEMONSTRATION ")
         str_append_int(b, 64, ladder + 1, 0, false)
-        str_append(b, 64, " OF 2")
-        txt(FONT_HEAD, 160, 5, b, C_WHITE, ALIGN_CENTRE)
+        str_append(b, 64, "/2")
     } else if game == Game.Versus {
-        txt(FONT_HEAD, 160, 5, "VERSUS // PRODUCT DEMONSTRATION", C_WHITE, ALIGN_CENTRE)
+        str_append(b, 64, "OPEN DEMONSTRATION")
     } else {
-        txt(FONT_HEAD, 160, 5, "TRAINING // FREE DEMONSTRATION", C_WHITE, ALIGN_CENTRE)
+        str_append(b, 64, "FREE PRACTICE")
     }
-    rect_blend(0, 214, 320, 26, C_NAVY, BLEND_NONE)
-    txt(FONT_LABEL, 160, 220, "UAPC DEFENCE TRIAL  //  DEMO HANGAR 1  //  LIVE", C_SKY, ALIGN_CENTRE)
+    txt(FONT_MICRO, 160, cy + 32, b, C_NAVY, ALIGN_CENTRE)
+    rect_blend(124, cy + 43, 72, 1, C_SILVER, BLEND_NONE)
+    if t > 16 {
+        let sc = 2 + max(0, 24 - t) / 4
+        txt_sh(FONT_TITLE, 160, cy + 52 - sc, "VS", C_RED, C_INK, sc, ALIGN_CENTRE)
+        ui_shine(130, cy + 48, 60, 30, t - 24, 100)
+    }
+    rect_blend(124, cy + 86, 72, 1, C_SILVER, BLEND_NONE)
+    ui_sprite(&UI_UAPC[0], PAL_LOGO, 148, cy + 92, 0x808080, BLEND_NONE)
+    txt(FONT_MICRO, 160, cy + 118, "UAPC DEFENCE", C_INK, ALIGN_CENTRE)
+    txt(FONT_MICRO, 160, cy + 126, "TRIAL // LIVE", C_INK, ALIGN_CENTRE)
+    if (tick >> 4) & 1 == 0 { rect_blend(127, cy + 138, 5, 5, C_RED, BLEND_NONE) }
+    txt(FONT_MICRO, 135, cy + 136, "ON AIR", C_RED, ALIGN_LEFT)
+    // the booths' badges slide in
+    draw_badge(0, 6 - off, 188)
+    draw_badge(1, 174 + off, 188)
+    // the announcer's line
+    rect_blend(0, 227, 320, 13, C_NAVY, BLEND_NONE)
+    rect_blend(0, 227, 320, 1, C_CYAN, BLEND_NONE)
+    txt(FONT_SERIF, 160, 227, "Next up, live on the main stage...", C_WHITE, ALIGN_CENTRE)
+}
+
+// An exhibitor's badge for side s (140 x 32).
+private fn draw_badge(s: s32, x: s32, y: s32) {
+    let m = p_mech[s]
+    let mk = mech_maker_of(m)
+    paper(x, y, 140, 36)
+    rect_blend(x, y, 4, 36, mk.colour, BLEND_NONE)
+    ui_slot_emblem(mech_slot(m), x + 8, y + 6, true, 0x808080)
+    txt(FONT_HEAD, x + 36, y + 1, mech_short(m), C_INK, ALIGN_LEFT)
+    txt(FONT_MICRO, x + 36, y + 16, mk.short, C_STEEL, ALIGN_LEFT)
+    txt(FONT_MICRO, x + 36, y + 25, mk.booth_full, C_NAVY, ALIGN_LEFT)
+    let who = who_label(s)
+    let tw = max(txt_w(FONT_LABEL, who) + 6, 14)
+    tag(x + 134 - tw, y + 26, tw, who, side_colour(s), C_WHITE)
 }
 
 // ---- the fight's overlays
@@ -352,7 +712,8 @@ private fn overlay_label(s: *u8) {
 
 const DUMMY_NAMES: [5]*u8 = ["STAND", "CROUCH", "JUMP", "BLOCK ALL", "CPU"]
 
-// ---- pause
+
+// ---- pause: a translucent clipboard over the fight
 
 fn draw_pause() {
     rect_blend(0, 0, 320, 240, 0x301008, BLEND_HALF)
@@ -362,15 +723,19 @@ fn draw_pause() {
     }
     var items: [8]s32
     let n = pause_items(&items[0])
-    let h = 30 + n * 16
-    let y0 = 120 - h / 2
-    panel_solid(80, y0, 160, h)
-    txt(FONT_HEAD, 88, y0 + 6, "PAUSE", C_INK, ALIGN_LEFT)
-    txt(FONT_LABEL, 232, y0 + 6, "DEMO ON HOLD", C_STEEL, ALIGN_RIGHT)
+    let h = 48 + n * 15
+    let y0 = 124 - h / 2
+    clipboard(76, y0, 168, h)
+    txt(FONT_HEAD, 90, y0 + 12, "DEMO ON HOLD", C_INK, ALIGN_LEFT)
+    txt(FONT_MICRO, 230, y0 + 15, "PAUSE", C_STEEL, ALIGN_RIGHT)
+    rect_blend(90, y0 + 29, 140, 1, C_SILVER, BLEND_NONE)
     for i in 0..n {
-        let y = y0 + 26 + i * 16
+        let y = y0 + 33 + i * 15
         let on = i == pause_sel
-        if on { rect_blend(82, y - 1, 156, 14, C_NAVY, BLEND_NONE) }
+        if on {
+            rect_blend(86, y - 1, 148, 13, C_NAVY, BLEND_NONE)
+            ui_shine(86, y - 1, 148, 13, tick, 80)
+        }
         var col = C_INK
         if on { col = C_WHITE }
         let it = items[i]
@@ -395,34 +760,53 @@ fn draw_pause() {
         } else if it == PZ_QUIT {
             name = "QUIT TO TITLE"
         }
-        txt(FONT_LABEL, 92, y, name, col, ALIGN_LEFT)
+        ui_check(91, y + 1, on, col)
+        txt(FONT_LABEL, 106, y - 1, name, col, ALIGN_LEFT)
         if val != null {
             var vc = C_NAVY
             if on { vc = C_CYAN }
-            txt(FONT_LABEL, 230, y, val, vc, ALIGN_RIGHT)
+            txt(FONT_LABEL, 230, y - 1, val, vc, ALIGN_RIGHT)
         }
     }
+}
+
+// The clipboard: smoky translucent acrylic with cyan edges, a chrome clip, a sheet of paper.
+private fn clipboard(x: s32, y: s32, w: s32, h: s32) {
+    rect_blend(x, y, w, h, 0x7A4420, BLEND_HALF)
+    rect_blend(x, y, w, h, 0x281408, BLEND_QUARTER)
+    rect_outline(x, y, w, h, C_CYAN, BLEND_NONE)
+    rect_blend(x + 1, y + 1, w - 2, 1, 0xFFFFFF, BLEND_QUARTER)
+    paper(x + 8, y + 8, w - 16, h - 14)
+    let cx = x + w / 2
+    rect_blend(cx - 24, y - 5, 48, 12, 0x402010, BLEND_SUB)
+    ui_chrome(cx - 26, y - 7, 52, 12)
+    rect_blend(cx - 8, y - 3, 16, 3, 0x6A5444, BLEND_NONE)
+    ui_shine(cx - 26, y - 7, 52, 12, tick, 110)
 }
 
 private fn draw_move_list() {
     let m = p_mech[0]
     let ml = fight_moves(m)
-    panel_solid(30, 14, 260, 214)
-    txt(FONT_HEAD, 38, 20, "MOVE LIST", C_INK, ALIGN_LEFT)
-    txt(FONT_LABEL, 282, 22, mech_name(m), mech_colour(m), ALIGN_RIGHT)
-    rect_blend(38, 38, 244, 1, C_STEEL, BLEND_NONE)
+    clipboard(24, 12, 272, 220)
+    rect_blend(32, 20, 4, 205, mech_colour(m), BLEND_NONE)
+    txt(FONT_HEAD, 42, 22, "MOVE LIST", C_INK, ALIGN_LEFT)
+    ui_power_icon(mech_src(m), 268, 22)
+    txt(FONT_MICRO, 262, 21, mech_name(m), C_INK, ALIGN_RIGHT)
+    txt(FONT_MICRO, 262, 29, mech_maker(m), C_STEEL, ALIGN_RIGHT)
+    rect_blend(42, 40, 242, 1, C_SILVER, BLEND_NONE)
     if ml.n == 0 {
         txt(FONT_LABEL, 160, 110, "THE MOVE LIST IS NOT IN YET", C_STEEL, ALIGN_CENTRE)
     }
     for i in 0..min(ml.n, MOVES_MAX) {
-        let y = 41 + i * 11
-        txt(FONT_LABEL, 40, y, ml.e[i].name, C_INK, ALIGN_LEFT)
-        txt(FONT_LABEL, 280, y, ml.e[i].input, C_NAVY, ALIGN_RIGHT)
+        let y = 43 + i * 11
+        if i % 2 == 0 { rect_blend(42, y, 242, 11, 0xE8DCD2, BLEND_NONE) }
+        txt(FONT_LABEL, 46, y - 1, ml.e[i].name, C_INK, ALIGN_LEFT)
+        txt(FONT_LABEL, 280, y - 1, ml.e[i].input, C_NAVY, ALIGN_RIGHT)
     }
-    txt(FONT_LABEL, 282, 214, "B BACK", C_STEEL, ALIGN_RIGHT)
+    txt(FONT_MICRO, 284, 220, "B BACK", C_STEEL, ALIGN_RIGHT)
 }
 
-// ---- results
+// ---- results: the UAPC's judging sheet
 
 fn draw_results() {
     page_scroll()
@@ -430,91 +814,162 @@ fn draw_results() {
     var w = f.winner
     if w < 0 || w > 1 { w = 0 }
     let wm = f.f[w].mech
-    draw_header("RESULTS", MODE_NAMES[game as s32])
-    menu_camera(22.0, 196)
+    masthead("JUDGING SHEET", MODE_NAMES[game as s32])
+    print_clear()
+    // the winner's photograph
+    var pcol = C_STEEL
+    if f.winner != 2 { pcol = mech_colour(wm) }
+    print_ramp(0, pcol)
+    print_photo(1, 4, 14, 23, 0)
     if f.winner == 0 || f.winner == 1 {
-        menu_mech(wm, Mv.win, -7.0, 1)
+        menu_mech_at(wm, Mv.win, 64, 204, 19.0, 1, turntable(0) / 2)
+        tag(10, 36, 34, "WINNER", side_colour(w), C_WHITE)
+        tag(48, 36, 18, who_label(w), C_INK, C_WHITE)
     }
-    panel_card(150, 60, 160, 120)
+    // the sheet
+    let x = 128
+    paper(x, 28, 184, 196)
+    ui_sprite(&UI_UAPC[0], PAL_LOGO, x + 6, 32, 0x808080, BLEND_NONE)
+    txt(FONT_MICRO, x + 34, 31, "UAPC DEFENCE TRIAL", C_STEEL, ALIGN_LEFT)
+    txt(FONT_HEAD, x + 34, 39, "DEMO REPORT", C_INK, ALIGN_LEFT)
+    rect_blend(x + 6, 58, 172, 1, C_NAVY, BLEND_NONE)
     if f.winner == 2 {
-        txt(FONT_TITLE, 230, 70, "DRAW", C_INK, ALIGN_CENTRE)
+        sheet_row(x, 62, "UNIT", "NO DECISION", C_INK)
+        sheet_row(x, 72, "MAKERS", "BOTH TO BE RE-TESTED", C_INK)
     } else {
-        txt(FONT_LABEL, 158, 66, "WINNER", C_STEEL, ALIGN_LEFT)
-        tag(282, 66, 18, who_label(w), mech_colour(wm), C_WHITE)
-        txt(FONT_HEAD, 158, 80, mech_name(wm), C_INK, ALIGN_LEFT)
-        txt(FONT_LABEL, 158, 96, mech_maker(wm), mech_colour(wm), ALIGN_LEFT)
+        sheet_row(x, 62, "UNIT", mech_name(wm), C_INK)
+        sheet_row(x, 72, "MAKER", mech_maker(wm), C_INK)
+        sheet_row(x, 82, "BOOTH", mech_booth(wm), C_INK)
     }
-    rect_blend(158, 112, 144, 1, C_STEEL, BLEND_NONE)
     let b = sb()
-    str_append(b, 64, "ROUNDS ")
     str_append_int(b, 64, f.wins[0], 0, false)
     str_append(b, 64, " - ")
     str_append_int(b, 64, f.wins[1], 0, false)
-    txt(FONT_LABEL, 158, 116, b, C_INK, ALIGN_LEFT)
+    sheet_row(x, 92, "ROUNDS", b, C_INK)
     let hb = sb()
-    str_append(hb, 64, "UNIT INTEGRITY ")
     str_append_int(hb, 64, max(f.f[w].health, 0) * 100 / max(f.f[w].health_max, 1), 0, false)
-    str_append(hb, 64, "%")
-    txt(FONT_LABEL, 158, 128, hb, C_INK, ALIGN_LEFT)
+    str_append(hb, 64, " %")
+    sheet_row(x, 102, "INTEGRITY", hb, C_INK)
+    rect_blend(x + 6, 113, 172, 1, C_SILVER, BLEND_NONE)
+    if f.winner != 2 && st_t > 12 {
+        ui_stamp(&UI_STAMP_APPROVED[0], x + 138, 101, C_RED)
+    }
+    // what next
     if game == Game.Arcade {
         if !won {
-            txt(FONT_HEAD, 230, 146, "CONTINUE?", C_RED, ALIGN_CENTRE)
-            txt(FONT_LABEL, 230, 162, "A YES  //  B NO", C_INK, ALIGN_CENTRE)
+            txt(FONT_HEAD, x + 92, 122, "CONTINUE?", C_RED, ALIGN_CENTRE)
+            txt(FONT_MICRO, x + 92, 140, "A  RETRY THE DEMONSTRATION", C_INK, ALIGN_CENTRE)
+            txt(FONT_MICRO, x + 92, 150, "B  WITHDRAW FROM THE TRIAL", C_INK, ALIGN_CENTRE)
         } else if !cleared {
-            let nb = sb()
-            str_append(nb, 64, "NEXT: ")
-            str_append(nb, 64, mech_short(ladder_foe(p_mech[0], ladder + 1)))
-            txt(FONT_HEAD, 230, 146, nb, C_NAVY, ALIGN_CENTRE)
-            txt(FONT_LABEL, 230, 162, "A CONTINUE", C_INK, ALIGN_CENTRE)
+            txt(FONT_MICRO, x + 92, 120, "NEXT DEMONSTRATION", C_STEEL, ALIGN_CENTRE)
+            txt(FONT_HEAD, x + 92, 129, mech_name(ladder_foe(p_mech[0], ladder + 1)), C_NAVY, ALIGN_CENTRE)
+            txt(FONT_MICRO, x + 92, 148, "A  CONTINUE", C_INK, ALIGN_CENTRE)
         } else {
-            txt(FONT_HEAD, 230, 146, "ARCADE CLEAR", C_NAVY, ALIGN_CENTRE)
-            txt(FONT_LABEL, 230, 162, "CONTRACT SHORTLISTED  //  A", C_INK, ALIGN_CENTRE)
+            txt(FONT_HEAD, x + 92, 120, "ARCADE CLEAR", C_NAVY, ALIGN_CENTRE)
+            txt(FONT_MICRO, x + 92, 138, "CONTRACT SHORTLISTED", C_INK, ALIGN_CENTRE)
+            txt(FONT_MICRO, x + 92, 148, "A  CONTINUE", C_INK, ALIGN_CENTRE)
         }
     } else {
         const ITEMS: [3]*u8 = ["REMATCH", "CHARACTER SELECT", "TITLE"]
+        txt(FONT_MICRO, x + 8, 117, "THE JUDGES REQUEST:", C_STEEL, ALIGN_LEFT)
         for i in 0..3 {
-            let y = 142 + i * 12
+            let y = 128 + i * 14
             var col = C_INK
             if i == res_sel {
-                rect_blend(152, y - 1, 156, 12, C_NAVY, BLEND_NONE)
+                rect_blend(x + 6, y - 1, 172, 13, C_NAVY, BLEND_NONE)
                 col = C_WHITE
             }
-            txt(FONT_LABEL, 160, y, ITEMS[i], col, ALIGN_LEFT)
+            ui_check(x + 10, y + 1, i == res_sel, col)
+            txt(FONT_LABEL, x + 24, y - 1, ITEMS[i], col, ALIGN_LEFT)
         }
     }
-    draw_save_status(158, 184)
-    draw_footer("UAPC DEFENCE TRIAL  //  RESULTS FILED")
+    // the judges' signatures
+    rect_blend(x + 8, 196, 70, 1, C_STEEL, BLEND_NONE)
+    rect_blend(x + 106, 196, 70, 1, C_STEEL, BLEND_NONE)
+    txt(FONT_SERIF, x + 12, 182, "T. Okada", C_NAVY, ALIGN_LEFT)
+    txt(FONT_SERIF, x + 110, 182, "R. Hale", C_NAVY, ALIGN_LEFT)
+    txt(FONT_MICRO, x + 8, 198, "CHIEF JUDGE", C_STEEL, ALIGN_LEFT)
+    txt(FONT_MICRO, x + 106, 198, "UAPC OBSERVER", C_STEEL, ALIGN_LEFT)
+    draw_save_status(x + 92, 209)
+    footer("UAPC DEFENCE TRIAL  //  RESULTS FILED", "P. 12")
 }
 
+private fn sheet_row(x: s32, y: s32, k: *u8, v: *u8, col: u32) {
+    txt(FONT_MICRO, x + 8, y, k, C_STEEL, ALIGN_LEFT)
+    txt(FONT_MICRO, x + 56, y, v, col, ALIGN_LEFT)
+}
+
+// The memory card's message, a dark chip centred on x: saving, saved, or why not.
 private fn draw_save_status(x: s32, y: s32) {
+    var msg: *u8 = null
+    var col = C_CYAN
     if save_writing {
-        if (tick >> 3) & 1 == 0 { txt(FONT_LABEL, x, y, "SAVING TO MEMORY CARD...", C_NAVY, ALIGN_LEFT) }
+        if (tick >> 3) & 1 == 0 { msg = "SAVING TO MEMORY CARD..." } else { msg = "SAVING TO MEMORY CARD" }
     } else if save_result != -1 && save_shown < 240 {
         if save_result == CARD_OK {
-            txt(FONT_LABEL, x, y, "SAVED TO MEMORY CARD", C_NAVY, ALIGN_LEFT)
+            msg = "SAVED TO MEMORY CARD"
         } else if save_result == CARD_NO_CARD {
-            txt(FONT_LABEL, x, y, "NO MEMORY CARD // NOT SAVED", C_RED, ALIGN_LEFT)
+            msg = "NO MEMORY CARD // NOT SAVED"
+            col = C_TANGERINE
         } else if save_result == CARD_FULL {
-            txt(FONT_LABEL, x, y, "MEMORY CARD FULL // NOT SAVED", C_RED, ALIGN_LEFT)
+            msg = "MEMORY CARD FULL // NOT SAVED"
+            col = C_TANGERINE
         } else {
-            txt(FONT_LABEL, x, y, "MEMORY CARD ERROR // NOT SAVED", C_RED, ALIGN_LEFT)
+            msg = "MEMORY CARD ERROR // NOT SAVED"
+            col = C_TANGERINE
         }
     }
+    if msg == null { return }
+    let w = txt_w(FONT_MICRO, msg) + 24
+    let x0 = x - w / 2
+    rect_blend(x0, y, w, 13, C_GLASS, BLEND_NONE)
+    rect_blend(x0, y, w, 1, col, BLEND_NONE)
+    // the card: a small chip with a notch
+    rect_blend(x0 + 5, y + 2, 9, 9, C_SILVER, BLEND_NONE)
+    rect_blend(x0 + 11, y + 2, 3, 3, C_GLASS, BLEND_NONE)
+    rect_blend(x0 + 7, y + 7, 5, 2, col, BLEND_NONE)
+    txt(FONT_MICRO, x0 + 18, y + 1, msg, col, ALIGN_LEFT)
 }
 
-// ---- the unlock
+// ---- the unlock: a press release
 
 fn draw_unlock() {
     page_scroll()
-    rect_grad(0, 0, 320, 80, 0x5A2810, 0x5A2810, BLEND_HALF)
-    menu_camera(22.0, 200)
-    menu_mech(Mech.Doubleblade, Mv.intro, 0.0, -1)
+    var s = unlock_slot
+    if s < 0 || !slot_has_mech(s) { s = ROSTER_COLS }
+    let m = slot_mech(s)
+    let mk = mech_maker_of(m)
     let t = st_t
+    masthead("PRESS RELEASE", "NEW EXHIBITOR")
+    print_clear()
+    print_ramp(0, mk.colour)
+    print_grad(4, 3, 32, 21, 0, 12, 5)              // a spotlit stage: dark above, the unit lit
+    print_fill(4, 24, 32, 1, 0, PT_DITHER + 6)
+    print_grad(4, 25, 32, 2, 0, 8, 9)
+    menu_mech_at(m, Mv.intro, 160, 210, 21.0, -1, turntable(0) / 2)
     if (t >> 2) & 1 == 0 || t > 40 {
-        txt_sh(FONT_HEAD, 160, 18, "NEW DEMO UNIT UNLOCKED", C_YELLOW, C_INK, 1, ALIGN_CENTRE)
+        txt_sh(FONT_HEAD, 160, 28, "NEW DEMO UNIT REGISTERED", C_WHITE, C_INK, 1, ALIGN_CENTRE)
     }
-    txt_sh(FONT_TITLE, 160, 36, "DOUBLE-BLADE HERO", C_WHITE, C_INK, 2, ALIGN_CENTRE)
-    txt(FONT_LABEL, 160, 64, "UMBRAL RESEARCH  //  ANTIMATTER  //  BOOTH B-07", C_VIOLET, ALIGN_CENTRE)
-    draw_save_status(100, 210)
-    if t > 90 && !save_writing { txt(FONT_LABEL, 160, 224, "PRESS A", C_WHITE, ALIGN_CENTRE) }
+    txt_sh(FONT_TITLE, 160, 44, mech_name(m), C_WHITE, C_INK, 2, ALIGN_CENTRE)
+    // the release's fact box
+    paper(232, 80, 80, 76)
+    ui_slot_emblem(s, 238, 84, false, 0x808080)
+    ui_power_icon(mk.src, 290, 92)
+    txt(FONT_MICRO, 237, 118, mk.short, C_INK, ALIGN_LEFT)
+    txt(FONT_MICRO, 237, 127, mk.booth_full, C_NAVY, ALIGN_LEFT)
+    txt(FONT_MICRO, 237, 136, mech_power(m), C_STEEL, ALIGN_LEFT)
+    txt(FONT_MICRO, 237, 145, ROSTER[s].model, C_STEEL, ALIGN_LEFT)
+    if t > 30 {
+        // the stamp comes down
+        let k = max(0, 36 - t)
+        let r = &UI_STAMP_UNLOCKED[0]
+        let sw = r[2] + k * 8
+        let shh = r[3] + k * 3
+        menu_sprite(r, 72 - sw / 2, 120 - shh / 2, sw, shh, col_tint(C_RED), BLEND_NONE)
+    }
+    rect_blend(0, 214, 320, 26, C_NAVY, BLEND_NONE)
+    rect_blend(0, 214, 320, 1, C_CYAN, BLEND_NONE)
+    txt(FONT_SERIF, 160, 214, "...joins the show floor. On sale to the UAPC.", C_WHITE, ALIGN_CENTRE)
+    if t > 90 && !save_writing { txt(FONT_MICRO, 312, 229, "PRESS A", C_CYAN, ALIGN_RIGHT) }
+    draw_save_status(84, 196)
 }

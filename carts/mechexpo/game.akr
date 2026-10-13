@@ -22,6 +22,7 @@ import "stage_art.akr"
 import "ui_art.akr"
 import "ui.akr"
 import "save.akr"
+import "roster.akr"         // mx-menus: the makers and the select's ten slots
 import "camera.akr"
 import "stage.akr"
 import "hud.akr"
@@ -61,10 +62,12 @@ var stk: [2]vec2
 var rep: [2]KeyRepeat
 
 // the character select
-var sel_cur: [2]s32                // the card under each cursor (0 Hero, 1 Double-blade)
+var sel_cur: [2]s32                // the roster slot under each cursor (roster.akr: 0-4 top, 5-9 below)
 var sel_done: [2]bool
 var sel_human2: bool               // pad 2 joined
 var sel_mech: [2]Mech
+var sel_moved: [2]s32              // the tick each cursor last moved (the menus' slides)
+var sel_done_t: [2]s32             // the tick each pick was made
 
 // the match
 var p_mech: [2]Mech
@@ -74,6 +77,7 @@ var cont_n: s32                    // arcade continues used
 var won: bool                      // the results: side 0 won the match
 var cleared: bool                  // the arcade ladder is cleared
 var unlocked_now: bool
+var unlock_slot: s32               // the roster slot unlocked now (the unlock screen)
 
 // the pause
 var paused: bool
@@ -147,15 +151,8 @@ fn enter_select() {
     for s in 0..2 { sel_done[s] = false }
     sel_cur[0] = 0
     sel_cur[1] = 0
-    if echo_unlocked() { sel_cur[1] = 1 }
+    if slot_ok(ROSTER_COLS) { sel_cur[1] = ROSTER_COLS }      // the Hero's echo, when unlocked
     sel_human2 = false
-}
-
-// The arcade ladder's opponent for fight n.
-fn ladder_foe(me: Mech, n: s32) -> Mech {
-    if n == 0 { return me }
-    if me == Mech.Hero { return Mech.Doubleblade }
-    return Mech.Hero
 }
 
 fn enter_vs() {
@@ -210,12 +207,9 @@ fn enter_results() {
     if game == Game.Arcade && won && ladder == LADDER_N - 1 {
         cleared = true
         save.clears += 1
-        if p_mech[0] == Mech.Hero && !echo_unlocked() {
-            unlocked_now = true
-            save_unlock_echo()
-        } else {
-            save_write()
-        }
+        unlock_slot = roster_clear(p_mech[0])       // marks the clear; what it unlocks (roster.akr)
+        unlocked_now = unlock_slot >= 0
+        save_write()
     }
     music_menu()
 }
@@ -282,9 +276,6 @@ fn update_mode() {
     }
 }
 
-// The mech under card c (the locked card is no mech).
-fn card_ok(c: s32) -> bool { return c != (Mech.Doubleblade as s32) || echo_unlocked() }   // Beam and Tank: base mechs
-
 fn update_select() {
     // pad 2 joins in Versus
     if game == Game.Versus && !sel_human2 && !sel_done[1] && (pressed(1, A) || pressed(1, START)) {
@@ -304,19 +295,25 @@ fn update_select() {
             }
             continue
         }
+        // the 5 x 2 grid: left and right along a row, up and down between a base and its echo
         let d = dirs(n)
-        if d & LEFT != 0 && sel_cur[side] > 0 {
-            sel_cur[side] -= 1
-            sfx_menu_move()
-        }
-        if d & RIGHT != 0 && sel_cur[side] < len(Mech) - 1 {
-            sel_cur[side] += 1
+        let c = sel_cur[side]
+        let col = c % ROSTER_COLS
+        var to = c
+        if d & LEFT != 0 && col > 0 { to = c - 1 }
+        if d & RIGHT != 0 && col < ROSTER_COLS - 1 { to = c + 1 }
+        if d & UP != 0 && c >= ROSTER_COLS { to = c - ROSTER_COLS }
+        if d & DOWN != 0 && c < ROSTER_COLS { to = c + ROSTER_COLS }
+        if to != c {
+            sel_cur[side] = to
+            sel_moved[side] = tick
             sfx_menu_move()
         }
         if ok_pressed(n) {
-            if card_ok(sel_cur[side]) {
+            if slot_ok(sel_cur[side]) {
                 sel_done[side] = true
-                sel_mech[side] = sel_cur[side] as Mech
+                sel_done_t[side] = tick
+                sel_mech[side] = slot_mech(sel_cur[side])
                 sfx_menu_ok()
             } else {
                 sfx_menu_back()
