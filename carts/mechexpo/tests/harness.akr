@@ -887,7 +887,7 @@ var fd_case: s32
 private fn frame_data() {
     if done { return }
     let n = len(FD_MOVES)
-    if fd_case >= 2 * 2 * n {
+    if fd_case >= len(Mech) * 2 * n {
         ok("frame data")
         return
     }
@@ -930,7 +930,7 @@ private fn frame_data() {
         if contact < 0 && t > 200 { break }
         if att_free >= 0 && def_free >= 0 { break }
     }
-    print(if_s(m == Mech.Hero, "Hero ", "Double-blade "))
+    print(if_s(m == Mech.Hero, "Hero ", if_s(m == Mech.Tank, "Tank ", "Double-blade ")))
     print(MV_NAMES[mv])
     print(if_s(block, " on block: ", " on hit: "))
     if contact < 0 { println("no contact"); return }
@@ -1312,6 +1312,7 @@ private fn tk_check_super() {
         assert_eq(evc[Ev.Throw], 1, "no slam")
         assert_eq(h.health, 1000 - (dmg(2, Mv.atk_n) + dmg(2, Mv.atk_f) * 80 / 100 + dmg(2, Mv.super) * 65 / 100),
                   "the chain's scaled damage")
+        assert_eq(fight_moves(Mech.Tank).n, 15, "Tank's move list")
         print("chain into Chain Reaction: damage ")
         print_int(1000 - h.health)
         println("")

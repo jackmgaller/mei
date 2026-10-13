@@ -19,6 +19,15 @@ trial for a defence contract; every fight is a product demonstration. The pitch 
 | Y2K menus at placeholder quality: title, mode select, character select, results, pause | The brochure menus at full quality |
 | One fight track, a menu loop, the core sound effects | |
 
+**After the MVP: Tank** (Heartland Atomic Company, nuclear), the grappler, a base mech available
+from the start: [MOVES.md](MOVES.md#tank-heartland-atomic-company-nuclear) is its design.
+Its model is `models/tank/make_tank.py` (on the shared skeleton: treads on the shins, drive
+sprockets on the feet, empty weapon mounts); its fight data `tank.akr`, its rules (super
+armour, the command grabs) a marked block at the end of `fighter.akr`, its meter in `meter.akr`,
+its CPU at the end of `cpu.akr`, its HUD gauge and reactor glow `tank_fx.akr`; its test
+scenarios are 40-49. Until its animations land, its moves use the stand-in timings and boxes in
+`tank.akr` and are drawn in the guard pose (`anims/tank/_body.anim.json`).
+
 **Controls.** Stick or d-pad: walk, crouch, and the direction of a move. A attack, B special,
 X jump, Y grab, R block, A + B super (when the meter allows), Start pause. L is unused. Any move
 is one direction plus one button; no motion inputs, no tilts, no per-direction aerials.
