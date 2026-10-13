@@ -1,0 +1,26 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Land: the long legs fold to take the weight. The pelvis sinks 1.6 m in the first 2 frames, the body pitches forward over the knees and the claws swing down in front, the talons stopping just off the floor, while the cape plates, lifted in the air, drop and settle; then it rises back into the guard by frame 5 (the landing lag is 5 frames, 8 after an air attack: frames 5-7 settle). Feet planted.",
+  "base": "_body.anim.json",
+  "length": 8,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "offset": [0.0, -1.2],
+     "pose": {"pelvis": [-3, -8, 0], "torso": [-18, -8, 0], "head": [20, 8, 0],
+              "upper_arm_r": [62, 0, -28], "forearm_r": [32, 0, 12], "upper_arm_l": [38, 0, 30],
+              "forearm_l": [42, 0, -10], "pauldron_r": [24, 0, -20], "pauldron_l": [18, 0, 22]},
+     "reach": {"foot_r": "guard", "foot_l": "guard"}},
+    {"at": 2, "ease": "ease", "offset": [-0.1, -2.65],
+     "pose": {"pelvis": [-6, -8, 0], "torso": [-34, -8, 0], "head": [36, 8, 0],
+              "upper_arm_r": [50, 0, -26], "forearm_r": [36, 0, 12], "hand_r": [-14, 0, 0],
+              "upper_arm_l": [34, 0, 28], "forearm_l": [46, 0, -10], "hand_l": [-10, 0, 0],
+              "pauldron_r": [10, 0, -8], "pauldron_l": [6, 0, 9]},
+     "aim": {"weapon_r": [8, 10], "weapon_l": [6, 20]}},
+    {"at": 5, "ease": "ease", "offset": [0.0, -1.2],
+     "pose": {"pelvis": [-1, -8, 0], "torso": [-16, -8, 0], "head": [18, 8, 0],
+              "upper_arm_r": [62, 0, -26], "forearm_r": [36, 0, 12], "hand_r": [-22, 0, 0],
+              "upper_arm_l": [36, 0, 30], "forearm_l": [44, 0, -10], "hand_l": [-10, 0, 0],
+              "pauldron_r": [21, 0, -12], "pauldron_l": [12, 0, 14]}},
+    {"at": 7, "from": "guard", "reach": {"foot_r": "guard", "foot_l": "guard"}}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Block: 4 frames to raise it, then the last frame is held (the fight shakes it in blockstun). Both forearms come up crossed in front of the head and chest, the claws spread above them in a V (the right up and forward, the left raked up and back over the head), the talons closed; the pauldrons' cape plates swing forward and open round the arms like a hood; the body sinks onto its bent knees and hunches behind the arms.",
+  "base": "_body.anim.json",
+  "length": 4,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "reach": {"foot_r": "guard", "foot_l": "guard"}},
+    {"at": 3, "offset": [-0.3, -1.45],
+     "pose": {"pelvis": [-2, -6, 0], "torso": [-18, -10, 0], "head": [20, 8, 0],
+              "upper_arm_r": [70, 0, -6], "forearm_r": [110, 0, 10], "hand_r": [10, 0, 0],
+              "weapon_r": [-10, 0, 0], "upper_arm_l": [80, 0, 4], "forearm_l": [100, 0, -12],
+              "hand_l": [-10, 0, 0], "weapon_l": [-10, 0, 0], "pauldron_r": [50, 0, -24],
+              "pauldron_l": [50, 0, 24]}, "aim": {"weapon_r": [52, 20], "weapon_l": [64, 155]},
+     "reach": {"foot_r": "guard", "foot_l": "guard"}}
+  ]
+}
