@@ -1,0 +1,70 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Body Drop (MOVES.md): in the air (from any frame of the jump; the fight keeps moving the root). Tank hauls both fists in against the chest and tucks the cab head (0-6), then tips its hull nose-down 12 degrees and drops its whole weight, the treads leading (active from 7 until the landing: the treads' undersides and a metre below them, x about -1.5-4.0, y -2.5-2.5 from the root). The last frame is held until touchdown; land plays the hard landing (10 frames after an air attack).",
+  "base": "_body.anim.json",
+  "length": 28,
+  "air": true,
+  "phases": {"startup": 7, "active": 21, "recovery": 0},
+  "design": {"hit": [-1.5, -2.5, 4.0, 2.5], "tolerance": 0.5, "note": "MOVES.md, Body Drop: x -1.5-4.0, y -2.5-2.5 from the root"},
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "ease",
+      "offset": [0.0, 0.2],
+      "pose": {
+        "torso": [-6, -10, 0], "head": [8, 8, 0],
+        "upper_arm_r": [60, 0, -16], "forearm_r": [60, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [56, 0, 18], "forearm_l": [66, 0, 0], "hand_l": [-14, 0, 0],
+        "pauldron_r": [21, 0, -8], "pauldron_l": [19.6, 0, 9]
+      }
+    },
+    {
+      "at": 5,
+      "ease": "in",
+      "offset": [0.3, 0.1],
+      "pose": {
+        "pelvis": [2, 0, 0],
+        "torso": [2, -6, 0], "head": [-10, 4, 0],
+        "upper_arm_r": [20, 0, -12], "forearm_r": [124, 0, 0], "hand_r": [-20, 0, 0],
+        "upper_arm_l": [18, 0, 14], "forearm_l": [124, 0, 0], "hand_l": [-20, 0, 0],
+        "pauldron_r": [7, 0, -6], "pauldron_l": [6.3, 0, 7]
+      }
+    },
+    {
+      "at": 7,
+      "ease": "out",
+      "offset": [0.8, -0.5],
+      "boxes": {
+        "drop_r": {"kind": "hit", "part": "shin_r", "min": [-0.86, -3.4, -3.5], "max": [0.6, 0.2, 1.3]},
+        "drop_l": {"kind": "hit", "part": "shin_l", "min": [-0.6, -3.4, -3.5], "max": [0.86, 0.2, 1.3]}
+      },
+      "pose": {
+        "pelvis": [-12, 0, 0],
+        "torso": [-8, -6, 0], "head": [-14, 4, 0],
+        "upper_arm_r": [30, 0, -10], "forearm_r": [126, 0, 0], "hand_r": [-24, 0, 0],
+        "upper_arm_l": [28, 0, 12], "forearm_l": [126, 0, 0], "hand_l": [-24, 0, 0],
+        "pauldron_r": [10.5, 0, -5], "pauldron_l": [9.8, 0, 6]
+      }
+    },
+    {
+      "at": 16,
+      "ease": "ease",
+      "offset": [0.8, -0.55],
+      "pose": {
+        "pelvis": [-13, 0, 0],
+        "torso": [-10, -6, 0], "head": [-12, 4, 0]
+      }
+    },
+    {
+      "at": 27,
+      "offset": [0.8, -0.5],
+      "pose": {
+        "pelvis": [-12, 0, 0],
+        "torso": [-9, -6, 0], "head": [-13, 4, 0]
+      }
+    }
+  ],
+  "allow": [["torso", "forearm_r"], ["torso", "forearm_l"], ["pauldron_r", "forearm_r"], ["pauldron_l", "forearm_l"], ["torso", "hand_r"], ["torso", "hand_l"]]
+}

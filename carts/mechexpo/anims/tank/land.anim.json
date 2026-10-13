@@ -1,0 +1,55 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Land (10 frames; the landing lag is 7, 10 after an air attack): the hard landing. The treads hit and rock nose-down 8 degrees onto their front rollers (the hull pivots on the treads' noses, which stay on the floor), the torso pitches forward and the arms swing down with the impact (0-2); the treads rock back past level onto their tails (5) and settle flat (7) as the torso comes back up into the guard.",
+  "base": "_body.anim.json",
+  "length": 10,
+  "keys": [
+    {
+      "at": 0,
+      "ease": "out",
+      "offset": [0.49, 0.35],
+      "pose": {
+        "pelvis": [-8, -4, 0],
+        "torso": [-22, -12, 0], "head": [22, 9, 0],
+        "upper_arm_r": [30, 0, -36], "forearm_r": [40, 0, 0], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [26, 0, 36], "forearm_l": [46, 0, 0], "hand_l": [-16, 0, 0],
+        "pauldron_r": [10.5, 0, -18], "pauldron_l": [9.1, 0, 18]
+      }
+    },
+    {
+      "at": 2,
+      "ease": "ease",
+      "offset": [0.49, 0.35],
+      "pose": {
+        "pelvis": [-8, -4, 0],
+        "torso": [-30, -12, 0], "head": [28, 9, 0],
+        "upper_arm_r": [18, 0, -26], "forearm_r": [50, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [14, 0, 28], "forearm_l": [56, 0, 0], "hand_l": [-12, 0, 0],
+        "pauldron_r": [6.3, 0, -13], "pauldron_l": [4.9, 0, 14]
+      }
+    },
+    {
+      "at": 5,
+      "ease": "ease",
+      "offset": [-0.18, 0.14],
+      "pose": {
+        "pelvis": [3, -2, 0],
+        "torso": [-18, -14, 0], "head": [18, 10, 0],
+        "upper_arm_r": [22, 0, -18], "forearm_r": [70, 0, 0], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [16, 0, 20], "forearm_l": [76, 0, 0], "hand_l": [-18, 0, 0],
+        "pauldron_r": [7.7, 0, -9], "pauldron_l": [5.6, 0, 10]
+      }
+    },
+    {
+      "at": 7,
+      "ease": "ease",
+      "offset": [0.0, 0.0],
+      "pose": {
+        "pelvis": [0, 0, 0],
+        "torso": [-12, -14, 0], "head": [13, 10, 0]
+      }
+    },
+    {"at": 9, "from": "guard"}
+  ]
+}
