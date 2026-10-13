@@ -22,6 +22,8 @@ var trace_frame: s32 = -1        // the frame the traced match started
 var wins: [2]s32
 var rwins: [2]s32
 var dmg: [2][8]s32               // damage dealt, by kind (DK_*)
+var dmg_mv: [2][len(Mv)]s32      // and by the move it came from (the shots under sp_n)
+var hits_mv: [2][len(Mv)]s32     // the frames it landed on
 var evn: [2][len(Ev)]s32         // events by the side the event names
 var absorbed: [2]s32             // hits this mech's armour absorbed
 var mines_broken: [2]s32         // mines of this mech's destroyed by the other
@@ -154,7 +156,12 @@ private fn tick() {
         if lost <= 0 { continue }
         let i = 1 - j
         let gone = shot_on[i] && !fight.shot[i].on
-        dmg[slot(i)][dmg_kind(i, gone, blk[j])] += lost
+        let kind = dmg_kind(i, gone, blk[j])
+        dmg[slot(i)][kind] += lost
+        var mv = attack_mv(i)
+        if kind == DK_P { mv = Mv.sp_n }
+        dmg_mv[slot(i)][mv] += lost
+        hits_mv[slot(i)][mv] += 1
     }
     let ev = fight_events()
     for e in 0..ev.n {
@@ -368,6 +375,18 @@ private fn report() {
         kv("comb_curse_t", comb_curse_t[sl])
         kv("switches", switches[sl])
         kv("meter_end", meter_end[sl])
+        println("")
+        print("MOVES slot=")
+        print_int(sl)
+        for k in 0..len(Mv) {
+            if hits_mv[sl][k] == 0 { continue }
+            print(" ")
+            print(MV_NAMES[k])
+            print("=")
+            print_int(dmg_mv[sl][k])
+            print("/")
+            print_int(hits_mv[sl][k])
+        }
         println("")
     }
     println("OK balance")

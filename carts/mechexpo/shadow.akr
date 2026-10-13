@@ -32,9 +32,9 @@ const HEX_HALF: fixed = 0.8
 const HEX_SPEED: fixed = 0.14       // m a frame: the slowest shot
 const HEX_LIFE = 200
 const HEX_STR = 1                   // against the other shots: the wave 2, the Volt Orb its level
-const CURSE_FRAMES = 360            // 6 s of play
-const SIPHON_NUC_NUM = 1            // nuclear's damage-taken gain is siphoned at half
-const SIPHON_NUC_DEN = 2
+const CURSE_FRAMES = 300            // 5 s of play
+const SIPHON_NUC_NUM = 1            // nuclear's damage-taken gain is siphoned at a quarter
+const SIPHON_NUC_DEN = 4
 
 // ---- the Rift Mine (sp_d)
 

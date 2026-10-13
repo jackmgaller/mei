@@ -32,7 +32,7 @@ const TW_SPLIT_SWAP = 12
 const TW_COPY: u32 = UP | DOWN | LEFT | RIGHT | A | B | X | R
 
 // the fusion meter (meter.akr's METER_BAR is a bar)
-const FUS_REGEN = 1                 // a frame, while combined: a bar in 20 s
+const FUS_REGEN = 2                 // a frame, while combined: a bar in 10 s
 const FUS_HIT = 60                  // a combined hit that lands: 5 %
 const FUS_FOCUS = 6                 // a frame of Fusion Focus held: a quarter bar in its 50 frames
 
@@ -383,14 +383,14 @@ fn twins_hit(m: Mech, mv: Mv) -> Hit {
     }
     // twin A and twin B: one twin's hit (the partner's copy is a second hit)
     return match mv {
-        atk_n => Hit { dmg: 40, hitstun: 15, blockstun: 11, stop: 7, kb: 0.08 }
-        atk_f => Hit { dmg: 60, hitstun: 22, blockstun: 16, stop: 9, power: 1, kb: 0.11 }
-        atk_d => Hit { dmg: 55, blockstun: 14, stop: 9, power: 1, kb: 0.08, kd: true, launch: 0.28 }
-        atk_air => Hit { dmg: 50, hitstun: 16, blockstun: 12, stop: 9, power: 1, kb: 0.07 }
-        sp_n => Hit { dmg: 45, chip: 9, hitstun: 18, blockstun: 14, stop: 9, power: 1, kb: 0.10 }
-        sp_f => Hit { dmg: 80, chip: 16, blockstun: 14, stop: 11, power: 2, kb: 0.16, kd: true, launch: 0.32 }
-        sp_u => Hit { dmg: 70, chip: 14, blockstun: 12, stop: 11, power: 2, kb: 0.08, kd: true, launch: 0.50 }
-        throw => Hit { dmg: 100, stop: 10, power: 2, kd: true, launch: 0.30 }
+        atk_n => Hit { dmg: 46, hitstun: 15, blockstun: 11, stop: 7, kb: 0.08 }
+        atk_f => Hit { dmg: 70, hitstun: 22, blockstun: 16, stop: 9, power: 1, kb: 0.11 }
+        atk_d => Hit { dmg: 62, blockstun: 14, stop: 9, power: 1, kb: 0.08, kd: true, launch: 0.28 }
+        atk_air => Hit { dmg: 56, hitstun: 16, blockstun: 12, stop: 9, power: 1, kb: 0.07 }
+        sp_n => Hit { dmg: 52, chip: 10, hitstun: 18, blockstun: 14, stop: 9, power: 1, kb: 0.10 }
+        sp_f => Hit { dmg: 92, chip: 18, blockstun: 14, stop: 11, power: 2, kb: 0.16, kd: true, launch: 0.32 }
+        sp_u => Hit { dmg: 80, chip: 16, blockstun: 12, stop: 11, power: 2, kb: 0.08, kd: true, launch: 0.50 }
+        throw => Hit { dmg: 115, stop: 10, power: 2, kd: true, launch: 0.30 }
         else => HIT_NONE
     }
 }

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""The balance matrix's report (tests/balance/matrix.sh): reads the pairings' logs (the MATCHUP
-and MECH lines tests/balance/harness.akr prints) and prints the win rates as a table, each
-mech's overall rate, and per pairing the stats that explain the results."""
+"""The balance matrix's report (tests/balance/matrix.sh): reads the pairings' logs (the MATCHUP,
+MECH and MOVES lines tests/balance/harness.akr prints) and prints the win rates as a table, each
+mech's overall rate, and per pairing the stats that explain the results; with -m first, also
+each mech's damage by move. Usage: table.py [-m] LOG..."""
 import sys
 
 ORDER = ["Hero", "Doubleblade", "Beam", "Tank", "Twins", "Shadow"]
@@ -30,9 +31,33 @@ def read(paths):
                     mu = kvs(line)
                 elif line.startswith("MECH "):
                     mechs.append(kvs(line))
+                elif line.startswith("MOVES ") and mechs:
+                    mv = {}
+                    for tok in line.split()[2:]:
+                        k, _, v = tok.partition("=")
+                        d, _, h = v.partition("/")
+                        mv[k] = [int(d), int(h)]
+                    mechs[-1]["moves"] = mv
         if mu and len(mechs) == 2:
             pairs.append((mu, mechs))
-    return pairs
+    # the same pairing with other seeds: summed
+    by = {}
+    for mu, mechs in pairs:
+        k = (mu["a"], mu["b"], mu["stage"])
+        if k not in by:
+            by[k] = (mu, mechs)
+            continue
+        smu, smechs = by[k]
+        for d, s in [(smu, mu), (smechs[0], mechs[0]), (smechs[1], mechs[1])]:
+            for key, v in s.items():
+                if isinstance(v, int) and key not in ("stage", "slot"):
+                    d[key] += v
+                elif key == "moves":
+                    for mk, (dd, hh) in v.items():
+                        e = d.setdefault("moves", {}).setdefault(mk, [0, 0])
+                        e[0] += dd
+                        e[1] += hh
+    return list(by.values())
 
 
 def table(pairs):
@@ -49,7 +74,7 @@ def table(pairs):
             tot[m["name"]] = (w + m["wins"], t + n)
     names = [m for m in ORDER if m in tot]
     print("Win rate of the row's mech against the column's (CPU level 2 both, %d matches a pairing)"
-          % pairs[0][0]["matches"])
+          % max(mu["matches"] for mu, _ in pairs))
     print("%-8s" % "" + "".join("%8s" % SHORT[c] for c in names) + "%9s" % "overall")
     for r in names:
         row = "%-8s" % SHORT[r]
@@ -90,7 +115,7 @@ def details(pairs):
                 extra.append("armour absorbed %d" % m["absorbed"])
             if m["curses"] or m["mines"]:
                 extra.append("curses %d, mines %d (snared %d, broken %d), siphoned %d" % (
-                    m["curses"], m["mines"], m["snares"], o["mines_broken"], o["siphoned"]))
+                    m["curses"], m["mines"], m["snares"], m["mines_broken"], o["siphoned"]))
             if m["cursed_t"]:
                 extra.append("cursed %d %%" % (100 * m["cursed_t"] // ft))
             if m["debt_t"]:
@@ -104,10 +129,21 @@ def details(pairs):
                   " blocked %d%s" % (SHORT[m["name"]], sum(d), *d, m["supers"], m["supers_hit"],
                                      m["throws"], m["blocked"],
                                      ("; " + ", ".join(extra)) if extra else ""))
+            if MOVES and m.get("moves"):
+                mv = sorted(m["moves"].items(), key=lambda kv: -kv[1][0])
+                print("          by move (damage/frames landed): " +
+                      ", ".join("%s %d/%d" % (k, dd, hh) for k, (dd, hh) in mv))
 
 
-def main(paths):
-    pairs = read(paths)
+MOVES = False
+
+
+def main(args):
+    global MOVES
+    if args and args[0] == "-m":
+        MOVES = True
+        args = args[1:]
+    pairs = read(args)
     if not pairs:
         print("no results")
         return 1

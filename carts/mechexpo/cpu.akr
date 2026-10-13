@@ -48,10 +48,18 @@ struct Cpu {
     break_roll: bool
     blocks_seen: s32        // the other's recent blocks (grab bait)
     charge_want: s32        // Beam: frames to hold B on the Volt Orb's charge frame (0: a tap)
+    mine_x: fixed           // the other's Rift Mine it has a plan for (mine_wary()), and the plan:
+    mine_plan: s32          // MP_*, kept for mine_t frames
+    mine_t: s32
 }
 
 var cpu: [2]Cpu
 var cpu_tip: [len(Mech)]fixed           // each mech's forward attack's reach, from the data
+var cpu_lo0: [len(Mech)]fixed           // its down attack's hit boxes, nearest and furthest
+var cpu_lo1: [len(Mech)]fixed           // (with root motion): what it can clear a mine with
+var cpu_trav_f: [len(Mech)]fixed        // how far its forward special, down special and
+var cpu_trav_d: [len(Mech)]fixed        // forward attack carry it
+var cpu_trav_a: [len(Mech)]fixed
 
 fn cpu_init(seed: s32) {
     cpu[0] = Cpu { rng: (seed as u32) * 2654435761 + 1 }
@@ -60,7 +68,11 @@ fn cpu_init(seed: s32) {
     for i in 0..2 {
         let m = fight.f[i].mech
         cpu_tip[m] = reach_of(m, Mv.atk_f)
-        if m == Mech.Twins { cpu_tip[Mech.TwinA] = reach_of(Mech.TwinA, Mv.atk_f) }
+        cpu_moves_of(m)
+        if m == Mech.Twins {
+            cpu_tip[Mech.TwinA] = reach_of(Mech.TwinA, Mv.atk_f)
+            cpu_moves_of(Mech.TwinA)
+        }
     }
     if stage_has_open(stage_now()) { cpu_edge_init() }     // mx-stages: the open edge
 }
@@ -79,6 +91,38 @@ private fn reach_of(m: Mech, mv: Mv) -> fixed {
         step += mv_root(m, mv, f).x
     }
     return best
+}
+
+// What the mine plans need of a mech's moves (cpu_init()).
+private fn cpu_moves_of(m: Mech) {
+    var bx: Boxes
+    var lo0 = 1000.0
+    var lo1 = 0.0
+    var step = 0.0
+    let n = mv_len(m, Mv.atk_d)
+    for f in 0..n {
+        mv_boxes(m, Mv.atk_d, f, &bx)
+        for k in 0..bx.n {
+            if bx.b[k].kind == BOX_HIT && bx.b[k].y0 < MINE_H {
+                lo0 = min(lo0, step + bx.b[k].x0)
+                lo1 = max(lo1, step + bx.b[k].x1)
+            }
+        }
+        step += mv_root(m, Mv.atk_d, f).x
+    }
+    cpu_lo0[m] = lo0
+    cpu_lo1[m] = lo1
+    cpu_trav_f[m] = travel_of(m, Mv.sp_f)
+    cpu_trav_d[m] = travel_of(m, Mv.sp_d)
+    cpu_trav_a[m] = travel_of(m, Mv.atk_f)
+}
+
+// How far a move's root motion carries the mech forward.
+private fn travel_of(m: Mech, mv: Mv) -> fixed {
+    var d = 0.0
+    let n = mv_len(m, mv)
+    for f in 0..n { d += max(mv_root(m, mv, f).x, 0.0) }
+    return d
 }
 
 private fn roll(c: *Cpu, pct: s32) -> bool {
@@ -103,8 +147,15 @@ private fn dir_bit(world: s32) -> u32 {
 // plus the other's half width), a little short.
 private fn tip(m: Mech) -> fixed { return cpu_tip[m] + 1.0 }
 
-// The buttons the CPU playing side i presses this frame.
+// The buttons the CPU playing side i presses this frame: what it thinks, kept off the other's
+// Rift Mine.
 fn cpu_pad(i: s32, level: s32) -> u32 {
+    let p = cpu_think(i, level)
+    if rift[other(i)].on { return mine_wary(i, &CPU_LEVELS[clamp(level, 0, 3)], p) }
+    return p
+}
+
+private fn cpu_think(i: s32, level: s32) -> u32 {
     let lv = &CPU_LEVELS[clamp(level, 0, 3)]
     let c = &cpu[i]
     let j = other(i)
@@ -153,6 +204,7 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
             if me.mv == Mv.atk_f {
                 if super_wise(i) && roll(c, 30) { return A | B }
                 if me.mech == Mech.Tank { return DOWN | B }             // Tank: the Bulldozer
+                if me.mech == Mech.Shadow { return B }                  // Shadow: the Hex Bolt (the curse)
                 return fwd | B
             }
         }
@@ -220,11 +272,8 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
     if s.on && abs(s.x - me.x) < 12.0 && sgn(me.x - s.x) == sgn(s.vx) {
         if !c.decided || c.hold_t == 0 {
             c.decided = true
+            if s.y0 > WAVE_H { return shot_above(i, c, lv, s, fwd) }    // an orb or a bolt
             if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
-            // Shadow: under a shot that flies above the floor (an orb, a bolt), Shadow Sneak
-            if me.mech == Mech.Shadow && s.y0 > 1.5 && dist < 19.0 && roll(c, lv.aa) { return fwd | B }
-            // the Hero cancels a tapped Volt Orb with its wave (the wave is the stronger)
-            if me.mech == Mech.Hero && s.lvl == 1 && !fight.shot[i].on && abs(s.x - me.x) > 8.0 && roll(c, lv.aa) { return B }
             if roll(c, lv.aa / 2) { return fwd | X }
             return hold(c, R, 20)
         }
@@ -342,14 +391,17 @@ private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, b
         return DOWN | B
     }
     if super_wise(i) && dist < 28.0 && roll(c, 4) { return A | B }
-    if dist > 8.0 && !fight.shot[i].on && roll(c, 45) {
+    // the orb from outside the other's poke (its forward attack and its step), or while it is
+    // down; inside it the 18-frame startup is a free hit (mx-balance)
+    let safe = dist > tip(op.body) + 2.0 || down
+    if dist > 7.0 && dist < 15.0 && (op.mv == Mv.walk_f || op.mv == Mv.jump) && roll(c, lv.poke) {
+        return fwd | B
+    }
+    if dist > 8.0 && safe && !fight.shot[i].on && roll(c, 45) {
         c.charge_want = 0
         if dist > 20.0 && roll(c, 40) { c.charge_want = ORB_CHARGE_MAX }
         else if roll(c, 35) { c.charge_want = ORB_CHARGE_HALF + 4 }
         return B
-    }
-    if dist > 7.0 && dist < 14.0 && (op.mv == Mv.walk_f || op.mv == Mv.jump) && roll(c, lv.poke) {
-        return fwd | B
     }
     if dist < tip(me.body) + 0.5 {
         let r = rnd_n(c, 100)
@@ -430,14 +482,21 @@ private fn twins_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, 
     let split = me.body == Mech.TwinA
     let down = op.mv == Mv.knockdown || op.mv == Mv.getup || op.mv == Mv.hit_air
     let threat = is_attack(op.mv) || op.mv == Mv.grab || fight.shot[j].on
+    // cursed by Shadow: combined, every gain is Shadow's; split, there is nothing to take. So
+    // split it stays split until the curse runs out (unless a full bar wants spending), and
+    // combined it splits only when that is safe: the other down, or far and not attacking (the
+    // switch is open to a hit for its first frames) (mx-balance)
+    let cursed = me.curse > 90
+    let safe = (down && dist > 5.0) || (dist > 12.0 && !threat)
     if split {
-        if down && dist > 5.0 && roll(c, lv.special * 5) { return L }
-        if dist > 14.0 && !threat && roll(c, lv.special * 3) { return L }
-        if me.meter >= METER_BAR && dist > 9.0 && !threat && roll(c, 25) { return L }
+        if !cursed || me.meter >= METER_BAR {
+            if down && dist > 5.0 && roll(c, lv.special * 5) { return L }
+            if dist > 14.0 && !threat && roll(c, lv.special * 3) { return L }
+            if me.meter >= METER_BAR && dist > 9.0 && !threat && roll(c, 25) { return L }
+        }
     } else {
         if super_wise(i) && dist < 13.0 && grounded(j) && !down && roll(c, 8) { return A | B }
-        // cursed by Shadow: combined, every gain is Shadow's; split, there is nothing to take
-        if me.curse > 60 && !threat && dist > 5.0 && roll(c, lv.special * 4) { return L }
+        if cursed && safe && roll(c, lv.special * 4) { return L }
         if down && dist > 11.0 && me.meter < METER_BAR && me.curse == 0 && roll(c, lv.special * 4) {
             c.charge_want = 20 + rnd_n(c, 30)
             return DOWN | B
@@ -465,7 +524,7 @@ private fn twins_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, 
         return hold(c, fwd, 8)
     }
     // split, outside its reach but inside the other's: roll in under it
-    if split && dist < tip(op.body) + 3.0 && roll(c, lv.special * 2) { return DOWN | B }
+    if split && dist < tip(op.body) + 3.0 && roll(c, lv.special * 3) { return DOWN | B }
     if dist < range + 6.0 && roll(c, lv.jump) { return fwd | X }
     return hold(c, fwd, 10 + rnd_n(c, 16))
 }
@@ -567,7 +626,11 @@ private fn shadow_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
         return DOWN | B
     }
     // keep a curse up: the bolt at mid range when the curse is out or running out
-    if !fight.shot[i].on && dist > 7.0 && dist < 24.0 && op.curse < 60 && !down && roll(c, 30 + lv.special * 2) {
+    // (not into a stronger shot on its way, which would eat it, nor inside the other's poke, where
+    // the bolt's 40 frames are a free hit: mx-balance)
+    let beaten = fight.shot[j].on && fight.shot[j].str > HEX_STR
+    let clear = dist > tip(op.body) + 2.0
+    if !fight.shot[i].on && !beaten && clear && dist < 24.0 && op.curse < 60 && !down && roll(c, 30 + lv.special * 2) {
         return B
     }
     // in front of its mine: step back behind it, so the other has to cross it
@@ -598,4 +661,83 @@ private fn shadow_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
     // with a mine out it waits behind it; without, it walks in
     if mine && dist < 22.0 { return hold(c, 0, 8 + rnd_n(c, 8)) }
     return hold(c, fwd, 10 + rnd_n(c, 16))
+}
+
+// ---- the other's Rift Mine (mx-balance): a CPU sees the sigil on the floor as a player does and
+// does not walk (or slide, roll or dash) onto it once it is about to arm. It clears it with its
+// down attack when that reaches it (the Hero also with its wave, which runs along the floor),
+// jumps over it, or waits behind it for the other to come; the plan is rolled once a mine and
+// kept a while.
+
+const MP_CLEAR = 0
+const MP_JUMP = 1
+const MP_WAIT = 2
+const MINE_WARY: fixed = 0.8            // stops this far short of setting it off
+
+private fn mine_wary(i: s32, lv: *CpuLevel, p: u32) -> u32 {
+    let j = other(i)
+    let m = &rift[j]
+    if m.t < MINE_ARM - 20 || fight.phase != Phase.Fight || !actionable(i) { return p }
+    let me = &fight.f[i]
+    let c = &cpu[i]
+    let fwd = dir_bit(me.facing)
+    let ahead = (m.x - me.x) * fixed(me.facing)            // the mine's centre, ahead of the root
+    let gap = ahead - STATS[me.body].push - MINE_HALF       // moving this far sets it off
+    if gap < -0.5 { return p }                              // under or behind it
+    // how far what it pressed would carry it toward the mine
+    var go = -1.0
+    if (p & (A | B | X | Y | R)) == 0 && (p & fwd) != 0 && (p & DOWN) == 0 { go = 0.0 }
+    if (p & B) != 0 && (p & UP) == 0 {
+        if (p & DOWN) != 0 { go = cpu_trav_d[me.body] }
+        else if (p & fwd) != 0 { go = cpu_trav_f[me.body] }
+    }
+    if (p & A) != 0 && (p & fwd) != 0 && (p & DOWN) == 0 { go = cpu_trav_a[me.body] }
+    if go < 0.0 || gap > go + MINE_WARY { return p }
+    if c.mine_x != m.x || c.mine_t <= 0 {
+        c.mine_x = m.x
+        c.mine_t = 40 + rnd_n(c, 40)
+        let r = rnd_n(c, 100)
+        c.mine_plan = MP_WAIT
+        if r < lv.special * 6 { c.mine_plan = MP_CLEAR }
+        else if r < lv.special * 6 + lv.jump * 4 { c.mine_plan = MP_JUMP }
+    }
+    c.mine_t -= 1
+    c.hold = c.hold & ~fwd
+    let reach = cpu_lo0[me.body] < ahead + MINE_HALF - 0.2 && cpu_lo1[me.body] > ahead - MINE_HALF + 0.2
+    if c.mine_plan == MP_CLEAR {
+        if me.mech == Mech.Hero && !fight.shot[i].on && ahead > WAVE_X - 0.5 {
+            c.mine_t = 0
+            return B                                        // the wave runs along the floor
+        }
+        if reach {
+            c.mine_t = 0
+            return DOWN | A
+        }
+        if gap > 0.3 && go == 0.0 { return fwd }            // a step closer, until it reaches
+    }
+    if c.mine_plan == MP_JUMP && gap < 2.5 {
+        c.mine_t = 0
+        return fwd | X
+    }
+    return p & ~(fwd | A | B)
+}
+
+// ---- a shot above the floor coming (mx-balance): a Volt Orb or a Hex Bolt. Too high to jump
+// (a jumping mech's hurt box still meets it), so it is blocked, or gone under or through: the
+// Double-blade Hero's Void Step, Shadow Sneak, the split Twins' Low Roll; the Hero's wave beats a
+// tapped orb and the bolt (the wave is the stronger).
+
+private fn shot_above(i: s32, c: *Cpu, lv: *CpuLevel, s: *Shot, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    let far = abs(s.x - me.x)
+    if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
+    if me.mech == Mech.Shadow && abs(fight.f[other(i)].x - me.x) < 19.0 && roll(c, lv.aa) { return fwd | B }
+    if me.mech == Mech.Hero && s.str < 2 && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) { return B }
+    if me.mech == Mech.Beam && s.str < 2 && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) {
+        c.charge_want = ORB_CHARGE_HALF + 4                 // a charged orb beats a bolt or a tap
+        return B
+    }
+    // the roll passes under it if it starts close enough that the shot is past when it stands
+    if me.body == Mech.TwinA && far > 4.0 && far < 6.0 + abs(s.vx) * 20 && roll(c, lv.aa) { return DOWN | B }
+    return hold(c, R, 20)
 }
