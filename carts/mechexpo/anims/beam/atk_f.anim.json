@@ -1,0 +1,128 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Static Lance (MOVES.md): the footsie poke. Frames 0-9: Beam sits back on its hips and draws the cannon in to the chest, tipped up, the left hand coming onto the capacitor body; a half step (root motion 0.8 m over 4-13, the right foot sliding forward, the left planted); 10-14: both arms drive the cannon out level at chest height, the left palm shoving the cannon's body, the hips and shoulders turning in behind it. The hit box is the arc that jumps from the coils to the target (a fixed rectangle, x 3.5-9.4, y 6-8.5, frames 14-17); the thrust is held to frame 27 (the arms hurtable out to the fist at 5.3 m), then pulled back slowly over the last 12 frames while the back foot steps up.",
+  "base": "_body.anim.json",
+  "length": 40,
+  "phases": {"startup": 14, "active": 4, "recovery": 22},
+  "design": {"hit": [3.5, 6.0, 9.4, 8.5], "tolerance": 0.2, "note": "MOVES.md, Static Lance: x 3.5-9.4, y 6-8.5"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease", "reach": {"foot_r": [0.03, 0.0]}},
+    {"at": 4, "reach": {"foot_r": [0.03, 0.0]}},
+    {
+      "at": 6,
+      "ease": "ease",
+      "offset": [-0.3, -0.95],
+      "pose": {
+        "pelvis": [2, 0, 0],
+        "torso": [2, 2, 0],
+        "head": [0, 6, 0],
+        "upper_arm_r": [-8, 0, -10],
+        "forearm_r": [68, 0, 8],
+        "hand_r": [35, 0, 0],
+        "upper_arm_l": [15, 0, 12],
+        "forearm_l": [105, 0, -24],
+        "hand_l": [-20, 0, 0],
+        "pauldron_r": [-2.7, 0, -5],
+        "pauldron_l": [5, 0, 6]
+      }
+    },
+    {
+      "at": 10,
+      "ease": "in",
+      "offset": [-0.2, -1.0],
+      "pose": {
+        "pelvis": [1, -2, 0],
+        "torso": [1, 2, 0],
+        "head": [2, 8, 0],
+        "upper_arm_r": [-6, 0, -10],
+        "forearm_r": [72, 0, 8],
+        "hand_r": [32, 0, 0],
+        "upper_arm_l": [20, 0, 12],
+        "forearm_l": [104, 0, -24]
+      }
+    },
+    {"at": 13, "ease": "linear", "reach": {"foot_r": [0.45, 0.0]}},
+    {
+      "at": 14,
+      "ease": "out",
+      "offset": [0.3, -1.2],
+      "boxes": {
+        "arc": {"kind": "hit", "rect": [3.5, 6.0, 9.4, 8.5]}
+      },
+      "pose": {
+        "pelvis": [-6, -14, 0],
+        "torso": [-12, -2, 0],
+        "head": [10, 14, 0],
+        "upper_arm_r": [58, 14, -10],
+        "forearm_r": [42, 0, 8],
+        "hand_r": [8, 0, 0],
+        "upper_arm_l": [90, 0, 12],
+        "forearm_l": [12, 0, -24],
+        "hand_l": [-30, 0, 0],
+        "pauldron_r": [19.3, 0, -5],
+        "pauldron_l": [30, 0, 6]
+      }
+    },
+    {"at": 18, "boxes": {"arc": null}},
+    {
+      "at": 19,
+      "ease": "ease",
+      "offset": [0.32, -1.18],
+      "pose": {
+        "pelvis": [-6, -14, 0],
+        "torso": [-12, -2, 0],
+        "head": [10, 14, 0],
+        "upper_arm_r": [57, 14, -10],
+        "forearm_r": [44, 0, 8],
+        "hand_r": [7, 0, 0],
+        "upper_arm_l": [88, 0, 12],
+        "forearm_l": [14, 0, -24]
+      }
+    },
+    {
+      "at": 27,
+      "ease": "ease",
+      "offset": [0.25, -1.1],
+      "reach": {"foot_r": [0.45, 0.0]},
+      "pose": {
+        "pelvis": [-5, -13, 0],
+        "torso": [-11, -3, 0],
+        "head": [9, 14, 0],
+        "upper_arm_r": [52, 12, -10],
+        "forearm_r": [48, 0, 8],
+        "hand_r": [6, 0, 0],
+        "upper_arm_l": [80, 0, 12],
+        "forearm_l": [24, 0, -24],
+        "pauldron_r": [17.3, 0, -5],
+        "pauldron_l": [26.7, 0, 6]
+      }
+    },
+    {"at": 30, "reach": {"foot_l": [-2.93, 0.0]}},
+    {"at": 33, "reach": {"foot_l": [-2.6, 0.45]}},
+    {
+      "at": 34,
+      "ease": "ease",
+      "offset": [0.05, -0.8],
+      "pose": {
+        "pelvis": [-2, -8, 0],
+        "torso": [-6, -6, 0],
+        "head": [5, 11, 0],
+        "upper_arm_r": [14, 4, -10],
+        "forearm_r": [80, 0, 8],
+        "hand_r": [2, 0, 0],
+        "upper_arm_l": [28, 0, 12],
+        "forearm_l": [92, 0, -24],
+        "hand_l": [-12, 0, 0],
+        "pauldron_r": [4.7, 0, -5],
+        "pauldron_l": [9.3, 0, 6]
+      }
+    },
+    {"at": 36, "reach": {"foot_l": [-2.13, 0.0]}},
+    {"at": 39, "from": "guard", "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}}
+  ],
+  "motion": [{"from": 4, "to": 13, "by": [0.8, 0], "ease": "ease"}],
+  "plant": {"foot_l": [[0, 29]]},
+  "marks": {"cancel": [[14, 23]], "step": [36]},
+  "allow": [["forearm_r", "weapon_r"]]
+}

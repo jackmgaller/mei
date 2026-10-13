@@ -81,21 +81,21 @@ const AK_MOVES: [90]AnimMove = [
     AnimMove { len: 90, flags: 0, frames: 2307460, box_first: 2362180, boxes: 2362364, marks: 2382164, root: 2382524 },   // beam ko
     AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam win (stand-in)
     AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam intro (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam atk_n (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam atk_f (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam atk_d (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam atk_air (stand-in)
+    AnimMove { len: 24, flags: 0, frames: 2433768, box_first: 2448360, boxes: 2448412, marks: 2453752, root: 2453848 },   // beam atk_n
+    AnimMove { len: 40, flags: 0, frames: 2454040, box_first: 2478360, boxes: 2478444, marks: 2487324, root: 2487484 },   // beam atk_f
+    AnimMove { len: 41, flags: 0, frames: 2487804, box_first: 2512732, boxes: 2512816, marks: 2521936, root: 2522100 },   // beam atk_d
+    AnimMove { len: 32, flags: 2, frames: 2522428, box_first: 2541884, boxes: 2541952, marks: 2549112, root: 2549240 },   // beam atk_air
     AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam sp_n (stand-in)
     AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam sp_f (stand-in)
     AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam sp_u (stand-in)
     AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam sp_d (stand-in)
-    AnimMove { len: 7, flags: 0, frames: 2433768, box_first: 2438024, boxes: 2438040, marks: 2439620, root: 2439648 },   // beam grab
-    AnimMove { len: 22, flags: 0, frames: 2439704, box_first: 2453080, boxes: 2453128, marks: 2457968, root: 2458056 },   // beam grab_whiff
-    AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam throw (stand-in)
-    AnimMove { len: 44, flags: 2, frames: 2458232, box_first: 2484984, boxes: 2485076, marks: 2494756, root: 2494932 },   // beam thrown
-    AnimMove { len: 20, flags: 0, frames: 2495284, box_first: 2507444, boxes: 2507488, marks: 2511888, root: 2511968 },   // beam grab_break
+    AnimMove { len: 7, flags: 0, frames: 2549496, box_first: 2553752, boxes: 2553768, marks: 2555348, root: 2555376 },   // beam grab
+    AnimMove { len: 22, flags: 0, frames: 2555432, box_first: 2568808, boxes: 2568856, marks: 2573696, root: 2573784 },   // beam grab_whiff
+    AnimMove { len: 46, flags: 0, frames: 2573960, box_first: 2601928, boxes: 2602024, marks: 2612144, root: 2612328 },   // beam throw
+    AnimMove { len: 44, flags: 2, frames: 2612696, box_first: 2639448, boxes: 2639540, marks: 2649220, root: 2649396 },   // beam thrown
+    AnimMove { len: 20, flags: 0, frames: 2649748, box_first: 2661908, boxes: 2661952, marks: 2666352, root: 2666432 },   // beam grab_break
     AnimMove { len: 60, flags: 4, frames: 2383244, box_first: 2419724, boxes: 2419848, marks: 2433048, root: 2433288 },   // beam super (stand-in)
-    AnimMove { len: 40, flags: 2, frames: 2512128, box_first: 2536448, boxes: 2536532, marks: 2545332, root: 2545492 },   // beam thrown_vault
+    AnimMove { len: 40, flags: 2, frames: 2666592, box_first: 2690912, boxes: 2690996, marks: 2699796, root: 2699956 },   // beam thrown_vault
 ]
 
 // each mech's part meshes in anim.akr's Part order (null: no mesh)
