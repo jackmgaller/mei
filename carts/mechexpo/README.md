@@ -16,7 +16,7 @@ trial for a defence contract; every fight is a product demonstration. The pitch 
 | Arcade ladder: CPU mirror match, then your echo (or, as the echo, the original). Clearing it with the Hero unlocks the Double-blade Hero, saved to the memory card | Memory card saves beyond the unlock |
 | Training: a dummy and a move list | The announcer |
 | One power meter, one super a mech; rounds (best of three, 60 s), a timer, health bars, a HUD | A half-bar meter tier |
-| Y2K menus at placeholder quality: title, mode select, character select, results, pause | The brochure menus at full quality |
+| The brochure menus (mx-menus): title, mode select, the 5 x 2 character select from `roster.akr`, VS, pause, results, the unlock | |
 | One fight track, a menu loop, the core sound effects | |
 
 **Controls.** Stick or d-pad: walk, crouch, and the direction of a move. A attack, B special,
@@ -156,6 +156,20 @@ are B's models, placed by D.
   the menu page; texture slots 8 (fonts), 9 (UI sprites), 10 (effects); palettes 240–254 (244 is
   lent to the menu page and the hall's put back); a backdrop table at 0x582000; line channels 0,
   2 and 7. Priorities: BG2 0, BG1 1, the mechs 2, BG0 (the HUD's frame) 3, the interface list 4.
+- **The menus (mx-menus):** texture slot 12 (`ui_menu.tex`: the small fonts FONT_MICRO and
+  FONT_SERIF, the rubber stamps, the lanyard strap); 4-bit palette 196 (PAL_POWER: the chemical,
+  nuclear and fusion meter icons and the Raikō, Heartland and Binary Mechanica emblems, in slot 9)
+  and 197–199 (PAL_PRINT: the print layer's ramps, written at run time). In the menus BG0 is the
+  print layer (the catalogue's coloured photographs behind the mechs): `ui_print.tiles` in ATLAS_2
+  and MAP_BG0, put back by `hud_show(true)`; priorities there BG1 1, BG0 1 (it wins the tie), the
+  mechs 2, the interface list 4 (`PAGE_PRIO` in `menus.akr`). Slot 13 is unused. The pack's 4-bit
+  palettes count up from 0 (Beam alone takes them to 15); mx-fx has 192–195; the pack's 8-bit
+  palettes, if any, take 208–239.
+- **The roster** (`roster.akr`): the makers and the select's ten slots; a mech's names, maker,
+  booth, power source, stats, blurb and unlock rule are its row. Adding a mech is filling in its
+  slot's `mech` field (the file's first comment says how). `save.unlocked` keeps bit 0 for the
+  Double-blade Hero (the MVP's saves still load), a bit per later unlockable slot, and bit
+  16 + slot once the arcade has been cleared with that slot's mech.
 - **Triangles:** a mech about 1,600–1,800 (the sketches are 1,632 and 1,734); the frame limit is
   4,000.
 - **Budgets a tick:** CPU 1,000,000 cycles, GPU 2,000,000 (`mei-headless --gpu-stats`). The

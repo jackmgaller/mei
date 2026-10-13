@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generates Mech Expo 2000's interface art: fonts, the logo, emblems and icons, the effects'
-sprites, the HUD's frame on BG0, the menus' brochure pattern on BG1 and the save icon.
+sprites, the HUD's frame on BG0, the menus' brochure pattern on BG1, their print layer's tiles,
+stamps and lanyard strap, and the save icon.
 
 Writes, in carts/mechexpo/:
   art/ui_font_*.fnt      proportional fonts (stdlib font.akr blobs) in texture slot 8, palette 251:
@@ -8,15 +9,22 @@ Writes, in carts/mechexpo/:
                          label (Sofia Sans Condensed SemiBold 12), num (Figtree Black Italic 22,
                          digits and ':' for the timer)
   art/ui_fonts.tex       slot 8's texels (the fonts' rows)
-  art/ui_sprites.tex     slot 9: the logo, the makers' emblems, the meter icons, the "?" card,
-                         the round pips (UI_* rectangles in ui_art.akr)
+  art/ui_sprites.tex     slot 9: the logo, the makers' emblems (32 and 24 px), the five meter
+                         icons, the "?" card, the round pips, the UAPC's roundel (UI_* rectangles
+                         in ui_art.akr); the later makers' emblems and icons in palette 196
   art/ui_fx.tex          slot 10: white sprites the effects tint: a glow, a spark, a ring, the
                          Hero's wave, a streak (FX_* rectangles)
   art/ui_hud.tiles/.map  BG0: the HUD's frame (bezels of the health bars, the timer and the
                          meters), 8x8 tiles in ATLAS_2, a 64 x 32 map (only 40 x 30 used)
   art/ui_page.tiles/.map BG1 in the menus: the brochure's background pattern (ATLAS_3), 64 x 32
-  art/ui_palettes.pal             palettes 250-254 (HUD, fonts, logo, emblems, effects), then the page's
-                         palette (loaded into 244 while a menu shows; the hall's is put back)
+  art/ui_palettes.pal    palettes 250-254 (HUD, fonts, logo, emblems, effects), then the page's
+                         palette (loaded into 244 while a menu shows; the hall's is put back),
+                         then 196's (PAL_POWER: Raiko, Heartland and Binary Mechanica)
+  art/ui_menu.tex        slot 12: the small fonts (ui_font_micro.fnt, Sofia Sans Condensed
+                         SemiBold 10; ui_font_serif.fnt, Gelasio Bold Italic 12; palette 251),
+                         the rubber stamps and the lanyard strap (white, tinted, palette 254)
+  art/ui_print.tiles     BG0 in the menus (ATLAS_2): the print layer's tiles over a 15-shade
+                         ramp that menus.akr writes into palettes 197-199
   art/ui_save_icon.bin   the save's title and icon (tools/mei_icon.py)
   ui_art.akr             the embeds and the constants
 
@@ -676,7 +684,9 @@ def main():
     akr = [HEADER,
            '// Mech Expo 2000\'s interface art (tools/gen_mechexpo_ui.py): fonts in slot 8, sprites in',
            '// slot 9, the effects\' white sprites in slot 10, the HUD frame (BG0) and the menus\' page',
-           '// pattern (BG1); palettes 250-254, and the page\'s palette for 244 in the menus.',
+           '// pattern (BG1); palettes 250-254, and the page\'s palette for 244 in the menus. The menus\'',
+           '// own (mx-menus): slot 12 (small fonts, stamps, the strap), palette 196 (the later makers\'',
+           '// icons and emblems), BG0\'s print tiles and their ramps in palettes 197-199.',
            '']
 
     # fonts, slot 8

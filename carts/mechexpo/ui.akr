@@ -1,6 +1,7 @@
 // What the HUD and the menus share (D's): the colours, the fonts (ui_art.akr, made by
 // tools/gen_mechexpo_ui.py from the OFL fonts in tools/fonts/), text and panel helpers, the
-// sprites in slots 9 and 10, and the mechs' names and makers.
+// sprites in slots 9, 10 and 12, and the mechs' names and makers (looked up in roster.akr). The
+// brochure's pieces (mx-menus): power icons, emblems, stamps, lanyard straps, chrome, a shine.
 
 // 0xBBGGRR
 const C_WHITE: u32 = 0xFFFFFF

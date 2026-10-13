@@ -46,7 +46,7 @@ fn test_init() {
             enter_select()
         }
         58 => setup_58()
-        59 => setup_59()
+        59 => {}                          // set up at frame 5 (test_hook), once the card is idle
         else => {}
     }
 }
@@ -142,6 +142,7 @@ fn test_hook() {
         peak_cpu = max(peak_cpu, cpu_used())
         peak_gpu = max(peak_gpu, gpu_used())
     }
+    if SCENARIO == 59 && hf == 5 { setup_59() }
     script()
     if hf == SHOT_AT && !done_ok {
         check_shot()
@@ -155,6 +156,10 @@ fn test_hook() {
         print_int(peak_gpu)
         print(", late frames ")
         print_int(late)
+        if SCENARIO == 59 {
+            print(", card ")
+            print_int(save_result)
+        }
         println("")
         assert(peak_cpu <= CPU_BUDGET, "over the CPU budget")
         assert(peak_gpu <= GPU_BUDGET, "over the GPU budget")
@@ -239,6 +244,15 @@ private fn check_shot() {
         59 => {
             if VIEW == 2 { assert(st == St.Unlock, "not the unlock") }
             else { assert(st == St.Results, "not the results") }
+            if VIEW == 1 {
+                // the roster's rule: clearing the arcade with the Hero unlocks slot 5
+                assert(unlocked_now, "the clear unlocked nothing")
+                assert_eq(unlock_slot, ROSTER_COLS, "the clear unlocked the wrong slot")
+                assert(slot_ok(ROSTER_COLS), "the Double-blade Hero is not selectable")
+                assert(slot_cleared(0), "the Hero's clear is not marked")
+                assert_eq(save_result, CARD_OK, "the save failed")
+            }
+            if VIEW == 3 { assert(!slot_ok(ROSTER_COLS), "a loss unlocked the echo") }
         }
         else => {}
     }

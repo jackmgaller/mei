@@ -873,7 +873,7 @@ fn draw_results() {
     txt(FONT_SERIF, x + 110, 182, "R. Hale", C_NAVY, ALIGN_LEFT)
     txt(FONT_MICRO, x + 8, 198, "CHIEF JUDGE", C_STEEL, ALIGN_LEFT)
     txt(FONT_MICRO, x + 106, 198, "UAPC OBSERVER", C_STEEL, ALIGN_LEFT)
-    draw_save_status(x + 92, 166)
+    draw_save_status(x + 92, 209)
     footer("UAPC DEFENCE TRIAL  //  RESULTS FILED", "P. 12")
 }
 
