@@ -40,6 +40,15 @@ fn menus_page() {
     sky_gradient(&PAGE_SKY[0], &PAGE_SKY_Y[0], 3)
     print_on()
     PLN_PRIO = PAGE_PRIO
+    sfx_page()                          // a new page of the brochure
+}
+
+// The menus' sounds timed to what they draw, once a frame (game.akr's update): the rubber
+// stamps landing on the judging sheet (APPROVED, drawn from st_t 13) and the press release
+// (UNLOCKED, down on st_t 36). READY is stamped as the pick is made (game.akr).
+fn menus_sfx() {
+    if st == St.Results && st_t == 13 && fight_get().winner != 2 { sfx_stamp() }
+    if st == St.Unlock && st_t == 36 { sfx_stamp() }
 }
 
 // The hangar (the title's attract and the fight).

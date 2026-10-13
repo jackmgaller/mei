@@ -8,6 +8,10 @@
 //   armour        a hit absorbed by super armour: a bright ring and a glow at the contact
 //   the meter     the HUD's gauge: a green fill that heats toward white, a pulse from half a
 //                 bar, hazard hatching and SUPER when full
+//   the treads    tank_sfx, once a fight frame from game.akr's sound_poll: the tread rumble held
+//                 while Tank glides on its treads (the walks, the Haymaker's and the command
+//                 grabs' glides, the Bulldozer), pitched by its speed; it carries on through a
+//                 hitstop and stops in a super's freeze (the world stops)
 
 private const TANK_FX_RINGS = 4
 private const TANK_RING_LIFE = 14
@@ -121,5 +125,41 @@ fn tank_meter_hud(fi: *Fighter, s: s32, x0: s32, w: s32, l: s32, y: s32, h: s32)
             al = ALIGN_RIGHT
         }
         txt(FONT_LABEL, lx, y - 13, "SUPER", 0x60FF80, al)
+    }
+}
+
+// ---- the treads' sound
+
+var tsfx_x: [2]fixed                // x last frame
+var tsfx_on: [2]s32                 // frames of rumble left: 4 from the last frame it moved on its treads
+var tsfx_pitch: [2]fixed
+var tsfx_gain: [2]s32
+
+private fn tank_gliding(mv: Mv) -> bool {
+    return mv == Mv.walk_f || mv == Mv.walk_b || mv == Mv.atk_f || mv == Mv.sp_f || mv == Mv.sp_d || mv == Mv.super
+}
+
+fn tank_sfx(f: *Fight) {
+    for s in 0..2 {
+        let fi = &f.f[s]
+        if fi.mech != Mech.Tank {
+            tsfx_on[s] = 0
+            continue
+        }
+        let dx = abs(fi.x - tsfx_x[s])
+        tsfx_x[s] = fi.x
+        if !tank_gliding(fi.mv) || !grounded(s) || tank_holding(s) || fi.health <= 0 || f.phase != Phase.Fight
+            || (f.freeze > 0 && f.flash_side >= 0) {
+            tsfx_on[s] = 0                  // hit, thrown, holding, in the air, the round over, a super's flash: they stop at once
+        } else if f.freeze > 0 {
+            // a hitstop: the rumble carries on as it was
+        } else if dx > 0.01 && dx < 2.0 {
+            tsfx_on[s] = 4
+            tsfx_pitch[s] = clamp(0.85 + dx * 2, 0.85, 1.6)
+            tsfx_gain[s] = clamp(170 + (dx * 400.0) as s32, 170, 256)
+        } else if tsfx_on[s] > 0 {
+            tsfx_on[s] -= 1                 // a frame or two without moving (a push, a wall) keeps it
+        }
+        if tsfx_on[s] > 0 { sfx_hold(s, SFX_TREAD, 3, fi.x, tsfx_pitch[s], tsfx_gain[s]) }
     }
 }

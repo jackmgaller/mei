@@ -8,6 +8,10 @@
 //                     beam, a stack of glows for the Thunder Pillar, sparks for the jab, the
 //                     Ground Spark and the Down Arc
 //   the reaction      while a reaction runs, the back tanks glow green and pulse
+//
+// And its state-driven sounds (beam_sfx, once a fight frame from game.akr's sound_poll): the
+// charge hum while B holds the Volt Orb on its charge frame (rising with the charge) and the
+// ping when it is full, the Shock Grip's buzz while the current runs, the reaction starting.
 
 const BEAM_MUZZLE = vec4(0.0, 0.8, -4.4, 1.0)      // models/beam/make_beam.py's MUZZLE (weapon_r)
 const BFX_ORB: u32 = 0xFFF0C0                      // 0xBBGGRR: blue-white lightning
@@ -132,5 +136,36 @@ fn beam_fx_draw(f: *Fight) {
                 }
             }
         }
+    }
+}
+
+// ---- the sounds
+
+var bsfx_charge: [2]s32             // each side's charge last frame
+var bsfx_react: [2]s32              // and its reaction
+
+fn beam_sfx(f: *Fight) {
+    for s in 0..2 {
+        let fi = &f.f[s]
+        if fi.mech != Mech.Beam { continue }
+        // the other's super flash freezes the world, the hum and the buzz with it
+        let frozen = f.freeze > 0 && f.flash_side >= 0 && f.flash_side != s
+        if fi.mv == Mv.sp_n && (cur_marks(s) & MARK_CHARGE) != 0 && fi.charge > 0 && fi.charge < ORB_CHARGE_MAX && !frozen {
+            sfx_hold(s, SFX_BEAM_HUM, 5, fi.x, 1.0 + fixed(fi.charge) / 80, 150 + fi.charge * 2)
+        }
+        if fi.charge >= ORB_CHARGE_MAX && bsfx_charge[s] < ORB_CHARGE_MAX {
+            sfx_pan(fi.x)
+            sfx_charge_full()
+        }
+        bsfx_charge[s] = fi.charge
+        // the Shock Grip: the current from its sixth frame until the other is thrown off
+        if fi.mv == Mv.throw && fx[s].t >= 5 && is_thrown(f.f[vic[s]].mv) && !frozen {
+            sfx_hold(s, SFX_BEAM_GRIP, 5, fi.x, 1.0, 256)
+        }
+        if fi.react > bsfx_react[s] {
+            sfx_pan(fi.x)
+            sfx_react()
+        }
+        bsfx_react[s] = fi.react
     }
 }

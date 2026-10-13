@@ -18,10 +18,20 @@ and `air R`, a stereo pair (pads, stabs, leads, chops, cymbals, risers) sent to 
 bar is a whole number of 28-sample ADPCM blocks; the loop is rendered twice and the second pass
 kept, so every tail that crosses the loop point wraps into its start.
 
-Sound effects, one-shots: four hits (light to crushing), the block's clang, chip, a swing for
-each mech (the Hero's sword; the Double-blade Hero's antimatter blades), grab, throw (the slam),
-grab break, landing, footstep, meter full, super, KO (impact, power-down, arcs, the crowd), round
-(a PA chime and the horn), the three menu sounds and the unlock fanfare.
+Sound effects, one-shots: four hits (light to crushing), the block's clang (with the energy
+shield's snap), chip, a swing for each mech (the Hero's sword; the Double-blade Hero's antimatter
+blades; a big fist for Tank and the combined Twins; ONE's and ZERO's light strikes), grab, throw
+(the slam), grab break, landing, a knockdown's dust whump, debris after heavy hits, footstep,
+meter full, the super's burst and a charge-up for each power source (kinetic, antimatter,
+chemical, nuclear, fusion), KO (impact, power-down, arcs, the crowd) and the smoulder after it,
+round (a PA chime and the horn), the Void Step (gone, back); Tank's armour clank, its command
+grabs' lift and slam, the Reactor Vent's steam; Beam's Volt Orb, its full-charge ping, its fizzle
+against a wave, its discharges (the jab's zap, the Static Lance, the Arc Lance, the Thunder
+Pillar, the Raikō Overload), the reaction starting and the Shock Grip's crack; the Twins'
+coupling and uncoupling; the menu sounds, the brochure's (a page turned, a rubber stamp, the
+press pass, the catalogue's shutter) and the unlock fanfare. Loops, played from their start and
+stopped by the cart: Tank's treads, Beam's charge hum and the Shock Grip's buzz (rendered
+periodic: their filters run round the seam).
 
 The reverb is the console's: preset 3 (hall) with its decay shortened a little, the demo hangar.
 
@@ -30,7 +40,7 @@ Writes carts/mechexpo/audio/music.adp, carts/mechexpo/audio/sfx.adp and carts/me
     python3 tools/gen_mechexpo_audio.py [--preview DIR]
 --preview writes fight.wav and menu.wav (the stems decoded and mixed as the console mixes them,
 without the reverb; the intro, then the loop twice so its seam can be heard), the stems, every
-sound effect, and fight_sfx.wav (the fight's first 20 seconds with a volley of effects over it,
+sound effect (a loop three times over, decoded as the console wraps it), and fight_sfx.wav (the fight's first 20 seconds with a volley of effects over it,
 for the balance). It prints levels, clipping and the loop seams. With MX_QUICK=1 in the
 environment, --preview writes unencoded WAVs only and nothing in the cart. Needs NumPy and SciPy.
 """
@@ -1274,7 +1284,8 @@ def sfx_hit(p):
 
 
 def sfx_block():
-    """Steel on steel: two plates ringing against each other, a buffer's hiss."""
+    """Steel on steel: two plates ringing against each other, the energy shield's snap and hum,
+    a buffer's hiss."""
     rng = np.random.default_rng(200)
     dur = 1.2
     t = tt(dur)
@@ -1284,6 +1295,7 @@ def sfx_block():
     x += 0.6 * filt(noise(rng, n), 4000, 0.7, 'hp') * np.exp(-t / 0.004)
     x += 0.12 * at(n, 0.0, sparks(rng, 0.25, 160, 0.05))
     x += 0.35 * at(n, 0.05, hiss(rng, 0.35, 4200, 1.0, 0.02, 0.09))
+    x += 0.7 * at(n, 0.0, sfx_block_shield())
     return fade(sat(x * 0.8, 1.4), 0.0004, 0.15)
 
 
@@ -1432,21 +1444,18 @@ def sfx_meter_full():
     return fade(x, 0.002, 0.2)
 
 
+C_LEAD = 0.62              # a super's charge-up: the burst lands this long after the Super event
+
+
 def sfx_super():
-    """The super: a charge that screams up, then the flash: an impact, a chord, the choir."""
+    """The super's burst, C_LEAD seconds in (the charge-up before it is the power source's own,
+    sfx_charge_*, played with it): an impact, a chord, the choir."""
     rng = np.random.default_rng(1000)
-    dur = 2.8
+    c = C_LEAD
+    dur = c + 2.25
     t = tt(dur)
     n = len(t)
-    c = 0.55
-    nc = int(c * FS)
-    tc = np.arange(nc) / FS
-    f = 150 * (2000 / 150) ** (tc / c)
-    whine = filt(sine(f) + 0.4 * saw(f * 1.01), 5000, 0.7) * (tc / c) ** 1.4
-    rise = tvf(noise(rng, nc), 300 * 20 ** (tc / c), 2.0, 'bp') * (tc / c) ** 2
-    swell = sine(np.full(nc, 41.2)) * (tc / c) ** 2
-    x = at(n, 0.0, 0.35 * whine + 0.6 * rise + 0.5 * swell)
-    x += at(n, c, boom_smp(rng, 1.8), 0.9)
+    x = at(n, c, boom_smp(rng, 1.8), 0.9)
     x += at(n, c, cymbal_smp(rng, dec=0.8, dur=2.2), 0.3)
     x += at(n, c, filt(noise(rng, int(0.2 * FS)), 3000, 0.7, 'hp') * np.exp(-np.arange(int(0.2 * FS)) / (0.04 * FS)), 0.6)
     m = int((dur - c) * FS)
@@ -1562,6 +1571,729 @@ def sfx_unlock():
     return fade(x, 0.002, 0.3)
 
 
+# ================================================================== the second round of effects
+# Beam, Tank and the Twins' own sounds, the supers' charge-ups by power source, weight (debris, a
+# knockdown's dust), the KO's smoulder, the Void Step and the brochure's menu sounds.
+
+def tile3(x):
+    """Three copies end to end: a filter run over them and cut to the middle copy is circular
+    (its state at the start is what the end leaves), for the loops."""
+    return np.concatenate([x, x, x])
+
+
+def mid3(y):
+    n = len(y) // 3
+    return y[n:2 * n]
+
+
+def put_circ(buf, pos, sig, g=1.0):
+    """sig added at pos, wrapping round the end of buf (a loop's events)."""
+    n = len(buf)
+    pos = int(pos) % n
+    k = min(len(sig), n)
+    end = pos + k
+    if end <= n:
+        buf[pos:end] += g * sig[:k]
+    else:
+        buf[pos:] += g * sig[:n - pos]
+        buf[:end - n] += g * sig[n - pos:k]
+
+
+def loop_hz(f, n):
+    """The nearest frequency with a whole number of cycles in n samples at FS (a loop's tones)."""
+    return max(1, round(f * n / FS)) * FS / n
+
+
+def arc(rng, n, fc, jitter=0.35, rate=170.0, q=2.5, duty=0.75, drive=2.0):
+    """An electric arc: noise through a resonance whose centre jumps about (sampled and held
+    `rate` times a second), chopped into bursts, driven."""
+    hold = max(1, int(FS / rate))
+    k = n // hold + 2
+    fcs = np.repeat(fc * np.exp(jitter * rng.standard_normal(k)), hold)[:n]
+    dk = np.asarray(duty, dtype=float)
+    if dk.ndim:                                 # a duty that changes: its value at each hold
+        dk = np.concatenate([dk[::hold], np.full(k, dk[-1])])[:k]
+    gate = np.repeat((rng.uniform(size=k) < dk).astype(float), hold)[:n]
+    x = tvf(noise(rng, n), fcs, q, 'bp', 32)
+    return sat(x * smooth_gate(gate, 1.2) * 3.0, drive)
+
+
+def buzz(n, f, pw=0.12, fc=2400.0):
+    """A mains-like electric buzz: a narrow pulse, its top rolled off."""
+    return filt(pulse(np.broadcast_to(np.asarray(f, dtype=float), (n,)).copy(), pw), fc, 0.8)
+
+
+def bubbles(rng, n, times, f_lo, f_hi, amp):
+    """Bubbles: short rising sine chirps (a bubble's ring) at the given sample positions."""
+    x = np.zeros(n)
+    for p in times:
+        f0 = rng.uniform(f_lo, f_hi)
+        d = rng.uniform(0.006, 0.022)
+        m = int(d * 6 * FS)
+        tb = np.arange(m) / FS
+        f = f0 * (1 + 0.9 * tb / (d * 6))
+        b = np.sin(2 * math.pi * np.cumsum(f) / FS) * np.exp(-tb / d) * np.clip(tb / 0.0008, 0, 1)
+        put(x, int(p), b, amp * rng.uniform(0.35, 1.0))
+    return x
+
+
+def rate_times(rng, n, rate):
+    """Event positions (samples) of a Poisson process whose rate (a second) follows `rate`."""
+    r = np.broadcast_to(np.asarray(rate, dtype=float), (n,))
+    return np.nonzero(rng.uniform(size=n) < r / FS)[0]
+
+
+def geiger(rng, n, rate, amp=1.0):
+    """A Geiger counter's ticks at `rate` a second (per sample): sharp clicks with a small ring."""
+    x = np.zeros(n)
+    ck = filt(noise(rng, 60), 2500, 0.7, 'hp') * np.exp(-np.arange(60) / 9.0)
+    ck = ck + 0.6 * np.sin(2 * math.pi * 3300 * np.arange(60) / FS) * np.exp(-np.arange(60) / 14.0)
+    for p in rate_times(rng, n, rate):
+        put(x, p, ck, amp * rng.uniform(0.6, 1.0))
+    return x
+
+
+def rumble(rng, n, fc=110.0, wob=7.0):
+    """A low rolling rumble: low-passed noise under a slow random swell."""
+    sw = np.abs(filt(noise(rng, n), wob, 0.7)) * 25
+    return filt(noise(rng, n), fc, 0.7) * 4.0 * (0.4 + np.clip(sw, 0, 1.5))
+
+
+def sfx_armour():
+    """Tank's armour takes a hit and holds: a thick plate's low bong, a dead thud (the body does
+    not move), rivets rattling in their holes, a short sizzle off the plating."""
+    rng = np.random.default_rng(1500)
+    dur = 1.0
+    t = tt(dur)
+    n = len(t)
+    x = 1.1 * clang_smp(rng, 262, dur, 0.22, 0.55) + 0.8 * clang_smp(rng, 391, dur, 0.16, 0.5)
+    x += 0.5 * clang_smp(rng, 1517, dur, 0.05, 1.0)
+    x += 1.2 * thump(t, 120, 62, 0.012, 0.09)
+    x += 0.9 * filt(noise(rng, n), 3200, 0.7, 'hp') * np.exp(-t / 0.003)
+    x += debris(rng, n, 0.02, 0.22, 5, 1800, 3600, 0.16)
+    x += 0.08 * at(n, 0.004, sparks(rng, 0.2, 140, 0.04))
+    return fade(sat(x * 0.9, 1.8), 0.0004, 0.12)
+
+
+def loop_tread(n):
+    """Tank's treads, a loop of n samples (at FS): the engine labouring under load, the links
+    clattering over the sprockets, grit ground under the track."""
+    rng = np.random.default_rng(1600)
+    t = np.arange(n) / FS
+    f = loop_hz(43.0, n)
+    eng = saw(np.full(n, f)) + 0.6 * pulse(np.full(n, f * 2), 0.3) + 0.3 * saw(np.full(n, f * 3))
+    eng *= 0.7 + 0.3 * np.sin(2 * math.pi * loop_hz(21.5, n) * t)
+    eng = mid3(filt(tile3(eng), 380, 1.2))
+    x = 0.9 * eng
+    links = 16
+    for k in range(links):
+        p = int((k + rng.uniform(-0.06, 0.06)) * n / links)
+        a = rng.uniform(0.55, 1.0)
+        ping = clang_smp(rng, rng.uniform(700, 1300), 0.09, rng.uniform(0.008, 0.016), 0.8)
+        put_circ(x, p, ping, 0.45 * a)
+        put_circ(x, p, thump(tt(0.06), 160, 90, 0.01, 0.018), 0.5 * a)
+    grit = noise(rng, n)
+    x += 0.5 * mid3(filt(filt(tile3(grit), 1400, 1.5, 'bp'), 600, 0.7, 'hp')) * (0.8 + 0.2 * np.sin(2 * math.pi * loop_hz(8, n) * t))
+    x += 0.6 * mid3(filt(tile3(noise(rng, n)), 140, 0.7)) * 3.0
+    return sat(x * 0.8, 1.5)
+
+
+def sfx_tank_lift():
+    """The Atomic Clinch's lift (and Chain Reaction's): the arms' hydraulics straining, a pump
+    whining up, the frame creaking, the reactor surging under the load; it leads into the slam."""
+    rng = np.random.default_rng(1700)
+    dur = 0.95
+    t = tt(dur)
+    n = len(t)
+    x = 0.5 * servo(rng, dur, 170, 520, 1.0)
+    k = np.clip(t / 0.55, 0, 1)
+    creak_f = 330 + 140 * k + 25 * filt(noise(rng, n), 9, 0.7) * 6
+    creak = tvf(sat(saw(creak_f) * (0.5 + 0.5 * np.abs(filt(noise(rng, n), 30, 0.7)) * 12), 2.0), creak_f * 3, 6.0, 'bp', 32)
+    x += 0.35 * creak * np.clip(t / 0.08, 0, 1) * np.clip((0.75 - t) / 0.1, 0, 1)
+    hum_f = 55.0
+    hum = sine(np.full(n, hum_f)) + 0.6 * sine(np.full(n, hum_f * 2)) + 0.35 * filt(saw(np.full(n, hum_f * 3)), 900, 0.7)
+    surge = np.exp(-0.5 * ((t - 0.42) / 0.16) ** 2)
+    x += 0.6 * hum * surge * (1 + 0.25 * np.sin(2 * math.pi * 11 * t))
+    x += 0.4 * at(n, 0.0, hiss(rng, 0.5, 2600, 1.2, 0.05, 0.25))
+    x += 0.5 * at(n, 0.0, clang_smp(rng, 430, 0.3, 0.05, 0.6))
+    x *= np.clip((dur - t) / 0.25, 0, 1)
+    return fade(sat(x, 1.5), 0.002, 0.05)
+
+
+def sfx_tank_slam():
+    """A mech slammed into the floor by Tank: a sub that shakes the hangar, plate crumpling,
+    the concrete cracking, the floor trembling, debris raining for a second and more."""
+    rng = np.random.default_rng(1800)
+    dur = 2.8
+    t = tt(dur)
+    n = len(t)
+    x = 1.6 * thump(t, 95, 28, 0.05, 0.6)
+    x += 1.1 * crunch(rng, t, 700, 0.16, 4.0)
+    x += 0.9 * filt(noise(rng, n), 2200, 0.7, 'hp') * np.exp(-t / 0.006)
+    x += 0.4 * clang_smp(rng, 180, dur, 0.6, 0.6)
+    crack = sparks(rng, 0.5, 900, 0.07)
+    x += 0.35 * at(n, 0.01, filt(crack, 1800, 0.7, 'lp'))
+    shake = rumble(rng, n, 90, 9.0) * np.exp(-t / 0.9) * np.clip(t / 0.02, 0, 1)
+    x += 1.1 * shake * (1 + 0.5 * np.sin(2 * math.pi * 9 * t))
+    x += debris(rng, n, 0.1, 1.9, 14, 600, 3000, 0.3)
+    dust = filt(filt(noise(rng, n), 1500, 0.7), 200, 0.7, 'hp') * np.exp(-t / 0.7) * np.clip(t / 0.08, 0, 1)
+    x += 0.35 * dust
+    return fade(sat(x * 1.3, 3.0), 0.0004, 0.3)
+
+
+def sfx_tank_vent():
+    """The Reactor Vent: a valve bangs open, superheated steam bursts from every gap in the hull
+    with a whistle, sputters and dies away."""
+    rng = np.random.default_rng(1900)
+    dur = 1.3
+    t = tt(dur)
+    n = len(t)
+    jet = filt(filt(noise(rng, n), 9000, 0.7), 900, 0.7, 'hp')
+    roar = filt(noise(rng, n), 600, 0.9, 'bp') * 0.8
+    env = np.clip(t / 0.012, 0, 1) * (0.55 * np.exp(-t / 0.5) + 0.45 * np.exp(-t / 0.12))
+    sput = 0.7 + 0.3 * np.sign(np.sin(2 * math.pi * (19 + 8 * t) * t)) * np.clip((t - 0.45) / 0.2, 0, 1)
+    x = (jet + roar) * env * sput * 1.4
+    f = 2700 - 900 * np.clip(t / 0.8, 0, 1)
+    x += 0.18 * filt(sine(f) + 0.4 * noise(rng, n), 2600, 3.0, 'bp') * env
+    x += 1.0 * thump(t, 150, 60, 0.015, 0.07)
+    x += 0.6 * at(n, 0.0, clang_smp(rng, 610, 0.4, 0.05, 0.9))
+    return fade(sat(x, 1.6), 0.0004, 0.15)
+
+
+def charge_env(t, c):
+    """A charge-up's crescendo: building to C_LEAD, then gone as the burst lands."""
+    return np.clip(t / c, 0, 1) ** 1.6 * np.clip((c + 0.05 - t) / 0.05, 0, 1)
+
+
+def sfx_charge_kinetic():
+    """Kinetic (the Hero): a flywheel spinning up, its whine climbing and its teeth whirring."""
+    rng = np.random.default_rng(2000)
+    c = C_LEAD
+    t = tt(c + 0.06)
+    n = len(t)
+    k = np.clip(t / c, 0, 1)
+    f = 140 * (2100 / 140) ** k
+    whine = filt(sine(f) + 0.4 * saw(f * 1.01), 5000, 0.7)
+    whine *= 0.75 + 0.25 * np.sign(np.sin(2 * math.pi * np.cumsum(f / 8.0) / FS))
+    rise = tvf(noise(rng, n), 300 * 20 ** k, 2.0, 'bp')
+    swell = sine(np.full(n, 41.2))
+    x = (0.45 * whine + 0.55 * rise + 0.5 * swell) * charge_env(t, c)
+    return fade(x, 0.002, 0.01)
+
+
+def sfx_charge_antimatter():
+    """Antimatter (the Double-blade Hero): an implosion; a dark hum ring-modulated and falling,
+    a reversed rush sucking in to nothing."""
+    rng = np.random.default_rng(2100)
+    c = C_LEAD
+    t = tt(c + 0.06)
+    n = len(t)
+    k = np.clip(t / c, 0, 1)
+    f = 220 * (55 / 220) ** k
+    hum = (sine(f) + 0.5 * sine(f * 1.5) + 0.3 * filt(saw(f * 2), 1200, 0.7)) * np.sin(2 * math.pi * 37 * t)
+    tail = clang_smp(rng, 140, c + 0.06, 0.25, 0.8) + filt(noise(rng, n), 2500, 0.7) * np.exp(-t / 0.2)
+    rush = tvf(tail[::-1].copy(), 3500 - 3000 * k, 1.2, 'lp', 32)
+    sub = sine(30 + 25 * k)
+    x = (0.55 * hum + 0.8 * rush + 0.5 * sub) * charge_env(t, c)
+    return fade(x, 0.002, 0.01)
+
+
+def sfx_charge_chemical():
+    """Chemical (Beam): the reagent boiling, bubbles quickening, arcs crackling over a buzz that
+    climbs an octave."""
+    rng = np.random.default_rng(2200)
+    c = C_LEAD
+    t = tt(c + 0.06)
+    n = len(t)
+    k = np.clip(t / c, 0, 1)
+    x = bubbles(rng, n, rate_times(rng, n, 30 + 260 * k ** 1.5), 380, 1500, 0.6)
+    x += 0.5 * arc(rng, n, 2600, duty=0.3 + 0.6 * k ** 2) * k
+    x += 0.4 * buzz(n, 120 * 2 ** k, 0.15, 1800)
+    x += 0.4 * tvf(noise(rng, n), 500 * 8 ** k, 2.0, 'bp')
+    return fade(x * charge_env(t, c), 0.002, 0.01)
+
+
+def sfx_charge_nuclear():
+    """Nuclear (Tank): the reactor building to critical, a Geiger counter racing, the core's hum
+    swelling, a turbine climbing and an alarm whooping under it."""
+    rng = np.random.default_rng(2300)
+    c = C_LEAD
+    t = tt(c + 0.06)
+    n = len(t)
+    k = np.clip(t / c, 0, 1)
+    x = 0.8 * geiger(rng, n, 12 * 30 ** k)
+    hum = sine(np.full(n, 50.0)) + 0.6 * sine(np.full(n, 100.0)) + 0.4 * filt(saw(np.full(n, 150.0)), 700, 0.7)
+    x += 0.7 * hum * (0.4 + 0.6 * k) * (1 + 0.3 * np.sin(2 * math.pi * (4 + 14 * k) * t))
+    f = 260 * 5 ** k
+    x += 0.25 * filt(saw(f) + 0.5 * pulse(f * 2, 0.3), 3000, 0.7)
+    wf = 520 + 330 * (0.5 - 0.5 * np.cos(2 * math.pi * 3.2 * t))
+    x += 0.14 * filt(pulse(wf, 0.5), 1600, 1.0)
+    return fade(x * charge_env(t, c), 0.002, 0.01)
+
+
+def sfx_charge_fusion():
+    """Fusion (the Twins): two reactors meeting, two tones sliding together, beating slower and
+    slower until they lock in unison, a shimmer over them."""
+    rng = np.random.default_rng(2400)
+    c = C_LEAD
+    t = tt(c + 0.06)
+    n = len(t)
+    k = np.clip(t / c, 0, 1)
+    g = 659.3
+    fa = g * (0.62 + 0.38 * k ** 0.7)
+    fb = g * (1.6 - 0.6 * k ** 0.7)
+    tone = sine(fa) + 0.4 * sine(fa * 2) + sine(fb) + 0.4 * sine(fb * 2)
+    tone += 0.3 * filt(saw(fa) + saw(fb), 3500, 0.7)
+    shim = sum(np.sin(2 * math.pi * g * m * t + rng.uniform(0, 6)) * (0.5 + 0.5 * np.sin(2 * math.pi * (5 + 3 * m) * t)) for m in (3, 4, 5)) / 3
+    rise = tvf(noise(rng, n), 800 * 8 ** k, 3.0, 'bp')
+    x = 0.4 * tone + 0.35 * shim * k + 0.4 * rise + 0.35 * sine(np.full(n, 82.4)) * k
+    return fade(x * charge_env(t, c), 0.002, 0.01)
+
+
+def sfx_beam_orb():
+    """The Volt Orb leaves the arc cannon: a capacitor's crack, a falling zap, the recoil's thump,
+    the ozone fizzing after it."""
+    rng = np.random.default_rng(2500)
+    dur = 0.75
+    t = tt(dur)
+    n = len(t)
+    f = 300 + 2600 * np.exp(-t / 0.05)
+    zap = sat(pulse(f, 0.3) + 0.5 * saw(f * 1.5), 2.0) * np.exp(-t / 0.12)
+    x = 0.5 * filt(zap, 4500, 0.7)
+    x += 0.9 * filt(noise(rng, n), 3000, 0.7, 'hp') * np.exp(-t / 0.005)
+    x += 0.4 * arc(rng, n, 3200, duty=0.6) * np.exp(-t / 0.15)
+    x += 1.0 * thump(t, 140, 60, 0.015, 0.07)
+    x += 0.15 * sparks(rng, dur, 220, 0.18)
+    return fade(sat(x, 1.4), 0.0004, 0.1)
+
+
+def loop_beam_hum(n):
+    """Beam's arc cannon charging (a loop of n samples): the capacitor's whine over a mains buzz,
+    crackling at the muzzle. The cart raises its pitch as the charge builds."""
+    rng = np.random.default_rng(2600)
+    t = np.arange(n) / FS
+    f0 = loop_hz(110.0, n)
+    b = buzz(n, f0, 0.14, 2000) + 0.5 * sine(np.full(n, f0 * 2))
+    b = mid3(filt(tile3(b), 3000, 0.7))
+    fw = loop_hz(1650.0, n)
+    vib = 1 + 0.004 * np.sin(2 * math.pi * loop_hz(12, n) * t)
+    whine = np.sin(2 * math.pi * np.cumsum(np.full(n, fw) * vib) / FS)
+    whine *= 0.8 + 0.2 * np.sin(2 * math.pi * loop_hz(6, n) * t)
+    x = 0.6 * b + 0.25 * whine
+    clicks = np.zeros(n)
+    for p in rng.integers(0, n, 70):
+        clicks[p] += rng.uniform(-1, 1)
+    x += 2.5 * mid3(filt(filt(tile3(clicks), 3000, 0.7, 'hp'), 9000, 0.7))
+    return x
+
+
+def sfx_beam_ping():
+    """The Volt Orb fully charged: a bright ping and a snap."""
+    rng = np.random.default_rng(2700)
+    n = int(0.6 * FS)
+    x = at(n, 0.0, bell_smp(96, 0.55, 2.0, 1.6), 0.7)
+    x += at(n, 0.0, bell_smp(103, 0.4, 2.0, 1.0), 0.3)
+    x += at(n, 0.0, filt(noise(rng, 400), 4000, 0.7, 'hp') * np.exp(-np.arange(400) / 60.0), 0.6)
+    return fade(x, 0.0006, 0.05)
+
+
+def sfx_orb_fizzle():
+    """The orb meets a wave and fizzles out: the charge sputtering, its buzz falling away, a
+    sizzle."""
+    rng = np.random.default_rng(2800)
+    dur = 0.9
+    t = tt(dur)
+    n = len(t)
+    f = 900 * (60 / 900) ** np.clip(t / 0.6, 0, 1)
+    x = 0.5 * buzz(n, f, 0.2, 3000) * np.exp(-t / 0.3)
+    x += 0.6 * arc(rng, n, 2400, duty=0.5) * np.exp(-t / 0.18)
+    x += 0.4 * filt(filt(noise(rng, n), 5000, 1.0, 'bp'), 2000, 0.7, 'hp') * np.exp(-t / 0.35)
+    x += 0.2 * sparks(rng, dur, 260, 0.2)
+    x += 0.7 * filt(noise(rng, n), 2500, 0.7, 'hp') * np.exp(-t / 0.004)
+    return fade(sat(x, 1.4), 0.0004, 0.12)
+
+
+def sfx_beam_zap():
+    """A short discharge at the muzzle (the Arc Jab, the Ground Spark, the Down Arc): a snap,
+    a crackle, a grunt of buzz."""
+    rng = np.random.default_rng(2900)
+    dur = 0.45
+    t = tt(dur)
+    n = len(t)
+    x = 0.9 * filt(noise(rng, n), 2800, 0.7, 'hp') * np.exp(-t / 0.004)
+    x += 0.7 * arc(rng, n, 3000, duty=0.8) * np.exp(-t / 0.05)
+    x += 0.45 * buzz(n, 150, 0.15, 2500) * np.exp(-t / 0.06)
+    x += 0.5 * thump(t, 160, 90, 0.01, 0.04)
+    return fade(sat(x, 1.4), 0.0004, 0.08)
+
+
+def sfx_beam_lance():
+    """The Static Lance: an arc jumping from the muzzle, crackling across the gap for a moment."""
+    rng = np.random.default_rng(3000)
+    dur = 0.6
+    t = tt(dur)
+    n = len(t)
+    env = np.clip(t / 0.003, 0, 1) * np.where(t < 0.12, 1.0, np.exp(-(t - 0.12) / 0.07))
+    x = 0.8 * arc(rng, n, 2200, 0.5, 220, 3.0, 0.9) * env
+    x += 0.45 * buzz(n, 100 * (1 + 0.02 * np.sin(2 * math.pi * 13 * t)), 0.12, 3000) * env
+    x += 0.9 * filt(noise(rng, n), 3000, 0.7, 'hp') * np.exp(-t / 0.004)
+    x += 0.2 * sparks(rng, dur, 200, 0.12)
+    return fade(sat(x, 1.5), 0.0004, 0.1)
+
+
+def sfx_beam_arc():
+    """The Arc Lance: a bolt across the hangar, a roar of current, and the barrel hissing after."""
+    rng = np.random.default_rng(3100)
+    dur = 1.4
+    t = tt(dur)
+    n = len(t)
+    env = np.clip(t / 0.004, 0, 1) * np.where(t < 0.2, 1.0, np.exp(-(t - 0.2) / 0.12))
+    f = 55 * (1 + 0.03 * np.sin(2 * math.pi * 17 * t))
+    roar = sat(saw(f) + saw(f * 1.006) + 0.7 * pulse(f * 2, 0.2), 2.5)
+    roar = filt(roar, 2400, 0.9)
+    x = 0.5 * roar * env
+    x += 0.6 * arc(rng, n, 1800, 0.6, 260, 2.0, 0.95) * env
+    x += 0.5 * tvf(noise(rng, n), 900 + 3000 * np.exp(-t / 0.15), 1.5, 'bp') * env
+    x += 1.0 * filt(noise(rng, n), 2500, 0.7, 'hp') * np.exp(-t / 0.005)
+    x += 0.9 * thump(t, 130, 50, 0.02, 0.12)
+    x += 0.25 * at(n, 0.3, hiss(rng, 1.0, 3000, 1.0, 0.1, 0.35))
+    return fade(sat(x, 1.5), 0.0004, 0.15)
+
+
+def sfx_beam_pillar():
+    """The Thunder Pillar: a column of lightning; a crack like a whip, then thunder rolling."""
+    rng = np.random.default_rng(3200)
+    dur = 1.8
+    t = tt(dur)
+    n = len(t)
+    x = 1.3 * filt(noise(rng, n), 1500, 0.7, 'hp') * np.exp(-t / 0.012)
+    x += 0.8 * filt(sparks(rng, dur, 1400, 0.05), 6000, 0.7)
+    x += 0.7 * arc(rng, n, 2000, 0.6, 300, 2.0, 0.9) * np.exp(-t / 0.12)
+    x += 1.4 * rumble(rng, n, 140, 6.0) * np.clip(t / 0.04, 0, 1) * np.exp(-t / 0.55)
+    x += 0.8 * thump(t, 110, 40, 0.02, 0.2)
+    return fade(sat(x, 1.8), 0.0004, 0.25)
+
+
+def sfx_beam_overload():
+    """Raikō Overload: a bolt the height of a mech across the hangar: a deep roar of current,
+    every coil singing, crackling all along it, a long thunderous tail."""
+    rng = np.random.default_rng(3300)
+    dur = 2.8
+    t = tt(dur)
+    n = len(t)
+    body = np.where(t < 0.32, 1.0, np.exp(-(t - 0.32) / 0.3)) * np.clip(t / 0.005, 0, 1)
+    f = 41.2 * (1 + 0.02 * np.sin(2 * math.pi * 23 * t))
+    roar = sat(saw(f) + saw(f * 1.007) + saw(f * 0.993) + 0.8 * pulse(f * 2, 0.15), 3.0)
+    x = 0.55 * filt(roar, 2000, 0.9) * body
+    for fc in (1200, 2600, 4200):
+        x += 0.35 * arc(rng, n, fc, 0.5, 280, 2.0, 0.95) * body
+    coils = sum(sine(np.full(n, fr)) for fr in (659.3, 987.8, 1318.5)) / 3
+    x += 0.25 * coils * body * (0.6 + 0.4 * np.sin(2 * math.pi * 31 * t))
+    x += 1.2 * filt(noise(rng, n), 1500, 0.7, 'hp') * np.exp(-t / 0.015)
+    x += 1.2 * thump(t, 120, 32, 0.03, 0.4)
+    x += 1.3 * rumble(rng, n, 120, 5.0) * np.clip(t / 0.05, 0, 1) * np.exp(-t / 0.9)
+    x += 0.2 * sparks(rng, dur, 300, 0.6)
+    return fade(sat(x, 2.0), 0.0004, 0.4)
+
+
+def sfx_beam_react():
+    """The reaction starts: the valve squeals open, pressure hisses into the tanks, the reagent
+    gulps and bubbles up."""
+    rng = np.random.default_rng(3400)
+    dur = 1.5
+    t = tt(dur)
+    n = len(t)
+    sq = 1300 + 500 * np.clip(t / 0.12, 0, 1)
+    x = 0.25 * tvf(saw(sq), sq * 2, 5.0, 'bp', 32) * np.clip(t / 0.01, 0, 1) * np.clip((0.14 - t) / 0.03, 0, 1)
+    x += 0.7 * at(n, 0.06, hiss(rng, 0.8, 3300, 0.8, 0.02, 0.25))
+    x += 0.8 * at(n, 0.05, thump(tt(0.3), 110, 70, 0.02, 0.08))
+    k = np.clip((t - 0.1) / 0.5, 0, 1) * np.exp(-np.clip(t - 0.6, 0, None) / 0.5)
+    x += bubbles(rng, n, rate_times(rng, n, 140 * k), 220, 900, 0.7)
+    x += 0.5 * filt(noise(rng, n), 300, 1.0, 'bp') * k * (0.6 + 0.4 * np.sin(2 * math.pi * 6 * t))
+    return fade(x, 0.0006, 0.15)
+
+
+def loop_beam_grip(n):
+    """The Shock Grip (a loop of n samples): current through the other mech, a harsh buzz
+    stuttering, arcs spitting."""
+    rng = np.random.default_rng(3500)
+    t = np.arange(n) / FS
+    f = loop_hz(90.0, n)
+    b = sat(pulse(np.full(n, f), 0.18) + 0.6 * saw(np.full(n, f * 2.0)), 2.5)
+    hold = int(FS / 45)
+    gate = (rng.uniform(size=n // hold + 1) < 0.8).astype(float)
+    g = np.repeat(gate, hold)[:n]
+    g = mid3(uniform_filter1d(tile3(g), int(0.002 * FS), mode='wrap'))
+    x = 0.55 * mid3(filt(tile3(b), 2600, 0.8)) * (0.5 + 0.5 * g)
+    src = noise(rng, n)
+    hold2 = int(FS / 220)
+    cs = np.repeat(2400 * np.exp(0.5 * rng.standard_normal(n // hold2 + 1)), hold2)[:n]
+    y = tvf(tile3(src), tile3(cs), 2.5, 'bp', 32)
+    x += 0.5 * sat(mid3(y) * 3.0, 2.0) * g
+    return x * (0.85 + 0.15 * np.sin(2 * math.pi * loop_hz(7.5, n) * t))
+
+
+def sfx_beam_shock():
+    """The Shock Grip's release: the current dumped in one crack that throws the other off."""
+    rng = np.random.default_rng(3600)
+    dur = 1.0
+    t = tt(dur)
+    n = len(t)
+    x = 1.2 * filt(noise(rng, n), 1800, 0.7, 'hp') * np.exp(-t / 0.01)
+    x += 0.8 * arc(rng, n, 2200, 0.6, 300, 2.0, 0.95) * np.exp(-t / 0.09)
+    x += 0.5 * buzz(n, 75, 0.2, 2000) * np.exp(-t / 0.12)
+    x += 1.1 * thump(t, 140, 50, 0.02, 0.12)
+    x += 0.2 * sparks(rng, dur, 300, 0.25)
+    return fade(sat(x, 1.7), 0.0004, 0.15)
+
+
+def sfx_couple():
+    """The Twins lock together: a servo seats twin A, two latches snap shut, the coupling clamps
+    with a heavy clunk, and the fused core powers up."""
+    rng = np.random.default_rng(3700)
+    dur = 1.1
+    t = tt(dur)
+    n = len(t)
+    x = 0.3 * at(n, 0.0, servo(rng, 0.09, 900, 1500))
+    x += at(n, 0.06, clang_smp(rng, 1150, 0.25, 0.03, 1.0), 0.45)
+    x += at(n, 0.095, clang_smp(rng, 1520, 0.25, 0.03, 1.0), 0.4)
+    x += at(n, 0.14, clang_smp(rng, 330, 0.8, 0.18, 0.7), 0.9)
+    x += at(n, 0.14, thump(tt(0.5), 150, 55, 0.02, 0.1), 1.1)
+    m = int(0.75 * FS)
+    tm = np.arange(m) / FS
+    fu = 220 * 3.5 ** np.clip(tm / 0.4, 0, 1)
+    core = (sine(fu) + 0.5 * sine(fu * 1.5) + 0.3 * sine(fu * 2.0)) * np.clip(tm / 0.15, 0, 1) * np.exp(-np.clip(tm - 0.3, 0, None) / 0.1)
+    x += at(n, 0.2, core, 0.3)
+    x += at(n, 0.2, hiss(rng, 0.5, 4200, 1.2, 0.02, 0.1), 0.3)
+    return fade(sat(x, 1.5), 0.0006, 0.1)
+
+
+def sfx_uncouple():
+    """The Twins split: the coupling's pressure let out, the clamps unlatch, the core powers down
+    and twin A springs clear."""
+    rng = np.random.default_rng(3800)
+    dur = 1.1
+    t = tt(dur)
+    n = len(t)
+    x = np.zeros(n)
+    x += at(n, 0.0, hiss(rng, 0.6, 3600, 0.9, 0.006, 0.14, whistle=(2800, 1900)), 0.8)
+    x += at(n, 0.02, clang_smp(rng, 1380, 0.25, 0.03, 1.0), 0.4)
+    x += at(n, 0.05, clang_smp(rng, 1010, 0.25, 0.03, 1.0), 0.4)
+    x += at(n, 0.04, thump(tt(0.3), 140, 80, 0.015, 0.05), 0.7)
+    m = int(0.6 * FS)
+    tm = np.arange(m) / FS
+    fd = 700 * (180 / 700) ** np.clip(tm / 0.45, 0, 1)
+    down_ = (sine(fd) + 0.4 * sine(fd * 1.5)) * np.exp(-tm / 0.14)
+    x += at(n, 0.05, down_, 0.3)
+    wh, _ = whoosh(rng, 0.5, 0.2, 0.06, 400, 1800)
+    x += at(n, 0.2, wh, 0.45)
+    return fade(sat(x, 1.4), 0.0006, 0.1)
+
+
+def sfx_swing_twin():
+    """ONE's or ZERO's quick strike: a short light whoosh and a small servo's chirp."""
+    rng = np.random.default_rng(3900)
+    dur = 0.38
+    t = tt(dur)
+    n = len(t)
+    wh, w = whoosh(rng, dur, 0.1, 0.035, 700, 2800)
+    x = 1.0 * wh
+    x += 0.2 * at(n, 0.0, servo(rng, 0.09, 1100, 1800))
+    x += 0.15 * sine(np.full(n, 140.0)) * w
+    return fade(sat(x, 1.3), 0.002, 0.05)
+
+
+def sfx_swing_fist():
+    """A big fist thrown (Tank, the combined Twins): the piston's chunk, a heavy push of air, the
+    hydraulics hissing as it returns."""
+    rng = np.random.default_rng(4000)
+    dur = 0.7
+    t = tt(dur)
+    n = len(t)
+    wh, w = whoosh(rng, dur, 0.2, 0.075, 150, 900)
+    x = 1.3 * wh
+    x += 0.5 * sine(np.full(n, 52.0)) * w
+    x += 0.5 * at(n, 0.0, clang_smp(rng, 210, 0.3, 0.04, 0.4))
+    x += 0.4 * at(n, 0.0, thump(tt(0.2), 120, 70, 0.01, 0.04))
+    x += 0.25 * at(n, 0.0, servo(rng, 0.16, 300, 520))
+    x += 0.25 * at(n, 0.38, hiss(rng, 0.3, 3000, 1.0, 0.01, 0.07))
+    return fade(sat(x * 0.9, 1.3), 0.002, 0.06)
+
+
+def sfx_debris():
+    """Shards and debris after a heavy hit: plating and bolts clattering across the floor,
+    bouncing and settling, grit pattering."""
+    rng = np.random.default_rng(4100)
+    dur = 1.6
+    t = tt(dur)
+    n = len(t)
+    x = np.zeros(n)
+    for i in range(7):                          # pieces, each bouncing a few times, closer each time
+        when = rng.uniform(0.02, 0.35)
+        gap = rng.uniform(0.12, 0.25)
+        a = rng.uniform(0.5, 1.0)
+        f0 = rng.uniform(900, 3400)
+        while when < 1.0 and a > 0.08:
+            put(x, int(when * FS), clang_smp(rng, f0 * rng.uniform(0.97, 1.03), 0.2, rng.uniform(0.02, 0.05), 0.7), 0.4 * a)
+            when += gap
+            gap *= 0.62
+            a *= 0.6
+    grit = np.zeros(n)
+    for p in rate_times(rng, n, 220 * np.exp(-t / 0.3)):
+        grit[p] += rng.uniform(-1, 1) * math.exp(-p / FS / 0.35)
+    x += 0.7 * filt(filt(grit, 1500, 0.7, 'hp'), 7000, 0.7)
+    x += 0.4 * filt(noise(rng, n), 900, 0.7) * np.exp(-t / 0.25) * np.clip(t / 0.02, 0, 1)
+    return fade(x, 0.002, 0.15)
+
+
+def sfx_knockdown():
+    """A mech knocked flat: the dull whump of tonnes on concrete, the dust thrown up and rolling
+    out, plates rattling as it settles."""
+    rng = np.random.default_rng(4200)
+    dur = 1.5
+    t = tt(dur)
+    n = len(t)
+    x = 1.5 * thump(t, 85, 34, 0.04, 0.22)
+    x += 0.8 * crunch(rng, t, 450, 0.06, 2.5)
+    x += 0.5 * filt(noise(rng, n), 1800, 0.7, 'hp') * np.exp(-t / 0.006)
+    dust = tvf(noise(rng, n), 1800 * np.exp(-t / 0.5) + 250, 0.8, 'lp') * np.clip(t / 0.03, 0, 1) * np.exp(-t / 0.45)
+    x += 0.9 * dust
+    x += 0.6 * rumble(rng, n, 100, 8.0) * np.exp(-t / 0.4)
+    x += debris(rng, n, 0.12, 0.7, 5, 500, 1600, 0.18)
+    return fade(sat(x * 1.2, 2.2), 0.0004, 0.2)
+
+
+def sfx_block_shield():
+    """sfx_block's energy shield: an electric snap and a short hum (mixed into the block)."""
+    rng = np.random.default_rng(4300)
+    dur = 0.5
+    t = tt(dur)
+    n = len(t)
+    x = 0.9 * filt(filt(noise(rng, n), 3500, 0.7, 'hp'), 9000, 0.7) * np.exp(-t / 0.006)
+    x += 0.4 * arc(rng, n, 4500, 0.4, 300, 2.0, 0.9) * np.exp(-t / 0.03)
+    hum = buzz(n, 120, 0.25, 1500) + 0.6 * sine(np.full(n, 240.0))
+    x += 0.35 * hum * np.exp(-t / 0.12)
+    return x
+
+
+def sfx_smoulder():
+    """The beaten mech smouldering: wiring crackling and spitting, a fizz, arcs now and then,
+    thinning out."""
+    rng = np.random.default_rng(4400)
+    dur = 3.4
+    t = tt(dur)
+    n = len(t)
+    x = 0.35 * sparks(rng, dur, 140, 1.2)
+    pops = np.zeros(n)
+    for p in rate_times(rng, n, 9 * np.exp(-t / 1.6)):
+        pops[p] += rng.uniform(0.4, 1.0) * rng.choice([-1, 1])
+    x += 1.2 * filt(np.convolve(pops, np.exp(-np.arange(90) / 18.0))[:n], 1600, 1.2, 'bp')
+    x += 0.3 * filt(filt(noise(rng, n), 6000, 1.0, 'bp'), 3000, 0.7, 'hp') * np.exp(-t / 1.4)
+    for when in (0.3, 1.1, 2.0):
+        m = int(0.12 * FS)
+        tk = np.arange(m) / FS
+        z = arc(rng, m, 2600, 0.5, 250, 2.0, 0.8) * np.exp(-tk / 0.05)
+        x += at(n, when + rng.uniform(-0.1, 0.1), fade(z, 0.002, 0.02), 0.35 * (1 - when / 3))
+    x *= np.clip((dur - t) / 1.2, 0, 1) ** 1.5
+    return fade(x, 0.02, 0.2)
+
+
+def sfx_void_in():
+    """The Void Step: the mech gone into nothing, a rush sucked inwards and a hollow thud."""
+    rng = np.random.default_rng(4500)
+    dur = 0.45
+    t = tt(dur)
+    n = len(t)
+    tail = filt(noise(rng, n), 2500, 0.7) * np.exp(-t / 0.09)
+    rush = tvf(tail[::-1].copy(), 300 + 3000 * np.clip(t / 0.3, 0, 1), 1.3, 'bp', 32)
+    k = np.clip(t / 0.3, 0, 1)
+    hum = (sine(180 * (55 / 180) ** k) + 0.5 * sine(270 * (80 / 270) ** k)) * np.sin(2 * math.pi * 33 * t) * k ** 2
+    x = 1.0 * rush + 0.4 * hum
+    x *= np.clip((0.33 - t) / 0.02, 0, 1)
+    x += at(n, 0.32, thump(tt(0.13), 90, 40, 0.02, 0.03), 0.8)
+    return fade(x, 0.002, 0.03)
+
+
+def sfx_void_out():
+    """... and back: a dark pop, the air pushed out of the way, a shimmer settling."""
+    rng = np.random.default_rng(4600)
+    dur = 0.55
+    t = tt(dur)
+    n = len(t)
+    x = 1.0 * thump(t, 75, 38, 0.015, 0.06)
+    x += 0.7 * filt(noise(rng, n), 1400, 0.7) * np.exp(-t / 0.02)
+    wh, _ = whoosh(rng, dur, 0.05, 0.05, 2600, 500)
+    x += 0.7 * wh
+    sh = sum(np.sin(2 * math.pi * fr * t + rng.uniform(0, 6)) for fr in (1760, 2217, 2637)) / 3
+    x += 0.12 * sh * np.exp(-t / 0.15) * np.sin(2 * math.pi * 23 * t)
+    return fade(sat(x, 1.3), 0.0006, 0.08)
+
+
+def sfx_page():
+    """The brochure's page turned: a paper swish with its flutter, the page settling flat."""
+    rng = np.random.default_rng(4700)
+    dur = 0.4
+    t = tt(dur)
+    n = len(t)
+    w = np.exp(-0.5 * ((t - 0.12) / 0.055) ** 2)
+    flut = 0.55 + 0.45 * np.abs(filt(noise(rng, n), 45, 0.7)) * 9
+    x = tvf(noise(rng, n), 1800 + 3500 * w, 0.9, 'bp', 32) * w * np.clip(flut, 0, 1.4)
+    x += 0.4 * filt(filt(noise(rng, n), 7000, 0.7), 3500, 0.7, 'hp') * w
+    flap = filt(noise(rng, n), 500, 0.7) * np.exp(-np.clip(t - 0.24, 0, None) / 0.015) * (t > 0.24)
+    x += 0.8 * flap
+    return fade(x, 0.003, 0.04)
+
+
+def sfx_stamp():
+    """A rubber stamp brought down on the page (READY, APPROVED, UNLOCKED): the handle's thump on
+    the desk, the rubber's slap, the desk rattling."""
+    rng = np.random.default_rng(4800)
+    dur = 0.45
+    t = tt(dur)
+    n = len(t)
+    x = 1.3 * thump(t, 110, 62, 0.012, 0.05)
+    x += 0.7 * filt(noise(rng, n), 420, 2.0, 'bp') * np.exp(-t / 0.03) * 2
+    x += 0.6 * filt(filt(noise(rng, n), 1200, 0.7, 'hp'), 4000, 0.7) * np.exp(-t / 0.008)
+    x += 0.25 * clang_smp(rng, 760, dur, 0.04, 0.5)
+    x += 0.2 * at(n, 0.07, clang_smp(rng, 1900, 0.2, 0.02, 0.8))
+    return fade(sat(x, 1.6), 0.0004, 0.06)
+
+
+def sfx_pass():
+    """The press pass taken off its hook: a plastic clip's double click, the lanyard's metal
+    clasp jingling, the strap brushing."""
+    rng = np.random.default_rng(4900)
+    dur = 0.65
+    t = tt(dur)
+    n = len(t)
+    ck = filt(noise(rng, 300), 3200, 3.0, 'bp') * np.exp(-np.arange(300) / 25.0)
+    x = at(n, 0.0, ck, 1.2) + at(n, 0.028, filt(noise(rng, 300), 2200, 3.0, 'bp') * np.exp(-np.arange(300) / 30.0), 1.0)
+    for i in range(7):
+        when = 0.06 + 0.07 * i + rng.uniform(-0.02, 0.02)
+        ping = clang_smp(rng, rng.uniform(3200, 6200), 0.12, rng.uniform(0.01, 0.025), 0.6)
+        x += at(n, when, ping, 0.25 * (1 - i / 9) * rng.uniform(0.5, 1.0))
+    x += 0.2 * filt(noise(rng, n), 2500, 1.0, 'bp') * np.exp(-0.5 * ((t - 0.2) / 0.08) ** 2)
+    return fade(x, 0.0004, 0.06)
+
+
+def sfx_shutter():
+    """The catalogue's photographer: a shutter's click-clack and a short whirr of the film
+    advancing."""
+    rng = np.random.default_rng(5000)
+    dur = 0.32
+    t = tt(dur)
+    n = len(t)
+    c1 = filt(noise(rng, 400), 3000, 2.0, 'bp') * np.exp(-np.arange(400) / 30.0)
+    c2 = filt(noise(rng, 500), 1700, 2.0, 'bp') * np.exp(-np.arange(500) / 45.0)
+    x = at(n, 0.0, c1, 1.3) + at(n, 0.045, c2, 1.0)
+    m = int(0.14 * FS)
+    tm = np.arange(m) / FS
+    wf = 900 + 300 * np.clip(tm / 0.14, 0, 1)
+    whirr = filt(saw(wf) * (0.6 + 0.4 * np.sign(np.sin(2 * math.pi * 70 * tm))), 2500, 1.0, 'bp') * np.sin(math.pi * tm / 0.14)
+    x += at(n, 0.11, whirr, 0.25)
+    return fade(x, 0.0004, 0.03)
+
+
 # per sound: name, render, its peak in the game (dB of full scale; the music peaks at -8),
 # reverb send
 ONE_SHOTS = [
@@ -1586,6 +2318,47 @@ ONE_SHOTS = [
     ('menu_ok', sfx_menu_ok, -13, 0),
     ('menu_back', sfx_menu_back, -15, 0),
     ('unlock', sfx_unlock, -6, 1),
+    # the second round: Tank, Beam, the Twins, the supers' charge-ups, weight, the menus' print
+    ('armour', sfx_armour, -9, 1),
+    ('tank_lift', sfx_tank_lift, -11, 1),
+    ('tank_slam', sfx_tank_slam, -5.5, 1),
+    ('tank_vent', sfx_tank_vent, -9, 1),
+    ('charge_kinetic', sfx_charge_kinetic, -10, 1),
+    ('charge_antimatter', sfx_charge_antimatter, -10, 1),
+    ('charge_chemical', sfx_charge_chemical, -10, 1),
+    ('charge_nuclear', sfx_charge_nuclear, -10, 1),
+    ('charge_fusion', sfx_charge_fusion, -10, 1),
+    ('beam_orb', sfx_beam_orb, -10, 1),
+    ('beam_ping', sfx_beam_ping, -14, 1),
+    ('orb_fizzle', sfx_orb_fizzle, -11, 1),
+    ('beam_zap', sfx_beam_zap, -13, 1),
+    ('beam_lance', sfx_beam_lance, -12, 1),
+    ('beam_arc', sfx_beam_arc, -9, 1),
+    ('beam_pillar', sfx_beam_pillar, -8, 1),
+    ('beam_overload', sfx_beam_overload, -6.5, 1),
+    ('beam_react', sfx_beam_react, -12, 1),
+    ('beam_shock', sfx_beam_shock, -9, 1),
+    ('couple', sfx_couple, -9, 1),
+    ('uncouple', sfx_uncouple, -10, 1),
+    ('swing_twin', sfx_swing_twin, -15, 1),
+    ('swing_fist', sfx_swing_fist, -13, 1),
+    ('debris', sfx_debris, -13, 1),
+    ('knockdown', sfx_knockdown, -8, 1),
+    ('smoulder', sfx_smoulder, -15, 1),
+    ('void_in', sfx_void_in, -12, 1),
+    ('void_out', sfx_void_out, -12, 1),
+    ('page', sfx_page, -16, 0),
+    ('stamp', sfx_stamp, -12, 0),
+    ('pass', sfx_pass, -12, 0),
+    ('shutter', sfx_shutter, -14, 0),
+]
+
+# the loops (the cart starts them with their loop at 0 and stops them): name, render (n samples at
+# FS, periodic), seconds, peak in the game, reverb send
+LOOPS = [
+    ('tread', loop_tread, 1.0, -17, 1),
+    ('beam_hum', loop_beam_hum, 0.5, -15, 1),
+    ('beam_grip', loop_beam_grip, 0.4, -12, 1),
 ]
 
 
@@ -1633,10 +2406,32 @@ def seam_check(blob, n, loop, first):
 # a volley of effects over the fight's start, for fight_sfx.wav: (seconds, sound, pan -1..1)
 VOLLEY = [(0.4, 'round', 0), (3.2, 'step', -0.25), (3.7, 'step', 0.25), (4.2, 'step', -0.25),
           (4.6, 'swing_hero', -0.2), (4.85, 'hit1', 0.1), (5.6, 'swing_dblade', 0.2), (5.85, 'block', -0.1),
-          (6.3, 'chip', -0.1), (7.0, 'hit0', 0.1), (7.25, 'hit0', 0.1), (7.6, 'hit2', 0.1), (8.4, 'land', 0.3),
-          (9.0, 'grab', -0.1), (9.6, 'throw', 0.2), (10.8, 'meter_full', 0), (11.5, 'step', 0.2),
-          (12.0, 'break', 0), (12.8, 'super', -0.2), (13.4, 'hit3', 0.1), (13.6, 'hit2', 0.1),
-          (15.0, 'swing_hero', -0.2), (15.3, 'hit3', 0.15), (15.32, 'ko', 0.15)]
+          (6.3, 'chip', -0.1), (7.0, 'hit0', 0.1), (7.25, 'hit0', 0.1), (7.6, 'hit2', 0.1), (7.6, 'debris', 0.1),
+          (8.0, 'armour', 0.2), (8.4, 'land', 0.3), (9.0, 'tank_lift', -0.1), (9.55, 'tank_slam', 0.2),
+          (9.55, 'debris', 0.2), (10.0, 'knockdown', 0.25), (10.8, 'meter_full', 0), (11.0, 'beam_orb', -0.3),
+          (11.5, 'orb_fizzle', 0), (12.0, 'couple', 0), (12.8, 'charge_kinetic', -0.2), (12.8, 'super', -0.2),
+          (13.4, 'hit3', 0.1), (13.4, 'debris', 0.1), (13.6, 'hit2', 0.1), (14.2, 'beam_pillar', 0.3),
+          (15.0, 'swing_hero', -0.2), (15.3, 'hit3', 0.15), (15.32, 'ko', 0.15), (16.1, 'smoulder', 0.15)]
+
+
+def render_sfx():
+    """Every sound effect: [(name, int data at SR, volume, reverb, loop)]. A loop is a whole
+    number of ADPCM blocks, rendered periodic (its filters run round the seam)."""
+    out = []
+    for name, fn, level, rev in ONE_SHOTS:
+        x = down(hp_dc(fn(), 28.0), False)
+        x = np.concatenate([x, np.zeros(-len(x) % BLK)])
+        out.append((name, x, level, rev, False))
+    for name, fn, secs, level, rev in LOOPS:
+        n = int(round(secs * SR / BLK)) * BLK
+        x = down(mid3(hp_dc(tile3(fn(n * OS)), 28.0)), True)
+        out.append((name, x, level, rev, True))
+    sfx = []
+    for name, x, level, rev, loop in out:
+        x = x / np.abs(x).max() * STEM_PEAK
+        vol = min(255, int(round(256 * 10 ** (level / 20) / STEM_PEAK)))
+        sfx.append((name, np.round(x * 32767).astype(np.int64), vol, rev, loop))
+    return sfx
 
 
 def build(preview, quick=False):
@@ -1658,13 +2453,7 @@ def build(preview, quick=False):
         tracks.append((name, chans, intro, n, mix_levels(stems)))
 
     print('rendering the sound effects...')
-    sfx = []         # (name, int data, volume, reverb)
-    for name, fn, level, rev in ONE_SHOTS:
-        x = down(hp_dc(fn(), 28.0), False)
-        x = x / np.abs(x).max() * STEM_PEAK
-        vol = min(255, int(round(256 * 10 ** (level / 20) / STEM_PEAK)))
-        x = np.concatenate([x, np.zeros(-len(x) % BLK)])
-        sfx.append((name, np.round(x * 32767).astype(np.int64), vol, rev))
+    sfx = render_sfx()
 
     stem_names = ('beat', 'airL', 'airR')
     if quick:      # unencoded previews only, nothing written to the cart
@@ -1675,7 +2464,9 @@ def build(preview, quick=False):
             beat, al, ar = [(d * v) >> 8 for d, v in st]
             two = lambda x: np.concatenate([x, x[intro:]])
             write_wav(os.path.join(preview, '%s.wav' % name), [two(beat + al), two(beat + ar)])
-        for name, data, vol, rev in sfx:
+        for name, data, vol, rev, loop in sfx:
+            if loop:
+                data = np.tile(data, 3)
             write_wav(os.path.join(preview, 'sfx_%s.wav' % name), [data * vol >> 8])
         return
 
@@ -1684,8 +2475,8 @@ def build(preview, quick=False):
     for name, chans, intro, n, st in tracks:
         for data, vol in st:
             jobs.append((data, intro))
-    for name, data, vol, rev in sfx:
-        jobs.append((data, None))
+    for name, data, vol, rev, loop in sfx:
+        jobs.append((data, 0 if loop else None))
     with ProcessPoolExecutor() as ex:
         enc = list(ex.map(_encode, jobs))
 
@@ -1705,12 +2496,18 @@ def build(preview, quick=False):
     sbank = bytearray()
     sfx_rows = []
     sfx_dec = {}
-    for name, data, vol, rev in sfx:
+    for name, data, vol, rev, loop in sfx:
         blob = enc[k]
         k += 1
-        sfx_rows.append((name, len(sbank), len(data), vol, rev))
+        sfx_rows.append((name, len(sbank), len(data), vol, rev, loop))
         sbank += blob
-        sfx_dec[name] = (mei_adpcm.decode(blob, len(data)).astype(np.int64), vol)
+        dec = mei_adpcm.decode(blob, len(data)).astype(np.int64)
+        if loop:            # three passes, each later one decoded with the history the last left
+            passes = [dec]
+            for _ in range(2):
+                passes.append(mei_adpcm.decode(blob, len(data), int(passes[-1][-1]), int(passes[-1][-2])).astype(np.int64))
+            dec = np.concatenate(passes)
+        sfx_dec[name] = (dec, vol)
     with open(os.path.join(AUD, 'music.adp'), 'wb') as f:
         f.write(mbank)
     with open(os.path.join(AUD, 'sfx.adp'), 'wb') as f:
@@ -1736,7 +2533,8 @@ def build(preview, quick=False):
     for row in stem_rows:
         vals += list(row[:7])
     o.append(akr_array('MU_STEM', 's32', vals, 7))
-    o.append('\n// Sound effects: an index into SFX for each.\n')
+    o.append('\n// Sound effects: an index into SFX for each. The loops (%s) loop from their start.\n'
+             % ', '.join(r[0] for r in sfx_rows if r[5]))
     for i, row in enumerate(sfx_rows):
         o.append('const SFX_%s = %d\n' % (row[0].upper(), i))
     o.append('const SFX_COUNT = %d\n' % len(sfx_rows))
@@ -1745,6 +2543,8 @@ def build(preview, quick=False):
     for row in sfx_rows:
         vals += list(row[1:5])
     o.append(akr_array('SFX', 's32', vals, 4))
+    o.append('// their names (for the tests\' logs)\n')
+    o.append(akr_array('SFX_NAMES', '*u8', ['"%s"' % r[0] for r in sfx_rows], 6))
     with open(os.path.join(CART, 'mu_data.akr'), 'w') as f:
         f.write(''.join(o))
 
@@ -1768,11 +2568,13 @@ def build(preview, quick=False):
         rms = math.sqrt(((L.astype(float) ** 2 + R.astype(float) ** 2) / 2).mean())
         clip = int((np.abs(np.concatenate([L, R])) > 32767).sum())
         print('  %-5s mix: peak %.1f dBFS, RMS %.1f dBFS, %d samples clipped' % (name, db(lp / 32768), db(rms / 32768), clip))
-    for name, off, cnt, vol, rev in sfx_rows:
+    for name, off, cnt, vol, rev, loop in sfx_rows:
         d, v = sfx_dec[name]
-        print('  sfx %-13s %6d samples (%.2f s) %6d bytes, vol %3d, peak %.1f dBFS%s'
-              % (name, cnt, cnt / SR, (cnt + BLK - 1) // BLK * 16, vol, db(np.abs(d * v >> 8).max() / 32768),
-                 ', to the reverb' if rev else ''))
+        g = d * v >> 8
+        print('  sfx %-17s %6d samples (%.2f s) %6d bytes, vol %3d, peak %.1f dBFS, RMS %.1f dBFS%s%s'
+              % (name, cnt, cnt / SR, (cnt + BLK - 1) // BLK * 16, vol, db(np.abs(g).max() / 32768),
+                 db(math.sqrt((g.astype(float) ** 2).mean()) / 32768), ', to the reverb' if rev else '',
+                 ', a loop (the seam: %d)' % abs(int(d[cnt]) - int(d[cnt - 1])) if loop else ''))
     # the balance: the fight's opening with a volley of effects over it, mixed as the console does
     L, R, intro = mixes['fight']
     n = int(20 * SR)

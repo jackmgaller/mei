@@ -21,7 +21,7 @@ const MU_STEM: [42]s32 = [0, 0, 1581216, 121632, 66, 66, 0,
     4, 3112128, 702576, 41328, 68, 0, 1,
     5, 3513600, 702576, 41328, 0, 70, 1]
 
-// Sound effects: an index into SFX for each.
+// Sound effects: an index into SFX for each. The loops (tread, beam_hum, beam_grip) loop from their start.
 const SFX_HIT0 = 0
 const SFX_HIT1 = 1
 const SFX_HIT2 = 2
@@ -43,9 +43,44 @@ const SFX_MENU_MOVE = 17
 const SFX_MENU_OK = 18
 const SFX_MENU_BACK = 19
 const SFX_UNLOCK = 20
-const SFX_COUNT = 21
+const SFX_ARMOUR = 21
+const SFX_TANK_LIFT = 22
+const SFX_TANK_SLAM = 23
+const SFX_TANK_VENT = 24
+const SFX_CHARGE_KINETIC = 25
+const SFX_CHARGE_ANTIMATTER = 26
+const SFX_CHARGE_CHEMICAL = 27
+const SFX_CHARGE_NUCLEAR = 28
+const SFX_CHARGE_FUSION = 29
+const SFX_BEAM_ORB = 30
+const SFX_BEAM_PING = 31
+const SFX_ORB_FIZZLE = 32
+const SFX_BEAM_ZAP = 33
+const SFX_BEAM_LANCE = 34
+const SFX_BEAM_ARC = 35
+const SFX_BEAM_PILLAR = 36
+const SFX_BEAM_OVERLOAD = 37
+const SFX_BEAM_REACT = 38
+const SFX_BEAM_SHOCK = 39
+const SFX_COUPLE = 40
+const SFX_UNCOUPLE = 41
+const SFX_SWING_TWIN = 42
+const SFX_SWING_FIST = 43
+const SFX_DEBRIS = 44
+const SFX_KNOCKDOWN = 45
+const SFX_SMOULDER = 46
+const SFX_VOID_IN = 47
+const SFX_VOID_OUT = 48
+const SFX_PAGE = 49
+const SFX_STAMP = 50
+const SFX_PASS = 51
+const SFX_SHUTTER = 52
+const SFX_TREAD = 53
+const SFX_BEAM_HUM = 54
+const SFX_BEAM_GRIP = 55
+const SFX_COUNT = 56
 // per sound: byte offset in SFX_BANK, samples, volume, reverb send
-const SFX: [84]s32 = [0, 13244, 74, 1,
+const SFX: [224]s32 = [0, 13244, 74, 1,
     7568, 24276, 94, 1,
     21440, 35280, 111, 1,
     41600, 46312, 125, 1,
@@ -59,10 +94,56 @@ const SFX: [84]s32 = [0, 13244, 74, 1,
     155664, 20972, 83, 1,
     167648, 11032, 47, 1,
     173952, 33096, 59, 1,
-    192864, 61740, 118, 1,
-    228144, 97020, 132, 1,
-    283584, 50736, 105, 1,
-    312576, 1764, 33, 0,
-    313584, 9940, 59, 0,
-    319264, 7056, 47, 0,
-    323296, 66164, 132, 1]
+    192864, 63308, 118, 1,
+    229040, 97020, 132, 1,
+    284480, 50736, 105, 1,
+    313472, 1764, 33, 0,
+    314480, 9940, 59, 0,
+    320160, 7056, 47, 0,
+    324192, 66164, 132, 1,
+    362000, 22064, 94, 1,
+    374608, 20972, 74, 1,
+    386592, 61740, 140, 1,
+    421872, 28672, 94, 1,
+    438256, 15008, 83, 1,
+    446832, 15008, 83, 1,
+    455408, 15008, 83, 1,
+    463984, 15008, 83, 1,
+    472560, 15008, 83, 1,
+    481136, 16548, 83, 1,
+    490592, 13244, 53, 1,
+    498160, 19852, 74, 1,
+    509504, 9940, 59, 1,
+    515184, 13244, 66, 1,
+    522752, 30884, 94, 1,
+    540400, 39704, 105, 1,
+    563088, 61740, 125, 1,
+    598368, 33096, 66, 1,
+    617280, 22064, 94, 1,
+    629888, 24276, 94, 1,
+    643760, 24276, 83, 1,
+    657632, 8400, 47, 1,
+    662432, 15456, 59, 1,
+    671264, 35280, 59, 1,
+    691424, 33096, 105, 1,
+    710336, 74984, 47, 1,
+    753184, 9940, 66, 1,
+    758864, 12152, 66, 1,
+    765808, 8820, 42, 0,
+    770848, 9940, 66, 0,
+    776528, 14336, 66, 0,
+    784720, 7056, 53, 0,
+    788752, 22064, 37, 1,
+    801360, 11032, 47, 1,
+    807664, 8820, 66, 1]
+// their names (for the tests' logs)
+const SFX_NAMES: [56]*u8 = ["hit0", "hit1", "hit2", "hit3", "block", "chip",
+    "swing_hero", "swing_dblade", "grab", "throw", "break", "land",
+    "step", "meter_full", "super", "ko", "round", "menu_move",
+    "menu_ok", "menu_back", "unlock", "armour", "tank_lift", "tank_slam",
+    "tank_vent", "charge_kinetic", "charge_antimatter", "charge_chemical", "charge_nuclear", "charge_fusion",
+    "beam_orb", "beam_ping", "orb_fizzle", "beam_zap", "beam_lance", "beam_arc",
+    "beam_pillar", "beam_overload", "beam_react", "beam_shock", "couple", "uncouple",
+    "swing_twin", "swing_fist", "debris", "knockdown", "smoulder", "void_in",
+    "void_out", "page", "stamp", "pass", "shutter", "tread",
+    "beam_hum", "beam_grip"]

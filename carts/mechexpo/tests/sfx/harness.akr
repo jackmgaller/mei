@@ -1,0 +1,413 @@
+// Mech Expo 2000's sound scenarios (mx-sfx): the real game (../../game.akr) driven through its
+// test hooks, as tests/fx/harness.akr does, with sfx.akr's weak sfx_heard() replaced to log
+// every sound that starts ("  FRAME sfx NAME ch C"). tests/run.sh builds scenarios 80-89 from
+// this file and the game; tests/check.sh runs them. Each checks which sounds start on which
+// events, that the loops start and stop when they should, and prints "OK ...".
+//
+// 80  Tank's armour and vent: the Double-blade Hero's Twin Cut lands on the armoured Piston
+//     Haymaker (the armour's clank, not the block's), then the Reactor Vent's steam
+// 81  Tank's treads: the rumble while it walks, gone a few frames after it stops and while the
+//     game is paused, back after; then the Atomic Clinch: the glide, the lift, the slam, the
+//     knockdown's dust
+// 82  Beam's Volt Orb: the charge hum while B is held, the ping when it is full, the orb, the
+//     hum gone; a tap orb fizzling against the Hero's wave; the reaction starting
+// 83  Beam's attacks: the Shock Grip (the buzz while the current runs, the crack), the Static
+//     Lance, the Arc Lance, the Thunder Pillar and the jab's zap
+// 84  the Twins: the coupling clank as they combine, the uncoupling as they split, ONE's and
+//     ZERO's light strikes split (never the Hero's sword), the big fist combined
+// 85  the supers: each power source's charge-up (kinetic, antimatter, chemical, nuclear,
+//     fusion) and the burst; the Raikō Overload's beam
+// 86  the KO: Tank walking (the treads on) is knocked out by the Hero; the KO's impact replaces
+//     the hit, the loops stop, the smoulder starts; leaving the fight stops every fight sound
+// 87  the Void Step: gone, and back
+// 88  the voices: a hit takes a channel from steps and swings; with six important sounds
+//     playing a step, a swing and a loop get none; the loop starts once channels are free and
+//     stops when no longer held; a hit and a KO in the same frame: the KO's impact alone
+// 89  the menus: the press pass on the title, the pages turned, the catalogue's shutter, the
+//     READY, APPROVED and UNLOCKED stamps; nothing of the fight left playing on the results
+
+var hf: s32                        // the frame (update) now; inputs at hf + 1 are read this frame
+var heard: [SFX_COUNT]s32          // starts of each sound
+var first_at: [SFX_COUNT]s32       // the frame of its first start (0: never)
+var last_at: [SFX_COUNT]s32
+var quiet: bool                    // don't log (scenario 88's floods)
+var ko_at: s32
+var mark: s32                      // a frame a scenario remembers
+var stage: s32
+
+fn sfx_heard(id: s32, ch: s32) {
+    heard[id] += 1
+    if first_at[id] == 0 { first_at[id] = hf }
+    last_at[id] = hf
+    if quiet { return }
+    print("  ")
+    print_int(hf)
+    print(" sfx ")
+    print(SFX_NAMES[id])
+    print(" ch ")
+    print_int(ch)
+    println("")
+}
+
+fn input_stick(n: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+// ---- setting up a fight
+
+private fn st_fight(a: Mech, b: Mech, x0: fixed, x1: fixed) {
+    game = Game.Versus
+    p_cpu = false
+    p_mech[0] = a
+    p_mech[1] = b
+    enter_fight()
+    fight.phase = Phase.Fight
+    fight.phase_t = 100                  // past the FIGHT! banner
+    set_mv(0, Mv.idle)
+    set_mv(1, Mv.idle)
+    if twins_in_fight { twins_copy_mv(Mv.idle) }
+    st_place(x0, x1)
+    cam_reset(fight.f[0].x, fight.f[1].x)
+}
+
+private fn st_place(x0: fixed, x1: fixed) {
+    fight.f[0].x = x0
+    fight.f[1].x = x1
+    for s in 0..2 {
+        if twins_on(s) {
+            let f = &fight.f[s]
+            fight.f[s + 2].x = f.x - fixed(f.facing) * TW_SPOT
+        }
+    }
+}
+
+private fn fwd(i: s32) -> u32 {
+    if fight.f[i].facing > 0 { return RIGHT }
+    return LEFT
+}
+
+fn test_init() {
+    for k in 0..SFX_COUNT { first_at[k] = 0 }
+    ko_at = -1
+    match SCENARIO {
+        80 => st_fight(Mech.Tank, Mech.Doubleblade, -3.0, 3.0)
+        81 => st_fight(Mech.Tank, Mech.Hero, -12.0, 12.0)
+        82 => st_fight(Mech.Beam, Mech.Hero, -12.0, 12.0)
+        83 => st_fight(Mech.Beam, Mech.Hero, -2.0, 2.0)
+        84 => st_fight(Mech.Twins, Mech.Hero, -6.0, 6.0)
+        85 => super_fight(0)
+        86 => {
+            st_fight(Mech.Hero, Mech.Tank, -3.0, 5.0)
+            fight.f[1].health = 30
+        }
+        87 => st_fight(Mech.Doubleblade, Mech.Hero, -14.0, 4.0)
+        else => {}                       // 88, 89: from the title
+    }
+}
+
+// Scenario 85's fights: k 0-4, side 0 the Hero, the Double-blade Hero, Beam, Tank, the Twins
+// against the Hero, a full bar.
+const SUPER_MECHS: [5]Mech = [Mech.Hero, Mech.Doubleblade, Mech.Beam, Mech.Tank, Mech.Twins]
+const SUPER_CHARGES: [5]s32 = [SFX_CHARGE_KINETIC, SFX_CHARGE_ANTIMATTER, SFX_CHARGE_CHEMICAL, SFX_CHARGE_NUCLEAR, SFX_CHARGE_FUSION]
+const SUPER_EVERY = 150
+
+private fn super_fight(k: s32) {
+    st_fight(SUPER_MECHS[k], Mech.Hero, -8.0, 8.0)
+    fight.f[0].meter = METER_BAR
+}
+
+fn input_pad(n: s32) -> u32 {
+    let t = hf + 1
+    if SCENARIO == 89 { return menu_pad(n, t) }
+    if st != St.Fight { return 0 }
+    match SCENARIO {
+        80 => {
+            if n == 0 && t == 3 { return fwd(0) | A }
+            if n == 1 && t == 5 { return A }
+            if n == 0 && t == 90 { return B }
+        }
+        81 => {
+            if n == 0 {
+                if t == 120 || t == 140 { return START }
+                if (t >= 5 && t < 65) || (t >= 90 && t < 170) { return fwd(0) }
+                if t == 185 { return fwd(0) | B }
+            } else if t >= 175 && t < 330 {
+                return R
+            }
+        }
+        82 => {
+            if n == 0 {
+                if t >= 5 && t < 100 { return B }
+                if t == 200 { return B }
+                if t == 380 { return DOWN | B }
+            } else if t == 200 {
+                return B
+            }
+        }
+        83 => {
+            if n == 0 {
+                if t == 5 { return Y }
+                if t == 155 { return fwd(0) | A }
+                if t == 230 { return fwd(0) | B }
+                if t == 300 { return UP | B }
+                if t == 370 { return A }
+            }
+        }
+        84 => {
+            if n == 0 {
+                if t == 5 || t == 60 || t == 160 { return L }
+                if t == 125 || t == 220 { return A }
+            }
+        }
+        85 => {
+            if n == 0 {
+                let k = t / SUPER_EVERY
+                let o = t % SUPER_EVERY
+                if k == 4 && o == 5 { return L }           // the Twins combine first
+                if (k < 4 && o == 5) || (k == 4 && o == 60) { return A | B }
+            }
+        }
+        86 => {
+            if n == 1 && t >= 5 && t < 60 { return fwd(1) }
+            if n == 0 && (t == 30 || t == 55 || t == 80 || t == 105) { return A }
+        }
+        87 => { if n == 0 && t == 5 { return B } }
+        else => {}
+    }
+    return 0
+}
+
+// Scenario 89's pads: from the title through mode select (Arcade) and the catalogue to the VS
+// page and the fight.
+private fn menu_pad(n: s32, t: s32) -> u32 {
+    if n != 0 { return 0 }
+    if t == 30 { return START }
+    if t == 50 { return A }
+    if t == 70 { return RIGHT }
+    if t == 90 { return LEFT }
+    if t == 100 { return A }
+    if t == 180 { return A }
+    return 0
+}
+
+fn test_hook() {
+    hf += 1
+    match SCENARIO {
+        80 => { if hf == 140 { report_80() } }
+        81 => hook_81()
+        82 => hook_82()
+        83 => hook_83()
+        84 => { if hf == 270 { report_84() } }
+        85 => hook_85()
+        86 => hook_86()
+        87 => { if hf == 120 { report_87() } }
+        88 => hook_88()
+        89 => hook_89()
+        else => {}
+    }
+}
+
+private fn heard_after(id: s32, t: s32) -> bool { return heard[id] > 0 && last_at[id] >= t }
+
+// ---- 80
+
+private fn report_80() {
+    assert(heard[SFX_ARMOUR] == 1, "the armour's clank: once")
+    assert(heard[SFX_BLOCK] == 0, "the block's clang played for an armoured hit")
+    assert(heard[SFX_SWING_FIST] >= 1 && heard[SFX_SWING_DBLADE] >= 1, "the Haymaker's or the Twin Cut's swing")
+    assert(heard[SFX_TANK_VENT] == 1 && first_at[SFX_TANK_VENT] > 90, "the Reactor Vent's steam")
+    assert(heard[SFX_SWING_HERO] == 0, "the Hero's sword for Tank's fist")
+    println("OK Tank's armour clank and the Reactor Vent")
+}
+
+// ---- 81
+
+private fn hook_81() {
+    let lp = sfx_loop_playing(0)
+    if hf == 40 { assert(lp == SFX_TREAD, "no tread rumble while Tank walks") }
+    if hf == 76 { assert(lp == -1, "the tread rumble did not stop after Tank stopped") }
+    if hf == 110 { assert(lp == SFX_TREAD, "no tread rumble on the second walk") }
+    if hf == 128 { assert(paused && lp == -1, "the tread rumble plays on in the pause") }
+    if hf == 155 { assert(!paused && lp == SFX_TREAD, "the tread rumble did not come back after the pause") }
+    if hf == 175 { st_place(-4.5, 4.5) }
+    if hf == 360 {
+        assert(heard[SFX_TREAD] >= 3, "the treads: the walks and the Clinch's glide")
+        assert(heard[SFX_TANK_LIFT] == 1 && heard[SFX_TANK_SLAM] == 1, "the Atomic Clinch's lift and slam")
+        assert(first_at[SFX_TANK_LIFT] < first_at[SFX_TANK_SLAM], "the slam before the lift")
+        assert(heard_after(SFX_KNOCKDOWN, first_at[SFX_TANK_SLAM]), "no dust whump when the Hero lands")
+        assert(heard[SFX_THROW] == 0 && heard[SFX_GRAB] == 0, "the plain throw's sounds for the command grab")
+        assert(lp == -1, "a loop left playing")
+        print("tread starts ")
+        print_int(heard[SFX_TREAD])
+        println("")
+        println("OK Tank's treads (stopped, paused, back) and the Atomic Clinch's lift and slam")
+    }
+}
+
+// ---- 82
+
+private fn hook_82() {
+    let lp = sfx_loop_playing(0)
+    if hf == 45 { assert(lp == SFX_BEAM_HUM, "no charge hum while B is held") }
+    if heard[SFX_BEAM_PING] > 0 && mark == 0 {
+        mark = hf
+        assert(fight.f[0].charge == ORB_CHARGE_MAX, "the ping before the charge was full")
+    }
+    if mark > 0 && hf == mark + 8 { assert(lp == -1, "the charge hum plays on after the charge is full") }
+    if hf == 195 { st_place(-12.0, 12.0) }
+    if hf == 460 {
+        assert(heard[SFX_BEAM_PING] == 1, "the full charge's ping: once")
+        assert(heard[SFX_BEAM_ORB] == 2, "the two orbs")
+        assert(heard[SFX_ORB_FIZZLE] == 1, "the tap orb did not fizzle against the wave")
+        assert(heard[SFX_BEAM_REACT] == 1 && first_at[SFX_BEAM_REACT] > 380, "the reaction's start")
+        assert(heard[SFX_SWING_HERO] >= 1, "the Hero's wave (its swing)")
+        println("OK Beam's charge hum, the ping, the orbs, the fizzle and the reaction")
+    }
+}
+
+// ---- 83
+
+private fn hook_83() {
+    let lp = sfx_loop_playing(0)
+    if fight.f[0].mv == Mv.throw && fx[0].t == 15 { assert(lp == SFX_BEAM_GRIP, "no buzz while the Shock Grip holds") }
+    if hf == 70 { assert(lp == -1, "the Shock Grip's buzz plays on") }
+    if hf == 150 { st_place(-7.0, 7.0) }
+    if hf == 430 {
+        assert(heard[SFX_BEAM_GRIP] == 1 && heard[SFX_BEAM_SHOCK] == 1, "the Shock Grip's buzz and crack")
+        assert(first_at[SFX_BEAM_GRIP] < first_at[SFX_BEAM_SHOCK], "the crack before the buzz")
+        assert(heard[SFX_KNOCKDOWN] >= 1, "the thrown Hero's dust whump")
+        assert(heard[SFX_BEAM_LANCE] == 1 && heard[SFX_BEAM_ARC] == 1 && heard[SFX_BEAM_PILLAR] == 1, "the lances or the pillar")
+        assert(heard[SFX_BEAM_ZAP] >= 1, "the jab's zap")
+        assert(heard[SFX_SWING_HERO] == 0 && heard[SFX_THROW] == 0, "the Hero's sword or throw for Beam's")
+        println("OK Beam's Shock Grip, lances, pillar and zap")
+    }
+}
+
+// ---- 84
+
+private fn report_84() {
+    assert(heard[SFX_COUPLE] == 2 && heard[SFX_UNCOUPLE] == 1, "the coupling and uncoupling")
+    assert(first_at[SFX_COUPLE] < first_at[SFX_UNCOUPLE], "split before combine")
+    assert(heard[SFX_BREAK] == 0, "the break's clash for the swap")
+    assert(heard[SFX_SWING_TWIN] >= 2, "ONE's and ZERO's strikes")
+    assert(heard[SFX_SWING_FIST] >= 1 && last_at[SFX_SWING_FIST] > 220, "the combined form's fist")
+    assert(heard[SFX_SWING_HERO] == 0, "the Hero's sword for the Twins")
+    println("OK the Twins' coupling and their swings")
+}
+
+// ---- 85
+
+private fn hook_85() {
+    let k = hf / SUPER_EVERY
+    if hf % SUPER_EVERY == 0 && k >= 1 && k < 5 { super_fight(k) }
+    if hf == 5 * SUPER_EVERY {
+        for i in 0..5 {
+            assert(heard[SUPER_CHARGES[i]] == 1, "a power source's charge-up missing")
+            let w = first_at[SUPER_CHARGES[i]]
+            assert(w > i * SUPER_EVERY && w <= (i + 1) * SUPER_EVERY, "a charge-up for the wrong mech")
+        }
+        assert(heard[SFX_SUPER] == 5, "the bursts")
+        assert(heard[SFX_BEAM_OVERLOAD] == 1, "the Raikō Overload's beam")
+        assert(first_at[SFX_BEAM_OVERLOAD] - first_at[SFX_CHARGE_CHEMICAL] >= 40, "the Overload's beam during the flash")
+        println("OK the supers' charge-ups by power source and their bursts")
+    }
+}
+
+// ---- 86
+
+private fn hook_86() {
+    if hf == 25 { assert(sfx_loop_playing(1) == SFX_TREAD, "no tread rumble before the KO") }
+    if ko_at < 0 && heard[SFX_KO] > 0 {
+        ko_at = hf
+        for p in 0..4 { assert(sfx_playing(SFX_HIT0 + p) == 0, "the hit played over the KO's impact") }
+        assert(sfx_loop_playing(1) == -1, "the treads play on after the KO")
+    }
+    if ko_at > 0 && hf == ko_at + 60 {
+        assert(heard[SFX_SMOULDER] == 1, "no smoulder after the KO")
+        assert(sfx_playing(SFX_SMOULDER) == 1, "the smoulder is not playing")
+    }
+    if ko_at > 0 && hf == ko_at + 120 {
+        leave_fight()
+        enter_title()
+    }
+    if ko_at > 0 && hf == ko_at + 122 {
+        assert(sfx_fight_sounds() == 0, "fight sounds left playing on the title")
+        println("OK the KO: its impact alone, the loops stopped, the smoulder; nothing left after the fight")
+    }
+}
+
+// ---- 87
+
+private fn report_87() {
+    assert(heard[SFX_VOID_IN] == 1 && heard[SFX_VOID_OUT] == 1, "the Void Step's two sounds")
+    assert(first_at[SFX_VOID_IN] < first_at[SFX_VOID_OUT], "back before gone")
+    println("OK the Void Step: gone and back")
+}
+
+// ---- 88
+
+private fn hook_88() {
+    if hf == 10 {
+        // six low sounds (one of each: the same sound twice in a frame plays once)
+        quiet = true
+        sfx_step()
+        sfx_smoulder()
+        sfx_chip()
+        sfx_land()
+        sfx_swing(Mech.Hero)
+        sfx_swing(Mech.Doubleblade)
+        quiet = false
+        assert(sfx_fight_sounds() == 6, "six low sounds")
+        sfx_hit(1)
+        assert(heard[SFX_HIT1] == 1, "the hit found no channel among steps and swings")
+        assert(sfx_playing(SFX_STEP) == 0, "the hit did not take the step's channel (the oldest of the least important)")
+    }
+    if hf == 12 {
+        sfx_ko()
+        sfx_super(Mech.Hero)
+        sfx_round()
+        sfx_unlock()
+        sfx_throw()
+        let before = heard[SFX_STEP] + heard[SFX_SWING_HERO]
+        sfx_step()
+        sfx_swing(Mech.Hero)
+        assert(heard[SFX_STEP] + heard[SFX_SWING_HERO] == before, "a step or a swing took a channel from something more important")
+    }
+    if hf >= 12 && hf < 400 { sfx_hold(0, SFX_TREAD, 3, 0.0, 1.0, 256) }
+    if hf == 14 { assert(sfx_loop_playing(0) == -1, "the loop took a channel from something more important") }
+    if hf == 380 { assert(sfx_loop_playing(0) == SFX_TREAD, "the loop did not start once channels were free") }
+    if hf == 408 { assert(sfx_loop_playing(0) == -1, "the loop plays on after it was let go") }
+    if hf == 420 {
+        sfx_hit(2)
+        sfx_ko()
+        assert(sfx_playing(SFX_HIT2) == 0, "the hit plays with the KO")
+        sfx_hit(3)
+        assert(sfx_playing(SFX_HIT3) == 0, "a hit after the KO in its frame")
+        assert(sfx_playing(SFX_KO) == 1, "no KO")
+        println("OK the voices: hits over steps, nothing over the important ones, the loop waits, the KO alone")
+    }
+}
+
+// ---- 89
+
+private fn hook_89() {
+    if hf == 220 {
+        assert(st == St.Fight, "the menus did not reach the fight")
+        fight.winner = 0
+        fight.wins[0] = 2
+        fight.phase = Phase.MatchOver
+        enter_results()
+    }
+    if hf == 222 { assert(sfx_fight_sounds() == 0, "fight sounds left playing on the results") }
+    if hf == 260 {
+        unlock_slot = ROSTER_COLS
+        enter(St.Unlock)
+        sfx_unlock()
+    }
+    if hf == 320 {
+        assert(heard[SFX_PASS] == 1 && first_at[SFX_PASS] == 30, "the press pass on the title")
+        assert(heard[SFX_SHUTTER] == 2, "the catalogue's shutter (two moves)")
+        assert(heard[SFX_STAMP] == 3, "the READY, APPROVED and UNLOCKED stamps")
+        assert(heard[SFX_PAGE] >= 4, "the pages: mode select, the catalogue, VS, results")
+        assert(heard[SFX_MENU_MOVE] == 0, "a plain move click in the catalogue")
+        println("OK the brochure: the press pass, pages, the shutter and the stamps")
+    }
+}
