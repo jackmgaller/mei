@@ -24,7 +24,8 @@ const CAM_PITCH: fixed = -0.05
 const CAM_FEET_Y = 202             // the floor line under the mechs, screen row
 const CAM_YAW: fixed = 0.23        // the angled framing: 13 degrees
 const CAM_FX: fixed = 1.299        // the projection's x scale at the default 60 degrees (4:3)
-const CAM_WALL: fixed = 36.0       // the hangar's walls (FIGHT_WALL)
+const CAM_BEYOND_WALL: fixed = 1.0 // the view shows this far beyond a wall (the stage's edges)
+const CAM_BEYOND_OPEN: fixed = 10.0    // and beyond an open edge: the drop
 const CAM_EASE = 6                 // 1/n of the way to the target a frame
 
 var cam_x: fixed                   // the fight plane's point under the screen's centre
@@ -40,10 +41,18 @@ fn cam_target_w(x0: fixed, x1: fixed) -> fixed {
     return clamp(abs(x1 - x0) + 2.0 * CAM_MARGIN, CAM_W_MIN, CAM_W_MAX)
 }
 
-// The camera's x may go no further toward a wall than shows a metre beyond it.
+// The camera's x may go no further toward a wall than shows a metre beyond it (CAM_BEYOND_*:
+// further beyond an open edge, so the drop is in view). Either side is the stage's (stages.akr).
 fn cam_clamp_x(x: fixed, w: fixed) -> fixed {
-    let lim = max(CAM_WALL + 1.0 - w / 2, 0.0)
-    return clamp(x, -lim, lim)
+    let s = stage_now()
+    var bl = CAM_BEYOND_WALL
+    var br = CAM_BEYOND_WALL
+    if stage_open(s, 0) { bl = CAM_BEYOND_OPEN }
+    if stage_open(s, 1) { br = CAM_BEYOND_OPEN }
+    let lo = -(s.half + bl) + w / 2
+    let hi = s.half + br - w / 2
+    if lo > hi { return (lo + hi) / 2 }
+    return clamp(x, lo, hi)
 }
 
 fn cam_reset(x0: fixed, x1: fixed) {

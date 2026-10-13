@@ -32,6 +32,7 @@ import "beam_hud.akr"       // mx-beam: the chemical meter
 import "beam_fx.akr"        // mx-beam: Beam's effects
 import "tank_fx.akr"        // mx-tank: Tank's reactor glow, armour sparks and HUD meter
 import "twins_fx.akr"       // mx-twins-fight: the Twins' partner, the swap's flash, the fusion meter
+import "stage_select.akr"   // mx-stages: the stage select (stages.akr: the stages)
 
 // Input, replaced by the tests.
 weak fn input_pad(n: s32) -> u32 {
@@ -45,7 +46,7 @@ weak fn input_stick(n: s32) -> vec2 {
 weak fn test_init() {}
 weak fn test_hook() {}
 
-enum St { Title, Mode, Select, Vs, Fight, Results, Unlock }
+enum St { Title, Mode, Select, Vs, Fight, Results, Unlock, Stage }
 enum Game { Arcade, Versus, Training }
 
 const VS_FRAMES = 150
@@ -136,6 +137,7 @@ fn enter_title() {
     p_mech[0] = Mech.Hero
     p_mech[1] = Mech.Hero
     if echo_unlocked() { p_mech[1] = Mech.Doubleblade }
+    fight_stage(ST_HANGAR)
     fight_init(p_mech[0], p_mech[1], FightMode.Versus, 0)
     menus_hangar()
     cam_reset(-9.0, 9.0)
@@ -179,6 +181,7 @@ fn enter_fight() {
             lvl = 1
         }
     }
+    fight_stage(stage_pick())
     fight_init(p_mech[0], p_mech[1], fm, lvl)
     if game == Game.Training { fight_training(&train) }
     menus_hangar()
@@ -233,6 +236,7 @@ fn update() {
             if st_t >= VS_FRAMES || (st_t > 20 && any_pressed(A | START)) { enter_fight() }
         }
         Fight => update_fight()
+        Stage => update_stage_select()
         Results => update_results()
         Unlock => {
             if st_t > 90 && any_pressed(A | START) && !save_writing {
@@ -337,7 +341,7 @@ fn update_select() {
             p_mech[1] = sel_mech[1]
             p_cpu = game != Game.Versus || !sel_human2
             ladder = 0
-            enter_vs()
+            enter_stage_select()
         }
     } else {
         sel_ready_t = 0
@@ -616,6 +620,7 @@ fn draw() {
         }
         Results => draw_results()
         Unlock => draw_unlock()
+        Stage => draw_stage_select()
     }
 }
 

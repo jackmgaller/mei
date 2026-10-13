@@ -935,7 +935,8 @@ fn shots_tick() {
         if !s.on { continue }
         s.x += s.vx
         s.t += 1
-        if s.t > s.life || s.x > FIGHT_WALL || s.x < -FIGHT_WALL { s.on = false }
+        let half = stage_now().half
+        if s.t > s.life || s.x > half || s.x < -half { s.on = false }
     }
     // two shots that meet: the weaker goes, both if they are as strong (two waves both go)
     let s0 = &fight.shot[0]
@@ -1070,10 +1071,10 @@ fn bound() {
     if twins_in_fight { twins_bound() }     // the partners: walls, leash, the other mech's push box
 }
 
-// Keeps i inside the walls; returns how far it was moved back (signed).
+// Keeps i inside the stage's edges; returns how far it was moved back (signed).
 fn wall_clamp(i: s32) -> fixed {
     let f = &fight.f[i]
-    let lim = FIGHT_WALL - STATS[f.body].push
+    let lim = stage_now().half - STATS[f.body].push
     if f.x > lim { let c = lim - f.x; f.x = lim; return c }
     if f.x < -lim { let c = -lim - f.x; f.x = -lim; return c }
     return 0.0

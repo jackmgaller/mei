@@ -9,9 +9,11 @@ import "moves.akr"
 import "meter.akr"
 import "fighter.akr"
 import "cpu.akr"
+import "stages.akr"         // the stages: the half-width and the edges (mx-stages)
 
-const FIGHT_MAX_SEP: fixed = 36.0   // the fighters are never further apart than this (metres)
-const FIGHT_WALL: fixed = 36.0      // the hangar's walls at x = +-36
+const FIGHT_MAX_SEP: fixed = 36.0   // the fighters are never further apart than this (metres), on
+                                    // every stage (the camera's widest view); the stage's edges
+                                    // are its own (stages.akr, stage_now())
 const FIGHT_START_X: fixed = 9.0    // the rounds start at x = -9 and 9
 const ROUND_FRAMES = 3600           // 60 s
 const INTRO_FIRST = 90              // the first round's intro (both play `intro`)
@@ -73,6 +75,7 @@ struct Fight {
     freeze: s32             // frames left of hitstop or the super flash
     flash_side: s32         // whose super flash it is, or -1
     ticks: s32              // frames since fight_init
+    stage: s32              // the stage (a row of STAGES, stages.akr), from fight_stage()
 }
 
 // Hit: a hit landed (side: the attacker; x, y: the contact; power 0..3). Block, Chip: blocked,
@@ -107,6 +110,13 @@ struct MoveList { n: s32, e: [MOVES_MAX]MoveEntry }
 var fight: Fight
 var fight_ev: Events
 var fight_opts: TrainOpts
+var fight_stage_next: s32           // the stage the next fight_init() uses
+
+// The stage of the fights fight_init() starts from now on (ST_HANGAR until this is called).
+fn fight_stage(id: s32) { fight_stage_next = clamp(id, 0, STAGES_N - 1) }
+
+// The current fight's stage.
+fn stage_now() -> *Stage { return &STAGES[fight.stage] }
 
 fn ev_add(kind: Ev, side: s32, x: fixed, y: fixed, power: s32) {
     if fight_ev.n >= EVENTS_MAX { return }
@@ -123,6 +133,7 @@ fn fight_init(p1: Mech, p2: Mech, mode: FightMode, cpu_level: s32) {
     fight.round_winner = -1
     fight.winner = -1
     fight.flash_side = -1
+    fight.stage = fight_stage_next
     fight.f[0].mech = p1
     fight.f[1].mech = p2
     fight.f[0].meter = 0
