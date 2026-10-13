@@ -14,7 +14,7 @@
 const TW_Z: fixed = 1.2             // twin B is drawn this far behind the fight plane
 const TW_FLASH = 10                 // frames the swap's flash lasts
 const TW_A_COL: u32 = 0xFFE040      // twin A's accent, cyan (0xBBGGRR)
-const TW_B_COL: u32 = 0x60A0FF      // twin B's, until the model's colour is known: a warm amber
+const TW_B_COL: u32 = 0xAB4AFF      // twin B's, berry pink (the model's #ff4aab)
 
 // Whether the twins' bodies are still the exporter's stand-ins (no rig yet: the Hero's meshes),
 // drawn at the twins' size so the fight reads right until the models land.

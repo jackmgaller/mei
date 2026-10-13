@@ -206,8 +206,9 @@ frames late; combined, they are one mid-weight brawler; L switches, a move each 
   the menu page; texture slots 8 (fonts), 9 (UI sprites), 10 (effects); palettes 240–254 (244 is
   lent to the menu page and the hall's put back); a backdrop table at 0x582000; line channels 0,
   2 and 7. Priorities: BG2 0, BG1 1, the mechs 2, BG0 (the HUD's frame) 3, the interface list 4.
-- **Palettes, as built with Beam and Tank:** the pack's 4-bit palettes are 0–17 (its surface,
-  emissive and texture palettes), counting up from 0; its 8-bit palettes would come down from 14.
+- **Palettes, as built with Beam, Tank and the Twins:** the pack's 4-bit palettes are 0–25 (its
+  surface, emissive and texture palettes), counting up from 0; its 8-bit palettes would come down
+  from 14.
 - **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
   (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. A pool of 80 particles,
   at most 52 spawned a frame; at their busiest (scenarios 50–54) about 75,000 CPU cycles a frame
