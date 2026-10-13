@@ -494,8 +494,8 @@ drive sprockets (`foot_r`, `foot_l`) turn, about 4° a frame forward in `walk_f`
 speed over the sprocket's 0.78 m radius) and 3.3° a frame backward in `walk_b`. The body sways
 very little, a slow 2° roll of the torso over the cycle and the fists bobbing a little out of
 phase, so the motion reads as an engine idling under load rather than a gait. The treads stay
-flat on the floor in every ground move. The fight plays no step sound for Tank; a tread rumble
-is on the sound list for the next audio round.
+flat on the floor in every ground move. The fight plays no step sound for Tank; the game plays
+a tread rumble while it glides (`tank_fx.akr`'s `tank_sfx`).
 
 **The jump** is a heave: a 6-frame squat (the torso pitches forward 15°, the arms swing back),
 a launch with both arms thrown up, the treads hanging level in the air, and a hard landing that
