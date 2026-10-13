@@ -305,6 +305,11 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
             // the wave along the floor: blocked while it is far, jumped only once it is close
             // enough to pass under the jump (mx-balance)
             let tt = ((abs(s.x - me.x) - s.half - STATS[me.body].push) / abs(s.vx)) as s32
+            // Beam answers the wave from far with a charged orb, which trades with it (MOVES.md)
+            if me.mech == Mech.Beam && tt > 48 && !fight.shot[i].on && roll(c, lv.aa) {
+                c.charge_want = ORB_CHARGE_HALF + 4
+                return B
+            }
             if tt > 24 { return hold(c, R, min(tt - 20, 20)) }
             if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
             if tt >= 8 && roll(c, lv.aa / 2) { return fwd | X }
