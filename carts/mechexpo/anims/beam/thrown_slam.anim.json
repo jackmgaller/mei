@@ -1,0 +1,17 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Thrown by Tank's Atomic Clinch or Chain Reaction (56 frames, slam on 33; the root's path is this move's motion): the Hero's (base) on Beam's rig: caught by the shoulders, hauled up and tipped back over Tank's head, held overhead face up and struggling, the cannon arm clawing at Tank's wrists with the cannon pointing up and away; swung down and slammed flat on its back, a bounce, then still in the knockdown's pose with the cannon lying along the floor (its last frame is getup's first).",
+  "base": "../hero/thrown_slam.anim.json",
+  "rig": "../../models/beam/beam.rig.json",
+  "keys": [
+    {"at": 0, "pose": {"forearm_r": [70, 0, 8], "hand_r": [10, 0, 0]}},
+    {"at": 5, "pose": {"forearm_r": [60, 0, 8]}},
+    {"at": 13, "pose": {"forearm_r": [70, 0, 8], "hand_r": [6, 0, 0]}},
+    {"at": 23, "pose": {"forearm_r": [30, 0, 8], "hand_r": [0, 0, 0]}},
+    {"at": 33, "pose": {"forearm_r": [16, 0, 8], "hand_r": [0, 0, 0]}},
+    {"at": 37, "pose": {"forearm_r": [20, 0, 8]}},
+    {"at": 41, "pose": {"forearm_r": [16, 0, 8]}}
+  ],
+  "allow": [["forearm_r", "weapon_r"]]
+}
