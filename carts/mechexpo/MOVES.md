@@ -307,7 +307,7 @@ short and late off the ground.
 
 | Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | On block / hit | Hit box |
 |---|---|---|---|---|---|---|---|---|
-| `atk_n` Arc Jab | 6 | 3 | 15 | 24 | 65 | 19 / 14 | −4 / +1 | x 1.8–5.6, y 6–9 |
+| `atk_n` Arc Jab | 6 | 3 | 15 | 24 | 65 | 19 / 14 | −4 / +1 | x 1.8–9.0, y 6–9 |
 | `atk_f` Static Lance | 14 | 4 | 22 | 40 | 110 | 26 / 19 | −7 / 0 | x 3.5–10.0, y 6–8.5 |
 | `atk_d` Ground Spark | 12 | 5 | 24 | 41 | 85, knockdown | — / 16 | −13 / KD +41 | x 1.5–7.5, y 0–2 |
 | `atk_air` Down Arc | 9 | 6 | to landing | 32 | 90 | 20 / 15 | by height | x 0.5–5.5, y −3–3 (from the root, in the air) |
@@ -318,8 +318,11 @@ boxes, against a standing Hero.)
 - **Arc Jab** (`atk_n`): Beam's answer up close and the chain's start. The cannon is short-armed
   straight forward, muzzle first, a stab with a crackle at the muzzle (frames 1–5: the elbow
   draws back 20°, the cannon tilts up a little; 6–8: the arm punches out level, the muzzle at
-  about 5 m; then it is pulled back to the guard by frame 20). Little body motion: the torso
-  turns into it 10°. The arm is hurtable to 3 m out from frame 7 until it is back.
+  about 9 m; then it is pulled back to the guard by frame 20). Little body motion: the torso
+  turns into it 10°. The hit box is the whole cannon, fist to muzzle (the owner's call,
+  2026-10-13: the jab reaches as far as it looks). The arm is hurtable to about 4 m out from
+  frame 7 until it is back, and the cannon to its muzzle on frames 6–14, so a jab thrown from
+  too far can be hit on the barrel.
 - **Static Lance** (`atk_f`): the footsie poke, shorter than the Hero's Tip Thrust. A half step
   (0.8 m over frames 4–13, the right foot sliding forward) and the cannon thrust out at full
   length, both arms (the left hand leaves the barrel and pushes the cannon's body), an arc
