@@ -1,0 +1,33 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "KO (90 frames, after hit_air lands on the finishing hit; the last frame is held): the knockdown's fall flat on its back and bounce, a moment still (the head lolls, a claw twitches open and shut), then it crumples into its cape: the long arms fold in over the chest with the claws curled shut on it, the pauldrons' cape plates swing up and close over the arms like folded wings, the knees sag apart and the head turns aside, still.",
+  "base": "knockdown.anim.json",
+  "length": 90,
+  "keys": [
+    {"at": 20, "remove": true},
+    {"at": 31, "remove": true},
+    {"at": 22, "ease": "ease", "offset": [-0.6, -4.79],
+     "pose": {"head": [10, 20, 0], "thigh_r": [26, 0, -18], "shin_r": [-46, 0, 0],
+              "thigh_l": [18, 0, 16], "shin_l": [-38, 0, 0], "weapon_r": [-4, 0, 0]}},
+    {"at": 28, "ease": "ease", "pose": {"weapon_r": [-36, 0, 0], "head": [12, 22, 0]}},
+    {"at": 34, "ease": "ease", "offset": [-0.6, -4.79],
+     "pose": {"upper_arm_r": [150, 0, 20], "forearm_r": [40, 0, 12], "weapon_r": [10, 0, 0],
+              "upper_arm_l": [150, 0, -20], "forearm_l": [40, 0, -10]}},
+    {"at": 50, "ease": "out", "offset": [-0.6, -4.79],
+     "pose": {"head": [4, 30, 0], "upper_arm_r": [24, 0, -10], "forearm_r": [92, 0, 12],
+              "hand_r": [-20, 0, 0], "weapon_r": [-36, 0, 0], "upper_arm_l": [28, 0, 10],
+              "forearm_l": [88, 0, -10], "hand_l": [-20, 0, 0], "weapon_l": [-36, 0, 0],
+              "pauldron_r": [60, 0, -12], "pauldron_l": [64, 0, 12], "thigh_r": [30, 0, -24],
+              "shin_r": [-56, 0, 0], "thigh_l": [8, 0, 22], "shin_l": [-20, 0, 0]},
+     "aim": {"weapon_r": [-10, 4], "weapon_l": [-10, 8]}},
+    {"at": 64, "ease": "ease", "offset": [-0.6, -4.79],
+     "pose": {"head": [6, 34, 0], "upper_arm_r": [20, 0, -10], "forearm_r": [96, 0, 12],
+              "upper_arm_l": [24, 0, 10], "forearm_l": [92, 0, -10], "pauldron_r": [76, 0, -8],
+              "pauldron_l": [80, 0, 8], "thigh_r": [22, 0, -28], "shin_r": [-44, 0, 0]},
+     "aim": {"weapon_r": [-14, 4], "weapon_l": [-14, 8]}},
+    {"at": 89, "offset": [-0.6, -4.79],
+     "pose": {"head": [6, 36, 0], "pauldron_r": [78, 0, -8], "pauldron_l": [82, 0, 8],
+              "thigh_r": [20, 0, -30], "shin_r": [-40, 0, 0]}}
+  ]
+}
