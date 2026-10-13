@@ -1,0 +1,29 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Block: 4 frames to raise the guard, then the last frame is held (the fight shakes it in blockstun). The wrist snaps the cannon up nearly upright in front of the chest and face, its armoured capacitor body to the other mech like a shield, the left forearm braced up behind it; the body sinks onto bent knees and leans into the block, the head down behind the barrel.",
+  "base": "_body.anim.json",
+  "length": 4,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}},
+    {
+      "at": 3,
+      "offset": [-0.25, -1.0],
+      "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]},
+      "pose": {
+        "pelvis": [-4, -8, 0],
+        "torso": [-8, -14, 0],
+        "head": [14, 12, 0],
+        "upper_arm_r": [30, 0, -10],
+        "forearm_r": [84, 0, 8],
+        "hand_r": [58, 0, 0],
+        "upper_arm_l": [52, 0, 12],
+        "forearm_l": [102, 0, -24],
+        "hand_l": [0, 0, 0],
+        "pauldron_r": [10, 0, -5],
+        "pauldron_l": [17.3, 0, 6]
+      }
+    }
+  ],
+  "allow": [["forearm_r", "weapon_r"]]
+}

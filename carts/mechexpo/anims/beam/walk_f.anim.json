@@ -1,0 +1,115 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Walk forward: the heaviest walk of the three, 52 frames for 3.2 m (0.062 m a frame, the fight's walk speed: each planted foot slides back 0.062 m a frame against the root so it stays put on the floor). Long plants: each foot is down for 34 frames and swings for 18, so both feet are down on 0-7 and 26-33. The right foot plants on 0, the left on 26 (step marks); the pelvis drops 0.2 m into each plant and rises 0.47 m over the passing foot, turning with the hips while the torso counter-turns, and the cannon arm works under it so the muzzle stays level and within 0.15 m of one place: an instrument carried, not swung.",
+  "base": "_body.anim.json",
+  "length": 52,
+  "loop": true,
+  "marks": {"step": [0, 26]},
+  "keys": [
+    {
+      "at": 0,
+      "ease": "out",
+      "offset": [0.1, -0.75],
+      "pose": {
+        "pelvis": [-2, -10, 2],
+        "torso": [-6, -2, -1],
+        "head": [2, 12, 0],
+        "upper_arm_r": [-10, 0, -10],
+        "forearm_r": [104, 0, 8],
+        "hand_r": [0, 0, 0],
+        "pauldron_r": [-3.3, 0, -5]
+      },
+      "reach": {"foot_r": [0.75, 0.0], "foot_l": [-0.862, 0.0]}
+    },
+    {"at": 1, "ease": "linear", "reach": {"foot_r": [0.688, 0.0], "foot_l": [-0.924, 0.0]}},
+    {
+      "at": 4,
+      "ease": "ease",
+      "offset": [0.1, -0.95],
+      "pose": {
+        "pelvis": [-3, -10, 2],
+        "torso": [-7, -2, -1],
+        "head": [3, 12, 0],
+        "upper_arm_r": [-11, 0, -10],
+        "forearm_r": [111, 0, 8],
+        "hand_r": [-3, 0, 0],
+        "pauldron_r": [-3.7, 0, -5]
+      }
+    },
+    {"at": 7, "reach": {"foot_l": [-1.296, 0.0]}, "ease": "linear"},
+    {"at": 8, "reach": {"foot_l": [-1.36, 0.05]}, "ease": "linear"},
+    {"at": 11, "reach": {"foot_l": [-1.25, 0.5]}, "ease": "linear"},
+    {"at": 14, "reach": {"foot_l": [-0.85, 0.85]}, "ease": "linear"},
+    {
+      "at": 16,
+      "ease": "ease",
+      "offset": [0.1, -0.48],
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [-4, -6, 0],
+        "head": [1, 10, 0],
+        "upper_arm_r": [-7, 0, -10],
+        "forearm_r": [91, 0, 8],
+        "hand_r": [7, 0, 0],
+        "pauldron_r": [-2.3, 0, -5]
+      }
+    },
+    {"at": 17, "reach": {"foot_l": [-0.3, 0.95]}, "ease": "linear"},
+    {"at": 20, "reach": {"foot_l": [0.25, 0.8]}, "ease": "linear"},
+    {"at": 23, "reach": {"foot_l": [0.62, 0.4]}, "ease": "linear"},
+    {"at": 25, "reach": {"foot_l": [0.74, 0.08]}, "ease": "linear"},
+    {
+      "at": 26,
+      "ease": "out",
+      "offset": [0.1, -0.75],
+      "pose": {
+        "pelvis": [-2, -2, -2],
+        "torso": [-6, -10, 1],
+        "head": [2, 8, 0],
+        "upper_arm_r": [-9, 0, -10],
+        "forearm_r": [102, 0, 8],
+        "hand_r": [3, 0, 0],
+        "pauldron_r": [-3, 0, -5]
+      },
+      "reach": {"foot_l": [0.75, 0.0]}
+    },
+    {"at": 27, "ease": "linear", "reach": {"foot_l": [0.688, 0.0]}},
+    {
+      "at": 30,
+      "ease": "ease",
+      "offset": [0.1, -0.95],
+      "pose": {
+        "pelvis": [-3, -2, -2],
+        "torso": [-7, -10, 1],
+        "head": [3, 8, 0],
+        "upper_arm_r": [-11, 0, -10],
+        "forearm_r": [109, 0, 8],
+        "hand_r": [-1, 0, 0],
+        "pauldron_r": [-3.7, 0, -5]
+      }
+    },
+    {"at": 33, "reach": {"foot_r": [-1.296, 0.0]}, "ease": "linear"},
+    {"at": 34, "reach": {"foot_r": [-1.36, 0.05]}, "ease": "linear"},
+    {"at": 37, "reach": {"foot_r": [-1.25, 0.5]}, "ease": "linear"},
+    {"at": 40, "reach": {"foot_r": [-0.85, 0.85]}, "ease": "linear"},
+    {
+      "at": 42,
+      "ease": "ease",
+      "offset": [0.1, -0.48],
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [-4, -6, 0],
+        "head": [1, 10, 0],
+        "upper_arm_r": [-7, 0, -10],
+        "forearm_r": [91, 0, 8],
+        "hand_r": [7, 0, 0],
+        "pauldron_r": [-2.3, 0, -5]
+      }
+    },
+    {"at": 43, "reach": {"foot_r": [-0.3, 0.95]}, "ease": "linear"},
+    {"at": 46, "reach": {"foot_r": [0.25, 0.8]}, "ease": "linear"},
+    {"at": 49, "reach": {"foot_r": [0.62, 0.4]}, "ease": "linear"},
+    {"at": 51, "reach": {"foot_r": [0.74, 0.08], "foot_l": [-0.8, 0.0]}, "ease": "linear"}
+  ]
+}

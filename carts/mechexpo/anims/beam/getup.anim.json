@@ -1,0 +1,14 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Get up: the Hero's (base) on Beam's rig: rolls up onto its seat with the knees drawn in, the right elbow pushing off the floor with the cannon held clear of it, rocks forward into a deep crouch with the cannon coming back onto the line, and drives up into Beam's guard.",
+  "base": "../hero/getup.anim.json",
+  "rig": "../../models/beam/beam.rig.json",
+  "keys": [
+    {"at": 0, "pose": {"forearm_r": [16, 0, 8], "hand_r": [0, 0, 0]}},
+    {"at": 6, "pose": {"upper_arm_r": [-10, 0, -24], "forearm_r": [90, 0, 8], "hand_r": [10, 0, 0]}},
+    {"at": 11, "pose": {"upper_arm_r": [0, 0, -12], "forearm_r": [116, 0, 8], "hand_r": [0, 0, 0], "upper_arm_l": [24, 0, 14], "forearm_l": [110, 0, -24]}},
+    {"at": 19, "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}}
+  ],
+  "allow": [["forearm_r", "weapon_r"], ["torso", "thigh_r"], ["torso", "thigh_l"], ["pelvis", "shin_l"], ["pelvis", "shin_r"]]
+}

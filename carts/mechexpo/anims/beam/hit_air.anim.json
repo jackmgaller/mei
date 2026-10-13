@@ -1,0 +1,13 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Hit in the air (and the start of every knockdown): the Hero's (base) on Beam's rig: the body jolts back and keeps rotating back about the pelvis to 60 degrees, limbs loose, the cannon arm flung up and back with the cannon trailing, the legs swinging forward and apart.",
+  "base": "../hero/hit_air.anim.json",
+  "rig": "../../models/beam/beam.rig.json",
+  "keys": [
+    {"at": 0, "pose": {"forearm_r": [40, 0, 8], "hand_r": [10, 0, 0]}},
+    {"at": 6, "pose": {"forearm_r": [30, 0, 8], "hand_r": [10, 0, 0]}},
+    {"at": 29, "pose": {"forearm_r": [24, 0, 8], "hand_r": [6, 0, 0]}}
+  ],
+  "allow": [["forearm_r", "weapon_r"]]
+}

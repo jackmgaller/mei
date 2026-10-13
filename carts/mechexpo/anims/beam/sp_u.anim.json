@@ -1,0 +1,137 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Thunder Pillar (MOVES.md): the anti-air. No jump, no root motion. Frames 0-6: the knees bend and the cannon swings up from the guard, past the face (in front of the head and clear of the raked-back antenna) to point straight up in front of the head, the left fist braced at the chest; invulnerable on 0-6. Frames 7-14: the column of lightning goes up from just in front (the hit box is the column, a fixed rectangle x 0.5-5, y 6-16), the discharge driving the body down 0.3 m and the cannon shuddering. Then 27 frames of recovery bringing the cannon back down to the guard. Knocks down.",
+  "base": "_body.anim.json",
+  "length": 42,
+  "phases": {"startup": 7, "active": 8, "recovery": 27},
+  "design": {"hit": [0.5, 6.0, 5.0, 16.0], "tolerance": 0.2, "note": "MOVES.md, Thunder Pillar: x 0.5-5, y 6-16"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in"},
+    {
+      "at": 3,
+      "ease": "linear",
+      "offset": [-0.05, -0.9],
+      "pose": {
+        "pelvis": [-2, -8, 0],
+        "torso": [-4, -8, 0],
+        "head": [-4, 10, 0],
+        "upper_arm_r": [60, 0, -10],
+        "forearm_r": [70, 0, 8],
+        "hand_r": [14, 0, 0],
+        "upper_arm_l": [30, 0, 12],
+        "forearm_l": [108, 0, -24],
+        "pauldron_r": [20, 0, -5],
+        "pauldron_l": [10, 0, 6]
+      }
+    },
+    {
+      "at": 6,
+      "ease": "out",
+      "offset": [-0.1, -1.4],
+      "pose": {
+        "pelvis": [-2, -8, 0],
+        "torso": [-4, -8, 0],
+        "head": [-12, 10, 0],
+        "upper_arm_r": [118, 0, -10],
+        "forearm_r": [43, 0, 8],
+        "hand_r": [19, 0, 0],
+        "upper_arm_l": [39, 0, 12],
+        "forearm_l": [117, 0, -24],
+        "pauldron_r": [39.3, 0, -5],
+        "pauldron_l": [13, 0, 6]
+      }
+    },
+    {
+      "at": 7,
+      "ease": "out",
+      "offset": [-0.2, -1.7],
+      "boxes": {"pillar": {"kind": "hit", "rect": [0.5, 6.0, 5.0, 16.0]}},
+      "pose": {
+        "pelvis": [0, -8, 0],
+        "torso": [0, -8, 0],
+        "head": [-14, 10, 0],
+        "upper_arm_r": [94, 0, -10],
+        "forearm_r": [66, 0, 8],
+        "hand_r": [12, 0, 0],
+        "upper_arm_l": [37, 0, 12],
+        "forearm_l": [103, 0, -24],
+        "pauldron_r": [31.3, 0, -5],
+        "pauldron_l": [12.3, 0, 6]
+      }
+    },
+    {
+      "at": 9,
+      "ease": "linear",
+      "offset": [-0.15, -1.55],
+      "pose": {
+        "pelvis": [-1, -8, 0],
+        "torso": [-2, -8, 0],
+        "head": [-13, 10, 0],
+        "upper_arm_r": [104, 0, -10],
+        "forearm_r": [56, 0, 8],
+        "hand_r": [16, 0, 0]
+      }
+    },
+    {
+      "at": 11,
+      "ease": "linear",
+      "offset": [-0.2, -1.68],
+      "pose": {
+        "pelvis": [0, -8, 0],
+        "torso": [0, -8, 0],
+        "upper_arm_r": [96, 0, -10],
+        "forearm_r": [64, 0, 8],
+        "hand_r": [13, 0, 0]
+      }
+    },
+    {
+      "at": 14,
+      "ease": "ease",
+      "offset": [-0.15, -1.6],
+      "pose": {
+        "pelvis": [-1, -8, 0],
+        "torso": [-2, -8, 0],
+        "upper_arm_r": [102, 0, -10],
+        "forearm_r": [58, 0, 8],
+        "hand_r": [15, 0, 0]
+      }
+    },
+    {"at": 15, "boxes": {"pillar": null}},
+    {
+      "at": 22,
+      "ease": "ease",
+      "offset": [-0.15, -1.4],
+      "pose": {
+        "pelvis": [-1, -8, 0],
+        "torso": [-3, -8, 0],
+        "head": [-4, 10, 0],
+        "upper_arm_r": [70, 0, -10],
+        "forearm_r": [70, 0, 8],
+        "hand_r": [12, 0, 0],
+        "pauldron_r": [23.3, 0, -5]
+      }
+    },
+    {
+      "at": 32,
+      "ease": "ease",
+      "offset": [-0.05, -0.8],
+      "pose": {
+        "pelvis": [0, -7, 0],
+        "torso": [-4, -7, 0],
+        "head": [4, 10, 0],
+        "upper_arm_r": [14, 0, -10],
+        "forearm_r": [80, 0, 8],
+        "hand_r": [4, 0, 0],
+        "upper_arm_l": [20, 0, 12],
+        "forearm_l": [100, 0, -24],
+        "pauldron_r": [4.7, 0, -5],
+        "pauldron_l": [6.7, 0, 6]
+      }
+    },
+    {"at": 41, "from": "guard"}
+  ],
+  "plant": {"foot_r": [[0, 41]], "foot_l": [[0, 41]]},
+  "marks": {"invuln": [[0, 6]]},
+  "allow": [["forearm_r", "weapon_r"]]
+}

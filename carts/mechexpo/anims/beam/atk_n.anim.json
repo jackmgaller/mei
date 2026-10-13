@@ -1,0 +1,113 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Arc Jab (MOVES.md): Beam's quick answer up close and the chain's start. Frames 0-5: the elbow draws back 20 degrees and the cannon tips up 7, the hips sink and the torso turns away a little (the cocking); 6-8: the arm punches out level, the torso turning 10 degrees into it, the fist and the capacitor body leading (the hit box follows them: x 1.8-5.6, y 6-9; the barrel runs on past it); then the arm is drawn straight back and the cannon is level in the guard by frame 20. The arm is hurtable out to the fist from frame 7 until it is back (forearm and hand boxes, the fist at 3.9 m).",
+  "base": "_body.anim.json",
+  "length": 24,
+  "phases": {"startup": 6, "active": 3, "recovery": 15},
+  "design": {"hit": [1.8, 6.0, 5.6, 9.0], "tolerance": 0.5, "note": "MOVES.md, Arc Jab: x 1.8-5.6, y 6-9"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease", "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}},
+    {
+      "at": 3,
+      "ease": "ease",
+      "offset": [-0.1, -0.68],
+      "pose": {
+        "pelvis": [0, -3, 0],
+        "torso": [-3, -2, 0],
+        "head": [5, 8, 0],
+        "upper_arm_r": [-6, 0, -10],
+        "forearm_r": [94, 0, 8],
+        "hand_r": [8, 0, 0],
+        "pauldron_r": [-2, 0, -5]
+      }
+    },
+    {
+      "at": 5,
+      "ease": "in",
+      "offset": [-0.15, -0.75],
+      "pose": {
+        "pelvis": [0, -2, 0],
+        "torso": [-2, 0, 0],
+        "head": [6, 6, 0],
+        "upper_arm_r": [-10, 0, -10],
+        "forearm_r": [96, 0, 8],
+        "hand_r": [13, 0, 0],
+        "upper_arm_l": [20, 0, 12],
+        "forearm_l": [100, 0, -24],
+        "pauldron_r": [-3.3, 0, -5]
+      }
+    },
+    {
+      "at": 6,
+      "ease": "linear",
+      "offset": [0.1, -0.72],
+      "boxes": {
+        "jab": {"kind": "hit", "part": "weapon_r", "min": [-0.7, -0.6, -1.0], "max": [0.7, 2.1, 2.2]}
+      },
+      "pose": {
+        "pelvis": [-2, -10, 0],
+        "torso": [-5, -9, 0],
+        "head": [1, 15, 0],
+        "upper_arm_r": [18, 12, -10],
+        "forearm_r": [80, 0, 8],
+        "hand_r": [-1, 0, 0],
+        "upper_arm_l": [16, 0, 12],
+        "forearm_l": [104, 0, -24],
+        "pauldron_r": [6, 0, -5]
+      }
+    },
+    {
+      "at": 8,
+      "ease": "out",
+      "offset": [0.15, -0.7],
+      "pose": {
+        "pelvis": [-2, -12, 0],
+        "torso": [-6, -10, 0],
+        "head": [0, 16, 0],
+        "upper_arm_r": [24, 15, -10],
+        "forearm_r": [75, 0, 8],
+        "hand_r": [-3, 0, 0],
+        "upper_arm_l": [14, 0, 12],
+        "forearm_l": [107, 0, -24],
+        "pauldron_r": [8, 0, -5],
+        "pauldron_l": [4.7, 0, 6]
+      }
+    },
+    {"at": 9, "boxes": {"jab": null}},
+    {
+      "at": 12,
+      "ease": "ease",
+      "offset": [0.12, -0.7],
+      "pose": {
+        "pelvis": [-1, -11, 0],
+        "torso": [-6, -9, 0],
+        "head": [1, 15, 0],
+        "upper_arm_r": [20, 12, -10],
+        "forearm_r": [80, 0, 8],
+        "hand_r": [-2, 0, 0],
+        "pauldron_r": [6.7, 0, -5]
+      }
+    },
+    {
+      "at": 20,
+      "ease": "ease",
+      "offset": [0.02, -0.52],
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [-4, -6, 0],
+        "head": [3, 10, 0],
+        "upper_arm_r": [3, 0, -10],
+        "forearm_r": [86, 0, 8],
+        "hand_r": [1, 0, 0],
+        "upper_arm_l": [18, 0, 12],
+        "forearm_l": [97, 0, -24],
+        "pauldron_r": [1, 0, -5],
+        "pauldron_l": [6.3, 0, 6]
+      }
+    },
+    {"at": 23, "from": "guard", "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}}
+  ],
+  "marks": {"cancel": [[6, 14]]},
+  "allow": [["forearm_r", "weapon_r"]]
+}

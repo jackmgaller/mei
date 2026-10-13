@@ -1,0 +1,144 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Arc Lance (MOVES.md): the long-range beam. No root motion. Frames 0-11: Beam plants, squares its shoulders to the other mech and levels the cannon at chest height with both hands (the left under the barrel), the body sinking 0.4 m; 11-17 it holds, braced, while the coils charge; frame 18 the beam fires (the hit box is the bolt, a fixed rectangle x 2.5-15, y 6-8, frames 18-23): the recoil drives the body back 0.35 m and kicks the cannon up a few degrees, held shuddering for the 6 frames. Then 20 frames of recovery: the left hand comes off, the smoking barrel is lowered, and it comes back up into the guard. The arm and the cannon's body are hurtable out to 5.5 m from frame 18 to 33 (the 'cannon' hurt box).",
+  "base": "_body.anim.json",
+  "length": 44,
+  "phases": {"startup": 18, "active": 6, "recovery": 20},
+  "design": {"hit": [2.5, 6.0, 15.0, 8.0], "tolerance": 0.2, "note": "MOVES.md, Arc Lance: x 2.5-15, y 6-8"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease"},
+    {
+      "at": 5,
+      "ease": "ease",
+      "offset": [-0.2, -0.8],
+      "pose": {
+        "pelvis": [-2, -6, 0],
+        "torso": [-4, 10, 0],
+        "head": [6, 0, 0],
+        "upper_arm_r": [7, -4, -10],
+        "forearm_r": [59, 0, 8],
+        "hand_r": [35, 0, 0],
+        "upper_arm_l": [22, 0, 12],
+        "forearm_l": [87, 0, -24],
+        "hand_l": [-20, 0, 0],
+        "pauldron_r": [2.3, 0, -5],
+        "pauldron_l": [7.3, 0, 6]
+      }
+    },
+    {
+      "at": 11,
+      "ease": "ease",
+      "offset": [-0.1, -0.9],
+      "pose": {
+        "pelvis": [-4, -4, 0],
+        "torso": [-8, 14, 0],
+        "head": [8, -4, 0],
+        "upper_arm_r": [63, -6, -10],
+        "forearm_r": [18, 0, 8],
+        "hand_r": [23, 0, 0],
+        "upper_arm_l": [62, 0, 12],
+        "forearm_l": [37, 0, -24],
+        "hand_l": [-30, 0, 0],
+        "pauldron_r": [21, 0, -5],
+        "pauldron_l": [20.7, 0, 6]
+      }
+    },
+    {
+      "at": 17,
+      "ease": "linear",
+      "offset": [-0.05, -0.95],
+      "pose": {
+        "pelvis": [-5, -4, 0],
+        "torso": [-9, 14, 0],
+        "head": [9, -4, 0],
+        "upper_arm_r": [64, -6, -10],
+        "forearm_r": [18, 0, 8],
+        "hand_r": [23, 0, 0]
+      }
+    },
+    {
+      "at": 18,
+      "ease": "out",
+      "offset": [-0.3, -0.92],
+      "boxes": {
+        "bolt": {"kind": "hit", "rect": [2.5, 6.0, 15.0, 8.0]},
+        "cannon": {"kind": "hurt", "part": "weapon_r", "min": [-0.5, -0.1, -2.0], "max": [0.5, 1.3, 0.6]}
+      },
+      "pose": {
+        "pelvis": [0, -4, 0],
+        "torso": [-2, 14, 0],
+        "head": [2, -4, 0],
+        "upper_arm_r": [62, -6, -10],
+        "forearm_r": [14, 0, 8],
+        "hand_r": [19, 0, 0],
+        "upper_arm_l": [68, 0, 12],
+        "forearm_l": [20, 0, -24]
+      }
+    },
+    {
+      "at": 20,
+      "ease": "linear",
+      "offset": [-0.42, -0.95],
+      "pose": {
+        "pelvis": [2, -4, 0],
+        "torso": [0, 14, 0],
+        "head": [0, -4, 0],
+        "upper_arm_r": [60, -6, -10],
+        "forearm_r": [12, 0, 8],
+        "hand_r": [19, 0, 0],
+        "upper_arm_l": [70, 0, 12],
+        "forearm_l": [12, 0, -24]
+      }
+    },
+    {
+      "at": 23,
+      "ease": "ease",
+      "offset": [-0.45, -0.97],
+      "pose": {
+        "pelvis": [2, -4, 0],
+        "torso": [1, 14, 0],
+        "upper_arm_r": [59, -6, -10],
+        "forearm_r": [12, 0, 8],
+        "hand_r": [19, 0, 0]
+      }
+    },
+    {"at": 24, "boxes": {"bolt": null}},
+    {
+      "at": 28,
+      "ease": "ease",
+      "offset": [-0.35, -0.95],
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [-4, 4, 0],
+        "head": [10, 6, 0],
+        "upper_arm_r": [12, -4, -10],
+        "forearm_r": [64, 0, 8],
+        "hand_r": [4, 0, 0],
+        "upper_arm_l": [20, 0, 12],
+        "forearm_l": [96, 0, -24],
+        "hand_l": [-10, 0, 0],
+        "pauldron_r": [4, 0, -5],
+        "pauldron_l": [6.7, 0, 6]
+      }
+    },
+    {"at": 34, "boxes": {"cannon": null}},
+    {
+      "at": 38,
+      "ease": "ease",
+      "offset": [-0.15, -0.7],
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [-4, -4, 0],
+        "head": [6, 10, 0],
+        "upper_arm_r": [4, 0, -10],
+        "forearm_r": [78, 0, 8],
+        "hand_r": [2, 0, 0],
+        "pauldron_r": [1.3, 0, -5]
+      }
+    },
+    {"at": 43, "from": "guard"}
+  ],
+  "plant": {"foot_r": [[0, 43]], "foot_l": [[0, 43]]},
+  "allow": [["forearm_r", "weapon_r"], ["forearm_l", "weapon_r"], ["hand_l", "weapon_r"]]
+}

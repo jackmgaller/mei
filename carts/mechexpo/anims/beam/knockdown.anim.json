@@ -1,0 +1,12 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Knockdown: the Hero's (base) on Beam's rig: slams flat on its back, bounces and lies still, the cannon arm flung out over the head with the cannon lying along the floor.",
+  "base": "../hero/knockdown.anim.json",
+  "rig": "../../models/beam/beam.rig.json",
+  "keys": [
+    {"at": 0, "pose": {"forearm_r": [24, 0, 8], "hand_r": [6, 0, 0]}},
+    {"at": 3, "pose": {"forearm_r": [16, 0, 8], "hand_r": [0, 0, 0]}}
+  ],
+  "allow": [["forearm_r", "weapon_r"]]
+}

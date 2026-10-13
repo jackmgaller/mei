@@ -1,0 +1,16 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "KO: the Hero's (base) on Beam's rig: the knockdown's heavy fall and bounce, then the head lolls, the cannon arm lifts once, shakily, the cannon wavering up off the floor (frames 40-52), and drops back; the knees slide down flat and it powers down, still.",
+  "base": "../hero/ko.anim.json",
+  "rig": "../../models/beam/beam.rig.json",
+  "keys": [
+    {"at": 0, "pose": {"forearm_r": [24, 0, 8], "hand_r": [6, 0, 0]}},
+    {"at": 3, "pose": {"forearm_r": [16, 0, 8], "hand_r": [0, 0, 0]}},
+    {"at": 40, "pose": {"forearm_r": [10, 0, 8]}},
+    {"at": 47, "pose": {"forearm_r": [40, 0, 8], "hand_r": [-20, 0, 0]}},
+    {"at": 52, "pose": {"forearm_r": [44, 0, 8], "hand_r": [-14, 0, 0]}},
+    {"at": 57, "pose": {"forearm_r": [6, 0, 8], "hand_r": [0, 0, 0]}}
+  ],
+  "allow": [["forearm_r", "weapon_r"]]
+}

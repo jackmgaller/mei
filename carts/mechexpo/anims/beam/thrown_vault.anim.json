@@ -1,0 +1,12 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Thrown by the Vault Throw: the Hero's (base) on Beam's rig: yanked forward by the shoulders, tipped over the thrower's head, upside down at the top, slammed flat on its back on the far side. The cannon trails along the arm.",
+  "base": "../hero/thrown_vault.anim.json",
+  "rig": "../../models/beam/beam.rig.json",
+  "keys": [
+    {"at": 0, "pose": {"forearm_r": [70, 0, 8], "hand_r": [10, 0, 0]}},
+    {"at": 28, "pose": {"forearm_r": [16, 0, 8], "hand_r": [0, 0, 0]}}
+  ],
+  "allow": [["forearm_r", "weapon_r"]]
+}

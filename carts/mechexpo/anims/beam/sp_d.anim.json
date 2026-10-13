@@ -1,0 +1,91 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Reaction Prime (MOVES.md): the chemical meter's prime, not an attack. Frames 0-12: Beam sets its feet, swings the cannon in to stand it on its hip (the capacitor body at the hip, the barrel up at 57 degrees), and reaches back over its left shoulder with the left hand, the head turning to look back, and turns the valve between the tanks (the hand twisting on 9-12); 13-29: it holds still, braced, a slow tremor running through it as the tanks flare (the exposed moment); frame 30 (the release mark) the reaction starts: a jolt through the body, the pelvis kicked down and the chest thrown back, the left hand snapping off the valve; then 13 frames back to the guard.",
+  "base": "_body.anim.json",
+  "length": 44,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease"},
+    {
+      "at": 5,
+      "ease": "ease",
+      "offset": [-0.05, -0.75],
+      "pose": {
+        "pelvis": [0, -4, 0],
+        "torso": [0, 0, -2],
+        "head": [0, 18, 0],
+        "upper_arm_r": [-6, 0, -10],
+        "forearm_r": [92, 0, 8],
+        "hand_r": [36, 0, 0],
+        "upper_arm_l": [100, 0, 14],
+        "forearm_l": [100, 0, -12],
+        "hand_l": [-10, 0, 0],
+        "pauldron_r": [-2, 0, -5],
+        "pauldron_l": [33.3, 0, 7]
+      }
+    },
+    {
+      "at": 9,
+      "ease": "ease",
+      "offset": [-0.1, -0.9],
+      "pose": {
+        "pelvis": [0, -4, 0],
+        "torso": [2, 4, -4],
+        "head": [-6, 24, 0],
+        "upper_arm_r": [-8, 0, -10],
+        "forearm_r": [93, 0, 8],
+        "hand_r": [60, 0, 0],
+        "upper_arm_l": [160, 0, 14],
+        "forearm_l": [80, 0, -10],
+        "hand_l": [-20, 0, 0],
+        "pauldron_r": [-2.7, 0, -5],
+        "pauldron_l": [53.3, 0, 7]
+      }
+    },
+    {"at": 12, "ease": "ease", "pose": {"hand_l": [-20, 50, 0], "head": [-6, 26, 0]}},
+    {"at": 16, "ease": "linear", "offset": [-0.1, -0.95], "pose": {"torso": [3, 4, -4], "hand_l": [-20, 50, 0]}},
+    {"at": 20, "ease": "linear", "offset": [-0.1, -0.9], "pose": {"torso": [2, 4, -4], "head": [-5, 26, 0]}},
+    {"at": 24, "ease": "linear", "offset": [-0.1, -0.96], "pose": {"torso": [3, 4, -4], "head": [-6, 26, 0]}},
+    {"at": 29, "ease": "in", "offset": [-0.1, -0.92], "pose": {"torso": [2, 4, -4]}},
+    {
+      "at": 30,
+      "ease": "out",
+      "offset": [-0.2, -1.3],
+      "pose": {
+        "pelvis": [4, -4, 0],
+        "torso": [10, 2, 3],
+        "head": [-14, 14, 0],
+        "upper_arm_r": [-4, 0, -14],
+        "forearm_r": [86, 0, 8],
+        "hand_r": [56, 0, 0],
+        "upper_arm_l": [140, 0, 30],
+        "forearm_l": [30, 0, -10],
+        "hand_l": [-30, 0, 0],
+        "pauldron_r": [-1.3, 0, -7],
+        "pauldron_l": [46.7, 0, 15]
+      }
+    },
+    {
+      "at": 34,
+      "ease": "ease",
+      "offset": [-0.1, -0.85],
+      "pose": {
+        "pelvis": [0, -5, 0],
+        "torso": [-2, -4, 0],
+        "head": [2, 12, 0],
+        "upper_arm_r": [-2, 0, -10],
+        "forearm_r": [90, 0, 8],
+        "hand_r": [24, 0, 0],
+        "upper_arm_l": [50, 0, 16],
+        "forearm_l": [90, 0, -20],
+        "hand_l": [-10, 0, 0],
+        "pauldron_r": [-0.7, 0, -5],
+        "pauldron_l": [16.7, 0, 8]
+      }
+    },
+    {"at": 43, "from": "guard"}
+  ],
+  "plant": {"foot_r": [[0, 43]], "foot_l": [[0, 43]]},
+  "marks": {"release": [30]},
+  "allow": [["forearm_r", "weapon_r"]]
+}

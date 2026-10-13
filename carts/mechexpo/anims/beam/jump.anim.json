@@ -1,0 +1,126 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Jump (up, forward and back share it; the fight moves the root: 5 frames on the floor, then 40 in the air, 6.0 m up at the top). Short and late off the ground: a deep, slow crouch on frames 0-4 with the feet planted and the cannon kept on the other mech, a hard launch on 5-7 that kicks the cannon up 10 degrees, a shallow tuck over the top (a heavy machine does not fold up), then the legs come down early and wide, knees soft, the cannon levelled again for the landing.",
+  "base": "_body.anim.json",
+  "length": 45,
+  "air": true,
+  "plant": {"foot_r": [[0, 4]], "foot_l": [[0, 4]]},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in"},
+    {
+      "at": 4,
+      "ease": "linear",
+      "offset": [-0.25, -2.1],
+      "pose": {
+        "pelvis": [-8, -6, 0],
+        "torso": [-18, -8, 0],
+        "head": [18, 10, 0],
+        "upper_arm_r": [-12, 0, -10],
+        "forearm_r": [108, 0, 8],
+        "hand_r": [12, 0, 0],
+        "upper_arm_l": [19, 0, 12],
+        "forearm_l": [124, 0, -24],
+        "pauldron_r": [-4, 0, -5]
+      }
+    },
+    {
+      "at": 7,
+      "ease": "out",
+      "offset": [0.1, 0.2],
+      "pose": {
+        "pelvis": [2, -6, 0],
+        "torso": [-2, -6, 0],
+        "head": [0, 10, 0],
+        "thigh_r": [10, 0, -9],
+        "shin_r": [-12, 0, 0],
+        "foot_r": [40, 0, 9],
+        "thigh_l": [-10, 0, 9],
+        "shin_l": [-8, 0, 0],
+        "foot_l": [44, 0, -9],
+        "upper_arm_r": [-5, 0, -10],
+        "forearm_r": [79, 0, 8],
+        "hand_r": [26, 0, 0],
+        "upper_arm_l": [24, 0, 12],
+        "forearm_l": [99, 0, -24],
+        "pauldron_r": [-1.7, 0, -5],
+        "pauldron_l": [8, 0, 6]
+      }
+    },
+    {
+      "at": 18,
+      "ease": "linear",
+      "offset": [0.0, 0.4],
+      "pose": {
+        "pelvis": [-6, -6, 0],
+        "torso": [-8, -8, 0],
+        "head": [8, 10, 0],
+        "thigh_r": [62, 0, -10],
+        "shin_r": [-92, 0, 0],
+        "foot_r": [34, 0, 9],
+        "thigh_l": [30, 0, 10],
+        "shin_l": [-84, 0, 0],
+        "foot_l": [40, 0, -9],
+        "upper_arm_r": [-8, 0, -10],
+        "forearm_r": [102, 0, 8],
+        "hand_r": [6, 0, 0],
+        "upper_arm_l": [17, 0, 12],
+        "forearm_l": [107, 0, -24],
+        "pauldron_r": [-2.7, 0, -5],
+        "pauldron_l": [5.7, 0, 6]
+      }
+    },
+    {
+      "at": 29,
+      "ease": "ease",
+      "offset": [0.0, 0.35],
+      "pose": {
+        "pelvis": [-4, -6, 0],
+        "torso": [-7, -8, 0],
+        "head": [6, 10, 0],
+        "thigh_r": [56, 0, -10],
+        "shin_r": [-84, 0, 0],
+        "foot_r": [30, 0, 9],
+        "thigh_l": [26, 0, 10],
+        "shin_l": [-78, 0, 0],
+        "foot_l": [38, 0, -9]
+      }
+    },
+    {
+      "at": 39,
+      "ease": "ease",
+      "offset": [0.0, -0.2],
+      "pose": {
+        "pelvis": [0, -6, 0],
+        "torso": [-4, -6, 0],
+        "head": [2, 10, 0],
+        "thigh_r": [28, 0, -9],
+        "shin_r": [-38, 0, 0],
+        "foot_r": [10, 0, 9],
+        "thigh_l": [-10, 0, 9],
+        "shin_l": [-22, 0, 0],
+        "foot_l": [28, 0, -9],
+        "upper_arm_r": [-2, 0, -10],
+        "forearm_r": [92, 0, 8],
+        "hand_r": [0, 0, 0],
+        "upper_arm_l": [22, 0, 12],
+        "forearm_l": [100, 0, -24],
+        "pauldron_r": [-0.7, 0, -5],
+        "pauldron_l": [7.3, 0, 6]
+      }
+    },
+    {
+      "at": 44,
+      "offset": [0.0, -0.3],
+      "pose": {
+        "thigh_r": [26, 0, -9],
+        "shin_r": [-36, 0, 0],
+        "foot_r": [10, 0, 9],
+        "thigh_l": [-14, 0, 9],
+        "shin_l": [-18, 0, 0],
+        "foot_l": [30, 0, -9]
+      }
+    }
+  ],
+  "allow": [["forearm_r", "weapon_r"]]
+}

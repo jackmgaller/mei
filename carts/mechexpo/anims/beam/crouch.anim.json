@@ -1,0 +1,40 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Crouch: the Hero's kneel (base) on Beam's rig, from Beam's stance: 8 frames down onto the left knee, the last held. The cannon stays on the other mech, lowered to a crouching mech's chest (the muzzle at about 7.4 m, 5 m up, tipped 8 degrees down), the left fist tucked in front of the chest. Push box 1.7 m either side, 7.5 m tall.",
+  "base": "../hero/crouch.anim.json",
+  "rig": "../../models/beam/beam.rig.json",
+  "boxes": {"push": {"kind": "push", "rect": [-1.7, 0, 1.7, 7.5]}},
+  "keys": [
+    {"at": 0, "reach": {"foot_l": [-2.13, 0.0]}},
+    {"at": 2, "reach": {"foot_l": [-2.42, 0.35]}},
+    {"at": 3, "reach": {"foot_l": [-2.72, 0.25]}},
+    {
+      "at": 4,
+      "pose": {
+        "upper_arm_r": [9, 0, -10],
+        "forearm_r": [129, 0, 8],
+        "hand_r": [-21, 0, 0],
+        "upper_arm_l": [36, 0, 12],
+        "forearm_l": [118, 0, -24],
+        "hand_l": [-10, 0, 0],
+        "pauldron_r": [3, 0, -5],
+        "pauldron_l": [12, 0, 6]
+      }
+    },
+    {
+      "at": 7,
+      "pose": {
+        "upper_arm_r": [6, 0, -10],
+        "forearm_r": [128, 0, 8],
+        "hand_r": [-17, 0, 0],
+        "upper_arm_l": [35, 0, 12],
+        "forearm_l": [121, 0, -24],
+        "hand_l": [-10, 0, 0],
+        "pauldron_r": [2, 0, -5],
+        "pauldron_l": [11.7, 0, 6]
+      }
+    }
+  ],
+  "allow": [["forearm_r", "weapon_r"], ["torso", "thigh_r"], ["torso", "thigh_l"]]
+}
