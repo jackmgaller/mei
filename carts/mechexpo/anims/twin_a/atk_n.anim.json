@@ -1,0 +1,69 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Bit Jab (MOVES.md; twin A): the chain's start, a fencer's straight lead. Frames 0-3 the lead (right) fist cocks back a hand's width as the hips and shoulders wind the other way; on 4 the right shoulder snaps through and the arm shoots out straight, a touch downward, the body leaning in over the front knee (active 4-5: the fist, the gauntlet and the upper arm, x about 1-4.4, y 3.8-6.2); then it is pulled straight back to the chin (6-15). The rear fist never leaves the chin. Cancel window 4-11. The arm is hurtable while it is out (the body's forearm and fist boxes follow it).",
+  "base": "_body.anim.json",
+  "length": 16,
+  "phases": {"startup": 4, "active": 2, "recovery": 10},
+  "design": {"hit": [1.0, 3.8, 4.4, 6.2], "tolerance": 0.5, "note": "MOVES.md, Bit Jab: x 1.0-4.4, y 3.8-6.2"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease"},
+    {
+      "at": 2,
+      "ease": "in",
+      "offset": [-0.08, -0.36],
+      "pose": {
+        "pelvis": [0, -4, 0],
+        "torso": [-5, -6, 0],
+        "head": [-2, 6, 0],
+        "upper_arm_r": [24, 0, -14], "forearm_r": [98, 0, 6], "hand_r": [-12, 0, 0],
+        "upper_arm_l": [16, 0, 18], "forearm_l": [108, 0, -10],
+        "pauldron_r": [8.4, 0, -7], "pauldron_l": [5.6, 0, 9]
+      }
+    },
+    {
+      "at": 4,
+      "ease": "linear",
+      "offset": [0.4, -0.5],
+      "boxes": {
+        "fist": {"kind": "hit", "part": "hand_r", "min": [-0.35, -0.7, -0.6], "max": [0.35, 0.25, 0.6]},
+        "punch": {"kind": "hit", "part": "forearm_r"},
+        "drive": {"kind": "hit", "part": "upper_arm_r", "min": [-0.3, -1.3, -0.5], "max": [0.3, -0.2, 0.5]}
+      },
+      "pose": {
+        "pelvis": [-4, -18, 0],
+        "torso": [-8, -26, 0],
+        "head": [6, 34, 0],
+        "upper_arm_r": [80, 40, -2], "forearm_r": [8, 0, 0], "hand_r": [-4, 0, 0],
+        "upper_arm_l": [14, 0, 18], "forearm_l": [112, 0, -10],
+        "pauldron_r": [28, 0, -3], "pauldron_l": [4.9, 0, 9]
+      }
+    },
+    {
+      "at": 5,
+      "ease": "ease",
+      "offset": [0.45, -0.52],
+      "pose": {
+        "pelvis": [-4, -20, 0],
+        "torso": [-8, -28, 0],
+        "upper_arm_r": [81, 42, -2], "forearm_r": [4, 0, 0]
+      }
+    },
+    {"at": 6, "boxes": {"fist": null, "punch": null, "drive": null}},
+    {
+      "at": 9,
+      "ease": "ease",
+      "offset": [0.2, -0.42],
+      "pose": {
+        "pelvis": [-2, -16, 0],
+        "torso": [-6, -22, 0],
+        "head": [0, 22, 0],
+        "upper_arm_r": [50, 20, -8], "forearm_r": [60, 0, 4], "hand_r": [-8, 0, 0],
+        "pauldron_r": [17.5, 0, -5]
+      }
+    },
+    {"at": 15, "from": "guard"}
+  ],
+  "plant": {"foot_r": [[0, 15]], "foot_l": [[0, 15]]},
+  "marks": {"cancel": [[4, 11]]}
+}

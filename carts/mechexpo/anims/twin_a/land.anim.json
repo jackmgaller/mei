@@ -1,0 +1,49 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Land (twin A): light and springy. The knees take the weight, the pelvis sinking 0.8 m in the first 2 frames with the body pitched forward and the fists dipping, then it bounces back up into the guard by frame 4 (the landing lag is 4 frames, 6 after an air attack: frames 4-5 settle). Feet planted at the guard's places.",
+  "base": "_body.anim.json",
+  "length": 6,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "out",
+      "offset": [0.0, -0.6],
+      "pose": {
+        "pelvis": [-3, -10, 0],
+        "torso": [-10, -16, 0],
+        "head": [4, 14, 0],
+        "upper_arm_r": [30, 0, -14], "upper_arm_l": [26, 0, 20]
+      },
+      "reach": {"foot_r": [0.13, 0.0], "foot_l": [-1.41, 0.0]}
+    },
+    {
+      "at": 2,
+      "ease": "ease",
+      "offset": [-0.1, -1.1],
+      "pose": {
+        "pelvis": [-6, -10, 0],
+        "torso": [-18, -17, 0],
+        "head": [16, 14, 0],
+        "upper_arm_r": [24, 0, -16], "forearm_r": [70, 0, 6], "hand_r": [-6, 0, 0],
+        "upper_arm_l": [14, 0, 22], "forearm_l": [94, 0, -10],
+        "pauldron_r": [8.4, 0, -8], "pauldron_l": [4.9, 0, 11]
+      }
+    },
+    {
+      "at": 4,
+      "ease": "ease",
+      "offset": [0.0, -0.36],
+      "pose": {
+        "pelvis": [0, -10, 0],
+        "torso": [-3, -16, 0],
+        "head": [-2, 14, 0],
+        "upper_arm_r": [36, 0, -12], "forearm_r": [74, 0, 6], "hand_r": [-12, 0, 0],
+        "upper_arm_l": [22, 0, 16], "forearm_l": [98, 0, -10],
+        "pauldron_r": [12.6, 0, -6], "pauldron_l": [7.7, 0, 8]
+      }
+    },
+    {"at": 5, "from": "guard", "reach": {"foot_r": [0.13, 0.0], "foot_l": [-1.41, 0.0]}}
+  ]
+}

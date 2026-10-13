@@ -1,0 +1,77 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Walk back (twin A): walk_f's quick steps run backwards, 32 frames for 2.56 m (0.080 m a frame): each foot reaches back and plants behind (the right on 0, the left on 16: step marks), slides forward 0.08 m a frame against the root while it is down (18 frames) and swings back in 14. The body sits back a little, chin tucked behind the rear fist, the lead fist kept out on the other mech; it dips into each plant.",
+  "base": "_body.anim.json",
+  "length": 32,
+  "loop": true,
+  "marks": {"step": [0, 16]},
+  "keys": [
+    {
+      "at": 0,
+      "ease": "out",
+      "offset": [-0.1, -0.45],
+      "pose": {
+        "pelvis": [2, -6, 0],
+        "torso": [-2, -18, 0],
+        "head": [2, 15, 0],
+        "upper_arm_r": [36, 0, -12], "forearm_r": [74, 0, 6], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [16, 0, 16], "forearm_l": [106, 0, -10], "hand_l": [-8, 0, 0],
+        "pauldron_r": [12.6, 0, -6], "pauldron_l": [5.6, 0, 8]
+      },
+      "reach": {"foot_r": [-0.7, 0.0], "foot_l": [0.58, 0.0]}
+    },
+    {"at": 1, "ease": "linear", "reach": {"foot_r": [-0.62, 0.0], "foot_l": [0.66, 0.0]}},
+    {"at": 3, "ease": "linear", "reach": {"foot_l": [0.55, 0.3]}},
+    {"at": 7, "ease": "linear", "reach": {"foot_l": [0.0, 0.55]}},
+    {
+      "at": 8,
+      "ease": "in",
+      "offset": [-0.1, -0.18],
+      "pose": {
+        "pelvis": [1, -11, 0],
+        "torso": [-1, -16, 0],
+        "head": [1, 14, 0],
+        "upper_arm_r": [35, 0, -12], "forearm_r": [75, 0, 6],
+        "upper_arm_l": [18, 0, 16], "forearm_l": [104, 0, -10],
+        "pauldron_r": [12.3, 0, -6], "pauldron_l": [6.3, 0, 8]
+      }
+    },
+    {"at": 11, "ease": "linear", "reach": {"foot_l": [-0.5, 0.4]}},
+    {"at": 14, "ease": "linear", "reach": {"foot_l": [-0.68, 0.12]}},
+    {"at": 15, "ease": "linear", "reach": {"foot_l": [-0.69, 0.04]}},
+    {
+      "at": 16,
+      "ease": "out",
+      "offset": [-0.1, -0.45],
+      "pose": {
+        "pelvis": [2, -14, 0],
+        "torso": [-2, -14, 0],
+        "head": [2, 12, 0],
+        "upper_arm_r": [34, 0, -12], "forearm_r": [77, 0, 6],
+        "upper_arm_l": [20, 0, 16], "forearm_l": [102, 0, -10],
+        "pauldron_r": [11.9, 0, -6], "pauldron_l": [7, 0, 8]
+      },
+      "reach": {"foot_l": [-0.7, 0.0]}
+    },
+    {"at": 17, "ease": "linear", "reach": {"foot_r": [0.66, 0.0], "foot_l": [-0.62, 0.0]}},
+    {"at": 19, "ease": "linear", "reach": {"foot_r": [0.55, 0.3]}},
+    {"at": 23, "ease": "linear", "reach": {"foot_r": [0.0, 0.55]}},
+    {
+      "at": 24,
+      "ease": "in",
+      "offset": [-0.1, -0.18],
+      "pose": {
+        "pelvis": [1, -9, 0],
+        "torso": [-1, -16, 0],
+        "head": [1, 14, 0],
+        "upper_arm_r": [35, 0, -12], "forearm_r": [75, 0, 6],
+        "upper_arm_l": [18, 0, 16], "forearm_l": [104, 0, -10],
+        "pauldron_r": [12.3, 0, -6], "pauldron_l": [6.3, 0, 8]
+      }
+    },
+    {"at": 27, "ease": "linear", "reach": {"foot_r": [-0.5, 0.4]}},
+    {"at": 30, "ease": "linear", "reach": {"foot_r": [-0.68, 0.12]}},
+    {"at": 31, "ease": "linear", "reach": {"foot_r": [-0.69, 0.04], "foot_l": [0.5, 0.0]}}
+  ]
+}
