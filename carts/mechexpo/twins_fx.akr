@@ -60,8 +60,19 @@ fn twins_cam_follow(f: *Fight) {
 }
 
 // The swap's flash (after the mechs, on the interface list).
+var twfx_tick: s32                 // the fight's tick last seen (the swap's sound, once)
+
 fn twins_fx_draw(f: *Fight) {
     if !twins_in_fight { return }
+    if f.ticks < twfx_tick { twfx_tick = 0 }    // a new fight
+    for s in 0..2 {
+        // the swap's sound: the break's clash stands in for a coupling clank (next audio round)
+        if tw_swap_tick[s] > twfx_tick && tw_swap_tick[s] <= f.ticks {
+            sfx_pan(f.f[s].x)
+            sfx_break()
+        }
+    }
+    twfx_tick = f.ticks
     for s in 0..2 {
         let t = f.ticks - tw_swap_tick[s]
         if t < 0 || t >= TW_FLASH { continue }
