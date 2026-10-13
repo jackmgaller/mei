@@ -192,11 +192,11 @@ def torso():
     back = plate_xy('cape_back', CAPE_SHAPE, 0.12, 'cape', 'violet', 'violet',
                     [0, CAPE_TOP, 0.9], [-3, 0, 0])
     side = [(-0.55, 0.0), (0.55, 0.0), (0.62, -4.3), (0.0, -5.0), (-0.62, -4.3)]
-    flanks = {'id': 'cape_flanks', 'op': 'group', 'children': [
-        plate_xy('cape_flank', side, 0.1, 'cape', 'violet', 'violet',
-                 [0.95, CAPE_TOP-0.1, 0.5], [-3, 58, 3])],
-        'modifiers': [{'op': 'mirror', 'axis': 'x'}]}
-    return [waist, chest, sockets, collar, wings, back, flanks]
+    # one node a side (not a mirrored group), so the Animation Kit's box for each is one plate's
+    flanks = [plate_xy(f'cape_flank_{s}', side, 0.1, 'cape', 'violet', 'violet',
+                       [k*0.95, CAPE_TOP-0.1, 0.5], [-3, k*58, k*3])
+              for s, k in (('l', 1), ('r', -1))]
+    return [waist, chest, sockets, collar, wings, back] + flanks
 
 
 EYE = (0.0, 0.7, -0.77)    # the eye's front face, in the head's frame
@@ -712,8 +712,8 @@ def write_rig(stance, drop, part_recipes, height):
         'allow_note': "pairs of parts every move may pass into each other (a move's \"allow\" adds "
                       "more), or part/piece pairs: a bent wrist puts the claw's knuckles into the "
                       "forearm's cuff, and a raised thigh meets the waist or the chest. The cape "
-                      "plates (torso/cape_back, torso/cape_flanks) are not allowed into the thighs: "
-                      "keep them clear",
+                      "plates (torso/cape_back, torso/cape_flank_l, torso/cape_flank_r) are not "
+                      "allowed into the thighs: keep them clear",
         'triangles': sum(p['triangles'] for p in parts),
     }
     H.write(HERE/'shadow.rig.json', rig)

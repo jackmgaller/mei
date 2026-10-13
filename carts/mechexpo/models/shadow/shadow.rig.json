@@ -851,6 +851,6 @@
    "thigh_l/hip_drum"
   ]
  ],
- "allow_note": "pairs of parts every move may pass into each other (a move's \"allow\" adds more), or part/piece pairs: a bent wrist puts the claw's knuckles into the forearm's cuff, and a raised thigh meets the waist or the chest. The cape plates (torso/cape_back, torso/cape_flanks) are not allowed into the thighs: keep them clear",
+ "allow_note": "pairs of parts every move may pass into each other (a move's \"allow\" adds more), or part/piece pairs: a bent wrist puts the claw's knuckles into the forearm's cuff, and a raised thigh meets the waist or the chest. The cape plates (torso/cape_back, torso/cape_flank_l, torso/cape_flank_r) are not allowed into the thighs: keep them clear",
  "triangles": 1800
 }
