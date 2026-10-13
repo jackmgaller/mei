@@ -1,0 +1,38 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Crouch (twin B): 8 frames down into a wide sumo squat, then the last frame is held by the fight. The front foot scuffs half a step forward, the knees splay out, the round hips sink and the barrel chest hunches forward over them with both big fists held up in front of the face. Push box 4.8 m tall (MOVES.md); the hurt boxes top out at about 5 m.",
+  "base": "_body.anim.json",
+  "length": 8,
+  "boxes": {"push": {"kind": "push", "rect": [-1.1, 0, 1.1, 4.8]}},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in", "reach": {"foot_r": [-0.02, 0.0], "foot_l": [-1.21, 0.0]}},
+    {
+      "at": 4,
+      "ease": "out",
+      "offset": [-0.45, -1.42],
+      "reach": {"foot_r": [0.4, 0.0], "foot_l": [-1.35, 0.0]},
+      "pose": {
+        "pelvis": [-8, -6, 0],
+        "torso": [-28, -10, 0],
+        "head": [22, 8, 0],
+        "thigh_r": [24, 0, -28], "thigh_l": [-16, 0, 28],
+        "upper_arm_r": [46, 0, -26], "forearm_r": [86, 0, 2], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [50, 0, 26], "forearm_l": [88, 0, -2], "hand_l": [-14, 0, 0],
+        "pauldron_r": [16, 0, -13], "pauldron_l": [17.5, 0, 13]
+      }
+    },
+    {
+      "at": 7,
+      "offset": [-0.42, -1.38],
+      "pose": {
+        "pelvis": [-8, -6, 0],
+        "torso": [-26, -10, 0],
+        "head": [21, 8, 0],
+        "upper_arm_r": [48, 0, -26], "forearm_r": [84, 0, 2]
+      },
+      "reach": {"foot_r": [0.4, 0.0], "foot_l": [-1.35, 0.0]}
+    }
+  ],
+  "allow": [["torso", "thigh_r"], ["torso", "thigh_l"], ["pelvis", "shin_r"], ["torso", "shin_r"], ["pelvis", "shin_l"]]
+}
