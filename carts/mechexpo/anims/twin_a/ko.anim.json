@@ -1,0 +1,41 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "KO (twin A; 90 frames, after hit_air lands on the finishing hit; the last frame is held): the knockdown's fall and bounce, then the tall head rolls toward its twin, the right arm reaches up once, shakily, toward it (frames 40-54) and drops back to the floor; the knees slide down flat and it powers down, still.",
+  "base": "knockdown.anim.json",
+  "length": 90,
+  "keys": [
+    {"at": 18, "remove": true},
+    {"at": 31, "remove": true},
+    {
+      "at": 24,
+      "ease": "ease",
+      "offset": [-0.6, -2.44],
+      "pose": {"head": [10, 16, 0], "thigh_r": [44, 0, -10], "shin_r": [-62, 0, 0]}
+    },
+    {
+      "at": 40,
+      "ease": "ease",
+      "offset": [-0.6, -2.44],
+      "pose": {"head": [10, -30, 0], "upper_arm_r": [152, 0, 4], "forearm_r": [10, 0, 6]}
+    },
+    {
+      "at": 47,
+      "ease": "ease",
+      "pose": {"upper_arm_r": [116, 0, 0], "forearm_r": [36, 0, 6], "head": [4, -36, 0]}
+    },
+    {"at": 54, "ease": "in", "pose": {"upper_arm_r": [112, 0, 0], "forearm_r": [42, 0, 6]}},
+    {
+      "at": 59,
+      "ease": "out",
+      "pose": {"upper_arm_r": [156, 0, 4], "forearm_r": [6, 0, 6], "head": [12, -24, 0]}
+    },
+    {
+      "at": 75,
+      "ease": "ease",
+      "offset": [-0.6, -2.44],
+      "pose": {"thigh_r": [22, 0, -10], "shin_r": [-24, 0, 0], "thigh_l": [14, 0, 10], "shin_l": [-20, 0, 0]}
+    },
+    {"at": 89, "offset": [-0.6, -2.44], "pose": {"head": [14, -20, 0]}}
+  ]
+}
