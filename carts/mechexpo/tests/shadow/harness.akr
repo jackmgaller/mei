@@ -1,0 +1,176 @@
+// Mech Expo 2000's Shadow scenario that needs the whole game (mx-shadow-fight): the real game
+// (game.akr: the hangar, the camera, the mechs drawn by anim.akr, the effects and the HUD)
+// driven through its test hooks, as tests/twins/harness.akr does. tests/run.sh builds scenario
+// 109 from this file and ../../game.akr; tests/check.sh runs it.
+//
+// 109 the budget with Shadow's effects: CPU against CPU (level 2) through the real game, Shadow
+//     against the split Twins (four bodies' worth: three on screen) for 900 frames, then against
+//     Beam for 900; the scenario keeps a Rift Mine (armed) and a Hex Bolt out, the other mech
+//     cursed (the glow, the HUD's siphon) and every 300 frames a full bar for Total Eclipse (its
+//     afterimages and the dark). Prints the peak CPU, GPU and triangles: overall, and on the
+//     frames with the mine and the bolt both out. Also checks the roster's blurb (two lines of at
+//     most 76 px in the micro font) and Shadow's training move list.
+
+var fr: s32
+var started: bool
+var peak_cpu: [2]s32               // [0] against the split Twins, [1] against Beam
+var peak_gpu: [2]s32
+var peak_tris: [2]s32
+var both_cpu: [2]s32               // on the frames with the mine and the bolt both out
+var both_gpu: [2]s32
+var both_frames: [2]s32
+var peak_fight: s32
+var peak_mechs: s32
+var peak_fx: s32
+var late: s32
+var eclipses: s32
+
+fn test_init() {
+    check_roster()
+    game = Game.Versus
+    p_cpu = false
+    p_mech[0] = Mech.Shadow
+    p_mech[1] = Mech.Twins
+    enter_fight()
+}
+
+fn input_stick(n: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+fn input_pad(n: s32) -> u32 {
+    if st != St.Fight { return 0 }
+    let p = cpu_pad(n, 2)
+    if n == 1 && fr < 900 { return p & ~L }        // the Twins stay split: three bodies
+    if n == 0 && fr % 300 >= 2 && fr % 300 < 40 && fight.f[0].super_ok && actionable(0) { return A | B }
+    return p
+}
+
+fn test_hook() {
+    if st != St.Fight { return }
+    let f = fight_get()
+    let k = if_k(fr < 900, 0, 1)
+    if started && fr > 3 && fr != 900 && fr != 901 {
+        let both = rift[0].on && f.shot[0].on && f.shot[0].hex
+        peak_cpu[k] = max(peak_cpu[k], cpu_used())
+        peak_gpu[k] = max(peak_gpu[k], gpu_used())
+        peak_tris[k] = max(peak_tris[k], tris_drawn())
+        if both {
+            both_cpu[k] = max(both_cpu[k], cpu_used())
+            both_gpu[k] = max(both_gpu[k], gpu_used())
+            both_frames[k] += 1
+        }
+        peak_fight = max(peak_fight, prof_fight)
+        peak_mechs = max(peak_mechs, prof_mechs)
+        peak_fx = max(peak_fx, prof_fx)
+        if frame_ticks() > 1 { late += 1 }
+    }
+    started = true
+    fr += 1
+    if fight.phase == Phase.Fight { keep_busy(f) }
+    let ev = fight_events()
+    for e in 0..ev.n {
+        if ev.e[e].kind == Ev.Super && ev.e[e].side == 0 { eclipses += 1 }
+    }
+    if fr == 900 {
+        p_mech[1] = Mech.Beam
+        enter_fight()
+    }
+    if fr == 1800 { report() }
+}
+
+// The worst case kept on screen: an armed mine behind Shadow, its bolt out, the other cursed,
+// a full bar now and then.
+private fn keep_busy(f: *Fight) {
+    let s = &f.f[0]
+    if !rift[0].on {
+        rift[0] = Rift { on: true, x: clamp(s.x - fixed(s.facing) * 3.0, -30.0, 30.0), t: MINE_ARM }
+    }
+    let sh = &f.shot[0]
+    if !sh.on && s.mv != Mv.sp_n {
+        shadow_bolt_fire(0, sh)
+        sh.on = true
+        sh.t = 0
+        sh.y = 0.0
+    }
+    if f.f[1].curse < 10 { f.f[1].curse = CURSE_FRAMES }
+    if fr % 300 == 0 { s.meter = METER_BAR }
+}
+
+private fn if_k(c: bool, a: s32, b: s32) -> s32 {
+    if c { return a }
+    return b
+}
+
+private fn if_str(c: bool, a: *u8, b: *u8) -> *u8 {
+    if c { return a }
+    return b
+}
+
+private fn report() {
+    for k in 0..2 {
+        print(if_str(k == 0, "Shadow against the split Twins: ", "Shadow against Beam: "))
+        print("peak cpu ")
+        print_int(peak_cpu[k])
+        print(", gpu ")
+        print_int(peak_gpu[k])
+        print(", triangles ")
+        print_int(peak_tris[k])
+        print("; with the mine and the bolt out (")
+        print_int(both_frames[k])
+        print(" frames) cpu ")
+        print_int(both_cpu[k])
+        print(", gpu ")
+        print_int(both_gpu[k])
+        println("")
+        assert(peak_cpu[k] <= CPU_BUDGET, "over the CPU budget")
+        assert(peak_gpu[k] <= GPU_BUDGET, "over the GPU budget")
+        assert(peak_tris[k] < 4000, "over 4,000 triangles")
+        assert(both_frames[k] > 300, "the mine and the bolt were not out long enough to measure")
+        assert(eclipses >= 2, "Total Eclipse was not measured")
+    }
+    print("Total Eclipses ")
+    print_int(eclipses)
+    print(", late frames ")
+    print_int(late)
+    print(", the fight's peak ")
+    print_int(peak_fight)
+    print(", the mechs' drawing peak ")
+    print_int(peak_mechs)
+    print(", the effects' peak ")
+    print_int(peak_fx)
+    println(" cycles")
+    println("OK the budget with Shadow's mine, bolt, curse and super")
+}
+
+// The roster's row and the move list: the blurb's lines fit the catalogue (76 px, the micro font).
+private fn check_roster() {
+    let r = &ROSTER[mech_slot(Mech.Shadow)]
+    assert_eq(mech_slot(Mech.Shadow), 1, "Shadow is not in slot 1")
+    assert(slot_ok(1), "Shadow is not selectable from the start")
+    var line: [32]u8
+    var n = 0
+    var lines = 0
+    var k = 0
+    while true {
+        let c = r.blurb[k]
+        if c == 10 || c == 0 {
+            line[n] = 0
+            let w = txt_w(FONT_MICRO, &line[0])
+            print("blurb line ")
+            print_int(lines + 1)
+            print(": ")
+            print_int(w)
+            println(" px")
+            assert(w <= 76, "a blurb line wider than 76 px")
+            lines += 1
+            n = 0
+            if c == 0 { break }
+        } else {
+            line[n] = c
+            n += 1
+        }
+        k += 1
+    }
+    assert_eq(lines, 2, "the blurb is not two lines")
+    let ml = fight_moves(Mech.Shadow)
+    assert_eq(ml.n, 15, "Shadow's move list")
+}

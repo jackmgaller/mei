@@ -221,6 +221,8 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
         if !c.decided || c.hold_t == 0 {
             c.decided = true
             if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
+            // Shadow: under a shot that flies above the floor (an orb, a bolt), Shadow Sneak
+            if me.mech == Mech.Shadow && s.y0 > 1.5 && dist < 19.0 && roll(c, lv.aa) { return fwd | B }
             // the Hero cancels a tapped Volt Orb with its wave (the wave is the stronger)
             if me.mech == Mech.Hero && s.lvl == 1 && !fight.shot[i].on && abs(s.x - me.x) > 8.0 && roll(c, lv.aa) { return B }
             if roll(c, lv.aa / 2) { return fwd | X }

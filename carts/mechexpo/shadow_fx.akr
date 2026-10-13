@@ -91,6 +91,7 @@ fn shadow_fx_bolt(sh: *Shot) {
 // ---- once a frame in a fight (after the mechs, with fx.akr's effects)
 
 fn shadow_fx_draw(f: *Fight) {
+    if !shadow_in_fight { return }                  // no Shadow in this fight
     shx_frame += 1
     let tick = f.ticks != shx_tick
     if tick {
@@ -255,6 +256,7 @@ private fn shx_ghost_draw(dx: fixed, dy: fixed, mirror: bool, ox: fixed, col: u3
 // ---- the colour offset: Total Eclipse keeps the stage dark through its hits (after fx_offset)
 
 fn shadow_fx_offset(f: *Fight) {
+    if !shadow_in_fight { return }                  // no Shadow in this fight
     if fx_flash > 0 { return }
     for s in 0..2 {
         let fi = &f.f[s]
@@ -268,6 +270,7 @@ fn shadow_fx_offset(f: *Fight) {
 // ---- the HUD (hud.akr's hud_draw calls it after each side's meter)
 
 fn shadow_siphon_hud(f: *Fight, s: s32) {
+    if !shadow_in_fight { return }                  // no Shadow in this fight
     let fi = &f.f[s]
     let x0 = meter_x(s)
     let w = HUD_METER_W

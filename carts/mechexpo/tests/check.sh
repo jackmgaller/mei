@@ -13,7 +13,7 @@ run() {       # scenario frames
     s="$1"; f="$2"; shift 2
     "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@" > "$O/s$s.log" 2>&1 || { echo "FAILED scenario $s"; tail -8 "$O/s$s.log"; exit 1; }
     grep -q '^OK' "$O/s$s.log" || { echo "FAILED scenario $s: no OK"; tail -8 "$O/s$s.log"; exit 1; }
-    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages)' "$O/s$s.log"
+    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb)' "$O/s$s.log"
 }
 run 1 700
 run 2 4000
@@ -106,6 +106,21 @@ run 86 300
 run 87 121
 run 88 421
 run 89 321
+# Shadow (mx-shadow-fight): 100 the Hex Bolt and the Siphon on every power source, 101 the curse's
+# time and refresh, 102 the Rift Mine, 103 Shadow Sneak, 104 Eclipse Rise, 105 Phantom Grip,
+# 106 Total Eclipse and its debt, 107 throws with Tank and the Twins, 108 CPU against CPU, 109
+# the budget through the real game (tests/shadow/harness.akr), 110 the rooftop
+run 100 900
+run 101 1100
+run 102 700
+run 103 900
+run 104 300
+run 105 600
+run 106 900
+run 107 1600
+run 108 2500
+run 109 1800
+run 110 900
 echo "all Mech Expo fight checks passed"
 # 55-59: the menus (mx-menus), the whole game with scripted pads: tests/menus/check.sh
 "$HERE/menus/check.sh"

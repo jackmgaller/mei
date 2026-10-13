@@ -1124,7 +1124,7 @@ top and settle on landing.
   claws and the cape plates spread over it like a shell, rising only at the end. The hurt box in
   the recovery is 4 m tall (x −1.6–1.6, y 0–4), so a punish has to be low or reach the floor:
   a Guard Cut or an Arc Jab passes over it, a Low Sweep or a Charge Slash does not. Slow and
-  punishable on block (about −12) by anything that reaches it.
+  punishable on block (−10, measured) by anything that reaches it.
 - **Diving Claw** (`atk_air`): in the air, both claws swing down and forward together, talons
   first, and **Shadow dives**: on its first active frame the fall steepens (the fight sets the
   fall to at least 0.30 m a frame and adds 0.04 m a frame forward), so it comes down sooner and
@@ -1208,7 +1208,7 @@ from its end with a rising claw. **Holding B sends the shadow farther.**
   Shadow out of it (it reappears in its hit reaction); anything higher passes over it: Beam's
   Volt Orb (y 4.8–6.6), the Hex Bolt, every standing attack. So **the Sneak goes under a Volt
   Orb**, and is stopped by a wave.
-- The strike: 110 damage, knockdown, chip 22. On block about −14: punishable by a forward attack.
+- The strike: 110 damage, knockdown, chip 22. On block −10 (measured): punishable by a jab.
 - **Afterimages** (visual only): as Shadow erupts, two violet afterimages of it stand along the
   shadow's path behind it, fading over 12 frames.
 - What it is for: a punish from far (it reaches a whiffed Charge Slash or a blocked Bulldozer
@@ -1275,7 +1275,7 @@ Shadow pulls the other into its shadow and comes up **behind it**: the sides swa
 | 17–24 | gone (`hide`): its shadow slides **6 m** under the other to its far side (0.75 m a frame; the fight moves the root, stopped by a wall) | held standing where it was, shadow binding its legs |
 | 25 | Shadow erupts behind it and **turns** to face it; the other is turned round to face Shadow | placed 3.0 m in front of Shadow's new spot |
 | 25–30 | the claws hook into its back and lift | lifted to 3 m |
-| 31 (`release`, 30 from 0) | the claws fling it away | 110 damage, knockdown, about 7 m, **toward the side Shadow came from** |
+| 31 (`release`, 30 from 0) | the claws fling it away | 110 damage, knockdown, about 5.5 m (it lands about 8.5 m from Shadow), **toward the side Shadow came from** |
 | 32–44 | recovery into the guard | |
 
 So a cornered Shadow that grabs leaves the corner and puts the other mech in it: the Vault
@@ -1305,7 +1305,7 @@ until the last hit. Then:
   its reaction between the hits), a short hitstop (6), knockback 0.02. Hit 5: 120 damage, chip 24,
   knockdown, the super's hitstop (20), blockstun 20. Scaled as any combo: 70 + 56 + 45 + 45 + 78
   = **294** from a clean start. Chip through a block: 80 in all, which can finish a round.
-  About −20 on block.
+  −21 on block (measured).
 - **Afterimages** (visual only): on each hit a violet afterimage of Shadow appears on alternate
   sides of the other mech, mid-slash, and fades over 10 frames, so in the dark it looks struck
   from everywhere at once. Shadow itself stays in front: the hits are blocked as any other.
@@ -1321,6 +1321,13 @@ combos from a Lunging Claw** up close (the bolt starts 3.5 m out and touches at 
 chain's payoff is the curse, not the damage. Eclipse Rise combos from a Claw Jab close up. The
 Sneak never combos (the shadow is too slow); the Rift Mine can be cancelled into (a blocked
 Lunging Claw into a mine at the other's feet: it arms after it recovers).
+
+### Frame advantage (measured)
+
+From the fight itself (`tests/run.sh 17`, the stand-in timings, against a standing Hero): Claw
+Jab −3 on block / +1 on hit, Lunging Claw −6 / +1, Fade Sweep −10 (knockdown on hit), Hex Bolt
+−11 / −7 at 6 m (safe from further out), Shadow Sneak −10 (tapped, at 7 m), Eclipse Rise −22,
+Total Eclipse −21.
 
 ### Balance intent
 

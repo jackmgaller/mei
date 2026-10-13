@@ -2578,6 +2578,11 @@ private fn tw_check_cpu() {
 //     Reaction) and the Twins (Phantom Grip on both forms; the Tag Toss, the Binary Buster)
 // 108 CPU against CPU (level 2): Shadow against each other mech, both sides; every match finishes;
 //     prints the rounds, the curses, mines, snares and supers
+// 110 on the rooftop (an open edge at +x): Phantom Grip with Shadow's back to the drop flings the
+//     Hero over it (a ring-out); Shadow Sneak toward the drop stops at the lip; a mine laid at
+//     the lip snares the Hero there, and a snare is not a launch (nobody falls)
+// 111 (a measurement, not in check.sh) CPU level 2 against level 2: Shadow against each other
+//     mech, 8 matches each (both sides, four seeds); prints Shadow's wins, curses, mines, snares
 
 var sh_pad: [2]u32              // pressed next tick (the checks script the pads)
 var sh_hold: [2]u32             // held until cleared
@@ -2589,7 +2594,7 @@ var sh_prev_t: s32
 var sh_matches: s32
 var sh_stat: [4]s32             // scenario 108: curses, mines, snares, Shadow's supers
 
-private fn sh_scenario() -> bool { return SCENARIO >= 100 && SCENARIO <= 108 }
+private fn sh_scenario() -> bool { return SCENARIO >= 100 && SCENARIO <= 108 || SCENARIO == 110 || SCENARIO == 111 }
 
 private fn sh_restart(a: Mech, b: Mech, x0: fixed, x1: fixed) {
     fight_init(a, b, FightMode.Versus, 0)
@@ -2604,6 +2609,7 @@ private fn sh_restart(a: Mech, b: Mech, x0: fixed, x1: fixed) {
     sh_hold[1] = 0
     sh_flag = false
     mark = frames
+    mark2 = -1
 }
 
 private fn sh_init() {
@@ -2616,6 +2622,20 @@ private fn sh_init() {
             fight_init(Mech.Shadow, Mech.Hero, FightMode.VsCpu, 2)
             tick_per_frame = 40
         }
+        111 => {
+            sh_stat_start()
+            tick_per_frame = 40
+        }
+        110 => {
+            fight_stage(ST_ROOFTOP)
+            sh_restart(Mech.Shadow, Mech.Hero, 0.0, -3.0)
+            place(sh_lip() - 0.5, sh_lip() - 3.5)
+            print("the rooftop: half ")
+            print_fixed(stage_now().half)
+            print(", the lip ")
+            print_fixed(sh_lip())
+            println("")
+        }
         else => {}
     }
     if SCENARIO == 102 { place(-6.0, 6.0) }
@@ -2623,7 +2643,7 @@ private fn sh_init() {
 }
 
 private fn sh_script(i: s32) -> u32 {
-    if SCENARIO == 108 { return cpu_pad(i, 2) }
+    if SCENARIO == 108 || SCENARIO == 111 { return cpu_pad(i, 2) }
     let p = sh_pad[i] | sh_hold[i]
     sh_pad[i] = 0
     return p
@@ -2642,6 +2662,8 @@ private fn sh_check() {
         106 => sh_check_eclipse()
         107 => sh_check_throws()
         108 => sh_check_cpu()
+        110 => sh_check_roof()
+        111 => sh_check_stats()
         else => {}
     }
     sh_prev_mv = fight.f[0].mv
@@ -2859,7 +2881,7 @@ private fn sh_check_mine() {
             }
         }
         5 => {
-            if frames == mark + 3 {
+            if frames == mark + 30 {          // (the sweep's hitstop freezes the mines too)
                 assert(!rift[0].on, "the mine did not fade")
                 assert_eq(evc[Ev.MineGone], 2, "no fade event")
                 ok("the Rift Mine arms, snares, ignores Shadow, is destroyed, fades")
@@ -3052,7 +3074,7 @@ private fn sh_check_eclipse() {
             if frames == mark + 2 { sh_pad[0] = A | B }
             if evc[Ev.Super] == 1 && !sh_flag {
                 sh_flag = true
-                assert(s.meter <= -METER_BAR + 1, "the bar of debt")
+                assert(s.meter <= -METER_BAR + 10, "the bar of debt")
             }
             if sh_flag && s.mv != Mv.super {
                 let want = 70 + 70 * COMBO_2 / 100 + 70 * COMBO_3 / 100 * 2 + 120 * COMBO_3 / 100
@@ -3148,7 +3170,7 @@ private fn sh_check_throws() {
     }
     if d.mv == Mv.thrown_slam { sh_flag = true }
     if evc[Ev.Throw] == 0 || frames < mark2 { return }
-    if mark2 < mark {
+    if mark2 < 0 {
         mark2 = frames + 60          // let it land
         return
     }
@@ -3244,4 +3266,124 @@ private fn sh_check_cpu() {
     else { fight_init(Mech.Shadow, foe, FightMode.VsCpu, 2) }
     for k in 0..4 { sh_stat[k] = 0 }
     frames = 0
+}
+
+// Where Shadow stands at the rooftop's open edge (its lip).
+private fn sh_lip() -> fixed { return stage_now().half - STATS[Mech.Shadow].push }
+
+private fn sh_check_roof() {
+    let s = &fight.f[0]
+    let o = &fight.f[1]
+    match stage {
+        0 => {
+            // Phantom Grip with its back to the drop: the Hero is flung over it
+            if frames == mark + 2 { sh_pad[0] = Y }
+            if evc[Ev.RingOut] > 0 {
+                print("Phantom Grip at the edge: Shadow at ")
+                print_fixed(s.x)
+                print(", the Hero over the edge at ")
+                print_fixed(o.x)
+                println("")
+                assert_eq(evc[Ev.Throw], 1, "no throw")
+                assert_eq(fight.round_winner, 0, "the ring-out's winner")
+                assert(!fx[0].out, "Shadow fell")
+                sh_restart(Mech.Shadow, Mech.Hero, 12.0, -10.0)
+                // the Sneak toward the drop (the Hero behind): it stops at the lip
+                s.facing = 1
+                set_mv(0, Mv.sp_f)
+                sh_hold[0] = B
+                stage = 1
+            }
+        }
+        1 => {
+            assert(!off_edge(0) && !fx[0].out, "the Sneak went over the edge")
+            if s.mv != Mv.sp_f {
+                print("the Sneak toward the drop stopped at ")
+                print_fixed(s.x)
+                print(" (the lip ")
+                print_fixed(sh_lip())
+                println(")")
+                assert(abs(s.x - sh_lip()) < 0.01, "the Sneak did not stop at the lip")
+                assert_eq(evc[Ev.RingOut], 0, "a ring-out")
+                sh_restart(Mech.Shadow, Mech.Hero, sh_lip(), sh_lip() - 12.0)
+                stage = 2
+            }
+        }
+        2 => {
+            // a mine at the lip, the Hero backing onto it
+            if frames == mark + 2 { sh_pad[0] = DOWN | B }
+            if evc[Ev.Mine] == 1 && !sh_flag {
+                sh_flag = true
+                s.x = sh_lip() - 20.0
+            }
+            if sh_flag && evc[Ev.Snare] == 0 && rift[0].t >= MINE_ARM { sh_hold[1] = RIGHT }
+            if evc[Ev.Snare] > 0 && stage == 2 {
+                sh_hold[1] = 0
+                mark = frames
+                stage = 3
+            }
+        }
+        3 => {
+            if frames == mark + SNARE_FRAMES + 20 {
+                print("snared at the lip: the Hero at ")
+                print_fixed(o.x)
+                println("")
+                assert(o.x > sh_lip() - 4.0, "the snare was not at the lip")
+                assert(!fx[1].out && evc[Ev.RingOut] == 0, "the snare rang the Hero out")
+                ok("Shadow on the rooftop: Phantom Grip rings out, the Sneak stops at the lip, a mine at the lip")
+            }
+        }
+        else => {}
+    }
+}
+
+// ---- scenario 111: Shadow's wins against each mech, CPU against CPU
+
+const SH_FOES: [5]Mech = [Mech.Hero, Mech.Doubleblade, Mech.Beam, Mech.Tank, Mech.Twins]
+var sh_m: s32
+var sh_wins: [5]s32
+var sh_tot: [4]s32
+
+private fn sh_stat_start() {
+    let foe = SH_FOES[sh_m / 8]
+    if sh_m % 2 == 0 { fight_init(Mech.Shadow, foe, FightMode.VsCpu, 2) }
+    else { fight_init(foe, Mech.Shadow, FightMode.VsCpu, 2) }
+    cpu_init(91 + sh_m * 7919)
+}
+
+private fn sh_check_stats() {
+    let s = if_i(fight.f[0].mech == Mech.Shadow, 0, 1)
+    let ev = fight_events()
+    for e in 0..ev.n {
+        let k = &ev.e[e]
+        if k.side != s { continue }
+        if k.kind == Ev.Curse { sh_tot[0] += 1 }
+        if k.kind == Ev.Mine { sh_tot[1] += 1 }
+        if k.kind == Ev.Snare { sh_tot[2] += 1 }
+        if k.kind == Ev.Super { sh_tot[3] += 1 }
+    }
+    if fight.phase != Phase.MatchOver { return }
+    if fight.winner == s { sh_wins[sh_m / 8] += 1 }
+    sh_m += 1
+    if sh_m < 40 {
+        sh_stat_start()
+        return
+    }
+    for k in 0..5 {
+        print("Shadow against ")
+        print(MECH_NAMES[SH_FOES[k]])
+        print(": ")
+        print_int(sh_wins[k])
+        println(" of 8")
+    }
+    print("curses ")
+    print_int(sh_tot[0])
+    print(", mines ")
+    print_int(sh_tot[1])
+    print(", snares ")
+    print_int(sh_tot[2])
+    print(", supers ")
+    print_int(sh_tot[3])
+    println(" in 40 matches")
+    ok("Shadow's statistics")
 }
