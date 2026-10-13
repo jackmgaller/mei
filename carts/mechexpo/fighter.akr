@@ -541,7 +541,7 @@ fn throw_tick(i: s32) {
         fx[j].air = true
         fx[j].vy = h.launch
         if f.mech == Mech.Hero { fx[j].vx = ft * 0.30 } else { fx[j].vx = -ft * 0.08 }
-        if f.mech == Mech.Beam { fx[j].vx = ft * 0.34 }        // the Shock Grip throws it off, about 9 m
+        if f.mech == Mech.Beam { fx[j].vx = ft * 0.24 }        // the Shock Grip throws it off, about 9 m
         fight.freeze = h.stop
         fight.flash_side = -1
         o.flash = h.stop

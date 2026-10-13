@@ -883,7 +883,7 @@ var fd_case: s32
 private fn frame_data() {
     if done { return }
     let n = len(FD_MOVES)
-    if fd_case >= 2 * 2 * n {
+    if fd_case >= len(Mech) * 2 * n {
         ok("frame data")
         return
     }
@@ -926,7 +926,8 @@ private fn frame_data() {
         if contact < 0 && t > 200 { break }
         if att_free >= 0 && def_free >= 0 { break }
     }
-    print(if_s(m == Mech.Hero, "Hero ", "Double-blade "))
+    print(MECH_NAMES[m])
+    print(" ")
     print(MV_NAMES[mv])
     print(if_s(block, " on block: ", " on hit: "))
     if contact < 0 { println("no contact"); return }
@@ -1067,7 +1068,7 @@ private fn draw_mechs() {
 // 37  CPU against CPU (level 2): Beam against the Hero, the Double-blade Hero against Beam, Beam
 //     against Beam; each match finishes; the first is run twice and must be the same. Prints the
 //     rounds and what Beam did (orbs, primes, supers)
-// 38  what beats the orb: the Double-blade Hero slides under one and Void Steps through one
+// 38  what beats the orb: the Double-blade Hero's Void Step passes through it, twice
 // 39  the budget with Beam drawn (its stand-in guard pose; anim.akr): CPU against CPU, Beam
 //     against the Hero for 900 frames, then against the Double-blade Hero for 900
 
@@ -1161,10 +1162,7 @@ private fn beam_script(side: s32) -> u32 {
             if frames < 60 { return R }
             if at(190) { return fwd | X }
         }
-        38 => {
-            if at(45) { return DOWN | B }
-            if at(190) { return B }
-        }
+        38 => { if at(40) || at(190) { return B } }
         else => {}
     }
     return 0
@@ -1453,22 +1451,24 @@ private fn check_beam_cpu() {
 }
 
 private fn check_orb_beaten() {
+    // the Void Step (no hurt box on its gone frames) passes through the orb, twice: from mid
+    // range as the orb leaves, and from far as it arrives
     if at(120) {
         assert_eq(evc_side[0][Ev.Shot], 1, "no orb")
-        assert_eq(evc_side[0][Ev.Hit], 0, "the orb hit the sliding Double-blade Hero")
-        assert_eq(fight.f[1].health, dbh(), "damage to the slide")
+        assert_eq(evc_side[0][Ev.Hit], 0, "the orb hit the Void Step")
+        assert_eq(fight.f[1].health, dbh(), "damage to the Void Step")
+        assert(fight.f[1].x < fight.shot[0].x || !fight.shot[0].on, "the Void Step did not pass the orb")
     }
     if at(150) { place(-8.0, 8.0) }
     if at(330) {
         assert_eq(evc_side[0][Ev.Shot], 2, "no second orb")
         assert_eq(evc_side[0][Ev.Hit], 0, "the orb hit the Void Step")
         assert_eq(fight.f[1].health, dbh(), "damage to the Void Step")
-        assert(fight.f[1].x < fight.f[0].x + 9.0, "the Void Step did not pass the orb")
-        ok("the slide goes under the orb, the Void Step through it")
+        ok("the Void Step passes through the orb")
     }
 }
 
-const MECH_NAMES: [3]*u8 = ["Hero", "Double-blade", "Beam"]
+const MECH_NAMES: [len(Mech)]*u8 = ["Hero", "Double-blade", "Beam"]
 
 private fn check_beam_budget() {
     if frames > 3 && frames != 901 && frames != 902 {

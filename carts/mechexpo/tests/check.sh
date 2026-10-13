@@ -13,7 +13,7 @@ run() {       # scenario frames
     s="$1"; f="$2"; shift 2
     "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@" > "$O/s$s.log" 2>&1 || { echo "FAILED scenario $s"; tail -8 "$O/s$s.log"; exit 1; }
     grep -q '^OK' "$O/s$s.log" || { echo "FAILED scenario $s: no OK"; tail -8 "$O/s$s.log"; exit 1; }
-    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak)' "$O/s$s.log"
+    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to)' "$O/s$s.log"
 }
 run 1 700
 run 2 4000
@@ -31,4 +31,18 @@ run 13 3000
 run 18 110
 run 15 1500
 run 14 1800
+# Beam (mx-beam): 30 the chemical meter, 31 a spoiled prime, 32 the Volt Orb, 33 orb against
+# wave, 34 Beam's chain, 35 its super, 36 the Shock Grip and the Thunder Pillar, 37 CPU against
+# CPU with Beam (three pairings, the first twice), 38 the Void Step through the orb, 39 the
+# budget with Beam drawn against each mech
+run 30 760
+run 31 200
+run 32 500
+run 33 640
+run 34 210
+run 35 440
+run 36 340
+run 37 2000
+run 38 340
+run 39 1800
 echo "all Mech Expo fight checks passed"

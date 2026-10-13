@@ -10,8 +10,8 @@ import "moves.akr"
 const ORB_CHARGE_MAX = 50           // frames held at most (then it fires by itself)
 const ORB_CHARGE_HALF = 20          // held this long: a charged orb; ORB_CHARGE_MAX: a full one
 const ORB_X: fixed = 4.5            // where it starts, ahead of the mech
-const ORB_Y0: fixed = 4.2           // its box's height: over a slide, under a high jump
-const ORB_Y1: fixed = 6.0
+const ORB_Y0: fixed = 4.8           // its box's height: over a slide (4.6 m), under a high jump
+const ORB_Y1: fixed = 6.6
 const ORB_LIFE = 130
 
 // The orb's level from the frames B was held: 1 a tap, 2 charged, 3 full.
@@ -50,8 +50,8 @@ const REACT_FILL = 2                // meter a frame: half a bar over the reacti
 
 fn beam_hit(mv: Mv) -> Hit {
     return match mv {
-        atk_n => Hit { dmg: 65, hitstun: 17, blockstun: 12, stop: 8, kb: 0.10 }
-        atk_f => Hit { dmg: 110, hitstun: 25, blockstun: 18, stop: 11, power: 1, kb: 0.14 }
+        atk_n => Hit { dmg: 65, hitstun: 19, blockstun: 14, stop: 8, kb: 0.10 }
+        atk_f => Hit { dmg: 110, hitstun: 26, blockstun: 19, stop: 11, power: 1, kb: 0.14 }
         atk_d => Hit { dmg: 85, blockstun: 16, stop: 11, power: 1, kb: 0.10, kd: true, launch: 0.30 }
         atk_air => Hit { dmg: 90, hitstun: 20, blockstun: 15, stop: 11, power: 1, kb: 0.08 }
         sp_n => orb_hit(1)

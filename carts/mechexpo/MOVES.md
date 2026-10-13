@@ -307,12 +307,13 @@ short and late off the ground.
 
 | Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | On block / hit | Hit box |
 |---|---|---|---|---|---|---|---|---|
-| `atk_n` Arc Jab | 6 | 3 | 15 | 24 | 65 | 17 / 12 | −4 / +1 | x 1.8–5.6, y 6–9 |
-| `atk_f` Static Lance | 14 | 4 | 22 | 40 | 110 | 25 / 18 | −7 / +0 | x 3.5–9.4, y 6–8.5 |
-| `atk_d` Ground Spark | 12 | 5 | 24 | 41 | 85, knockdown | — / 16 | −13 / KD +40 | x 1.5–7.5, y 0–2 |
+| `atk_n` Arc Jab | 6 | 3 | 15 | 24 | 65 | 19 / 14 | −4 / +1 | x 1.8–5.6, y 6–9 |
+| `atk_f` Static Lance | 14 | 4 | 22 | 40 | 110 | 26 / 19 | −7 / 0 | x 3.5–9.4, y 6–8.5 |
+| `atk_d` Ground Spark | 12 | 5 | 24 | 41 | 85, knockdown | — / 16 | −13 / KD +41 | x 1.5–7.5, y 0–2 |
 | `atk_air` Down Arc | 9 | 6 | to landing | 32 | 90 | 20 / 15 | by height | x 0.5–5.5, y −3–3 (from the root, in the air) |
 
-(The on-block and on-hit columns are measured by `tests/run.sh 17` with the stand-in timings.)
+(The on-block and on-hit columns are measured by `tests/run.sh 17` with the stand-in timings and
+boxes, against a standing Hero.)
 
 - **Arc Jab** (`atk_n`): Beam's answer up close and the chain's start. The cannon is short-armed
   straight forward, muzzle first, a stab with a crackle at the muzzle (frames 1–5: the elbow
@@ -336,11 +337,11 @@ short and late off the ground.
 
 | Move | Startup | Active | Recovery | Total | Damage | Chip | Hitstun / blockstun | On block / hit |
 |---|---|---|---|---|---|---|---|---|
-| `sp_n` Volt Orb (tap) | 18 | the orb | 26 | 45 | 70 | 14 | 20 / 16 | −16 / −12 at the mech; safe far |
+| `sp_n` Volt Orb (tap) | 18 | the orb | 26 | 45 | 70 | 14 | 20 / 16 | −11 / −7 at 6 m; safe far |
 | `sp_n` Volt Orb (charged) | 18 + 20–49 held | the orb | 26 | 65–94 | 90 | 18 | 22 / 18 | |
 | `sp_n` Volt Orb (full) | 18 + 50 held | the orb | 26 | 95 | 120, knockdown | 24 | — / 20 | |
-| `sp_f` Arc Lance | 20 | 6 | 24 | 50 | 100, knockdown | 20 | — / 18 | −13 / KD +45 (close) |
-| `sp_u` Thunder Pillar | 7 | 8 | 27 | 42 | 110, knockdown | 22 | — / 14 | −21 / KD +48 |
+| `sp_f` Arc Lance | 20 | 6 | 24 | 50 | 100, knockdown | 20 | — / 18 | −12 / KD +40 (at 7 m) |
+| `sp_u` Thunder Pillar | 7 | 8 | 27 | 42 | 110, knockdown | 22 | — / 14 | −21 / KD +49 |
 | `sp_d` Reaction Prime | — | — | 14 after the release | 44 | — | — | — | — |
 
 - **Volt Orb** (`sp_n`): the projectile, and the charge attack. Frames 1–10: the left hand comes
@@ -350,9 +351,10 @@ short and late off the ground.
   Frames 12–18: recoil builds (the body leans in), the orb leaves on frame 19 (the `release`
   mark, frame 18 counted from 0), and the cannon kicks up 15° with the recoil; 26 frames to settle
   back to the guard. The orb is a ball of lightning in front of the chest: it starts 4.5 m ahead
-  and flies at **mid height**, a box from y 4.2 to 6.0, so it hits a standing or crouching mech
-  (8 m tall crouching), passes over a mech lower than 4.2 m (the Antimatter Slide) and under a
-  jump that is high enough. Held under 20 frames it is a **tap** (0.24 m a frame, 1.4 m wide),
+  and flies at **mid height**, a box from y 4.8 to 6.6, so it hits a standing or crouching mech
+  (8 m tall crouching), passes over the low middle of the Antimatter Slide (its animation is 4.6
+  m tall while it slides, but its head trails 6 m behind and rises as it ends, so a slide through
+  an orb is usually caught at the end) and under the top of the Hero's jump. Held under 20 frames it is a **tap** (0.24 m a frame, 1.4 m wide),
   20 to 49 frames a **charged** orb (0.30 m a frame, 1.8 m wide), 50 frames a **full** orb (0.36
   m a frame, 2.2 m wide, knockdown). It lasts 130 frames and vanishes at a wall. One orb at a
   time: B while Beam's orb is out does nothing.
@@ -361,14 +363,14 @@ short and late off the ground.
     a charged orb 2 (both go), a full orb 3 (the wave is cancelled and the orb goes on). So the
     Hero answers taps with the wave; Beam answers the wave by charging, which costs it time.
   - **The Parry catches an orb** like the wave (the orb vanishes, the Hero ripostes if Beam is
-    close enough to reach). The Void Step passes through it; the Antimatter Slide passes under.
+    close enough to reach). The Void Step passes through it (scenario 38).
 - **Arc Lance** (`sp_f`): the long-range beam, and the chain's ender. No root motion: Beam plants,
   levels the cannon with both hands on frames 1–12 (anticipation: the body sinks 0.4 m, the
   coils charge), and the beam fires from the muzzle on frame 21: a straight bolt out to 15 m (a
   box from x 2.5 to 15, y 6 to 8), held for 6 frames, the body pushed back by the recoil, then
   24 frames of recovery with the barrel smoking. The arm and the muzzle are hurtable to 5.5 m
   out from the first active frame until 10 after. Knocks down. Too slow to use on reaction from
-  close; it catches a mech walking or jumping in at mid range. The Antimatter Slide (4 m tall)
+  close; it catches a mech walking or jumping in at mid range. The Antimatter Slide (4.6 m tall)
   passes under the beam; the Parry catches it.
 - **Thunder Pillar** (`sp_u`): the anti-air. No jump: Beam points the cannon straight up in
   front of its head and a column of lightning goes up from just in front of it (x 0.5–5, y
@@ -400,8 +402,8 @@ on the cannon, the tanks and the coils flare and the head's antenna sparks), the
 (the cannon levelled, the body braced back), and the beam: active frames 49–64, a bolt the
 height of a mech across the hangar (x 2–30, y 4.5–9), then 36 frames of recovery (the recoil
 skids Beam back a little, the barrel glowing). Invulnerable from frame 1 to frame 48. 300
-damage, knockdown; chip 75 through a block (which can finish a round). Very punishable when
-blocked close (the other recovers long before Beam does); from far it is safe. A full-screen
+damage, knockdown; chip 75 through a block (which can finish a round). −30 on block at 8 m, KD
++35 on hit. Very punishable when blocked close (the other recovers long before Beam does); from far it is safe. A full-screen
 answer to a mech that is zoning back, or to a whiff anywhere.
 
 ### Chains
@@ -435,7 +437,7 @@ it into the guard.
   guard).
 - **The muzzle** is the effects' anchor: the point (0, 0.8, −4.4) in `weapon_r`'s frame. The orb,
   the beam, the pillar and the arcs start there (the fight's boxes are in fight-local metres; keep
-  the muzzle near where the boxes say: about x 4.5, y 5 for the orb, so the cannon is lowered to
+  the muzzle near where the boxes say: about x 4.5, y 5.7 for the orb, so the cannon is lowered to
   the hip for the Volt Orb, and level at the chest, y 7, for the Arc Lance and the Static Lance).
 - **Joint ranges** (degrees, the kit's X/Y/Z on each joint, as the rig file says): pelvis ±25 X,
   ±30 Y; torso −30..35 X, ±40 Y, ±15 Z; head ±35 X, ±45 Y; upper arms −60..170 X, −10..80 Z
