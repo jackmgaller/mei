@@ -10,6 +10,8 @@
 // its name, its music and the ladder's stages.
 
 import "stage_art.akr"          // the hangar's art (tools/gen_mechexpo_stage.py)
+import "roof_art.akr"           // the rooftop's (tools/gen_mechexpo_rooftop.py)
+import "roof_props.akr"         // and its props' pack (texture slot 13, palettes 200-203)
 
 // What ends the stage on one side.
 enum Edge {
@@ -20,7 +22,8 @@ enum Edge {
 
 // The stages, by row.
 const ST_HANGAR = 0
-const STAGES_N = 1
+const ST_ROOFTOP = 1
+const STAGES_N = 2
 
 // The plane chip's art for a stage (the generators write the constants it is filled from).
 struct StageArt {
@@ -30,7 +33,8 @@ struct StageArt {
     hall_pal: *u16
     hall_pals: s32              // palettes from PAL_HALL (244-249)
     hall_w: s32                 // the art's width in pixels
-    hall_h: s32                 // its rows: row hall_h - 1 sits on the floor line at z = hall_z
+    hall_line: s32              // the art row that sits on the floor line at z = hall_z (rows
+                                // above the art's top are hidden)
     hall_z: fixed
     bands: s32                  // parallax bands: first art row and depth behind hall_z of each
     band_y: *s32
@@ -80,7 +84,8 @@ const ST_PROPS_MAX = 6
 const ST_EVENTS_MAX = 4
 
 struct Stage {
-    name: *u8                   // the stage select's and the VS screen's name
+    name: *u8                   // the stage select's name
+    short: *u8                  // where that is too long
     venue: *u8                  // a line under it
     blurb: *u8                  // the stage select's two short lines
     colour: u32                 // the stage select's photograph (0xBBGGRR)
@@ -99,13 +104,13 @@ struct Stage {
 const HANGAR_SKY: [4]u32 = [0x0A0806, 0x221810, 0x3A2C20, 0x4A3A2C]   // the roof's dark
 const HANGAR_SKY_DY: [4]s32 = [-420, -260, -200, -160]                // rows above the hall's line
 
-const STAGES: [1]Stage = [
+const STAGES: [2]Stage = [
     // the demo hangar: walls at x = +-36, the expo's banner towers behind the fight
-    Stage { name: "DEMO HANGAR", venue: "EXPO HALL 1 // TRIAL HALL 2", blurb: "WALLS ON BOTH SIDES\nFOR CORNER PRESSURE",
+    Stage { name: "DEMO HANGAR", short: "HANGAR", venue: "EXPO HALL 1 // TRIAL HALL 2", blurb: "WALLS ON BOTH SIDES\nFOR CORNER PRESSURE",
             colour: 0x8A6A50, half: 36.0, edge: [Edge.Wall, Edge.Wall],
             art: StageArt { hall_tiles: STAGE_HALL_TILES, hall_bytes: HALL_TILES_BYTES,
                             hall_map: STAGE_HALL_MAP, hall_pal: STAGE_HALL_PAL, hall_pals: HALL_PALS,
-                            hall_w: HALL_W, hall_h: HALL_H, hall_z: HALL_Z, bands: HALL_BANDS,
+                            hall_w: HALL_W, hall_line: HALL_H - 1, hall_z: HALL_Z, bands: HALL_BANDS,
                             band_y: HALL_BAND_Y, band_z: HALL_BAND_Z,
                             floor_tiles: STAGE_FLOOR_TILES, floor_bytes: FLOOR_TILES_BYTES,
                             floor_map: STAGE_FLOOR_MAP, floor_pal: STAGE_FLOOR_PAL,
@@ -119,12 +124,39 @@ const STAGES: [1]Stage = [
                 StageProp { mesh: ASSET_EXPO_BANNER, x: 23.0, z: 19.0, near: 8.0 },
                 StageProp {}, StageProp {}],
             music: 0, nevents: 0, events: [StageEvent {}, StageEvent {}, StageEvent {}, StageEvent {}] },
+    // the rooftop showcase: the stairwell's housing at x = -26, the open edge at x = +26
+    Stage { name: "ROOFTOP SHOWCASE", short: "ROOFTOP", venue: "EXPO TOWER // ROOF DECK", blurb: "ONE OPEN EDGE: KNOCK IT\nOVER TO WIN THE ROUND",
+            colour: 0x7A3C5A, half: ROOF_HALF, edge: [Edge.Wall, Edge.Open],
+            // the city on BG1 behind the deck on BG2 (BG1 0, BG2 1): the deck is transparent past
+            // its edges (0x10000: PLANE_TRANSPARENT_OUT), so the city shows past the open edge
+            art: StageArt { hall_tiles: ROOF_CITY_TILES, hall_bytes: ROOF_CITY_TILES_BYTES,
+                            hall_map: ROOF_CITY_MAP, hall_pal: ROOF_CITY_PAL, hall_pals: ROOF_CITY_PALS,
+                            hall_w: ROOF_CITY_W, hall_line: ROOF_CITY_LINE, hall_z: ROOF_DECK_FAR,
+                            bands: ROOF_BANDS, band_y: ROOF_BAND_Y, band_z: ROOF_BAND_Z,
+                            floor_tiles: ROOF_DECK_TILES, floor_bytes: ROOF_DECK_TILES_BYTES,
+                            floor_map: ROOF_DECK_MAP, floor_pal: ROOF_DECK_PAL,
+                            floor_pals: ROOF_DECK_PALS, floor_s: ROOF_DECK_S, floor_c: ROOF_DECK_C,
+                            floor_out: 0x10000, floor_far: ROOF_DECK_VIEW,
+                            sky: ROOF_SKY, sky_dy: ROOF_SKY_DY, prio: 0x42110033 },
+            // the stairwell's housing (the wall), the far parapet and its floodlights, the open
+            // edge's kerb (props/rooftop/, roof_props.akr), the expo's banner towers
+            nprops: 5, props: [
+                StageProp { mesh: ASSET_STAGE_ROOF_STAIRWELL, x: -ROOF_HALF, near: 12.0 },
+                StageProp { mesh: ASSET_STAGE_ROOF_KERB, x: ROOF_HALF, near: 10.0 },
+                StageProp { mesh: ASSET_STAGE_ROOF_PARAPET, z: ROOF_DECK_FAR, near: 60.0 },
+                StageProp { mesh: ASSET_EXPO_BANNER, x: -13.0, z: 21.0, near: 8.0 },
+                StageProp { mesh: ASSET_EXPO_BANNER, x: 11.0, z: 25.0, near: 8.0 },
+                StageProp {}],
+            music: 0, nevents: 0, events: [StageEvent {}, StageEvent {}, StageEvent {}, StageEvent {}] },
 ]
 
 // The arcade's stage for each fight on the ladder.
-const LADDER_STAGES: [2]s32 = [ST_HANGAR, ST_HANGAR]
+const LADDER_STAGES: [2]s32 = [ST_HANGAR, ST_ROOFTOP]   // the final on the rooftop
 
 fn stage_row(id: s32) -> *Stage { return &STAGES[clamp(id, 0, STAGES_N - 1)] }
 
 // Whether side k (0: -x, 1: +x) of a stage is open.
 fn stage_open(s: *Stage, k: s32) -> bool { return s.edge[k] == Edge.Open }
+
+// Whether a stage has an open edge (ring-outs).
+fn stage_has_open(s: *Stage) -> bool { return s.edge[0] == Edge.Open || s.edge[1] == Edge.Open }

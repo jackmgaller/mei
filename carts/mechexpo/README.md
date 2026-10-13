@@ -11,7 +11,7 @@ trial for a defence contract; every fight is a product demonstration. The pitch 
 | In | Out (later) |
 |---|---|
 | Two mechs: the Hero Mech (Momentum Robotics, kinetic) and its echo, the Double-blade Hero (Umbral Research, antimatter) | The other four base mechs and their echoes |
-| One stage: a flat demo hangar with walls on both sides | Stage events, moving stages, ring-outs |
+| One stage: a flat demo hangar with walls on both sides (since: [stages as data](#stages), and the rooftop with ring-outs) | Stage events, moving stages |
 | Versus: two players, or one player against the CPU | Story scenes, endings, the secret boss |
 | Arcade ladder: CPU mirror match, then your echo (or, as the echo, the original). Clearing it with the Hero unlocks the Double-blade Hero, saved to the memory card | Memory card saves beyond the unlock |
 | Training: a dummy and a move list | The announcer |
@@ -219,7 +219,11 @@ frames late; combined, they are one mid-weight brawler; L switches, a move each 
   and 197–199 (PAL_PRINT: the print layer's ramps, written at run time). In the menus BG0 is the
   print layer (the catalogue's coloured photographs behind the mechs): `ui_print.tiles` in ATLAS_2
   and MAP_BG0, put back by `hud_show(true)`; priorities there BG1 1, BG0 1 (it wins the tie), the
-  mechs 2, the interface list 4 (`PAGE_PRIO` in `menus.akr`). Slot 13 is unused.
+  mechs 2, the interface list 4 (`PAGE_PRIO` in `menus.akr`).
+- **The rooftop (mx-stages):** texture slot 13 and 4-bit palettes 200–203 for its props' pack
+  (`roof_props.akr`, loaded once by `stage_boot()`); its plane art uses the hangar's atlases,
+  maps and palettes (one stage is loaded at a time, by `stage_show()`). Priorities on the
+  rooftop: BG1 (the city) 0, BG2 (the deck) 1, the mechs 2, BG0 3, the interface list 4.
 - **The roster** (`roster.akr`): the makers and the select's ten slots; a mech's names, maker,
   booth, power source, stats, blurb and unlock rule are its row. Adding a mech is filling in its
   slot's `mech` field (the file's first comment says how). `save.unlocked` keeps bit 0 for the

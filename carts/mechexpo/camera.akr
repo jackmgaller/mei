@@ -68,7 +68,7 @@ fn cam_follow(x0: fixed, y0: fixed, x1: fixed, y1: fixed, shake: fixed) {
     cam_w += (tw - cam_w) / CAM_EASE
     let tx = cam_clamp_x((x0 + x1) / 2, cam_w)
     cam_x += (tx - cam_x) / CAM_EASE
-    let tl = max(y0, y1) * 0.45
+    let tl = max(max(y0, y1), 0.0) * 0.45       // (not down after a mech falling from the stage)
     cam_lift += (tl - cam_lift) / 10
     cam_shake = shake
 }

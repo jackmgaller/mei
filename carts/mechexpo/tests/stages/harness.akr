@@ -1,0 +1,743 @@
+// Mech Expo 2000's stage scenarios (mx-stages): the whole game (../../game.akr: the stage on the
+// plane chip, the camera, the mechs drawn by anim.akr, the effects and the HUD) driven through
+// its test hooks, as tests/fx/harness.akr does. tests/run.sh builds scenarios 90-99 from this
+// file and the game; tests/check.sh runs them. Each prints "stages ..." lines and "OK ...".
+//
+// 90  the hangar unchanged: its row (walls at +-36, its four props), a mech knocked down into
+//     the right wall and a walk into it stop at the wall; nothing falls
+// 91  a knockdown rings a mech out on the rooftop: the Hero's Low Sweep at the open edge's lip;
+//     the Double-blade Hero falls, the round is the Hero's (RING OUT), round 2 starts on the deck
+//     (and in training the same fall puts the dummy back on the deck)
+// 92  throws ring out: the Hero's throw toward the edge, and the Double-blade Hero's Vault Throw
+//     over its head with its back to the edge
+// 93  a blocked hit, a hit, a walk and a jump at the lip do not ring out: the mech stops there
+//     (the blocked hit's pushback passes to the attacker, as at a wall)
+// 94  the rooftop's closed side is a wall: a knockdown, a throw and a walk into the stairwell's
+//     housing stop at it
+// 95  the Twins near the edge: twin A knocked over the edge costs the round; twin B launched over
+//     it costs the round too (one fighter, one health bar), and its leash does not pull it back
+// 96  CPU against CPU on the rooftop (level 2): four pairings, each match finishes; the rounds
+//     won by KO, time and ring-out; the first match twice, frame for frame the same
+// 97  the stage select: Versus, after the character select, RIGHT and A pick the rooftop, the
+//     VS screen follows and the fight is on the rooftop; the arcade's ladder has its own stages
+// 98  the budget on the rooftop: CPU against CPU, the Hero against the Double-blade Hero, 1,800
+//     frames through the real game; the peaks overall and with a mech near the open edge
+// 99  the budget on the rooftop with three bodies: the split Twins against Tank, 1,800 frames
+
+var fr: s32                        // frames since the fight began (test_hook)
+var step: s32                      // the scenario's own steps
+var mark: s32
+var done: bool
+var last_ticks: s32
+var evc: [len(Ev)]s32
+var evs: [2][len(Ev)]s32
+var started: bool
+var peak_cpu: [2]s32               // [0] overall, [1] with a mech within 8 m of the open edge
+var peak_gpu: [2]s32
+var peak_tris: [2]s32
+var peak_fight: s32
+var peak_mechs: s32
+var late: s32
+var near_frames: s32
+var lip_max: fixed                 // the furthest out a mech stood (scenarios 93, 94)
+var cam_beyond: fixed              // the most of the drop the camera showed (metres past the edge)
+var block_x: fixed                 // scenario 93: the attacker's x when its hit was blocked
+
+const EVS: [len(Ev)]*u8 = [
+    "Hit", "Block", "Chip", "Whiff", "Grab", "Throw", "Break", "Land", "Step", "MeterFull",
+    "Super", "Ko", "TimeUp", "Shot", "Parry", "Clash", "Swing", "Armour", "RingOut",
+]
+
+// ---- set-up
+
+fn test_init() {
+    if SCENARIO == 96 {
+        cpu_matches_init()
+        return
+    }
+    if SCENARIO == 97 {
+        game = Game.Versus
+        enter_select()
+        return
+    }
+    game = Game.Versus
+    p_cpu = false
+    stage_sel = ST_ROOFTOP
+    if SCENARIO == 90 { stage_sel = ST_HANGAR }
+    p_mech[0] = Mech.Hero
+    p_mech[1] = Mech.Doubleblade
+    if SCENARIO == 95 { p_mech[1] = Mech.Twins }
+    if SCENARIO == 99 {
+        p_mech[0] = Mech.Twins
+        p_mech[1] = Mech.Tank
+    }
+    enter_fight()
+    if SCENARIO >= 98 { return }
+    skip_intro()
+    match SCENARIO {
+        90 => place(30.0, 33.0)
+        91 => place(edge() - 5.0, edge() - 2.0)
+        92 => place(edge() - 6.0, edge() - 3.5)
+        93 => place(edge() - 6.0, lip(1))
+        94 => place(6.0 - edge(), 3.0 - edge())
+        95 => place(edge() - 5.0, edge() - 1.5)
+        else => {}
+    }
+    for i in 0..2 { face_other(i) }
+    if SCENARIO == 95 { twins_reset() }
+    cam_reset(fight.f[0].x, fight.f[1].x)
+}
+
+private fn skip_intro() {
+    fight.phase = Phase.Fight
+    fight.phase_t = 100                  // past the FIGHT! banner
+    set_mv(0, Mv.idle)
+    set_mv(1, Mv.idle)
+}
+
+private fn place(x0: fixed, x1: fixed) {
+    fight.f[0].x = x0
+    fight.f[1].x = x1
+}
+
+// The stage's edges are at x = +-edge() (the rooftop's open edge at +edge()).
+private fn edge() -> fixed { return stage_now().half }
+
+// Where body i stops at the open edge (its lip): the edge less its push box.
+private fn lip(i: s32) -> fixed { return stage_now().half - STATS[fight.f[i].body].push }
+
+private fn fwd(i: s32) -> u32 {
+    if fight.f[i].facing > 0 { return RIGHT }
+    return LEFT
+}
+
+private fn back(i: s32) -> u32 {
+    if fight.f[i].facing > 0 { return LEFT }
+    return RIGHT
+}
+
+// A fresh fight on the current stage, halfway through a scenario.
+private fn restart(a: Mech, b: Mech, x0: fixed, x1: fixed) {
+    fight_init(a, b, FightMode.Versus, 0)
+    skip_intro()
+    place(x0, x1)
+    for i in 0..2 { face_other(i) }
+    if twins_in_fight { twins_reset() }
+    cam_reset(fight.f[0].x, fight.f[1].x)
+    for k in 0..len(Ev) {
+        evc[k] = 0
+        evs[0][k] = 0
+        evs[1][k] = 0
+    }
+    fr = 0
+    last_ticks = fight.ticks
+}
+
+fn input_stick(n: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+fn input_pad(n: s32) -> u32 {
+    if SCENARIO == 97 { return menu_pad(n) }
+    if st != St.Fight { return 0 }
+    if SCENARIO >= 98 {
+        // the Twins split for the first half (three bodies), as scenario 69
+        let p = cpu_pad(n, 2)
+        if SCENARIO == 99 && n == 0 && fr < 900 { return p & ~L }
+        // side 2 first backs up to the open edge's lip, so the fight comes to the drop
+        if n == 1 && fr < 400 && fight.phase == Phase.Fight { return RIGHT }
+        return p
+    }
+    let t = fr + 1                        // the fight frame that will read the press
+    match SCENARIO {
+        90 => {
+            if n == 0 && t == 5 { return DOWN | A }
+            if n == 1 && t >= 120 && t < 240 { return RIGHT }
+        }
+        91 => { if n == 0 && t == 5 && (step == 0 || step == 3) { return DOWN | A } }
+        92 => { if n == 0 && t == 5 && step == 0 { return Y } ; if n == 1 && t == 5 && step == 2 { return Y } }
+        93 => return script_93(n, t)
+        94 => {
+            if n == 0 && t == 5 { return DOWN | A }
+            if n == 0 && t == 140 { return Y }
+            if n == 1 && t >= 320 && t < 440 { return LEFT }
+        }
+        95 => { if n == 0 && t == 5 && step == 0 { return DOWN | A } }
+        else => {}
+    }
+    return 0
+}
+
+private fn script_93(n: s32, t: s32) -> u32 {
+    if n == 1 {
+        if t < 60 { return R }                              // blocks the Charge Slash
+        if t >= 140 && t < 260 { return RIGHT }             // walks back to the edge
+        if t == 270 { return RIGHT | X }                    // jumps back toward it
+        return 0
+    }
+    if t == 5 { return fwd(0) | B }                         // the Charge Slash, blocked
+    if t >= 70 && t < 100 && fight.f[0].x < lip(1) - 4.0 { return fwd(0) }   // back in range
+    if t == 100 { return A }                                // the Guard Cut, a hit at the lip
+    return 0
+}
+
+// ---- the frame
+
+fn test_hook() {
+    if SCENARIO == 96 {
+        cpu_matches()
+        return
+    }
+    if SCENARIO == 97 {
+        check_select()
+        return
+    }
+    if st != St.Fight || done { return }
+    let f = fight_get()
+    // the last frame's events (one fight tick a frame)
+    if f.ticks != last_ticks {
+        last_ticks = f.ticks
+        let ev = fight_events()
+        for i in 0..ev.n {
+            let e = &ev.e[i]
+            evc[e.kind] += 1
+            if e.side == 0 || e.side == 1 { evs[e.side][e.kind] += 1 }
+            if SCENARIO < 98 && e.kind != Ev.Step && e.kind != Ev.Swing && e.kind != Ev.Whiff {
+                print("  event ")
+                print(EVS[e.kind])
+                print(" side ")
+                print_int(e.side)
+                print(" at x ")
+                print_fixed(e.x)
+                print(", frame ")
+                print_int(fr)
+                println("")
+            }
+        }
+    }
+    let s = stage_now()
+    if stage_has_open(s) { cam_beyond = max(cam_beyond, cam_x + cam_w / 2 - s.half) }
+    if SCENARIO >= 98 {
+        budget(f)
+    } else {
+        check()
+    }
+    fr += 1
+}
+
+private fn check() {
+    match SCENARIO {
+        90 => check_hangar()
+        91 => check_knockdown()
+        92 => check_throws()
+        93 => check_lip()
+        94 => check_wall()
+        95 => check_twins()
+        else => {}
+    }
+}
+
+private fn ok(s: *u8) {
+    print("OK ")
+    println(s)
+    done = true
+}
+
+private fn no_ring_out() {
+    assert_eq(evc[Ev.RingOut], 0, "a ring-out")
+    for i in 0..4 { assert(!fx[i].out, "a mech fell") }
+    assert(fight.ringout < 0, "the round was rung out")
+}
+
+// ---- 90: the hangar
+
+private fn check_hangar() {
+    let s = stage_now()
+    if fr == 0 {
+        assert_eq(fight.stage, ST_HANGAR, "not the hangar")
+        assert(s.half == 36.0, "the hangar's half-width")
+        assert(!stage_has_open(s), "the hangar has an open edge")
+        assert_eq(s.nprops, 4, "the hangar's props")
+        assert(s.props[0].mesh == ASSET_HANGAR_WALL_R && s.props[0].x == 36.0, "the right wall")
+        assert(s.props[1].mesh == ASSET_HANGAR_WALL_L && s.props[1].x == -36.0, "the left wall")
+        assert_eq(s.nevents, 0, "the hangar has events")
+    }
+    no_ring_out()
+    let d = &fight.f[1]
+    lip_max = max(lip_max, d.x)
+    assert(d.x <= 36.0 - STATS[d.body].push, "through the hangar's wall")
+    if step == 0 && evc[Ev.Hit] > 0 {
+        step = 1
+        assert(d.mv == Mv.hit_air, "the Low Sweep did not knock down")
+    }
+    if step == 1 && d.mv == Mv.knockdown {
+        step = 2
+        print("stages hangar: knocked into the wall, landed at x ")
+        print_fixed(d.x)
+        println("")
+        assert(d.x == 36.0 - STATS[d.body].push, "not stopped at the wall")
+    }
+    if fr == 260 {
+        assert_eq(step, 2, "the sweep did not land")
+        assert(d.x == 36.0 - STATS[d.body].push, "the walk was not stopped at the wall")
+        assert(cam_x + cam_w / 2 <= 37.0 + 0.01, "the camera showed more than a metre past the wall")
+        print("stages hangar: walked to x ")
+        print_fixed(d.x)
+        print(", the view's edge at ")
+        print_fixed(cam_x + cam_w / 2)
+        println("")
+        ok("the hangar: walls at +-36 stop a knockdown and a walk, nothing falls")
+    }
+}
+
+// ---- 91: a knockdown at the lip
+
+private fn check_knockdown() {
+    let d = &fight.f[1]
+    if step == 0 && evc[Ev.RingOut] > 0 {
+        step = 1
+        mark = fr
+        print("stages ring out: the Low Sweep at frame 5, over the edge at frame ")
+        print_int(fr)
+        print(", the Double-blade Hero's health ")
+        print_int(d.health)
+        println("")
+        assert(fx[1].out, "the loser is not falling")
+        assert_eq(fight.ringout, 1, "fight.ringout")
+        assert_eq(fight.round_winner, 0, "the round's winner")
+        assert(fight.phase == Phase.Ko, "not in the KO phase")
+        assert(d.health > 0, "a KO, not a ring-out")
+        assert_eq(evs[0][Ev.RingOut], 1, "the RingOut event's side (the winner)")
+        assert(!fx[0].out, "the winner fell")
+    }
+    if step == 1 && fr == mark + 40 {
+        print("stages the fall: 40 frames later y ")
+        print_fixed(d.y)
+        print(", the view's edge ")
+        print_fixed(cam_x + cam_w / 2 - stage_now().half)
+        println(" m past the open edge")
+        assert(d.y < -5.0, "not falling")
+    }
+    if step == 1 && fight.phase == Phase.RoundOver {
+        step = 2
+        assert_eq(fight.wins[0], 1, "the ring-out did not count as a round won")
+        assert_eq(fight.wins[1], 0, "the loser got a win")
+    }
+    if step == 2 && fight.phase == Phase.Intro {
+        assert_eq(fight.round, 2, "round 2")
+        assert(!fx[1].out, "still falling in round 2")
+        assert(d.y == 0.0 && d.x == FIGHT_START_X, "not back on the deck")
+        assert(fight.ringout < 0, "round 2 starts rung out")
+        // training: the same sweep; the dummy falls and is put back, the round goes on
+        restart(Mech.Hero, Mech.Doubleblade, edge() - 5.0, edge() - 2.0)
+        fight.mode = FightMode.Training
+        step = 3
+        return
+    }
+    if step == 3 && fx[1].out { step = 4 }
+    if step == 4 && !fx[1].out {
+        print("stages training: the dummy fell at frame ")
+        print_int(fr - OUT_BACK)
+        print(" and was put back at x ")
+        print_fixed(d.x)
+        println("")
+        assert(d.x == edge() - OUT_SAFE && d.y == 0.0, "not put back on the deck")
+        assert(fight.phase == Phase.Fight && fight.round == 1 && fight.ringout < 0, "the round ended")
+        assert_eq(evc[Ev.RingOut], 0, "a ring-out event in training")
+        ok("a knockdown at the lip rings out: the round won, round 2 on the deck; training puts it back")
+    }
+}
+
+// ---- 92: throws
+
+private fn check_throws() {
+    if step == 0 && evc[Ev.RingOut] > 0 {
+        print("stages ring out: the Hero's throw from x ")
+        print_fixed(fight.f[0].x)
+        print(", frame ")
+        print_int(fr)
+        println("")
+        assert(evc[Ev.Throw] == 1, "no throw")
+        assert_eq(fight.round_winner, 0, "the thrower did not win the round")
+        step = 1
+        mark = fr
+    }
+    if step == 1 && fr == mark + 20 {
+        // the Vault Throw: the Double-blade Hero with its back to the edge throws over its head
+        restart(Mech.Hero, Mech.Doubleblade, edge() - 9.0, edge() - 6.0)
+        step = 2
+        return
+    }
+    if step == 2 && evc[Ev.RingOut] > 0 {
+        print("stages ring out: the Vault Throw from x ")
+        print_fixed(fight.f[1].x)
+        print(", frame ")
+        print_int(fr)
+        println("")
+        assert(evc[Ev.Throw] == 1, "no Vault Throw")
+        assert_eq(fight.round_winner, 1, "the Vault Throw did not win the round")
+        assert(fx[0].out, "the Hero is not falling")
+        ok("throws ring out: the Hero's toward the edge, the Vault Throw over the head")
+    }
+    if fr > 200 { assert(false, "no ring-out from the throw") }
+}
+
+// ---- 93: the lip
+
+private fn check_lip() {
+    no_ring_out()
+    let d = &fight.f[1]
+    let l = lip(1)
+    lip_max = max(lip_max, d.x)
+    assert(d.x <= l, "past the lip")
+    if evc[Ev.Block] == 1 && block_x == 0.0 { block_x = fight.f[0].x }
+    if fr == 60 {
+        assert_eq(evc[Ev.Block], 1, "the Charge Slash was not blocked")
+        assert(d.x == l, "the blocked hit moved the defender off the lip")
+        print("stages lip: blocked at the lip from x ")
+        print_fixed(block_x)
+        print(", the Hero pushed back to x ")
+        print_fixed(fight.f[0].x)
+        println("")
+        assert(fight.f[0].x < block_x - 0.5, "the pushback was not passed to the attacker")
+    }
+    if fr == 135 {
+        assert(evc[Ev.Hit] >= 1, "the Guard Cut did not hit")
+        assert(d.x == l, "the hit at the lip moved it")
+    }
+    if fr == 400 {
+        assert(d.y == 0.0 && grounded(1), "not back on the deck after the jump")
+        assert(d.x == l, "not at the lip")
+        print("stages lip: block, hit, walk and jump at the lip: furthest x ")
+        print_fixed(lip_max)
+        print(" (the lip ")
+        print_fixed(l)
+        print(", the edge ")
+        print_fixed(stage_now().half)
+        println(")")
+        ok("a blocked hit, a hit, a walk and a jump stop at the lip")
+    }
+}
+
+// ---- 94: the closed side
+
+private fn check_wall() {
+    no_ring_out()
+    let d = &fight.f[1]
+    let w = -stage_now().half + STATS[d.body].push
+    lip_max = min(lip_max, d.x)
+    assert(d.x >= w, "through the stairwell's wall")
+    if fr == 130 {
+        assert(evc[Ev.Hit] >= 1, "the Low Sweep did not hit")
+        assert(d.x == w, "the knockdown did not stop at the wall")
+    }
+    if fr == 300 {
+        assert(evc[Ev.Throw] >= 1, "no throw")
+        assert(d.x == w, "the throw did not stop at the wall")
+    }
+    if fr == 460 {
+        assert(d.x == w, "the walk did not stop at the wall")
+        print("stages wall: a knockdown, a throw and a walk stop at x ")
+        print_fixed(lip_max)
+        print(" (the wall at ")
+        print_fixed(-stage_now().half)
+        print("), the view's edge at ")
+        print_fixed(cam_x - cam_w / 2)
+        println("")
+        assert(cam_x - cam_w / 2 >= -stage_now().half - 1.0 - 0.01, "the camera showed past the wall")
+        ok("the closed side is a wall")
+    }
+}
+
+// ---- 95: the Twins
+
+private fn check_twins() {
+    if step == 0 && evc[Ev.RingOut] > 0 {
+        print("stages Twins: twin A over the edge at frame ")
+        print_int(fr)
+        println("")
+        assert(fx[1].out, "twin A is not falling")
+        assert_eq(fight.round_winner, 0, "the Hero did not win the round")
+        step = 1
+        mark = fr
+    }
+    if step == 1 && fr == mark + 20 {
+        // twin B launched past the lip (as by a knockdown), twin A safe inside
+        restart(Mech.Hero, Mech.Twins, edge() - 14.0, edge() - 6.0)
+        let p = &fight.f[3]
+        p.x = edge() - 1.5
+        p.y = 1.0
+        set_mv(3, Mv.hit_air)
+        fx[3].air = true
+        fx[3].vx = 0.15
+        fx[3].vy = 0.3
+        step = 2
+        return
+    }
+    if step == 2 && evc[Ev.RingOut] > 0 {
+        step = 3
+        mark = fr
+        assert(fx[3].out, "twin B is not falling")
+        assert(!fx[1].out, "twin A fell too")
+        assert_eq(fight.ringout, 1, "the Twins' side was not rung out")
+        assert_eq(fight.round_winner, 0, "twin B's fall did not cost the round")
+        print("stages Twins: twin B over the edge at frame ")
+        print_int(fr)
+        println("")
+    }
+    if step == 3 && fr == mark + 30 {
+        assert(fight.f[3].x > stage_now().half, "the leash pulled twin B back")
+        assert(fight.f[3].y < 0.0, "twin B is not falling")
+        ok("the Twins: either twin over the edge costs the round")
+    }
+    if step < 3 && fr > 200 { assert(false, "no ring-out") }
+}
+
+// ---- 96: CPU against CPU on the rooftop
+
+const CM_PAIRS = 8                  // four pairings, each from both sides (the open edge behind side 2)
+const CM_A: [8]Mech = [Mech.Hero, Mech.Beam, Mech.Twins, Mech.Tank, Mech.Doubleblade, Mech.Tank, Mech.Hero, Mech.Doubleblade]
+const CM_B: [8]Mech = [Mech.Doubleblade, Mech.Tank, Mech.Hero, Mech.Doubleblade, Mech.Hero, Mech.Beam, Mech.Twins, Mech.Tank]
+const CM_MAX = 20000                // frames: a match must end within this
+var cm_n: s32                       // the match (0..CM_PAIRS; the first twice)
+var cm_dummy: bool                  // the first part: the CPU against a mech standing at the lip
+var cm_frames: s32
+var cm_sum: u32
+var cm_sum0: u32
+var cm_frames0: s32
+var cm_by: [3]s32                   // this match's rounds won by KO, time, ring-out
+var cm_all: [3]s32
+var cm_round: s32
+var cm_xmax: fixed                  // how far toward each edge the mechs went
+var cm_xmin: fixed
+
+private fn cpu_matches_init() {
+    fight_stage(ST_ROOFTOP)
+    // first: the CPU (level 2, the Hero) against a Double-blade Hero standing near the lip
+    fight_init(Mech.Hero, Mech.Doubleblade, FightMode.Versus, 0)
+    skip_intro()
+    place(edge() - 12.0, edge() - 3.0)
+    for i in 0..2 { face_other(i) }
+    cm_dummy = true
+}
+
+private fn cm_dummy_tick() {
+    for k in 0..40 {
+        fight_tick(cpu_pad(0, 2), 0, vec2(0.0, 0.0), vec2(0.0, 0.0))
+        cm_frames += 1
+        let ev = fight_events()
+        for i in 0..ev.n {
+            if ev.e[i].kind == Ev.RingOut {
+                print("stages CPU: the Hero rings out a Double-blade Hero standing 3 m from the edge in ")
+                print_int(cm_frames)
+                print(" frames (")
+                print_int(evc_n(Ev.Hit))
+                print(" hits, ")
+                print_int(evc_n(Ev.Throw))
+                println(" throws)")
+                cm_dummy = false
+                cm_start()
+                return
+            }
+            evc[ev.e[i].kind] += 1
+        }
+        assert(cm_frames < 1200, "the CPU did not ring out a mech standing at the lip")
+    }
+}
+
+private fn evc_n(k: Ev) -> s32 { return evc[k] }
+
+private fn cm_pair() -> s32 { return max(cm_n - 1, 0) }
+
+private fn cm_start() {
+    let k = cm_pair()
+    fight_init(CM_A[k], CM_B[k], FightMode.VsCpu, 2)
+    cm_frames = 0
+    cm_sum = 0
+    cm_round = 1
+    cm_xmax = 0.0
+    cm_xmin = 0.0
+    for r in 0..3 { cm_by[r] = 0 }
+}
+
+private fn cpu_matches() {
+    if done { return }
+    if cm_dummy {
+        cm_dummy_tick()
+        return
+    }
+    for k in 0..40 {
+        fight_tick(cpu_pad(0, 2), 0, vec2(0.0, 0.0), vec2(0.0, 0.0))
+        cm_frames += 1
+        let f = fight_get()
+        cm_sum = cm_sum * 31 + (bits(f.f[0].x) as u32) + (bits(f.f[1].y) as u32) * 7 + (f.f[0].health as u32) * 13
+        cm_xmax = max(cm_xmax, max(f.f[0].x, f.f[1].x))
+        cm_xmin = min(cm_xmin, min(f.f[0].x, f.f[1].x))
+        let ev = fight_events()
+        for i in 0..ev.n {
+            let e = &ev.e[i]
+            if e.kind == Ev.Ko { cm_by[0] += 1 }
+            if e.kind == Ev.TimeUp { cm_by[1] += 1 }
+            if e.kind == Ev.RingOut { cm_by[2] += 1 }
+        }
+        assert(cm_frames < CM_MAX, "a match did not finish")
+        if f.phase == Phase.MatchOver {
+            cm_report(f)
+            cm_n += 1
+            if cm_n > CM_PAIRS {
+                print("stages CPU on the rooftop: rounds by KO ")
+                print_int(cm_all[0])
+                print(", time ")
+                print_int(cm_all[1])
+                print(", ring-out ")
+                print_int(cm_all[2])
+                println("")
+                ok("CPU against CPU on the rooftop: every match finishes, the same twice")
+                return
+            }
+            cm_start()
+            return
+        }
+    }
+}
+
+private fn cm_report(f: *Fight) {
+    if cm_n == 0 {
+        cm_sum0 = cm_sum
+        cm_frames0 = cm_frames
+        return
+    }
+    if cm_n == 1 {
+        assert(cm_sum == cm_sum0 && cm_frames == cm_frames0, "the same match twice went differently")
+    }
+    print("stages ")
+    print(mech_short(f.f[0].mech))
+    print(" against ")
+    print(mech_short(f.f[1].mech))
+    print(": winner ")
+    print_int(f.winner)
+    print(", ")
+    print_int(f.wins[0])
+    print("-")
+    print_int(f.wins[1])
+    print(" in ")
+    print_int(cm_frames)
+    print(" frames; rounds by KO ")
+    print_int(cm_by[0])
+    print(", time ")
+    print_int(cm_by[1])
+    print(", ring-out ")
+    print_int(cm_by[2])
+    print("; x from ")
+    print_fixed(cm_xmin)
+    print(" to ")
+    print_fixed(cm_xmax)
+    println("")
+    for r in 0..3 { cm_all[r] += cm_by[r] }
+}
+
+// ---- 97: the stage select
+
+private fn menu_pad(n: s32) -> u32 {
+    let t = fr + 1
+    if n == 0 {
+        if t == 10 || t == 20 { return A }          // 1P picks the Hero, then the CPU's Hero
+        if t == 70 { return RIGHT }                 // the stage select: the rooftop
+        if t == 80 { return A }
+    }
+    return 0
+}
+
+private fn check_select() {
+    if done { return }
+    fr += 1
+    if fr == 60 {
+        assert(st == St.Stage, "the character select did not lead to the stage select")
+        assert_eq(stage_sel, ST_HANGAR, "the stage select starts on the hangar")
+    }
+    if fr == 75 { assert_eq(stage_sel, ST_ROOFTOP, "RIGHT did not move to the rooftop") }
+    if fr == 82 {
+        print("stages select: the cursor on ")
+        println(stage_row(stage_sel).name)
+    }
+    if fr == 160 {
+        assert(st == St.Vs, "the stage select did not lead to the VS screen")
+        enter_fight()
+        assert_eq(fight.stage, ST_ROOFTOP, "the fight is not on the rooftop")
+        // the arcade: the ladder's own stages
+        let g = game
+        game = Game.Arcade
+        ladder = 0
+        assert_eq(stage_pick(), LADDER_STAGES[0], "the arcade's first stage")
+        ladder = 1
+        assert_eq(stage_pick(), LADDER_STAGES[1], "the arcade's second stage")
+        print("stages select: the arcade's ladder: ")
+        print(stage_row(LADDER_STAGES[0]).name)
+        print(", then ")
+        println(stage_row(LADDER_STAGES[1]).name)
+        game = g
+        ladder = 0
+        // back to the stage select for the picture
+        enter_stage_select()
+        stage_sel = ST_ROOFTOP
+        stage_done_t = tick
+    }
+    if fr == 170 {
+        assert(st == St.Stage, "not the stage select")
+        ok("the stage select: the rooftop picked, the fight on it; the ladder's stages")
+    }
+}
+
+// ---- 98, 99: the budget on the rooftop
+
+private fn budget(f: *Fight) {
+    let s = stage_now()
+    var near = false
+    for i in 0..2 {
+        if abs(f.f[i].x - s.half) < 8.0 && stage_open(s, 1) { near = true }
+    }
+    if started && fr > 3 {
+        for k in 0..2 {
+            if k == 1 && !near { continue }
+            peak_cpu[k] = max(peak_cpu[k], cpu_used())
+            peak_gpu[k] = max(peak_gpu[k], gpu_used())
+            peak_tris[k] = max(peak_tris[k], tris_drawn())
+        }
+        if near { near_frames += 1 }
+        peak_fight = max(peak_fight, prof_fight)
+        peak_mechs = max(peak_mechs, prof_mechs)
+        if frame_ticks() > 1 { late += 1 }
+    }
+    started = true
+    if fr == 1799 {
+        for k in 0..2 {
+            print("stages budget, ")
+            if SCENARIO == 99 { print("the split Twins against Tank") } else { print("the Hero against the Double-blade Hero") }
+            if k == 0 { print(" on the rooftop: peak cpu ") } else { print(" near the open edge: peak cpu ") }
+            print_int(peak_cpu[k])
+            print(", gpu ")
+            print_int(peak_gpu[k])
+            print(", triangles ")
+            print_int(peak_tris[k])
+            println("")
+            assert(peak_cpu[k] <= CPU_BUDGET, "over the CPU budget")
+            assert(peak_gpu[k] <= GPU_BUDGET, "over the GPU budget")
+            assert(peak_tris[k] < 4000, "over 4,000 triangles")
+        }
+        print("stages budget: frames near the edge ")
+        print_int(near_frames)
+        print(", ring-outs ")
+        print_int(evc[Ev.RingOut])
+        print(", KOs ")
+        print_int(evc[Ev.Ko])
+        print(", late frames ")
+        print_int(late)
+        print(", the fight's peak ")
+        print_int(peak_fight)
+        print(", the mechs' drawing peak ")
+        print_int(peak_mechs)
+        print(" cycles, the most of the drop in view ")
+        print_fixed(cam_beyond)
+        println(" m")
+        assert(late == 0, "late frames")
+        ok("the budget on the rooftop")
+    }
+}

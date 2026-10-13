@@ -651,7 +651,8 @@ fn draw_fight_overlay() {
             if t < 50 && !training { hud_banner("FIGHT!", null, t, C_YELLOW) }
         }
         Ko => {
-            if f.timer <= 0 { hud_banner("TIME UP", null, t, C_TANGERINE) }
+            if f.ringout >= 0 { hud_banner("RING OUT", null, t, C_TANGERINE) }
+            else if f.timer <= 0 { hud_banner("TIME UP", null, t, C_TANGERINE) }
             else { hud_banner("K.O.", null, t, C_WHITE) }
         }
         RoundOver => {
@@ -960,40 +961,43 @@ fn draw_stage_select() {
     masthead("VENUE GUIDE", "STAGE")
     print_clear()
     let n = STAGES_N
-    let cw = ((312 / n) / 8) * 8 - 8
+    let cw = ((312 / n) / 8) * 8 - 8       // whole tiles, for the photograph
     for i in 0..n {
         let s = stage_row(i)
         let x = 8 + i * (cw + 8)
-        let y = 32
         let on = i == stage_sel
-        paper(x, y, cw, 176)
-        rect_blend(x, y, cw, 3, s.colour, BLEND_NONE)
-        // the photograph: the venue's colour, its floor and edges drawn over it
-        print_ramp(min(i, 2), s.colour)
-        print_photo(x / 8 + 1, 5, cw / 8 - 2, 10, min(i, 2))
-        stage_diagram(s, x + 8, 40, cw - 16, 80)
-        var ink = C_STEEL
-        if on { ink = C_INK }
-        txt(FONT_HEAD, x + 6, 123, s.name, ink, ALIGN_LEFT)
-        txt(FONT_MICRO, x + 6, 139, s.venue, C_STEEL, ALIGN_LEFT)
-        rect_blend(x + 6, 151, cw - 12, 1, C_SILVER, BLEND_NONE)
-        txt(FONT_MICRO, x + 6, 155, "EDGES", C_STEEL, ALIGN_LEFT)
+        // the name bar in the venue's colour
+        rect_blend(x, 32, cw, 15, s.colour, BLEND_NONE)
+        rect_blend(x, 46, cw, 1, 0x200C06, BLEND_SUB)
+        var name = s.name
+        if txt_w(FONT_HEAD, name) > cw - 8 { name = s.short }
+        txt(FONT_HEAD, x + 4, 32, name, C_WHITE, ALIGN_LEFT)
+        // the photograph (the print layer): the venue's colour, its floor and edges over it
+        let k = min(i, 2)
+        print_ramp(k, s.colour)
+        print_photo(x / 8, 6, cw / 8, 10, k)
+        stage_diagram(s, x + 8, 52, cw - 16, 72)
+        // the sheet
+        paper(x, 128, cw, 80)
+        txt(FONT_MICRO, x + 6, 130, s.venue, C_STEEL, ALIGN_LEFT)
+        rect_blend(x + 6, 142, cw - 12, 1, C_SILVER, BLEND_NONE)
+        txt(FONT_MICRO, x + 6, 146, "EDGES", C_STEEL, ALIGN_LEFT)
         let eb = sb()
         str_append(eb, 64, edge_name(s, 0))
         str_append(eb, 64, "  //  ")
         str_append(eb, 64, edge_name(s, 1))
-        txt(FONT_MICRO, x + cw - 6, 155, eb, C_NAVY, ALIGN_RIGHT)
-        txt_lines(FONT_MICRO, x + 6, 168, s.blurb, 9, C_INK, ALIGN_LEFT)
+        txt(FONT_MICRO, x + cw - 6, 146, eb, C_NAVY, ALIGN_RIGHT)
+        txt_lines(FONT_MICRO, x + 6, 160, s.blurb, 9, C_INK, ALIGN_LEFT)
         if stage_open(s, 0) || stage_open(s, 1) {
             let tw = txt_w(FONT_LABEL, "RING-OUTS") + 6
-            tag(x + cw - 6 - tw, 192, tw, "RING-OUTS", C_RED, C_WHITE)
+            tag(x + cw - 6 - tw, 190, tw, "RING-OUTS", C_RED, C_WHITE)
         }
         if on {
-            rect_outline(x - 3, y - 3, cw + 6, 182, C_RED, BLEND_NONE)
-            if stage_done_t > 0 || (tick >> 3) & 1 == 0 { rect_outline(x - 2, y - 2, cw + 4, 180, C_RED, BLEND_NONE) }
-            tag(x - 6, y - 7, 14, "1P", C_RED, C_WHITE)
-            ui_shine(x, y, cw, 90, tick - stage_moved, 90)
-            if stage_done_t > 0 { ui_stamp(&UI_STAMP_READY[0], x + cw / 2, 96, C_RED) }
+            rect_outline(x - 3, 29, cw + 6, 182, C_RED, BLEND_NONE)
+            if stage_done_t > 0 || (tick >> 3) & 1 == 0 { rect_outline(x - 2, 30, cw + 4, 180, C_RED, BLEND_NONE) }
+            tag(x - 6, 25, 14, "1P", C_RED, C_WHITE)
+            ui_shine(x, 32, cw, 15, tick - stage_moved, 90)
+            if stage_done_t > 0 { ui_stamp(&UI_STAMP_READY[0], x + cw / 2, 84, C_RED) }
         }
     }
     footer("LEFT/RIGHT CHOOSE  //  A CONFIRM  //  B BACK", "P. 08")

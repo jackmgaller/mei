@@ -29,6 +29,7 @@ var st_hall_loaded: bool
 var st_loaded: s32 = -1           // the stage whose floor and sky are loaded
 
 fn stage_boot() {
+    stage_roof_props_load()             // the rooftop's props: slot 13 and palettes 200-203, once
     stage_load(stage_now())
 }
 
@@ -87,7 +88,7 @@ fn stage_frame() {
     let h = clamp(line, 240 - 1024 + ST_SKY_ZERO, ST_SKY_ZERO)
     line_channel(0, LC_BD_COLOR, 1, (ST_SKY_TAB + (ST_SKY_ZERO - h) * 4) as u32)
     // the hall: one vertical scroll; each band's x from where world x = 0 falls at its depth
-    let sy = (a.hall_h - 1 - line) as u32 & 0xFFFF
+    let sy = (a.hall_line - line) as u32 & 0xFFFF
     let tbl = LT_BG1 as *u32
     var y = 0
     for b in 0..a.bands {
@@ -95,13 +96,14 @@ fn stage_frame() {
         let sx = (a.hall_w / 2 - p.x) as u32 & 0xFFFF
         let w = sx | (sy << 16)
         var y1 = 240
-        if b + 1 < a.bands { y1 = clamp(line - (a.hall_h - 1) + a.band_y[b + 1], 0, 240) }
+        if b + 1 < a.bands { y1 = clamp(line - a.hall_line + a.band_y[b + 1], 0, 240) }
         while y < y1 {
             tbl[y] = w
             y += 1
         }
     }
     plane_scroll(BG1, 0, sy as s32)
+    plane_window(BG1, 0, clamp(line - a.hall_line, 0, 240), 320, 240)     // nothing above the art's top
     line_channel(2, lc_scroll(BG1), 1, LT_BG1)
     // the floor
     st_floor_top = plane_floor(0.0, a.floor_s, a.floor_c, a.floor_c, a.floor_far)

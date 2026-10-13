@@ -10,5 +10,6 @@ SC_HEAD="$(printf 'cart "Mech Expo Fight Test", "MECHEXPO-TEST"\nconst SCENARIO 
 case "$1" in
     5[0-4]) SC_HEAD="$SC_HEAD" SC_APP="../../game.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE/fx" "$@" ;;
     6[89]) SC_HEAD="$SC_HEAD" SC_APP="../../game.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE/twins" "$@" ;;
+    9[0-9]) SC_HEAD="$SC_HEAD" SC_APP="../../game.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE/stages" "$@" ;;
 esac
 SC_HEAD="$SC_HEAD" SC_APP="../fight.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE" "$@"

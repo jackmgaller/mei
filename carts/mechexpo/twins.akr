@@ -322,6 +322,7 @@ fn twins_bound() {
         let o = &fight.f[j]
         // held by a thrower, or placed by combine and split: the fight's placing stands
         if is_thrown(pf.mv) || pf.mv == Mv.combine || pf.mv == Mv.split { continue }
+        if fx[p].out || fx[s].out { continue }      // a twin falling from an open edge (mx-stages)
         // out of the other mech's way, on its own side; the other mech is never moved
         let busy = o.mv == Mv.throw || tank_holding(j)
         let need = push_half(p) + push_half(j)
