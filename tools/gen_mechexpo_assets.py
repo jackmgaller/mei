@@ -4,7 +4,8 @@
 Writes, in carts/mechexpo/:
   art/          every mesh, texture slot and palette of the models, packed together by
                 `mei_assets.py pack` (texture slots 0-7, 4-bit palettes from 0, 8-bit palettes
-                from 14 down); art/stage_* and art/ui_* are D's and are left alone
+                from 14 down); art/stage_* and art/ui_* (D's) and art/fx_* (the
+                effects', tools/gen_mechexpo_fx.py) are left alone
   assets.akr    the pack's embeds (every ASSET_*) and one loader, assets_load()
 
 What is packed: for a model folder with a rig (models/NAME/NAME.rig.json), the part recipes the
@@ -36,7 +37,7 @@ PACK_NAME = 'mx_pack'
 PACK_SLOTS = '0-7'          # README: B's pack uses texture slots 0-7, D 8-14
 PALETTE = 0                 # 4-bit palettes from 0 up (D's are 240-254)
 PALETTE8 = 14               # 8-bit palettes from 14 down
-FOREIGN = ('stage_', 'ui_')  # art/stage_* and art/ui_* are D's
+FOREIGN = ('stage_', 'ui_', 'fx_')  # art/stage_* and art/ui_* are D's, art/fx_* the effects'
 
 MECH_LIMIT = 1800           # README: a mech about 1,600-1,800 triangles
 PROP_LIMIT = {'wall': 300, 'banner': 260}
@@ -92,7 +93,7 @@ def run_pack(found, work, skipped):
 
 
 def owned_art():
-    """The files in art/ this generator wrote (everything but D's stage_* and ui_*)."""
+    """The files in art/ this generator wrote (everything but stage_*, ui_* and fx_*)."""
     if not ART.exists():
         return []
     return [p for p in ART.iterdir() if p.is_file() and not p.name.startswith(FOREIGN)]
@@ -300,7 +301,7 @@ def main():
                 if p.suffix not in ('.akr',):
                     shutil.copy2(p, ART/p.name)
         (CART/'assets.akr').write_text(assets_akr)
-        print('wrote carts/mechexpo/art/ (all but stage_* and ui_*), carts/mechexpo/assets.akr')
+        print('wrote carts/mechexpo/art/ (all but stage_*, ui_* and fx_*), carts/mechexpo/assets.akr')
         if check:
             probe(check, manifest, rigs)
     finally:

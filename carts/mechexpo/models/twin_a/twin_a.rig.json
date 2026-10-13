@@ -1,0 +1,691 @@
+{
+ "format": "mei-rig",
+ "version": 1,
+ "name": "twin_a",
+ "units": "metres; Y up; the mech faces -Z, +X is its left",
+ "rotation": "degrees, applied X then Y then Z, in the parent joint frame (the Asset Kit's order). Not mirrored between sides: on a hanging limb +X swings it forward; +Z swings a left limb out (+X) and a right limb in, so a mirrored pose negates Y and Z",
+ "root": "pelvis",
+ "root_note": "the root (fight origin) is on the floor under the pelvis; pelvis.offset is the rest-pose hip-axle height, a pose lowers it by its 'drop'",
+ "body": "Binary Mechanica's twin A, the 1: the split form's leader (the player's inputs); tall and slim, cyan. The combined form's head, torso and arms",
+ "height": 7.626,
+ "parts": [
+  {
+   "id": "pelvis",
+   "parent": null,
+   "offset": [
+    0,
+    3.646,
+    0
+   ],
+   "recipe": "parts/twin_a_pelvis.asset.json",
+   "asset": "ASSET_TWIN_A_PELVIS",
+   "triangles": 44,
+   "vertices": 30,
+   "bounds": {
+    "min": [
+     -0.52,
+     -0.5,
+     -0.4
+    ],
+    "max": [
+     0.52,
+     0.34,
+     0.4
+    ]
+   },
+   "role": "twin A's hips; the hip axle",
+   "range": "x -25..25, y -40..40, z -10..10"
+  },
+  {
+   "id": "torso",
+   "parent": "pelvis",
+   "offset": [
+    0,
+    0.42,
+    0
+   ],
+   "recipe": "parts/twin_a_torso.asset.json",
+   "asset": "ASSET_TWIN_A_TORSO",
+   "triangles": 138,
+   "vertices": 96,
+   "bounds": {
+    "min": [
+     -0.9,
+     -0.15,
+     -0.715
+    ],
+    "max": [
+     0.9,
+     2.32,
+     0.9478
+    ]
+   },
+   "role": "the slim chest, the cyan core and the fusion cell on the back",
+   "range": "x -40..35, y -60..60, z -20..20"
+  },
+  {
+   "id": "head",
+   "parent": "torso",
+   "offset": [
+    0.0,
+    2.1,
+    -0.04
+   ],
+   "recipe": "parts/twin_a_head.asset.json",
+   "asset": "ASSET_TWIN_A_HEAD",
+   "triangles": 108,
+   "vertices": 68,
+   "bounds": {
+    "min": [
+     -0.4,
+     -0.06,
+     -0.5
+    ],
+    "max": [
+     0.4,
+     1.46,
+     0.37
+    ]
+   },
+   "role": "the tall head and its blade fin (the 1)",
+   "range": "x -30..30, y -60..60, z -15..15"
+  },
+  {
+   "id": "pauldron_r",
+   "parent": "torso",
+   "offset": [
+    -1.05,
+    1.78,
+    0.02
+   ],
+   "recipe": "parts/twin_a_pauldron_r.asset.json",
+   "asset": "ASSET_TWIN_A_PAULDRON_R",
+   "triangles": 44,
+   "vertices": 24,
+   "bounds": {
+    "min": [
+     -0.61,
+     -0.4,
+     -0.44
+    ],
+    "max": [
+     0.19,
+     0.42,
+     0.44
+    ]
+   },
+   "role": "the small shoulder plate; follows the upper arm part way",
+   "range": "about 0.35 of the upper arm's x and 0.5 of its z"
+  },
+  {
+   "id": "upper_arm_r",
+   "parent": "torso",
+   "offset": [
+    -1.05,
+    1.78,
+    0.02
+   ],
+   "recipe": "parts/twin_a_upper_arm_r.asset.json",
+   "asset": "ASSET_TWIN_A_UPPER_ARM_R",
+   "triangles": 28,
+   "vertices": 24,
+   "bounds": {
+    "min": [
+     -0.2,
+     -1.16,
+     -0.2252
+    ],
+    "max": [
+     0.2,
+     0.26,
+     0.2252
+    ]
+   },
+   "role": "the shoulder drum and the thin upper arm",
+   "range": "x -70..190, y -45..45, z: out -110..in 25 (sign by side)"
+  },
+  {
+   "id": "forearm_r",
+   "parent": "upper_arm_r",
+   "offset": [
+    0,
+    -1.3,
+    0
+   ],
+   "recipe": "parts/twin_a_forearm_r.asset.json",
+   "asset": "ASSET_TWIN_A_FOREARM_R",
+   "triangles": 64,
+   "vertices": 38,
+   "bounds": {
+    "min": [
+     -0.28,
+     -1.16,
+     -0.28
+    ],
+    "max": [
+     0.28,
+     0.23,
+     0.33
+    ]
+   },
+   "role": "the gauntlet",
+   "range": "x 0..150 (forward only: the elbow), y -30..30"
+  },
+  {
+   "id": "hand_r",
+   "parent": "forearm_r",
+   "offset": [
+    0,
+    -1.22,
+    0
+   ],
+   "recipe": "parts/twin_a_hand_r.asset.json",
+   "asset": "ASSET_TWIN_A_HAND_R",
+   "triangles": 32,
+   "vertices": 24,
+   "bounds": {
+    "min": [
+     -0.2046,
+     -0.4278,
+     -0.1798
+    ],
+    "max": [
+     0.1674,
+     0.124,
+     0.155
+    ]
+   },
+   "role": "the fist (an empty weapon mount at its middle)",
+   "range": "x -70..70, y -40..40, z -35..35"
+  },
+  {
+   "id": "pauldron_l",
+   "parent": "torso",
+   "offset": [
+    1.05,
+    1.78,
+    0.02
+   ],
+   "recipe": "parts/twin_a_pauldron_l.asset.json",
+   "asset": "ASSET_TWIN_A_PAULDRON_L",
+   "triangles": 44,
+   "vertices": 24,
+   "bounds": {
+    "min": [
+     -0.19,
+     -0.4,
+     -0.44
+    ],
+    "max": [
+     0.61,
+     0.42,
+     0.44
+    ]
+   },
+   "role": "the small shoulder plate; follows the upper arm part way",
+   "range": "about 0.35 of the upper arm's x and 0.5 of its z"
+  },
+  {
+   "id": "upper_arm_l",
+   "parent": "torso",
+   "offset": [
+    1.05,
+    1.78,
+    0.02
+   ],
+   "recipe": "parts/twin_a_upper_arm_l.asset.json",
+   "asset": "ASSET_TWIN_A_UPPER_ARM_L",
+   "triangles": 28,
+   "vertices": 24,
+   "bounds": {
+    "min": [
+     -0.2,
+     -1.16,
+     -0.2252
+    ],
+    "max": [
+     0.2,
+     0.26,
+     0.2252
+    ]
+   },
+   "role": "the shoulder drum and the thin upper arm",
+   "range": "x -70..190, y -45..45, z: out -110..in 25 (sign by side)"
+  },
+  {
+   "id": "forearm_l",
+   "parent": "upper_arm_l",
+   "offset": [
+    0,
+    -1.3,
+    0
+   ],
+   "recipe": "parts/twin_a_forearm_l.asset.json",
+   "asset": "ASSET_TWIN_A_FOREARM_L",
+   "triangles": 64,
+   "vertices": 38,
+   "bounds": {
+    "min": [
+     -0.28,
+     -1.16,
+     -0.28
+    ],
+    "max": [
+     0.28,
+     0.23,
+     0.33
+    ]
+   },
+   "role": "the gauntlet",
+   "range": "x 0..150 (forward only: the elbow), y -30..30"
+  },
+  {
+   "id": "hand_l",
+   "parent": "forearm_l",
+   "offset": [
+    0,
+    -1.22,
+    0
+   ],
+   "recipe": "parts/twin_a_hand_l.asset.json",
+   "asset": "ASSET_TWIN_A_HAND_L",
+   "triangles": 32,
+   "vertices": 24,
+   "bounds": {
+    "min": [
+     -0.1674,
+     -0.4278,
+     -0.1798
+    ],
+    "max": [
+     0.2046,
+     0.124,
+     0.155
+    ]
+   },
+   "role": "the fist (an empty weapon mount at its middle)",
+   "range": "x -70..70, y -40..40, z -35..35"
+  },
+  {
+   "id": "thigh_r",
+   "parent": "pelvis",
+   "offset": [
+    -0.52,
+    0,
+    0
+   ],
+   "recipe": "parts/twin_a_thigh_r.asset.json",
+   "asset": "ASSET_TWIN_A_THIGH_R",
+   "triangles": 64,
+   "vertices": 36,
+   "bounds": {
+    "min": [
+     -0.28,
+     -1.52,
+     -0.38
+    ],
+    "max": [
+     0.28,
+     0.26,
+     0.34
+    ]
+   },
+   "role": "the long thigh",
+   "range": "x -60..110, z -40..30"
+  },
+  {
+   "id": "shin_r",
+   "parent": "thigh_r",
+   "offset": [
+    0,
+    -1.55,
+    0
+   ],
+   "recipe": "parts/twin_a_shin_r.asset.json",
+   "asset": "ASSET_TWIN_A_SHIN_R",
+   "triangles": 80,
+   "vertices": 46,
+   "bounds": {
+    "min": [
+     -0.3,
+     -1.79,
+     -0.36
+    ],
+    "max": [
+     0.3,
+     0.3,
+     0.43
+    ]
+   },
+   "role": "the long shin",
+   "range": "x -150..0 (back only: the knee)"
+  },
+  {
+   "id": "foot_r",
+   "parent": "shin_r",
+   "offset": [
+    0,
+    -1.62,
+    0
+   ],
+   "recipe": "parts/twin_a_foot_r.asset.json",
+   "asset": "ASSET_TWIN_A_FOOT_R",
+   "triangles": 36,
+   "vertices": 22,
+   "bounds": {
+    "min": [
+     -0.27,
+     -0.476,
+     -0.9072
+    ],
+    "max": [
+     0.27,
+     0.224,
+     0.4816
+    ]
+   },
+   "role": "the pointed foot",
+   "range": "x -45..45, z -15..15"
+  },
+  {
+   "id": "thigh_l",
+   "parent": "pelvis",
+   "offset": [
+    0.52,
+    0,
+    0
+   ],
+   "recipe": "parts/twin_a_thigh_l.asset.json",
+   "asset": "ASSET_TWIN_A_THIGH_L",
+   "triangles": 64,
+   "vertices": 36,
+   "bounds": {
+    "min": [
+     -0.28,
+     -1.52,
+     -0.38
+    ],
+    "max": [
+     0.28,
+     0.26,
+     0.34
+    ]
+   },
+   "role": "the long thigh",
+   "range": "x -60..110, z -40..30"
+  },
+  {
+   "id": "shin_l",
+   "parent": "thigh_l",
+   "offset": [
+    0,
+    -1.55,
+    0
+   ],
+   "recipe": "parts/twin_a_shin_l.asset.json",
+   "asset": "ASSET_TWIN_A_SHIN_L",
+   "triangles": 80,
+   "vertices": 46,
+   "bounds": {
+    "min": [
+     -0.3,
+     -1.79,
+     -0.36
+    ],
+    "max": [
+     0.3,
+     0.3,
+     0.43
+    ]
+   },
+   "role": "the long shin",
+   "range": "x -150..0 (back only: the knee)"
+  },
+  {
+   "id": "foot_l",
+   "parent": "shin_l",
+   "offset": [
+    0,
+    -1.62,
+    0
+   ],
+   "recipe": "parts/twin_a_foot_l.asset.json",
+   "asset": "ASSET_TWIN_A_FOOT_L",
+   "triangles": 36,
+   "vertices": 22,
+   "bounds": {
+    "min": [
+     -0.27,
+     -0.476,
+     -0.9072
+    ],
+    "max": [
+     0.27,
+     0.224,
+     0.4816
+    ]
+   },
+   "role": "the pointed foot",
+   "range": "x -45..45, z -15..15"
+  }
+ ],
+ "mounts": [
+  {
+   "id": "weapon_r",
+   "parent": "hand_r",
+   "offset": [
+    0,
+    -0.2604,
+    0
+   ],
+   "rotate": [
+    -90,
+    0,
+    0
+   ],
+   "part": null,
+   "note": "empty: the middle of the fist (the twins fight with their fists)"
+  },
+  {
+   "id": "weapon_l",
+   "parent": "hand_l",
+   "offset": [
+    0,
+    -0.2604,
+    0
+   ],
+   "rotate": [
+    -90,
+    0,
+    0
+   ],
+   "part": null,
+   "note": "empty: the middle of the fist (the twins fight with their fists)"
+  }
+ ],
+ "poses": {
+  "guard": {
+   "drop": 0.3,
+   "rotate": {
+    "pelvis": [
+     0,
+     -10,
+     0
+    ],
+    "torso": [
+     -4,
+     -16,
+     0
+    ],
+    "head": [
+     -2,
+     14,
+     0
+    ],
+    "thigh_r": [
+     26,
+     0,
+     -4
+    ],
+    "thigh_l": [
+     -18,
+     0,
+     4
+    ],
+    "upper_arm_r": [
+     34,
+     0,
+     -12
+    ],
+    "forearm_r": [
+     76,
+     0,
+     6
+    ],
+    "hand_r": [
+     -10,
+     0,
+     0
+    ],
+    "upper_arm_l": [
+     20,
+     0,
+     16
+    ],
+    "forearm_l": [
+     100,
+     0,
+     -10
+    ],
+    "hand_l": [
+     -8,
+     0,
+     0
+    ],
+    "pauldron_r": [
+     11.9,
+     0,
+     -6.0
+    ],
+    "pauldron_l": [
+     7.0,
+     0,
+     8.0
+    ],
+    "shin_r": [
+     -50.52,
+     0,
+     0
+    ],
+    "foot_r": [
+     24.52,
+     0,
+     4
+    ],
+    "shin_l": [
+     -12.71,
+     0,
+     0
+    ],
+    "foot_l": [
+     30.71,
+     0,
+     -4
+    ]
+   },
+   "note": "a fencer's guard: upright and light, right foot and lead fist forward, the rear fist by the chin; both soles on y = 0"
+  },
+  "docked": {
+   "drop": -1.55,
+   "rotate": {
+    "pelvis": [
+     0,
+     0,
+     0
+    ],
+    "torso": [
+     -4,
+     0,
+     0
+    ],
+    "head": [
+     6,
+     0,
+     0
+    ],
+    "thigh_r": [
+     -100,
+     0,
+     -8
+    ],
+    "shin_r": [
+     -130,
+     0,
+     0
+    ],
+    "foot_r": [
+     40,
+     0,
+     0
+    ],
+    "thigh_l": [
+     -100,
+     0,
+     8
+    ],
+    "shin_l": [
+     -130,
+     0,
+     0
+    ],
+    "foot_l": [
+     40,
+     0,
+     0
+    ],
+    "upper_arm_r": [
+     20,
+     0,
+     -38
+    ],
+    "forearm_r": [
+     60,
+     0,
+     0
+    ],
+    "hand_r": [
+     0,
+     0,
+     0
+    ],
+    "upper_arm_l": [
+     20,
+     0,
+     38
+    ],
+    "forearm_l": [
+     60,
+     0,
+     0
+    ],
+    "hand_l": [
+     0,
+     0,
+     0
+    ],
+    "pauldron_r": [
+     7.0,
+     0,
+     -19.0
+    ],
+    "pauldron_l": [
+     7.0,
+     0,
+     19.0
+    ]
+   },
+   "note": "docked (combine's last twin frame, 0-based 22; split's first, 12): on twin B's shoulders, the pelvis lifted 1.55 m (drop -1.55: offset [0, 1.55]) to about the combined torso joint, legs folded up behind, arms out"
+  }
+ },
+ "triangles": 986
+}
