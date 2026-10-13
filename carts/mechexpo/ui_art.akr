@@ -7,6 +7,8 @@ embed FONT_TITLE: Font = "art/ui_font_title.fnt"
 embed FONT_HEAD: Font = "art/ui_font_head.fnt"
 embed FONT_LABEL: Font = "art/ui_font_label.fnt"
 embed FONT_NUM: Font = "art/ui_font_num.fnt"
+embed FONT_MICRO: Font = "art/ui_font_micro.fnt"
+embed FONT_SERIF: Font = "art/ui_font_serif.fnt"
 embed UI_FONTS_TEX: u8 = "art/ui_fonts.tex"
 embed UI_SPRITES_TEX: u8 = "art/ui_sprites.tex"
 embed UI_FX_TEX: u8 = "art/ui_fx.tex"
@@ -14,11 +16,13 @@ embed UI_HUD_TILES: u8 = "art/ui_hud.tiles"
 embed UI_HUD_MAP: u16 = "art/ui_hud.map"
 embed UI_PAGE_TILES: u8 = "art/ui_page.tiles"
 embed UI_PAGE_MAP: u16 = "art/ui_page.map"
-embed UI_PAL: u16 = "art/ui_palettes.pal"                 // palettes 250-254, then the page's
+embed UI_PAL: u16 = "art/ui_palettes.pal"                 // palettes 250-254, the page's, PAL_POWER's
 embed UI_SAVE_ICON: SaveMeta = "art/ui_save_icon.bin"
+embed UI_MENU_TEX: u8 = "art/ui_menu.tex"                 // slot 12
+embed UI_PRINT_TILES: u8 = "art/ui_print.tiles"           // BG0 in the menus (ATLAS_2)
 
 const UI_FONTS_BYTES = 27520
-const UI_SPRITES_BYTES = 13184
+const UI_SPRITES_BYTES = 17408
 const UI_FX_BYTES = 6144
 const UI_HUD_TILES_BYTES = 3072
 const UI_PAGE_TILES_BYTES = 6144
@@ -31,8 +35,22 @@ const PAL_LOGO = 252
 const PAL_EMBLEM = 253
 const PAL_FX = 254
 const PAL_PAGE = 244
+const UI_MENU_BYTES = 23040
+const UI_PRINT_TILES_BYTES = 2048
+const SLOT_MENU = 12
+const PAL_POWER = 196
+const PAL_PRINT = 197                  // 197-199: BG0's ramps in the menus
+const PRINT_PALS = 3
 
-// sprite rectangles: u, v, w, h
+// BG0's print tiles in the menus (a ramp: shade 1 lightest .. 15 darkest)
+const PT_SOLID = 0                  // + shade 1-15
+const PT_DITHER = 15                // + k: shades k and k + 1
+const PT_DOTS = 30                  // + 0-3, dots growing
+const PT_STRIPES = 34
+
+// sprite rectangles: u, v, w, h (slot 9: ICON_CHEMICAL, ICON_NUCLEAR, ICON_FUSION and the
+// EMBLEM_RAIKO, _HEARTLAND, _BINARY emblems in PAL_POWER; UAPC in PAL_LOGO; the rest as
+// before. Slot 12: STAMP_* and STRAP, white, tinted, in PAL_FX)
 const UI_LOGO: [4]s32 = [0, 0, 248, 62]
 const UI_EMBLEM_HERO: [4]s32 = [0, 63, 32, 32]
 const UI_EMBLEM_ECHO: [4]s32 = [33, 63, 32, 32]
@@ -41,6 +59,24 @@ const UI_ICON_ANTIMATTER: [4]s32 = [83, 63, 16, 16]
 const UI_LOCK: [4]s32 = [100, 63, 32, 40]
 const UI_PIP_ON: [4]s32 = [133, 63, 10, 10]
 const UI_PIP_OFF: [4]s32 = [144, 63, 10, 10]
+const UI_ICON_CHEMICAL: [4]s32 = [155, 63, 16, 16]
+const UI_ICON_NUCLEAR: [4]s32 = [172, 63, 16, 16]
+const UI_ICON_FUSION: [4]s32 = [189, 63, 16, 16]
+const UI_EMBLEM_RAIKO: [4]s32 = [0, 104, 32, 32]
+const UI_EMBLEM_HEARTLAND: [4]s32 = [33, 104, 32, 32]
+const UI_EMBLEM_BINARY: [4]s32 = [66, 104, 32, 32]
+const UI_EMBLEM24_MOMENTUM: [4]s32 = [99, 104, 24, 24]
+const UI_EMBLEM24_UMBRAL: [4]s32 = [124, 104, 24, 24]
+const UI_EMBLEM24_RAIKO: [4]s32 = [149, 104, 24, 24]
+const UI_EMBLEM24_HEARTLAND: [4]s32 = [174, 104, 24, 24]
+const UI_EMBLEM24_BINARY: [4]s32 = [199, 104, 24, 24]
+const UI_UAPC: [4]s32 = [224, 104, 24, 24]
+const UI_STAMP_READY: [4]s32 = [0, 91, 76, 24]
+const UI_STAMP_APPROVED: [4]s32 = [77, 91, 76, 24]
+const UI_STAMP_CLASSIFIED: [4]s32 = [154, 91, 76, 24]
+const UI_STAMP_IN_TRANSIT: [4]s32 = [0, 116, 76, 24]
+const UI_STAMP_UNLOCKED: [4]s32 = [77, 116, 76, 24]
+const UI_STRAP: [4]s32 = [154, 116, 8, 64]
 const FX_GLOW: [4]s32 = [0, 0, 32, 32]
 const FX_SPARK: [4]s32 = [33, 0, 32, 32]
 const FX_RING: [4]s32 = [66, 0, 32, 32]

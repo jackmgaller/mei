@@ -25,6 +25,8 @@ fn ui_boot() {
     load_texture(SLOT_SPRITES, UI_SPRITES_TEX, UI_SPRITES_BYTES)
     load_texture(SLOT_FX, UI_FX_TEX, UI_FX_BYTES)
     load_palette(PAL_HUD * 16, &UI_PAL[0], 16 * 5)       // 250-254
+    load_texture(SLOT_MENU, UI_MENU_TEX, UI_MENU_BYTES)  // mx-menus: slot 12
+    load_palette(PAL_POWER * 16, &UI_PAL[6 * 16], 16)    // 196
 }
 
 fn sb() -> *u8 {
@@ -123,67 +125,138 @@ fn barcode(x: s32, y: s32, n: s32, h: s32, col: u32) {
     }
 }
 
-// ---- the mechs
+// ---- the mechs: names, makers and colours from the roster (roster.akr)
 
-fn mech_name(m: Mech) -> *u8 {
-    match m {
-        Hero => return "HERO MECH"
-        Doubleblade => return "DOUBLE-BLADE HERO"
+fn mech_name(m: Mech) -> *u8 { return ROSTER[mech_slot(m)].name }
+fn mech_short(m: Mech) -> *u8 { return ROSTER[mech_slot(m)].short }
+fn mech_model(m: Mech) -> *u8 { return ROSTER[mech_slot(m)].model }
+fn mech_maker(m: Mech) -> *u8 { return mech_maker_of(m).name }
+fn mech_maker_short(m: Mech) -> *u8 { return mech_maker_of(m).short }
+fn mech_src(m: Mech) -> s32 { return mech_maker_of(m).src }
+fn mech_power(m: Mech) -> *u8 { return SRC_NAMES[mech_src(m)] }
+fn mech_booth(m: Mech) -> *u8 { return mech_maker_of(m).booth_full }
+fn mech_colour(m: Mech) -> u32 { return mech_maker_of(m).colour }
+fn mech_kinetic(m: Mech) -> bool { return mech_src(m) == SRC_KINETIC }
+fn mech_emblem(m: Mech) -> *s32 { return mech_maker_of(m).emblem }
+
+// ---- the brochure's pieces (mx-menus)
+
+// A power source's meter icon (16 x 16) at (x, y): SRC_KINETIC ... SRC_FUSION.
+fn ui_power_icon(src: s32, x: s32, y: s32) {
+    match src {
+        0 => ui_sprite(&UI_ICON_KINETIC[0], PAL_EMBLEM, x, y, 0x808080, BLEND_NONE)
+        1 => ui_sprite(&UI_ICON_CHEMICAL[0], PAL_POWER, x, y, 0x808080, BLEND_NONE)
+        2 => ui_sprite(&UI_ICON_NUCLEAR[0], PAL_POWER, x, y, 0x808080, BLEND_NONE)
+        3 => ui_sprite(&UI_ICON_ANTIMATTER[0], PAL_EMBLEM, x, y, 0x808080, BLEND_NONE)
+        else => ui_sprite(&UI_ICON_FUSION[0], PAL_POWER, x, y, 0x808080, BLEND_NONE)
     }
 }
 
-fn mech_short(m: Mech) -> *u8 {
-    match m {
-        Hero => return "HERO"
-        Doubleblade => return "DOUBLE-BLADE"
+// Maker k's emblem at (x, y): 32 x 32, or 24 x 24 when small; tint 0x808080 as it is.
+fn ui_emblem(k: s32, x: s32, y: s32, small: bool, tint: u32) {
+    let mk = &MAKERS[k]
+    if small { ui_sprite(mk.emblem24, mk.pal, x, y, tint, BLEND_NONE) }
+    else { ui_sprite(mk.emblem, mk.pal, x, y, tint, BLEND_NONE) }
+}
+
+// Slot 12's white art (stamps, the strap), tinted.
+fn menu_sprite(r: *s32, x: s32, y: s32, w: s32, h: s32, tint: u32, mode: s32) {
+    sprite_ex(tex_page(SLOT_MENU, PAL_FX, true), r[0], r[1], r[2], r[3], x, y, w, h, tint, mode)
+}
+
+// A rubber stamp (UI_STAMP_*) centred on (cx, cy) in ink col.
+fn ui_stamp(r: *s32, cx: s32, cy: s32, col: u32) {
+    menu_sprite(r, cx - r[2] / 2, cy - r[3] / 2, r[2], r[3], col_tint(col), BLEND_NONE)
+}
+
+// A woven lanyard strap from (x0, y0) down to (x1, y1), w pixels wide, in colour col.
+fn ui_strap(x0: s32, y0: s32, x1: s32, y1: s32, w: s32, col: u32) {
+    let len = max(abs(y1 - y0), 1)
+    let page = tex_page(SLOT_MENU, PAL_FX, true)
+    var xs: [4]s32
+    var ys: [4]s32
+    var a0 = 0
+    while a0 < len {
+        let a1 = min(a0 + UI_STRAP[3], len)
+        let xa = x0 + (x1 - x0) * a0 / len
+        let xb = x0 + (x1 - x0) * a1 / len
+        xs[0] = xa - w / 2
+        xs[1] = xa + w - w / 2
+        xs[2] = xb - w / 2
+        xs[3] = xb + w - w / 2
+        ys[0] = y0 + (y1 - y0) * a0 / len
+        ys[1] = ys[0]
+        ys[2] = y0 + (y1 - y0) * a1 / len
+        ys[3] = ys[2]
+        sprite_corners(page, UI_STRAP[0], UI_STRAP[1], UI_STRAP[2], a1 - a0, &xs[0], &ys[0], col_tint(col), BLEND_NONE)
+        a0 = a1
     }
 }
 
-fn mech_maker(m: Mech) -> *u8 {
-    match m {
-        Hero => return "MOMENTUM ROBOTICS"
-        Doubleblade => return "UMBRAL RESEARCH"
+// Brushed chrome, lit from above.
+fn ui_chrome(x: s32, y: s32, w: s32, h: s32) {
+    let h2 = h / 2
+    rect_grad(x, y, w, h2, 0xF8F0EA, 0xB09888, BLEND_NONE)
+    rect_grad(x, y + h2, w, h - h2, 0x6A5444, 0xE6D8CC, BLEND_NONE)
+}
+
+// A shine sweeping across (x, y, w, h) once every `period` frames (t: a frame count).
+fn ui_shine(x: s32, y: s32, w: s32, h: s32, t: s32, period: s32) {
+    let sl = h / 2
+    let span = w - sl - 16
+    let ph = t % period
+    const DUR = 26
+    if span <= 0 || ph >= DUR { return }
+    let p = x + span * ph / DUR
+    quad_fill(p + sl, y, p + sl + 9, y, p, y + h, p + 9, y + h, 0x606060, BLEND_ADD)
+    quad_fill(p + sl + 12, y, p + sl + 15, y, p + 12, y + h, p + 15, y + h, 0x383838, BLEND_ADD)
+}
+
+// Five slanted pips, n of them lit in col (a spec sheet's rating).
+fn ui_pips(x: s32, y: s32, n: s32, col: u32) {
+    for i in 0..5 {
+        var c = 0xD8CCC0
+        if i < n { c = col }
+        let px = x + i * 8
+        quad_fill(px + 2, y, px + 8, y, px, y + 5, px + 6, y + 5, c, BLEND_NONE)
     }
 }
 
-fn mech_maker_short(m: Mech) -> *u8 {
-    match m {
-        Hero => return "MOMENTUM ROBO."
-        Doubleblade => return "UMBRAL RESEARCH"
+// A tick in a check box (x, y the box's corner, 9 x 9).
+fn ui_check(x: s32, y: s32, on: bool, col: u32) {
+    rect_outline(x, y, 9, 9, C_STEEL, BLEND_NONE)
+    if on {
+        line_ex(x + 1, y + 4, x + 4, y + 7, 2, col, col, BLEND_NONE)
+        line_ex(x + 4, y + 7, x + 9, y, 2, col, col, BLEND_NONE)
     }
 }
 
-fn mech_power(m: Mech) -> *u8 {
-    match m {
-        Hero => return "KINETIC"
-        Doubleblade => return "ANTIMATTER"
+// Lines of text (split at '\n') step pixels apart: the brochure's small print sits closer than
+// the font's own line.
+fn txt_lines(f: *Font, x: s32, y: s32, s: *u8, step: s32, col: u32, align: s32) {
+    var line: [64]u8
+    var i = 0
+    var n = 0
+    var yy = y
+    while true {
+        let ch = s[i]
+        if ch == 0 || ch == '\n' {
+            line[n] = 0
+            txt(f, x, yy, &line[0], col, align)
+            if ch == 0 { return }
+            yy += step
+            n = 0
+        } else if n < 63 {
+            line[n] = ch
+            n += 1
+        }
+        i += 1
     }
 }
 
-fn mech_booth(m: Mech) -> *u8 {
-    match m {
-        Hero => return "BOOTH A-12"
-        Doubleblade => return "BOOTH B-07"
-    }
-}
-
-fn mech_model(m: Mech) -> *u8 {
-    match m {
-        Hero => return "MR-01 \"HERO\""
-        Doubleblade => return "UR-02 \"DOUBLE-BLADE\""
-    }
-}
-
-fn mech_colour(m: Mech) -> u32 {
-    match m {
-        Hero => return C_RED
-        Doubleblade => return C_VIOLET
-    }
-}
-
-fn mech_kinetic(m: Mech) -> bool { return m == Mech.Hero }
-
-fn mech_emblem(m: Mech) -> *s32 {
-    if m == Mech.Hero { return &UI_EMBLEM_HERO[0] }
-    return &UI_EMBLEM_ECHO[0]
+// A slanted tag as wide as its label needs; returns the width.
+fn tag_fit(x: s32, y: s32, s: *u8, bg: u32, fg: u32) -> s32 {
+    let w = max(txt_w(FONT_LABEL, s) + 6, 14)
+    tag(x, y, w, s, bg, fg)
+    return w
 }

@@ -32,3 +32,5 @@ run 18 110
 run 15 1500
 run 14 1800
 echo "all Mech Expo fight checks passed"
+# 55-59: the menus (mx-menus), the whole game with scripted pads: tests/menus/check.sh
+"$HERE/menus/check.sh"

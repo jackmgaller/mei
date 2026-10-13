@@ -1,0 +1,208 @@
+// Mech Expo 2000's roster (mx-menus): the five makers and the character select's ten slots, the
+// pitch's 5 x 2 grid. Base mechs on top (Hero, Shadow, Beam, Tank, then Binary Mechanica's
+// twins top right), each echo directly below its base. Everything the menus, the HUD's names and
+// the unlocks know about a mech comes from these two tables (ui.akr's mech_name() and the rest
+// look a Mech up here).
+//
+// A slot with no Mech yet (mech -1) shows as "in transit": its maker and name if it is an
+// announced base mech, "?" if it is a mystery, and it cannot be picked. A slot whose unlock rule
+// is not met yet shows "?" (and, with SHOW_UNLOCK_HINTS, how to unlock it).
+//
+// ADDING A MECH is a one-row change: put its Mech in its slot's `mech` field. On merging mx-beam
+// and mx-tank (enum Mech { Hero, Doubleblade, Beam, Tank }):
+//     slot 2 (BEAM):  mech: Mech.Beam as s32
+//     slot 3 (TANK):  mech: Mech.Tank as s32
+// and check the row's name, short name, model number, stats and blurb against what the mech
+// became. Then the HUD's names, the spec sheet, the card and the select all follow; the meter's
+// icon is ui_power_icon(mech_src(m), x, y) (ui.akr; hud.akr still picks kinetic or antimatter
+// itself). An echo with no Mech in its slot is never a ladder opponent (ladder_foe falls back to
+// the Hero). The table must keep ten rows in this order: the select's cursor moves by slot.
+
+const SHOW_UNLOCK_HINTS = true      // locked slots tell how to unlock them (the pitch's open question)
+
+// The power sources, in the pitch's order (the icons: ui_power_icon in ui.akr).
+const SRC_KINETIC = 0
+const SRC_CHEMICAL = 1
+const SRC_NUCLEAR = 2
+const SRC_ANTIMATTER = 3
+const SRC_FUSION = 4
+const SRC_NAMES: [5]*u8 = ["KINETIC", "CHEMICAL", "NUCLEAR", "ANTIMATTER", "FUSION"]
+const SRC_FILLS: [5]*u8 = [
+    "FILLS BY LANDING HITS", "PRIMED REACTIONS", "FILLS AS IT TAKES HITS", "BORROWS: GOES INTO DEBT",
+    "FILLS WHEN COMBINED",
+]
+
+struct Maker {
+    name: *u8           // in full
+    short: *u8          // where it is tight (the spec sheet's column)
+    colour: u32         // 0xBBGGRR: the company's colour
+    ink: u32            // text on that colour
+    src: s32            // its power source (SRC_*)
+    booth: *u8          // its booth on the show floor
+    booth_full: *u8
+    emblem: *s32        // 32 x 32, slot 9
+    emblem24: *s32      // 24 x 24, slot 9
+    pal: s32            // the emblems' palette
+}
+
+const CO_MOMENTUM = 0
+const CO_UMBRAL = 1
+const CO_RAIKO = 2
+const CO_HEARTLAND = 3
+const CO_BINARY = 4
+const CO_NONE = -1                  // a maker not announced (the echoes the pitch leaves open)
+const MAKERS_N = 5
+
+const MAKERS: [5]Maker = [
+    Maker { name: "MOMENTUM ROBOTICS", short: "MOMENTUM ROBOTICS", colour: 0x281EC8, ink: 0xFFFFFF,
+            src: SRC_KINETIC, booth: "A-12", booth_full: "BOOTH A-12", emblem: UI_EMBLEM_HERO,
+            emblem24: UI_EMBLEM24_MOMENTUM, pal: PAL_EMBLEM },
+    Maker { name: "UMBRAL RESEARCH", short: "UMBRAL RESEARCH", colour: 0xE85A9A, ink: 0xFFFFFF,
+            src: SRC_ANTIMATTER, booth: "B-07", booth_full: "BOOTH B-07", emblem: UI_EMBLEM_ECHO,
+            emblem24: UI_EMBLEM24_UMBRAL, pal: PAL_EMBLEM },
+    Maker { name: "RAIKO CHEMICAL GROUP", short: "RAIKO CHEMICAL", colour: 0x19C4F0, ink: 0x40200C,
+            src: SRC_CHEMICAL, booth: "C-01", booth_full: "BOOTH C-01", emblem: UI_EMBLEM_RAIKO,
+            emblem24: UI_EMBLEM24_RAIKO, pal: PAL_POWER },
+    Maker { name: "HEARTLAND ATOMIC CO.", short: "HEARTLAND ATOMIC", colour: 0x476B4F, ink: 0xFFFFFF,
+            src: SRC_NUCLEAR, booth: "D-19", booth_full: "BOOTH D-19", emblem: UI_EMBLEM_HEARTLAND,
+            emblem24: UI_EMBLEM24_HEARTLAND, pal: PAL_POWER },
+    Maker { name: "BINARY MECHANICA", short: "BINARY MECHANICA", colour: 0xD8C060, ink: 0x40200C,
+            src: SRC_FUSION, booth: "E-33", booth_full: "BOOTH E-33", emblem: UI_EMBLEM_BINARY,
+            emblem24: UI_EMBLEM24_BINARY, pal: PAL_POWER },
+]
+
+// Unlock rules.
+const RULE_OPEN = 0                 // on show from the start
+const RULE_CLEAR = 1                // clear the arcade with the mech in slot `arg`
+const RULE_BASES = 2                // clear the arcade with each of the four base mechs (slots 0-3)
+
+// save.unlocked (save.akr): bit `bit` of a slot is set once it is unlocked (the Double-blade
+// Hero keeps bit 0, the MVP's UNLOCK_ECHO); bit CLEAR_SHIFT + slot once the arcade has been
+// cleared with that slot's mech.
+const CLEAR_SHIFT = 16
+
+struct Slot {
+    maker: s32          // CO_*, or CO_NONE
+    echo: bool          // the bottom row
+    mech: s32 = -1      // the Mech in this slot (Mech.X as s32), -1: not in the game yet
+    rule: s32           // RULE_*
+    arg: s32            // RULE_CLEAR's slot
+    bit: u32            // its unlock bit in save.unlocked (none for RULE_OPEN)
+    mystery: bool       // locked, it shows only "?" (no name, no maker)
+    name: *u8           // the catalogue's name
+    short: *u8          // the HUD's and the banners' name
+    card: *u8           // on the select's card (48 px)
+    model: *u8          // the model number
+    stats: u32          // 0xPSRA: power, speed, reach, armour, 1-5 each (the spec sheet's pips)
+    blurb: *u8          // the catalogue's two lines
+    hint: *u8           // how to unlock it (SHOW_UNLOCK_HINTS), up to three short lines
+}
+
+const ROSTER_N = 10
+const ROSTER_COLS = 5
+
+const ROSTER: [10]Slot = [
+    // the base mechs
+    Slot { maker: CO_MOMENTUM, mech: Mech.Hero as s32, rule: RULE_OPEN, name: "HERO MECH", short: "HERO", card: "HERO",
+           model: "MR-01", stats: 0x3343, blurb: "THE ALL-ROUNDER:\nA LONG, FAIR SWORD", hint: "" },
+    Slot { maker: CO_UMBRAL, rule: RULE_OPEN, name: "SHADOW", short: "SHADOW", card: "SHADOW",
+           model: "UR-01", stats: 0x2432, blurb: "TELEPORTS, TRAPS\nAND AFTERIMAGES", hint: "" },
+    Slot { maker: CO_RAIKO, rule: RULE_OPEN, name: "BEAM", short: "BEAM", card: "BEAM",
+           model: "RK-500", stats: 0x3252, blurb: "ELECTRIC SHOTS AND\nCHARGED ATTACKS", hint: "" },
+    Slot { maker: CO_HEARTLAND, rule: RULE_OPEN, name: "TANK", short: "TANK", card: "TANK",
+           model: "HA-M4", stats: 0x5125, blurb: "TREADS, ARMOUR,\nCOMMAND GRABS", hint: "" },
+    Slot { maker: CO_BINARY, rule: RULE_BASES, bit: 0x10, mystery: true, name: "TWINS", short: "TWINS", card: "TWINS",
+           model: "BM-2X", stats: 0x3333, blurb: "TWO SMALL MECHS,\nOR ONE COMBINED",
+           hint: "CLEAR THE ARCADE\nWITH HERO, SHADOW,\nBEAM AND TANK" },
+    // the echoes, each below its base
+    Slot { maker: CO_UMBRAL, echo: true, mech: Mech.Doubleblade as s32, rule: RULE_CLEAR, arg: 0, bit: 0x01,
+           mystery: true, name: "DOUBLE-BLADE HERO", short: "DOUBLE-BLADE", card: "DBL-BLADE", model: "UR-02", stats: 0x3422,
+           blurb: "TWO BLADES, LESS\nREACH, MORE RUSH", hint: "CLEAR THE ARCADE\nWITH THE HERO" },
+    Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 1, bit: 0x40, mystery: true, name: "?",
+           short: "?", card: "?", model: "?", stats: 0, blurb: "", hint: "CLEAR THE ARCADE\nWITH SHADOW" },
+    Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 2, bit: 0x80, mystery: true, name: "?",
+           short: "?", card: "?", model: "?", stats: 0, blurb: "", hint: "CLEAR THE ARCADE\nWITH BEAM" },
+    Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 3, bit: 0x100, mystery: true, name: "?",
+           short: "?", card: "?", model: "?", stats: 0, blurb: "", hint: "CLEAR THE ARCADE\nWITH TANK" },
+    Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 4, bit: 0x200, mystery: true, name: "?",
+           short: "?", card: "?", model: "?", stats: 0, blurb: "", hint: "CLEAR THE ARCADE\nWITH THE TWINS" },
+]
+
+// ---- lookups
+
+// The slot showing mech m (every Mech has one).
+fn mech_slot(m: Mech) -> s32 {
+    for i in 0..ROSTER_N {
+        if ROSTER[i].mech == m as s32 { return i }
+    }
+    return 0
+}
+
+fn slot_has_mech(i: s32) -> bool { return ROSTER[i].mech >= 0 }
+fn slot_mech(i: s32) -> Mech { return max(ROSTER[i].mech, 0) as Mech }
+
+fn slot_unlocked(i: s32) -> bool {
+    return ROSTER[i].rule == RULE_OPEN || save.unlocked & ROSTER[i].bit != 0
+}
+
+// Selectable: in the game and unlocked.
+fn slot_ok(i: s32) -> bool { return slot_has_mech(i) && slot_unlocked(i) }
+
+// Its name and maker may be shown.
+fn slot_known(i: s32) -> bool { return !ROSTER[i].mystery || slot_ok(i) }
+
+fn slot_maker(i: s32) -> *Maker {
+    let k = ROSTER[i].maker
+    if k < 0 { return null }
+    return &MAKERS[k]
+}
+
+fn mech_maker_of(m: Mech) -> *Maker { return &MAKERS[max(ROSTER[mech_slot(m)].maker, 0)] }
+
+fn slot_cleared(i: s32) -> bool { return save.unlocked & ((1 as u32) << (CLEAR_SHIFT + i)) != 0 }
+
+// How many of the four base mechs have cleared the arcade (RULE_BASES's progress).
+fn bases_cleared() -> s32 {
+    var n = 0
+    for i in 0..4 {
+        if slot_cleared(i) { n += 1 }
+    }
+    return n
+}
+
+private fn rule_met(i: s32) -> bool {
+    let r = &ROSTER[i]
+    if r.rule == RULE_CLEAR { return slot_cleared(r.arg) }
+    if r.rule == RULE_BASES { return bases_cleared() == 4 }
+    return true
+}
+
+// The arcade was cleared with m: marks the clear and unlocks every slot (with a mech) whose rule
+// is now met. Returns the first slot unlocked now, or -1. The caller writes the save.
+fn roster_clear(m: Mech) -> s32 {
+    save.unlocked |= (1 as u32) << (CLEAR_SHIFT + mech_slot(m))
+    var got = -1
+    for i in 0..ROSTER_N {
+        if slot_unlocked(i) || !slot_has_mech(i) { continue }
+        if rule_met(i) {
+            save.unlocked |= ROSTER[i].bit
+            if got < 0 { got = i }
+        }
+    }
+    return got
+}
+
+// The arcade ladder's opponent for fight n: the mirror, then the echo (or, as an echo, its
+// base); the Hero (or, as the Hero, the Double-blade Hero) when that slot has no mech yet.
+fn ladder_foe(me: Mech, n: s32) -> Mech {
+    if n == 0 { return me }
+    let s = mech_slot(me)
+    var p = s + ROSTER_COLS
+    if s >= ROSTER_COLS { p = s - ROSTER_COLS }
+    if slot_has_mech(p) { return slot_mech(p) }
+    if me == Mech.Hero { return Mech.Doubleblade }
+    return Mech.Hero
+}
+
+// The index in MAKERS of mech m's maker.
+fn mech_maker_k(m: Mech) -> s32 { return max(ROSTER[mech_slot(m)].maker, 0) }

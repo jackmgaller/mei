@@ -1,0 +1,245 @@
+// Mech Expo 2000's menu scenarios (mx-menus): the whole game (../../game.akr) with scripted pads
+// in place of its weak input hooks. Run one with tests/menus/run.sh SCENARIO VIEW FRAMES OUT; it
+// writes OUT.png, the screen at the last frame. tests/check.sh runs them all (55-59). Each run
+// measures the CPU and GPU of every frame against the budgets, checks what the screen should be
+// showing and prints "OK ..." at its shot frame (SHOT_AT; run it for SHOT_AT + 1 frames).
+//
+// 55 the title: VIEW 0 the logo and the press pass (no save), 1 the same with the echo unlocked
+// 56 mode select, reached from the title with START: VIEW 0, 1, 2 the cursor on Arcade, Versus,
+//    Training (DOWN pressed VIEW times)
+// 57 the character select:
+//    0 Versus, 2P joins; both pads move and confirm on the same frames (the Hero and, unlocked,
+//      the Double-blade Hero): both picks hold, then the VS screen starts with them
+//    1 Arcade, nothing unlocked: 1P on the Double-blade Hero's locked slot (the hint), A refused
+//    2 Versus against the CPU: 1P picks the Hero, then moves the CPU's cursor to Tank's slot
+//      (in transit: no Tank in this tree)
+//    3 Training, the echo unlocked: 1P's cursor walks the whole grid and back to the Hero, picks
+// 58 the VS screen and the pause: 0 the arcade's demonstration 2 (the Hero against the
+//    Double-blade Hero), 1 Versus 1P against 2P, 2 the pause in training, 3 the move list
+// 59 results, the unlock and the save: 0 Versus results (2P won), 1 the arcade cleared with the
+//    Hero (saving), 2 the unlock screen, 3 the arcade lost (continue?), 4 no memory card
+
+var hf: s32                     // frames since the harness began
+var pads: [2]u32
+var peak_cpu: s32
+var peak_gpu: s32
+var late: s32
+var done_ok: bool
+
+fn input_pad(n: s32) -> u32 { return pads[n] }
+fn input_stick(n: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+const SHOT_AT = match SCENARIO {
+    55 => 90
+    56 => 60
+    57 => match VIEW { 0 => 150, 1 => 60, 2 => 90, else => 150 }
+    58 => 60
+    else => 130
+}
+
+fn test_init() {
+    match SCENARIO {
+        55 => { if VIEW == 1 { save.unlocked |= UNLOCK_ECHO } }
+        57 => {
+            if VIEW == 0 || VIEW == 3 { save.unlocked |= UNLOCK_ECHO }
+            game = match VIEW { 1 => Game.Arcade, 3 => Game.Training, else => Game.Versus }
+            enter_select()
+        }
+        58 => setup_58()
+        59 => setup_59()
+        else => {}
+    }
+}
+
+private fn setup_58() {
+    save.unlocked |= UNLOCK_ECHO
+    match VIEW {
+        0 => {
+            game = Game.Arcade
+            p_mech[0] = Mech.Hero
+            ladder = 1
+            p_cpu = true
+            enter_vs()
+        }
+        1 => {
+            game = Game.Versus
+            p_mech[0] = Mech.Doubleblade
+            p_mech[1] = Mech.Hero
+            sel_human2 = true
+            p_cpu = false
+            enter_vs()
+        }
+        else => {
+            game = Game.Training
+            p_mech[0] = Mech.Hero
+            p_mech[1] = Mech.Doubleblade
+            p_cpu = true
+            enter_fight()
+        }
+    }
+}
+
+private fn setup_59() {
+    if VIEW != 2 { save.unlocked = 0 }
+    match VIEW {
+        0 => {
+            game = Game.Versus
+            sel_human2 = true
+            p_cpu = false
+            finish(Mech.Hero, Mech.Doubleblade, 1)
+        }
+        1, 2 => {
+            game = Game.Arcade
+            ladder = 1
+            p_cpu = true
+            finish(Mech.Hero, Mech.Doubleblade, 0)
+        }
+        3 => {
+            game = Game.Arcade
+            ladder = 0
+            p_cpu = true
+            finish(Mech.Doubleblade, Mech.Doubleblade, 1)
+        }
+        else => {
+            game = Game.Versus
+            p_cpu = true
+            finish(Mech.Doubleblade, Mech.Hero, 0)
+        }
+    }
+    if VIEW == 2 {
+        enter(St.Unlock)
+    }
+    if VIEW == 4 {
+        save_result = CARD_NO_CARD
+        save_shown = 0
+    }
+}
+
+// A match that just ended: side w won two rounds to one.
+private fn finish(a: Mech, b: Mech, w: s32) {
+    p_mech[0] = a
+    p_mech[1] = b
+    fight_init(a, b, FightMode.Versus, 0)
+    fight.winner = w
+    fight.wins[w] = 2
+    fight.wins[1 - w] = 1
+    fight.f[w].health = fight.f[w].health_max * 63 / 100
+    fight.f[1 - w].health = 0
+    fight.phase = Phase.MatchOver
+    enter_results()
+}
+
+private fn press(n: s32, f: s32, b: u32) {
+    if hf == f { pads[n] |= b }
+}
+
+fn test_hook() {
+    hf += 1
+    pads[0] = 0
+    pads[1] = 0
+    if hf > 3 {
+        if frame_ticks() > 1 { late += 1 }
+        peak_cpu = max(peak_cpu, cpu_used())
+        peak_gpu = max(peak_gpu, gpu_used())
+    }
+    script()
+    if hf == SHOT_AT && !done_ok {
+        check_shot()
+        print("OK menus ")
+        print_int(SCENARIO)
+        print(".")
+        print_int(VIEW)
+        print(": peak cpu ")
+        print_int(peak_cpu)
+        print(", gpu ")
+        print_int(peak_gpu)
+        print(", late frames ")
+        print_int(late)
+        println("")
+        assert(peak_cpu <= CPU_BUDGET, "over the CPU budget")
+        assert(peak_gpu <= GPU_BUDGET, "over the GPU budget")
+        done_ok = true
+    }
+}
+
+private fn script() {
+    match SCENARIO {
+        56 => {
+            press(0, 25, START)
+            for k in 0..VIEW { press(0, 35 + k * 6, DOWN) }
+        }
+        57 => script_57()
+        58 => {
+            if VIEW >= 2 { press(0, 30, START) }
+            if VIEW == 3 {
+                for k in 0..5 { press(0, 36 + k * 3, DOWN) }       // to MOVE LIST
+                press(0, 54, A)
+            }
+        }
+        else => {}
+    }
+}
+
+private fn script_57() {
+    match VIEW {
+        0 => {
+            press(1, 10, A)                     // 2P joins
+            press(0, 20, RIGHT)                 // both move at once
+            press(1, 20, UP)
+            press(0, 30, LEFT)
+            press(1, 30, DOWN)
+            press(0, 40, A)                     // both confirm on the same frame
+            press(1, 40, A)
+        }
+        1 => {
+            press(0, 20, DOWN)                  // the Hero's echo, locked
+            press(0, 30, A)                     // refused
+        }
+        2 => {
+            press(0, 10, A)                     // 1P picks the Hero
+            for k in 0..3 { press(0, 20 + k * 6, RIGHT) }   // the CPU's cursor to Tank
+        }
+        else => {
+            for k in 0..4 { press(0, 10 + k * 6, RIGHT) }
+            press(0, 40, DOWN)
+            for k in 0..4 { press(0, 46 + k * 6, LEFT) }
+            press(0, 72, UP)
+            press(0, 80, A)
+        }
+    }
+}
+
+// What the shot frame must show.
+private fn check_shot() {
+    match SCENARIO {
+        55 => assert(st == St.Title, "not the title")
+        56 => {
+            assert(st == St.Mode, "not the mode select")
+            assert_eq(mode_sel, VIEW, "the mode cursor")
+        }
+        57 => {
+            if VIEW == 0 {
+                assert(st == St.Vs, "the two picks did not start the VS screen")
+                assert(p_mech[0] == Mech.Hero, "1P's pick")
+                assert(p_mech[1] == Mech.Doubleblade, "2P's pick")
+                assert(!p_cpu, "2P is a player")
+            } else {
+                assert(st == St.Select, "not the character select")
+            }
+            if VIEW == 1 { assert(!sel_done[0], "a locked slot was picked") }
+            if VIEW == 2 { assert(sel_done[0], "1P's pick did not hold") }
+        }
+        58 => {
+            if VIEW < 2 { assert(st == St.Vs, "not the VS screen") }
+            else {
+                assert(paused, "not paused")
+                assert_eq(pause_page, VIEW - 2, "the pause page")
+            }
+        }
+        59 => {
+            if VIEW == 2 { assert(st == St.Unlock, "not the unlock") }
+            else { assert(st == St.Results, "not the results") }
+        }
+        else => {}
+    }
+}
