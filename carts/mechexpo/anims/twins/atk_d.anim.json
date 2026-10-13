@@ -1,0 +1,161 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Sweep Kick (MOVES.md): the combined form drops onto its right knee, the pelvis lunging forward and low, the hips turning away and the far (left) leg drawn up and round behind, the fists out for balance (0-9); on 10-13 the hips whip round and the left leg sweeps through low and straight along the floor in front, the sole skimming the floor (the foot hits, out to about 7 m). Knocks down. It stays down on the knee over the spent leg, drags it back under itself and rises back into the guard (23 frames of recovery: punishable). Push box 7.5 m tall (a crouching move).",
+  "base": "_body.anim.json",
+  "length": 37,
+  "phases": {"startup": 10, "active": 4, "recovery": 23},
+  "design": {"hit": [1.8, 0.0, 7.4, 2.0], "tolerance": 0.5, "note": "MOVES.md, Sweep Kick: x 1.8-7.4, y 0-2"},
+  "boxes": {
+    "push": {"kind": "push", "rect": [-1.6, 0, 1.6, 7.5]}
+  },
+  "plant": {
+    "foot_r": [[0, 2]],
+    "foot_l": [[34, 36]]
+  },
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "in",
+      "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}
+    },
+    {
+      "at": 4,
+      "reach": {"foot_l": [-2.4, 0.8]}
+    },
+    {
+      "at": 5,
+      "ease": "ease",
+      "offset": [0.9, -1.5],
+      "pose": {
+        "pelvis": [-10, -30, 0],
+        "torso": [-6, -10, 0],
+        "head": [12, 30, 0],
+        "upper_arm_r": [50, 0, -30],
+        "forearm_r": [50, 0, 4],
+        "hand_r": [-10, 0, 0],
+        "upper_arm_l": [40, 0, 40],
+        "forearm_l": [70, 0, -6],
+        "hand_l": [-12, 0, 0],
+        "thigh_r": [40, 0, -7],
+        "shin_r": [-60, 0, 0],
+        "foot_r": [20, 0, 7]
+      }
+    },
+    {
+      "at": 9,
+      "ease": "in",
+      "offset": [1.6, -2.35],
+      "reach": {"foot_l": [-1.1, 1.1]},
+      "pose": {
+        "pelvis": [-8, -34, 0],
+        "torso": [-6, -6, 0],
+        "head": [22, 34, 0],
+        "upper_arm_r": [60, 0, -40],
+        "forearm_r": [30, 0, 4],
+        "hand_r": [-20, 0, 0],
+        "upper_arm_l": [50, 0, 50],
+        "forearm_l": [40, 0, -6],
+        "hand_l": [-10, 0, 0],
+        "pauldron_r": [20, 0, -12],
+        "pauldron_l": [16, 0, 14],
+        "thigh_r": [14, 0, -7],
+        "shin_r": [-92, 0, 0],
+        "foot_r": [70, 0, 7]
+      }
+    },
+    {
+      "at": 10,
+      "ease": "linear",
+      "offset": [1.7, -2.4],
+      "reach": {"foot_l": [2.9, 0.15]},
+      "boxes": {
+        "sweep": {"kind": "hit", "part": "foot_l", "grow": 0.3}
+      },
+      "pose": {"pelvis": [-6, -10, 0], "torso": [4, -12, 0], "head": [22, 20, 0]}
+    },
+    {
+      "at": 11,
+      "reach": {"foot_l": [4.3, 0.15]}
+    },
+    {
+      "at": 12,
+      "reach": {"foot_l": [5.2, 0.2]}
+    },
+    {
+      "at": 13,
+      "ease": "out",
+      "offset": [1.75, -2.4],
+      "reach": {"foot_l": [5.6, 0.25]},
+      "pose": {"pelvis": [-6, 16, 0], "torso": [4, -24, 0]}
+    },
+    {
+      "at": 14,
+      "boxes": {"sweep": null}
+    },
+    {
+      "at": 19,
+      "ease": "ease",
+      "offset": [1.7, -2.35],
+      "reach": {"foot_l": [5.3, 0.0]},
+      "pose": {
+        "pelvis": [-6, 18, 0],
+        "torso": [2, -22, 0],
+        "head": [20, 10, 0],
+        "upper_arm_r": [50, 0, -30],
+        "forearm_r": [50, 0, 4],
+        "upper_arm_l": [40, 0, 40],
+        "forearm_l": [60, 0, -6]
+      }
+    },
+    {
+      "at": 26,
+      "ease": "ease",
+      "offset": [1.2, -2.0],
+      "reach": {"foot_l": [3.2, 0.3]},
+      "pose": {
+        "pelvis": [-8, -4, 0],
+        "torso": [-8, -14, 0],
+        "head": [10, 12, 0],
+        "upper_arm_r": [34, 0, -18],
+        "forearm_r": [70, 0, 4],
+        "hand_r": [-16, 0, 0],
+        "upper_arm_l": [34, 0, 20],
+        "forearm_l": [86, 0, -6],
+        "hand_l": [-12, 0, 0],
+        "pauldron_r": [11, 0, -8],
+        "pauldron_l": [12, 0, 9],
+        "thigh_r": [20, 0, -7],
+        "shin_r": [-80, 0, 0],
+        "foot_r": [60, 0, 7]
+      }
+    },
+    {
+      "at": 28,
+      "reach": {"foot_l": [1.4, 0.8]}
+    },
+    {
+      "at": 30,
+      "ease": "ease",
+      "offset": [0.6, -1.2],
+      "reach": {"foot_l": [-1.2, 0.5]},
+      "pose": {"pelvis": [-2, -8, 0], "thigh_r": [40, 0, -7], "shin_r": [-70, 0, 0], "foot_r": [30, 0, 7]}
+    },
+    {
+      "at": 33,
+      "reach": {"foot_r": [0.35, 0.0]}
+    },
+    {
+      "at": 34,
+      "reach": {"foot_l": [-2.24, 0.0]}
+    },
+    {
+      "at": 36,
+      "from": "guard",
+      "reach": {"foot_r": [0.35, 0.0], "foot_l": [-2.24, 0.0]}
+    }
+  ],
+  "marks": {"step": [33]},
+  "allow": [["thigh_r", "foot_r"], ["thigh_l", "foot_l"], ["pelvis", "shin_l"]]
+}
