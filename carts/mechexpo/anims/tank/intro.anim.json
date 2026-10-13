@@ -1,0 +1,112 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Intro (90 frames, the first round): parked powered down in its booth's spot 4.5 m behind its start mark, hull slumped forward, cab head bowed, the fists resting low (0-18); the reactor comes up, the head and the chest lift and the arms come up off the floor (18-32); it rolls out of the spot lights on its treads (34-64; the body moves through the pelvis offset, so the fight's root stays on the mark; the sprockets turn with the ground they cover), stops with a nose-down rock onto the front rollers (66) and back, and settles into the guard, knocking its clamp fists together once (78-82). No step marks: the treads glide.",
+  "base": "_body.anim.json",
+  "length": 90,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "hold",
+      "offset": [-4.5, 0],
+      "pose": {
+        "pelvis": [-6, 0, 0], "thigh_r": [6, 0, 0], "thigh_l": [6, 0, 0], "foot_r": [0, 0, 0], "foot_l": [0, 0, 0],
+        "torso": [-34, -4, 0], "head": [34, 0, 0],
+        "upper_arm_r": [34, 0, -16], "forearm_r": [10, 0, 0], "hand_r": [10, 0, 0],
+        "upper_arm_l": [32, 0, 18], "forearm_l": [12, 0, 0], "hand_l": [10, 0, 0],
+        "pauldron_r": [12, 0, -8], "pauldron_l": [11, 0, 9]
+      }
+    },
+    {"at": 18, "ease": "ease", "offset": [-4.5, 0]},
+    {
+      "at": 32,
+      "ease": "ease",
+      "offset": [-4.5, 0],
+      "pose": {
+        "pelvis": [2, 0, 0], "thigh_r": [-2, 0, 0], "thigh_l": [-2, 0, 0],
+        "torso": [2, -10, 0], "head": [-8, 6, 0],
+        "upper_arm_r": [30, 0, -24], "forearm_r": [70, 0, 0], "hand_r": [-20, 0, 0],
+        "upper_arm_l": [26, 0, 26], "forearm_l": [76, 0, 0], "hand_l": [-20, 0, 0],
+        "pauldron_r": [10.5, 0, -12], "pauldron_l": [9.1, 0, 13]
+      }
+    },
+    {
+      "at": 34,
+      "ease": "in",
+      "offset": [-4.5, 0],
+      "pose": {"pelvis": [2, 0, 0], "torso": [0, -10, 0], "head": [-4, 6, 0]}
+    },
+    {
+      "at": 44,
+      "ease": "linear",
+      "offset": [-3.4, 0],
+      "pose": {
+        "pelvis": [3, 0, 0], "thigh_r": [-3, 0, 0], "thigh_l": [-3, 0, 0], "foot_r": [88, 0, 0], "foot_l": [88, 0, 0],
+        "torso": [-6, -12, 0], "head": [6, 8, 0],
+        "upper_arm_r": [26, 0, -18], "forearm_r": [74, 0, 0],
+        "upper_arm_l": [20, 0, 20], "forearm_l": [80, 0, 0],
+        "pauldron_r": [9.1, 0, -9], "pauldron_l": [7, 0, 10]
+      }
+    },
+    {
+      "at": 54,
+      "ease": "linear",
+      "offset": [-1.3, 0],
+      "pose": {
+        "pelvis": [2, 0, 0], "thigh_r": [-2, 0, 0], "thigh_l": [-2, 0, 0], "foot_r": [256, 0, 0], "foot_l": [256, 0, 0],
+        "torso": [-10, -14, 0], "head": [12, 10, 0]
+      }
+    },
+    {
+      "at": 64,
+      "ease": "out",
+      "offset": [0, 0],
+      "pose": {
+        "pelvis": [0, 0, 0], "thigh_r": [0, 0, 0], "thigh_l": [0, 0, 0], "foot_r": [360, 0, 0], "foot_l": [360, 0, 0],
+        "torso": [-14, -14, 0], "head": [14, 10, 0]
+      }
+    },
+    {
+      "at": 67,
+      "ease": "ease",
+      "offset": [0.36, 0.27],
+      "pose": {
+        "pelvis": [-6, 0, 0],
+        "torso": [-18, -14, 0], "head": [18, 10, 0],
+        "upper_arm_r": [32, 0, -18], "forearm_r": [70, 0, 0],
+        "upper_arm_l": [26, 0, 20], "forearm_l": [76, 0, 0]
+      }
+    },
+    {
+      "at": 72,
+      "ease": "ease",
+      "offset": [-0.12, 0.09],
+      "pose": {"pelvis": [2, 0, 0], "torso": [-8, -14, 0], "head": [10, 10, 0]}
+    },
+    {
+      "at": 78,
+      "ease": "in",
+      "offset": [0, 0],
+      "pose": {
+        "pelvis": [0, 0, 0],
+        "torso": [-10, -6, 0], "head": [12, 4, 0],
+        "upper_arm_r": [50, 8, -30], "forearm_r": [80, 0, 0], "hand_r": [-20, 0, 0],
+        "upper_arm_l": [50, -8, 30], "forearm_l": [80, 0, 0], "hand_l": [-20, 0, 0],
+        "pauldron_r": [17.5, 0, -15], "pauldron_l": [17.5, 0, 15]
+      }
+    },
+    {
+      "at": 81,
+      "ease": "out",
+      "pose": {
+        "torso": [-12, -4, 0], "head": [14, 2, 0],
+        "upper_arm_r": [60, 0, 2], "forearm_r": [70, 0, 0],
+        "upper_arm_l": [60, 0, -2], "forearm_l": [70, 0, 0],
+        "pauldron_r": [21, 0, 1], "pauldron_l": [21, 0, -1]
+      }
+    },
+    {"at": 89, "from": "guard", "pose": {"foot_r": [360, 0, 0], "foot_l": [360, 0, 0]}}
+  ],
+  "allow": [["pauldron_r", "forearm_r"], ["pauldron_l", "forearm_l"], ["hand_r", "hand_l"], ["forearm_r", "hand_l"], ["forearm_l", "hand_r"], ["forearm_r", "forearm_l"], ["torso", "forearm_r"], ["torso", "forearm_l"]]
+}
