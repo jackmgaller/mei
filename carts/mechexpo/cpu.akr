@@ -56,6 +56,7 @@ struct Cpu {
 
 var cpu: [2]Cpu
 var cpu_tip: [len(Mech)]fixed           // each mech's forward attack's reach, from the data
+var cpu_jab: [len(Mech)]fixed           // its neutral attack's reach (Beam's Arc Jab reaches 9 m)
 var cpu_lo0: [len(Mech)]fixed           // its down attack's hit boxes, nearest and furthest
 var cpu_lo1: [len(Mech)]fixed           // (with root motion): what it can clear a mine with
 var cpu_trav_f: [len(Mech)]fixed        // how far its forward special, down special and
@@ -111,6 +112,7 @@ private fn cpu_moves_of(m: Mech) {
         }
         step += mv_root(m, Mv.atk_d, f).x
     }
+    cpu_jab[m] = reach_of(m, Mv.atk_n)
     cpu_lo0[m] = lo0
     cpu_lo1[m] = lo1
     cpu_trav_f[m] = travel_of(m, Mv.sp_f)
@@ -271,7 +273,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
             if me.mech == Mech.Tank { return tank_punish(dist, fwd) }
             if me.mech == Mech.Shadow { return shadow_punish(dist, fwd) }
             if super_wise(i) && dist < 12.0 && roll(c, 50) { return A | B }
-            if dist < 6.0 { return A }
+            if dist < cpu_jab[me.body] + 1.0 { return A }      // its jab's own reach (mx-balance)
             if dist < tip(me.body) - 0.5 { return fwd | A }
             if dist < tip(me.body) + 3.0 { return fwd | B }
         }
@@ -386,10 +388,20 @@ fn dummy_pad(i: s32) -> u32 {
 // mech walking or jumping in, the prime when it is safe (far, nothing coming), the super from
 // anywhere it reaches; up close a jab, a grab or a step back out.
 
-private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, back: u32) -> u32 {
+// The room behind side i, to the stage's edge (a wall or an open lip).
+private fn room_behind(i: s32) -> fixed {
+    let f = &fight.f[i]
+    return stage_now().half - STATS[f.body].push + fixed(f.facing) * f.x
+}
+
+private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, back0: u32) -> u32 {
     let me = &fight.f[i]
     let op = &fight.f[other(i)]
     let incoming = fight.shot[other(i)].on
+    // backing off only while there is room: the others walk forward faster than Beam walks back,
+    // so near its wall it holds its ground behind its guard instead (mx-balance)
+    var back = back0
+    if room_behind(i) < 6.0 { back = R }
     // the prime while the other is down: the safest moment there is
     let down = op.mv == Mv.knockdown || op.mv == Mv.getup || op.mv == Mv.hit_air
     if down && me.react == 0 && me.meter < METER_BAR && dist > 6.0 && me.curse == 0 && roll(c, lv.special * 6) { return DOWN | B }
@@ -638,8 +650,11 @@ private fn shadow_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
     let threat = is_attack(op.mv) || op.mv == Mv.grab || fight.shot[j].on
     let down = op.mv == Mv.knockdown || op.mv == Mv.getup || op.mv == Mv.hit_air
     if super_wise(i) && dist < 10.0 && grounded(j) && !down && roll(c, 6) { return A | B }
-    // a mine where the other must walk: laid in the open between them, or while it is down
-    if !mine && ((down && dist > 4.0) || (dist > 8.0 && dist < 20.0 && !threat)) && roll(c, lv.special * 4) {
+    // a mine where the other must walk: laid in the open between them, or while it is down. A
+    // mech with a shot keeps its distance and shoots (the Hero's wave clears a mine): against it
+    // a mine in the open is time given away, so only while it is down (mx-balance)
+    let open_ok = !fires_shot(op.mech) || op.mech == Mech.Shadow
+    if !mine && ((down && dist > 4.0) || (open_ok && dist > 8.0 && dist < 20.0 && !threat)) && roll(c, lv.special * 4) {
         return DOWN | B
     }
     // keep a curse up: the bolt at mid range when the curse is out or running out

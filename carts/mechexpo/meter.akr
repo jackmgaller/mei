@@ -9,15 +9,15 @@
 import "moves.akr"
 
 const METER_BAR = 1200              // one bar
-const KIN_HIT = 150                 // kinetic: a hit that lands (12.5 %)
+const KIN_HIT = 125                 // kinetic: a hit that lands (about 10.4 %)
 const KIN_SHOT = 120                // the wave landing (10 %)
 const KIN_BLOCKED = 60              // a hit the other blocked (5 %)
 const ANTI_REGEN = 1                // antimatter: a frame (a bar in 20 s)
 const ANTI_HIT = 60                 // a hit that lands (5 %)
 const DEBT_DMG_NUM = 5              // damage taken in debt: x 5/4
 const DEBT_DMG_DEN = 4
-const NUC_NUM = 5                   // nuclear (Tank): 5 meter for every 2 points of damage taken
-const NUC_DEN = 2                   // (a bar per 480 damage)
+const NUC_NUM = 3                   // nuclear (Tank): 3 meter for every point of damage taken
+const NUC_DEN = 1                   // (a bar per 400 damage)
 
 fn meter_power(m: Mech) -> Power { return STATS[m].power }
 

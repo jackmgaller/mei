@@ -83,7 +83,7 @@ fn move_hit(m: Mech, mv: Mv) -> Hit {
             atk_d => Hit { dmg: 90, blockstun: 16, stop: 11, power: 1, kb: 0.10, kd: true, launch: 0.30 }
             atk_air => Hit { dmg: 100, hitstun: 20, blockstun: 15, stop: 11, power: 1, kb: 0.08 }
             sp_n => Hit { dmg: 80, chip: 16, hitstun: 20, blockstun: 16, stop: 9, power: 1, kb: 0.12 }
-            sp_f => Hit { dmg: 105, chip: 21, blockstun: 16, stop: 12, power: 2, kb: 0.20, kd: true, launch: 0.35 }
+            sp_f => Hit { dmg: 95, chip: 19, blockstun: 16, stop: 12, power: 2, kb: 0.20, kd: true, launch: 0.35 }
             sp_u => Hit { dmg: 120, chip: 24, blockstun: 14, stop: 12, power: 2, kb: 0.10, kd: true, launch: 0.55 }
             sp_d => Hit { dmg: 110, stop: 12, power: 2, kb: 0.16, kd: true, launch: 0.35 }
             throw => Hit { dmg: 140, stop: 10, power: 2, kd: true, launch: 0.30 }

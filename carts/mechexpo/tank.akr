@@ -19,7 +19,7 @@ const TANK_SLAM_AT = 33             // the slam, frames into the section (thrown
 fn tank_hit(mv: Mv) -> Hit {
     return match mv {
         atk_n => Hit { dmg: 80, hitstun: 18, blockstun: 13, stop: 8, kb: 0.10 }
-        atk_f => Hit { dmg: 140, hitstun: 26, blockstun: 18, stop: 11, power: 1, kb: 0.15 }
+        atk_f => Hit { dmg: 150, hitstun: 26, blockstun: 18, stop: 11, power: 1, kb: 0.15 }
         atk_d => Hit { dmg: 90, blockstun: 16, stop: 11, power: 1, kb: 0.10, kd: true, launch: 0.30 }
         atk_air => Hit { dmg: 110, hitstun: 20, blockstun: 15, stop: 11, power: 1, kb: 0.08 }
         sp_n => Hit { dmg: 100, chip: 20, blockstun: 16, stop: 12, power: 2, kb: 0.18, kd: true, launch: 0.40 }
