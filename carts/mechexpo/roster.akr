@@ -8,8 +8,9 @@
 // announced base mech, "?" if it is a mystery, and it cannot be picked. A slot whose unlock rule
 // is not met yet shows "?" (and, with SHOW_UNLOCK_HINTS, how to unlock it).
 //
-// ADDING A MECH is a one-row change: put its Mech in its slot's `mech` field. On merging mx-beam
-// and mx-tank (enum Mech { Hero, Doubleblade, Beam, Tank }):
+// ADDING A MECH is a one-row change: put its Mech in its slot's `mech` field (the row already
+// carries its maker, emblem, names, model, height and stats). On merging mx-beam and mx-tank
+// (enum Mech { Hero, Doubleblade, Beam, Tank }):
 //     slot 2 (BEAM):  mech: Mech.Beam as s32
 //     slot 3 (TANK):  mech: Mech.Tank as s32
 // and check the row's name, short name, model number, stats and blurb against what the mech
@@ -89,10 +90,15 @@ struct Slot {
     arg: s32            // RULE_CLEAR's slot
     bit: u32            // its unlock bit in save.unlocked (none for RULE_OPEN)
     mystery: bool       // locked, it shows only "?" (no name, no maker)
+    emblem: *s32        // its maker's emblem, 32 x 32 in slot 9 (null: none shown)
+    emblem24: *s32      // the same, 24 x 24 (the card)
+    epal: s32           // their palette
     name: *u8           // the catalogue's name
     short: *u8          // the HUD's and the banners' name
     card: *u8           // on the select's card (48 px)
     model: *u8          // the model number
+    height: s32         // standing height in decimetres (0: not announced)
+    width: s32          // width in decimetres where it matters (0: not shown)
     stats: u32          // 0xPSRA: power, speed, reach, armour, 1-5 each (the spec sheet's pips)
     blurb: *u8          // the catalogue's two lines
     hint: *u8           // how to unlock it (SHOW_UNLOCK_HINTS), up to three short lines
@@ -101,23 +107,36 @@ struct Slot {
 const ROSTER_N = 10
 const ROSTER_COLS = 5
 
+// Names and numbers from MOVES.md where the mech exists: Beam is shown as BEAM MECH, model RC-03
+// (mx-beam); Tank's model is HA-57, product name open ("Homestead" proposed), 10.2 m tall and
+// 9.5 m across the fists (mx-tank). Shadow's and the twins' rows are placeholders.
 const ROSTER: [10]Slot = [
     // the base mechs
-    Slot { maker: CO_MOMENTUM, mech: Mech.Hero as s32, rule: RULE_OPEN, name: "HERO MECH", short: "HERO", card: "HERO",
-           model: "MR-01", stats: 0x3343, blurb: "THE ALL-ROUNDER:\nA LONG, FAIR SWORD", hint: "" },
-    Slot { maker: CO_UMBRAL, rule: RULE_OPEN, name: "SHADOW", short: "SHADOW", card: "SHADOW",
-           model: "UR-01", stats: 0x2432, blurb: "TELEPORTS, TRAPS\nAND AFTERIMAGES", hint: "" },
-    Slot { maker: CO_RAIKO, rule: RULE_OPEN, name: "BEAM", short: "BEAM", card: "BEAM",
-           model: "RK-500", stats: 0x3252, blurb: "ELECTRIC SHOTS AND\nCHARGED ATTACKS", hint: "" },
-    Slot { maker: CO_HEARTLAND, rule: RULE_OPEN, name: "TANK", short: "TANK", card: "TANK",
-           model: "HA-M4", stats: 0x5125, blurb: "TREADS, ARMOUR,\nCOMMAND GRABS", hint: "" },
-    Slot { maker: CO_BINARY, rule: RULE_BASES, bit: 0x10, mystery: true, name: "TWINS", short: "TWINS", card: "TWINS",
-           model: "BM-2X", stats: 0x3333, blurb: "TWO SMALL MECHS,\nOR ONE COMBINED",
-           hint: "CLEAR THE ARCADE\nWITH HERO, SHADOW,\nBEAM AND TANK" },
+    Slot { maker: CO_MOMENTUM, mech: Mech.Hero as s32, rule: RULE_OPEN,
+           emblem: UI_EMBLEM_HERO, emblem24: UI_EMBLEM24_MOMENTUM, epal: PAL_EMBLEM,
+           name: "HERO MECH", short: "HERO", card: "HERO", model: "MR-01", height: 120, stats: 0x3343,
+           blurb: "THE ALL-ROUNDER:\nA LONG, FAIR SWORD", hint: "" },
+    Slot { maker: CO_UMBRAL, rule: RULE_OPEN,
+           emblem: UI_EMBLEM_ECHO, emblem24: UI_EMBLEM24_UMBRAL, epal: PAL_EMBLEM,
+           name: "SHADOW", short: "SHADOW", card: "SHADOW", model: "UR-01", stats: 0x2432,
+           blurb: "TELEPORTS, TRAPS\nAND AFTERIMAGES", hint: "" },
+    Slot { maker: CO_RAIKO, rule: RULE_OPEN,
+           emblem: UI_EMBLEM_RAIKO, emblem24: UI_EMBLEM24_RAIKO, epal: PAL_POWER,
+           name: "BEAM MECH", short: "BEAM", card: "BEAM", model: "RC-03", height: 120, stats: 0x3253,
+           blurb: "THE ZONER: ORBS,\nA BEAM, LIGHTNING", hint: "" },
+    Slot { maker: CO_HEARTLAND, rule: RULE_OPEN,
+           emblem: UI_EMBLEM_HEARTLAND, emblem24: UI_EMBLEM24_HEARTLAND, epal: PAL_POWER,
+           name: "TANK", short: "TANK", card: "TANK", model: "HA-57", height: 102, width: 95, stats: 0x5125,
+           blurb: "TREADS, ARMOUR,\nCOMMAND GRABS", hint: "" },
+    Slot { maker: CO_BINARY, rule: RULE_BASES, bit: 0x10, mystery: true,
+           emblem: UI_EMBLEM_BINARY, emblem24: UI_EMBLEM24_BINARY, epal: PAL_POWER,
+           name: "TWINS", short: "TWINS", card: "TWINS", model: "BM-2X", stats: 0x3333,
+           blurb: "TWO SMALL MECHS,\nOR ONE COMBINED", hint: "CLEAR THE ARCADE\nWITH HERO, SHADOW,\nBEAM AND TANK" },
     // the echoes, each below its base
     Slot { maker: CO_UMBRAL, echo: true, mech: Mech.Doubleblade as s32, rule: RULE_CLEAR, arg: 0, bit: 0x01,
-           mystery: true, name: "DOUBLE-BLADE HERO", short: "DOUBLE-BLADE", card: "DBL-BLADE", model: "UR-02", stats: 0x3422,
-           blurb: "TWO BLADES, LESS\nREACH, MORE RUSH", hint: "CLEAR THE ARCADE\nWITH THE HERO" },
+           mystery: true, emblem: UI_EMBLEM_ECHO, emblem24: UI_EMBLEM24_UMBRAL, epal: PAL_EMBLEM,
+           name: "DOUBLE-BLADE HERO", short: "DOUBLE-BLADE", card: "DBL-BLADE", model: "UR-02", height: 120,
+           stats: 0x3422, blurb: "TWO BLADES, LESS\nREACH, MORE RUSH", hint: "CLEAR THE ARCADE\nWITH THE HERO" },
     Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 1, bit: 0x40, mystery: true, name: "?",
            short: "?", card: "?", model: "?", stats: 0, blurb: "", hint: "CLEAR THE ARCADE\nWITH SHADOW" },
     Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 2, bit: 0x80, mystery: true, name: "?",
@@ -130,11 +149,13 @@ const ROSTER: [10]Slot = [
 
 // ---- lookups
 
-// The slot showing mech m (every Mech has one).
+// The slot showing mech m. Every Mech must have one: a Mech missing from the table fails the
+// assert in a debug build (the scenarios), and shows as the Hero's slot in a release build.
 fn mech_slot(m: Mech) -> s32 {
     for i in 0..ROSTER_N {
         if ROSTER[i].mech == m as s32 { return i }
     }
+    assert(false, "a Mech with no slot in roster.akr's ROSTER")
     return 0
 }
 

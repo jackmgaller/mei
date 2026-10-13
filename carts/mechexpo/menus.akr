@@ -396,10 +396,16 @@ private fn draw_sheet(s: s32, x0: s32) {
         if known { ui_stamp(&UI_STAMP_IN_TRANSIT[0], px + 32, 112, C_RED) }
         else { ui_stamp(&UI_STAMP_CLASSIFIED[0], px + 32, 112, C_RED) }
     }
-    txt(FONT_MICRO, px + 3, 134, "FIG. ", C_WHITE, ALIGN_LEFT)
-    let fb = sb()
-    str_append_int(fb, 64, c + 1, 2, true)
-    txt(FONT_MICRO, px + 19, 134, fb, C_WHITE, ALIGN_LEFT)
+    // the caption: the unit's height (and width, where it matters), or the figure's number
+    if known && r.height > 0 {
+        dim_caption(px + 3, 134, "HEIGHT ", r.height)
+        if r.width > 0 { dim_caption(px + 3, 126, "WIDTH ", r.width) }
+    } else {
+        let fb = sb()
+        str_append(fb, 64, "FIG. ")
+        str_append_int(fb, 64, c + 1, 2, true)
+        txt(FONT_MICRO, px + 3, 134, fb, C_WHITE, ALIGN_LEFT)
+    }
     // the spec sheet
     paper(ix, 40, 82, 108)
     if known {
@@ -414,6 +420,17 @@ private fn draw_sheet(s: s32, x0: s32) {
     if ok && sel_moved[s] > sel_done_t[s] { ui_shine(ix, 24, 152, 15, tick - sel_moved[s], 1000) }
 }
 
+// "HEIGHT 12.0 M" from decimetres, in the photograph's corner.
+private fn dim_caption(x: s32, y: s32, k: *u8, dm: s32) {
+    let b = sb()
+    str_append(b, 64, k)
+    str_append_int(b, 64, dm / 10, 0, false)
+    str_append(b, 64, ".")
+    str_append_int(b, 64, dm % 10, 0, false)
+    str_append(b, 64, " M")
+    txt(FONT_MICRO, x, y, b, C_WHITE, ALIGN_LEFT)
+}
+
 // The spec sheet's rows for a known slot.
 private fn draw_specs(c: s32, ix: s32, has_maker: bool) {
     let r = &ROSTER[c]
@@ -421,7 +438,7 @@ private fn draw_specs(c: s32, ix: s32, has_maker: bool) {
         let mk = &MAKERS[r.maker]
         txt(FONT_MICRO, ix + 3, 41, mk.short, C_INK, ALIGN_LEFT)
         rect_blend(ix + 3, 51, 22, 2, mk.colour, BLEND_NONE)
-        ui_emblem(r.maker, ix + 55, 52, true, 0x808080)
+        ui_slot_emblem(c, ix + 55, 52, true, 0x808080)
         txt(FONT_MICRO, ix + 3, 66, mk.booth_full, C_NAVY, ALIGN_LEFT)
         ui_power_icon(mk.src, ix + 3, 78)
         txt(FONT_MICRO, ix + 22, 76, "POWER SOURCE", C_STEEL, ALIGN_LEFT)
@@ -479,7 +496,7 @@ private fn draw_schedule(x0: s32) {
         if n == LADDER_N - 1 { tag(x0 + 118, y + 2, 24, "FINAL", C_RED, C_WHITE) }
         if ok {
             let foe = ladder_foe(me, n)
-            ui_emblem(mech_maker_k(foe), x0 + 7, y + 3, true, 0x808080)
+            ui_slot_emblem(mech_slot(foe), x0 + 7, y + 3, true, 0x808080)
             txt(FONT_LABEL, x0 + 34, y + 9, mech_name(foe), C_INK, ALIGN_LEFT)
             if n == 0 { txt(FONT_MICRO, x0 + 146, y + 19, "MIRROR MATCH", C_STEEL, ALIGN_RIGHT) }
             else { txt(FONT_MICRO, x0 + 146, y + 19, "YOUR RIVAL", C_STEEL, ALIGN_RIGHT) }
@@ -540,7 +557,7 @@ private fn draw_card(i: s32, x: s32, y: s32) {
             tint = 0x484848
             tc = C_STEEL
         }
-        ui_emblem(r.maker, x + 12, y + 3, true, tint)
+        ui_slot_emblem(i, x + 12, y + 3, true, tint)
         txt(FONT_MICRO, x + SEL_CW / 2, y + 24, r.card, tc, ALIGN_CENTRE)
         if !has {
             rect_blend(x + 4, y + 11, 40, 9, C_STEEL, BLEND_NONE)
@@ -624,7 +641,7 @@ private fn draw_badge(s: s32, x: s32, y: s32) {
     let mk = mech_maker_of(m)
     paper(x, y, 140, 36)
     rect_blend(x, y, 4, 36, mk.colour, BLEND_NONE)
-    ui_emblem(mech_maker_k(m), x + 8, y + 6, true, 0x808080)
+    ui_slot_emblem(mech_slot(m), x + 8, y + 6, true, 0x808080)
     txt(FONT_HEAD, x + 36, y + 1, mech_short(m), C_INK, ALIGN_LEFT)
     txt(FONT_MICRO, x + 36, y + 16, mk.short, C_STEEL, ALIGN_LEFT)
     txt(FONT_MICRO, x + 36, y + 25, mk.booth_full, C_NAVY, ALIGN_LEFT)
@@ -936,7 +953,7 @@ fn draw_unlock() {
     txt_sh(FONT_TITLE, 160, 44, mech_name(m), C_WHITE, C_INK, 2, ALIGN_CENTRE)
     // the release's fact box
     paper(232, 80, 80, 76)
-    ui_emblem(mech_maker_k(m), 238, 84, false, 0x808080)
+    ui_slot_emblem(s, 238, 84, false, 0x808080)
     ui_power_icon(mk.src, 290, 92)
     txt(FONT_MICRO, 237, 118, mk.short, C_INK, ALIGN_LEFT)
     txt(FONT_MICRO, 237, 127, mk.booth_full, C_NAVY, ALIGN_LEFT)

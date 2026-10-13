@@ -138,7 +138,8 @@ fn mech_power(m: Mech) -> *u8 { return SRC_NAMES[mech_src(m)] }
 fn mech_booth(m: Mech) -> *u8 { return mech_maker_of(m).booth_full }
 fn mech_colour(m: Mech) -> u32 { return mech_maker_of(m).colour }
 fn mech_kinetic(m: Mech) -> bool { return mech_src(m) == SRC_KINETIC }
-fn mech_emblem(m: Mech) -> *s32 { return mech_maker_of(m).emblem }
+fn mech_emblem(m: Mech) -> *s32 { return ROSTER[mech_slot(m)].emblem }        // its slot's (palette: mech_emblem_pal)
+fn mech_emblem_pal(m: Mech) -> s32 { return ROSTER[mech_slot(m)].epal }
 
 // ---- the brochure's pieces (mx-menus)
 
@@ -158,6 +159,14 @@ fn ui_emblem(k: s32, x: s32, y: s32, small: bool, tint: u32) {
     let mk = &MAKERS[k]
     if small { ui_sprite(mk.emblem24, mk.pal, x, y, tint, BLEND_NONE) }
     else { ui_sprite(mk.emblem, mk.pal, x, y, tint, BLEND_NONE) }
+}
+
+// Roster slot i's emblem at (x, y) (nothing for a slot with none).
+fn ui_slot_emblem(i: s32, x: s32, y: s32, small: bool, tint: u32) {
+    let r = &ROSTER[i]
+    if r.emblem == null { return }
+    if small { ui_sprite(r.emblem24, r.epal, x, y, tint, BLEND_NONE) }
+    else { ui_sprite(r.emblem, r.epal, x, y, tint, BLEND_NONE) }
 }
 
 // Slot 12's white art (stamps, the strap), tinted.

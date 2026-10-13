@@ -79,9 +79,10 @@ PALS = {
     'page': ['e8eef6', 'd8e2ee', 'c4d2e4', 'a8bcd6', '8aa4c6', '6c8ab4', '1e3c9a', '30d8f0',
              'ffffff', 'f4f8fc', 'b8c8dc', 'dce6f2', 'eef3f9', '9cb2cc', '7e98bc'],
     # the three later makers' colours (PAL_POWER): Raiko's yellows, Heartland's
-    # faded greens and reactor glow, Binary Mechanica's white, silver and cyan
-    'power': ['15121c', '3a4458', '7a8494', 'c8d0dc', 'ffffff', 'fff07a', 'f0c419', 'a8780c',
-              '2e4630', '4f6b47', '7f9670', '8cff5a', '30d8f0', '16809c', 'bff4ff'],
+    # faded greens, cream and reactor glow (the colours of the models' emblems), Binary
+    # Mechanica's white, silver and cyan
+    'power': ['2a2c31', '3a4458', 'e6dfc4', 'c8d0dc', 'ffffff', 'fff07a', 'f5c21b', 'a8780c',
+              '3f5238', '5b7350', '7f9670', '8cff6e', '30d8f0', '16809c', 'bff4ff'],
 }
 for k, v in PALS.items():
     PALS[k] = [hexc(c) for c in v]
@@ -376,43 +377,15 @@ def icon_fusion(d):
     return quantize(down(img), P)
 
 
-def emblem_raiko(d):
-    """Raiko Chemical Group: a lightning bolt in a hexagon (a benzene ring), yellow on black."""
-    s = d * SS
-    img = big(d, d)
-    dr = ImageDraw.Draw(img)
-    P = PALS['power']
-
-    def hexa(r, col):
-        dr.polygon([(s / 2 + r * s * math.cos(math.radians(90 + 60 * k)),
-                     s / 2 - r * s * math.sin(math.radians(90 + 60 * k))) for k in range(6)], fill=_rgba(col))
-    hexa(.5, P[0])
-    hexa(.43, P[6])
-    hexa(.33, P[0])
-    bolt = [(.57, .17), (.31, .55), (.47, .55), (.40, .86), (.70, .43), (.54, .43), (.64, .17)]
-    dr.polygon(_pts(s, bolt), fill=_rgba(P[5]), outline=_rgba(P[0]), width=int(s * .03))
-    return quantize(down(img), P)
+def emblem_png(path, d):
+    """A maker's emblem from its model's PNG (drawn by the mech's own generator), d x d in
+    PAL_POWER."""
+    im = Image.open(os.path.join(CART, path)).convert('RGBA')
+    return quantize(im.resize((d, d), Image.LANCZOS), PALS['power'])
 
 
-def emblem_heartland(d):
-    """Heartland Atomic Company: a faded green heart on a primer-grey roundel, an atom's orbit
-    round it and the reactor's green glow at its centre."""
-    s = d * SS
-    img = big(d, d)
-    dr = ImageDraw.Draw(img)
-    P = PALS['power']
-    dr.ellipse([s * .02, s * .02, s * .98, s * .98], fill=_rgba(P[1]))
-    dr.ellipse([s * .07, s * .07, s * .93, s * .93], fill=_rgba(P[2]))
-    dr.ellipse([s * .13, s * .13, s * .87, s * .87], fill=_rgba(P[8]))
-    for (cx, cy) in ((.37, .42), (.63, .42)):
-        dr.ellipse(_pts(s, [(cx - .15, cy - .15), (cx + .15, cy + .15)]), fill=_rgba(P[10]))
-    dr.polygon(_pts(s, [(.225, .46), (.775, .46), (.5, .80)]), fill=_rgba(P[10]))
-    dr.ellipse(_pts(s, [(.27, .32), (.37, .40)]), fill=_rgba(P[4]))
-    orb = Image.new('RGBA', img.size, (0, 0, 0, 0))
-    ImageDraw.Draw(orb).ellipse([s * .1, s * .36, s * .9, s * .64], outline=_rgba(P[3]), width=int(s * .05))
-    img.alpha_composite(orb.rotate(28, resample=Image.BICUBIC, center=(s / 2, s / 2)))
-    dr.ellipse(_pts(s, [(.42, .45), (.58, .61)]), fill=_rgba(P[11]))
-    return quantize(down(img), P)
+EMBLEM_RAIKO_PNG = 'models/beam/raiko_emblem.png'           # mx-beam's
+EMBLEM_HEARTLAND_PNG = 'models/tank/heartland_emblem.png'   # mx-tank's
 
 
 def emblem_binary(d):
@@ -719,13 +692,13 @@ def main():
     sp.place('ICON_NUCLEAR', icon_nuclear(16))
     sp.place('ICON_FUSION', icon_fusion(16))
     sp.newline()
-    sp.place('EMBLEM_RAIKO', emblem_raiko(32))
-    sp.place('EMBLEM_HEARTLAND', emblem_heartland(32))
+    sp.place('EMBLEM_RAIKO', emblem_png(EMBLEM_RAIKO_PNG, 32))
+    sp.place('EMBLEM_HEARTLAND', emblem_png(EMBLEM_HEARTLAND_PNG, 32))
     sp.place('EMBLEM_BINARY', emblem_binary(32))
     sp.place('EMBLEM24_MOMENTUM', emblem_momentum(24))
     sp.place('EMBLEM24_UMBRAL', emblem_umbral(24))
-    sp.place('EMBLEM24_RAIKO', emblem_raiko(24))
-    sp.place('EMBLEM24_HEARTLAND', emblem_heartland(24))
+    sp.place('EMBLEM24_RAIKO', emblem_png(EMBLEM_RAIKO_PNG, 24))
+    sp.place('EMBLEM24_HEARTLAND', emblem_png(EMBLEM_HEARTLAND_PNG, 24))
     sp.place('EMBLEM24_BINARY', emblem_binary(24))
     sp.place('UAPC', emblem_uapc(24))
 
