@@ -3,10 +3,8 @@
 # (a fault, a failed assert, or no OK line). 1 a KO, 2 time up, 3 block and chip, 4 grab beats
 # block, 5 grab breaks, 6 and 7 the chains, 8 the kinetic super, 9 the antimatter super and its
 # debt, 10 CPU against CPU twice (the same match), 11 the separation limit and the walls, 12 the
-# Parry and the anti-air, 13 the ladder's levels, 18 the Vault Throw, 15 training, 14 the budget
-# with both mechs drawn; 50-54 the effects through the whole game (tests/fx/harness.akr: hits by
-# weight, the kinetic super and a KO, the Void Step and the antimatter super, the waves, CPU
-# against CPU), each with the effects' peak cost. MEIC and RUN as in tools/cart_scenario.sh.
+# Parry and the anti-air, 13 the ladder's levels, 18 the Vault Throw, 19 the air attack, 15
+# training, 14 the budget with both mechs drawn. MEIC and RUN as in tools/cart_scenario.sh.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 O="$HERE/out/check"
@@ -31,6 +29,7 @@ run 11 2200
 run 12 340
 run 13 3000
 run 18 110
+run 19 260
 run 15 1500
 run 14 1800
 # Beam (mx-beam): 30 the chemical meter, 31 a spoiled prime, 32 the Volt Orb, 33 orb against

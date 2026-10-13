@@ -35,6 +35,9 @@
 //     on hit against a standing mech, from the engine itself (MOVES.md's tables)
 // 18  the Vault Throw: the Double-blade Hero's victim plays thrown_vault, lands behind it
 //     (the sides swap), knocked down
+// 19  the air attack: a jumping Hero's Falling Cleave, pressed on the way down, hits a standing
+//     Double-blade Hero, and the Hero lands with the air attack's landing; then the same against
+//     a Double-blade Hero holding block (no damage)
 // 40-49 Tank's (mx-tank): armour, its grabs and throws, the nuclear meter, its super, the CPU
 //     and the budget; listed with their code at the end of this file
 // 15  training: the dummy blocking, standing (health refills after a moment, meter kept full),
@@ -94,7 +97,7 @@ fn init() {
     if SCENARIO >= 30 && SCENARIO <= 39 { beam_init(); return }     // Beam's (mx-beam)
     match SCENARIO {
         0 => fight_init(Mech.Hero, Mech.Doubleblade, FightMode.VsCpu, 2)
-        1, 2, 3, 4, 5, 6, 8, 11 => fight_init(Mech.Hero, Mech.Doubleblade, FightMode.Versus, 0)
+        1, 2, 3, 4, 5, 6, 8, 11, 19 => fight_init(Mech.Hero, Mech.Doubleblade, FightMode.Versus, 0)
         7, 9, 18 => fight_init(Mech.Doubleblade, Mech.Hero, FightMode.Versus, 0)
         12 => fight_init(Mech.Doubleblade, Mech.Hero, FightMode.Versus, 0)
         10, 14 => fight_init(Mech.Hero, Mech.Doubleblade, FightMode.VsCpu, 2)
@@ -112,7 +115,7 @@ fn init() {
         return
     }
     if SCENARIO == 10 || SCENARIO == 13 || SCENARIO == 16 { tick_per_frame = 40 }
-    if SCENARIO >= 1 && SCENARIO <= 9 || SCENARIO == 11 || SCENARIO == 12 || SCENARIO == 18 { skip_intro() }
+    if SCENARIO >= 1 && SCENARIO <= 9 || SCENARIO == 11 || SCENARIO == 12 || SCENARIO == 18 || SCENARIO == 19 { skip_intro() }
     match SCENARIO {
         1 => place(-5.0, 5.0)
         2 => place(-3.0, 3.0)
@@ -126,6 +129,7 @@ fn init() {
         12 => place(-2.5, 2.5)
         15 => place(-5.0, 5.0)
         18 => place(-2.0, 2.0)
+        19 => place(-4.0, 4.0)
         else => {}
     }
 }
@@ -207,6 +211,14 @@ private fn script1() -> u32 {
             if at(170) { return B }
         }
         4, 18 => { if at(5) { return Y } }
+        19 => {
+            if at(5) || at(125) { return fwd | X }
+            // A once, on the way down
+            if a.mv == Mv.jump && fx[0].air && fx[0].vy < 0.0 && (stage == 0 || stage == 2) {
+                stage += 1
+                return A
+            }
+        }
         5 => {
             if at(5) { return Y }
             if at(120) { return Y }
@@ -247,6 +259,7 @@ private fn script2() -> u32 {
     let fwd = if_u(b.facing > 0, RIGHT, LEFT)
     match SCENARIO {
         3, 4 => return R
+        19 => { if frames >= 120 { return R } }
         5 => { if frames == mark + 3 && mark > 0 && stage == 1 { return Y }; if at(120) { return Y } }
         9 => { if at(330) { return A } }
         11 => {
@@ -338,6 +351,7 @@ private fn check() {
         15 => check_training()
         16 => check_stats()
         18 => check_vault()
+        19 => check_air()
         else => { if tk_scenario() { tk_check() } }
     }
 }
@@ -420,6 +434,29 @@ private fn check_grab() {
         assert_eq(evc[Ev.Hit] + evc[Ev.Block], 0, "a strike?")
         assert_eq(fight.f[1].health, dbh() - dmg(0, Mv.throw), "the throw's damage")
         ok("a grab beats block")
+    }
+}
+
+private fn check_air() {
+    let a = &fight.f[0]
+    if a.mv == Mv.atk_air { mark2 = 1 }
+    if a.mv == Mv.land && mark2 == 1 && mark == 0 { mark = fx[0].lag }
+    if at(100) {
+        assert_eq(mark2, 1, "the air attack never came out")
+        assert_eq(evc[Ev.Hit], 1, "the Falling Cleave did not hit")
+        assert_eq(fight.f[1].health, dbh() - dmg(0, Mv.atk_air), "the Falling Cleave's damage")
+        assert_eq(mark, STATS[Mech.Hero].land_air, "not the air attack's landing")
+        assert(grounded(0), "the Hero did not land")
+        place(-4.0, 4.0)
+        mark2 = 0
+        stage = 2
+    }
+    if at(240) {
+        assert_eq(mark2, 1, "the second air attack never came out")
+        assert_eq(evc[Ev.Block], 1, "the Falling Cleave was not blocked")
+        assert_eq(evc[Ev.Hit], 1, "the blocked Falling Cleave hit")
+        assert_eq(fight.f[1].health, dbh() - dmg(0, Mv.atk_air), "damage through the block")
+        ok("the air attack hits on the way down, and is blocked")
     }
 }
 

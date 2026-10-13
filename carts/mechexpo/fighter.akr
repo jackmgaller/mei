@@ -492,6 +492,11 @@ private fn decide(i: s32) {
         }
         return
     }
+    // in a jump: the air attack (once a jump; try_press checks)
+    if f.mv == Mv.jump && !grounded(i) {
+        try_press(i, mv_bit(Mv.atk_air))
+        return
+    }
     // cancels: on contact, in the cancel window, into what the move allows
     if x.contact && is_attack(f.mv) && (cur_marks(i) & MARK_CANCEL) != 0 {
         let c = cancels(f.mech, f.mv)
