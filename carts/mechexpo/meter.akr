@@ -22,7 +22,7 @@ fn meter_on_hit(f: *Fighter, landed: bool, shot: bool) {
         if !landed { meter_add(f, KIN_BLOCKED) }
         else if shot { meter_add(f, KIN_SHOT) }
         else { meter_add(f, KIN_HIT) }
-    } else if landed {
+    } else if landed && meter_power(f.mech) == Power.Antimatter {
         meter_add(f, ANTI_HIT)
     }
 }
@@ -30,6 +30,10 @@ fn meter_on_hit(f: *Fighter, landed: bool, shot: bool) {
 // Once a frame of fighting (not in hitstop, the flash or between rounds).
 fn meter_tick(f: *Fighter) {
     if meter_power(f.mech) == Power.Antimatter { meter_add(f, ANTI_REGEN) }
+    if meter_power(f.mech) == Power.Chemical && f.react > 0 {
+        meter_add(f, REACT_FILL)
+        f.react -= 1
+    }
 }
 
 fn meter_add(f: *Fighter, n: s32) {
@@ -37,9 +41,12 @@ fn meter_add(f: *Fighter, n: s32) {
 }
 
 fn meter_can_super(f: *Fighter) -> bool {
-    if meter_power(f.mech) == Power.Kinetic { return f.meter >= METER_BAR }
-    return f.meter >= 0
+    if meter_power(f.mech) == Power.Antimatter { return f.meter >= 0 }
+    return f.meter >= METER_BAR
 }
+
+// Chemical: the prime's release starts a reaction (beam_moves.akr's REACT_FRAMES of REACT_FILL).
+fn meter_react(f: *Fighter) { f.react = REACT_FRAMES }
 
 fn meter_spend(f: *Fighter) {
     f.meter = max(f.meter - METER_BAR, -METER_BAR)

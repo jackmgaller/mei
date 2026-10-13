@@ -1,0 +1,111 @@
+// Mech Expo 2000: Beam's moves (Raikō Chemical Group, the zoner; MOVES.md, "Beam"). What its
+// hits do, its stand-in timings and boxes (until its animations land), the Volt Orb's three
+// charge levels and the chemical reaction's numbers. moves.akr asks here for every Beam move;
+// fighter.akr fires the orb and meter.akr runs the reaction.
+
+import "moves.akr"
+
+// ---- the Volt Orb (sp_n): a projectile at mid height, charged by holding B on the charge frame
+
+const ORB_CHARGE_MAX = 50           // frames held at most (then it fires by itself)
+const ORB_CHARGE_HALF = 20          // held this long: a charged orb; ORB_CHARGE_MAX: a full one
+const ORB_X: fixed = 4.5            // where it starts, ahead of the mech
+const ORB_Y0: fixed = 4.2           // its box's height: over a slide, under a high jump
+const ORB_Y1: fixed = 6.0
+const ORB_LIFE = 130
+
+// The orb's level from the frames B was held: 1 a tap, 2 charged, 3 full.
+fn orb_level(held: s32) -> s32 {
+    if held >= ORB_CHARGE_MAX { return 3 }
+    if held >= ORB_CHARGE_HALF { return 2 }
+    return 1
+}
+
+fn orb_speed(lvl: s32) -> fixed {
+    if lvl >= 3 { return 0.36 }
+    if lvl == 2 { return 0.30 }
+    return 0.24
+}
+
+fn orb_half(lvl: s32) -> fixed {
+    if lvl >= 3 { return 1.1 }
+    if lvl == 2 { return 0.9 }
+    return 0.7
+}
+
+// What the orb does when it lands (the strength against other shots is its level: the Hero's
+// wave is 2).
+fn orb_hit(lvl: s32) -> Hit {
+    if lvl >= 3 { return Hit { dmg: 120, chip: 24, blockstun: 20, stop: 12, power: 2, kb: 0.20, kd: true, launch: 0.40 } }
+    if lvl == 2 { return Hit { dmg: 90, chip: 18, hitstun: 22, blockstun: 18, stop: 10, power: 1, kb: 0.14 } }
+    return Hit { dmg: 70, chip: 14, hitstun: 20, blockstun: 16, stop: 9, power: 1, kb: 0.12 }
+}
+
+// ---- the chemical reaction (sp_d primes it)
+
+const REACT_FRAMES = 300            // 5 s
+const REACT_FILL = 2                // meter a frame: half a bar over the reaction
+
+// ---- what Beam's hits do
+
+fn beam_hit(mv: Mv) -> Hit {
+    return match mv {
+        atk_n => Hit { dmg: 65, hitstun: 17, blockstun: 12, stop: 8, kb: 0.10 }
+        atk_f => Hit { dmg: 110, hitstun: 25, blockstun: 18, stop: 11, power: 1, kb: 0.14 }
+        atk_d => Hit { dmg: 85, blockstun: 16, stop: 11, power: 1, kb: 0.10, kd: true, launch: 0.30 }
+        atk_air => Hit { dmg: 90, hitstun: 20, blockstun: 15, stop: 11, power: 1, kb: 0.08 }
+        sp_n => orb_hit(1)
+        sp_f => Hit { dmg: 100, chip: 20, blockstun: 18, stop: 12, power: 2, kb: 0.20, kd: true, launch: 0.30 }
+        sp_u => Hit { dmg: 110, chip: 22, blockstun: 14, stop: 12, power: 2, kb: 0.10, kd: true, launch: 0.55 }
+        throw => Hit { dmg: 130, stop: 10, power: 2, kd: true, launch: 0.30 }
+        super => Hit { dmg: 300, chip: 75, blockstun: 22, stop: 20, power: 3, kb: 0.25, kd: true, launch: 0.60 }
+        else => HIT_NONE
+    }
+}
+
+// ---- Beam's stand-in timings and boxes (MOVES.md's frame data; 0-based frames)
+
+fn beam_tm(mv: Mv) -> Tm {
+    return match mv {
+        idle => Tm { len: 60, loops: true }
+        walk_f, walk_b => Tm { len: 52, loops: true }
+        crouch => Tm { len: 8, loops: true, shape: 1 }
+        jump => Tm { len: 45, shape: 2 }
+        atk_n => Tm { len: 24, a0: 6, a1: 8, hx0: 1.8, hy0: 6.0, hx1: 5.6, hy1: 9.0, c1: 14, reach: 3.0 }
+        atk_f => Tm { len: 40, a0: 14, a1: 17, hx0: 3.5, hy0: 6.0, hx1: 9.4, hy1: 8.5, c1: 23,
+                      m0: 3, m1: 12, dx: 0.08, reach: 4.5 }
+        atk_d => Tm { len: 41, a0: 12, a1: 16, hx0: 1.5, hy0: 0.0, hx1: 7.5, hy1: 2.0, shape: 1, reach: 3.5 }
+        atk_air => Tm { len: 32, a0: 9, a1: 31, hx0: 0.5, hy0: -3.0, hx1: 5.5, hy1: 3.0, shape: 2 }
+        sp_n => Tm { len: 45, rel: 18, ch: 10 }
+        sp_f => Tm { len: 50, a0: 20, a1: 25, hx0: 2.5, hy0: 6.0, hx1: 15.0, hy1: 8.0, reach: 5.5 }
+        sp_u => Tm { len: 42, a0: 7, a1: 14, hx0: 0.5, hy0: 6.0, hx1: 5.0, hy1: 16.0, i0: 0, i1: 6 }
+        sp_d => Tm { len: 44, rel: 30 }
+        grab => Tm { len: 7, a0: 5, a1: 6, hx0: 1.0, hy0: 2.0, hx1: 3.6, hy1: 10.0 }
+        throw, thrown => Tm { len: 46, rel: 32 }
+        thrown_vault => Tm { len: 40, rel: 28 }
+        super => Tm { len: 100, a0: 48, a1: 63, hx0: 2.0, hy0: 4.5, hx1: 30.0, hy1: 9.0, flash: 40,
+                      i0: 0, i1: 47 }
+        else => common_tm(mv)
+    }
+}
+
+// ---- the training move list
+
+const BEAM_MOVES = MoveList { n: 15, e: [
+    MoveEntry { name: "Arc Jab", input: "A" },
+    MoveEntry { name: "Static Lance", input: "FWD + A" },
+    MoveEntry { name: "Ground Spark", input: "DOWN + A" },
+    MoveEntry { name: "Down Arc", input: "A in the air" },
+    MoveEntry { name: "Volt Orb", input: "B (hold to charge)" },
+    MoveEntry { name: "Arc Lance", input: "FWD + B" },
+    MoveEntry { name: "Thunder Pillar", input: "UP + B" },
+    MoveEntry { name: "Reaction Prime", input: "DOWN + B" },
+    MoveEntry { name: "Shock Grip", input: "Y" },
+    MoveEntry { name: "Break a grab", input: "Y when grabbed" },
+    MoveEntry { name: "Raiko Overload", input: "A + B, one bar" },
+    MoveEntry { name: "Block", input: "hold R" },
+    MoveEntry { name: "Jump", input: "X (+ FWD or BACK)" },
+    MoveEntry { name: "Chain", input: "A, FWD + A, B" },
+    MoveEntry { name: "Chemical meter", input: "DOWN + B: 5 s reaction" },
+    MoveEntry {}
+] }

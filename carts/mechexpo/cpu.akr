@@ -47,6 +47,7 @@ struct Cpu {
     chain_go: bool
     break_roll: bool
     blocks_seen: s32        // the other's recent blocks (grab bait)
+    charge_want: s32        // Beam: frames to hold B on the Volt Orb's charge frame (0: a tap)
 }
 
 var cpu: [2]Cpu
@@ -150,6 +151,10 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
         }
         return 0
     }
+    // Beam charging its orb: B held until the charge it chose
+    if me.mech == Mech.Beam && me.mv == Mv.sp_n && c.charge_want > 0 && fx[i].t <= 12 && me.charge < c.charge_want {
+        return B
+    }
     if !actionable(i) {
         c.hold = 0
         c.hold_t = 0
@@ -191,6 +196,8 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
         if !c.decided || c.hold_t == 0 {
             c.decided = true
             if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
+            // the Hero cancels a tapped Volt Orb with its wave (the wave is the stronger)
+            if me.mech == Mech.Hero && s.lvl == 1 && !fight.shot[i].on && abs(s.x - me.x) > 8.0 && roll(c, lv.aa) { return B }
             if roll(c, lv.aa / 2) { return fwd | X }
             return hold(c, R, 20)
         }
@@ -205,6 +212,7 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
     if c.think_t > 0 { return c.hold }
     c.think_t = lv.think + rnd_n(c, lv.think)
 
+    if me.mech == Mech.Beam { return beam_neutral(i, c, lv, dist, fwd, back) }
     // neutral: footsies around the tip of its forward attack
     let range = tip(me.mech)
     if dist < tip(op.mech) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
@@ -272,4 +280,48 @@ fn dummy_pad(i: s32) -> u32 {
         Block => return R
         Cpu => return cpu_pad(i, 1)
     }
+}
+
+// ---- Beam (mx-beam): the zoner in neutral. Orbs at range (charged when far), the Arc Lance at a
+// mech walking or jumping in, the prime when it is safe (far, nothing coming), the super from
+// anywhere it reaches; up close a jab, a grab or a step back out.
+
+private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, back: u32) -> u32 {
+    let me = &fight.f[i]
+    let op = &fight.f[other(i)]
+    let incoming = fight.shot[other(i)].on
+    if dist < tip(op.mech) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
+    if dist < 5.5 {
+        if c.blocks_seen >= 2 && roll(c, lv.grab) { c.blocks_seen = 0; return Y }
+        let r = rnd_n(c, 100)
+        if r < 35 { return A }
+        if r < 45 { return Y }
+        if r < 55 { return fwd | A }
+        if r < 85 { return hold(c, back, 16) }
+        return hold(c, R, 10)
+    }
+    if dist > 15.0 && me.react == 0 && me.meter < METER_BAR && !incoming && !is_attack(op.mv)
+        && roll(c, lv.special * 4) {
+        return DOWN | B
+    }
+    if super_wise(i) && dist < 28.0 && roll(c, 4) { return A | B }
+    if dist > 10.0 && !fight.shot[i].on && roll(c, 35) {
+        c.charge_want = 0
+        if dist > 20.0 && roll(c, 40) { c.charge_want = ORB_CHARGE_MAX }
+        else if roll(c, 35) { c.charge_want = ORB_CHARGE_HALF + 4 }
+        return B
+    }
+    if dist > 7.0 && dist < 14.0 && (op.mv == Mv.walk_f || op.mv == Mv.jump) && roll(c, lv.poke) {
+        return fwd | B
+    }
+    if dist < tip(me.mech) + 0.5 {
+        let r = rnd_n(c, 100)
+        if r < lv.poke { return fwd | A }
+        if r < lv.poke + 10 { return DOWN | A }
+        if r < lv.poke + 45 { return hold(c, back, 14) }
+        return hold(c, R, 12)
+    }
+    if dist < 12.0 { return hold(c, back, 10 + rnd_n(c, 14)) }
+    if dist > 22.0 { return hold(c, fwd, 8 + rnd_n(c, 10)) }
+    return hold(c, 0, 8 + rnd_n(c, 8))
 }

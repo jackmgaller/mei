@@ -37,6 +37,8 @@ struct Fighter {
     flash: s32              // frames left of the hit flash
     super_ok: bool          // A + B would start the super now (the HUD's "ready")
     debt: bool              // antimatter below zero: takes a quarter more damage
+    react: s32              // chemical: frames left of the running reaction (0: none; REACT_FRAMES at the start)
+    charge: s32             // Beam: frames B has held the Volt Orb on its charge frame (the muzzle's glow)
 }
 
 struct Shot {               // a projectile (the Hero's wave)
@@ -45,6 +47,12 @@ struct Shot {               // a projectile (the Hero's wave)
     y: fixed
     vx: fixed
     t: s32                  // frames since it was fired
+    lvl: s32                // 0 the Hero's wave; Beam's Volt Orb 1 tap, 2 charged, 3 full
+    str: s32                // its strength where two shots meet (the weaker goes): the wave 2, the orb its level
+    half: fixed             // its box: x +- half, y0..y1
+    y0: fixed
+    y1: fixed
+    life: s32               // frames before it fades
 }
 
 struct Fight {
@@ -195,6 +203,7 @@ fn fight_tick(pad1: u32, pad2: u32, st1: vec2, st2: vec2) {
     bound()
     collide()
     shots_tick()
+    react_tick()
     swings()
     if live {
         meter_tick(&fight.f[0])
@@ -370,5 +379,6 @@ var move_list: MoveList
 
 fn fight_moves(m: Mech) -> *MoveList {
     if m == Mech.Hero { move_list = HERO_MOVES } else { move_list = DB_MOVES }
+    if m == Mech.Beam { move_list = BEAM_MOVES }
     return &move_list
 }

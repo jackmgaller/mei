@@ -89,6 +89,7 @@ const EV_NAMES: [len(Ev)]*u8 = [
 ]
 
 fn init() {
+    if SCENARIO >= 30 && SCENARIO <= 39 { beam_init(); return }     // Beam's (mx-beam)
     match SCENARIO {
         0 => fight_init(Mech.Hero, Mech.Doubleblade, FightMode.VsCpu, 2)
         1, 2, 3, 4, 5, 6, 8, 11 => fight_init(Mech.Hero, Mech.Doubleblade, FightMode.Versus, 0)
@@ -182,6 +183,7 @@ fn update() {
 private fn at(f: s32) -> bool { return frames == f }
 
 private fn script1() -> u32 {
+    if SCENARIO >= 30 && SCENARIO <= 39 { return beam_script(0) }
     let a = &fight.f[0]
     let fwd = if_u(a.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -232,6 +234,7 @@ private fn script1() -> u32 {
 }
 
 private fn script2() -> u32 {
+    if SCENARIO >= 30 && SCENARIO <= 39 { return beam_script(1) }
     let b = &fight.f[1]
     let fwd = if_u(b.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -309,6 +312,7 @@ private fn show_state() {
 }
 
 private fn check() {
+    if SCENARIO >= 30 && SCENARIO <= 39 { beam_check(); return }
     match SCENARIO {
         1 => check_ko()
         2 => check_time()
@@ -966,7 +970,7 @@ private fn draw_box(i: s32, b: *Box, cx: fixed) {
 }
 
 fn draw() {
-    if SCENARIO == 14 {
+    if SCENARIO == 14 || SCENARIO == 39 {
         draw_mechs()
         return
     }
@@ -1044,4 +1048,461 @@ private fn draw_mechs() {
         anim_draw(f.mech, f.mv, f.frame, anim_place(vec2(f.x, f.y), f.facing))
     }
     hud()
+}
+
+// ---- Beam's scenarios (30-39, mx-beam; MOVES.md, "Beam")
+//
+// 30  the chemical meter: the prime's exposed frames (no meter), the reaction from its release
+//     frame (+2 a frame for 300 frames: half a bar), a second prime during a reaction does
+//     nothing, a second reaction after the first burns out fills the bar: the super is there
+// 31  a spoiled prime: hit before its release frame, no reaction; Beam's own hits give no meter
+// 32  the Volt Orb: a tap hits (70), a full charge is blocked (chip 24), a charged orb hits (90)
+// 33  the Volt Orb against the Kinetic Wave: a tap loses (the wave goes on and hits Beam), a full
+//     orb wins (it goes on and knocks the Hero down), a charged orb trades (both go)
+// 34  Beam's chain: Arc Jab, Static Lance, Arc Lance, three hits, scaled damage
+// 35  the Raikō Overload: from a full bar, its flash, a hit 20 m away; blocked, chip 75; under a
+//     bar no super
+// 36  the Shock Grip beats block and throws the other about 9 m; the Thunder Pillar knocks a
+//     jumping Hero down
+// 37  CPU against CPU (level 2): Beam against the Hero, the Double-blade Hero against Beam, Beam
+//     against Beam; each match finishes; the first is run twice and must be the same. Prints the
+//     rounds and what Beam did (orbs, primes, supers)
+// 38  what beats the orb: the Double-blade Hero slides under one and Void Steps through one
+// 39  the budget with Beam drawn (its stand-in guard pose; anim.akr): CPU against CPU, Beam
+//     against the Hero for 900 frames, then against the Double-blade Hero for 900
+
+var bm_shot_pow: s32            // the power (the orb's level) of the last Shot event
+var bm_match: s32
+var bm_orbs: s32
+var bm_primes: s32
+var bm_supers: s32
+var bm_prev_react: [2]s32
+var bm_seg: s32                 // scenario 39: which pairing
+var bm_peak_cpu: s32
+var bm_peak_gpu: s32
+var bm_peak_tris: s32
+var bm_late: s32
+
+private fn beam_init() {
+    match SCENARIO {
+        37 => start_beam_match()
+        38 => fight_init(Mech.Beam, Mech.Doubleblade, FightMode.Versus, 0)
+        39 => fight_init(Mech.Beam, Mech.Hero, FightMode.VsCpu, 2)
+        else => fight_init(Mech.Beam, Mech.Hero, FightMode.Versus, 0)
+    }
+    if SCENARIO == 37 { tick_per_frame = 40 }
+    if SCENARIO != 37 && SCENARIO != 39 { skip_intro() }
+    match SCENARIO {
+        30 => place(-10.0, 10.0)
+        31 => place(-2.5, 2.5)
+        32 => place(-8.0, 8.0)
+        33 => place(-12.0, 12.0)
+        34 => place(-2.5, 2.5)
+        35 => { place(-10.0, 10.0); fight.f[0].meter = METER_BAR }
+        36 => place(-2.0, 2.0)
+        38 => place(-8.0, 8.0)
+        else => {}
+    }
+}
+
+// The mechs of scenario 37's matches: 0 Beam-Hero, 1 Double-blade-Beam, 2 Beam-Beam, 3 the first again.
+private fn start_beam_match() {
+    let k = bm_match % 3
+    var a = Mech.Beam
+    var b = Mech.Hero
+    if k == 1 { a = Mech.Doubleblade; b = Mech.Beam }
+    if k == 2 { b = Mech.Beam }
+    fight_init(a, b, FightMode.VsCpu, 2)
+    sum = 0
+    frames = 0
+}
+
+private fn beam_script(side: s32) -> u32 {
+    let me = &fight.f[side]
+    let fwd = if_u(me.facing > 0, RIGHT, LEFT)
+    if side == 0 {
+        match SCENARIO {
+            30 => { if at(5) || at(100) || at(400) { return DOWN | B } }
+            31 => {
+                if at(5) { return DOWN | B }
+                if at(100) { return A }
+            }
+            32 => {
+                if at(5) { return B }
+                if frames >= 160 && frames <= 260 { return B }
+                if frames >= 345 && frames <= 380 { return B }
+            }
+            33 => {
+                if at(5) { return B }
+                if frames >= 200 && frames <= 300 { return B }
+                if frames >= 450 && frames <= 490 { return B }
+            }
+            34 => return beam_chain_press()
+            35 => { if at(5) || at(265) { return A | B } }
+            36 => {
+                if at(5) { return Y }
+                if stage == 2 && fight.f[1].mv == Mv.jump && fight.f[1].y > 0.0 && dist() < 7.0 {
+                    stage = 3
+                    return UP | B
+                }
+            }
+            37, 39 => return cpu_pad(0, 2)
+            38 => { if at(5) || at(155) { return B } }
+            else => {}
+        }
+        return 0
+    }
+    match SCENARIO {
+        31 => { if at(10) { return A } }
+        32 => { if frames >= 150 && frames <= 330 { return R } }
+        33 => { if at(5) || at(240) || at(475) { return B } }
+        35 => { if frames >= 250 { return R } }
+        36 => {
+            if frames < 60 { return R }
+            if at(190) { return fwd | X }
+        }
+        38 => {
+            if at(45) { return DOWN | B }
+            if at(190) { return B }
+        }
+        else => {}
+    }
+    return 0
+}
+
+// Scenario 34: the next button a few frames after each hit.
+private fn beam_chain_press() -> u32 {
+    let a = &fight.f[0]
+    let fwd = if_u(a.facing > 0, RIGHT, LEFT)
+    if at(5) { return A }
+    if frames != next_at { return 0 }
+    let hits = evc_side[0][Ev.Hit]
+    if hits == 1 { return fwd | A }
+    if hits == 2 { return fwd | B }
+    return 0
+}
+
+private fn beam_check() {
+    let ev = fight_events()
+    for e in 0..ev.n {
+        let k = ev.e[e].kind
+        let s = ev.e[e].side
+        if k == Ev.Shot { bm_shot_pow = ev.e[e].power }
+        if k == Ev.Hit && s == 0 { next_at = frames + 3 }
+        if (s == 0 || s == 1) && fight.f[s].mech == Mech.Beam {
+            if k == Ev.Shot { bm_orbs += 1 }
+            if k == Ev.Super { bm_supers += 1 }
+        }
+    }
+    for i in 0..2 {
+        if fight.f[i].react > bm_prev_react[i] && fight.f[i].mech == Mech.Beam { bm_primes += 1 }
+        bm_prev_react[i] = fight.f[i].react
+    }
+    match SCENARIO {
+        30 => check_chem()
+        31 => check_spoil()
+        32 => check_orb()
+        33 => check_orb_wave()
+        34 => check_beam_chain()
+        35 => check_overload()
+        36 => check_shock()
+        37 => check_beam_cpu()
+        38 => check_orb_beaten()
+        39 => check_beam_budget()
+        else => {}
+    }
+}
+
+private fn check_chem() {
+    let b = &fight.f[0]
+    if at(20) {
+        assert(b.mv == Mv.sp_d, "the prime did not start")
+        assert_eq(b.react, 0, "a reaction before the release frame")
+    }
+    if at(34) {
+        assert_eq(b.react, 0, "a reaction before the release frame")
+        assert_eq(b.meter, 0, "meter during the exposed frames")
+    }
+    if at(35) {
+        assert_eq(b.react, REACT_FRAMES - 1, "the reaction did not start on the release frame")
+        assert_eq(b.meter, REACT_FILL, "the reaction's first frame")
+    }
+    if at(101) {
+        assert(b.mv != Mv.sp_d, "a second prime during a reaction")
+        assert_eq(b.meter, (101 - 34) * REACT_FILL, "the reaction's fill")
+    }
+    if at(334) {
+        assert_eq(b.react, 0, "the reaction did not burn out after 300 frames")
+        assert_eq(b.meter, REACT_FRAMES * REACT_FILL, "a reaction is not half a bar")
+        assert(!b.super_ok, "the super with half a bar")
+    }
+    if at(340) { assert_eq(b.meter, REACT_FRAMES * REACT_FILL, "the meter moved without a reaction") }
+    if at(430) { assert(b.react > 0, "the second prime after the burn-out did not react") }
+    if at(740) {
+        assert_eq(b.meter, METER_BAR, "two reactions are not a bar")
+        assert(b.super_ok, "the super is not ready with a full bar")
+        assert_eq(b.react, 0, "the second reaction did not burn out")
+        print("meter after two reactions ")
+        print_int(b.meter)
+        println("")
+        ok("the chemical meter: prime, react, burn out")
+    }
+}
+
+private fn check_spoil() {
+    let b = &fight.f[0]
+    if at(80) {
+        assert_eq(evc_side[1][Ev.Hit], 1, "the Guard Cut did not hit the priming Beam")
+        assert_eq(b.health, 1000 - dmg(0, Mv.atk_n), "the Guard Cut's damage")
+        assert_eq(b.react, 0, "a spoiled prime reacted")
+        assert_eq(b.meter, 0, "meter from a spoiled prime")
+    }
+    if at(160) {
+        assert_eq(evc_side[0][Ev.Hit], 1, "Beam's Arc Jab missed")
+        assert_eq(b.meter, 0, "chemical meter from a landed hit")
+        ok("a hit spoils the prime; hits give no chemical meter")
+    }
+}
+
+private fn check_orb() {
+    let h = &fight.f[1]
+    if at(100) {
+        assert_eq(evc_side[0][Ev.Shot], 1, "no orb")
+        assert_eq(evc_side[0][Ev.Hit], 1, "the tapped orb missed")
+        assert_eq(h.health, 1000 - orb_hit(1).dmg, "the tapped orb's damage")
+    }
+    if at(150) { place(-8.0, 8.0) }
+    if at(330) {
+        assert_eq(bm_shot_pow, 3, "100 frames of B is not a full orb")
+        assert_eq(evc[Ev.Block], 1, "the full orb was not blocked")
+        assert_eq(evc[Ev.Chip], 1, "no chip from the full orb")
+        assert_eq(h.health, 1000 - orb_hit(1).dmg - orb_hit(3).chip, "the full orb's chip")
+    }
+    if at(340) { place(-8.0, 8.0) }
+    if at(480) {
+        assert_eq(bm_shot_pow, 2, "30 frames of B is not a charged orb")
+        assert_eq(evc_side[0][Ev.Hit], 2, "the charged orb missed")
+        assert_eq(h.health, 1000 - orb_hit(1).dmg - orb_hit(3).chip - orb_hit(2).dmg, "the charged orb's damage")
+        print("Hero health after tap, full (blocked), charged ")
+        print_int(h.health)
+        println("")
+        ok("the Volt Orb: tap, full charge, charged")
+    }
+}
+
+private fn check_orb_wave() {
+    let b = &fight.f[0]
+    let h = &fight.f[1]
+    if at(180) {
+        assert_eq(evc[Ev.Clash], 1, "the tap and the wave did not meet")
+        assert_eq(b.health, 1000 - dmg(0, Mv.sp_n), "the wave did not go on to hit Beam")
+        assert_eq(h.health, 1000, "the tapped orb went on")
+    }
+    if at(200) { place(-12.0, 12.0) }
+    if at(380) {
+        assert_eq(evc[Ev.Clash], 2, "the full orb and the wave did not meet")
+        assert_eq(h.health, 1000 - orb_hit(3).dmg, "the full orb did not go on to hit the Hero")
+        assert_eq(b.health, 1000 - dmg(0, Mv.sp_n), "the wave went on past a full orb")
+    }
+    if at(440) { place(-12.0, 12.0) }
+    if at(620) {
+        assert_eq(evc[Ev.Clash], 3, "the charged orb and the wave did not meet")
+        assert_eq(h.health, 1000 - orb_hit(3).dmg, "the charged orb went on")
+        assert_eq(b.health, 1000 - dmg(0, Mv.sp_n), "the wave went on past a charged orb")
+        assert(!fight.shot[0].on && !fight.shot[1].on, "a shot survived the trade")
+        ok("orb against wave: a tap loses, a full orb wins, a charged orb trades")
+    }
+}
+
+private fn check_beam_chain() {
+    if at(200) {
+        let d = &fight.f[1]
+        let hits = evc_side[0][Ev.Hit]
+        print("chain hits ")
+        print_int(hits)
+        print(", damage ")
+        print_int(d.health_max - d.health)
+        println("")
+        assert_eq(hits, 3, "Beam's chain is three hits")
+        assert_eq(d.health, 1000 - (dmg(2, Mv.atk_n) + dmg(2, Mv.atk_f) * 80 / 100 + dmg(2, Mv.sp_f) * 65 / 100), "scaled damage")
+        assert_eq(fight.f[0].meter, 0, "chemical meter from hits")
+        ok("Beam's chain: A, FWD + A, FWD + B")
+    }
+}
+
+private fn check_overload() {
+    let b = &fight.f[0]
+    let h = &fight.f[1]
+    if at(3) { assert(b.super_ok, "a full chemical bar is not ready") }
+    if at(6) {
+        assert_eq(evc[Ev.Super], 1, "no super")
+        assert_eq(b.meter, 0, "the bar was not spent")
+        assert(fight.freeze > 30, "no super flash")
+        assert_eq(fight.flash_side, 0, "the flash's side")
+    }
+    if at(150) {
+        assert_eq(evc_side[0][Ev.Hit], 1, "the Raiko Overload missed 20 m away")
+        assert_eq(h.health, 1000 - dmg(2, Mv.super), "the super's damage")
+        assert_eq(b.meter, 0, "meter from the super's hit")
+    }
+    if at(260) {
+        place(-10.0, 10.0)
+        b.meter = METER_BAR
+        assert(actionable(0) && actionable(1), "not ready for the blocked super")
+    }
+    if at(420) {
+        assert_eq(evc[Ev.Block], 1, "the super was not blocked")
+        assert_eq(evc[Ev.Chip], 1, "no chip from the super")
+        assert_eq(h.health, 1000 - dmg(2, Mv.super) - chip(2, Mv.super), "the super's chip")
+        b.meter = METER_BAR / 2
+    }
+    if at(425) {
+        assert(!b.super_ok, "the chemical super under a bar")
+        ok("the Raiko Overload: across the hangar, chip, a bar")
+    }
+}
+
+private fn check_shock() {
+    let h = &fight.f[1]
+    if fight.f[1].mv == Mv.knockdown { mark2 += 1 }
+    if at(110) {
+        assert_eq(evc[Ev.Grab], 1, "the Shock Grip did not catch a blocking Hero")
+        assert_eq(evc[Ev.Throw], 1, "no throw")
+        assert_eq(h.health, 1000 - dmg(2, Mv.throw), "the Shock Grip's damage")
+        assert(mark2 > 0, "the thrown Hero was not knocked down")
+        assert(dist() > 8.0, "the throw did not throw it about 9 m")
+        print("thrown to ")
+        print_fixed(dist())
+        println(" m")
+    }
+    if at(180) {
+        place(-2.0, 8.0)
+        stage = 2
+        mark2 = 0
+        assert(actionable(0) && actionable(1), "not ready for the anti-air")
+    }
+    if at(330) {
+        assert_eq(evc_side[0][Ev.Hit], 1, "the Thunder Pillar missed")
+        assert(mark2 > 0, "the jumper was not knocked down")
+        assert_eq(h.health, 1000 - dmg(2, Mv.throw) - dmg(2, Mv.sp_u), "the pillar's damage")
+        ok("the Shock Grip and the Thunder Pillar")
+    }
+}
+
+private fn check_beam_cpu() {
+    sum_frame()
+    if fight.phase == Phase.Fight && fight.phase_t == 1 { round_start = frames }
+    if fight.phase == Phase.Ko && fight.phase_t == 1 {
+        print("  round ")
+        print_int(fight.round)
+        print(": ")
+        if fight.timer <= 0 { print("time up") } else { print("KO") }
+        print(" after ")
+        print_int((frames - round_start) / 60)
+        print(" s, winner ")
+        print_int(fight.round_winner)
+        print(", health ")
+        print_int(fight.f[0].health)
+        print(" / ")
+        print_int(fight.f[1].health)
+        println("")
+    }
+    assert(frames < 4 * ROUND_FRAMES + 2000, "the match does not finish")
+    if fight.phase != Phase.MatchOver { return }
+    print("run ")
+    print_int(bm_match + 1)
+    print(" (")
+    print(MECH_NAMES[fight.f[0].mech])
+    print(" against ")
+    print(MECH_NAMES[fight.f[1].mech])
+    print("): winner ")
+    print_int(fight.winner)
+    print(" after ")
+    print_int(frames)
+    print(" frames, checksum ")
+    print_hex(sum)
+    print("; Beam's orbs ")
+    print_int(bm_orbs)
+    print(", primes ")
+    print_int(bm_primes)
+    print(", supers ")
+    print_int(bm_supers)
+    println("")
+    if bm_match == 0 {
+        sum_first = sum
+        result_first = fight.winner
+        frames_first = frames
+    }
+    if bm_match < 3 {
+        assert(bm_orbs > 0, "Beam fired no orb")
+        assert(bm_primes > 0, "Beam never primed")
+    }
+    bm_orbs = 0
+    bm_primes = 0
+    bm_supers = 0
+    if bm_match == 3 {
+        assert_eq(sum, sum_first, "the two runs differ")
+        assert_eq(fight.winner, result_first, "the winner differs")
+        assert_eq(frames, frames_first, "the length differs")
+        ok("CPU against CPU with Beam: every match finishes, the same twice")
+        return
+    }
+    bm_match += 1
+    start_beam_match()
+    // the replay of the first match starts from the same seed as fight_init gives it
+}
+
+private fn check_orb_beaten() {
+    if at(120) {
+        assert_eq(evc_side[0][Ev.Shot], 1, "no orb")
+        assert_eq(evc_side[0][Ev.Hit], 0, "the orb hit the sliding Double-blade Hero")
+        assert_eq(fight.f[1].health, dbh(), "damage to the slide")
+    }
+    if at(150) { place(-8.0, 8.0) }
+    if at(330) {
+        assert_eq(evc_side[0][Ev.Shot], 2, "no second orb")
+        assert_eq(evc_side[0][Ev.Hit], 0, "the orb hit the Void Step")
+        assert_eq(fight.f[1].health, dbh(), "damage to the Void Step")
+        assert(fight.f[1].x < fight.f[0].x + 9.0, "the Void Step did not pass the orb")
+        ok("the slide goes under the orb, the Void Step through it")
+    }
+}
+
+const MECH_NAMES: [3]*u8 = ["Hero", "Double-blade", "Beam"]
+
+private fn check_beam_budget() {
+    if frames > 3 && frames != 901 && frames != 902 {
+        if frame_ticks() > 1 { bm_late += 1 }
+        bm_peak_cpu = max(bm_peak_cpu, cpu_used())
+        bm_peak_gpu = max(bm_peak_gpu, gpu_used())
+        bm_peak_tris = max(bm_peak_tris, tris_drawn())
+    }
+    if frames == 900 || frames == 1800 {
+        print("Beam against ")
+        print(MECH_NAMES[fight.f[1].mech])
+        print(": peak cpu ")
+        print_int(bm_peak_cpu)
+        print(", gpu ")
+        print_int(bm_peak_gpu)
+        print(", triangles ")
+        print_int(bm_peak_tris)
+        print(", late frames ")
+        print_int(bm_late)
+        print(", the fight's peak ")
+        print_int(peak_fight)
+        println(" cycles")
+        assert(bm_peak_cpu <= CPU_BUDGET, "over the CPU budget")
+        assert(bm_peak_gpu <= GPU_BUDGET, "over the GPU budget")
+        assert(bm_peak_tris < 4000, "over 4,000 triangles")
+        bm_peak_cpu = 0
+        bm_peak_gpu = 0
+        bm_peak_tris = 0
+        bm_late = 0
+        peak_fight = 0
+        if frames == 900 {
+            fight_init(Mech.Beam, Mech.Doubleblade, FightMode.VsCpu, 2)
+        } else {
+            ok("the budget with Beam drawn against each mech")
+        }
+    }
 }

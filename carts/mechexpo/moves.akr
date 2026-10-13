@@ -4,6 +4,7 @@
 // boxes below, which follow MOVES.md. The fight reads timing only through the mv_* functions.
 
 import "anim.akr"
+import "beam_moves.akr"     // Beam's tables (mx-beam)
 
 // The stand-in data (below) is used for every move anim.akr still stands in for (it holds the
 // guard pose there: anim_standin()), and for all of them while STANDIN_ALL is set.
@@ -56,6 +57,7 @@ struct Hit {
 const HIT_NONE = Hit {}
 
 fn move_hit(m: Mech, mv: Mv) -> Hit {
+    if m == Mech.Beam { return beam_hit(mv) }
     if m == Mech.Hero {
         return match mv {
             atk_n => Hit { dmg: 70, hitstun: 18, blockstun: 13, stop: 8, kb: 0.10 }
@@ -146,6 +148,7 @@ fn mv_marks(m: Mech, mv: Mv, f: s32) -> u32 {
     if f == t.rip { k |= MARK_RIPOSTE }
     if f >= t.p0 && f <= t.p1 { k |= MARK_PARRY }
     if f >= t.q0 && f <= t.q1 { k |= MARK_NOPUSH | MARK_HIDE }
+    if f == t.ch { k |= MARK_CHARGE }
     if (mv == Mv.walk_f || mv == Mv.walk_b) && (f == 0 || f == t.len / 2) { k |= MARK_STEP }
     return k
 }
@@ -215,9 +218,11 @@ struct Tm {
     p1: s32 = -1
     q0: s32 = -1            // MARK_NOPUSH (and no hurt) q0..q1
     q1: s32 = -1
+    ch: s32 = -1            // MARK_CHARGE (Beam's Volt Orb)
 }
 
 fn tm(m: Mech, mv: Mv) -> Tm {
+    if m == Mech.Beam { return beam_tm(mv) }
     if m == Mech.Hero {
         return match mv {
             idle => Tm { len: 60, loops: true }
@@ -269,7 +274,7 @@ fn tm(m: Mech, mv: Mv) -> Tm {
     }
 }
 
-private fn common_tm(mv: Mv) -> Tm {
+fn common_tm(mv: Mv) -> Tm {
     return match mv {
         land => Tm { len: 8 }
         block => Tm { len: 4, loops: true }
