@@ -321,7 +321,7 @@ fn who_label(s: s32) -> *u8 {
 }
 
 // The grid of roster.akr's ten slots: cards 48 x 34, base mechs on top, echoes below.
-const SEL_GX = 34
+const SEL_GX = 32
 const SEL_GY = 154
 const SEL_CW = 48
 const SEL_CH = 34
@@ -398,10 +398,7 @@ private fn draw_sheet(s: s32, x0: s32) {
         else { ui_stamp(&UI_STAMP_CLASSIFIED[0], px + 32, 112, C_RED) }
     }
     // the caption: the unit's height (and width, where it matters), or the figure's number
-    if known && r.height > 0 {
-        dim_caption(px + 3, 134, r.height, " M TALL")
-        if r.width > 0 { dim_caption(px + 3, 126, r.width, " M WIDE") }
-    } else {
+    if !known {
         let fb = sb()
         str_append(fb, 64, "FIG. ")
         str_append_int(fb, 64, c + 1, 2, true)
@@ -421,43 +418,28 @@ private fn draw_sheet(s: s32, x0: s32) {
     if ok && sel_moved[s] > sel_done_t[s] { ui_shine(ix, 24, 152, 15, tick - sel_moved[s], 1000) }
 }
 
-// "12.0 M TALL" from decimetres, in the photograph's corner.
-private fn dim_caption(x: s32, y: s32, dm: s32, k: *u8) {
-    let b = sb()
-    str_append_int(b, 64, dm / 10, 0, false)
-    str_append(b, 64, ".")
-    str_append_int(b, 64, dm % 10, 0, false)
-    str_append(b, 64, k)
-    txt(FONT_MICRO, x, y, b, C_WHITE, ALIGN_LEFT)
-}
-
 // The spec sheet's rows for a known slot.
 private fn draw_specs(c: s32, ix: s32, has_maker: bool) {
     let r = &ROSTER[c]
+    var col = C_NAVY
     if has_maker {
         let mk = &MAKERS[r.maker]
-        txt(FONT_MICRO, ix + 3, 41, mk.short, C_INK, ALIGN_LEFT)
-        rect_blend(ix + 3, 51, 22, 2, mk.colour, BLEND_NONE)
-        ui_slot_emblem(c, ix + 55, 52, true, 0x808080)
-        txt(FONT_MICRO, ix + 3, 66, mk.booth_full, C_NAVY, ALIGN_LEFT)
-        ui_power_icon(mk.src, ix + 3, 78)
-        txt(FONT_MICRO, ix + 22, 76, "SOURCE", C_STEEL, ALIGN_LEFT)
-        txt(FONT_MICRO, ix + 22, 84, SRC_NAMES[mk.src], C_INK, ALIGN_LEFT)
+        col = mk.colour
+        ui_power_icon(mk.src, ix + 4, 49)
+        txt(FONT_MICRO, ix + 24, 45, mk.short, C_INK, ALIGN_LEFT)
+        txt(FONT_MICRO, ix + 24, 55, SRC_NAMES[mk.src], C_STEEL, ALIGN_LEFT)
     }
-    txt(FONT_HEAD, ix + 3, 52, r.model, C_INK, ALIGN_LEFT)
-    rect_blend(ix + 3, 75, 76, 1, C_SILVER, BLEND_NONE)
-    rect_blend(ix + 3, 95, 76, 1, C_SILVER, BLEND_NONE)
-    var col = C_NAVY
-    if has_maker { col = MAKERS[r.maker].colour }
+    rect_blend(ix + 4, 73, 74, 1, C_SILVER, BLEND_NONE)
     for k in 0..4 {
-        let y = 97 + k * 9
-        txt(FONT_MICRO, ix + 3, y - 1, STAT_NAMES[k], C_STEEL, ALIGN_LEFT)
+        let y = 78 + k * 10
+        txt(FONT_MICRO, ix + 4, y - 1, STAT_NAMES[k], C_STEEL, ALIGN_LEFT)
         ui_pips(ix + 44, y + 1, ((r.stats >> ((3 - k) * 4)) & 15) as s32, col)
     }
+    rect_blend(ix + 4, 120, 74, 1, C_SILVER, BLEND_NONE)
     if !slot_has_mech(c) {
-        txt_lines(FONT_MICRO, ix + 3, 132, "IN TRANSIT:\nON SHOW LATER", 8, C_RED, ALIGN_LEFT)
+        txt_lines(FONT_MICRO, ix + 4, 125, "IN TRANSIT:\nON SHOW LATER", 9, C_RED, ALIGN_LEFT)
     } else {
-        txt_lines(FONT_MICRO, ix + 3, 132, r.blurb, 8, C_INK, ALIGN_LEFT)
+        txt_lines(FONT_MICRO, ix + 4, 125, r.blurb, 9, C_INK, ALIGN_LEFT)
     }
 }
 
@@ -485,7 +467,7 @@ private fn draw_schedule(x0: s32) {
     txt(FONT_HEAD, x0 + 148, 24, "SCHEDULE", C_WHITE, ALIGN_RIGHT)
     tag(x0 + 2, 26, 22, "CPU", C_STEEL, C_WHITE)
     paper(x0, 40, 152, 108)
-    txt(FONT_MICRO, x0 + 5, 42, "YOUR DEMONSTRATIONS", C_STEEL, ALIGN_LEFT)
+    txt(FONT_MICRO, x0 + 5, 42, "DEMONSTRATIONS", C_STEEL, ALIGN_LEFT)
     let ok = slot_ok(sel_cur[0])
     let me = slot_mech(sel_cur[0])
     for n in 0..LADDER_N {
@@ -517,10 +499,6 @@ private fn draw_schedule(x0: s32) {
 
 // The ten cards and the cursors.
 private fn draw_grid() {
-    txt(FONT_MICRO, 4, 160, "BASE", C_NAVY, ALIGN_LEFT)
-    txt(FONT_MICRO, 4, 168, "UNITS", C_STEEL, ALIGN_LEFT)
-    txt(FONT_MICRO, 4, 197, "ECHO", C_NAVY, ALIGN_LEFT)
-    txt(FONT_MICRO, 4, 205, "UNITS", C_STEEL, ALIGN_LEFT)
     for i in 0..ROSTER_N { draw_card(i, SEL_GX + (i % ROSTER_COLS) * SEL_PX, SEL_GY + (i / ROSTER_COLS) * SEL_PY) }
     for s in 0..2 {
         if s == 1 && game == Game.Arcade { continue }
@@ -564,15 +542,11 @@ private fn draw_card(i: s32, x: s32, y: s32) {
         }
         ui_slot_emblem(i, x + 12, y + 3, true, tint)
         txt(FONT_MICRO, x + SEL_CW / 2, y + 24, r.card, tc, ALIGN_CENTRE)
-        if !has {
-            rect_blend(x + 4, y + 11, 40, 9, C_STEEL, BLEND_NONE)
-            txt(FONT_MICRO, x + SEL_CW / 2, y + 10, "SOON", C_WHITE, ALIGN_CENTRE)
-        }
     } else {
-        rect_blend(x + 2, y + 2, SEL_CW, SEL_CH, 0x402010, BLEND_SUB)
-        rect_grad(x, y, SEL_CW, SEL_CH, 0x9A4A24, 0x4A1A0A, BLEND_NONE)
-        rect_outline(x, y, SEL_CW, SEL_CH, 0xE0A060, BLEND_NONE)
-        txt(FONT_TITLE, x + SEL_CW / 2, y + 4, "?", C_SKY, ALIGN_CENTRE)
+        // locked: a quiet tile, so the mechs on show stand out
+        rect_blend(x, y, SEL_CW, SEL_CH, C_GLASS, BLEND_NONE)
+        rect_outline(x, y, SEL_CW, SEL_CH, 0x6A4A2E, BLEND_NONE)
+        txt(FONT_HEAD, x + SEL_CW / 2, y + 9, "?", C_STEEL, ALIGN_CENTRE)
     }
 }
 
