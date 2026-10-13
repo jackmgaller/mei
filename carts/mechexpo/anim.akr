@@ -103,6 +103,33 @@ struct AnimMove {
 
 var anim_cpu: s32              // CPU cycles the last anim_draw() took (the tests read it)
 
+// The UAPC's test unit (mx-ladder): while anim_grey is set, anim_draw() draws a mech's parts in
+// the test unit's grey (assets.akr's GREY_FROM / GREY_TO, made by tools/gen_mechexpo_assets.py),
+// a part with no grey copy as it is. The game sets it around a test unit's drawing.
+var anim_grey: bool
+var ak_grey: [len(AK_MESH)]*Mesh
+var ak_grey_ready: [len(Mech)]bool
+
+// Fills mech m's row of the grey table, the first time it is drawn grey (len(Part) searches of
+// GREY_FROM: a few tens of thousands of cycles, once a mech; the game's first grey drawing is on
+// a menu page, which has them to spare).
+private fn grey_build(m: Mech) {
+    if ak_grey_ready[m] { return }
+    let row = (m as s32) * len(Part)
+    for p in 0..len(Part) {
+        let mesh = AK_MESH[row + p]
+        ak_grey[row + p] = mesh
+        if mesh == null { continue }
+        for k in 0..GREY_N {
+            if GREY_FROM[k] == mesh {
+                ak_grey[row + p] = GREY_TO[k]
+                break
+            }
+        }
+    }
+    ak_grey_ready[m] = true
+}
+
 private fn mv_of(m: Mech, mv: Mv) -> *AnimMove {
     return &AK_MOVES[(m as s32) * len(Mv) + (mv as s32)]
 }
@@ -210,7 +237,11 @@ fn anim_draw(m: Mech, mv: Mv, f: fixed, root: mat4) {
     }
     let x0 = xf_of(a, frame_of(a, fi), 0)
     let x1 = xf_of(a, frame_of(a, fi + 1), 0)
-    let meshes = &AK_MESH[(m as s32) * len(Part)]
+    var meshes = &AK_MESH[(m as s32) * len(Part)]
+    if anim_grey {
+        grey_build(m)
+        meshes = &ak_grey[(m as s32) * len(Part)]
+    }
     for p in 0..len(Part) {
         let mesh = meshes[p]
         if mesh != null { mesh_xf(mesh, root * xf_lerp(x0 + p, x1 + p, t)) }

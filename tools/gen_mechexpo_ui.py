@@ -15,7 +15,9 @@ Writes, in carts/mechexpo/:
                          icons, the "?" card, the round pips, the UAPC's roundel (UI_* rectangles
                          in ui_art.akr); the later makers' emblems and icons in palette 196
   art/ui_fx.tex          slot 10: white sprites the effects tint: a glow, a spark, a ring, the
-                         Hero's wave, a streak (FX_* rectangles)
+                         Hero's wave, a streak (FX_* rectangles); under them the magazine
+                         cover's masthead font (ui_font_mast.fnt, Sofia Sans Condensed SemiBold
+                         48, capitals; palette 251)
   art/ui_hud.tiles/.map  BG0: the HUD's frame (bezels of the health bars, the timer and the
                          meters), 8x8 tiles in ATLAS_2, a 64 x 32 map (only 40 x 30 used)
   art/ui_page.tiles/.map BG1 in the menus: the brochure's background pattern (ATLAS_3), 64 x 32
@@ -24,7 +26,8 @@ Writes, in carts/mechexpo/:
                          then 196's (PAL_POWER: Raiko, Heartland and Binary Mechanica)
   art/ui_menu.tex        slot 12: the small fonts (ui_font_micro.fnt, Figtree Bold 9,
                          crisp; ui_font_serif.fnt, Gelasio Bold Italic 12; palette 251),
-                         the rubber stamps and the lanyard strap (white, tinted, palette 254)
+                         the rubber stamps, the lanyard strap and the small APPROVED seals
+                         (white, tinted, palette 254)
   art/ui_print.tiles     BG0 in the menus (ATLAS_2): the print layer's tiles over a 15-shade
                          ramp that menus.akr writes into palettes 197-199
   art/ui_save_icon.bin   the save's title and icon (tools/mei_icon.py)
@@ -476,6 +479,30 @@ def lanyard_strap(w, h):
     return t
 
 
+def seal(d, on):
+    """A small APPROVED seal (mx-ladder: a difficulty cleared), white levels to tint: a serrated
+    rosette, a ring and a tick pressed into the middle. Off: the rosette's outline only."""
+    S = d * SS
+    img = Image.new('L', (S, S), 0)
+    dr = ImageDraw.Draw(img)
+    c = S / 2
+    pts = []
+    for k in range(24):
+        r = (0.49 if k % 2 == 0 else 0.41) * S
+        a = math.radians(k * 15)
+        pts.append((c + r * math.cos(a), c + r * math.sin(a)))
+    if on:
+        dr.polygon(pts, fill=200)
+        dr.ellipse([c - .34 * S, c - .34 * S, c + .34 * S, c + .34 * S], fill=255)
+        dr.ellipse([c - .27 * S, c - .27 * S, c + .27 * S, c + .27 * S], fill=225)
+        dr.line([(c - .16 * S, c + .0 * S), (c - .04 * S, c + .13 * S), (c + .18 * S, c - .14 * S)],
+                fill=90, width=int(.09 * S))
+    else:
+        dr.polygon(pts, outline=200, width=int(.07 * S))
+    a = np.asarray(img.resize((d, d), Image.BOX), np.float32) / 255.0
+    return np.where(a > 0.12, np.clip(np.round(a * 15), 1, 15), 0).astype(np.uint8)
+
+
 # ---- BG0 in the menus: the brochure's print layer behind the mechs (mx-menus)
 
 def print_tiles():
@@ -714,6 +741,11 @@ def main():
     for i, word in enumerate(STAMPS):
         ms.place('STAMP_' + word.replace(' ', '_'), stamp(word, 76, 24, (-7, 5, -4, 6, -6)[i], 11 + i))
     ms.place('STRAP', lanyard_strap(8, 64))
+    # mx-ladder: the small APPROVED seals of the difficulties cleared (tinted bronze, silver, gold)
+    ms.place('SEAL', seal(13, True))
+    ms.place('SEAL_OFF', seal(13, False))
+    ms.place('SEAL_S', seal(9, True))
+    ms.place('SEAL_S_OFF', seal(9, False))
     print_blob, print_consts, print_list = print_tiles()
 
     # effects, slot 10
@@ -723,6 +755,10 @@ def main():
     fx.place('FX_RING', fx_ring(32))
     fx.place('FX_WAVE', fx_wave(64, 48))
     fx.place('FX_STREAK', fx_streak(64, 8))
+    # mx-ladder: the magazine cover's masthead (Sofia Sans Condensed SemiBold 48, capitals), in
+    # the rows under the effects' sprites
+    g, h, line = ttf_font(F_COND, 48, keep=set('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !.-?\'&'))
+    place_font(fx, g, h, line, 'mast', akr)
 
     # BG0: the HUD's frame
     hud_img = hud_frame()
@@ -797,7 +833,7 @@ def main():
             '',
             '// sprite rectangles: u, v, w, h (slot 9: ICON_CHEMICAL, ICON_NUCLEAR, ICON_FUSION and the',
             '// EMBLEM_RAIKO, _HEARTLAND, _BINARY emblems in PAL_POWER; UAPC in PAL_LOGO; the rest as',
-            '// before. Slot 12: STAMP_* and STRAP, white, tinted, in PAL_FX)']
+            '// before. Slot 12: STAMP_*, STRAP, SEAL* (13 and 9 px), white, tinted, in PAL_FX)']
     for sheet, pal_name in ((sp, None), (ms, None), (fx, None)):
         for name, u, v, w, h in sheet.rects:
             akr.append('const %s: [4]s32 = [%d, %d, %d, %d]' % (name if name.startswith('FX') else 'UI_' + name,

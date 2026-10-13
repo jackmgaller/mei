@@ -166,8 +166,10 @@ const STAGES: [2]Stage = [
             music: 0, nevents: 0, events: [StageEvent {}, StageEvent {}, StageEvent {}, StageEvent {}] },
 ]
 
-// The arcade's stage for each fight on the ladder.
-const LADDER_STAGES: [2]s32 = [ST_HANGAR, ST_ROOFTOP]   // the final on the rooftop
+// The arcade's stages (mx-ladder): the company fights in the hangar, the final (the last entry)
+// on the rooftop. stage_select.akr's stage_pick() gives a longer ladder's extra company fights
+// the last company stage.
+const LADDER_STAGES: [3]s32 = [ST_HANGAR, ST_HANGAR, ST_ROOFTOP]
 
 fn stage_row(id: s32) -> *Stage { return &STAGES[clamp(id, 0, STAGES_N - 1)] }
 

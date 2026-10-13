@@ -11,6 +11,7 @@ embed FONT_LABEL: Font = "art/ui_font_label.fnt"
 embed FONT_NUM: Font = "art/ui_font_num.fnt"
 embed FONT_MICRO: Font = "art/ui_font_micro.fnt"
 embed FONT_SERIF: Font = "art/ui_font_serif.fnt"
+embed FONT_MAST: Font = "art/ui_font_mast.fnt"
 embed UI_FONTS_TEX: u8 = "art/ui_fonts.tex"
 embed UI_SPRITES_TEX: u8 = "art/ui_sprites.tex"
 embed UI_FX_TEX: u8 = "art/ui_fx.tex"
@@ -25,7 +26,7 @@ embed UI_PRINT_TILES: u8 = "art/ui_print.tiles"           // BG0 in the menus (A
 
 const UI_FONTS_BYTES = 26240
 const UI_SPRITES_BYTES = 17408
-const UI_FX_BYTES = 6144
+const UI_FX_BYTES = 28160
 const UI_HUD_TILES_BYTES = 3072
 const UI_PAGE_TILES_BYTES = 6144
 const SLOT_FONTS = 8
@@ -52,7 +53,7 @@ const PT_STRIPES = 34
 
 // sprite rectangles: u, v, w, h (slot 9: ICON_CHEMICAL, ICON_NUCLEAR, ICON_FUSION and the
 // EMBLEM_RAIKO, _HEARTLAND, _BINARY emblems in PAL_POWER; UAPC in PAL_LOGO; the rest as
-// before. Slot 12: STAMP_* and STRAP, white, tinted, in PAL_FX)
+// before. Slot 12: STAMP_*, STRAP, SEAL* (13 and 9 px), white, tinted, in PAL_FX)
 const UI_LOGO: [4]s32 = [0, 0, 248, 62]
 const UI_EMBLEM_HERO: [4]s32 = [0, 63, 32, 32]
 const UI_EMBLEM_ECHO: [4]s32 = [33, 63, 32, 32]
@@ -79,6 +80,10 @@ const UI_STAMP_CLASSIFIED: [4]s32 = [154, 91, 76, 24]
 const UI_STAMP_IN_TRANSIT: [4]s32 = [0, 116, 76, 24]
 const UI_STAMP_UNLOCKED: [4]s32 = [77, 116, 76, 24]
 const UI_STRAP: [4]s32 = [154, 116, 8, 64]
+const UI_SEAL: [4]s32 = [163, 116, 13, 13]
+const UI_SEAL_OFF: [4]s32 = [177, 116, 13, 13]
+const UI_SEAL_S: [4]s32 = [191, 116, 9, 9]
+const UI_SEAL_S_OFF: [4]s32 = [201, 116, 9, 9]
 const FX_GLOW: [4]s32 = [0, 0, 32, 32]
 const FX_SPARK: [4]s32 = [33, 0, 32, 32]
 const FX_RING: [4]s32 = [66, 0, 32, 32]

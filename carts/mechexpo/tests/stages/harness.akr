@@ -726,13 +726,13 @@ private fn check_select() {
         let g = game
         game = Game.Arcade
         ladder = 0
-        assert_eq(stage_pick(), LADDER_STAGES[0], "the arcade's first stage")
-        ladder = 1
-        assert_eq(stage_pick(), LADDER_STAGES[1], "the arcade's second stage")
+        assert_eq(stage_pick(), ST_HANGAR, "the arcade's first stage")
+        ladder = LADDER_N - 1
+        assert_eq(stage_pick(), ST_ROOFTOP, "the arcade's final stage (mx-ladder: the last)")
         print("stages select: the arcade's ladder: ")
         print(stage_row(LADDER_STAGES[0]).name)
-        print(", then ")
-        println(stage_row(LADDER_STAGES[1]).name)
+        print(", the final ")
+        println(stage_row(LADDER_STAGES[len(LADDER_STAGES) - 1]).name)
         game = g
         ladder = 0
         // back to the stage select for the picture

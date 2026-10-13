@@ -2,11 +2,14 @@
 // file with their own input (the weak hooks below).
 //
 //   title -> mode select (Arcade, Versus, Training) -> character select -> VS -> the fight
-//   (C's fight.akr: round intro, FIGHT, KO, rounds, time up) -> results -> back; START pauses.
+//   (C's fight.akr: round intro, COMMENCE, the KO, rounds, time up) -> results -> back; START
+//   pauses.
 //
-// Arcade: a ladder of two CPU fights. As the Hero: a CPU Hero (the mirror), then the CPU
-// Double-blade Hero; as the echo: the mirror, then the Hero. Clearing it with the Hero unlocks
-// the Double-blade Hero, saved to the memory card (save.akr). A loss offers a continue.
+// Arcade (mx-ladder, ladder.akr): the difficulty select, the character select, then LADDER_N
+// fights against the CPU: the company fights, then the final. Before each the schedule page (the
+// day's programme); before the final its reveal; after the final's win the magazine cover, then
+// the unlock screen if the clear unlocked a mech (saved to the memory card, save.akr), then the
+// title. A loss offers a continue (the same fight again) as often as wanted, or the title.
 // Versus: 1P against 2P (pad 2 joins on the character select with A or START), or the CPU.
 // Training: 1P against a dummy (C's fight_training options) with the move list and the boxes.
 //
@@ -34,6 +37,7 @@ import "tank_fx.akr"        // mx-tank: Tank's reactor glow, armour sparks and H
 import "twins_fx.akr"       // mx-twins-fight: the Twins' partner, the swap's flash, the fusion meter
 import "stage_select.akr"   // mx-stages: the stage select (stages.akr: the stages)
 import "shadow_fx.akr"      // mx-shadow-fight: Shadow's bolt, mines, curse, afterimages, the siphon
+import "ladder.akr"         // mx-ladder: the arcade's run, its difficulties and the test unit
 
 // Input, replaced by the tests.
 weak fn input_pad(n: s32) -> u32 {
@@ -47,13 +51,16 @@ weak fn input_stick(n: s32) -> vec2 {
 weak fn test_init() {}
 weak fn test_hook() {}
 
-enum St { Title, Mode, Select, Vs, Fight, Results, Unlock, Stage }
+enum St { Title, Mode, Select, Vs, Fight, Results, Unlock, Stage, Diff, Sched, Reveal, Cover }
 enum Game { Arcade, Versus, Training }
 
 const VS_FRAMES = 150
 const RESULTS_WAIT = 150           // frames into the match's end before the results
 const CPU_LEVEL_VS = 2
-const LADDER_N = 2
+const SCHED_WAIT = 30              // frames before the schedule page takes A
+const REVEAL_FRAMES = 330          // the final's reveal, unless A skips it (after REVEAL_WAIT)
+const REVEAL_WAIT = 60
+const COVER_WAIT = 120             // frames before the cover takes A
 
 var st: St
 var st_t: s32
@@ -75,7 +82,8 @@ var sel_done_t: [2]s32             // the tick each pick was made
 // the match
 var p_mech: [2]Mech
 var p_cpu: bool                    // side 1 is the CPU (or the dummy)
-var ladder: s32                    // arcade: the fight on the ladder (0, 1)
+var ladder: s32                    // arcade: the fight on the ladder (0 .. LADDER_N - 1)
+var diff_sel: s32                  // the difficulty select's cursor (DIFF_*)
 var cont_n: s32                    // arcade continues used
 var won: bool                      // the results: side 0 won the match
 var cleared: bool                  // the arcade ladder is cleared
@@ -133,6 +141,8 @@ fn enter(s: St) {
 fn enter_title() {
     enter(St.Title)
     paused = false
+    p_grey[0] = false
+    p_grey[1] = false
     music_menu()
     // the attract view: the hangar with the two mechs in it
     p_mech[0] = Mech.Hero
@@ -162,7 +172,92 @@ fn enter_select() {
 fn enter_vs() {
     enter(St.Vs)
     menus_page()
-    if game == Game.Arcade { p_mech[1] = ladder_foe(p_mech[0], ladder) }
+    p_grey[0] = false
+    p_grey[1] = false
+    if game == Game.Arcade {
+        p_mech[1] = run.foe[ladder]
+        p_grey[1] = run.grey[ladder]
+    }
+}
+
+// ---- the arcade's run (mx-ladder)
+
+fn enter_diff() {
+    enter(St.Diff)
+    menus_page()
+    diff_sel = clamp(save.diff as s32, 0, DIFF_N - 1)
+}
+
+// 1P's pick made: a new run, its company fights drawn from the tick it starts on (scenarios
+// replay it exactly).
+fn arcade_start() {
+    ladder_make(p_mech[0], diff_sel, (tick as u32) * 7919 + (p_mech[0] as u32))
+    ladder = 0
+    cont_n = 0
+    enter_sched()
+}
+
+fn enter_sched() {
+    enter(St.Sched)
+    menus_page()
+}
+
+fn enter_reveal() {
+    enter(St.Reveal)
+    menus_page()
+    p_mech[1] = run.foe[ladder]
+    p_grey[1] = run.grey[ladder]
+}
+
+fn enter_cover() {
+    enter(St.Cover)
+    menus_page()
+}
+
+fn update_diff() {
+    let d = dirs(0)
+    if d & UP != 0 && diff_sel > 0 {
+        diff_sel -= 1
+        sfx_menu_move()
+    }
+    if d & DOWN != 0 && diff_sel < DIFF_N - 1 {
+        diff_sel += 1
+        sfx_menu_move()
+    }
+    if st_t > 10 && ok_pressed(0) {
+        sfx_menu_ok()
+        save.diff = diff_sel as u32         // the cursor's start next time (saved with the next clear)
+        enter_select()
+    } else if pressed(0, B) {
+        sfx_menu_back()
+        enter_mode()
+    }
+}
+
+fn update_sched() {
+    if st_t > SCHED_WAIT && any_pressed(A | START) {
+        sfx_menu_ok()
+        if ladder_final(ladder) { enter_reveal() } else { enter_vs() }
+    }
+}
+
+fn update_reveal() {
+    if st_t >= REVEAL_FRAMES || (st_t > REVEAL_WAIT && any_pressed(A | START)) {
+        if st_t < REVEAL_FRAMES { sfx_menu_ok() }
+        enter_vs()
+    }
+}
+
+fn update_cover() {
+    if st_t > COVER_WAIT && any_pressed(A | START) && !save_writing {
+        sfx_menu_ok()
+        if unlocked_now {
+            enter(St.Unlock)
+            sfx_unlock()
+        } else {
+            enter_title()
+        }
+    }
 }
 
 fn enter_fight() {
@@ -174,7 +269,7 @@ fn enter_fight() {
     match game {
         Arcade => {
             fm = FightMode.Arcade
-            lvl = 1 + ladder
+            lvl = ladder_level(ladder)
         }
         Versus => { if p_cpu { fm = FightMode.VsCpu } }
         Training => {
@@ -212,10 +307,10 @@ fn enter_results() {
     res_sel = 0
     cleared = false
     unlocked_now = false
-    if game == Game.Arcade && won && ladder == LADDER_N - 1 {
+    if game == Game.Arcade && won && ladder_final(ladder) {
         cleared = true
         save.clears += 1
-        unlock_slot = roster_clear(p_mech[0])       // marks the clear; what it unlocks (roster.akr)
+        unlock_slot = ladder_cleared()              // marks the clear and its difficulty; what it unlocks
         unlocked_now = unlock_slot >= 0
         save_write()
     }
@@ -241,6 +336,10 @@ fn update() {
         }
         Fight => update_fight()
         Stage => update_stage_select()
+        Diff => update_diff()
+        Sched => update_sched()
+        Reveal => update_reveal()
+        Cover => update_cover()
         Results => update_results()
         Unlock => {
             if st_t > 90 && any_pressed(A | START) && !save_writing {
@@ -280,7 +379,7 @@ fn update_mode() {
         game = mode_sel as Game
         ladder = 0
         cont_n = 0
-        enter_select()
+        if game == Game.Arcade { enter_diff() } else { enter_select() }
     } else if pressed(0, B) {
         sfx_menu_back()
         enter_title()
@@ -334,7 +433,7 @@ fn update_select() {
             if side == 1 && n == 0 {
                 sel_done[0] = false            // 1P steps back to its own pick
             } else if side == 0 {
-                enter_mode()
+                if game == Game.Arcade { enter_diff() } else { enter_mode() }
                 return
             }
         }
@@ -345,9 +444,11 @@ fn update_select() {
         if st_t > 0 && sel_wait() > 30 {
             p_mech[0] = sel_mech[0]
             p_mech[1] = sel_mech[1]
+            p_grey[0] = false
+            p_grey[1] = false
             p_cpu = game != Game.Versus || !sel_human2
             ladder = 0
-            enter_stage_select()
+            if game == Game.Arcade { arcade_start() } else { enter_stage_select() }
         }
     } else {
         sel_ready_t = 0
@@ -630,20 +731,15 @@ fn update_results() {
                 if any_pressed(A | START) {
                     sfx_menu_ok()
                     ladder += 1
-                    enter_vs()
+                    enter_sched()
                 }
             } else if won {
                 if any_pressed(A | START) && !save_writing {
                     sfx_menu_ok()
-                    if unlocked_now {
-                        enter(St.Unlock)
-                        sfx_unlock()
-                    } else {
-                        enter_title()
-                    }
+                    enter_cover()
                 }
             } else {
-                // continue?
+                // another demonstration? As often as wanted: the same fight again
                 if pressed(0, A) || pressed(0, START) {
                     sfx_menu_ok()
                     cont_n += 1
@@ -682,6 +778,7 @@ fn enter_results_after_unlock() {
 // ---- drawing
 
 fn draw() {
+    gpu_fog_off()                       // only the final's reveal fogs (its silhouette)
     match st {
         Title => {
             draw_hangar(false)
@@ -700,6 +797,10 @@ fn draw() {
         Results => draw_results()
         Unlock => draw_unlock()
         Stage => draw_stage_select()
+        Diff => draw_diff()
+        Sched => draw_sched()
+        Reveal => draw_reveal()
+        Cover => draw_cover()
     }
 }
 
@@ -712,6 +813,7 @@ fn draw_hangar(fighting: bool) {
     let c0 = cycle_count()
     for s in 0..2 {
         let fi = &f.f[s]
+        anim_grey = p_grey[s]               // the UAPC's test unit (mx-ladder)
         if fighting {
             twins_draw_body(fi.body, fi.mv, fi.frame, anim_place(vec2(fi.x, fi.y), fi.facing))
         } else {
@@ -719,6 +821,7 @@ fn draw_hangar(fighting: bool) {
             anim_draw(fi.mech, Mv.idle, fixed((tick + s * 17) % n), anim_place(vec2(fi.x, fi.y), fi.facing))
         }
     }
+    anim_grey = false
     if fighting { twins_fx_partners(f) }   // a split Twins' twin B
     prof_mechs = cycle_count() - c0
     if fighting {

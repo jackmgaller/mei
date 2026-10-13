@@ -15,8 +15,9 @@
 //    2 Versus against the CPU: 1P picks the Hero, then moves the CPU's cursor to Tank's slot
 //      (in transit: no Tank in this tree)
 //    3 Training, the echo unlocked: 1P's cursor walks the whole grid and back to the Hero, picks
-// 58 the VS screen and the pause: 0 the arcade's demonstration 2 (the Hero against the
-//    Double-blade Hero), 1 Versus 1P against 2P, 2 the pause in training, 3 the move list
+// 58 the VS screen and the pause: 0 the arcade's final (the Hero against the Double-blade Hero,
+//    demonstration 3 of 3 since mx-ladder), 1 Versus 1P against 2P, 2 the pause in training, 3
+//    the move list
 // 59 results, the unlock and the save: 0 Versus results (2P won), 1 the arcade cleared with the
 //    Hero (saving), 2 the unlock screen, 3 the arcade lost (continue?), 4 no memory card
 
@@ -58,7 +59,8 @@ private fn setup_58() {
         0 => {
             game = Game.Arcade
             p_mech[0] = Mech.Hero
-            ladder = 1
+            ladder_make(Mech.Hero, DIFF_NORMAL, 1)      // mx-ladder: a run; its final
+            ladder = LADDER_N - 1
             p_cpu = true
             enter_vs()
         }
@@ -91,15 +93,17 @@ private fn setup_59() {
         }
         1, 2 => {
             game = Game.Arcade
-            ladder = 1
+            ladder_make(Mech.Hero, DIFF_NORMAL, 1)      // mx-ladder: a run, won at its final
+            ladder = LADDER_N - 1
             p_cpu = true
             finish(Mech.Hero, Mech.Doubleblade, 0)
         }
         3 => {
             game = Game.Arcade
+            ladder_make(Mech.Doubleblade, DIFF_NORMAL, 1)
             ladder = 0
             p_cpu = true
-            finish(Mech.Doubleblade, Mech.Doubleblade, 1)
+            finish(Mech.Doubleblade, run.foe[0], 1)
         }
         else => {
             game = Game.Versus
@@ -253,6 +257,7 @@ private fn check_shot() {
                 assert(slot_ok(ROSTER_COLS), "the Double-blade Hero is not selectable")
                 assert(slot_cleared(0), "the Hero's clear is not marked")
                 assert_eq(save_result, CARD_OK, "the save failed")
+                assert(slot_medal(0, DIFF_NORMAL), "the clear's NORMAL stamp (mx-ladder)")
             }
             if VIEW == 3 { assert(!slot_ok(ROSTER_COLS), "a loss unlocked the echo") }
         }

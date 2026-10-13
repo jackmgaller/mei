@@ -175,16 +175,18 @@ fn input_pad(n: s32) -> u32 {
     return 0
 }
 
-// Scenario 89's pads: from the title through mode select (Arcade) and the catalogue to the VS
-// page and the fight.
+// Scenario 89's pads: from the title through mode select (Arcade), the grades (mx-ladder: A takes
+// NORMAL), the catalogue and the programme to the VS page and the fight.
 private fn menu_pad(n: s32, t: s32) -> u32 {
     if n != 0 { return 0 }
     if t == 30 { return START }
     if t == 50 { return A }
-    if t == 70 { return RIGHT }
-    if t == 90 { return LEFT }
-    if t == 100 { return A }
+    if t == 64 { return A }
+    if t == 80 { return RIGHT }
+    if t == 100 { return LEFT }
+    if t == 110 { return A }
     if t == 180 { return A }
+    if t == 205 { return A }
     return 0
 }
 

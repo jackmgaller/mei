@@ -3,8 +3,10 @@
 // touches the fight's state. Its dice are its own generator, seeded by fight_init(), so a match
 // replays exactly.
 //
-// Levels: 0 the training dummy's CPU (gentle), 1 the ladder's first fight, 2 the ladder's
-// second fight and Versus against the CPU, 3 hard.
+// Levels: 0 the training dummy's CPU (gentle), 1 and 2 the ladder's NORMAL fights (2 also
+// Versus against the CPU), 3 hard; CPU_NOVICE (-1), below 0, the ladder's EASY fights (mx-ladder:
+// slow to react, almost never blocks, no chains, no supers, rarely grabs). ladder.akr's DIFFS
+// says which level each fight of a run gets.
 
 import "moves.akr"
 import "fighter.akr"
@@ -23,6 +25,10 @@ struct CpuLevel {
     jump: s32               // jumps in from mid range, per decision
     guard: s32              // holds block a while in the other's range, per decision
     special: s32            // uses its specials in neutral (the Parry, the slide, the wave)
+    supers: bool = true     // spends its meter on the super (mx-ladder: the novice never does)
+    grabs: s32 = 100        // per cent of the grabs it decides on that it carries out (the novice:
+                            // few; its other moves' rolls are not enough, the mechs' neutral
+                            // games grab on their own dice)
 }
 
 const CPU_LEVELS: [4]CpuLevel = [
@@ -31,6 +37,18 @@ const CPU_LEVELS: [4]CpuLevel = [
     CpuLevel { react: 13, think: 8, block: 65, aa: 70, punish: 70, chain: 90, brk: 35, poke: 40, grab: 35, jump: 6, guard: 35, special: 10 },
     CpuLevel { react: 9, think: 6, block: 80, aa: 85, punish: 85, chain: 100, brk: 50, poke: 45, grab: 45, jump: 5, guard: 45, special: 12 },
 ]
+
+// The novice (mx-ladder, EASY): beatable by a player who walks in and mashes (tests/ladder/
+// harness.akr, scenario 116, measures it).
+const CPU_NOVICE = -1
+const CPU_NOVICE_LEVEL = CpuLevel { react: 40, think: 24, block: 6, aa: 0, punish: 5, chain: 0, brk: 0, poke: 15,
+                                    grab: 0, jump: 2, guard: 4, special: 2, supers: false, grabs: 12 }
+
+// A level's row: CPU_NOVICE below 0, else CPU_LEVELS (clamped to 0-3).
+fn cpu_level_row(level: s32) -> *CpuLevel {
+    if level < 0 { return &CPU_NOVICE_LEVEL }
+    return &CPU_LEVELS[clamp(level, 0, 3)]
+}
 
 struct Cpu {
     rng: u32
@@ -168,13 +186,17 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
     let m = fight.f[i].mech
     cpu_scan(m)
     if m == Mech.Twins { cpu_scan(Mech.TwinA) }
-    let p = cpu_think(i, level)
-    if rift[other(i)].on { return mine_wary(i, &CPU_LEVELS[clamp(level, 0, 3)], p) }
+    let lv = cpu_level_row(level)
+    var p = cpu_think(i, level)
+    if rift[other(i)].on { p = mine_wary(i, lv, p) }
+    // the novice's limits (mx-ladder); the other levels skip both (no dice rolled)
+    if !lv.supers && (p & (A | B)) == (A | B) { p &= ~B }
+    if lv.grabs < 100 && (p & Y) != 0 && !is_thrown(fight.f[i].mv) && !roll(&cpu[i], lv.grabs) { p &= ~Y }
     return p
 }
 
 private fn cpu_think(i: s32, level: s32) -> u32 {
-    let lv = &CPU_LEVELS[clamp(level, 0, 3)]
+    let lv = cpu_level_row(level)
     let c = &cpu[i]
     let j = other(i)
     let me = &fight.f[i]

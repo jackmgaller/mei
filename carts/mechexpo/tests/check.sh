@@ -14,7 +14,7 @@ mkdir -p "$O"
 POOL_DIR="$O"
 . "$HERE/pool.sh"
 pool_report() {
-    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb)' "$O/$1.log"
+    grep -E '^(OK|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb)' "$O/$1.log"
 }
 run() {       # scenario frames: the scenarios through the whole game cost about 8 times a frame
     s="$1"; f="$2"; shift 2
@@ -123,6 +123,42 @@ run 106 900
 run 107 1600
 run 108 2500
 run 110 900
+# the arcade ladder (mx-ladder, tests/ladder/harness.akr, the whole game; VIEWs as listed there):
+# 116 EASY against a scripted masher, 117-119 a whole run on each difficulty (EASY with the Hero,
+# NORMAL with Shadow, HARD with Tank: the rivals drawn, a loss and a continue, the reveal, the
+# test unit, the cover, the unlock and the stamps), 120 the lot, 121 the save's migration from
+# version 1 and the stamps on the select, 122 the difficulty select, 123 the schedule page, 124
+# the reveal, 125 the test unit in a fight, 126 the cover, 127 a continue. 117-119 and 121 get a
+# memory card each (out/check/ladder_card*.bin, made fresh)
+lrun() {      # scenario view frames [mei-headless args]
+    s="$1"; v="$2"; f="$3"; shift 3
+    case "$s" in 116) c=$((f * 60)) ;; *) c=$((f * 8)) ;; esac
+    pool_add "l${s}_$v" "$c" "$HERE/ladder/run.sh" "$s" "$v" "$f" "$O/l${s}_$v" "$@"
+}
+lcard() { rm -f "$O/ladder_card$1.bin"; echo "$O/ladder_card$1.bin"; }
+lrun 116 0 3000
+lrun 117 0 6500 --card1 "$(lcard 117)"
+lrun 118 0 6500 --card1 "$(lcard 118)"
+lrun 119 0 6500 --card1 "$(lcard 119)"
+lrun 120 0 60
+lrun 121 0 61 --card1 "$(lcard 121)"
+lrun 121 1 61 --card1 "$(lcard 1211)"
+lrun 122 0 81
+lrun 123 0 61
+lrun 123 1 61
+lrun 123 2 61
+lrun 124 0 121
+lrun 124 1 241
+lrun 124 2 241
+lrun 124 3 241
+lrun 125 0 601
+lrun 125 1 601
+lrun 126 0 151
+lrun 126 1 151
+lrun 126 2 151
+lrun 127 0 61
+lrun 127 1 141
+lrun 127 2 121
 pool_run
 echo "all Mech Expo fight checks passed"
 # 55-59: the menus (mx-menus), the whole game with scripted pads: tests/menus/check.sh
