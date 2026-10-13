@@ -157,7 +157,7 @@ const PRES: [len(Pre)]FxPre = [
     FxPre { kind: Pk.Smoke, blend: BLEND_ADD, flags: PF_BACK, life: 26, life_rnd: 12, speed_rnd: 0.4,
             s0: 1.2, s1: 4.5, grav: -0.004, drag: 0.94, c0: 0x606866, c1: 0x101210 },
     // Arc: an electric arc (chemical), flickering
-    FxPre { kind: Pk.Bolt, blend: BLEND_ADD, flags: PF_FLICKER, life: 5, life_rnd: 3, s0: 3.2, s1: 2.6, drag: 1.0,
+    FxPre { kind: Pk.Bolt, blend: BLEND_ADD, flags: PF_FLICKER, life: 5, life_rnd: 3, s0: 4.6, s1: 3.6, drag: 1.0,
             c0: 0xC0FFFF, c1: 0x0090C0 },
     // Bubble: a bubble rising (chemical)
     FxPre { kind: Pk.Bubble, blend: BLEND_ADD, life: 22, life_rnd: 12, speed_rnd: 0.5,
@@ -219,7 +219,7 @@ const FX_POWERS: [5]PowerFx = [
     PowerFx { style: CH_ARCS | CH_BUBBLES | CH_SPARKS, core: 0x30E0FF, hot: 0x90FFFF, cool: 0x0080A0,
               hall: [-6, -7, -11] },
     // nuclear: Heartland Atomic's green reactor glow and steam (ready for Tank, mx-tank)
-    PowerFx { style: CH_STEAM | CH_PULSE, core: 0x50FF70, hot: 0x90FFA0, cool: 0x206010,
+    PowerFx { style: CH_STEAM | CH_PULSE, core: 0x40FF30, hot: 0x70FF60, cool: 0x186008,
               hall: [-10, -6, -10] },
     // fusion: Binary Mechanica's cyan-white (later)
     PowerFx { style: CH_PULSE | CH_SPARKS, core: 0xFFF0A0, hot: 0xFFFFE0, cool: 0xC08020,
@@ -705,7 +705,7 @@ private fn trail_sample(t: *Trail, m: mat4, b0: fixed, b1: fixed, on: bool, mech
 // The torso's point of side s (for the reactor's glow and the smoke).
 private fn fx_torso(fi: *Fighter, root: mat4) -> vec3 {
     let m = anim_part(fi.mech, fi.mv, fi.frame, root, Part.torso)
-    return (m * vec4(0.0, 0.6, 0.0, 1.0)) as vec3
+    return (m * vec4(0.0, 2.0, 0.0, 1.0)) as vec3
 }
 
 // ---- the emitters (once a frame)
