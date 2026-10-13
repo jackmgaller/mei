@@ -1,0 +1,87 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Reactor Vent (MOVES.md): super armour on frames 0-16. Tank plants: both fists swing up and out, then slam down onto the floor either side of the treads (0-11), the torso hunching 25 degrees forward over them and the cab head ducking, the hull dipping on its struts. The reactor vents on 12-16: the steam bursts out all round the hull (the hit box, a fixed rectangle x -4.0-5.8, y 0-9.5, front and back; the steam itself is tank_fx.akr's), the torso shuddering with it. Recovery (17-42): the fists come up off the floor and Tank straightens slowly into the guard, the steam trailing.",
+  "base": "_body.anim.json",
+  "length": 43,
+  "phases": {"startup": 12, "active": 5, "recovery": 26},
+  "design": {"hit": [-4.0, 0.0, 5.8, 9.5], "tolerance": 0.2, "note": "MOVES.md, Reactor Vent: x -4.0-5.8, y 0-9.5"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out"},
+    {
+      "at": 5,
+      "ease": "in",
+      "pose": {
+        "pelvis": [2, 0, 0], "thigh_r": [-2, 0, 0], "thigh_l": [-2, 0, 0],
+        "torso": [2, 0, 0], "head": [-4, 0, 0],
+        "upper_arm_r": [60, 0, -70], "forearm_r": [60, 0, 0], "hand_r": [-20, 0, 0],
+        "upper_arm_l": [60, 0, 70], "forearm_l": [60, 0, 0], "hand_l": [-20, 0, 0],
+        "pauldron_r": [21, 0, -35], "pauldron_l": [21, 0, 35]
+      }
+    },
+    {
+      "at": 10,
+      "ease": "out",
+      "pose": {
+        "pelvis": [-6, 0, 0], "thigh_r": [6, 0, 0], "thigh_l": [6, 0, 0],
+        "torso": [-34, 0, 0], "head": [28, 0, 0],
+        "upper_arm_r": [42, 0, -18], "forearm_r": [0, 0, 0], "hand_r": [16, 0, 0],
+        "upper_arm_l": [42, 0, 18], "forearm_l": [0, 0, 0], "hand_l": [16, 0, 0],
+        "pauldron_r": [14.7, 0, -9], "pauldron_l": [14.7, 0, 9]
+      }
+    },
+    {
+      "at": 12,
+      "ease": "linear",
+      "boxes": {"steam": {"kind": "hit", "rect": [-4.0, 0.0, 5.8, 9.5]}},
+      "pose": {
+        "pelvis": [-7, 0, 0], "thigh_r": [7, 0, 0], "thigh_l": [7, 0, 0],
+        "torso": [-36, 0, 0], "head": [30, 0, 0],
+        "upper_arm_r": [44, 0, -18], "forearm_r": [0, 0, 0],
+        "upper_arm_l": [44, 0, 18], "forearm_l": [0, 0, 0]
+      }
+    },
+    {
+      "at": 14,
+      "ease": "linear",
+      "pose": {
+        "pelvis": [-5, 0, 0], "thigh_r": [5, 0, 0], "thigh_l": [5, 0, 0],
+        "torso": [-29, 0, 1.5], "head": [24, 0, 0]
+      }
+    },
+    {
+      "at": 16,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [-7, 0, 0], "thigh_r": [7, 0, 0], "thigh_l": [7, 0, 0],
+        "torso": [-32, 0, -1], "head": [28, 0, 0]
+      }
+    },
+    {"at": 17, "boxes": {"steam": null}},
+    {
+      "at": 26,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [-5, 0, 0], "thigh_r": [5, 0, 0], "thigh_l": [5, 0, 0],
+        "torso": [-28, 0, 0], "head": [24, 0, 0],
+        "upper_arm_r": [26, 0, -34], "forearm_r": [30, 0, 0], "hand_r": [0, 0, 0],
+        "upper_arm_l": [26, 0, 34], "forearm_l": [30, 0, 0], "hand_l": [0, 0, 0],
+        "pauldron_r": [9, 0, -17], "pauldron_l": [9, 0, 17]
+      }
+    },
+    {
+      "at": 34,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [-2, -2, 0], "thigh_r": [2, 0, 0], "thigh_l": [2, 0, 0],
+        "torso": [-18, -8, 0], "head": [18, 6, 0],
+        "upper_arm_r": [24, 0, -20], "forearm_r": [60, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [20, 0, 22], "forearm_l": [66, 0, 0], "hand_l": [-12, 0, 0],
+        "pauldron_r": [8.4, 0, -10], "pauldron_l": [7, 0, 11]
+      }
+    },
+    {"at": 42, "from": "guard"}
+  ],
+  "marks": {"armour": [[0, 16]]},
+  "allow": [["pauldron_r", "forearm_r"], ["pauldron_l", "forearm_l"]]
+}
