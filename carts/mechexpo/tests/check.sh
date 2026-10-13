@@ -13,7 +13,7 @@ run() {       # scenario frames
     s="$1"; f="$2"; shift 2
     "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@" > "$O/s$s.log" 2>&1 || { echo "FAILED scenario $s"; tail -8 "$O/s$s.log"; exit 1; }
     grep -q '^OK' "$O/s$s.log" || { echo "FAILED scenario $s: no OK"; tail -8 "$O/s$s.log"; exit 1; }
-    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split)' "$O/s$s.log"
+    grep -E '^(OK|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages)' "$O/s$s.log"
 }
 run 1 700
 run 2 4000
@@ -73,11 +73,39 @@ run 66 270
 run 67 2500
 run 68 3
 run 69 1800
+# the stages (mx-stages, tests/stages/harness.akr): 90 the hangar unchanged, 91 a knockdown rings
+# out on the rooftop, 92 throws ring out, 93 a blocked hit, a hit, a walk and a jump stop at the
+# lip, 94 the closed side is a wall, 95 the Twins near the edge, 96 the CPU on the rooftop (a mech
+# at the lip, then CPU against CPU), 97 the stage select, 98 and 99 the budget on the rooftop
+run 90 270
+run 91 480
+run 92 170
+run 93 410
+run 94 470
+run 95 130
+run 96 1500
+run 97 171
+run 98 1801
+run 99 1801
 run 50 330
 run 51 210
 run 52 210
 run 53 390
 run 54 1810
+# the sounds (mx-sfx), through the whole game: 80 Tank's armour and vent, 81 its treads and the
+# Atomic Clinch, 82 Beam's charge, orbs and reaction, 83 its Shock Grip and discharges, 84 the
+# Twins' coupling and swings, 85 the supers' charge-ups, 86 the KO and leaving the fight, 87 the
+# Void Step, 88 the voices' priorities and the loops, 89 the menus
+run 80 141
+run 81 361
+run 82 461
+run 83 431
+run 84 271
+run 85 751
+run 86 300
+run 87 121
+run 88 421
+run 89 321
 echo "all Mech Expo fight checks passed"
 # 55-59: the menus (mx-menus), the whole game with scripted pads: tests/menus/check.sh
 "$HERE/menus/check.sh"

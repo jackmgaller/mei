@@ -59,20 +59,30 @@ fn twins_cam_follow(f: *Fight) {
     cam_follow(x0, y, x1, y, f.shake)
 }
 
-// The swap's flash (after the mechs, on the interface list).
+// The swap's sounds, once a fight frame (game.akr's sound_poll): the coupling clank as the
+// bodies swap (locking together or letting go), and Fusion Focus's charge hum (Beam's, lower).
 var twfx_tick: s32                 // the fight's tick last seen (the swap's sound, once)
 
-fn twins_fx_draw(f: *Fight) {
+fn twins_sfx(f: *Fight) {
     if !twins_in_fight { return }
     if f.ticks < twfx_tick { twfx_tick = 0 }    // a new fight
     for s in 0..2 {
-        // the swap's sound: the break's clash stands in for a coupling clank (next audio round)
+        let fi = &f.f[s]
         if tw_swap_tick[s] > twfx_tick && tw_swap_tick[s] <= f.ticks {
-            sfx_pan(f.f[s].x)
-            sfx_break()
+            sfx_pan(fi.x)
+            sfx_couple(fi.body == Mech.Twins)
+        }
+        if fi.mech == Mech.Twins && fi.body == Mech.Twins && fi.mv == Mv.sp_d && (cur_marks(s) & MARK_CHARGE) != 0
+            && fi.charge > 0 && fi.charge < ORB_CHARGE_MAX && !(f.freeze > 0 && f.flash_side >= 0 && f.flash_side != s) {
+            sfx_hold(s, SFX_BEAM_HUM, 5, fi.x, 0.7 + fixed(fi.charge) / 120, 190)
         }
     }
     twfx_tick = f.ticks
+}
+
+// The swap's flash (after the mechs, on the interface list).
+fn twins_fx_draw(f: *Fight) {
+    if !twins_in_fight { return }
     for s in 0..2 {
         let t = f.ticks - tw_swap_tick[s]
         if t < 0 || t >= TW_FLASH { continue }

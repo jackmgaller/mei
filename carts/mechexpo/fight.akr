@@ -9,9 +9,11 @@ import "moves.akr"
 import "meter.akr"
 import "fighter.akr"
 import "cpu.akr"
+import "stages.akr"         // the stages: the half-width and the edges (mx-stages)
 
-const FIGHT_MAX_SEP: fixed = 36.0   // the fighters are never further apart than this (metres)
-const FIGHT_WALL: fixed = 36.0      // the hangar's walls at x = +-36
+const FIGHT_MAX_SEP: fixed = 36.0   // the fighters are never further apart than this (metres), on
+                                    // every stage (the camera's widest view); the stage's edges
+                                    // are its own (stages.akr, stage_now())
 const FIGHT_START_X: fixed = 9.0    // the rounds start at x = -9 and 9
 const ROUND_FRAMES = 3600           // 60 s
 const INTRO_FIRST = 90              // the first round's intro (both play `intro`)
@@ -76,6 +78,9 @@ struct Fight {
     freeze: s32             // frames left of hitstop or the super flash
     flash_side: s32         // whose super flash it is, or -1
     ticks: s32              // frames since fight_init
+    stage: s32              // the stage (a row of STAGES, stages.akr), from fight_stage()
+    ringout: s32 = -1       // this round: -1, or the side rung out (fell from an open edge;
+                            // 2: both), which lost the round (fighter.akr, ring_outs())
 }
 
 // Hit: a hit landed (side: the attacker; x, y: the contact; power 0..3). Block, Chip: blocked,
@@ -88,6 +93,8 @@ struct Fight {
 enum Ev { Hit, Block, Chip, Whiff, Grab, Throw, Break, Land, Step, MeterFull, Super, Ko, TimeUp,
           Shot, Parry, Clash, Swing,
           Armour,       // a hit absorbed by Tank's super armour (side: the attacker; power: the hit's)
+          RingOut,      // a mech fell from an open edge: the round ends (side: the winner, or 2
+                        // for a draw; x: where it went over)
           Curse,        // Shadow's Hex Bolt cursed the other (side: Shadow's; x, y: the cursed mech)
           Mine,         // Shadow laid a Rift Mine (side: Shadow's; x: the mine)
           Snare,        // a mine snared a mech (side: the mine's; x: the snared mech)
@@ -114,6 +121,13 @@ struct MoveList { n: s32, e: [MOVES_MAX]MoveEntry }
 var fight: Fight
 var fight_ev: Events
 var fight_opts: TrainOpts
+var fight_stage_next: s32           // the stage the next fight_init() uses
+
+// The stage of the fights fight_init() starts from now on (ST_HANGAR until this is called).
+fn fight_stage(id: s32) { fight_stage_next = clamp(id, 0, STAGES_N - 1) }
+
+// The current fight's stage.
+fn stage_now() -> *Stage { return &STAGES[fight.stage] }
 
 fn ev_add(kind: Ev, side: s32, x: fixed, y: fixed, power: s32) {
     if fight_ev.n >= EVENTS_MAX { return }
@@ -130,6 +144,7 @@ fn fight_init(p1: Mech, p2: Mech, mode: FightMode, cpu_level: s32) {
     fight.round_winner = -1
     fight.winner = -1
     fight.flash_side = -1
+    fight.stage = fight_stage_next
     fight.f[0].mech = p1
     fight.f[1].mech = p2
     fight.f[0].meter = 0
@@ -151,6 +166,7 @@ private fn start_round() {
     fight.shot[1].on = false
     fight.timer = ROUND_FRAMES
     fight.round_winner = -1
+    fight.ringout = -1
     fight.freeze = 0
     fight.flash_side = -1
     fight.phase = Phase.Intro
@@ -257,6 +273,7 @@ private fn swings() {
 }
 
 private fn check_round_end() {
+    if fight.ringout >= 0 { return }        // a ring-out ended the round this frame
     let h0 = fight.f[0].health
     let h1 = fight.f[1].health
     if h0 <= 0 || h1 <= 0 {

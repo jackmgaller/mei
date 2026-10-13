@@ -11,7 +11,7 @@ trial for a defence contract; every fight is a product demonstration. The pitch 
 | In | Out (later) |
 |---|---|
 | Two mechs: the Hero Mech (Momentum Robotics, kinetic) and its echo, the Double-blade Hero (Umbral Research, antimatter) | The other four base mechs and their echoes |
-| One stage: a flat demo hangar with walls on both sides | Stage events, moving stages, ring-outs |
+| One stage: a flat demo hangar with walls on both sides (since: [stages as data](#stages), and the rooftop with ring-outs) | Stage events, moving stages |
 | Versus: two players, or one player against the CPU | Story scenes, endings, the secret boss |
 | Arcade ladder: CPU mirror match, then your echo (or, as the echo, the original). Clearing it with the Hero unlocks the Double-blade Hero, saved to the memory card | Memory card saves beyond the unlock |
 | Training: a dummy and a move list | The announcer |
@@ -57,7 +57,7 @@ a stand-in in your own files until it lands. Each owner writes the interface fil
 | `anims/` (`anims/hero/*.anim.json`, `anims/doubleblade/*.anim.json`), the exported `anim_data.akr` | Every move's animation, timing and boxes. Until Gate 1, A writes the one proof move | **F, animator** (from Gate 1) |
 | `models/`, `tools/gen_mechexpo_assets.py`, `art/` (except `art/stage_*` and `art/ui_*`), `assets.akr` | The mechs' parts and rigs, the stage's polygon props, the emblems, and the pack of every model | **B, models** |
 | `fight.akr`, `fighter.akr`, `moves.akr`, `meter.akr`, `cpu.akr`, `MOVES.md`, `tests/harness.akr`, `tests/run.sh`, `tests/check.sh` | The fight: rules, frame data effects, input, meters, rounds, the CPU, the dummy, and the cart's test cases | **C, combat** |
-| `mechexpo.akr`, `game.akr`, `stage.akr`, `camera.akr`, `hud.akr`, `fx.akr`, `menus.akr`, `save.akr`, `stage_art.akr`, `art/stage_*`, `art/ui_*`, `tools/gen_mechexpo_stage.py`, `tools/gen_mechexpo_ui.py`, any other top-level `.akr` not listed here | The entry point, the game's flow and modes, the stage on the plane chip, the camera, the HUD, effects, the menus and the unlock save | **D, stage and front end** |
+| `mechexpo.akr`, `game.akr`, `stage.akr`, `camera.akr`, `hud.akr`, `fx.akr`, `menus.akr`, `save.akr`, `stage_art.akr`, `art/stage_*`, `art/ui_*`, `tools/gen_mechexpo_stage.py`, `tools/gen_mechexpo_ui.py`, `stages.akr`, `stage_select.akr`, `roof_art.akr`, `roof_props.akr`, `props/`, `tools/gen_mechexpo_rooftop.py`, any other top-level `.akr` not listed here | The entry point, the game's flow and modes, the stages (mx-stages: the table, the stage select, the rooftop and its props) on the plane chip, the camera, the HUD, effects, the menus and the unlock save | **D, stage and front end** |
 | `music.akr`, `mu_data.akr`, `sfx.akr`, `audio/`, `tools/gen_mechexpo_audio.py` | Music and sound effects | **E, audio** |
 
 `mechexpo.akr` (the entry point, `cart "Mech Expo 2000", "MECHEXPO"`) must compile whenever it
@@ -139,13 +139,37 @@ events and state, and calls E's sound effects for each event. C never draws or p
 **Audio (E) → game (D).** `music.akr`: `music_menu()`, `music_fight()`, `music_stop()`,
 `music_tick()` (once a frame), `music_duck(on: bool)` (pause). `sfx.akr`: one-shots
 `sfx_hit(power: s32)`, `sfx_block()`, `sfx_chip()`, `sfx_swing(m: Mech)`, `sfx_grab()`,
-`sfx_throw()`, `sfx_break()`, `sfx_land()`, `sfx_step()`, `sfx_meter_full()`, `sfx_super()`,
-`sfx_ko()`, `sfx_round()`, `sfx_menu_move()`, `sfx_menu_ok()`, `sfx_menu_back()`,
-`sfx_unlock()`. Channels: music 0–9, sound effects 10–15. `sfx_hit`'s power is 0 light,
-1 medium, 2 heavy, 3 crushing (a super's or a throw's hit). `sfx_pan(x: fixed)` pans the next
-one-shot to stage x (−36..36) and then resets. `music_fight()` and `music_menu()` do nothing if
-their track is already playing, so the fight track runs on through the rounds. `sfx.akr`
-imports `anim.akr` for `Mech`.
+`sfx_throw()`, `sfx_break()`, `sfx_land()`, `sfx_step()`, `sfx_meter_full()`,
+`sfx_super(m: Mech)`, `sfx_ko()`, `sfx_round()`, `sfx_menu_move()`, `sfx_menu_ok()`,
+`sfx_menu_back()`, `sfx_unlock()`. Channels: music 0–9, sound effects 10–15. `sfx_hit`'s power
+is 0 light, 1 medium, 2 heavy, 3 crushing (a super's or a throw's hit). `sfx_pan(x: fixed)` pans
+the next sound to stage x (−36..36) and then resets. `music_fight()` and `music_menu()` do
+nothing if their track is already playing, so the fight track runs on through the rounds.
+`sfx.akr` imports `anim.akr` for `Mech` and `Mv`.
+
+The second round of sounds (mx-sfx) adds, by event (`game.akr`'s `sound_event()`):
+`sfx_attack(m: Mech, mv: Mv)` (the Swing event, by the body and its move: the blades, Beam's
+discharges, Tank's fists and Reactor Vent, the combined Twins' fists, ONE's and ZERO's lighter
+strikes), `sfx_shot(m, lvl)` (the wave, or Beam's orb by level), `sfx_clash(orb: bool)` (an orb
+fizzling against a wave), `sfx_armour(power)` (Tank's armour), `sfx_tank_lift()` (a command
+grab caught), `sfx_throw_by(m, mv)` (Tank's slam, Beam's Shock Grip crack, else the throw),
+`sfx_knockdown()` (a Land of power 2), `sfx_step_of(m)`; `sfx_super(m)` plays the power
+source's charge-up with the burst, and a heavy or crushing `sfx_hit` scatters debris. By state,
+once a fight frame from `game.akr`'s `sound_poll()` (the mechs' parts in `beam_fx.akr`'s
+`beam_sfx()`, `tank_fx.akr`'s `tank_sfx()` and `twins_fx.akr`'s `twins_sfx()`):
+`sfx_couple(on: bool)`, `sfx_react()`, `sfx_charge_full()`, `sfx_void(back: bool)`,
+`sfx_smoulder()`. For the brochure: `sfx_page()` (from `menus_page()`), `sfx_stamp()`,
+`sfx_pass()`, `sfx_shutter()` (`menus.akr`'s `menus_sfx()` times the stamps to their drawing).
+
+**Loops** (Tank's treads, Beam's charge hum, which the Twins' Fusion Focus borrows lower, and the
+Shock Grip's buzz): `sfx_hold(slot, id, pri, x, pitch, gain)` every frame a loop should sound, a
+slot a side; `sfx_tick()` (once a frame, always, after the game's update) fades out over four
+frames and stops every loop not held that frame, so loops stop by themselves on the pause, on
+the menus, when the move ends and at a KO (`sfx_ko()` stops them at once).
+`sfx_stop_fight()` (in `leave_fight()`) stops every fight sound still playing. The voices'
+priorities are listed at the top of `sfx.akr`: a hit or a KO is never lost to a step, a swing or
+a loop. `sfx_heard(id, ch)` is a weak hook the tests replace to log every sound started
+(scenarios 80–89, `tests/sfx/harness.akr`).
 
 **Models (B) → game (D), runtime (A).** `assets.akr` (generated by
 `tools/gen_mechexpo_assets.py`) defines every `ASSET_*` and `assets_load()`. The stage props
@@ -191,6 +215,48 @@ frames late; combined, they are one mid-weight brawler; L switches, a move each 
   build): 521,418 CPU cycles and 560,514 GPU cycles at the peak, 1,768 triangles drawn; the
   three bodies' drawing (`prof_mechs`) about 396,000 cycles.
 
+## Stages
+
+Stages are data (the pitch: "a floor (flat for now), edges (walls or open), and an optional list
+of timed events. Then new stages are content, not engine work"). `stages.akr` holds the table
+`STAGES`, a `Stage` a row:
+
+| Field | What |
+|---|---|
+| `name`, `short`, `venue`, `blurb`, `colour` | the stage select's card (`short` where `name` does not fit) |
+| `half` | the edges are at x = −half and +half |
+| `edge: [2]Edge` | the −x and +x sides: `Edge.Wall` or `Edge.Open` (a lip, with ring-outs: [MOVES.md](MOVES.md#stages-and-ring-outs)) |
+| `tilt` | the floor's slope across x; 0 (every stage is flat for now; the carrier's deck later) |
+| `art: StageArt` | the plane chip's set: BG1's atlas, map, palettes, width, the art row on the floor line (`hall_line`) at depth `hall_z`, the parallax bands; BG2's atlas, map, palettes, texels a metre, the texel of world 0, what shows outside its map (`floor_out`), how far its rows go; the backdrop's four colours and their rows; `PLN_PRIO` |
+| `nprops`, `props` | up to 6 polygon props: a mesh at (x, 0, z) turned by yaw, drawn while the view comes within `near` m of x |
+| `music` | the fight's track: 0, the fight track (`music_fight()`) |
+| `nevents`, `events` | up to 4 timed events, none yet: `StEv.Fall` (a falling building across x0..x1 at frame `at` of a round, for `len` frames, with `power`, leaving rubble) and `StEv.Tilt` (the deck tilting to `amount` radians over `len` frames). Nothing runs them yet |
+
+| Stage | Edges | Art | Props |
+|---|---|---|---|
+| `ST_HANGAR`, the demo hangar | walls at ±36 | `stage_art.akr` (`tools/gen_mechexpo_stage.py`) | the hangar's walls, two banner towers (B's) |
+| `ST_ROOFTOP`, the rooftop showcase | a wall (the stairwell's housing) at −26, open at +26 | `roof_art.akr` (`tools/gen_mechexpo_rooftop.py`): the city on BG1 behind the roof deck on BG2, the deck transparent past its edges | the housing, the far parapet with three floodlight masts, the open edge's kerb (`props/rooftop/`, packed by the same generator into `roof_props.akr`), two banner towers |
+
+- **The fight's stage** is `fight.stage`, set by `fight_init()` from `fight_stage(id)` (called
+  before it; the hangar until then), so a fight's stage is part of its state and replays. The
+  fight, the camera, the stage's drawing and the CPU read it through `stage_now()`.
+  `FIGHT_MAX_SEP` (36 m) stays a rule of every stage.
+- **Choosing:** Versus and Training pick the stage on the stage select after the character
+  select (`stage_select.akr`, drawn by `draw_stage_select()` in `menus.akr`); with one stage it
+  is skipped. The arcade takes `LADDER_STAGES[ladder]`: the hangar, then the rooftop for the
+  final. The title's attract view is the hangar.
+- **Loading:** `stage_show()` loads the current stage's art (BG1 into ATLAS_1 and palettes
+  244–249, BG2 into ATLAS_0 and 240–243) whenever the planes go on, so only one stage's art is
+  in VRAM; the rooftop's props' pack (slot 13, palettes 200–203) is loaded once at boot.
+- **Adding a stage:** its art (a generator writing `art/stage_*` and an `.akr` of constants), its
+  props, and a row in `STAGES` (with `STAGES_N`). The rooftop's generator is the example.
+- **Tests:** scenarios 90–99 in `tests/stages/harness.akr` (the whole game): the hangar, the
+  ring-outs, the lip, the closed side, the Twins, the CPU, the stage select and the budget.
+- **The budget on the rooftop** (scenarios 98 and 99, CPU against CPU through the real game, a
+  release build): the Hero against the Double-blade Hero 546,116 CPU cycles and 703,639 GPU
+  cycles at the peak, 1,848 triangles (530,209 and 657,484 with a mech within 8 m of the open
+  edge); the split Twins against Tank 527,614 and 920,873, 1,802 triangles.
+
 ## Rendering, VRAM and budgets
 
 - **Depth buffer and perspective texturing**; every recipe has
@@ -219,7 +285,11 @@ frames late; combined, they are one mid-weight brawler; L switches, a move each 
   and 197–199 (PAL_PRINT: the print layer's ramps, written at run time). In the menus BG0 is the
   print layer (the catalogue's coloured photographs behind the mechs): `ui_print.tiles` in ATLAS_2
   and MAP_BG0, put back by `hud_show(true)`; priorities there BG1 1, BG0 1 (it wins the tie), the
-  mechs 2, the interface list 4 (`PAGE_PRIO` in `menus.akr`). Slot 13 is unused.
+  mechs 2, the interface list 4 (`PAGE_PRIO` in `menus.akr`).
+- **The rooftop (mx-stages):** texture slot 13 and 4-bit palettes 200–203 for its props' pack
+  (`roof_props.akr`, loaded once by `stage_boot()`); its plane art uses the hangar's atlases,
+  maps and palettes (one stage is loaded at a time, by `stage_show()`). Priorities on the
+  rooftop: BG1 (the city) 0, BG2 (the deck) 1, the mechs 2, BG0 3, the interface list 4.
 - **The roster** (`roster.akr`): the makers and the select's ten slots; a mech's names, maker,
   booth, power source, stats, blurb and unlock rule are its row. Adding a mech is filling in its
   slot's `mech` field (the file's first comment says how). `save.unlocked` keeps bit 0 for the

@@ -1,0 +1,811 @@
+{
+  "format": "mei-asset-pack",
+  "version": 1,
+  "name": "stage_roof_props",
+  "assets": [
+    {
+      "name": "stage_roof_stairwell",
+      "mesh": "stage_roof_stairwell.bin",
+      "levels": [],
+      "vertices": 72,
+      "triangles": 108,
+      "palette": {
+        "palettes": [
+          200
+        ],
+        "entries": [
+          {
+            "colour": 3201,
+            "class": "emissive",
+            "color": "#f2f6ff",
+            "materials": [
+              "light"
+            ]
+          },
+          {
+            "colour": 3202,
+            "class": "emissive",
+            "color": "#ff3a2a",
+            "materials": [
+              "red"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "concrete",
+          "tile": "3da4526bf59c031c",
+          "source": {
+            "pattern": "tile",
+            "params": {
+              "count": 2,
+              "grout": 1
+            }
+          },
+          "width": 16,
+          "height": 16,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#5a637b",
+            "#6b738c",
+            "#737b94"
+          ],
+          "slot": 13,
+          "x": 128,
+          "y": 0,
+          "gutter": 0,
+          "window": 642,
+          "palette": 202,
+          "first_colour": 3232,
+          "indices": {
+            "#5a637b": 1,
+            "#6b738c": 2,
+            "#737b94": 3
+          },
+          "vram_bytes": 128,
+          "night": "per_colour",
+          "faces": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              18
+            ],
+            [
+              24,
+              26
+            ]
+          ]
+        },
+        {
+          "material": "door",
+          "tile": "5543153bd51b3724",
+          "source": {
+            "image": "art/stair_door.png",
+            "sha256": "918d703fb16069d8675a47a569bf64b7f1c1b4918e42bd7ec1252810af949c62"
+          },
+          "width": 32,
+          "height": 40,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#f7c600",
+            "#c6a521",
+            "#525a6b",
+            "#948442",
+            "#5a6b84",
+            "#424a5a",
+            "#4a5a73"
+          ],
+          "slot": 13,
+          "x": 16,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 202,
+          "first_colour": 3232,
+          "indices": {
+            "#f7c600": 4,
+            "#c6a521": 5,
+            "#525a6b": 6,
+            "#948442": 7,
+            "#5a6b84": 8,
+            "#424a5a": 9,
+            "#4a5a73": 10
+          },
+          "vram_bytes": 697,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        {
+          "material": "sign",
+          "tile": "c23da5225fe5b073",
+          "source": {
+            "image": "art/stair_sign.png",
+            "sha256": "0d04a90cc23c4dbf988f6a02ac45e758918a897b6da98a6a989c10048378a527"
+          },
+          "width": 64,
+          "height": 20,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#18397b",
+            "#f7f7f7",
+            "#294a7b",
+            "#9ca594",
+            "#7b8c84",
+            "#526384",
+            "#efc608",
+            "#bdb57b"
+          ],
+          "slot": 13,
+          "x": 56,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 203,
+          "first_colour": 3248,
+          "indices": {
+            "#18397b": 1,
+            "#f7f7f7": 2,
+            "#294a7b": 3,
+            "#9ca594": 4,
+            "#7b8c84": 5,
+            "#526384": 6,
+            "#efc608": 7,
+            "#bdb57b": 8
+          },
+          "vram_bytes": 693,
+          "night": "per_colour",
+          "faces": [
+            [
+              20,
+              22
+            ]
+          ]
+        },
+        {
+          "material": "hazard",
+          "tile": "3d153667b7c05324",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#f7c600",
+            "#212129"
+          ],
+          "slot": 13,
+          "x": 144,
+          "y": 0,
+          "gutter": 0,
+          "window": 401,
+          "palette": 202,
+          "first_colour": 3232,
+          "indices": {
+            "#f7c600": 4,
+            "#212129": 11
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              26,
+              32
+            ],
+            [
+              34,
+              36
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        642,
+        401
+      ],
+      "materials": {
+        "cap": {
+          "color": "#9aa4b6",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              22,
+              24
+            ]
+          ]
+        },
+        "concrete": {
+          "color": "#6a7488",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              18
+            ],
+            [
+              24,
+              26
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#3e4658",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              0,
+              1
+            ],
+            [
+              2,
+              3
+            ]
+          ]
+        },
+        "door": {
+          "color": "#4e5870",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#f2c200",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              26,
+              32
+            ],
+            [
+              34,
+              36
+            ]
+          ]
+        },
+        "lamp": {
+          "color": "#3a4150",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              96,
+              100
+            ],
+            [
+              102,
+              108
+            ]
+          ]
+        },
+        "light": {
+          "color": "#f2f6ff",
+          "class": "emissive",
+          "palette_colour": 3201,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              100,
+              102
+            ]
+          ]
+        },
+        "red": {
+          "color": "#ff3a2a",
+          "class": "emissive",
+          "palette_colour": 3202,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              74,
+              86
+            ]
+          ]
+        },
+        "sign": {
+          "color": "#1f3f78",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              20,
+              22
+            ]
+          ]
+        },
+        "steel": {
+          "color": "#55607a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              32,
+              34
+            ],
+            [
+              64,
+              74
+            ],
+            [
+              86,
+              96
+            ]
+          ]
+        },
+        "tank": {
+          "color": "#7e889c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 28,
+          "faces": [
+            [
+              36,
+              64
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "stage_roof_parapet",
+      "mesh": "stage_roof_parapet.bin",
+      "levels": [],
+      "vertices": 104,
+      "triangles": 146,
+      "palette": {
+        "palettes": [
+          201
+        ],
+        "entries": [
+          {
+            "colour": 3217,
+            "class": "emissive",
+            "color": "#f2f6ff",
+            "materials": [
+              "light"
+            ]
+          },
+          {
+            "colour": 3218,
+            "class": "emissive",
+            "color": "#ff3a2a",
+            "materials": [
+              "red"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "concrete",
+          "tile": "3da4526bf59c031c",
+          "source": {
+            "pattern": "tile",
+            "params": {
+              "count": 2,
+              "grout": 1
+            }
+          },
+          "width": 16,
+          "height": 16,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#5a637b",
+            "#6b738c",
+            "#737b94"
+          ],
+          "slot": 13,
+          "x": 128,
+          "y": 0,
+          "gutter": 0,
+          "window": 642,
+          "palette": 202,
+          "first_colour": 3232,
+          "indices": {
+            "#5a637b": 1,
+            "#6b738c": 2,
+            "#737b94": 3
+          },
+          "vram_bytes": 128,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              6
+            ],
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        {
+          "material": "hazard",
+          "tile": "3d153667b7c05324",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#f7c600",
+            "#212129"
+          ],
+          "slot": 13,
+          "x": 144,
+          "y": 0,
+          "gutter": 0,
+          "window": 401,
+          "palette": 202,
+          "first_colour": 3232,
+          "indices": {
+            "#f7c600": 4,
+            "#212129": 11
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              124,
+              130
+            ],
+            [
+              132,
+              134
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        642,
+        401
+      ],
+      "materials": {
+        "cap": {
+          "color": "#9aa4b6",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              6,
+              8
+            ]
+          ]
+        },
+        "concrete": {
+          "color": "#6a7488",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              0,
+              6
+            ],
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#f2c200",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              124,
+              130
+            ],
+            [
+              132,
+              134
+            ]
+          ]
+        },
+        "lamp": {
+          "color": "#3a4150",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 30,
+          "faces": [
+            [
+              33,
+              34
+            ],
+            [
+              35,
+              44
+            ],
+            [
+              67,
+              68
+            ],
+            [
+              69,
+              78
+            ],
+            [
+              101,
+              102
+            ],
+            [
+              103,
+              112
+            ]
+          ]
+        },
+        "light": {
+          "color": "#f2f6ff",
+          "class": "emissive",
+          "palette_colour": 3217,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              32,
+              33
+            ],
+            [
+              34,
+              35
+            ],
+            [
+              66,
+              67
+            ],
+            [
+              68,
+              69
+            ],
+            [
+              100,
+              101
+            ],
+            [
+              102,
+              103
+            ]
+          ]
+        },
+        "red": {
+          "color": "#ff3a2a",
+          "class": "emissive",
+          "palette_colour": 3218,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              134,
+              146
+            ]
+          ]
+        },
+        "steel": {
+          "color": "#55607a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 80,
+          "faces": [
+            [
+              10,
+              32
+            ],
+            [
+              44,
+              66
+            ],
+            [
+              78,
+              100
+            ],
+            [
+              112,
+              124
+            ],
+            [
+              130,
+              132
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "stage_roof_kerb",
+      "mesh": "stage_roof_kerb.bin",
+      "levels": [],
+      "vertices": 18,
+      "triangles": 28,
+      "textures": [
+        {
+          "material": "hazard",
+          "tile": "3d153667b7c05324",
+          "source": {
+            "texels": "8 x 8"
+          },
+          "width": 8,
+          "height": 8,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#f7c600",
+            "#212129"
+          ],
+          "slot": 13,
+          "x": 144,
+          "y": 0,
+          "gutter": 0,
+          "window": 401,
+          "palette": 202,
+          "first_colour": 3232,
+          "indices": {
+            "#f7c600": 4,
+            "#212129": 11
+          },
+          "vram_bytes": 32,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              20,
+              28
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        401
+      ],
+      "materials": {
+        "cap": {
+          "color": "#9aa4b6",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              16,
+              20
+            ]
+          ]
+        },
+        "hazard": {
+          "color": "#f2c200",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 24,
+          "faces": [
+            [
+              0,
+              16
+            ],
+            [
+              20,
+              28
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    }
+  ],
+  "textures": {
+    "slots": [
+      13
+    ],
+    "palettes": {
+      "file": "stage_roof_props.tpal",
+      "runs": [
+        {
+          "bits": 4,
+          "first_colour": 3232,
+          "colours": 32,
+          "offset": 0
+        }
+      ]
+    },
+    "tiles": 4,
+    "vram_bytes": 1550,
+    "vram_bytes_allocated": 1984,
+    "palettes_4bit": [
+      202,
+      203
+    ],
+    "palettes_8bit": []
+  },
+  "swatch": {
+    "file": "stage_roof_props.swatch",
+    "slot": 13,
+    "row": 0,
+    "texels": 16
+  },
+  "palette": {
+    "file": "stage_roof_props.pal",
+    "runs": [
+      {
+        "first_colour": 3200,
+        "colours": 16
+      },
+      {
+        "first_colour": 3216,
+        "colours": 16
+      }
+    ]
+  }
+}

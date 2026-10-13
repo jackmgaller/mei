@@ -96,8 +96,8 @@ const MV_NAMES: [len(Mv)]*u8 = [
 ]
 const EV_NAMES: [len(Ev)]*u8 = [
     "Hit", "Block", "Chip", "Whiff", "Grab", "Throw", "Break", "Land", "Step", "MeterFull",
-    "Super", "Ko", "TimeUp", "Shot", "Parry", "Clash", "Swing", "Armour", "Curse", "Mine", "Snare",
-    "MineGone",
+    "Super", "Ko", "TimeUp", "Shot", "Parry", "Clash", "Swing", "Armour", "RingOut", "Curse", "Mine",
+    "Snare", "MineGone",
 ]
 
 fn init() {
@@ -668,7 +668,7 @@ private fn check_limits() {
     let a = &fight.f[0]
     let b = &fight.f[1]
     assert(dist() <= FIGHT_MAX_SEP, "further apart than the limit")
-    assert(a.x >= -FIGHT_WALL && b.x <= FIGHT_WALL, "through a wall")
+    assert(a.x >= -stage_now().half && b.x <= stage_now().half, "through a wall")
     if at(599) {
         assert_eq(dist(), FIGHT_MAX_SEP, "walking apart did not stop at the limit")
         print("apart at ")
@@ -681,13 +681,13 @@ private fn check_limits() {
         assert_eq(dist(), FIGHT_MAX_SEP, "walking away alone did not stop at the limit")
     }
     if at(1999) {
-        assert_eq(b.x, FIGHT_WALL - STATS[b.mech].push, "not at the wall")
+        assert_eq(b.x, stage_now().half - STATS[b.mech].push, "not at the wall")
         assert(dist() < 4.0, "the Hero did not follow")
         mark_h = bits(a.x)
     }
     if at(2130) {
         assert_eq(evc[Ev.Block], 1, "the Guard Cut was not blocked")
-        assert_eq(b.x, FIGHT_WALL - STATS[b.mech].push, "the defender left the wall")
+        assert_eq(b.x, stage_now().half - STATS[b.mech].push, "the defender left the wall")
         assert(a.x < from_bits(mark_h) - 0.3, "the attacker was not pushed back")
         print("pushed back ")
         print_fixed(from_bits(mark_h) - a.x)
@@ -1052,7 +1052,7 @@ fn draw() {
     let cx = (fight.f[0].x + fight.f[1].x) / 2
     rect(0, FLOOR_Y, 320, 240 - FLOOR_Y, rgb(50, 56, 70))
     for k in 0..2 {
-        let wx = sx(if_f(k == 0, -FIGHT_WALL, FIGHT_WALL), cx)
+        let wx = sx(if_f(k == 0, -stage_now().half, stage_now().half), cx)
         rect(wx - 1, 40, 3, FLOOR_Y - 40, rgb(110, 110, 130))
     }
     var bx: Boxes
@@ -3017,7 +3017,7 @@ private fn sh_check_grip() {
             println("")
             assert(s.x > o.x, "the sides did not swap")
             assert(s.facing < 0, "Shadow does not face the Hero")
-            sh_restart(Mech.Shadow, Mech.Hero, -(FIGHT_WALL - STATS[Mech.Shadow].push), -31.0)
+            sh_restart(Mech.Shadow, Mech.Hero, -(stage_now().half - STATS[Mech.Shadow].push), -31.0)
             stage = 1
         }
         1 => {

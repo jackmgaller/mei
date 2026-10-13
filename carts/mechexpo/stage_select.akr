@@ -1,0 +1,50 @@
+// Mech Expo 2000's stage select (mx-stages): after the character select in Versus and Training,
+// 1P picks the venue from STAGES (stages.akr); the arcade's ladder has a stage per fight
+// (LADDER_STAGES). With one stage there is nothing to pick and the select is skipped. Drawn by
+// menus.akr's draw_stage_select(), the brochure's venue guide.
+
+var stage_sel: s32                 // the stage picked for Versus and Training (a row of STAGES)
+var stage_moved: s32               // the tick the cursor last moved
+var stage_done_t: s32              // the tick it was confirmed (0: not yet)
+
+// The stage of the fight about to start.
+fn stage_pick() -> s32 {
+    if game == Game.Arcade { return LADDER_STAGES[clamp(ladder, 0, LADDER_N - 1)] }
+    return stage_sel
+}
+
+// After the character select: the stage select, or straight to the VS screen.
+fn enter_stage_select() {
+    if game == Game.Arcade || STAGES_N < 2 {
+        enter_vs()
+        return
+    }
+    enter(St.Stage)
+    menus_page()
+    stage_sel = clamp(stage_sel, 0, STAGES_N - 1)
+    stage_moved = tick
+    stage_done_t = 0
+}
+
+fn update_stage_select() {
+    if stage_done_t > 0 {
+        if tick - stage_done_t >= 30 { enter_vs() }
+        return
+    }
+    let d = dirs(0)
+    var to = stage_sel
+    if d & LEFT != 0 && to > 0 { to -= 1 }
+    if d & RIGHT != 0 && to < STAGES_N - 1 { to += 1 }
+    if to != stage_sel {
+        stage_sel = to
+        stage_moved = tick
+        sfx_menu_move()
+    }
+    if st_t > 10 && ok_pressed(0) {
+        stage_done_t = tick
+        sfx_menu_ok()
+    } else if pressed(0, B) {
+        sfx_menu_back()
+        enter_select()
+    }
+}

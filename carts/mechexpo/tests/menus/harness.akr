@@ -9,7 +9,8 @@
 //    Training (DOWN pressed VIEW times)
 // 57 the character select:
 //    0 Versus, 2P joins; both pads move and confirm on the same frames (the Hero and, unlocked,
-//      the Double-blade Hero): both picks hold, then the VS screen starts with them
+//      the Double-blade Hero): both picks hold, then the stage select (A: the hangar) and the
+//      VS screen starts with them
 //    1 Arcade, nothing unlocked: 1P on the Double-blade Hero's locked slot (the hint), A refused
 //    2 Versus against the CPU: 1P picks the Hero, then moves the CPU's cursor to Tank's slot
 //      (in transit: no Tank in this tree)
@@ -195,6 +196,7 @@ private fn script_57() {
             press(1, 30, DOWN)
             press(0, 40, A)                     // both confirm on the same frame
             press(1, 40, A)
+            press(0, 90, A)                     // the stage select (mx-stages): the hangar
         }
         1 => {
             press(0, 20, DOWN)                  // the Hero's echo, locked

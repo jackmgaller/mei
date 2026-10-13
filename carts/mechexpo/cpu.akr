@@ -62,6 +62,7 @@ fn cpu_init(seed: s32) {
         cpu_tip[m] = reach_of(m, Mv.atk_f)
         if m == Mech.Twins { cpu_tip[Mech.TwinA] = reach_of(Mech.TwinA, Mv.atk_f) }
     }
+    if stage_has_open(stage_now()) { cpu_edge_init() }     // mx-stages: the open edge
 }
 
 // The furthest a move's hit boxes reach ahead of the root, with its root motion.
@@ -181,6 +182,13 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
 
     // reactions to the other's move, once it has been seen long enough
     let opp_attacking = is_attack(op.mv) || op.mv == Mv.grab
+    let edged = stage_has_open(stage_now())        // a stage with an open edge (mx-stages)
+    if edged && seen && !c.decided && edge_behind(i) < CPU_EDGE_DANGER && opp_attacking && !c.opp_active
+        && dist < tip(op.body) + 2.0 && op.mv != Mv.grab {
+        // at the lip: block what is coming more often (a knockdown there is a ring-out)
+        c.decided = true
+        if roll(c, min(lv.block + 25, 95)) { return hold(c, R, 24) }
+    }
     if seen && !c.decided {
         // a jump coming in
         if (op.mv == Mv.jump || op.mv == Mv.atk_air) && dist < 13.0 {
@@ -229,6 +237,10 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
     if c.think_t > 0 { return c.hold }
     c.think_t = lv.think + rnd_n(c, lv.think)
 
+    if edged {
+        let e = cpu_edge(i, c, lv, dist, fwd)
+        if e != CPU_NO_IDEA { return e }
+    }
     if me.mech == Mech.Beam { return beam_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Tank { return tank_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Twins { return twins_neutral(i, c, lv, dist, fwd, back) }
@@ -454,6 +466,68 @@ private fn twins_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, 
     if split && dist < tip(op.body) + 3.0 && roll(c, lv.special * 2) { return DOWN | B }
     if dist < range + 6.0 && roll(c, lv.jump) { return fwd | X }
     return hold(c, fwd, 10 + rnd_n(c, 16))
+}
+
+// ---- the open edge (mx-stages): on a stage with one (stages.akr), the CPU gets away from the
+// lip when it is backed up to it (a knockdown or a throw there is a ring-out), and with the other
+// mech backed up to it goes for a knockdown or a throw. Its dice are rolled only on such a
+// stage, so the hangar's matches are unchanged.
+
+const CPU_NO_IDEA: u32 = 0xFFFFFFFF
+const CPU_EDGE_DANGER: fixed = 7.0     // backed up this close to an open edge: get out
+const CPU_EDGE_CHANCE: fixed = 9.0     // the other this close to one: try to ring it out
+const CPU_EDGE_ROOM: fixed = 18.0      // the other within this of one: walk it toward it
+const CPU_EDGE_BACK: fixed = 11.0      // itself within this of one: walk away from it
+var cpu_low: [len(Mech)]fixed          // each mech's down attack's reach, when it knocks down (else 0)
+
+// How far side i's root is from the open edge behind it (the way it faces away from), or 1,000.
+fn edge_behind(i: s32) -> fixed {
+    let s = stage_now()
+    let f = &fight.f[i]
+    if f.facing < 0 && stage_open(s, 1) { return s.half - f.x }
+    if f.facing > 0 && stage_open(s, 0) { return f.x + s.half }
+    return 1000.0
+}
+
+// The reaches cpu_edge() needs, once a fight (fight_init(), through cpu_init()).
+private fn cpu_edge_init() {
+    for i in 0..2 {
+        var m = fight.f[i].mech
+        if m == Mech.Twins { m = Mech.TwinA }       // the rounds start split
+        cpu_low[m] = 0.0
+        if move_hit(m, Mv.atk_d).kd { cpu_low[m] = reach_of(m, Mv.atk_d) }
+        if fight.f[i].mech == Mech.Twins && move_hit(Mech.Twins, Mv.atk_d).kd {
+            cpu_low[Mech.Twins] = reach_of(Mech.Twins, Mv.atk_d)
+        }
+    }
+}
+
+// What side i does about an open edge at this decision, or CPU_NO_IDEA.
+private fn cpu_edge(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    let op = &fight.f[other(i)]
+    // backed up to the edge with the other in reach: jump out over it, block, or throw it
+    if edge_behind(i) < CPU_EDGE_DANGER && dist < tip(op.body) + 3.0 {
+        let r = rnd_n(c, 100)
+        if r < 25 && dist < 9.0 { return fwd | X }
+        if r < 50 { return hold(c, R, 16) }
+        if r < 70 && dist < 4.5 { return Y }
+        if r < 85 { return hold(c, fwd, 10) }
+        return CPU_NO_IDEA
+    }
+    // backed up toward the edge: take the space back
+    let eo = edge_behind(other(i))
+    if edge_behind(i) < CPU_EDGE_BACK && roll(c, 30) { return hold(c, fwd, 12) }
+    // the other backed up to it: a throw up close, a knockdown when it is near the lip, and
+    // pressure from further out
+    if eo < CPU_EDGE_CHANCE {
+        if dist < 4.5 && roll(c, lv.grab + 20) { return Y }
+        if cpu_low[me.body] > 0.0 && dist < cpu_low[me.body] - 0.5 && eo < 4.5 && roll(c, lv.poke + 20) {
+            return DOWN | A
+        }
+    }
+    if eo < CPU_EDGE_ROOM && dist > 6.0 && roll(c, 45) { return hold(c, fwd, 12) }
+    return CPU_NO_IDEA
 }
 
 // ---- Shadow's CPU (mx-shadow-fight): lay mines where the other must walk and stand behind

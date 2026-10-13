@@ -32,6 +32,7 @@ import "beam_hud.akr"       // mx-beam: the chemical meter
 import "beam_fx.akr"        // mx-beam: Beam's effects
 import "tank_fx.akr"        // mx-tank: Tank's reactor glow, armour sparks and HUD meter
 import "twins_fx.akr"       // mx-twins-fight: the Twins' partner, the swap's flash, the fusion meter
+import "stage_select.akr"   // mx-stages: the stage select (stages.akr: the stages)
 import "shadow_fx.akr"      // mx-shadow-fight: Shadow's bolt, mines, curse, afterimages, the siphon
 
 // Input, replaced by the tests.
@@ -46,7 +47,7 @@ weak fn input_stick(n: s32) -> vec2 {
 weak fn test_init() {}
 weak fn test_hook() {}
 
-enum St { Title, Mode, Select, Vs, Fight, Results, Unlock }
+enum St { Title, Mode, Select, Vs, Fight, Results, Unlock, Stage }
 enum Game { Arcade, Versus, Training }
 
 const VS_FRAMES = 150
@@ -137,6 +138,7 @@ fn enter_title() {
     p_mech[0] = Mech.Hero
     p_mech[1] = Mech.Hero
     if echo_unlocked() { p_mech[1] = Mech.Doubleblade }
+    fight_stage(ST_HANGAR)
     fight_init(p_mech[0], p_mech[1], FightMode.Versus, 0)
     menus_hangar()
     cam_reset(-9.0, 9.0)
@@ -180,6 +182,7 @@ fn enter_fight() {
             lvl = 1
         }
     }
+    fight_stage(stage_pick())
     fight_init(p_mech[0], p_mech[1], fm, lvl)
     if game == Game.Training { fight_training(&train) }
     menus_hangar()
@@ -189,12 +192,15 @@ fn enter_fight() {
     fx_reset()
     cam_reset(f.f[0].x, f.f[1].x)
     music_fight()
+    snd_ko_t = -1
+    for s in 0..2 { snd_hidden[s] = false }
 }
 
 fn leave_fight() {
     hud_show(false)
     fx_reset()
     music_duck(false)
+    sfx_stop_fight()
 }
 
 fn enter_results() {
@@ -234,6 +240,7 @@ fn update() {
             if st_t >= VS_FRAMES || (st_t > 20 && any_pressed(A | START)) { enter_fight() }
         }
         Fight => update_fight()
+        Stage => update_stage_select()
         Results => update_results()
         Unlock => {
             if st_t > 90 && any_pressed(A | START) && !save_writing {
@@ -241,7 +248,9 @@ fn update() {
             }
         }
     }
+    menus_sfx()
     music_tick()
+    sfx_tick()
 }
 
 fn update_title() {
@@ -250,7 +259,7 @@ fn update_title() {
     let sway = sin(frame_angle(tick, 0.004)) * 6.0
     cam_follow(f.f[0].x + sway - 5.0, 0.0, f.f[1].x + sway + 5.0, 0.0, 0.0)
     if st_t > 20 && any_pressed(START | A) {
-        sfx_menu_ok()
+        sfx_pass()
         mode_sel = 0
         enter_mode()
     }
@@ -309,14 +318,14 @@ fn update_select() {
         if to != c {
             sel_cur[side] = to
             sel_moved[side] = tick
-            sfx_menu_move()
+            sfx_shutter()                       // the catalogue's new photograph
         }
         if ok_pressed(n) {
             if slot_ok(sel_cur[side]) {
                 sel_done[side] = true
                 sel_done_t[side] = tick
                 sel_mech[side] = slot_mech(sel_cur[side])
-                sfx_menu_ok()
+                sfx_stamp()                     // READY
             } else {
                 sfx_menu_back()
             }
@@ -338,7 +347,7 @@ fn update_select() {
             p_mech[1] = sel_mech[1]
             p_cpu = game != Game.Versus || !sel_human2
             ladder = 0
-            enter_vs()
+            enter_stage_select()
         }
     } else {
         sel_ready_t = 0
@@ -387,6 +396,7 @@ fn update_fight() {
         sound_event(e, f)
         fx_event(e, f)
     }
+    sound_poll(f)
     fx_update(f)
     hud_update(f)
     twins_cam_follow(f)                 // cam_follow() over both fighters (and a split Twins' partner)
@@ -397,6 +407,7 @@ fn update_fight() {
 
 // The fight's events to E's sound effects.
 fn sound_event(e: *Event, f: *Fight) {
+    let side = clamp(e.side, 0, 1)
     match e.kind {
         Hit => {
             sfx_pan(e.x)
@@ -410,30 +421,101 @@ fn sound_event(e: *Event, f: *Fight) {
             sfx_pan(e.x)
             sfx_chip()
         }
-        Swing => sfx_swing(f.f[clamp(e.side, 0, 1)].mech)
+        Swing => {
+            let b = &f.f[ev_body(e, f)]
+            sfx_pan(e.x)
+            sfx_attack(b.body, b.mv)
+        }
         Parry => sfx_block()
-        Clash => sfx_break()
-        Grab => sfx_grab()
-        Throw => sfx_throw()
+        Clash => {
+            sfx_pan(e.x)
+            sfx_clash(f.f[0].mech == Mech.Beam || f.f[1].mech == Mech.Beam)     // an orb fizzles
+        }
+        Grab => {
+            sfx_pan(e.x)
+            if e.power == 1 && tank_holding(clamp(e.side, 0, 3)) { sfx_tank_lift() } else { sfx_grab() }
+        }
+        Throw => {
+            let t = &f.f[clamp(e.side, 0, 3)]
+            sfx_pan(e.x)
+            sfx_throw_by(t.mech, t.mv)
+        }
         Break => sfx_break()
         Land => {
             sfx_pan(e.x)
-            sfx_land()
+            if e.power >= 2 { sfx_knockdown() } else { sfx_land() }
         }
         Step => {
             sfx_pan(e.x)
-            sfx_step()
+            sfx_step_of(f.f[ev_body(e, f)].body)
         }
         MeterFull => sfx_meter_full()
-        Super => sfx_super()
-        Ko => sfx_ko()
+        Super => {
+            sfx_pan(f.f[side].x)
+            sfx_super(f.f[side].mech)
+        }
+        Ko => {
+            sfx_ko()
+            snd_ko_t = 0                    // the smoulder, a moment later (sound_poll)
+            snd_ko_x = e.x
+        }
         TimeUp => sfx_round()
-        Shot => sfx_swing(f.f[clamp(e.side, 0, 1)].mech)
+        Shot => {
+            sfx_pan(e.x)
+            sfx_shot(f.f[side].mech, e.power)
+        }
         Armour => {
             sfx_pan(e.x)
-            sfx_block()                 // a clank off Tank's armour (its own sound: next audio round)
+            sfx_armour(e.power)
+        }
+        Curse, Mine, Snare, MineGone => {
+            sfx_pan(e.x)
+            match e.kind {
+                Curse => sfx_shadow(0)
+                Mine => sfx_shadow(1)
+                Snare => sfx_shadow(2)
+                else => sfx_shadow(if_else(e.power > 0, 3, 4))
+            }
         }
         else => {}
+    }
+}
+
+// The body an event at the fighter's x came from: the side's leader, or a split Twins' twin B.
+fn ev_body(e: *Event, f: *Fight) -> s32 {
+    let s = clamp(e.side, 0, 1)
+    if twins_on(s) && f.f[s + 2].x == e.x && f.f[s].x != e.x { return s + 2 }
+    return s
+}
+
+// The sounds that follow the fight's state rather than its events, once a fight frame: the
+// mechs' own (Beam's charge hum and reaction, Tank's treads, the Twins' coupling), the Void
+// Step and the KO's smoulder. Loops are held here every frame they should sound (sfx.akr).
+var snd_hidden: [2]bool
+var snd_ko_t: s32 = -1              // frames since the KO, or -1
+var snd_ko_x: fixed
+const SND_SMOULDER_AT = 45          // the beaten mech starts smouldering this long after the KO
+
+fn sound_poll(f: *Fight) {
+    beam_sfx(f)
+    tank_sfx(f)
+    twins_sfx(f)
+    for s in 0..2 {
+        let fi = &f.f[s]
+        let hidden = (anim_marks(fi.body, fi.mv, fi.frame as s32) & MARK_HIDE) != 0
+        if hidden != snd_hidden[s] {
+            sfx_pan(fi.x)
+            sfx_void(!hidden)
+        }
+        snd_hidden[s] = hidden
+    }
+    if f.phase == Phase.Intro { snd_ko_t = -1 }
+    if snd_ko_t >= 0 {
+        snd_ko_t += 1
+        if snd_ko_t == SND_SMOULDER_AT {
+            sfx_pan(snd_ko_x)
+            sfx_smoulder()
+        }
     }
 }
 
@@ -617,6 +699,7 @@ fn draw() {
         }
         Results => draw_results()
         Unlock => draw_unlock()
+        Stage => draw_stage_select()
     }
 }
 

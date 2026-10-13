@@ -1,0 +1,133 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_roof_kerb",
+ "budget": {
+  "vertices": 512,
+  "triangles": 40
+ },
+ "lighting": {
+  "direction": [
+   0,
+   0.62,
+   -0.78
+  ],
+  "ambient": 0.66
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "concrete": {
+   "color": "#6a7488",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#6a7488",
+     "#5a6478",
+     "#727c90"
+    ],
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "size": 16,
+    "projection": "box",
+    "scale": [
+     6,
+     6
+    ]
+   }
+  },
+  "dark": {
+   "color": "#3e4658"
+  },
+  "cap": {
+   "color": "#9aa4b6"
+  },
+  "steel": {
+   "color": "#55607a"
+  },
+  "tank": {
+   "color": "#7e889c",
+   "smooth": true
+  },
+  "hazard": {
+   "color": "#f2c200",
+   "texture": {
+    "texels": [
+     "00001111",
+     "00011110",
+     "00111100",
+     "01111000",
+     "11110000",
+     "11100001",
+     "11000011",
+     "10000111"
+    ],
+    "colors": [
+     "#f2c200",
+     "#22242a"
+    ],
+    "projection": "box",
+    "scale": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "door": {
+   "color": "#4e5870",
+   "texture": {
+    "image": "art/stair_door.png",
+    "projection": "fit"
+   }
+  },
+  "sign": {
+   "color": "#1f3f78",
+   "class": "emissive",
+   "texture": {
+    "image": "art/stair_sign.png",
+    "projection": "fit"
+   }
+  },
+  "lamp": {
+   "color": "#3a4150"
+  },
+  "light": {
+   "color": "#f2f6ff",
+   "class": "emissive"
+  },
+  "red": {
+   "color": "#ff3a2a",
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "kerb",
+   "op": "box",
+   "size": [
+    0.4,
+    0.35,
+    53.98
+   ],
+   "material": "hazard",
+   "transform": {
+    "translate": [
+     -0.2,
+     0.175,
+     2.99
+    ]
+   },
+   "faces": {
+    "top": "cap"
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

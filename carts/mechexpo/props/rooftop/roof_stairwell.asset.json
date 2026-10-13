@@ -1,0 +1,277 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_roof_stairwell",
+ "budget": {
+  "vertices": 512,
+  "triangles": 260
+ },
+ "lighting": {
+  "direction": [
+   0,
+   0.62,
+   -0.78
+  ],
+  "ambient": 0.66
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "concrete": {
+   "color": "#6a7488",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#6a7488",
+     "#5a6478",
+     "#727c90"
+    ],
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "size": 16,
+    "projection": "box",
+    "scale": [
+     6,
+     6
+    ]
+   }
+  },
+  "dark": {
+   "color": "#3e4658"
+  },
+  "cap": {
+   "color": "#9aa4b6"
+  },
+  "steel": {
+   "color": "#55607a"
+  },
+  "tank": {
+   "color": "#7e889c",
+   "smooth": true
+  },
+  "hazard": {
+   "color": "#f2c200",
+   "texture": {
+    "texels": [
+     "00001111",
+     "00011110",
+     "00111100",
+     "01111000",
+     "11110000",
+     "11100001",
+     "11000011",
+     "10000111"
+    ],
+    "colors": [
+     "#f2c200",
+     "#22242a"
+    ],
+    "projection": "box",
+    "scale": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "door": {
+   "color": "#4e5870",
+   "texture": {
+    "image": "art/stair_door.png",
+    "projection": "fit"
+   }
+  },
+  "sign": {
+   "color": "#1f3f78",
+   "class": "emissive",
+   "texture": {
+    "image": "art/stair_sign.png",
+    "projection": "fit"
+   }
+  },
+  "lamp": {
+   "color": "#3a4150"
+  },
+  "light": {
+   "color": "#f2f6ff",
+   "class": "emissive"
+  },
+  "red": {
+   "color": "#ff3a2a",
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "housing",
+   "op": "box",
+   "size": [
+    10.0,
+    11.0,
+    21.0
+   ],
+   "material": "concrete",
+   "transform": {
+    "translate": [
+     -5.0,
+     5.5,
+     1.5
+    ]
+   },
+   "faces": {
+    "top": "cap",
+    "back": "dark"
+   },
+   "open": [
+    "bottom"
+   ],
+   "decals": [
+    {
+     "id": "lift_door",
+     "face": "right",
+     "material": "door",
+     "size": [
+      7.0,
+      8.0
+     ],
+     "at": [
+      -2.5,
+      -1.49
+     ]
+    },
+    {
+     "id": "lift_sign",
+     "face": "right",
+     "material": "sign",
+     "size": [
+      5.0,
+      1.6
+     ],
+     "at": [
+      -2.5,
+      3.6999999999999993
+     ]
+    }
+   ]
+  },
+  {
+   "id": "corner_post",
+   "op": "box",
+   "size": [
+    0.8,
+    11.6,
+    0.8
+   ],
+   "material": "hazard",
+   "transform": {
+    "translate": [
+     0.25,
+     5.8,
+     -8.75
+    ]
+   },
+   "faces": {
+    "top": "steel"
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "water_tank",
+   "op": "cylinder",
+   "radius": 2.0,
+   "height": 3.0,
+   "segments": 8,
+   "material": "tank",
+   "transform": {
+    "translate": [
+     -6.0,
+     12.49,
+     6.0
+    ]
+   }
+  },
+  {
+   "id": "aerial",
+   "op": "box",
+   "size": [
+    0.25,
+    6.0,
+    0.25
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -2.0,
+     13.99,
+     -6.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "beacon",
+   "op": "box",
+   "size": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     -2.0,
+     17.2,
+     -6.0
+    ]
+   }
+  },
+  {
+   "id": "lamp_arm",
+   "op": "box",
+   "size": [
+    4.4,
+    0.5,
+    0.6
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     1.6,
+     10.4,
+     -1.0
+    ]
+   },
+   "open": [
+    "left"
+   ]
+  },
+  {
+   "id": "lamp_head",
+   "op": "box",
+   "size": [
+    1.8,
+    1.0,
+    1.4
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     3.4,
+     9.7,
+     -1.0
+    ]
+   },
+   "faces": {
+    "bottom": "light"
+   }
+  }
+ ]
+}

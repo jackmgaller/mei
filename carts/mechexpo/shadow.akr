@@ -305,7 +305,7 @@ fn shadow_hold(i: s32, j: s32, t: s32) {
     }
     if t <= GRIP_HIDE1 {
         // gone: its shadow slides under the other to the far side (a wall stops it)
-        let lim = FIGHT_WALL - STATS[f.body].push
+        let lim = stage_now().half - STATS[f.body].push
         let to = clamp(grip_x0[s] + fixed(f.facing) * GRIP_SLIDE, -lim, lim)
         let k = fixed(t - GRIP_HIDE0 + 1) / (GRIP_HIDE1 - GRIP_HIDE0 + 1)
         f.x = grip_x0[s] + (to - grip_x0[s]) * k

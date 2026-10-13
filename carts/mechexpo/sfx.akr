@@ -5,17 +5,40 @@
 // within two frames plays once.
 //
 // sfx_hit(power): 0 light, 1 medium, 2 heavy, 3 crushing (a super's or a throw's hit); clamped
-// to 0..3. sfx_swing(m) has a sound for each mech. sfx_throw() is the thrown mech meeting the
-// floor (the throw landing); sfx_grab() the hand closing. sfx_round() is the PA chime and,
-// 0.7 s later, the horn: call it as "Round N" shows, and the horn is the start.
-// sfx_super() and sfx_ko() also bring the music down for a moment (music.akr's music_dip()).
+// to 0..3; a heavy or crushing one also scatters debris. sfx_swing(m) has a sound for each
+// mech; sfx_attack(m, mv) is the Swing event's: the body's attack coming out (the Hero's and
+// the Double-blade Hero's blades, Beam's discharges, Tank's fists and its Reactor Vent, the
+// combined Twins' fists, ONE's and ZERO's lighter strikes). sfx_throw() is the thrown mech
+// meeting the floor (the throw landing), sfx_throw_by(m, mv) the same by the thrower (Tank's
+// command grabs slam, Beam's Shock Grip cracks); sfx_grab() the hand closing. sfx_round() is
+// the PA chime and, 0.7 s later, the horn: call it as "Round N" shows, and the horn is the
+// start. sfx_super(m) is the power source's charge-up and, SUPER_BURST_FRAMES later, the
+// burst; it and sfx_ko() also bring the music down for a moment (music.akr's music_dip()).
 // sfx_ko() has its own crushing impact: a hit in the same frame as the KO (or the one before
-// or after) is left out, whichever of the two calls comes first.
+// or after) is left out, whichever of the two calls comes first; it also stops the loops.
 //
 // Hits, blocks, swings, landings and steps vary their pitch a little from one to the next
-// (a fixed cycle, so a replay sounds the same). sfx_pan(x) is optional: the next one-shot is
+// (a fixed cycle, so a replay sounds the same). sfx_pan(x) is optional: the next sound is
 // panned to stage x (metres, -36..36; the far side drops to 40 %), then the pan goes back to
 // the centre.
+//
+// Loops (Tank's treads, Beam's charge hum, the Shock Grip's buzz): sfx_hold(slot, id, x,
+// pitch, gain) every frame the loop should sound (a slot a side, 0 or 1; id SFX_TREAD,
+// SFX_BEAM_HUM or SFX_BEAM_GRIP; x its stage position; gain 0..256); sfx_tick(), once a frame
+// after the game's update, fades out (over four frames) and stops every loop that was not held
+// that frame. So a loop stops by itself when the fight stops asking for it: on the pause (the
+// fight is not polled), on the menus, at a KO. sfx_stop_fight() stops the fight's sounds at
+// once (the loops, the smoulder; not the menus' own), for leaving the fight.
+//
+// Priorities (higher wins a channel): 10 the KO; 9 the super (its charge-up and burst), the
+// Raikō Overload's beam, a crushing hit, Tank's slam, the round, the unlock; 8 a throw, the
+// Shock Grip's crack, a heavy hit; 7 a medium hit, the Twins' coupling, a break; 6 a light hit,
+// a block, an armour clank, the grab and Tank's lift, the Reactor Vent, the Volt Orb and its
+// fizzle, the Arc Lance, the Thunder Pillar, a knockdown; 5 the meter full, the charge ping
+// and hum, the reaction, the Static Lance, the Shock Grip's buzz, the stamp, the press pass,
+// OK; 4 swings, zaps, landings, the Void Step, back; 3 chip, debris, the tread loop, the page,
+// the shutter, a menu move; 2 a step, the smoulder. A hit or a KO is never lost to a step, a
+// swing or a loop.
 
 import "anim.akr"
 import "music.akr"
@@ -24,55 +47,101 @@ import "mu_data.akr"
 const SFX_CH_FIRST = 10
 const SFX_CH_LAST = 15
 const SFX_STAGE_HALF: fixed = 36.0     // the walls: full pan
+const SUPER_BURST_FRAMES = 37           // the super's burst lands this long after sfx_super (its sample's lead)
+const SFX_LOOP_SLOTS = 2                // a loop a side
+private const SX_LOOP_FADE = 64         // of 256 a frame: a loop not held fades out over four frames
 
 private var sx_ready: bool
 private var sx_voices: Voices
-private var sx_pan: s32                 // -256 (left) .. 256 (right), for the next one-shot
+private var sx_pan: s32                 // -256 (left) .. 256 (right), for the next sound
 private var sx_turn: s32                // the pitch cycle's position
 private var sx_ko_at: u32 = 0xFFFFFF00  // FRAME of the last KO
 private var sx_hit_at: u32 = 0xFFFFFF00 // FRAME of the last hit, and its channel
 private var sx_hit_ch: s32 = -1
 private const SX_VARY: [8]fixed = [1.0, 0.955, 1.035, 0.98, 1.05, 0.94, 1.015, 0.97]
 
+// the loops, a slot each: the sound (-1 none), its channel, held this frame, its fade and volumes
+private var lp_id: [SFX_LOOP_SLOTS]s32
+private var lp_ch: [SFX_LOOP_SLOTS]s32
+private var lp_held: [SFX_LOOP_SLOTS]bool
+private var lp_fade: [SFX_LOOP_SLOTS]s32
+private var lp_vl: [SFX_LOOP_SLOTS]s32
+private var lp_vr: [SFX_LOOP_SLOTS]s32
+
+// Every sound started (id: SFX_*; ch: its channel). The tests replace it to log what plays.
+weak fn sfx_heard(id: s32, ch: s32) {}
+
 private fn sx_init() {
     if sx_ready { return }
     sx_ready = true
     voices_init(&sx_voices, SFX_CH_FIRST, SFX_CH_LAST, 2)
+    for k in 0..SFX_LOOP_SLOTS {
+        lp_id[k] = -1
+        lp_ch[k] = -1
+    }
     mu_reverb()                         // as music.akr does: whichever runs first sets it
 }
 
-// One-shot `id` (pri: higher wins a channel; limit: instances at once).
-private fn sx_one(id: s32, pri: s32, limit: s32, vary: bool) -> s32 {
-    sx_init()
-    let e = id * 4
-    var flags = SND_ADPCM
-    if SFX[e + 3] != 0 { flags = flags | SND_REVERB }
-    let v = SFX[e + 2]
-    var pitch = 1.0
-    if vary {
-        sx_turn = (sx_turn + 1) & 7
-        pitch = SX_VARY[sx_turn]
-    }
+// The pan for the next sound, then back to the centre.
+private fn sx_take_pan() -> s32 {
     let p = sx_pan
     sx_pan = 0
-    let vl = v * (256 - max(0, p) * 160 / 256) >> 8
-    let vr = v * (256 - max(0, -p) * 160 / 256) >> 8
-    return voice_play(&sx_voices, id, pri, limit, SFX_BANK + SFX[e], SFX[e + 1] as u32, pitch, vl, vr, flags as u32)
+    return p
 }
 
-fn sfx_pan(x: fixed) {
-    sx_pan = clamp((clamp(x, -SFX_STAGE_HALF, SFX_STAGE_HALF) / SFX_STAGE_HALF * 256.0) as s32, -256, 256)
+private fn sx_flags(id: s32) -> u32 {
+    var flags = SND_ADPCM
+    if SFX[id * 4 + 3] != 0 { flags = flags | SND_REVERB }
+    return flags as u32
 }
+
+// Sound `id` at `pitch` (times the variation cycle when vary), `gain` of its volume (0..256),
+// panned by p (pri: higher wins a channel; limit: instances at once). Returns its channel or -1.
+private fn sx_play(id: s32, pri: s32, limit: s32, vary: bool, pitch: fixed, gain: s32, p: s32) -> s32 {
+    sx_init()
+    let e = id * 4
+    let v = SFX[e + 2] * gain >> 8
+    var pt = pitch
+    if vary {
+        sx_turn = (sx_turn + 1) & 7
+        pt = pt * SX_VARY[sx_turn]
+    }
+    let vl = v * (256 - max(0, p) * 160 / 256) >> 8
+    let vr = v * (256 - max(0, -p) * 160 / 256) >> 8
+    let c = voice_play(&sx_voices, id, pri, limit, SFX_BANK + SFX[e], SFX[e + 1] as u32, pt, vl, vr, sx_flags(id))
+    if c >= 0 { sfx_heard(id, c) }
+    return c
+}
+
+// One-shot `id` at its own pitch and volume, with the pending pan.
+private fn sx_one(id: s32, pri: s32, limit: s32, vary: bool) -> s32 {
+    return sx_play(id, pri, limit, vary, 1.0, 256, sx_take_pan())
+}
+
+private fn sx_pan_of(x: fixed) -> s32 {
+    return clamp((clamp(x, -SFX_STAGE_HALF, SFX_STAGE_HALF) / SFX_STAGE_HALF * 256.0) as s32, -256, 256)
+}
+
+fn sfx_pan(x: fixed) { sx_pan = sx_pan_of(x) }
+
+// ---- the fight's one-shots
 
 // A hit within two frames of a KO is not played: the KO has its own crushing impact.
 fn sfx_hit(power: s32) {
+    let p = sx_take_pan()
     if ((FRAME - sx_ko_at) as s32) < 2 { return }
-    let p = clamp(power, 0, 3)
-    sx_hit_ch = sx_one(SFX_HIT0 + p, 6 + p, 2, true)
+    let pw = clamp(power, 0, 3)
+    sx_hit_ch = sx_play(SFX_HIT0 + pw, 6 + pw, 2, true, 1.0, 256, p)
     sx_hit_at = FRAME
+    if pw >= 2 { sx_play(SFX_DEBRIS, 3, 1, true, 1.0, 160 + 48 * (pw - 2), p) }
 }
 fn sfx_block() { sx_one(SFX_BLOCK, 6, 2, true) }
 fn sfx_chip() { sx_one(SFX_CHIP, 3, 1, true) }
+// A hit absorbed by Tank's super armour (power as sfx_hit's): a thick plate's clank.
+fn sfx_armour(power: s32) {
+    let pw = clamp(power, 0, 3)
+    sx_play(SFX_ARMOUR, 6 + min(pw, 2), 2, true, 1.06 - fixed(pw) * 0.06, 256, sx_take_pan())
+}
 fn sfx_swing(m: Mech) {
     if m == Mech.Doubleblade {
         sx_one(SFX_SWING_DBLADE, 4, 2, true)
@@ -80,28 +149,281 @@ fn sfx_swing(m: Mech) {
         sx_one(SFX_SWING_HERO, 4, 2, true)
     }
 }
+// A body's attack coming out (the Swing event): m is the body (fight.f[i].body), mv its move.
+fn sfx_attack(m: Mech, mv: Mv) {
+    let p = sx_take_pan()
+    match m {
+        Beam => {
+            match mv {
+                atk_f => sx_play(SFX_BEAM_LANCE, 5, 2, true, 1.0, 256, p)
+                sp_f => sx_play(SFX_BEAM_ARC, 6, 1, false, 1.0, 256, p)
+                sp_u => sx_play(SFX_BEAM_PILLAR, 6, 1, false, 1.0, 256, p)
+                super => sx_play(SFX_BEAM_OVERLOAD, 9, 1, false, 1.0, 256, p)
+                else => sx_play(SFX_BEAM_ZAP, 4, 2, true, 1.0, 256, p)
+            }
+        }
+        Tank => {
+            if mv == Mv.sp_n {
+                sx_play(SFX_TANK_VENT, 6, 1, false, 1.0, 256, p)
+            } else {
+                sx_play(SFX_SWING_FIST, 4, 2, true, 0.88, 256, p)
+            }
+        }
+        Twins => sx_play(SFX_SWING_FIST, 4, 2, true, 1.12, 230, p)
+        TwinA => sx_play(SFX_SWING_TWIN, 4, 2, true, 1.0, 256, p)
+        TwinB => sx_play(SFX_SWING_TWIN, 4, 2, true, 0.92, 240, p)
+        Doubleblade => sx_play(SFX_SWING_DBLADE, 4, 2, true, 1.0, 256, p)
+        Shadow => sx_play(SFX_SWING_DBLADE, 4, 2, true, 0.82, 230, p)     // the claws: the blades' hiss, lower
+        else => sx_play(SFX_SWING_HERO, 4, 2, true, 1.0, 256, p)
+    }
+}
+// A shot fired: the Hero's wave (its sword's swing), Beam's Volt Orb by level (1 a tap, 2
+// charged, 3 full: lower and louder).
+fn sfx_shot(m: Mech, lvl: s32) {
+    if m == Mech.Shadow {
+        sx_play(SFX_VOID_IN, 6, 1, false, 0.72, 240, sx_take_pan())     // the Hex Bolt (a stand-in)
+        return
+    }
+    if m != Mech.Beam {
+        sfx_swing(m)
+        return
+    }
+    let l = clamp(lvl, 1, 3)
+    sx_play(SFX_BEAM_ORB, 6, 1, false, 1.26 - fixed(l) * 0.13, 200 + 28 * l, sx_take_pan())
+}
+// Two shots met: a wave and an orb (orb: the orb fizzles out), or two waves (the break's clash).
+fn sfx_clash(orb: bool) {
+    if orb {
+        sx_one(SFX_ORB_FIZZLE, 6, 1, false)
+    } else {
+        sx_one(SFX_BREAK, 7, 1, false)
+    }
+}
 fn sfx_grab() { sx_one(SFX_GRAB, 6, 1, false) }
+// Tank's command grab caught: the lift overhead (the slam is sfx_throw_by's).
+fn sfx_tank_lift() { sx_one(SFX_TANK_LIFT, 6, 1, false) }
 fn sfx_throw() { sx_one(SFX_THROW, 8, 1, false) }
+// A throw's release by m in move mv: Tank's command grabs (sp_f, super) slam the other into the
+// floor, Beam's Shock Grip throws it off with a crack, the rest as sfx_throw().
+fn sfx_throw_by(m: Mech, mv: Mv) {
+    if m == Mech.Tank && (mv == Mv.sp_f || mv == Mv.super) {
+        let p = sx_take_pan()
+        sx_play(SFX_TANK_SLAM, 9, 1, false, 1.0, 256, p)
+        sx_play(SFX_DEBRIS, 3, 1, false, 0.9, 256, p)
+    } else if m == Mech.Beam {
+        sx_one(SFX_BEAM_SHOCK, 8, 1, false)
+    } else {
+        sfx_throw()
+    }
+}
 fn sfx_break() { sx_one(SFX_BREAK, 7, 1, false) }
 fn sfx_land() { sx_one(SFX_LAND, 4, 2, true) }
+// A mech knocked flat (a landing from a knockdown): the dust whump.
+fn sfx_knockdown() { sx_one(SFX_KNOCKDOWN, 6, 2, true) }
 fn sfx_step() { sx_one(SFX_STEP, 2, 2, true) }
+// A step by body m: the Twins' small bodies lighter and quicker, Beam's heavier.
+fn sfx_step_of(m: Mech) {
+    var pitch = 1.0
+    var gain = 256
+    if m == Mech.TwinA || m == Mech.TwinB {
+        pitch = 1.32
+        gain = 170
+    } else if m == Mech.Beam {
+        pitch = 0.9
+    }
+    sx_play(SFX_STEP, 2, 2, true, pitch, gain, sx_take_pan())
+}
 fn sfx_meter_full() { sx_one(SFX_METER_FULL, 5, 1, false) }
-fn sfx_super() {
-    sx_one(SFX_SUPER, 9, 1, false)
+// The super by mech m: its power source's charge-up during the flash, then the burst.
+fn sfx_super(m: Mech) {
+    var c = SFX_CHARGE_KINETIC
+    match m {
+        Doubleblade, Shadow => c = SFX_CHARGE_ANTIMATTER
+        Beam => c = SFX_CHARGE_CHEMICAL
+        Tank => c = SFX_CHARGE_NUCLEAR
+        Twins, TwinA, TwinB => c = SFX_CHARGE_FUSION
+        else => {}
+    }
+    let p = sx_take_pan()
+    sx_play(c, 9, 1, false, 1.0, 256, p)
+    sx_play(SFX_SUPER, 9, 1, false, 1.0, 256, 0)
     music_dip(90)
 }
-// The KO: its impact replaces a hit played in the same frame (or the one before).
+// The KO: its impact replaces a hit played in the same frame (or the one before); the loops stop.
 fn sfx_ko() {
     let c = sx_hit_ch
     if c >= 0 && ((FRAME - sx_hit_at) as s32) < 2 && sx_voices.id[c] >= SFX_HIT0 && sx_voices.id[c] <= SFX_HIT3 {
         stop(c)
     }
+    sfx_stop_loops()
     sx_ko_at = FRAME
     sx_one(SFX_KO, 10, 1, false)
     music_dip(240)
 }
+// The beaten mech smouldering after the KO: crackling wiring, thinning out over 3.4 s.
+fn sfx_smoulder() { sx_play(SFX_SMOULDER, 2, 1, false, 1.0, 256, sx_take_pan()) }
 fn sfx_round() { sx_one(SFX_ROUND, 9, 1, false) }
+// The Twins' bodies swap: combined (on: they lock together) or split.
+fn sfx_couple(on: bool) {
+    if on {
+        sx_one(SFX_COUPLE, 7, 1, false)
+    } else {
+        sx_one(SFX_UNCOUPLE, 7, 1, false)
+    }
+}
+// Beam's reaction starts (the valve, the pressure, the reagent bubbling).
+fn sfx_react() { sx_one(SFX_BEAM_REACT, 5, 1, false) }
+// Beam's Volt Orb fully charged.
+fn sfx_charge_full() { sx_one(SFX_BEAM_PING, 5, 1, false) }
+// The Void Step: out (gone into nothing) and back.
+fn sfx_void(back: bool) {
+    if back {
+        sx_one(SFX_VOID_OUT, 4, 1, false)
+    } else {
+        sx_one(SFX_VOID_IN, 4, 1, false)
+    }
+}
+
+// ---- the menus: the brochure
+
 fn sfx_menu_move() { sx_one(SFX_MENU_MOVE, 3, 1, false) }
-fn sfx_menu_ok() { sx_one(SFX_MENU_OK, 4, 1, false) }
+fn sfx_menu_ok() { sx_one(SFX_MENU_OK, 5, 1, false) }
 fn sfx_menu_back() { sx_one(SFX_MENU_BACK, 4, 1, false) }
 fn sfx_unlock() { sx_one(SFX_UNLOCK, 9, 1, false) }
+// A page of the brochure turned (a new screen).
+fn sfx_page() { sx_one(SFX_PAGE, 3, 1, false) }
+// A rubber stamp coming down (READY, APPROVED, UNLOCKED).
+fn sfx_stamp() { sx_one(SFX_STAMP, 5, 1, false) }
+// The press pass on its lanyard (the title's PRESS START).
+fn sfx_pass() { sx_one(SFX_PASS, 5, 1, false) }
+// The catalogue's camera: a new photograph on the turntable.
+fn sfx_shutter() { sx_one(SFX_SHUTTER, 3, 1, false) }
+
+private fn sx_menu_sound(id: s32) -> bool {
+    return id == SFX_MENU_MOVE || id == SFX_MENU_OK || id == SFX_MENU_BACK || id == SFX_UNLOCK
+        || id == SFX_PAGE || id == SFX_STAMP || id == SFX_PASS || id == SFX_SHUTTER
+}
+
+// ---- the loops
+
+// The voice id of slot k's loop (apart from the one-shots' ids and the other slot's).
+private fn lp_vid(k: s32, id: s32) -> s32 { return SFX_COUNT * (1 + k) + id }
+
+private fn lp_mine(k: s32) -> bool {
+    let c = lp_ch[k]
+    return lp_id[k] >= 0 && c >= 0 && sound_playing(c) && sx_voices.id[c] == lp_vid(k, lp_id[k])
+}
+
+private fn lp_stop(k: s32) {
+    if lp_mine(k) { stop(lp_ch[k]) }
+    lp_id[k] = -1
+    lp_ch[k] = -1
+    lp_held[k] = false
+}
+
+// Loop `id` in slot (a side, 0 or 1) this frame, at stage x, pitch and gain (0..256): started
+// if it is not playing, its pan, pitch and volume followed if it is. pri as the one-shots'.
+fn sfx_hold(slot: s32, id: s32, pri: s32, x: fixed, pitch: fixed, gain: s32) {
+    sx_init()
+    let k = clamp(slot, 0, SFX_LOOP_SLOTS - 1)
+    if lp_id[k] != id { lp_stop(k) }
+    lp_held[k] = true
+    lp_fade[k] = 256
+    let v = SFX[id * 4 + 2] * clamp(gain, 0, 256) >> 8
+    let p = sx_pan_of(x)
+    lp_vl[k] = v * (256 - max(0, p) * 160 / 256) >> 8
+    lp_vr[k] = v * (256 - max(0, -p) * 160 / 256) >> 8
+    if lp_mine(k) {
+        sound_vol(lp_ch[k], lp_vl[k], lp_vr[k])
+        sound_pitch(lp_ch[k], pitch)
+        return
+    }
+    // not playing, or lost to something more important: (re)start it if a channel allows
+    lp_id[k] = id
+    let c = voice_alloc(&sx_voices, lp_vid(k, id), pri, 1)
+    lp_ch[k] = c
+    if c < 0 { return }
+    play_sample(c, SFX_BANK + SFX[id * 4], SFX[id * 4 + 1] as u32, 0, pitch, lp_vl[k], lp_vr[k],
+                sx_flags(id) | (SND_LOOP as u32))
+    sfx_heard(id, c)
+}
+
+// The loop playing in slot k (SFX_*), or -1.
+fn sfx_loop_playing(slot: s32) -> s32 {
+    let k = clamp(slot, 0, SFX_LOOP_SLOTS - 1)
+    if lp_mine(k) { return lp_id[k] }
+    return -1
+}
+
+// Stops every loop at once.
+fn sfx_stop_loops() {
+    sx_init()
+    for k in 0..SFX_LOOP_SLOTS { lp_stop(k) }
+}
+
+// Leaving the fight: the loops and every fight sound still playing stop (the menus' own play on).
+fn sfx_stop_fight() {
+    sfx_stop_loops()
+    let active = AUDIO_ACTIVE
+    for c in SFX_CH_FIRST..SFX_CH_LAST + 1 {
+        if (active >> (c as u32)) & 1 != 0 && !sx_menu_sound(sx_voices.id[c]) { stop(c) }
+    }
+}
+
+// Instances of one-shot `id` playing now (for the tests).
+fn sfx_playing(id: s32) -> s32 {
+    sx_init()
+    return voice_count(&sx_voices, id)
+}
+
+// The fight's sounds playing now: everything on the effects' channels but the menus' own (for
+// the tests: none should outlive the fight).
+fn sfx_fight_sounds() -> s32 {
+    sx_init()
+    let active = AUDIO_ACTIVE
+    var n = 0
+    for c in SFX_CH_FIRST..SFX_CH_LAST + 1 {
+        if (active >> (c as u32)) & 1 != 0 && !sx_menu_sound(sx_voices.id[c]) { n += 1 }
+    }
+    return n
+}
+
+// Once a frame, always (after the game's update): fades out and stops the loops nobody held.
+fn sfx_tick() {
+    sx_init()
+    for k in 0..SFX_LOOP_SLOTS {
+        if lp_id[k] < 0 { continue }
+        if !lp_mine(k) {
+            // lost to a more important sound: sfx_hold starts it again while it is held
+            if !lp_held[k] { lp_id[k] = -1 }
+            lp_held[k] = false
+            continue
+        }
+        if lp_held[k] {
+            lp_held[k] = false
+            continue
+        }
+        lp_fade[k] -= SX_LOOP_FADE
+        if lp_fade[k] <= 0 {
+            lp_stop(k)
+        } else {
+            sound_vol(lp_ch[k], lp_vl[k] * lp_fade[k] >> 8, lp_vr[k] * lp_fade[k] >> 8)
+        }
+    }
+}
+
+// Shadow's events (mx-shadow-fight), from existing sounds until its own are made: the Hex Bolt's
+// curse (kind 0), a Rift Mine laid (1), a snare (2), a mine destroyed (3) or faded (4).
+fn sfx_shadow(kind: s32) {
+    let p = sx_take_pan()
+    match kind {
+        0 => sx_play(SFX_VOID_OUT, 6, 1, false, 0.66, 256, p)
+        1 => sx_play(SFX_VOID_IN, 4, 1, false, 0.80, 200, p)
+        2 => {
+            sx_play(SFX_GRAB, 6, 1, false, 0.80, 256, p)
+            sx_play(SFX_VOID_OUT, 5, 1, false, 0.90, 220, 0)
+        }
+        3 => sx_play(SFX_ORB_FIZZLE, 5, 1, false, 0.80, 220, p)
+        else => sx_play(SFX_VOID_OUT, 3, 1, false, 1.20, 120, p)
+    }
+}
