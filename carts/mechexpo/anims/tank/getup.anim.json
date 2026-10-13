@@ -1,0 +1,72 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Get up (24 frames, after knockdown; not hittable): from flat on its back, Tank swings both arms forward over its chest to throw its weight and curls the torso up, rocking up onto the tails of its treads (0-9); it tips over them and drops forward onto the treads with a thud, rocking nose-down 5 degrees onto the front rollers (13), rocks back (17) and settles into the guard (23).",
+  "base": "_body.anim.json",
+  "length": 24,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "ease",
+      "offset": [-0.8, 0.18],
+      "pose": {
+        "pelvis": [90, 2, 0], "thigh_r": [8, 0, 0], "thigh_l": [6, 0, 0], "shin_r": [4, 0, 0], "shin_l": [2, 0, 0],
+        "torso": [6, 0, 0], "head": [4, 10, 0],
+        "upper_arm_r": [152, 0, 36], "forearm_r": [16, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [142, 0, -36], "forearm_l": [20, 0, 0], "hand_l": [-10, 0, 0],
+        "pauldron_r": [40, 0, 18], "pauldron_l": [40, 0, -18]
+      }
+    },
+    {
+      "at": 5,
+      "ease": "ease",
+      "offset": [-2.4, 0.7],
+      "pose": {
+        "pelvis": [72, 0, 0], "thigh_r": [0, 0, 0], "thigh_l": [0, 0, 0], "shin_r": [0, 0, 0], "shin_l": [0, 0, 0],
+        "torso": [-24, -4, 0], "head": [20, 6, 0],
+        "upper_arm_r": [90, 0, -10], "forearm_r": [40, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [84, 0, 12], "forearm_l": [44, 0, 0], "hand_l": [-10, 0, 0],
+        "pauldron_r": [31.5, 0, -5], "pauldron_l": [29.4, 0, 6]
+      }
+    },
+    {
+      "at": 9,
+      "ease": "in",
+      "offset": [-3.85, 0.79],
+      "pose": {
+        "pelvis": [55, 0, 0],
+        "torso": [-40, -8, 0], "head": [30, 8, 0],
+        "upper_arm_r": [40, 0, -16], "forearm_r": [50, 0, 0], "hand_r": [-14, 0, 0],
+        "upper_arm_l": [36, 0, 18], "forearm_l": [56, 0, 0], "hand_l": [-16, 0, 0],
+        "pauldron_r": [14, 0, -8], "pauldron_l": [12.6, 0, 9]
+      }
+    },
+    {
+      "at": 13,
+      "ease": "out",
+      "offset": [0.3, 0.22],
+      "pose": {
+        "pelvis": [-5, -2, 0],
+        "torso": [-26, -12, 0], "head": [24, 9, 0],
+        "upper_arm_r": [20, 0, -26], "forearm_r": [56, 0, 0], "hand_r": [-12, 0, 0],
+        "upper_arm_l": [16, 0, 28], "forearm_l": [62, 0, 0], "hand_l": [-14, 0, 0],
+        "pauldron_r": [7, 0, -13], "pauldron_l": [5.6, 0, 14]
+      }
+    },
+    {
+      "at": 17,
+      "ease": "ease",
+      "offset": [-0.12, 0.09],
+      "pose": {
+        "pelvis": [2, -2, 0],
+        "torso": [-14, -14, 0], "head": [14, 10, 0],
+        "upper_arm_r": [24, 0, -18], "forearm_r": [70, 0, 0],
+        "upper_arm_l": [18, 0, 20], "forearm_l": [78, 0, 0],
+        "pauldron_r": [8.4, 0, -9], "pauldron_l": [6.3, 0, 10]
+      }
+    },
+    {"at": 23, "from": "guard"}
+  ],
+  "allow": [["pauldron_r", "forearm_r"], ["pauldron_l", "forearm_l"]]
+}

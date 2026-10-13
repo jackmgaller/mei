@@ -1,0 +1,44 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Hit high (stretched by the fight to the hitstun's length, frame 0 held through the hitstop): the torso is already snapped back from the waist on frame 0, the hull rocking back on its struts (the treads stay flat), the cab head whips back a beat later and the fists fly up and out; then it hunches back down into the guard. The fight's knockback slides the whole mech.",
+  "base": "_body.anim.json",
+  "length": 20,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "out",
+      "pose": {
+        "pelvis": [4, 4, 0], "thigh_r": [-4, 0, 0], "thigh_l": [-4, 0, 0],
+        "torso": [10, -6, 4], "head": [6, 4, 0],
+        "upper_arm_r": [40, 0, -30], "forearm_r": [50, 0, 0], "hand_r": [-26, 0, 0],
+        "upper_arm_l": [34, 0, 30], "forearm_l": [56, 0, 0], "hand_l": [-26, 0, 0],
+        "pauldron_r": [14, 0, -15], "pauldron_l": [11.9, 0, 15]
+      }
+    },
+    {
+      "at": 3,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [6, 6, 0], "thigh_r": [-6, 0, 0], "thigh_l": [-6, 0, 0],
+        "torso": [16, -2, 6], "head": [-14, 0, 0],
+        "upper_arm_r": [52, 0, -38], "forearm_r": [40, 0, 0], "hand_r": [-30, 0, 0],
+        "upper_arm_l": [44, 0, 36], "forearm_l": [46, 0, 0], "hand_l": [-30, 0, 0],
+        "pauldron_r": [18.2, 0, -19], "pauldron_l": [15.4, 0, 18]
+      }
+    },
+    {
+      "at": 10,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [1, 1, 0], "thigh_r": [-1, 0, 0], "thigh_l": [-1, 0, 0],
+        "torso": [-2, -12, 2], "head": [6, 8, 0],
+        "upper_arm_r": [30, 0, -20], "forearm_r": [66, 0, 0], "hand_r": [-18, 0, 0],
+        "upper_arm_l": [24, 0, 22], "forearm_l": [74, 0, 0], "hand_l": [-20, 0, 0],
+        "pauldron_r": [10.5, 0, -10], "pauldron_l": [8.4, 0, 11]
+      }
+    },
+    {"at": 19, "from": "guard"}
+  ]
+}

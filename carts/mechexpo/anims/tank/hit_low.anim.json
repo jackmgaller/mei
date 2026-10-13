@@ -1,0 +1,43 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Hit low (stretched to the hitstun): hit high's snap from the crouch. The torso is knocked up and back off its hunch on frame 0, the fists jerked off the floor, the cab head whipping back a beat later; then it folds back down into the crouch's last pose (the fight returns a crouching mech to crouch). Push box 6.5 m tall.",
+  "base": "_body.anim.json",
+  "length": 20,
+  "boxes": {"push": {"kind": "push", "rect": [-2.4, 0, 2.4, 6.5]}},
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "out",
+      "pose": {
+        "pelvis": [-1, 0, 0], "thigh_r": [1, 0, 0], "thigh_l": [1, 0, 0],
+        "torso": [-18, -8, 4], "head": [20, 6, 0],
+        "upper_arm_r": [30, 0, -30], "forearm_r": [30, 0, 0], "hand_r": [-10, 0, 0],
+        "upper_arm_l": [26, 0, 30], "forearm_l": [34, 0, 0], "hand_l": [-10, 0, 0],
+        "pauldron_r": [10.5, 0, -15], "pauldron_l": [9.1, 0, 15]
+      }
+    },
+    {
+      "at": 3,
+      "ease": "ease",
+      "pose": {
+        "pelvis": [1, 2, 0], "thigh_r": [-1, 0, 0], "thigh_l": [-1, 0, 0],
+        "torso": [-14, -6, 6], "head": [0, 4, 0],
+        "upper_arm_r": [38, 0, -34], "forearm_r": [24, 0, 0], "hand_r": [-16, 0, 0],
+        "upper_arm_l": [34, 0, 34], "forearm_l": [28, 0, 0], "hand_l": [-16, 0, 0],
+        "pauldron_r": [13.3, 0, -17], "pauldron_l": [11.9, 0, 17]
+      }
+    },
+    {
+      "at": 19,
+      "pose": {
+        "pelvis": [-6, -4, 0], "thigh_r": [6, 0, 0], "thigh_l": [6, 0, 0],
+        "torso": [-36, -12, 0], "head": [24, 10, 0],
+        "upper_arm_r": [40, 0, -20], "forearm_r": [8, 0, 0], "hand_r": [12, 0, 0],
+        "upper_arm_l": [34, 0, 22], "forearm_l": [12, 0, 0], "hand_l": [10, 0, 0],
+        "pauldron_r": [14, 0, -10], "pauldron_l": [11.9, 0, 11]
+      }
+    }
+  ]
+}
