@@ -1,0 +1,218 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Win (120 frames, the last held): a show-floor demonstration. Beam draws its back foot in half a step and stands up tall (step on 12), sets its left fist on its hip (0-14), raises the Arc Cannon straight up overhead, the head tipping back to follow it (14-30), aims a beat, and on frame 50 (a release mark, for the effects: one shot into the hangar's roof and a shower of sparks) fires: the recoil drives it down 0.6 m and kicks the cannon back; it rises, holds the cannon up while it turns to the crowd, then brings it down to 50 degrees, held high out in front like a trophy, and holds the pose facing the audience.",
+  "base": "_body.anim.json",
+  "length": 120,
+  "keys": [
+    {
+      "at": 0,
+      "from": "guard",
+      "ease": "ease",
+      "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}
+    },
+    {"at": 7, "ease": "linear", "reach": {"foot_l": [-1.9, 0.5]}},
+    {"at": 12, "ease": "linear", "reach": {"foot_l": [-1.5, 0.0]}},
+    {
+      "at": 14,
+      "ease": "ease",
+      "offset": [-0.1, -0.35],
+      "pose": {
+        "upper_arm_l": [-10, 0, 34],
+        "forearm_l": [96, 0, -30],
+        "hand_l": [-10, 0, 0],
+        "pauldron_l": [-3.3, 0, 17],
+        "pelvis": [0, -2, 0],
+        "torso": [2, -2, 0],
+        "head": [-6, 6, 0],
+        "upper_arm_r": [40, 0, -12],
+        "forearm_r": [90, 0, 8],
+        "hand_r": [10, 0, 0],
+        "pauldron_r": [13.3, 0, -6]
+      }
+    },
+    {
+      "at": 30,
+      "ease": "out",
+      "offset": [-0.1, -0.4],
+      "pose": {
+        "upper_arm_l": [-10, 0, 34],
+        "forearm_l": [96, 0, -30],
+        "hand_l": [-10, 0, 0],
+        "pauldron_l": [-3.3, 0, 17],
+        "upper_arm_r": [150, 0, -12],
+        "forearm_r": [32, 0, 8],
+        "hand_r": [-2, 0, 0],
+        "pauldron_r": [50, 0, -6],
+        "pelvis": [0, -2, 0],
+        "torso": [4, -2, 0],
+        "head": [-20, 6, 0]
+      }
+    },
+    {
+      "at": 46,
+      "ease": "in",
+      "offset": [-0.1, -0.45],
+      "pose": {
+        "upper_arm_l": [-10, 0, 34],
+        "forearm_l": [96, 0, -30],
+        "hand_l": [-10, 0, 0],
+        "pauldron_l": [-3.3, 0, 17],
+        "upper_arm_r": [152, 0, -12],
+        "forearm_r": [32, 0, 8],
+        "hand_r": [-2, 0, 0],
+        "pauldron_r": [50, 0, -6],
+        "pelvis": [0, -2, 0],
+        "torso": [3, -2, 0],
+        "head": [-22, 6, 0]
+      }
+    },
+    {
+      "at": 49,
+      "ease": "linear",
+      "offset": [-0.1, -0.5],
+      "pose": {
+        "upper_arm_l": [-10, 0, 34],
+        "forearm_l": [96, 0, -30],
+        "hand_l": [-10, 0, 0],
+        "pauldron_l": [-3.3, 0, 17],
+        "upper_arm_r": [153, 0, -12],
+        "forearm_r": [32, 0, 8],
+        "hand_r": [-2, 0, 0],
+        "pauldron_r": [50, 0, -6],
+        "pelvis": [-1, -2, 0],
+        "torso": [2, -2, 0],
+        "head": [-22, 6, 0]
+      }
+    },
+    {
+      "at": 50,
+      "ease": "out",
+      "offset": [-0.25, -1.1],
+      "pose": {
+        "upper_arm_l": [-10, 0, 34],
+        "forearm_l": [96, 0, -30],
+        "hand_l": [-10, 0, 0],
+        "pauldron_l": [-3.3, 0, 17],
+        "upper_arm_r": [162, 0, -14],
+        "forearm_r": [40, 0, 8],
+        "hand_r": [6, 0, 0],
+        "pauldron_r": [50, 0, -6],
+        "pelvis": [3, -2, 0],
+        "torso": [8, -2, 0],
+        "head": [-8, 6, 0]
+      }
+    },
+    {
+      "at": 56,
+      "ease": "ease",
+      "offset": [-0.15, -0.6],
+      "pose": {
+        "upper_arm_l": [-10, 0, 34],
+        "forearm_l": [96, 0, -30],
+        "hand_l": [-10, 0, 0],
+        "pauldron_l": [-3.3, 0, 17],
+        "upper_arm_r": [150, 0, -12],
+        "forearm_r": [32, 0, 8],
+        "hand_r": [-2, 0, 0],
+        "pauldron_r": [50, 0, -6],
+        "pelvis": [0, -2, 0],
+        "torso": [3, -2, 0],
+        "head": [-18, 8, 0]
+      }
+    },
+    {
+      "at": 72,
+      "ease": "ease",
+      "offset": [-0.1, -0.45],
+      "pose": {
+        "upper_arm_l": [-10, 0, 34],
+        "forearm_l": [96, 0, -30],
+        "hand_l": [-10, 0, 0],
+        "pauldron_l": [-3.3, 0, 17],
+        "upper_arm_r": [148, 0, -12],
+        "forearm_r": [32, 0, 8],
+        "hand_r": [-2, 0, 0],
+        "pauldron_r": [50, 0, -6],
+        "pelvis": [0, -2, 0],
+        "torso": [4, -4, 0],
+        "head": [-16, 20, 0]
+      }
+    },
+    {
+      "at": 88,
+      "ease": "ease",
+      "offset": [-0.1, -0.4],
+      "pose": {
+        "upper_arm_l": [-10, 0, 34],
+        "forearm_l": [96, 0, -30],
+        "hand_l": [-10, 0, 0],
+        "pauldron_l": [-3.3, 0, 17],
+        "pelvis": [0, -2, 0],
+        "torso": [2, -4, 0],
+        "head": [-8, 30, 0],
+        "upper_arm_r": [118, 0, -14],
+        "forearm_r": [34, 0, 8],
+        "hand_r": [2, 0, 0],
+        "pauldron_r": [39.3, 0, -7]
+      }
+    },
+    {
+      "at": 98,
+      "ease": "out",
+      "offset": [-0.1, -0.35],
+      "pose": {
+        "upper_arm_l": [-10, 0, 34],
+        "forearm_l": [96, 0, -30],
+        "hand_l": [-10, 0, 0],
+        "pauldron_l": [-3.3, 0, 17],
+        "upper_arm_r": [100, 0, -16],
+        "forearm_r": [40, 0, 8],
+        "hand_r": [4, 0, 0],
+        "pauldron_r": [33.3, 0, -8],
+        "pelvis": [0, 4, 0],
+        "torso": [2, 6, 0],
+        "head": [-6, 36, 0]
+      }
+    },
+    {
+      "at": 104,
+      "ease": "ease",
+      "offset": [-0.1, -0.4],
+      "pose": {
+        "upper_arm_l": [-10, 0, 34],
+        "forearm_l": [96, 0, -30],
+        "hand_l": [-10, 0, 0],
+        "pauldron_l": [-3.3, 0, 17],
+        "upper_arm_r": [100, 0, -16],
+        "forearm_r": [40, 0, 8],
+        "hand_r": [4, 0, 0],
+        "pauldron_r": [33.3, 0, -8],
+        "pelvis": [0, 4, 0],
+        "torso": [3, 8, 0],
+        "head": [-8, 40, 0]
+      }
+    },
+    {
+      "at": 119,
+      "offset": [-0.1, -0.38],
+      "reach": {"foot_l": [-1.5, 0.0]},
+      "pose": {
+        "upper_arm_l": [-10, 0, 34],
+        "forearm_l": [96, 0, -30],
+        "hand_l": [-10, 0, 0],
+        "pauldron_l": [-3.3, 0, 17],
+        "upper_arm_r": [100, 0, -16],
+        "forearm_r": [40, 0, 8],
+        "hand_r": [4, 0, 0],
+        "pauldron_r": [33.3, 0, -8],
+        "pelvis": [0, 4, 0],
+        "torso": [2, 8, 0],
+        "head": [-6, 40, 0]
+      }
+    }
+  ],
+  "plant": {"foot_r": [[0, 119]]},
+  "marks": {"release": [50], "step": [12]},
+  "allow": [["forearm_r", "weapon_r"], ["pauldron_r", "weapon_r"], ["upper_arm_r", "weapon_r"], ["pauldron_r", "forearm_r"], ["pauldron_r", "hand_r"]]
+}
