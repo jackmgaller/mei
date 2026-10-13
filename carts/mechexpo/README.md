@@ -57,7 +57,7 @@ a stand-in in your own files until it lands. Each owner writes the interface fil
 | `anims/` (`anims/hero/*.anim.json`, `anims/doubleblade/*.anim.json`), the exported `anim_data.akr` | Every move's animation, timing and boxes. Until Gate 1, A writes the one proof move | **F, animator** (from Gate 1) |
 | `models/`, `tools/gen_mechexpo_assets.py`, `art/` (except `art/stage_*` and `art/ui_*`), `assets.akr` | The mechs' parts and rigs, the stage's polygon props, the emblems, and the pack of every model | **B, models** |
 | `fight.akr`, `fighter.akr`, `moves.akr`, `meter.akr`, `cpu.akr`, `MOVES.md`, `tests/harness.akr`, `tests/run.sh`, `tests/check.sh` | The fight: rules, frame data effects, input, meters, rounds, the CPU, the dummy, and the cart's test cases | **C, combat** |
-| `mechexpo.akr`, `game.akr`, `stage.akr`, `camera.akr`, `hud.akr`, `fx.akr`, `menus.akr`, `save.akr`, `stage_art.akr`, `art/stage_*`, `art/ui_*`, `tools/gen_mechexpo_stage.py`, `tools/gen_mechexpo_ui.py`, any other top-level `.akr` not listed here | The entry point, the game's flow and modes, the stage on the plane chip, the camera, the HUD, effects, the menus and the unlock save | **D, stage and front end** |
+| `mechexpo.akr`, `game.akr`, `stage.akr`, `camera.akr`, `hud.akr`, `fx.akr`, `menus.akr`, `save.akr`, `stage_art.akr`, `art/stage_*`, `art/ui_*`, `tools/gen_mechexpo_stage.py`, `tools/gen_mechexpo_ui.py`, `stages.akr`, `stage_select.akr`, `roof_art.akr`, `roof_props.akr`, `props/`, `tools/gen_mechexpo_rooftop.py`, any other top-level `.akr` not listed here | The entry point, the game's flow and modes, the stages (mx-stages: the table, the stage select, the rooftop and its props) on the plane chip, the camera, the HUD, effects, the menus and the unlock save | **D, stage and front end** |
 | `music.akr`, `mu_data.akr`, `sfx.akr`, `audio/`, `tools/gen_mechexpo_audio.py` | Music and sound effects | **E, audio** |
 
 `mechexpo.akr` (the entry point, `cart "Mech Expo 2000", "MECHEXPO"`) must compile whenever it
@@ -190,6 +190,48 @@ frames late; combined, they are one mid-weight brawler; L switches, a move each 
 - **The budget split** (scenario 69, CPU against CPU, the split Twins against Tank, a release
   build): 521,418 CPU cycles and 560,514 GPU cycles at the peak, 1,768 triangles drawn; the
   three bodies' drawing (`prof_mechs`) about 396,000 cycles.
+
+## Stages
+
+Stages are data (the pitch: "a floor (flat for now), edges (walls or open), and an optional list
+of timed events. Then new stages are content, not engine work"). `stages.akr` holds the table
+`STAGES`, a `Stage` a row:
+
+| Field | What |
+|---|---|
+| `name`, `short`, `venue`, `blurb`, `colour` | the stage select's card (`short` where `name` does not fit) |
+| `half` | the edges are at x = −half and +half |
+| `edge: [2]Edge` | the −x and +x sides: `Edge.Wall` or `Edge.Open` (a lip, with ring-outs: [MOVES.md](MOVES.md#stages-and-ring-outs)) |
+| `tilt` | the floor's slope across x; 0 (every stage is flat for now; the carrier's deck later) |
+| `art: StageArt` | the plane chip's set: BG1's atlas, map, palettes, width, the art row on the floor line (`hall_line`) at depth `hall_z`, the parallax bands; BG2's atlas, map, palettes, texels a metre, the texel of world 0, what shows outside its map (`floor_out`), how far its rows go; the backdrop's four colours and their rows; `PLN_PRIO` |
+| `nprops`, `props` | up to 6 polygon props: a mesh at (x, 0, z) turned by yaw, drawn while the view comes within `near` m of x |
+| `music` | the fight's track: 0, the fight track (`music_fight()`) |
+| `nevents`, `events` | up to 4 timed events, none yet: `StEv.Fall` (a falling building across x0..x1 at frame `at` of a round, for `len` frames, with `power`, leaving rubble) and `StEv.Tilt` (the deck tilting to `amount` radians over `len` frames). Nothing runs them yet |
+
+| Stage | Edges | Art | Props |
+|---|---|---|---|
+| `ST_HANGAR`, the demo hangar | walls at ±36 | `stage_art.akr` (`tools/gen_mechexpo_stage.py`) | the hangar's walls, two banner towers (B's) |
+| `ST_ROOFTOP`, the rooftop showcase | a wall (the stairwell's housing) at −26, open at +26 | `roof_art.akr` (`tools/gen_mechexpo_rooftop.py`): the city on BG1 behind the roof deck on BG2, the deck transparent past its edges | the housing, the far parapet with three floodlight masts, the open edge's kerb (`props/rooftop/`, packed by the same generator into `roof_props.akr`), two banner towers |
+
+- **The fight's stage** is `fight.stage`, set by `fight_init()` from `fight_stage(id)` (called
+  before it; the hangar until then), so a fight's stage is part of its state and replays. The
+  fight, the camera, the stage's drawing and the CPU read it through `stage_now()`.
+  `FIGHT_MAX_SEP` (36 m) stays a rule of every stage.
+- **Choosing:** Versus and Training pick the stage on the stage select after the character
+  select (`stage_select.akr`, drawn by `draw_stage_select()` in `menus.akr`); with one stage it
+  is skipped. The arcade takes `LADDER_STAGES[ladder]`: the hangar, then the rooftop for the
+  final. The title's attract view is the hangar.
+- **Loading:** `stage_show()` loads the current stage's art (BG1 into ATLAS_1 and palettes
+  244–249, BG2 into ATLAS_0 and 240–243) whenever the planes go on, so only one stage's art is
+  in VRAM; the rooftop's props' pack (slot 13, palettes 200–203) is loaded once at boot.
+- **Adding a stage:** its art (a generator writing `art/stage_*` and an `.akr` of constants), its
+  props, and a row in `STAGES` (with `STAGES_N`). The rooftop's generator is the example.
+- **Tests:** scenarios 90–99 in `tests/stages/harness.akr` (the whole game): the hangar, the
+  ring-outs, the lip, the closed side, the Twins, the CPU, the stage select and the budget.
+- **The budget on the rooftop** (scenarios 98 and 99, CPU against CPU through the real game, a
+  release build): the Hero against the Double-blade Hero 546,116 CPU cycles and 703,639 GPU
+  cycles at the peak, 1,848 triangles (530,209 and 657,484 with a mech within 8 m of the open
+  edge); the split Twins against Tank 527,614 and 920,873, 1,802 triangles.
 
 ## Rendering, VRAM and budgets
 
