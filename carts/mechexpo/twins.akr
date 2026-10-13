@@ -514,7 +514,7 @@ const TWINS_SPLIT_MOVES = MoveList { n: 15, e: [
     MoveEntry { name: "Block", input: "hold R" },
     MoveEntry { name: "Jump", input: "X (+ FWD or BACK)" },
     MoveEntry { name: "Chain", input: "A, FWD + A, B" },
-    MoveEntry { name: "Twin B", input: "copies twin A, a beat late" },
+    MoveEntry { name: "ZERO", input: "copies ONE, a beat late" },
     MoveEntry {}
 ] }
 

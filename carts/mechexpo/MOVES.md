@@ -1052,6 +1052,14 @@ Void Step's gone frames, 7–18).
 - The Parry does not catch the super.
 - The Double-blade Hero's weaker defence is its lower health (950); retune after human play.
 
+## Decided by the owner (2026-10-13)
+
+- The Twins' names: twin A is **ONE**, twin B **ZERO**, the combined form **BINARY**. The roster
+  and the catalogue show the pair as ONE & ZERO (BM-2X); the HUD and the round banners show
+  ONE & ZERO split and BINARY combined (`fighter_short()` in `ui.akr`).
+- Beam's Arc Jab hits as far as its cannon reaches (x 1.8–9.0); the cannon is hurtable to its
+  muzzle on frames 6–14.
+
 ## Open questions
 
 - The Double-blade Hero's second Twin Cut: one animation played twice, or an `atk_n` variant?
@@ -1068,7 +1076,5 @@ Void Step's gone frames, 7–18).
   so in practice one). If that proves too strong, cap it at one hit a move.
 - The nuclear meter's rate (a bar per 480 damage taken) and whether it carries between rounds
   (it does) want human play.
-- The Twins' names. "Twins" stays the code identifier and the roster shows TWINS, model BM-2X;
-  proposed for the two: twin A **ONE** and twin B **ZERO** (binary), combined **BINARY**.
 - The Twins' fusion rate (+1 a frame combined, a bar in 20 s) and whether every round should
   start split (it does) want human play; so does the partner's delay (6 frames).

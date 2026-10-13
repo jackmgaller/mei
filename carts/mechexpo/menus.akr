@@ -682,14 +682,14 @@ fn draw_fight_overlay() {
                 let b = sb()
                 str_append(b, 64, who_label(f.round_winner))
                 str_append(b, 64, " TAKES THE ROUND")
-                hud_banner(mech_short(f.f[f.round_winner].mech), b, t, C_WHITE)
+                hud_banner(fighter_short(&f.f[f.round_winner]), b, t, C_WHITE)
             } else {
                 hud_banner("DRAW", "NO DECISION", t, C_WHITE)
             }
         }
         MatchOver => {
             if f.winner == 0 || f.winner == 1 {
-                hud_banner(mech_short(f.f[f.winner].mech), "WINS THE DEMONSTRATION", t, C_YELLOW)
+                hud_banner(fighter_short(&f.f[f.winner]), "WINS THE DEMONSTRATION", t, C_YELLOW)
             } else {
                 hud_banner("DRAW GAME", null, t, C_WHITE)
             }

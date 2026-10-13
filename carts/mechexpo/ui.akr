@@ -130,6 +130,11 @@ fn barcode(x: s32, y: s32, n: s32, h: s32, col: u32) {
 
 fn mech_name(m: Mech) -> *u8 { return ROSTER[mech_slot(m)].name }
 fn mech_short(m: Mech) -> *u8 { return ROSTER[mech_slot(m)].short }
+// A fighter's short name, as its form shows it: the Twins are ONE & ZERO split, BINARY combined.
+fn fighter_short(f: *Fighter) -> *u8 {
+    if f.mech == Mech.Twins && f.body == Mech.Twins { return "BINARY" }
+    return mech_short(f.mech)
+}
 fn mech_model(m: Mech) -> *u8 { return ROSTER[mech_slot(m)].model }
 fn mech_maker(m: Mech) -> *u8 { return mech_maker_of(m).name }
 fn mech_maker_short(m: Mech) -> *u8 { return mech_maker_of(m).short }

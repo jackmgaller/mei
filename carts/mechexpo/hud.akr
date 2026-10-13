@@ -244,11 +244,11 @@ private fn draw_name(f: *Fight, s: s32, who: *u8) {
     let ty = HUD_BAR_Y + HUD_BAR_H + 2
     if s == 0 {
         let x = txt(FONT_LABEL, HUD_BAR_X0 + 6, ty, who, C_RED, ALIGN_LEFT)
-        txt(FONT_LABEL, x + 4, ty, mech_short(f.f[0].mech), C_WHITE, ALIGN_LEFT)
+        txt(FONT_LABEL, x + 4, ty, fighter_short(&f.f[0]), C_WHITE, ALIGN_LEFT)
     } else {
         let x1 = 320 - HUD_BAR_X0 - 6
         txt(FONT_LABEL, x1, ty, who, C_SKY, ALIGN_RIGHT)
-        txt(FONT_LABEL, x1 - txt_w(FONT_LABEL, who) - 4, ty, mech_short(f.f[1].mech), C_WHITE, ALIGN_RIGHT)
+        txt(FONT_LABEL, x1 - txt_w(FONT_LABEL, who) - 4, ty, fighter_short(&f.f[1]), C_WHITE, ALIGN_RIGHT)
     }
 }
 

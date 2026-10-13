@@ -127,8 +127,8 @@ const ROSTER: [10]Slot = [
            blurb: "TREADS, ARMOUR,\nCOMMAND GRABS", hint: "" },
     Slot { maker: CO_BINARY, mech: Mech.Twins as s32, rule: RULE_BASES, bit: 0x10, mystery: true,
            emblem: UI_EMBLEM_BINARY, emblem24: UI_EMBLEM24_BINARY, epal: PAL_POWER,
-           name: "TWINS", short: "TWINS", card: "TWINS", model: "BM-2X", height: 120, stats: 0x3433,
-           blurb: "TWO SMALL MECHS,\nOR ONE COMBINED", hint: "CLEAR THE ARCADE\nWITH EACH\nBASE MECH" },
+           name: "ONE & ZERO", short: "ONE & ZERO", card: "1 & 0", model: "BM-2X", height: 120, stats: 0x3433,
+           blurb: "ONE AND ZERO,\nOR BINARY COMBINED", hint: "CLEAR THE ARCADE\nWITH EACH\nBASE MECH" },
     // the echoes, each below its base
     Slot { maker: CO_UMBRAL, echo: true, mech: Mech.Doubleblade as s32, rule: RULE_CLEAR, arg: 0, bit: 0x01,
            mystery: true, emblem: UI_EMBLEM_ECHO, emblem24: UI_EMBLEM24_UMBRAL, epal: PAL_EMBLEM,
