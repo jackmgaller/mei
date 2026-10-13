@@ -1,0 +1,1307 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_roof_city_quay",
+ "budget": {
+  "vertices": 2000,
+  "triangles": 600
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.62
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "dark": {
+   "color": "#141a30"
+  },
+  "quay": {
+   "color": "#2a3048"
+  },
+  "quay_edge": {
+   "color": "#4a5470"
+  },
+  "hull": {
+   "color": "#b4bed6",
+   "class": "emissive"
+  },
+  "hull_band": {
+   "color": "#2a3a6a"
+  },
+  "mast": {
+   "color": "#7c88aa",
+   "class": "emissive"
+  },
+  "green": {
+   "color": "#40e070",
+   "class": "emissive"
+  },
+  "warm": {
+   "color": "#e8b060",
+   "class": "emissive"
+  },
+  "lamp": {
+   "color": "#ffd890",
+   "class": "emissive"
+  },
+  "neon_c": {
+   "color": "#38c8e0",
+   "class": "emissive"
+  },
+  "neon_p": {
+   "color": "#e050a0",
+   "class": "emissive"
+  },
+  "neon_y": {
+   "color": "#e0c040",
+   "class": "emissive"
+  },
+  "refl_warm": {
+   "color": "#f0c060",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_refl_warm.png",
+    "projection": "fit"
+   }
+  },
+  "refl_white": {
+   "color": "#dcd6cc",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_refl_white.png",
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "prom",
+   "op": "box",
+   "size": [
+    26.0,
+    1.0,
+    260.0
+   ],
+   "material": "quay",
+   "transform": {
+    "translate": [
+     67.0,
+     -46.5,
+     170.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_0",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     90.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_1",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     100.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_2",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     110.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_3",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     120.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_4",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     130.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_5",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     140.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_6",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     150.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_7",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     160.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_8",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     170.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_9",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     180.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_10",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     190.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_11",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     200.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_12",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     210.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_13",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     220.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_14",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     230.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_15",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     240.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "lamp_16",
+   "op": "box",
+   "size": [
+    1.8,
+    1.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     79.0,
+     -40.5,
+     250.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "kiosk_0",
+   "op": "box",
+   "size": [
+    6.0,
+    4.0,
+    7.0
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     73.0,
+     -44.0,
+     84.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "kiosk_0_s",
+   "op": "box",
+   "size": [
+    6.2,
+    1.8,
+    0.2
+   ],
+   "material": "neon_c",
+   "transform": {
+    "translate": [
+     73.0,
+     -41.4,
+     80.4
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "kiosk_1",
+   "op": "box",
+   "size": [
+    6.0,
+    4.0,
+    7.0
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     73.0,
+     -44.0,
+     128.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "kiosk_1_s",
+   "op": "box",
+   "size": [
+    6.2,
+    1.8,
+    0.2
+   ],
+   "material": "neon_p",
+   "transform": {
+    "translate": [
+     73.0,
+     -41.4,
+     124.4
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "kiosk_2",
+   "op": "box",
+   "size": [
+    6.0,
+    4.0,
+    7.0
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     73.0,
+     -44.0,
+     176.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "kiosk_2_s",
+   "op": "box",
+   "size": [
+    6.2,
+    1.8,
+    0.2
+   ],
+   "material": "neon_y",
+   "transform": {
+    "translate": [
+     73.0,
+     -41.4,
+     172.4
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "kiosk_3",
+   "op": "box",
+   "size": [
+    6.0,
+    4.0,
+    7.0
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     73.0,
+     -44.0,
+     222.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "kiosk_3_s",
+   "op": "box",
+   "size": [
+    6.2,
+    1.8,
+    0.2
+   ],
+   "material": "neon_c",
+   "transform": {
+    "translate": [
+     73.0,
+     -41.4,
+     218.4
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "pylon_0",
+   "op": "box",
+   "size": [
+    1.6,
+    7.0,
+    0.2
+   ],
+   "material": "neon_p",
+   "transform": {
+    "translate": [
+     77.0,
+     -41.5,
+     104.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "pylon_1",
+   "op": "box",
+   "size": [
+    1.6,
+    7.0,
+    0.2
+   ],
+   "material": "neon_c",
+   "transform": {
+    "translate": [
+     77.0,
+     -41.5,
+     198.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "launch",
+   "op": "box",
+   "size": [
+    16.0,
+    2.4,
+    0.2
+   ],
+   "material": "hull_band",
+   "transform": {
+    "translate": [
+     152.0,
+     -46.8,
+     196.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "launch_cab",
+   "op": "box",
+   "size": [
+    7.0,
+    2.2,
+    0.2
+   ],
+   "material": "warm",
+   "transform": {
+    "translate": [
+     150.0,
+     -44.6,
+     196.3
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "launch_g",
+   "op": "box",
+   "size": [
+    0.9,
+    0.9,
+    0.2
+   ],
+   "material": "green",
+   "transform": {
+    "translate": [
+     159.6,
+     -45.2,
+     195.8
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "launch_r",
+   "op": "box",
+   "size": [
+    7.0,
+    12.0,
+    0.2
+   ],
+   "material": "refl_warm",
+   "transform": {
+    "translate": [
+     150.0,
+     -54.3,
+     195.5
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "pier",
+   "op": "box",
+   "size": [
+    56.0,
+    1.0,
+    8.0
+   ],
+   "material": "quay",
+   "transform": {
+    "translate": [
+     108.0,
+     -46.5,
+     140.0
+    ]
+   },
+   "faces": {
+    "back": "quay_edge"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "right",
+    "left"
+   ]
+  },
+  {
+   "id": "hull",
+   "op": "mesh",
+   "vertices": [
+    [
+     83.0,
+     -42.0,
+     124.0
+    ],
+    [
+     132.0,
+     -41.4,
+     124.0
+    ],
+    [
+     122.0,
+     -48.0,
+     124.0
+    ],
+    [
+     84.0,
+     -48.0,
+     124.0
+    ],
+    [
+     83.0,
+     -42.0,
+     133.0
+    ],
+    [
+     132.0,
+     -41.4,
+     133.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "hull",
+    "quay"
+   ],
+   "material": "hull"
+  },
+  {
+   "id": "hull_band",
+   "op": "box",
+   "size": [
+    50.0,
+    0.8,
+    0.2
+   ],
+   "material": "hull_band",
+   "transform": {
+    "translate": [
+     108.0,
+     -45.8,
+     123.75
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "mast_0",
+   "op": "box",
+   "size": [
+    0.8,
+    31.0,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     91.0,
+     -26.5,
+     128.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "mast_1",
+   "op": "box",
+   "size": [
+    0.8,
+    34.0,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     100.5,
+     -25.0,
+     128.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "yard_1_0",
+   "op": "box",
+   "size": [
+    14.0,
+    0.6,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     100.5,
+     -27.72,
+     127.75
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "yard_1_1",
+   "op": "box",
+   "size": [
+    11.0,
+    0.6,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     100.5,
+     -19.56,
+     127.75
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "yard_1_2",
+   "op": "box",
+   "size": [
+    8.0,
+    0.6,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     100.5,
+     -12.76,
+     127.75
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "mast_2",
+   "op": "box",
+   "size": [
+    0.8,
+    34.0,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     110.0,
+     -25.0,
+     128.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "yard_2_0",
+   "op": "box",
+   "size": [
+    14.0,
+    0.6,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     110.0,
+     -27.72,
+     127.6
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "yard_2_1",
+   "op": "box",
+   "size": [
+    11.0,
+    0.6,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     110.0,
+     -19.56,
+     127.6
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "yard_2_2",
+   "op": "box",
+   "size": [
+    8.0,
+    0.6,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     110.0,
+     -12.76,
+     127.6
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "mast_3",
+   "op": "box",
+   "size": [
+    0.8,
+    31.0,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     119.5,
+     -26.5,
+     128.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "yard_3_0",
+   "op": "box",
+   "size": [
+    14.0,
+    0.6,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     119.5,
+     -28.98,
+     127.45
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "yard_3_1",
+   "op": "box",
+   "size": [
+    11.0,
+    0.6,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     119.5,
+     -21.54,
+     127.45
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "yard_3_2",
+   "op": "box",
+   "size": [
+    8.0,
+    0.6,
+    0.2
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     119.5,
+     -15.34,
+     127.45
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "deck_lights",
+   "op": "box",
+   "size": [
+    38.0,
+    0.6,
+    0.2
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     106.0,
+     -40.8,
+     127.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "ship_refl",
+   "op": "box",
+   "size": [
+    35.2,
+    10.0,
+    0.2
+   ],
+   "material": "refl_white",
+   "transform": {
+    "translate": [
+     108.0,
+     -53.3,
+     123.5
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  }
+ ]
+}

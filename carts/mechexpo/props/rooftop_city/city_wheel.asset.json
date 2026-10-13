@@ -1,0 +1,111 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_roof_city_wheel",
+ "budget": {
+  "vertices": 2000,
+  "triangles": 200
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.62
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "steel": {
+   "color": "#3c4568"
+  },
+  "wheel": {
+   "color": "#9fe0f0",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_wheel.png",
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "disc",
+   "op": "box",
+   "size": [
+    68.0,
+    68.0,
+    0.2
+   ],
+   "material": "wheel",
+   "transform": {
+    "translate": [
+     18.0,
+     20.0,
+     200.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "leg_0",
+   "op": "box",
+   "size": [
+    1.6,
+    59.5504,
+    1.6
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     9.75,
+     -10.0,
+     202.5
+    ],
+    "rotate": [
+     0,
+     0,
+     -13.103
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "leg_1",
+   "op": "box",
+   "size": [
+    1.6,
+    59.5504,
+    1.6
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     26.25,
+     -10.0,
+     202.5
+    ],
+    "rotate": [
+     0,
+     0,
+     13.103
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  }
+ ]
+}

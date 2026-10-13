@@ -159,10 +159,10 @@ const STAGES: [2]Stage = [
                 StageProp { mesh: ASSET_EXPO_BANNER, x: -13.0, z: 21.0, near: 8.0 },
                 StageProp { mesh: ASSET_EXPO_BANNER, x: 11.0, z: 25.0, near: 8.0 },
                 StageProp {}],
-            // the city: the ranks of buildings, the landmarks and the street (roof_city3d.akr)
-            ncity: 6, city: [ASSET_STAGE_ROOF_CITY_NEAR, ASSET_STAGE_ROOF_CITY_MID,
-                             ASSET_STAGE_ROOF_CITY_UMEDA, ASSET_STAGE_ROOF_CITY_LATTICE,
-                             ASSET_STAGE_ROOF_CITY_HEP, ASSET_STAGE_ROOF_CITY_STREET, null, null],
+            // the city: Minato Mirai's towers and landmarks and the quay (roof_city3d.akr)
+            ncity: 6, city: [ASSET_STAGE_ROOF_CITY_MM, ASSET_STAGE_ROOF_CITY_TOWERS,
+                             ASSET_STAGE_ROOF_CITY_WHEEL, ASSET_STAGE_ROOF_CITY_BAY,
+                             ASSET_STAGE_ROOF_CITY_VENUE, ASSET_STAGE_ROOF_CITY_QUAY, null, null],
             music: 0, nevents: 0, events: [StageEvent {}, StageEvent {}, StageEvent {}, StageEvent {}] },
 ]
 

@@ -4,11 +4,11 @@
   "name": "stage_roof_city3d",
   "assets": [
     {
-      "name": "stage_roof_city_near",
-      "mesh": "stage_roof_city_near.bin",
+      "name": "stage_roof_city_mm",
+      "mesh": "stage_roof_city_mm.bin",
       "levels": [],
-      "vertices": 250,
-      "triangles": 218,
+      "vertices": 103,
+      "triangles": 76,
       "palette": {
         "palettes": [
           204
@@ -17,29 +17,21 @@
           {
             "colour": 3265,
             "class": "emissive",
-            "color": "#38b8d0",
+            "color": "#8ab8e8",
             "materials": [
-              "neon_c"
+              "crown"
             ]
           },
           {
             "colour": 3266,
             "class": "emissive",
-            "color": "#c8408c",
+            "color": "#e8eef8",
             "materials": [
-              "neon_p"
+              "crown_w"
             ]
           },
           {
             "colour": 3267,
-            "class": "emissive",
-            "color": "#d0b438",
-            "materials": [
-              "neon_y"
-            ]
-          },
-          {
-            "colour": 3268,
             "class": "emissive",
             "color": "#ff3a2a",
             "materials": [
@@ -50,11 +42,11 @@
       },
       "textures": [
         {
-          "material": "n_rf",
-          "tile": "a468c94a155e243e",
+          "material": "f_of",
+          "tile": "d1b358d2d6753ffa",
           "source": {
-            "image": "art/city_n_rf.png",
-            "sha256": "42078ed9375ff41024c6accb76a25778ebb393eb078bcfaf29593098fc795585"
+            "image": "art/city_f_of.png",
+            "sha256": "d1f99084b983ccc1a5e52047ab39f8f86527dbe756042882e0ebe8036eff098b"
           },
           "width": 32,
           "height": 32,
@@ -63,25 +55,23 @@
           "repeat": true,
           "cutout": false,
           "colours": [
-            "#101831",
-            "#182942",
-            "#bd8c52",
-            "#9c6b39",
-            "#debd84"
+            "#21294a",
+            "#31315a",
+            "#debd84",
+            "#bd8c52"
           ],
           "slot": 14,
-          "x": 216,
-          "y": 40,
+          "x": 160,
+          "y": 0,
           "gutter": 0,
-          "window": 11227,
+          "window": 931,
           "palette": 209,
           "first_colour": 3344,
           "indices": {
-            "#101831": 1,
-            "#182942": 2,
-            "#bd8c52": 3,
-            "#9c6b39": 4,
-            "#debd84": 5
+            "#21294a": 1,
+            "#31315a": 2,
+            "#debd84": 3,
+            "#bd8c52": 4
           },
           "vram_bytes": 512,
           "night": "per_colour",
@@ -91,49 +81,17 @@
               2
             ],
             [
-              6,
-              8
-            ],
-            [
-              12,
-              14
-            ],
-            [
-              24,
-              26
-            ],
-            [
-              40,
-              42
-            ],
-            [
-              66,
-              68
-            ],
-            [
-              90,
-              92
-            ],
-            [
-              110,
-              112
-            ],
-            [
-              116,
-              118
-            ],
-            [
-              168,
-              170
+              10,
+              12
             ]
           ]
         },
         {
-          "material": "n_rs",
-          "tile": "2334183a63984cfa",
+          "material": "f_os",
+          "tile": "d2651bab260aedc7",
           "source": {
-            "image": "art/city_n_rs.png",
-            "sha256": "64a6a61db27d456de5adcff314e7aa673ff692c20383b847bdb6f557fbd8bcdb"
+            "image": "art/city_f_os.png",
+            "sha256": "29b186d6ed70eb18057e16099eef345a8bb95ef5267c968d708c8cbdbb11c54f"
           },
           "width": 32,
           "height": 32,
@@ -142,25 +100,27 @@
           "repeat": true,
           "cutout": false,
           "colours": [
-            "#081021",
-            "#101829",
-            "#9c7342",
-            "#845a31",
-            "#b59c6b"
+            "#181839",
+            "#bd8c52",
+            "#21294a",
+            "#debd84",
+            "#9c6b39",
+            "#7b9cc6"
           ],
           "slot": 14,
-          "x": 152,
-          "y": 64,
+          "x": 192,
+          "y": 0,
           "gutter": 0,
-          "window": 17307,
+          "window": 963,
           "palette": 209,
           "first_colour": 3344,
           "indices": {
-            "#081021": 6,
-            "#101829": 7,
-            "#9c7342": 8,
-            "#845a31": 9,
-            "#b59c6b": 10
+            "#21294a": 1,
+            "#debd84": 3,
+            "#bd8c52": 4,
+            "#181839": 5,
+            "#9c6b39": 6,
+            "#7b9cc6": 7
           },
           "vram_bytes": 512,
           "night": "per_colour",
@@ -170,57 +130,17 @@
               4
             ],
             [
-              8,
-              10
-            ],
-            [
-              14,
+              12,
               16
-            ],
-            [
-              26,
-              28
-            ],
-            [
-              30,
-              32
-            ],
-            [
-              42,
-              46
-            ],
-            [
-              68,
-              70
-            ],
-            [
-              72,
-              74
-            ],
-            [
-              94,
-              96
-            ],
-            [
-              114,
-              116
-            ],
-            [
-              120,
-              122
-            ],
-            [
-              172,
-              174
             ]
           ]
         },
         {
-          "material": "n_df",
-          "tile": "ff8d07c6c5caacb2",
+          "material": "f_gf",
+          "tile": "7cae6aa4f2991ae4",
           "source": {
-            "image": "art/city_n_df.png",
-            "sha256": "71877ba94989e27c40b91dd8e1795b67a135b6fd4ed41f81103e511069ef8d54"
+            "image": "art/city_f_gf.png",
+            "sha256": "ab4c6049486a1e91a03c661fb8de5dd932a09d9b4d1323365d361df5c6879ca7"
           },
           "width": 32,
           "height": 32,
@@ -229,147 +149,51 @@
           "repeat": true,
           "cutout": false,
           "colours": [
-            "#101831",
-            "#182942",
-            "#debd84",
-            "#7b9cc6"
-          ],
-          "slot": 14,
-          "x": 184,
-          "y": 64,
-          "gutter": 0,
-          "window": 17339,
-          "palette": 209,
-          "first_colour": 3344,
-          "indices": {
-            "#101831": 1,
-            "#182942": 2,
-            "#debd84": 5,
-            "#7b9cc6": 11
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
-              18,
-              20
-            ],
-            [
-              126,
-              128
-            ],
-            [
-              154,
-              156
-            ]
-          ]
-        },
-        {
-          "material": "n_ds",
-          "tile": "04b1f628c4a597dc",
-          "source": {
-            "image": "art/city_n_ds.png",
-            "sha256": "9fca370beaeb8bded75c0d6c0a09f1bf1fba852b99b91f4da839b749d5ba091b"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#081021",
-            "#101829",
-            "#b59c6b",
-            "#6384a5"
-          ],
-          "slot": 14,
-          "x": 216,
-          "y": 72,
-          "gutter": 0,
-          "window": 19419,
-          "palette": 209,
-          "first_colour": 3344,
-          "indices": {
-            "#081021": 6,
-            "#101829": 7,
-            "#b59c6b": 10,
-            "#6384a5": 12
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
-              20,
-              22
-            ],
-            [
-              128,
-              130
-            ],
-            [
-              158,
-              160
-            ]
-          ]
-        },
-        {
-          "material": "n_of",
-          "tile": "a88400a5fa4cefb5",
-          "source": {
-            "image": "art/city_n_of.png",
-            "sha256": "8beac479377991e21e3c8acc20f37b04558c168605a15cf4f516cd813382178a"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#101831",
-            "#182942",
+            "#294273",
+            "#7b9cc6",
             "#debd84",
             "#bd8c52",
-            "#7b9cc6"
+            "#21294a",
+            "#9c6b39"
           ],
           "slot": 14,
-          "x": 152,
-          "y": 96,
+          "x": 224,
+          "y": 0,
           "gutter": 0,
-          "window": 25499,
+          "window": 995,
           "palette": 209,
           "first_colour": 3344,
           "indices": {
-            "#101831": 1,
-            "#182942": 2,
-            "#bd8c52": 3,
-            "#debd84": 5,
-            "#7b9cc6": 11
+            "#21294a": 1,
+            "#debd84": 3,
+            "#bd8c52": 4,
+            "#9c6b39": 6,
+            "#7b9cc6": 7,
+            "#294273": 8
           },
           "vram_bytes": 512,
           "night": "per_colour",
           "faces": [
             [
-              32,
-              34
+              46,
+              48
             ],
             [
-              100,
-              102
+              54,
+              56
             ],
             [
-              190,
-              192
+              62,
+              64
             ]
           ]
         },
         {
-          "material": "n_os",
-          "tile": "50d67118c7c33666",
+          "material": "f_gs",
+          "tile": "8faf05e679cdb078",
           "source": {
-            "image": "art/city_n_os.png",
-            "sha256": "b8bd8d7246b419c4b8a2905100214263e5907ab47eda5f421abfc45bca7d5c87"
+            "image": "art/city_f_gs.png",
+            "sha256": "6223f75b159179136858d5c8d02a422726053606451ebd3b3d43579a6e6cfed8"
           },
           "width": 32,
           "height": 32,
@@ -378,434 +202,202 @@
           "repeat": true,
           "cutout": false,
           "colours": [
-            "#081021",
-            "#101829",
-            "#b59c6b",
-            "#9c7342",
-            "#6384a5"
+            "#bd8c52",
+            "#183152",
+            "#181839",
+            "#debd84",
+            "#7b9cc6",
+            "#9c6b39"
           ],
           "slot": 14,
-          "x": 184,
-          "y": 96,
+          "x": 160,
+          "y": 32,
           "gutter": 0,
-          "window": 25531,
+          "window": 9123,
           "palette": 209,
           "first_colour": 3344,
           "indices": {
-            "#081021": 6,
-            "#101829": 7,
-            "#9c7342": 8,
-            "#b59c6b": 10,
-            "#6384a5": 12
+            "#debd84": 3,
+            "#bd8c52": 4,
+            "#181839": 5,
+            "#9c6b39": 6,
+            "#7b9cc6": 7,
+            "#183152": 9
           },
           "vram_bytes": 512,
           "night": "per_colour",
           "faces": [
             [
-              34,
-              36
+              48,
+              50
             ],
             [
-              38,
-              40
+              56,
+              58
             ],
             [
-              104,
-              106
-            ],
-            [
-              192,
-              194
+              64,
+              66
             ]
           ]
         }
       ],
       "windows": [
-        11227,
-        17307,
-        17339,
-        19419,
-        25499,
-        25531
+        931,
+        963,
+        995,
+        9123
       ],
       "materials": {
-        "n_df": {
-          "color": "#141b33",
+        "crown": {
+          "color": "#8ab8e8",
           "class": "emissive",
-          "palette_colour": null,
+          "palette_colour": 3265,
           "tag": null,
           "triangles": 6,
           "faces": [
             [
-              18,
-              20
-            ],
-            [
-              126,
-              128
-            ],
-            [
-              154,
-              156
+              4,
+              10
             ]
           ]
         },
-        "n_ds": {
-          "color": "#141b33",
+        "crown_w": {
+          "color": "#e8eef8",
           "class": "emissive",
-          "palette_colour": null,
+          "palette_colour": 3266,
           "tag": null,
-          "triangles": 6,
+          "triangles": 12,
           "faces": [
             [
-              20,
+              16,
               22
             ],
             [
-              128,
-              130
+              52,
+              54
             ],
             [
-              158,
-              160
+              60,
+              62
+            ],
+            [
+              68,
+              70
             ]
           ]
         },
-        "n_of": {
-          "color": "#141b33",
+        "f_gf": {
+          "color": "#262a48",
           "class": "emissive",
           "palette_colour": null,
           "tag": null,
           "triangles": 6,
           "faces": [
             [
-              32,
-              34
+              46,
+              48
             ],
             [
-              100,
-              102
+              54,
+              56
             ],
             [
-              190,
-              192
+              62,
+              64
             ]
           ]
         },
-        "n_os": {
-          "color": "#141b33",
+        "f_gs": {
+          "color": "#262a48",
           "class": "emissive",
           "palette_colour": null,
           "tag": null,
-          "triangles": 8,
+          "triangles": 6,
           "faces": [
             [
-              34,
-              36
+              48,
+              50
             ],
             [
-              38,
-              40
+              56,
+              58
             ],
             [
-              104,
-              106
-            ],
-            [
-              192,
-              194
+              64,
+              66
             ]
           ]
         },
-        "n_rf": {
-          "color": "#141b33",
+        "f_of": {
+          "color": "#262a48",
           "class": "emissive",
           "palette_colour": null,
           "tag": null,
-          "triangles": 20,
+          "triangles": 4,
           "faces": [
             [
               0,
               2
             ],
             [
-              6,
-              8
-            ],
-            [
-              12,
-              14
-            ],
-            [
-              24,
-              26
-            ],
-            [
-              40,
-              42
-            ],
-            [
-              66,
-              68
-            ],
-            [
-              90,
-              92
-            ],
-            [
-              110,
-              112
-            ],
-            [
-              116,
-              118
-            ],
-            [
-              168,
-              170
-            ]
-          ]
-        },
-        "n_roof": {
-          "color": "#292f50",
-          "class": "surface",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 26,
-          "faces": [
-            [
-              4,
-              6
-            ],
-            [
               10,
               12
-            ],
-            [
-              16,
-              18
-            ],
-            [
-              22,
-              24
-            ],
-            [
-              28,
-              30
-            ],
-            [
-              36,
-              38
-            ],
-            [
-              70,
-              72
-            ],
-            [
-              92,
-              94
-            ],
-            [
-              102,
-              104
-            ],
-            [
-              112,
-              114
-            ],
-            [
-              118,
-              120
-            ],
-            [
-              156,
-              158
-            ],
-            [
-              170,
-              172
             ]
           ]
         },
-        "n_rs": {
-          "color": "#141b33",
+        "f_os": {
+          "color": "#262a48",
           "class": "emissive",
           "palette_colour": null,
           "tag": null,
-          "triangles": 26,
+          "triangles": 6,
           "faces": [
             [
               2,
               4
             ],
             [
-              8,
-              10
-            ],
-            [
-              14,
+              12,
               16
-            ],
-            [
-              26,
-              28
-            ],
-            [
-              30,
-              32
-            ],
-            [
-              42,
-              46
-            ],
-            [
-              68,
-              70
-            ],
-            [
-              72,
-              74
-            ],
-            [
-              94,
-              96
-            ],
-            [
-              114,
-              116
-            ],
-            [
-              120,
-              122
-            ],
-            [
-              172,
-              174
             ]
           ]
         },
-        "neon_c": {
-          "color": "#38b8d0",
-          "class": "emissive",
-          "palette_colour": 3265,
-          "tag": null,
-          "triangles": 8,
-          "faces": [
-            [
-              96,
-              98
-            ],
-            [
-              106,
-              108
-            ],
-            [
-              122,
-              124
-            ],
-            [
-              186,
-              188
-            ]
-          ]
-        },
-        "neon_p": {
-          "color": "#c8408c",
-          "class": "emissive",
-          "palette_colour": 3266,
+        "f_roof": {
+          "color": "#2c3254",
+          "class": "surface",
+          "palette_colour": null,
           "tag": null,
           "triangles": 6,
           "faces": [
             [
-              152,
-              154
+              50,
+              52
             ],
             [
-              182,
-              184
+              58,
+              60
             ],
             [
-              214,
-              216
-            ]
-          ]
-        },
-        "neon_y": {
-          "color": "#d0b438",
-          "class": "emissive",
-          "palette_colour": 3267,
-          "tag": null,
-          "triangles": 14,
-          "faces": [
-            [
-              98,
-              100
-            ],
-            [
-              108,
-              110
-            ],
-            [
-              124,
-              126
-            ],
-            [
-              150,
-              152
-            ],
-            [
-              184,
-              186
-            ],
-            [
-              188,
-              190
-            ],
-            [
-              216,
-              218
-            ]
-          ]
-        },
-        "plant": {
-          "color": "#2c3556",
-          "class": "surface",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 32,
-          "faces": [
-            [
-              74,
-              90
-            ],
-            [
-              160,
-              168
-            ],
-            [
-              174,
-              182
+              66,
+              68
             ]
           ]
         },
         "red": {
           "color": "#ff3a2a",
           "class": "emissive",
-          "palette_colour": 3268,
+          "palette_colour": 3267,
           "tag": null,
-          "triangles": 36,
+          "triangles": 24,
           "faces": [
             [
-              46,
-              58
+              28,
+              46
             ],
             [
-              130,
-              142
-            ],
-            [
-              194,
-              206
+              70,
+              76
             ]
           ]
         },
@@ -814,19 +406,11 @@
           "class": "surface",
           "palette_colour": null,
           "tag": null,
-          "triangles": 24,
+          "triangles": 6,
           "faces": [
             [
-              58,
-              66
-            ],
-            [
-              142,
-              150
-            ],
-            [
-              206,
-              214
+              22,
+              28
             ]
           ]
         }
@@ -834,11 +418,11 @@
       "tags": {}
     },
     {
-      "name": "stage_roof_city_mid",
-      "mesh": "stage_roof_city_mid.bin",
+      "name": "stage_roof_city_towers",
+      "mesh": "stage_roof_city_towers.bin",
       "levels": [],
-      "vertices": 118,
-      "triangles": 98,
+      "vertices": 89,
+      "triangles": 64,
       "palette": {
         "palettes": [
           205
@@ -847,9 +431,9 @@
           {
             "colour": 3281,
             "class": "emissive",
-            "color": "#ff3a2a",
+            "color": "#8ab8e8",
             "materials": [
-              "red"
+              "crown"
             ]
           }
         ]
@@ -857,10 +441,10 @@
       "textures": [
         {
           "material": "m_of",
-          "tile": "e0c613b0811f2671",
+          "tile": "3a78eeaa9ea61fb3",
           "source": {
             "image": "art/city_m_of.png",
-            "sha256": "9cfa3e9a4013cf36076a384bceabbecfb56f8838272a74a82bdb298aecde3499"
+            "sha256": "f544afb3b5ab43c493cd45393742296be622c19a517d4fec62708f2c42f9b121"
           },
           "width": 32,
           "height": 32,
@@ -869,27 +453,27 @@
           "repeat": true,
           "cutout": false,
           "colours": [
-            "#29294a",
-            "#313963",
-            "#ceb57b",
-            "#ad8452",
-            "#7b94bd",
-            "#946b42"
+            "#182139",
+            "#212952",
+            "#bd8c52",
+            "#9c6b39",
+            "#debd84",
+            "#7b9cc6"
           ],
           "slot": 14,
-          "x": 216,
-          "y": 104,
+          "x": 192,
+          "y": 32,
           "gutter": 0,
-          "window": 27611,
-          "palette": 210,
-          "first_colour": 3360,
+          "window": 9155,
+          "palette": 209,
+          "first_colour": 3344,
           "indices": {
-            "#29294a": 1,
-            "#313963": 2,
-            "#ceb57b": 3,
-            "#ad8452": 4,
-            "#7b94bd": 5,
-            "#946b42": 6
+            "#debd84": 3,
+            "#bd8c52": 4,
+            "#9c6b39": 6,
+            "#7b9cc6": 7,
+            "#182139": 10,
+            "#212952": 11
           },
           "vram_bytes": 512,
           "night": "per_colour",
@@ -899,33 +483,29 @@
               2
             ],
             [
-              4,
-              6
+              8,
+              10
             ],
             [
-              12,
-              14
+              16,
+              18
             ],
             [
-              60,
-              62
+              34,
+              36
             ],
             [
-              82,
-              84
-            ],
-            [
-              94,
-              96
+              46,
+              48
             ]
           ]
         },
         {
           "material": "m_os",
-          "tile": "0e2fec0a19b07308",
+          "tile": "ca5b8fb2bf388cb4",
           "source": {
             "image": "art/city_m_os.png",
-            "sha256": "89b8332cf724cc966f24f710745c41f3d99398e1f289926d0a5ad92825d0b253"
+            "sha256": "41a21fded385b4c71fb95a643ba978cc908141d2c363e5a74829b1996babd5f5"
           },
           "width": 32,
           "height": 32,
@@ -934,27 +514,25 @@
           "repeat": true,
           "cutout": false,
           "colours": [
-            "#212139",
-            "#29294a",
-            "#ad946b",
-            "#94734a",
-            "#637b9c",
-            "#7b5a39"
+            "#101029",
+            "#101839",
+            "#7b9cc6",
+            "#debd84",
+            "#bd8c52"
           ],
           "slot": 14,
-          "x": 152,
-          "y": 128,
+          "x": 224,
+          "y": 32,
           "gutter": 0,
-          "window": 33691,
-          "palette": 210,
-          "first_colour": 3360,
+          "window": 9187,
+          "palette": 209,
+          "first_colour": 3344,
           "indices": {
-            "#29294a": 1,
-            "#212139": 7,
-            "#ad946b": 8,
-            "#94734a": 9,
-            "#637b9c": 10,
-            "#7b5a39": 11
+            "#debd84": 3,
+            "#bd8c52": 4,
+            "#7b9cc6": 7,
+            "#101029": 12,
+            "#101839": 13
           },
           "vram_bytes": 512,
           "night": "per_colour",
@@ -964,196 +542,29 @@
               4
             ],
             [
-              6,
-              8
-            ],
-            [
-              14,
-              16
-            ],
-            [
-              62,
-              64
-            ],
-            [
-              84,
-              86
-            ],
-            [
-              96,
-              98
-            ]
-          ]
-        },
-        {
-          "material": "m_df",
-          "tile": "29a1242b8a197ad9",
-          "source": {
-            "image": "art/city_m_df.png",
-            "sha256": "b035839623f3d576897085a189142c274d252f976885c2e680a06ada166ca268"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#29294a",
-            "#313963",
-            "#ad8452"
-          ],
-          "slot": 14,
-          "x": 184,
-          "y": 128,
-          "gutter": 0,
-          "window": 33723,
-          "palette": 209,
-          "first_colour": 3344,
-          "indices": {
-            "#29294a": 13,
-            "#313963": 14,
-            "#ad8452": 15
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
-              8,
-              10
-            ],
-            [
-              64,
-              66
-            ],
-            [
-              68,
-              70
-            ],
-            [
-              78,
-              80
-            ],
-            [
-              86,
-              88
-            ]
-          ]
-        },
-        {
-          "material": "m_ds",
-          "tile": "22e226e70a0cdc0d",
-          "source": {
-            "image": "art/city_m_ds.png",
-            "sha256": "c60197847b87a898c529ca7abc06b02b31d9ed4c6f465fea6ad0d66219f1dbd8"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#212139",
-            "#29294a",
-            "#94734a"
-          ],
-          "slot": 14,
-          "x": 0,
-          "y": 136,
-          "gutter": 0,
-          "window": 35587,
-          "palette": 210,
-          "first_colour": 3360,
-          "indices": {
-            "#29294a": 1,
-            "#212139": 7,
-            "#94734a": 9
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
               10,
               12
             ],
             [
-              66,
-              68
+              18,
+              20
             ],
-            [
-              70,
-              74
-            ],
-            [
-              80,
-              82
-            ],
-            [
-              88,
-              90
-            ]
-          ]
-        },
-        {
-          "material": "m_rf",
-          "tile": "0d6c0831d1f5558b",
-          "source": {
-            "image": "art/city_m_rf.png",
-            "sha256": "bf8d8b56810fd41d14661db10df299023f71f71aaf1e2d48b7827645c99d1240"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#29294a",
-            "#313963",
-            "#7b94bd",
-            "#ad8452",
-            "#ceb57b",
-            "#946b42"
-          ],
-          "slot": 14,
-          "x": 32,
-          "y": 136,
-          "gutter": 0,
-          "window": 35619,
-          "palette": 210,
-          "first_colour": 3360,
-          "indices": {
-            "#29294a": 1,
-            "#313963": 2,
-            "#ceb57b": 3,
-            "#ad8452": 4,
-            "#7b94bd": 5,
-            "#946b42": 6
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
             [
               36,
               38
             ],
             [
-              74,
-              76
-            ],
-            [
-              90,
-              92
+              48,
+              52
             ]
           ]
         },
         {
-          "material": "m_rs",
-          "tile": "610b0d777857bc2d",
+          "material": "m_rf",
+          "tile": "bf6300b8a16d4d44",
           "source": {
-            "image": "art/city_m_rs.png",
-            "sha256": "81a137272aa98e52911e93ad93692c6e2899d1c1913046b21c5a4e8cfd94aa8e"
+            "image": "art/city_m_rf.png",
+            "sha256": "e5bb9fb9fd245d5059a88f1e09266e1fc42d749d348cdc5c7472a79acd587d6d"
           },
           "width": 32,
           "height": 32,
@@ -1162,148 +573,296 @@
           "repeat": true,
           "cutout": false,
           "colours": [
-            "#212139",
-            "#29294a",
-            "#637b9c",
-            "#94734a",
-            "#ad946b",
-            "#7b5a39"
+            "#182139",
+            "#bd8c52",
+            "#212952",
+            "#7b9cc6",
+            "#debd84"
           ],
           "slot": 14,
-          "x": 64,
-          "y": 136,
+          "x": 128,
+          "y": 40,
           "gutter": 0,
-          "window": 35651,
-          "palette": 210,
-          "first_colour": 3360,
+          "window": 11139,
+          "palette": 209,
+          "first_colour": 3344,
           "indices": {
-            "#29294a": 1,
-            "#212139": 7,
-            "#ad946b": 8,
-            "#94734a": 9,
-            "#637b9c": 10,
-            "#7b5a39": 11
+            "#debd84": 3,
+            "#bd8c52": 4,
+            "#7b9cc6": 7,
+            "#182139": 10,
+            "#212952": 11
           },
           "vram_bytes": 512,
           "night": "per_colour",
           "faces": [
             [
+              4,
+              6
+            ],
+            [
+              20,
+              22
+            ],
+            [
+              26,
+              28
+            ],
+            [
               38,
               40
+            ]
+          ]
+        },
+        {
+          "material": "m_rs",
+          "tile": "247c126e85a9540b",
+          "source": {
+            "image": "art/city_m_rs.png",
+            "sha256": "04587cb11ca4c9166b1b14e7826c1c4ac366df0e0d1755d0f6b88a04bfc59a26"
+          },
+          "width": 32,
+          "height": 32,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#101029",
+            "#101839",
+            "#debd84",
+            "#bd8c52",
+            "#9c6b39"
+          ],
+          "slot": 14,
+          "x": 160,
+          "y": 64,
+          "gutter": 0,
+          "window": 17315,
+          "palette": 209,
+          "first_colour": 3344,
+          "indices": {
+            "#debd84": 3,
+            "#bd8c52": 4,
+            "#9c6b39": 6,
+            "#101029": 12,
+            "#101839": 13
+          },
+          "vram_bytes": 512,
+          "night": "per_colour",
+          "faces": [
+            [
+              6,
+              8
             ],
             [
-              76,
-              78
+              22,
+              24
             ],
             [
-              92,
-              94
+              28,
+              30
+            ],
+            [
+              40,
+              42
+            ],
+            [
+              44,
+              46
+            ]
+          ]
+        },
+        {
+          "material": "f_of",
+          "tile": "d1b358d2d6753ffa",
+          "source": {
+            "image": "art/city_f_of.png",
+            "sha256": "d1f99084b983ccc1a5e52047ab39f8f86527dbe756042882e0ebe8036eff098b"
+          },
+          "width": 32,
+          "height": 32,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#21294a",
+            "#31315a",
+            "#debd84",
+            "#bd8c52"
+          ],
+          "slot": 14,
+          "x": 160,
+          "y": 0,
+          "gutter": 0,
+          "window": 931,
+          "palette": 209,
+          "first_colour": 3344,
+          "indices": {
+            "#21294a": 1,
+            "#31315a": 2,
+            "#debd84": 3,
+            "#bd8c52": 4
+          },
+          "vram_bytes": 512,
+          "night": "per_colour",
+          "faces": [
+            [
+              52,
+              54
+            ],
+            [
+              60,
+              62
+            ]
+          ]
+        },
+        {
+          "material": "f_os",
+          "tile": "d2651bab260aedc7",
+          "source": {
+            "image": "art/city_f_os.png",
+            "sha256": "29b186d6ed70eb18057e16099eef345a8bb95ef5267c968d708c8cbdbb11c54f"
+          },
+          "width": 32,
+          "height": 32,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#181839",
+            "#bd8c52",
+            "#21294a",
+            "#debd84",
+            "#9c6b39",
+            "#7b9cc6"
+          ],
+          "slot": 14,
+          "x": 192,
+          "y": 0,
+          "gutter": 0,
+          "window": 963,
+          "palette": 209,
+          "first_colour": 3344,
+          "indices": {
+            "#21294a": 1,
+            "#debd84": 3,
+            "#bd8c52": 4,
+            "#181839": 5,
+            "#9c6b39": 6,
+            "#7b9cc6": 7
+          },
+          "vram_bytes": 512,
+          "night": "per_colour",
+          "faces": [
+            [
+              54,
+              56
+            ],
+            [
+              62,
+              64
             ]
           ]
         }
       ],
       "windows": [
-        27611,
-        33691,
-        33723,
-        35587,
-        35619,
-        35651
+        9155,
+        9187,
+        11139,
+        17315,
+        931,
+        963
       ],
       "materials": {
-        "m_df": {
-          "color": "#1a2240",
+        "crown": {
+          "color": "#8ab8e8",
+          "class": "emissive",
+          "palette_colour": 3281,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              12,
+              16
+            ],
+            [
+              30,
+              34
+            ],
+            [
+              56,
+              60
+            ]
+          ]
+        },
+        "f_of": {
+          "color": "#262a48",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              52,
+              54
+            ],
+            [
+              60,
+              62
+            ]
+          ]
+        },
+        "f_os": {
+          "color": "#262a48",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              54,
+              56
+            ],
+            [
+              62,
+              64
+            ]
+          ]
+        },
+        "m_of": {
+          "color": "#18203c",
           "class": "emissive",
           "palette_colour": null,
           "tag": null,
           "triangles": 10,
           "faces": [
             [
-              8,
-              10
-            ],
-            [
-              64,
-              66
-            ],
-            [
-              68,
-              70
-            ],
-            [
-              78,
-              80
-            ],
-            [
-              86,
-              88
-            ]
-          ]
-        },
-        "m_ds": {
-          "color": "#1a2240",
-          "class": "emissive",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 12,
-          "faces": [
-            [
-              10,
-              12
-            ],
-            [
-              66,
-              68
-            ],
-            [
-              70,
-              74
-            ],
-            [
-              80,
-              82
-            ],
-            [
-              88,
-              90
-            ]
-          ]
-        },
-        "m_of": {
-          "color": "#1a2240",
-          "class": "emissive",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 12,
-          "faces": [
-            [
               0,
               2
             ],
             [
-              4,
-              6
+              8,
+              10
             ],
             [
-              12,
-              14
+              16,
+              18
             ],
             [
-              60,
-              62
+              34,
+              36
             ],
             [
-              82,
-              84
-            ],
-            [
-              94,
-              96
+              46,
+              48
             ]
           ]
         },
         "m_os": {
-          "color": "#1a2240",
+          "color": "#18203c",
           "class": "emissive",
           "palette_colour": null,
           "tag": null,
@@ -1314,100 +873,91 @@
               4
             ],
             [
-              6,
-              8
+              10,
+              12
             ],
             [
-              14,
-              16
+              18,
+              20
             ],
-            [
-              62,
-              64
-            ],
-            [
-              84,
-              86
-            ],
-            [
-              96,
-              98
-            ]
-          ]
-        },
-        "m_rf": {
-          "color": "#1a2240",
-          "class": "emissive",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 6,
-          "faces": [
             [
               36,
               38
             ],
             [
-              74,
-              76
-            ],
-            [
-              90,
-              92
-            ]
-          ]
-        },
-        "m_rs": {
-          "color": "#1a2240",
-          "class": "emissive",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 6,
-          "faces": [
-            [
-              38,
-              40
-            ],
-            [
-              76,
-              78
-            ],
-            [
-              92,
-              94
-            ]
-          ]
-        },
-        "red": {
-          "color": "#ff3a2a",
-          "class": "emissive",
-          "palette_colour": 3281,
-          "tag": null,
-          "triangles": 24,
-          "faces": [
-            [
-              16,
-              28
-            ],
-            [
-              40,
+              48,
               52
             ]
           ]
         },
-        "steel": {
-          "color": "#3c4568",
+        "m_rf": {
+          "color": "#18203c",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              4,
+              6
+            ],
+            [
+              20,
+              22
+            ],
+            [
+              26,
+              28
+            ],
+            [
+              38,
+              40
+            ]
+          ]
+        },
+        "m_roof": {
+          "color": "#262e50",
           "class": "surface",
           "palette_colour": null,
           "tag": null,
-          "triangles": 16,
+          "triangles": 4,
           "faces": [
             [
-              28,
-              36
+              24,
+              26
             ],
             [
-              52,
-              60
+              42,
+              44
+            ]
+          ]
+        },
+        "m_rs": {
+          "color": "#18203c",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              6,
+              8
+            ],
+            [
+              22,
+              24
+            ],
+            [
+              28,
+              30
+            ],
+            [
+              40,
+              42
+            ],
+            [
+              44,
+              46
             ]
           ]
         }
@@ -1415,11 +965,97 @@
       "tags": {}
     },
     {
-      "name": "stage_roof_city_umeda",
-      "mesh": "stage_roof_city_umeda.bin",
+      "name": "stage_roof_city_wheel",
+      "mesh": "stage_roof_city_wheel.bin",
       "levels": [],
-      "vertices": 112,
-      "triangles": 96,
+      "vertices": 20,
+      "triangles": 14,
+      "textures": [
+        {
+          "material": "wheel",
+          "tile": "8699a21f4e2e3f2d",
+          "source": {
+            "image": "art/city_wheel.png",
+            "sha256": "9bf58bc93ed706da4707f77ca22362a8ec1f191a04f2fe10cbcc3cc5898b3d76"
+          },
+          "width": 64,
+          "height": 64,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": true,
+          "colours": [
+            "#8ccee7",
+            "#e773a5",
+            "#f7c663",
+            "#397b94",
+            "#5aadce",
+            "#081031",
+            "#eff7f7"
+          ],
+          "slot": 14,
+          "x": 16,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 210,
+          "first_colour": 3360,
+          "indices": {
+            "#8ccee7": 1,
+            "#e773a5": 2,
+            "#f7c663": 3,
+            "#397b94": 4,
+            "#5aadce": 5,
+            "#081031": 6,
+            "#eff7f7": 7
+          },
+          "vram_bytes": 2145,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              2
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "steel": {
+          "color": "#3c4568",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              2,
+              14
+            ]
+          ]
+        },
+        "wheel": {
+          "color": "#9fe0f0",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              0,
+              2
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "stage_roof_city_bay",
+      "mesh": "stage_roof_city_bay.bin",
+      "levels": [],
+      "vertices": 134,
+      "triangles": 90,
       "palette": {
         "palettes": [
           206
@@ -1428,751 +1064,136 @@
           {
             "colour": 3297,
             "class": "emissive",
-            "color": "#ff3a2a",
+            "color": "#8a9cc4",
             "materials": [
-              "red"
+              "bridge"
             ]
           },
           {
             "colour": 3298,
             "class": "emissive",
-            "color": "#d8a860",
+            "color": "#5c6e9c",
             "materials": [
-              "warm"
+              "bridge_dim"
             ]
-          }
-        ]
-      },
-      "textures": [
-        {
-          "material": "m_of",
-          "tile": "e0c613b0811f2671",
-          "source": {
-            "image": "art/city_m_of.png",
-            "sha256": "9cfa3e9a4013cf36076a384bceabbecfb56f8838272a74a82bdb298aecde3499"
           },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#29294a",
-            "#313963",
-            "#ceb57b",
-            "#ad8452",
-            "#7b94bd",
-            "#946b42"
-          ],
-          "slot": 14,
-          "x": 216,
-          "y": 104,
-          "gutter": 0,
-          "window": 27611,
-          "palette": 210,
-          "first_colour": 3360,
-          "indices": {
-            "#29294a": 1,
-            "#313963": 2,
-            "#ceb57b": 3,
-            "#ad8452": 4,
-            "#7b94bd": 5,
-            "#946b42": 6
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
-              0,
-              2
-            ],
-            [
-              12,
-              14
-            ]
-          ]
-        },
-        {
-          "material": "m_os",
-          "tile": "0e2fec0a19b07308",
-          "source": {
-            "image": "art/city_m_os.png",
-            "sha256": "89b8332cf724cc966f24f710745c41f3d99398e1f289926d0a5ad92825d0b253"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#212139",
-            "#29294a",
-            "#ad946b",
-            "#94734a",
-            "#637b9c",
-            "#7b5a39"
-          ],
-          "slot": 14,
-          "x": 152,
-          "y": 128,
-          "gutter": 0,
-          "window": 33691,
-          "palette": 210,
-          "first_colour": 3360,
-          "indices": {
-            "#29294a": 1,
-            "#212139": 7,
-            "#ad946b": 8,
-            "#94734a": 9,
-            "#637b9c": 10,
-            "#7b5a39": 11
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
-              2,
-              6
-            ],
-            [
-              14,
-              16
-            ],
-            [
-              18,
-              20
-            ]
-          ]
-        },
-        {
-          "material": "m_rf",
-          "tile": "0d6c0831d1f5558b",
-          "source": {
-            "image": "art/city_m_rf.png",
-            "sha256": "bf8d8b56810fd41d14661db10df299023f71f71aaf1e2d48b7827645c99d1240"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#29294a",
-            "#313963",
-            "#7b94bd",
-            "#ad8452",
-            "#ceb57b",
-            "#946b42"
-          ],
-          "slot": 14,
-          "x": 32,
-          "y": 136,
-          "gutter": 0,
-          "window": 35619,
-          "palette": 210,
-          "first_colour": 3360,
-          "indices": {
-            "#29294a": 1,
-            "#313963": 2,
-            "#ceb57b": 3,
-            "#ad8452": 4,
-            "#7b94bd": 5,
-            "#946b42": 6
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
-              6,
-              8
-            ]
-          ]
-        },
-        {
-          "material": "m_rs",
-          "tile": "610b0d777857bc2d",
-          "source": {
-            "image": "art/city_m_rs.png",
-            "sha256": "81a137272aa98e52911e93ad93692c6e2899d1c1913046b21c5a4e8cfd94aa8e"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#212139",
-            "#29294a",
-            "#637b9c",
-            "#94734a",
-            "#ad946b",
-            "#7b5a39"
-          ],
-          "slot": 14,
-          "x": 64,
-          "y": 136,
-          "gutter": 0,
-          "window": 35651,
-          "palette": 210,
-          "first_colour": 3360,
-          "indices": {
-            "#29294a": 1,
-            "#212139": 7,
-            "#ad946b": 8,
-            "#94734a": 9,
-            "#637b9c": 10,
-            "#7b5a39": 11
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
-              8,
-              12
-            ]
-          ]
-        }
-      ],
-      "windows": [
-        27611,
-        33691,
-        35619,
-        35651
-      ],
-      "materials": {
-        "m_of": {
-          "color": "#1a2240",
-          "class": "emissive",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 4,
-          "faces": [
-            [
-              0,
-              2
-            ],
-            [
-              12,
-              14
-            ]
-          ]
-        },
-        "m_os": {
-          "color": "#1a2240",
-          "class": "emissive",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 8,
-          "faces": [
-            [
-              2,
-              6
-            ],
-            [
-              14,
-              16
-            ],
-            [
-              18,
-              20
-            ]
-          ]
-        },
-        "m_rf": {
-          "color": "#1a2240",
-          "class": "emissive",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 2,
-          "faces": [
-            [
-              6,
-              8
-            ]
-          ]
-        },
-        "m_roof": {
-          "color": "#39385a",
-          "class": "surface",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 2,
-          "faces": [
-            [
-              16,
-              18
-            ]
-          ]
-        },
-        "m_rs": {
-          "color": "#1a2240",
-          "class": "emissive",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 4,
-          "faces": [
-            [
-              8,
-              12
-            ]
-          ]
-        },
-        "red": {
-          "color": "#ff3a2a",
-          "class": "emissive",
-          "palette_colour": 3297,
-          "tag": null,
-          "triangles": 12,
-          "faces": [
-            [
-              76,
-              88
-            ]
-          ]
-        },
-        "ring": {
-          "color": "#4a5780",
-          "class": "surface",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 48,
-          "faces": [
-            [
-              28,
-              76
-            ]
-          ]
-        },
-        "steel": {
-          "color": "#3c4568",
-          "class": "surface",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 8,
-          "faces": [
-            [
-              88,
-              96
-            ]
-          ]
-        },
-        "warm": {
-          "color": "#d8a860",
-          "class": "emissive",
-          "palette_colour": 3298,
-          "tag": null,
-          "triangles": 8,
-          "faces": [
-            [
-              20,
-              28
-            ]
-          ]
-        }
-      },
-      "tags": {}
-    },
-    {
-      "name": "stage_roof_city_lattice",
-      "mesh": "stage_roof_city_lattice.bin",
-      "levels": [],
-      "vertices": 84,
-      "triangles": 116,
-      "palette": {
-        "palettes": [
-          207
-        ],
-        "entries": [
           {
-            "colour": 3313,
+            "colour": 3299,
             "class": "emissive",
-            "color": "#6a9ad0",
+            "color": "#f0d8a0",
             "materials": [
-              "crown"
+              "deck_lit"
             ]
           },
           {
-            "colour": 3314,
+            "colour": 3300,
+            "class": "emissive",
+            "color": "#40e070",
+            "materials": [
+              "green"
+            ]
+          },
+          {
+            "colour": 3301,
             "class": "emissive",
             "color": "#ff3a2a",
             "materials": [
               "red"
             ]
+          },
+          {
+            "colour": 3302,
+            "class": "emissive",
+            "color": "#d8a868",
+            "materials": [
+              "tower_lit"
+            ]
           }
         ]
       },
       "textures": [
         {
-          "material": "lattice",
-          "tile": "2214b3519bf0374f",
+          "material": "refl_white",
+          "tile": "a27574d54bdfc4a6",
           "source": {
-            "texels": "32 x 32"
+            "image": "art/city_refl_white.png",
+            "sha256": "f88cea564fdf3b46e3823e2bab11c571c51dc096a06b92017ba68b62105b294f"
           },
-          "width": 32,
+          "width": 8,
           "height": 32,
           "bits": 4,
           "projection": "fit",
           "repeat": false,
           "cutout": true,
           "colours": [
-            "#4a5284"
+            "#ded6ce",
+            "#a5b5ce"
           ],
           "slot": 14,
-          "x": 216,
+          "x": 128,
           "y": 0,
           "gutter": 1,
           "window": null,
-          "palette": 210,
-          "first_colour": 3360,
+          "palette": 209,
+          "first_colour": 3344,
           "indices": {
-            "#4a5284": 12
+            "#ded6ce": 14,
+            "#a5b5ce": 15
           },
-          "vram_bytes": 561,
+          "vram_bytes": 165,
           "night": "per_colour",
           "faces": [
             [
-              0,
-              64
+              76,
+              78
             ]
           ]
         }
       ],
       "windows": [],
       "materials": {
-        "crown": {
-          "color": "#6a9ad0",
+        "bridge": {
+          "color": "#8a9cc4",
           "class": "emissive",
-          "palette_colour": 3313,
-          "tag": null,
-          "triangles": 16,
-          "faces": [
-            [
-              72,
-              80
-            ],
-            [
-              88,
-              96
-            ]
-          ]
-        },
-        "lattice": {
-          "color": "#4a5780",
-          "class": "surface",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 64,
-          "faces": [
-            [
-              0,
-              64
-            ]
-          ]
-        },
-        "red": {
-          "color": "#ff3a2a",
-          "class": "emissive",
-          "palette_colour": 3314,
-          "tag": null,
-          "triangles": 12,
-          "faces": [
-            [
-              104,
-              116
-            ]
-          ]
-        },
-        "steel": {
-          "color": "#3c4568",
-          "class": "surface",
-          "palette_colour": null,
+          "palette_colour": 3297,
           "tag": null,
           "triangles": 24,
           "faces": [
             [
-              64,
-              72
-            ],
-            [
-              80,
-              88
-            ],
-            [
-              96,
-              104
-            ]
-          ]
-        }
-      },
-      "tags": {}
-    },
-    {
-      "name": "stage_roof_city_hep",
-      "mesh": "stage_roof_city_hep.bin",
-      "levels": [],
-      "vertices": 95,
-      "triangles": 70,
-      "palette": {
-        "palettes": [
-          208
-        ],
-        "entries": [
-          {
-            "colour": 3329,
-            "class": "emissive",
-            "color": "#b02a34",
-            "materials": [
-              "gondola_r"
-            ]
-          },
-          {
-            "colour": 3330,
-            "class": "emissive",
-            "color": "#c89a28",
-            "materials": [
-              "gondola_y"
-            ]
-          }
-        ]
-      },
-      "textures": [
-        {
-          "material": "m_of",
-          "tile": "e0c613b0811f2671",
-          "source": {
-            "image": "art/city_m_of.png",
-            "sha256": "9cfa3e9a4013cf36076a384bceabbecfb56f8838272a74a82bdb298aecde3499"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#29294a",
-            "#313963",
-            "#ceb57b",
-            "#ad8452",
-            "#7b94bd",
-            "#946b42"
-          ],
-          "slot": 14,
-          "x": 216,
-          "y": 104,
-          "gutter": 0,
-          "window": 27611,
-          "palette": 210,
-          "first_colour": 3360,
-          "indices": {
-            "#29294a": 1,
-            "#313963": 2,
-            "#ceb57b": 3,
-            "#ad8452": 4,
-            "#7b94bd": 5,
-            "#946b42": 6
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
-              0,
-              2
-            ]
-          ]
-        },
-        {
-          "material": "m_os",
-          "tile": "0e2fec0a19b07308",
-          "source": {
-            "image": "art/city_m_os.png",
-            "sha256": "89b8332cf724cc966f24f710745c41f3d99398e1f289926d0a5ad92825d0b253"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#212139",
-            "#29294a",
-            "#ad946b",
-            "#94734a",
-            "#637b9c",
-            "#7b5a39"
-          ],
-          "slot": 14,
-          "x": 152,
-          "y": 128,
-          "gutter": 0,
-          "window": 33691,
-          "palette": 210,
-          "first_colour": 3360,
-          "indices": {
-            "#29294a": 1,
-            "#212139": 7,
-            "#ad946b": 8,
-            "#94734a": 9,
-            "#637b9c": 10,
-            "#7b5a39": 11
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
-              2,
-              4
-            ]
-          ]
-        },
-        {
-          "material": "wheel",
-          "tile": "26847d0403418b54",
-          "source": {
-            "image": "art/city_wheel.png",
-            "sha256": "b430240922ab165e9819f97e6a338ac3470d2113b937274c4e01d3ef2fd7f032"
-          },
-          "width": 128,
-          "height": 128,
-          "bits": 4,
-          "projection": "fit",
-          "repeat": false,
-          "cutout": true,
-          "colours": [
-            "#bd2931",
-            "#d6ad21",
-            "#6b1829",
-            "#e76363"
-          ],
-          "slot": 14,
-          "x": 16,
-          "y": 0,
-          "gutter": 1,
-          "window": null,
-          "palette": 211,
-          "first_colour": 3376,
-          "indices": {
-            "#bd2931": 1,
-            "#d6ad21": 2,
-            "#6b1829": 3,
-            "#e76363": 4
-          },
-          "vram_bytes": 8385,
-          "night": "per_colour",
-          "faces": [
-            [
-              6,
-              14
-            ]
-          ]
-        }
-      ],
-      "windows": [
-        27611,
-        33691
-      ],
-      "materials": {
-        "gondola_r": {
-          "color": "#b02a34",
-          "class": "emissive",
-          "palette_colour": 3329,
-          "tag": null,
-          "triangles": 12,
-          "faces": [
-            [
-              16,
-              18
-            ],
-            [
-              20,
-              22
-            ],
-            [
-              24,
-              26
-            ],
-            [
-              28,
-              30
-            ],
-            [
-              32,
-              34
-            ],
-            [
-              36,
-              38
-            ]
-          ]
-        },
-        "gondola_y": {
-          "color": "#c89a28",
-          "class": "emissive",
-          "palette_colour": 3330,
-          "tag": null,
-          "triangles": 12,
-          "faces": [
-            [
-              14,
-              16
-            ],
-            [
-              18,
+              8,
               20
             ],
             [
-              22,
-              24
+              28,
+              40
+            ]
+          ]
+        },
+        "bridge_dim": {
+          "color": "#5c6e9c",
+          "class": "emissive",
+          "palette_colour": 3298,
+          "tag": null,
+          "triangles": 18,
+          "faces": [
+            [
+              6,
+              8
             ],
             [
-              26,
+              20,
               28
             ],
             [
-              30,
-              32
-            ],
-            [
-              34,
-              36
+              40,
+              48
             ]
           ]
         },
-        "m_of": {
-          "color": "#1a2240",
+        "deck_lit": {
+          "color": "#f0d8a0",
           "class": "emissive",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 2,
-          "faces": [
-            [
-              0,
-              2
-            ]
-          ]
-        },
-        "m_os": {
-          "color": "#1a2240",
-          "class": "emissive",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 2,
-          "faces": [
-            [
-              2,
-              4
-            ]
-          ]
-        },
-        "m_roof": {
-          "color": "#39385a",
-          "class": "surface",
-          "palette_colour": null,
+          "palette_colour": 3299,
           "tag": null,
           "triangles": 2,
           "faces": [
@@ -2182,29 +1203,76 @@
             ]
           ]
         },
+        "green": {
+          "color": "#40e070",
+          "class": "emissive",
+          "palette_colour": 3300,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              84,
+              90
+            ]
+          ]
+        },
+        "red": {
+          "color": "#ff3a2a",
+          "class": "emissive",
+          "palette_colour": 3301,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              48,
+              52
+            ]
+          ]
+        },
+        "refl_white": {
+          "color": "#dcd6cc",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              76,
+              78
+            ]
+          ]
+        },
         "steel": {
           "color": "#3c4568",
           "class": "surface",
           "palette_colour": null,
           "tag": null,
-          "triangles": 32,
+          "triangles": 22,
           "faces": [
             [
-              38,
-              70
+              0,
+              4
+            ],
+            [
+              52,
+              64
+            ],
+            [
+              78,
+              84
             ]
           ]
         },
-        "wheel": {
-          "color": "#e02a34",
+        "tower_lit": {
+          "color": "#d8a868",
           "class": "emissive",
-          "palette_colour": null,
+          "palette_colour": 3302,
           "tag": null,
-          "triangles": 8,
+          "triangles": 12,
           "faces": [
             [
-              6,
-              14
+              64,
+              76
             ]
           ]
         }
@@ -2212,239 +1280,129 @@
       "tags": {}
     },
     {
-      "name": "stage_roof_city_street",
-      "mesh": "stage_roof_city_street.bin",
+      "name": "stage_roof_city_venue",
+      "mesh": "stage_roof_city_venue.bin",
       "levels": [],
-      "vertices": 61,
-      "triangles": 56,
+      "vertices": 76,
+      "triangles": 50,
+      "palette": {
+        "palettes": [
+          207
+        ],
+        "entries": [
+          {
+            "colour": 3313,
+            "class": "emissive",
+            "color": "#2448a8",
+            "materials": [
+              "banner"
+            ]
+          },
+          {
+            "colour": 3314,
+            "class": "emissive",
+            "color": "#f0d8a0",
+            "materials": [
+              "deck_lit"
+            ]
+          },
+          {
+            "colour": 3315,
+            "class": "emissive",
+            "color": "#ff3a2a",
+            "materials": [
+              "red"
+            ]
+          }
+        ]
+      },
       "textures": [
         {
-          "material": "street",
-          "tile": "84fcb6c778221bce",
+          "material": "sail",
+          "tile": "a0fcbbdbfb410fb4",
           "source": {
-            "image": "art/city_street.png",
-            "sha256": "0f5c40009ee6eb83186fc4fc04d40276e0f8c21a2aba5efa8902c48a65c92efa"
+            "image": "art/city_sail.png",
+            "sha256": "e0c2bf0639e5f915587373f8d6f40eb83e06d9c57bbb2e696435b99caa79aa7d"
           },
-          "width": 64,
+          "width": 32,
           "height": 64,
           "bits": 4,
-          "projection": "planar",
-          "repeat": true,
+          "projection": "fit",
+          "repeat": false,
           "cutout": false,
           "colours": [
-            "#081021",
-            "#101831",
-            "#394263",
-            "#dead63",
-            "#ad844a",
-            "#182142",
-            "#101839",
-            "#21294a",
-            "#ce3129",
-            "#f7e7bd"
+            "#7b8cb5",
+            "#6b7b9c",
+            "#f7c663",
+            "#a5b5ce",
+            "#ded6ce"
           ],
           "slot": 14,
-          "x": 152,
+          "x": 88,
           "y": 0,
-          "gutter": 0,
-          "window": 1180,
-          "palette": 211,
-          "first_colour": 3376,
+          "gutter": 1,
+          "window": null,
+          "palette": 210,
+          "first_colour": 3360,
           "indices": {
-            "#081021": 5,
-            "#101831": 6,
-            "#394263": 7,
-            "#dead63": 8,
-            "#ad844a": 9,
-            "#182142": 10,
-            "#101839": 11,
-            "#21294a": 12,
-            "#ce3129": 13,
-            "#f7e7bd": 14
+            "#f7c663": 3,
+            "#7b8cb5": 8,
+            "#6b7b9c": 9,
+            "#a5b5ce": 10,
+            "#ded6ce": 11
           },
-          "vram_bytes": 2048,
+          "vram_bytes": 1105,
           "night": "per_colour",
           "faces": [
             [
               0,
-              8
-            ]
-          ]
-        },
-        {
-          "material": "n_of",
-          "tile": "a88400a5fa4cefb5",
-          "source": {
-            "image": "art/city_n_of.png",
-            "sha256": "8beac479377991e21e3c8acc20f37b04558c168605a15cf4f516cd813382178a"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#101831",
-            "#182942",
-            "#debd84",
-            "#bd8c52",
-            "#7b9cc6"
-          ],
-          "slot": 14,
-          "x": 152,
-          "y": 96,
-          "gutter": 0,
-          "window": 25499,
-          "palette": 209,
-          "first_colour": 3344,
-          "indices": {
-            "#101831": 1,
-            "#182942": 2,
-            "#bd8c52": 3,
-            "#debd84": 5,
-            "#7b9cc6": 11
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
-              8,
-              10
-            ]
-          ]
-        },
-        {
-          "material": "n_os",
-          "tile": "50d67118c7c33666",
-          "source": {
-            "image": "art/city_n_os.png",
-            "sha256": "b8bd8d7246b419c4b8a2905100214263e5907ab47eda5f421abfc45bca7d5c87"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#081021",
-            "#101829",
-            "#b59c6b",
-            "#9c7342",
-            "#6384a5"
-          ],
-          "slot": 14,
-          "x": 184,
-          "y": 96,
-          "gutter": 0,
-          "window": 25531,
-          "palette": 209,
-          "first_colour": 3344,
-          "indices": {
-            "#081021": 6,
-            "#101829": 7,
-            "#9c7342": 8,
-            "#b59c6b": 10,
-            "#6384a5": 12
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
-              12,
-              14
-            ]
-          ]
-        },
-        {
-          "material": "n_df",
-          "tile": "ff8d07c6c5caacb2",
-          "source": {
-            "image": "art/city_n_df.png",
-            "sha256": "71877ba94989e27c40b91dd8e1795b67a135b6fd4ed41f81103e511069ef8d54"
-          },
-          "width": 32,
-          "height": 32,
-          "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
-          "colours": [
-            "#101831",
-            "#182942",
-            "#debd84",
-            "#7b9cc6"
-          ],
-          "slot": 14,
-          "x": 184,
-          "y": 64,
-          "gutter": 0,
-          "window": 17339,
-          "palette": 209,
-          "first_colour": 3344,
-          "indices": {
-            "#101831": 1,
-            "#182942": 2,
-            "#debd84": 5,
-            "#7b9cc6": 11
-          },
-          "vram_bytes": 512,
-          "night": "per_colour",
-          "faces": [
-            [
-              14,
               16
             ]
           ]
         },
         {
-          "material": "n_ds",
-          "tile": "04b1f628c4a597dc",
+          "material": "refl_white",
+          "tile": "a27574d54bdfc4a6",
           "source": {
-            "image": "art/city_n_ds.png",
-            "sha256": "9fca370beaeb8bded75c0d6c0a09f1bf1fba852b99b91f4da839b749d5ba091b"
+            "image": "art/city_refl_white.png",
+            "sha256": "f88cea564fdf3b46e3823e2bab11c571c51dc096a06b92017ba68b62105b294f"
           },
-          "width": 32,
+          "width": 8,
           "height": 32,
           "bits": 4,
-          "projection": "box",
-          "repeat": true,
-          "cutout": false,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": true,
           "colours": [
-            "#081021",
-            "#101829",
-            "#b59c6b",
-            "#6384a5"
+            "#ded6ce",
+            "#a5b5ce"
           ],
           "slot": 14,
-          "x": 216,
-          "y": 72,
-          "gutter": 0,
-          "window": 19419,
+          "x": 128,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
           "palette": 209,
           "first_colour": 3344,
           "indices": {
-            "#081021": 6,
-            "#101829": 7,
-            "#b59c6b": 10,
-            "#6384a5": 12
+            "#ded6ce": 14,
+            "#a5b5ce": 15
           },
-          "vram_bytes": 512,
+          "vram_bytes": 165,
           "night": "per_colour",
           "faces": [
             [
-              18,
-              20
+              20,
+              22
             ]
           ]
         },
         {
-          "material": "n_rf",
-          "tile": "a468c94a155e243e",
+          "material": "m_of",
+          "tile": "3a78eeaa9ea61fb3",
           "source": {
-            "image": "art/city_n_rf.png",
-            "sha256": "42078ed9375ff41024c6accb76a25778ebb393eb078bcfaf29593098fc795585"
+            "image": "art/city_m_of.png",
+            "sha256": "f544afb3b5ab43c493cd45393742296be622c19a517d4fec62708f2c42f9b121"
           },
           "width": 32,
           "height": 32,
@@ -2453,114 +1411,187 @@
           "repeat": true,
           "cutout": false,
           "colours": [
-            "#101831",
-            "#182942",
+            "#182139",
+            "#212952",
             "#bd8c52",
             "#9c6b39",
-            "#debd84"
+            "#debd84",
+            "#7b9cc6"
           ],
           "slot": 14,
-          "x": 216,
-          "y": 40,
+          "x": 192,
+          "y": 32,
           "gutter": 0,
-          "window": 11227,
+          "window": 9155,
           "palette": 209,
           "first_colour": 3344,
           "indices": {
-            "#101831": 1,
-            "#182942": 2,
-            "#bd8c52": 3,
-            "#9c6b39": 4,
-            "#debd84": 5
+            "#debd84": 3,
+            "#bd8c52": 4,
+            "#9c6b39": 6,
+            "#7b9cc6": 7,
+            "#182139": 10,
+            "#212952": 11
           },
           "vram_bytes": 512,
           "night": "per_colour",
           "faces": [
             [
-              36,
-              38
-            ],
-            [
-              50,
-              52
+              22,
+              24
             ]
           ]
         },
         {
-          "material": "n_rs",
-          "tile": "2334183a63984cfa",
+          "material": "sign",
+          "tile": "dca58f04c67cce0e",
           "source": {
-            "image": "art/city_n_rs.png",
-            "sha256": "64a6a61db27d456de5adcff314e7aa673ff692c20383b847bdb6f557fbd8bcdb"
+            "image": "art/city_sign.png",
+            "sha256": "9d0abaa69b27e5e84f29dee4e19f8371114353f2d446cac62f23bf35c033d89e"
           },
-          "width": 32,
-          "height": 32,
+          "width": 128,
+          "height": 16,
           "bits": 4,
-          "projection": "box",
-          "repeat": true,
+          "projection": "fit",
+          "repeat": false,
           "cutout": false,
           "colours": [
-            "#081021",
-            "#101829",
-            "#9c7342",
-            "#845a31",
-            "#b59c6b"
+            "#18399c",
+            "#eff7f7",
+            "#f7c663"
           ],
           "slot": 14,
-          "x": 152,
-          "y": 64,
-          "gutter": 0,
-          "window": 17307,
-          "palette": 209,
-          "first_colour": 3344,
+          "x": 0,
+          "y": 72,
+          "gutter": 1,
+          "window": null,
+          "palette": 210,
+          "first_colour": 3360,
           "indices": {
-            "#081021": 6,
-            "#101829": 7,
-            "#9c7342": 8,
-            "#845a31": 9,
-            "#b59c6b": 10
+            "#f7c663": 3,
+            "#eff7f7": 7,
+            "#18399c": 12
           },
-          "vram_bytes": 512,
+          "vram_bytes": 1105,
           "night": "per_colour",
           "faces": [
             [
-              40,
-              42
-            ],
+              34,
+              36
+            ]
+          ]
+        },
+        {
+          "material": "refl_warm",
+          "tile": "a9ab18ce7a7dc924",
+          "source": {
+            "image": "art/city_refl_warm.png",
+            "sha256": "f80d3d808ddcc48ced66203937125bde3f26a3a5f4ba1987accfc589066d8794"
+          },
+          "width": 8,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": true,
+          "colours": [
+            "#f7c663",
+            "#ded6ce"
+          ],
+          "slot": 14,
+          "x": 144,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 210,
+          "first_colour": 3360,
+          "indices": {
+            "#f7c663": 3,
+            "#ded6ce": 11
+          },
+          "vram_bytes": 165,
+          "night": "per_colour",
+          "faces": [
             [
-              54,
-              56
+              48,
+              50
             ]
           ]
         }
       ],
       "windows": [
-        1180,
-        25499,
-        25531,
-        17339,
-        19419,
-        11227,
-        17307
+        9155
       ],
       "materials": {
-        "n_df": {
-          "color": "#141b33",
+        "banner": {
+          "color": "#2448a8",
+          "class": "emissive",
+          "palette_colour": 3313,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              36,
+              48
+            ]
+          ]
+        },
+        "dark": {
+          "color": "#141a30",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              26,
+              28
+            ]
+          ]
+        },
+        "deck_lit": {
+          "color": "#f0d8a0",
+          "class": "emissive",
+          "palette_colour": 3314,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              16,
+              18
+            ]
+          ]
+        },
+        "hall_roof": {
+          "color": "#3a4466",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              24,
+              26
+            ]
+          ]
+        },
+        "m_of": {
+          "color": "#18203c",
           "class": "emissive",
           "palette_colour": null,
           "tag": null,
           "triangles": 2,
           "faces": [
             [
-              14,
-              16
+              22,
+              24
             ]
           ]
         },
-        "n_ds": {
-          "color": "#141b33",
+        "red": {
+          "color": "#ff3a2a",
           "class": "emissive",
-          "palette_colour": null,
+          "palette_colour": 3315,
           "tag": null,
           "triangles": 2,
           "faces": [
@@ -2570,118 +1601,448 @@
             ]
           ]
         },
-        "n_of": {
-          "color": "#141b33",
+        "refl_warm": {
+          "color": "#f0c060",
           "class": "emissive",
           "palette_colour": null,
           "tag": null,
           "triangles": 2,
           "faces": [
             [
-              8,
-              10
+              48,
+              50
             ]
           ]
         },
-        "n_os": {
-          "color": "#141b33",
+        "refl_white": {
+          "color": "#dcd6cc",
           "class": "emissive",
           "palette_colour": null,
           "tag": null,
           "triangles": 2,
           "faces": [
             [
-              12,
-              14
+              20,
+              22
             ]
           ]
         },
-        "n_rf": {
-          "color": "#141b33",
+        "sail": {
+          "color": "#bcc8e0",
           "class": "emissive",
           "palette_colour": null,
           "tag": null,
-          "triangles": 4,
+          "triangles": 16,
           "faces": [
             [
-              36,
-              38
-            ],
-            [
-              50,
-              52
+              0,
+              16
             ]
           ]
         },
-        "n_roof": {
-          "color": "#292f50",
+        "sign": {
+          "color": "#1e3c9a",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              34,
+              36
+            ]
+          ]
+        },
+        "steel": {
+          "color": "#3c4568",
           "class": "surface",
           "palette_colour": null,
           "tag": null,
-          "triangles": 8,
+          "triangles": 6,
           "faces": [
             [
-              10,
-              12
-            ],
+              28,
+              34
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "stage_roof_city_quay",
+      "mesh": "stage_roof_city_quay.bin",
+      "levels": [],
+      "vertices": 216,
+      "triangles": 120,
+      "palette": {
+        "palettes": [
+          208
+        ],
+        "entries": [
+          {
+            "colour": 3329,
+            "class": "emissive",
+            "color": "#40e070",
+            "materials": [
+              "green"
+            ]
+          },
+          {
+            "colour": 3330,
+            "class": "emissive",
+            "color": "#b4bed6",
+            "materials": [
+              "hull"
+            ]
+          },
+          {
+            "colour": 3331,
+            "class": "emissive",
+            "color": "#ffd890",
+            "materials": [
+              "lamp"
+            ]
+          },
+          {
+            "colour": 3332,
+            "class": "emissive",
+            "color": "#7c88aa",
+            "materials": [
+              "mast"
+            ]
+          },
+          {
+            "colour": 3333,
+            "class": "emissive",
+            "color": "#38c8e0",
+            "materials": [
+              "neon_c"
+            ]
+          },
+          {
+            "colour": 3334,
+            "class": "emissive",
+            "color": "#e050a0",
+            "materials": [
+              "neon_p"
+            ]
+          },
+          {
+            "colour": 3335,
+            "class": "emissive",
+            "color": "#e0c040",
+            "materials": [
+              "neon_y"
+            ]
+          },
+          {
+            "colour": 3336,
+            "class": "emissive",
+            "color": "#e8b060",
+            "materials": [
+              "warm"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "refl_warm",
+          "tile": "a9ab18ce7a7dc924",
+          "source": {
+            "image": "art/city_refl_warm.png",
+            "sha256": "f80d3d808ddcc48ced66203937125bde3f26a3a5f4ba1987accfc589066d8794"
+          },
+          "width": 8,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": true,
+          "colours": [
+            "#f7c663",
+            "#ded6ce"
+          ],
+          "slot": 14,
+          "x": 144,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 210,
+          "first_colour": 3360,
+          "indices": {
+            "#f7c663": 3,
+            "#ded6ce": 11
+          },
+          "vram_bytes": 165,
+          "night": "per_colour",
+          "faces": [
             [
-              16,
-              18
-            ],
-            [
-              38,
-              40
-            ],
-            [
-              52,
-              54
+              78,
+              80
             ]
           ]
         },
-        "n_rs": {
-          "color": "#141b33",
-          "class": "emissive",
-          "palette_colour": null,
-          "tag": null,
-          "triangles": 4,
+        {
+          "material": "refl_white",
+          "tile": "a27574d54bdfc4a6",
+          "source": {
+            "image": "art/city_refl_white.png",
+            "sha256": "f88cea564fdf3b46e3823e2bab11c571c51dc096a06b92017ba68b62105b294f"
+          },
+          "width": 8,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": true,
+          "colours": [
+            "#ded6ce",
+            "#a5b5ce"
+          ],
+          "slot": 14,
+          "x": 128,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 209,
+          "first_colour": 3344,
+          "indices": {
+            "#ded6ce": 14,
+            "#a5b5ce": 15
+          },
+          "vram_bytes": 165,
+          "night": "per_colour",
           "faces": [
             [
-              40,
-              42
-            ],
-            [
-              54,
-              56
+              118,
+              120
             ]
           ]
-        },
-        "plant": {
-          "color": "#2c3556",
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "dark": {
+          "color": "#141a30",
           "class": "surface",
           "palette_colour": null,
           "tag": null,
           "triangles": 24,
           "faces": [
             [
-              20,
-              36
+              36,
+              42
             ],
             [
-              42,
+              44,
               50
+            ],
+            [
+              52,
+              58
+            ],
+            [
+              60,
+              66
             ]
           ]
         },
-        "street": {
-          "color": "#0e1226",
+        "green": {
+          "color": "#40e070",
           "class": "emissive",
+          "palette_colour": 3329,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              76,
+              78
+            ]
+          ]
+        },
+        "hull": {
+          "color": "#b4bed6",
+          "class": "emissive",
+          "palette_colour": 3330,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              84,
+              86
+            ]
+          ]
+        },
+        "hull_band": {
+          "color": "#2a3a6a",
+          "class": "surface",
           "palette_colour": null,
           "tag": null,
-          "triangles": 8,
+          "triangles": 4,
+          "faces": [
+            [
+              72,
+              74
+            ],
+            [
+              88,
+              90
+            ]
+          ]
+        },
+        "lamp": {
+          "color": "#ffd890",
+          "class": "emissive",
+          "palette_colour": 3331,
+          "tag": null,
+          "triangles": 36,
+          "faces": [
+            [
+              2,
+              36
+            ],
+            [
+              116,
+              118
+            ]
+          ]
+        },
+        "mast": {
+          "color": "#7c88aa",
+          "class": "emissive",
+          "palette_colour": 3332,
+          "tag": null,
+          "triangles": 26,
+          "faces": [
+            [
+              90,
+              116
+            ]
+          ]
+        },
+        "neon_c": {
+          "color": "#38c8e0",
+          "class": "emissive",
+          "palette_colour": 3333,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              42,
+              44
+            ],
+            [
+              66,
+              68
+            ],
+            [
+              70,
+              72
+            ]
+          ]
+        },
+        "neon_p": {
+          "color": "#e050a0",
+          "class": "emissive",
+          "palette_colour": 3334,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              50,
+              52
+            ],
+            [
+              68,
+              70
+            ]
+          ]
+        },
+        "neon_y": {
+          "color": "#e0c040",
+          "class": "emissive",
+          "palette_colour": 3335,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              58,
+              60
+            ]
+          ]
+        },
+        "quay": {
+          "color": "#2a3048",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
           "faces": [
             [
               0,
-              8
+              2
+            ],
+            [
+              82,
+              84
+            ],
+            [
+              86,
+              88
+            ]
+          ]
+        },
+        "quay_edge": {
+          "color": "#4a5470",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              80,
+              82
+            ]
+          ]
+        },
+        "refl_warm": {
+          "color": "#f0c060",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              78,
+              80
+            ]
+          ]
+        },
+        "refl_white": {
+          "color": "#dcd6cc",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              118,
+              120
+            ]
+          ]
+        },
+        "warm": {
+          "color": "#e8b060",
+          "class": "emissive",
+          "palette_colour": 3336,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              74,
+              76
             ]
           ]
         }
@@ -2699,18 +2060,17 @@
         {
           "bits": 4,
           "first_colour": 3344,
-          "colours": 48,
+          "colours": 32,
           "offset": 0
         }
       ]
     },
-    "tiles": 15,
-    "vram_bytes": 17138,
-    "vram_bytes_allocated": 18240,
+    "tiles": 13,
+    "vram_bytes": 8781,
+    "vram_bytes_allocated": 10400,
     "palettes_4bit": [
       209,
-      210,
-      211
+      210
     ],
     "palettes_8bit": []
   },

@@ -1,0 +1,615 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_roof_city_mm",
+ "budget": {
+  "vertices": 2000,
+  "triangles": 300
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.62
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "f_of": {
+   "color": "#262a48",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_f_of.png",
+    "projection": "box",
+    "scale": [
+     64.0,
+     64.0
+    ]
+   }
+  },
+  "f_os": {
+   "color": "#262a48",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_f_os.png",
+    "projection": "box",
+    "scale": [
+     64.0,
+     64.0
+    ]
+   }
+  },
+  "f_gf": {
+   "color": "#262a48",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_f_gf.png",
+    "projection": "box",
+    "scale": [
+     64.0,
+     64.0
+    ]
+   }
+  },
+  "f_gs": {
+   "color": "#262a48",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_f_gs.png",
+    "projection": "box",
+    "scale": [
+     64.0,
+     64.0
+    ]
+   }
+  },
+  "f_roof": {
+   "color": "#2c3254"
+  },
+  "steel": {
+   "color": "#3c4568"
+  },
+  "red": {
+   "color": "#ff3a2a",
+   "class": "emissive"
+  },
+  "crown": {
+   "color": "#8ab8e8",
+   "class": "emissive"
+  },
+  "crown_w": {
+   "color": "#e8eef8",
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "lmt",
+   "op": "box",
+   "size": [
+    44.0,
+    146.3557,
+    44.0
+   ],
+   "material": "f_of",
+   "transform": {
+    "translate": [
+     -112.0,
+     44.8221,
+     330.0
+    ]
+   },
+   "faces": {
+    "right": "f_os"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top",
+    "left"
+   ],
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 0.6818
+    }
+   ]
+  },
+  {
+   "id": "lmt_c0",
+   "op": "box",
+   "size": [
+    28.0,
+    5.0,
+    28.0
+   ],
+   "material": "crown",
+   "transform": {
+    "translate": [
+     -112.0,
+     120.5,
+     330.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "lmt_c1",
+   "op": "box",
+   "size": [
+    23.0,
+    6.0,
+    23.0
+   ],
+   "material": "f_of",
+   "transform": {
+    "translate": [
+     -112.0,
+     126.0,
+     330.0
+    ]
+   },
+   "faces": {
+    "left": "f_os",
+    "right": "f_os"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "lmt_c2",
+   "op": "box",
+   "size": [
+    17.0,
+    3.0,
+    17.0
+   ],
+   "material": "crown_w",
+   "transform": {
+    "translate": [
+     -112.0,
+     130.5,
+     330.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "lmt_c3",
+   "op": "box",
+   "size": [
+    12.0,
+    4.0,
+    12.0
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -112.0,
+     134.0,
+     330.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "lmt_r0",
+   "op": "box",
+   "size": [
+    1.6,
+    1.6,
+    1.6
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     -124.5,
+     123.8,
+     317.5
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "lmt_r1",
+   "op": "box",
+   "size": [
+    1.6,
+    1.6,
+    1.6
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     -99.5,
+     123.8,
+     317.5
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "lmt_rt",
+   "op": "box",
+   "size": [
+    1.8,
+    1.8,
+    1.8
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     -112.0,
+     137.2,
+     330.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "qs_0",
+   "op": "mesh",
+   "vertices": [
+    [
+     -90.0,
+     78.0,
+     300.0
+    ],
+    [
+     -70.0,
+     62.0,
+     300.0
+    ],
+    [
+     -70.0,
+     -24.2902,
+     300.0
+    ],
+    [
+     -90.0,
+     -24.2902,
+     300.0
+    ],
+    [
+     -70.0,
+     62.0,
+     322.0
+    ],
+    [
+     -70.0,
+     -24.2902,
+     322.0
+    ],
+    [
+     -90.0,
+     78.0,
+     322.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     1,
+     4,
+     5,
+     2
+    ],
+    [
+     6,
+     4,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "f_gf",
+    "f_gs",
+    "f_roof"
+   ],
+   "material": "f_gf"
+  },
+  {
+   "id": "qs_0_e",
+   "op": "mesh",
+   "vertices": [
+    [
+     -90.0,
+     78.0,
+     299.85
+    ],
+    [
+     -70.0,
+     62.0,
+     299.85
+    ],
+    [
+     -70.0,
+     60.4,
+     299.85
+    ],
+    [
+     -90.0,
+     76.4,
+     299.85
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "crown_w"
+   ],
+   "material": "crown_w"
+  },
+  {
+   "id": "qs_1",
+   "op": "mesh",
+   "vertices": [
+    [
+     -63.0,
+     56.0,
+     300.0
+    ],
+    [
+     -45.0,
+     43.0,
+     300.0
+    ],
+    [
+     -45.0,
+     -24.2902,
+     300.0
+    ],
+    [
+     -63.0,
+     -24.2902,
+     300.0
+    ],
+    [
+     -45.0,
+     43.0,
+     322.0
+    ],
+    [
+     -45.0,
+     -24.2902,
+     322.0
+    ],
+    [
+     -63.0,
+     56.0,
+     322.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     1,
+     4,
+     5,
+     2
+    ],
+    [
+     6,
+     4,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "f_gf",
+    "f_gs",
+    "f_roof"
+   ],
+   "material": "f_gf"
+  },
+  {
+   "id": "qs_1_e",
+   "op": "mesh",
+   "vertices": [
+    [
+     -63.0,
+     56.0,
+     299.85
+    ],
+    [
+     -45.0,
+     43.0,
+     299.85
+    ],
+    [
+     -45.0,
+     41.4,
+     299.85
+    ],
+    [
+     -63.0,
+     54.4,
+     299.85
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "crown_w"
+   ],
+   "material": "crown_w"
+  },
+  {
+   "id": "qs_2",
+   "op": "mesh",
+   "vertices": [
+    [
+     -38.0,
+     37.0,
+     300.0
+    ],
+    [
+     -22.0,
+     27.0,
+     300.0
+    ],
+    [
+     -22.0,
+     -24.2902,
+     300.0
+    ],
+    [
+     -38.0,
+     -24.2902,
+     300.0
+    ],
+    [
+     -22.0,
+     27.0,
+     322.0
+    ],
+    [
+     -22.0,
+     -24.2902,
+     322.0
+    ],
+    [
+     -38.0,
+     37.0,
+     322.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     1,
+     4,
+     5,
+     2
+    ],
+    [
+     6,
+     4,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "f_gf",
+    "f_gs",
+    "f_roof"
+   ],
+   "material": "f_gf"
+  },
+  {
+   "id": "qs_2_e",
+   "op": "mesh",
+   "vertices": [
+    [
+     -38.0,
+     37.0,
+     299.85
+    ],
+    [
+     -22.0,
+     27.0,
+     299.85
+    ],
+    [
+     -22.0,
+     25.4,
+     299.85
+    ],
+    [
+     -38.0,
+     35.4,
+     299.85
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "crown_w"
+   ],
+   "material": "crown_w"
+  },
+  {
+   "id": "qs_r",
+   "op": "box",
+   "size": [
+    1.4,
+    1.4,
+    1.4
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     -88.0,
+     79.0,
+     304.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  }
+ ]
+}

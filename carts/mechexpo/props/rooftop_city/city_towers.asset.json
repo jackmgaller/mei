@@ -1,0 +1,456 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_roof_city_towers",
+ "budget": {
+  "vertices": 2000,
+  "triangles": 300
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.62
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "m_of": {
+   "color": "#18203c",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_m_of.png",
+    "projection": "box",
+    "scale": [
+     44.8,
+     44.8
+    ]
+   }
+  },
+  "m_os": {
+   "color": "#18203c",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_m_os.png",
+    "projection": "box",
+    "scale": [
+     44.8,
+     44.8
+    ]
+   }
+  },
+  "m_rf": {
+   "color": "#18203c",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_m_rf.png",
+    "projection": "box",
+    "scale": [
+     44.8,
+     44.8
+    ]
+   }
+  },
+  "m_rs": {
+   "color": "#18203c",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_m_rs.png",
+    "projection": "box",
+    "scale": [
+     44.8,
+     44.8
+    ]
+   }
+  },
+  "m_roof": {
+   "color": "#262e50"
+  },
+  "f_of": {
+   "color": "#262a48",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_f_of.png",
+    "projection": "box",
+    "scale": [
+     64.0,
+     64.0
+    ]
+   }
+  },
+  "f_os": {
+   "color": "#262a48",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_f_os.png",
+    "projection": "box",
+    "scale": [
+     64.0,
+     64.0
+    ]
+   }
+  },
+  "crown": {
+   "color": "#8ab8e8",
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "mm_0",
+   "op": "box",
+   "size": [
+    33.6,
+    56.0475,
+    22.4
+   ],
+   "material": "m_of",
+   "transform": {
+    "translate": [
+     -245.2,
+     11.1762,
+     261.2
+    ]
+   },
+   "faces": {
+    "right": "m_os"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top",
+    "left"
+   ]
+  },
+  {
+   "id": "mm_1",
+   "op": "box",
+   "size": [
+    22.4,
+    36.7689,
+    16.8
+   ],
+   "material": "m_rf",
+   "transform": {
+    "translate": [
+     -210.8,
+     4.0156,
+     222.4
+    ]
+   },
+   "faces": {
+    "right": "m_rs"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top",
+    "left"
+   ]
+  },
+  {
+   "id": "mm_2",
+   "op": "box",
+   "size": [
+    28.0,
+    73.6738,
+    22.4
+   ],
+   "material": "m_of",
+   "transform": {
+    "translate": [
+     -182.0,
+     19.1631,
+     273.2
+    ]
+   },
+   "faces": {
+    "right": "m_os"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top",
+    "left"
+   ]
+  },
+  {
+   "id": "mm_2_c",
+   "op": "box",
+   "size": [
+    28.6,
+    2.2,
+    23.0
+   ],
+   "material": "crown",
+   "transform": {
+    "translate": [
+     -182.0,
+     54.0,
+     273.2
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front",
+    "left"
+   ]
+  },
+  {
+   "id": "mm_3",
+   "op": "box",
+   "size": [
+    22.4,
+    43.8836,
+    22.4
+   ],
+   "material": "m_of",
+   "transform": {
+    "translate": [
+     -148.8,
+     6.0582,
+     247.2
+    ]
+   },
+   "faces": {
+    "right": "m_os"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top",
+    "left"
+   ]
+  },
+  {
+   "id": "mm_4",
+   "op": "box",
+   "size": [
+    16.8,
+    24.3295,
+    16.8
+   ],
+   "material": "m_rf",
+   "transform": {
+    "translate": [
+     -141.6,
+     -0.9648,
+     204.4
+    ]
+   },
+   "faces": {
+    "right": "m_rs",
+    "top": "m_roof"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "left"
+   ]
+  },
+  {
+   "id": "mm_5",
+   "op": "box",
+   "size": [
+    16.8,
+    63.0246,
+    16.8
+   ],
+   "material": "m_rf",
+   "transform": {
+    "translate": [
+     -119.6,
+     13.2877,
+     278.4
+    ]
+   },
+   "faces": {
+    "right": "m_rs"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top",
+    "left"
+   ]
+  },
+  {
+   "id": "mm_5_c",
+   "op": "box",
+   "size": [
+    17.4,
+    2.2,
+    17.4
+   ],
+   "material": "crown",
+   "transform": {
+    "translate": [
+     -119.6,
+     42.8,
+     278.4
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front",
+    "left"
+   ]
+  },
+  {
+   "id": "mm_6",
+   "op": "box",
+   "size": [
+    22.4,
+    31.9951,
+    16.8
+   ],
+   "material": "m_of",
+   "transform": {
+    "translate": [
+     -92.8,
+     0.8025,
+     234.4
+    ]
+   },
+   "faces": {
+    "right": "m_os"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top",
+    "left"
+   ]
+  },
+  {
+   "id": "mm_7",
+   "op": "box",
+   "size": [
+    16.8,
+    28.8738,
+    16.8
+   ],
+   "material": "m_rf",
+   "transform": {
+    "translate": [
+     -21.6,
+     -3.2369,
+     270.4
+    ]
+   },
+   "faces": {
+    "left": "m_rs",
+    "right": "m_rs",
+    "top": "m_roof"
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "mm_8",
+   "op": "box",
+   "size": [
+    22.4,
+    36.1262,
+    16.8
+   ],
+   "material": "m_of",
+   "transform": {
+    "translate": [
+     1.2,
+     -1.2631,
+     294.4
+    ]
+   },
+   "faces": {
+    "left": "m_os",
+    "right": "m_os"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "mm_9",
+   "op": "box",
+   "size": [
+    16.0,
+    93.5295,
+    16.0
+   ],
+   "material": "f_of",
+   "transform": {
+    "translate": [
+     -168.0,
+     25.2352,
+     326.0
+    ]
+   },
+   "faces": {
+    "right": "f_os"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top",
+    "left"
+   ]
+  },
+  {
+   "id": "mm_9_c",
+   "op": "box",
+   "size": [
+    16.6,
+    2.2,
+    16.6
+   ],
+   "material": "crown",
+   "transform": {
+    "translate": [
+     -168.0,
+     70.0,
+     326.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front",
+    "left"
+   ]
+  },
+  {
+   "id": "mm_10",
+   "op": "box",
+   "size": [
+    24.0,
+    52.7033,
+    16.0
+   ],
+   "material": "f_of",
+   "transform": {
+    "translate": [
+     -228.0,
+     5.6484,
+     314.0
+    ]
+   },
+   "faces": {
+    "right": "f_os"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top",
+    "left"
+   ]
+  }
+ ]
+}

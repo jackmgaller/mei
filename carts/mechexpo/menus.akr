@@ -169,7 +169,7 @@ fn draw_title() {
     ui_sprite(&UI_LOGO[0], PAL_LOGO, lx, 36, 0x808080, BLEND_NONE)
     ui_shine(lx + 4, 38, 232, 34, t, 150)
     txt(FONT_MICRO, 8, 25, "EXPO HALL 1 // DEMO HANGAR", C_SKY, ALIGN_LEFT)
-    txt(FONT_MICRO, 312, 25, "OSAKA 2000.10.12", C_SKY, ALIGN_RIGHT)
+    txt(FONT_MICRO, 312, 25, "YOKOHAMA 2000.10.12", C_SKY, ALIGN_RIGHT)
     barcode(8, 102, 16, 7, C_SILVER)
     txt(FONT_MICRO, 312, 101, "ADMIT ONE // PRESS", C_SILVER, ALIGN_RIGHT)
     // the press pass, hung from the band on its lanyard, swaying a little

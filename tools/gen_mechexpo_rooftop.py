@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """Generates Mech Expo 2000's rooftop stage art for the plane chip: the rooftop showcase.
 
-The expo's tower in Osaka, 2000, at the blue hour: the fight is on its roof deck, the city
-below. The stairwell's housing closes the stage at x = -ROOF_HALF (a polygon prop,
-carts/mechexpo/props/rooftop/); at x = +ROOF_HALF the deck ends at a hazard-striped lip and
-drops to the street (the open edge: ring-outs, carts/mechexpo/MOVES.md). The city itself is
-in polygons (carts/mechexpo/props/rooftop_city/make_city.py: its buildings, landmarks and
-street); this script packs them (into texture slot 14 and palettes 204 up) and paints what is
-too far to have sides: the horizon's haze, a low skyline and the far city's lights on BG1.
+The expo's tower on the waterfront of Minato Mirai 21, Yokohama, October 2000, at the blue
+hour: the fight is on its roof deck, the harbour below. The stairwell's housing closes the
+stage at x = -ROOF_HALF (a polygon prop, carts/mechexpo/props/rooftop/); at x = +ROOF_HALF the
+deck ends at a hazard-striped lip and drops to the quay and the water (the open edge:
+ring-outs, carts/mechexpo/MOVES.md). The city itself is in polygons
+(carts/mechexpo/props/rooftop_city/make_city.py: its buildings, landmarks, the promenade and
+the tall ship); this script packs them (into texture slot 14 and palettes 204 up) and paints
+what is too far to have sides on BG1: the far shore, the moon and the sea.
 
 Writes, in carts/mechexpo/:
   art/stage_roof_city.tiles  4-bit atlas of 8x8 tiles (ATLAS_1): the horizon behind the city
   art/stage_roof_city.map    BG1 map, 64 x 32 entries (512 x 256 pixels); art row CITY_LINE sits
-                             on the deck's far edge (z = DECK_FAR) on screen. Above it: a low
-                             skyline in the haze against the sky (the backdrop's gradient shows
-                             through) and the far city's lights down to the horizon; below it,
-                             a dark carpet of street lights, seen only past the open edge where
-                             the polygons' ground (330 m deep) does not reach
+                             on the deck's far edge (z = DECK_FAR) on screen. Above it: the far
+                             shore, a low skyline in the haze, and the moon against the sky (the
+                             backdrop's gradient shows through), then the sea from the horizon
+                             down; below it, the harbour's water, seen only past the open edge
   art/stage_roof_city.pal    its palettes (CITY_PALS x 16 colours, 15-bit), from PAL_HALL (244)
   art/stage_roof_deck.tiles  4-bit atlas of 8x8 tiles (ATLAS_0): the roof deck
   art/stage_roof_deck.map    BG2 map, 128 x 128 entries: DECK_S texels a metre, world (0, 0) at
@@ -29,14 +29,16 @@ Writes, in carts/mechexpo/:
   art/stage_roof_city_*.bin, art/stage_roof_city3d.*, roof_city3d.akr
                              the city in polygons, packed from props/rooftop_city/ (below)
 
-The horizon (BG1), back to front: a low skyline in the haze with a few pale windows, the glow
-along the horizon, the far city's lights down to the deck's far edge, and below it a dark carpet
-of the street's lights. The city in front of it is polygons (props/rooftop_city/make_city.py):
-three ranks of buildings (the near one 48-66 m behind the fight plane, the middle one 100-150 m,
-with the landmarks: the Umeda Sky Building's twin towers and floating garden, a lattice tower
-with a lit crown, HEP's red Ferris wheel on a department store) and the street below the deck,
-past the open edge. Layers: the city is PL, behind the deck (BG2) and in front of BG1; the
-props and the mechs are PH (PRIO below; stage.akr's stage_props()). The deck (BG2): grey-blue concrete pavers, the
+The horizon (BG1), back to front: the far shore across the harbour (inland a low skyline in
+the haze with a few pale windows, then the bay's far shore with red chimney lights, then open
+water), the moon low over the bay (the eve of a full moon), the glow along the horizon, the sea
+down to the deck's far edge with its ripples, the shore lights' long reflections and the moon's
+glade, and below it the harbour's water. The city in front of it is polygons
+(props/rooftop_city/make_city.py): Landmark Tower, Queen's Square and the district's towers
+inland, Cosmo Clock 21, the sail hotel and the exhibition hall, the Bay Bridge and the Marine
+Tower, and below the open edge the promenade and the tall ship. Layers: the city is PL, behind
+the deck (BG2) and in front of BG1; the props and the mechs are PH (PRIO below; stage.akr's
+stage_props()). The deck (BG2): grey-blue concrete pavers, the
 floodlit showcase lane, the helipad (a yellow ring and a white H), the trial's lettering, the
 1P / 2P start marks at x = -+9, the yellow and black hazard band along the open edge and a dark
 gutter at the far edge. The stage stays cooler and quieter than the mechs (STYLE.md).
@@ -70,6 +72,7 @@ CITY_LINE = 150         # the art row on the deck's far edge (z = DECK_FAR)
 HORIZON = 126           # where the skyline stands: 22-29 rows above the line on screen
 # parallax bands: (first art row, depth behind DECK_FAR in metres)
 CITY_BANDS = [(0, 900.0), (HORIZON - 2, 300.0), (CITY_LINE, 60.0)]
+MOON = (398, HORIZON - 34, 5)  # the moon on BG1: art column and row of its centre, its radius
 DECK_S = 8              # texels a metre
 DECK_N = 128            # map entries a side
 DECK_C = 512            # the texel of world 0
@@ -78,19 +81,20 @@ DECK_VIEW = 100.0       # the floor's rows out to this view depth (the deck ends
 # in polygons is PL, behind the deck (BG2) and in front of the haze (BG1); the props and the mechs
 # are PH (stage.akr's stage_props()), in front of the deck and the HUD's frame
 PRIO = 0x41220033
-CLIP_FAR = 400.0        # the camera's far plane: the street's ground runs 330 m back (view depth 361)
+CLIP_FAR = 400.0        # the camera's far plane: the Bay Bridge's far side is 364 m back
 # the polygon props (props/rooftop/): their recipes, and where their pack goes
 PROPS = ['roof_stairwell', 'roof_parapet', 'roof_kerb']
 PROPS_PACK = 'stage_roof_props'
 PROPS_SLOT = 13         # D's free texture slot (README: D 8-14; 13 was unused)
 PROPS_PALETTE = 200     # 4-bit palettes from 200 (the models' pack counts up from 0)
 # the city in polygons (props/rooftop_city/make_city.py): its recipes, and where its pack goes
-CITY3D = ['city_near', 'city_mid', 'city_umeda', 'city_lattice', 'city_hep', 'city_street']
+CITY3D = ['city_mm', 'city_towers', 'city_wheel', 'city_bay', 'city_venue', 'city_quay']
 CITY3D_PACK = 'stage_roof_city3d'
 CITY3D_SLOT = 14        # D's: texture slot 14 (free: README, "Rendering, VRAM and budgets")
 CITY3D_PALETTE = 204    # 4-bit palettes from 204
-# the backdrop's sky, rows above the deck's far edge on screen: deep blue to a dusky rose glow
-SKY = ['0e1228', '24264e', '52426e', '966a6e']          # #rrggbb
+# the backdrop's sky, rows above the deck's far edge on screen: the blue hour, deep blue to a
+# dusky glow at the horizon
+SKY = ['0b1230', '1c2858', '404a80', '8a6c80']          # #rrggbb
 SKY_DY = [-420, -200, -90, -26]
 
 hexc = S.hexc
@@ -102,12 +106,10 @@ NIGHT = [hexc(c) for c in ('0b0e1a', '121729', '191f35', '212943', '2a3352', '34
 CITY_ACC = {
     'warm':  ['e2b46c', 'b88c4c', 'fff0c8', '7c6440', 'd8784c'],     # windows, lamps
     'haze':  ['966a6e', '7a5a72', 'b8847c', '5e4a6c', 'd8a888'],     # the glow at the horizon
-    'street': ['f0a848', 'd8402e', 'fff8e8', '8a2a28', '6ab8e8'],    # headlights, tail lights
-    'neon':  ['38d8ec', 'e848a8', 'f0dc48', '1c6c80', '7c2460'],     # signs at the tower's foot
-    'wheel': ['c8222c', '7c1219', 'ff6a62', 'f0c419', 'fff0c8'],     # HEP's Ferris wheel, warnings
-    'uapc':  ['1e3c9a', '3a6ad8', 'a8c8ff', 'ffffff', 'f0c419'],     # the expo's own lights
+    'sea':   ['122446', '1a3058', '284672', 'e2b46c', '9c7a50'],     # the water, warm reflections
+    'seac':  ['122446', '1a3058', '284672', '8cb0e0', 'c8302a'],     # the water, cool glints, red lights
 }
-CITY_ORDER = ['warm', 'haze', 'street', 'neon', 'wheel', 'uapc']
+CITY_ORDER = ['warm', 'haze', 'sea', 'seac']
 CITY_PALS = len(CITY_ORDER)
 for k, v in CITY_ACC.items():
     CITY_ACC[k] = [hexc(c) for c in v]
@@ -128,10 +130,8 @@ for k, v in DECK_ACC.items():
 N = NIGHT
 W = CITY_ACC['warm']
 H = CITY_ACC['haze']
-ST = CITY_ACC['street']
-NE = CITY_ACC['neon']
-WH = CITY_ACC['wheel']
-U = CITY_ACC['uapc']
+SEA = CITY_ACC['sea']
+SC = CITY_ACC['seac']
 
 
 def cell_rand(x, y, salt):
@@ -157,64 +157,114 @@ def windows(cv, x0, y0, x1, y1, lit, salt, cols=(W[1], W[0]), dark=None, step=4)
 
 
 def draw_city():
-    """The far city on BG1, behind the city in polygons (props/rooftop_city/): a low skyline
-    in the haze, the glow along the horizon, the far city's lights from there down to the deck's
-    far edge, and below that, past the open edge, a dark carpet of the street's lights (what the
-    polygons' ground does not reach: it ends 330 m back). Everything with a landmark or a
-    building near enough to have sides is a polygon; this is what is too far to have any."""
+    """The far shore and the sea on BG1, behind the city in polygons (props/rooftop_city/):
+    across the harbour a low skyline in the haze (the inland city to the left, the bay's far
+    shore to the right, flatter and darker, with red lights on its chimneys, then open water),
+    the glow along the horizon; below it the sea down to the deck's far edge, its ripples and the
+    far lights' long reflections; and below that, past the open edge, the harbour's water seen
+    from above (what the polygons' quay does not cover). Everything near enough to have sides is
+    a polygon; this is what is too far to have any."""
     cv = S.Canvas(CITY_W, CITY_H)
-    rng = np.random.default_rng(1970)
+    rng = np.random.default_rng(1989)
     hz = HORIZON
     Wd = CITY_W
+    lights = []                                  # (x, colour) of the shore's lights, reflected below
 
-    # -- the far skyline (band 0): a long low mass of blocks along the horizon in the haze, taller
-    # ones here and there, a few pale windows; it wraps every 512 px
+    # -- the far shore (band 0): wraps every 512 px; art column 256 is world x = 0 (the fight's
+    # middle). Inland (left of ~250) a low city mass with a few taller blocks; past it the
+    # harbour's far side, lower; right of ~330 the bay's far shore, a thin dark line with sparse
+    # lights and red chimney lights; right of ~450 open water to the horizon
     far, farther = H[3], H[1]
     x = 0
     while x < Wd:
-        w = 8 * int(rng.integers(2, 6))
-        h = 4 * int(rng.integers(1, 6))
-        cv.rect(x, hz - h, min(x + w, Wd), hz, farther if h > 12 else far)
-        windows(cv, x, hz - h, min(x + w, Wd), hz, 0.16, 1, cols=(H[4], H[0]), step=4)
-        x += w
-    for tx, tw, th in [(24, 16, 36), (104, 24, 30), (176, 16, 40), (264, 8, 32), (296, 16, 44),
-                       (384, 16, 36), (440, 24, 30)]:
+        if x < 250:
+            w, h = 8 * int(rng.integers(2, 5)), 2 * int(rng.integers(2, 7))
+        elif x < 330:
+            w, h = 8 * int(rng.integers(2, 5)), 2 * int(rng.integers(1, 4))
+        elif x < 450:
+            w, h = 8 * int(rng.integers(3, 7)), int(rng.integers(1, 4))
+        else:
+            w, h = 8, 0
+        x1 = min(x + w, Wd)
+        if h:
+            cv.rect(x, hz - h, x1, hz, farther if h > 9 else far)
+            for wx in range(x + 1, x1 - 1, 3):
+                for wy in range(hz - h + 1, hz, 3):
+                    r = cell_rand(wx, wy, 3)
+                    if r < 0.10:
+                        cv.rect(wx, wy, wx + 1, wy + 1, H[4] if r < 0.06 else W[1])
+                        if wy >= hz - 4 and r < 0.06:
+                            lights.append((wx, W[0]))
+        x = x1
+    for tx, tw, th in [(40, 8, 20), (72, 16, 16), (136, 8, 22), (200, 16, 14), (280, 8, 10)]:
         cv.rect(tx, hz - th, tx + tw, hz, farther)
         cv.rect(tx, hz - th, tx + 1, hz, H[0])
-        windows(cv, tx, hz - th + 3, tx + tw, hz, 0.2, 2, cols=(H[4], H[0]))
-        if th >= 40:
-            cv.rect(tx + tw // 2, hz - th - 3, tx + tw // 2 + 1, hz - th, farther)
-            cv.rect(tx + tw // 2, hz - th - 4, tx + tw // 2 + 1, hz - th - 3, WH[0])
-
-    # -- the far city's lights, from the horizon down to the deck's far edge (band 1)
-    cv.rect(0, hz, Wd, CITY_LINE, N[1])
-    cv.rect(0, hz, Wd, hz + 2, H[3])                             # the glow along the horizon
-    for y in range(hz + 3, CITY_LINE, 3):
-        k = (y - hz) / (CITY_LINE - hz)
-        lit = 0.12 + 0.25 * k
-        for x in range(0, Wd, 2):
-            r = cell_rand(x * 4 + y, y, 7)
-            if r < lit:
-                c = W[0] if r < lit * 0.5 else (ST[0] if r < lit * 0.8 else N[7])
-                cv.rect(x, y, x + 1, y + 1, c)
-
-    # -- the street's lights past the open edge (band 2): a dark carpet, an avenue's lamps
-    base = CITY_LINE
-    cv.rect(0, base, Wd, CITY_H, N[0])
-    for y in range(base + 2, CITY_H, 4):
-        for x in range(0, Wd, 3):
-            r = cell_rand(x * 4 + y, y, 11)
-            if r < 0.22:
-                cv.rect(x, y, x + 1, y + 1, W[3] if r < 0.12 else W[0])
-    ay = 222
-    cv.rect(0, ay, Wd, ay + 8, N[1])
-    for x in range(0, Wd, 6):
-        r = cell_rand(x * 8, ay, 13)
+        windows(cv, tx, hz - th + 3, tx + tw, hz, 0.16, 2, cols=(H[4], H[0]))
+        cv.rect(tx + tw // 2, hz - th - 2, tx + tw // 2 + 1, hz - th - 1, SC[4])
+    for cx in (352, 371, 404, 428):                                  # chimneys with red lights
+        h = 7 + (cx % 5)
+        cv.rect(cx, hz - h, cx + 1, hz, farther)
+        cv.rect(cx, hz - h - 1, cx + 1, hz - h, SC[4])
+        lights.append((cx, SC[4]))
+    for x in range(336, 448, 5):                                     # the shore's lamps
+        r = cell_rand(x * 3, hz, 5)
         if r < 0.55:
-            cv.rect(x, ay + 2, x + 2, ay + 3, ST[2] if r < 0.3 else ST[0])      # headlights
-        r = cell_rand(x * 8, ay + 9, 17)
-        if r < 0.5:
-            cv.rect(x, ay + 5, x + 2, ay + 6, ST[1])                             # tail lights
+            cv.rect(x, hz - 1, x + 1, hz, W[0] if r < 0.35 else SC[3])
+            lights.append((x, W[0] if r < 0.35 else SC[3]))
+
+    # -- the moon: 2000-10-12 was the eve of a full moon, rising in the east over the bay at
+    # the blue hour: a disc low above the far shore, and its glade on the sea below (drawn last)
+    mx, my, mr = MOON
+    cv.ellipse(mx - mr, my - mr, mx + mr + 1, my + mr + 1, W[2])
+
+    # -- the sea (band 1), from the horizon to the deck's far edge: the glow's reflection just
+    # under the horizon, thin ripples (closer together toward the horizon) and long broken
+    # reflections under the shore's lights
+    cv.rect(0, hz, Wd, CITY_LINE, SEA[0])
+    for x in range(0, Wd, 2):
+        if cell_rand(x * 5, hz, 9) < 0.7:
+            cv.rect(x, hz, x + 2, hz + 1, H[3])
+        if cell_rand(x * 7, hz + 1, 9) < 0.35:
+            cv.rect(x, hz + 1, x + 2, hz + 2, H[3])
+    y = hz + 3
+    gap = 2
+    while y < CITY_LINE:
+        for x in range(0, Wd, 4):
+            r = cell_rand(x * 11 + y, y, 21)
+            if r < 0.30:
+                cv.rect(x, y, x + 2 + int(r * 10) % 3, y + 1, SEA[2] if r < 0.06 else SEA[1])
+        y += gap
+        gap = min(gap + 1, 3) if y > hz + 8 else gap
+    for lx, col in lights:
+        n = 5 + int(cell_rand(lx * 13, hz, 23) * 10)
+        for j in range(n):
+            if cell_rand(lx * 17 + j, hz + j, 29) < 0.55 - 0.03 * j:
+                cv.rect(lx, hz + 1 + j, lx + 1, hz + 2 + j, col if j < 3 or col != W[0] else W[1])
+
+    for j in range(CITY_LINE - hz - 1):                              # the moon's glade
+        half = 1 + j // 6
+        for x in range(mx - half, mx + half + 1, 2):
+            if cell_rand(x * 19 + j, hz + j, 37) < 0.62 - 0.012 * j:
+                cv.rect(x, hz + 1 + j, x + 2, hz + 2 + j, W[2] if j < 6 or (x + j) % 3 else W[0])
+
+    # -- the harbour past the open edge (band 2): dark water, ripples every few rows (closer
+    # together far off, at the top), a few cool glints; a pattern that repeats every 32 px so
+    # its tiles repeat
+    base = CITY_LINE
+    cv.rect(0, base, Wd, CITY_H, SEA[0])
+    y = base + 1
+    k = 0
+    while y < CITY_H:
+        gap = 2 if y < base + 24 else 3 if y < base + 56 else 4
+        for x0 in range(0, 32, 8):
+            r = cell_rand(x0 * 7 + k * 3, y, 31)
+            if r < 0.55:
+                ln = 2 + int(r * 9) % 4
+                for rep in range(0, Wd, 32):
+                    cv.rect(rep + x0 + (k * 3) % 5, y, rep + x0 + (k * 3) % 5 + ln, y + 1,
+                            SC[3] if r < 0.03 else SEA[2] if r < 0.12 else SEA[1])
+        y += gap
+        k += 1
 
     pals = [[None] + NIGHT + CITY_ACC[k] for k in CITY_ORDER]
     return cv, pals

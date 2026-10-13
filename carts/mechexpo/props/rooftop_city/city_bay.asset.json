@@ -1,0 +1,652 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_roof_city_bay",
+ "budget": {
+  "vertices": 2000,
+  "triangles": 400
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.62
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "steel": {
+   "color": "#3c4568"
+  },
+  "red": {
+   "color": "#ff3a2a",
+   "class": "emissive"
+  },
+  "green": {
+   "color": "#40e070",
+   "class": "emissive"
+  },
+  "deck_lit": {
+   "color": "#f0d8a0",
+   "class": "emissive"
+  },
+  "bridge": {
+   "color": "#8a9cc4",
+   "class": "emissive"
+  },
+  "bridge_dim": {
+   "color": "#5c6e9c",
+   "class": "emissive"
+  },
+  "tower_lit": {
+   "color": "#d8a868",
+   "class": "emissive"
+  },
+  "refl_white": {
+   "color": "#dcd6cc",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_refl_white.png",
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "deck",
+   "op": "box",
+   "size": [
+    180.0,
+    4.0,
+    14.0
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     240.0,
+     -22.0,
+     356.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "deck_lit",
+   "op": "box",
+   "size": [
+    180.0,
+    0.9,
+    0.2
+   ],
+   "material": "deck_lit",
+   "transform": {
+    "translate": [
+     240.0,
+     -20.6,
+     348.8
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "deck_low",
+   "op": "box",
+   "size": [
+    180.0,
+    0.7,
+    0.2
+   ],
+   "material": "bridge_dim",
+   "transform": {
+    "translate": [
+     240.0,
+     -23.6,
+     348.8
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "t0_0",
+   "op": "box",
+   "size": [
+    2.0,
+    62.0,
+    2.0
+   ],
+   "material": "bridge",
+   "transform": {
+    "translate": [
+     194.4,
+     -13.073,
+     349.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "t0_1",
+   "op": "box",
+   "size": [
+    2.0,
+    62.0,
+    2.0
+   ],
+   "material": "bridge",
+   "transform": {
+    "translate": [
+     197.6,
+     -13.073,
+     363.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "left",
+    "top"
+   ]
+  },
+  {
+   "id": "t0_x",
+   "op": "box",
+   "size": [
+    5.2,
+    1.6,
+    0.2
+   ],
+   "material": "bridge",
+   "transform": {
+    "translate": [
+     196.0,
+     5.0,
+     347.3
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "t0_c0",
+   "op": "box",
+   "size": [
+    2.4,
+    46.2196,
+    0.2
+   ],
+   "material": "bridge_dim",
+   "transform": {
+    "translate": [
+     175.75,
+     -8.0,
+     347.0
+    ],
+    "rotate": [
+     0,
+     0,
+     -58.717
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "t0_c1",
+   "op": "box",
+   "size": [
+    2.4,
+    28.6575,
+    0.2
+   ],
+   "material": "bridge_dim",
+   "transform": {
+    "translate": [
+     185.75,
+     -9.5,
+     346.85
+    ],
+    "rotate": [
+     0,
+     0,
+     -42.879
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "t0_c2",
+   "op": "box",
+   "size": [
+    2.4,
+    46.2196,
+    0.2
+   ],
+   "material": "bridge_dim",
+   "transform": {
+    "translate": [
+     216.25,
+     -8.0,
+     346.7
+    ],
+    "rotate": [
+     0,
+     0,
+     58.717
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "t0_c3",
+   "op": "box",
+   "size": [
+    2.4,
+    28.6575,
+    0.2
+   ],
+   "material": "bridge_dim",
+   "transform": {
+    "translate": [
+     206.25,
+     -9.5,
+     346.55
+    ],
+    "rotate": [
+     0,
+     0,
+     42.879
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "t1_0",
+   "op": "box",
+   "size": [
+    2.0,
+    62.0,
+    2.0
+   ],
+   "material": "bridge",
+   "transform": {
+    "translate": [
+     268.4,
+     -13.073,
+     349.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "t1_1",
+   "op": "box",
+   "size": [
+    2.0,
+    62.0,
+    2.0
+   ],
+   "material": "bridge",
+   "transform": {
+    "translate": [
+     271.6,
+     -13.073,
+     363.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "left",
+    "top"
+   ]
+  },
+  {
+   "id": "t1_x",
+   "op": "box",
+   "size": [
+    5.2,
+    1.6,
+    0.2
+   ],
+   "material": "bridge",
+   "transform": {
+    "translate": [
+     270.0,
+     5.0,
+     347.3
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "t1_c0",
+   "op": "box",
+   "size": [
+    2.4,
+    46.2196,
+    0.2
+   ],
+   "material": "bridge_dim",
+   "transform": {
+    "translate": [
+     249.75,
+     -8.0,
+     346.4
+    ],
+    "rotate": [
+     0,
+     0,
+     -58.717
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "t1_c1",
+   "op": "box",
+   "size": [
+    2.4,
+    28.6575,
+    0.2
+   ],
+   "material": "bridge_dim",
+   "transform": {
+    "translate": [
+     259.75,
+     -9.5,
+     346.25
+    ],
+    "rotate": [
+     0,
+     0,
+     -42.879
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "t1_c2",
+   "op": "box",
+   "size": [
+    2.4,
+    46.2196,
+    0.2
+   ],
+   "material": "bridge_dim",
+   "transform": {
+    "translate": [
+     290.25,
+     -8.0,
+     346.1
+    ],
+    "rotate": [
+     0,
+     0,
+     58.717
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "t1_c3",
+   "op": "box",
+   "size": [
+    2.4,
+    28.6575,
+    0.2
+   ],
+   "material": "bridge_dim",
+   "transform": {
+    "translate": [
+     280.25,
+     -9.5,
+     345.95
+    ],
+    "rotate": [
+     0,
+     0,
+     42.879
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "bt_r0",
+   "op": "box",
+   "size": [
+    1.8,
+    1.8,
+    1.8
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     196.0,
+     7.0,
+     349.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "bt_r1",
+   "op": "box",
+   "size": [
+    1.8,
+    1.8,
+    1.8
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     270.0,
+     7.0,
+     349.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "marine",
+   "op": "cylinder",
+   "radius": 4.6,
+   "height": 56.768852459016394,
+   "segments": 6,
+   "caps": false,
+   "material": "steel",
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 0.45
+    }
+   ],
+   "transform": {
+    "translate": [
+     132.0,
+     1.6156,
+     336.0
+    ]
+   }
+  },
+  {
+   "id": "marine_deck",
+   "op": "cylinder",
+   "radius": 5.4,
+   "height": 4.0,
+   "segments": 6,
+   "caps": false,
+   "material": "tower_lit",
+   "transform": {
+    "translate": [
+     132.0,
+     24.0,
+     336.0
+    ]
+   }
+  },
+  {
+   "id": "glade",
+   "op": "box",
+   "size": [
+    16.0,
+    80.0,
+    0.2
+   ],
+   "material": "refl_white",
+   "transform": {
+    "translate": [
+     272.0,
+     -88.3,
+     365.5
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "marine_mast",
+   "op": "box",
+   "size": [
+    0.8,
+    6.0,
+    0.8
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     132.0,
+     33.0,
+     336.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  },
+  {
+   "id": "marine_b",
+   "op": "box",
+   "size": [
+    2.2,
+    2.2,
+    2.2
+   ],
+   "material": "green",
+   "transform": {
+    "translate": [
+     132.0,
+     36.5,
+     336.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "top"
+   ]
+  }
+ ]
+}
