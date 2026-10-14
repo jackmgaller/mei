@@ -4701,6 +4701,50 @@ private fn gm_restart() { sh_restart(Mech.Gamma, GM_FOE, -4.0, 4.0) }
 
 var gm_b: u32
 var gm_t0: s32                  // stage 0: the walk's first frame
+var gm_k: s32                   // stage 0: the move whose shield is being checked
+
+// Where the shield is swung out (MOVES.md, "For the animators (Gamma)"): Lead Shielding's swing,
+// brace and stow (0-40) and its knock after an absorb (47-55), the block, the hits' rattle (0-6),
+// the win's swing out, raps and stow (56-117: out 64-104 in the spec, swung on either side).
+private fn gm_shield_out(mv: Mv, f: s32) -> bool {
+    return match mv {
+        sp_d => f <= 40 || (f >= 47 && f <= 55)
+        block => true
+        hit_high, hit_low => f <= 6
+        win => f >= 56 && f <= 117
+        else => false
+    }
+}
+
+// The shield's turn on its hand at frame f of mv: the hand's rotation transposed times the shield's
+// (the rows' first three entries; weapon_l's parent is hand_l).
+private fn gm_rel(root: mat4, mv: Mv, f: s32) -> mat4 {
+    let h = anim_part(Mech.Gamma, mv, fixed(f), root, Part.hand_l)
+    let w = anim_part(Mech.Gamma, mv, fixed(f), root, Part.weapon_l)
+    var r = mat4_identity()
+    for a in 0..3 {
+        var row = vec4(0.0, 0.0, 0.0, 0.0)
+        row.x = gm_c(h[0], a) * w[0].x + gm_c(h[1], a) * w[1].x + gm_c(h[2], a) * w[2].x
+        row.y = gm_c(h[0], a) * w[0].y + gm_c(h[1], a) * w[1].y + gm_c(h[2], a) * w[2].y
+        row.z = gm_c(h[0], a) * w[0].z + gm_c(h[1], a) * w[1].z + gm_c(h[2], a) * w[2].z
+        r[a] = row
+    }
+    return r
+}
+
+private fn gm_c(v: vec4, a: s32) -> fixed {
+    if a == 0 { return v.x }
+    if a == 1 { return v.y }
+    return v.z
+}
+
+private fn gm_same3(a: mat4, b: mat4) -> bool {
+    for i in 0..3 {
+        let d = a[i] - b[i]
+        if abs(d.x) > 0.01 || abs(d.y) > 0.01 || abs(d.z) > 0.01 { return false }
+    }
+    return true
+}
 
 // One move by side i from distance d: restarted there, b pressed two frames in.
 private fn gm_try(d: fixed, i: s32, b: u32) {
@@ -4727,23 +4771,40 @@ private fn gm_check() {
                 assert(meter_power(Mech.Gamma) == Power.Nuclear, "Gamma's meter is not nuclear")
                 assert_eq(AK_NPART[Mech.Gamma], Part.wing_l as s32, "Gamma's frames hold parts it has not")
                 assert(STATS[Mech.Gamma].walk_f == 0.058 && STATS[Mech.Gamma].walk_b == 0.050, "Gamma's walk")
-                var standing = 0
                 for k in 0..len(GM_OWN_MVS) {
                     let mv = GM_OWN_MVS[k]
                     assert_eq(mv_len(Mech.Gamma, mv), GM_OWN_LEN[k], "a move of Gamma's is not its length")
-                    // the stand-ins in use are the placeholders' (gamma.akr's gm_std, GM_STANDINS)
-                    assert(gamma_standin(mv) == gamma_placeholder(mv),
-                           "a move of Gamma's is still Beam's placeholder: set GM_STANDINS in gamma.akr")
-                    if gamma_standin(mv) { standing += 1 }
-                    print(MV_NAMES[mv])
-                    print(if_s(gamma_standin(mv), " stands in, ", " animated, "))
+                    // the fight plays every move from its animation (no stand-ins asked): none may
+                    // be a placeholder of Beam's still (gamma.akr's gamma_placeholder)
+                    assert(!gamma_placeholder(mv) && !use_standin(Mech.Gamma, mv), "a move of Gamma's is still Beam's placeholder")
                 }
-                println("each its own length")
-                assert(!GM_STANDINS || standing > 0,
-                       "every move of Gamma's is animated: clear GM_STANDINS in gamma.akr (it costs every fight's first frame)")
-                sh_x0 = s.x
-                sh_hold[0] = LEFT       // back, away from the other (side 0 faces +x)
-                gm_t0 = frames
+                println("each of its own moves animated, its own length")
+                gm_k = 0
+                gm_t0 = -1000
+            }
+            // a move a frame: the shield (weapon_l) stowed on its hand on every frame but where
+            // it is swung out (gm_shield_out), as in the idle's first frame
+            if frames > mark + 1 && gm_k < len(Mv) {
+                let mv = gm_k as Mv
+                let root = anim_place(vec2(0.0, 0.0), 1)
+                let rest = gm_rel(root, Mv.idle, 0)
+                for f in 0..anim_len(Mech.Gamma, mv) {
+                    if gm_shield_out(mv, f) { continue }
+                    if !gm_same3(gm_rel(root, mv, f), rest) {
+                        print(MV_NAMES[mv])
+                        print(" frame ")
+                        print_int(f)
+                        println("")
+                        assert(false, "the shield is not stowed")
+                    }
+                }
+                gm_k += 1
+                if gm_k == len(Mv) {
+                    println("the shield stowed on every frame but the brace, the block, the hits' rattle and the win's")
+                    sh_x0 = s.x
+                    sh_hold[0] = LEFT       // back, away from the other (side 0 faces +x)
+                    gm_t0 = frames
+                }
             }
             if frames == gm_t0 + 60 {
                 sh_hold[0] = 0

@@ -2254,9 +2254,9 @@ the landing compressing the knees.
 | `atk_d` Scorch Sweep | 12 | 5 | 25 | 42 | 90, knockdown | — / 16 | −14 / KD | x 1.5–8.0, y 0–2 |
 | `atk_air` Down Flash | 9 | 6 | to landing | 32 | 95 | 20 / 15 | by height | x 0.5–5.5, y −3–3 (from the root, in the air) |
 
-(Measured with `tests/run.sh 17` from the stand-in timings, mx-gamma-fight: as estimated from
-Beam's, the same recovery after the active frames giving the same advantage; the Scorch Sweep's
-knockdown is +40. To measure again once the animations land.) Beam's four normals with
+(Measured with `tests/run.sh 17`, mx-gamma-fight, the same from the stand-in timings and from
+Gamma's own animations: as estimated from Beam's, the same recovery after the active frames giving
+the same advantage; the Scorch Sweep's knockdown is +40.) Beam's four normals with
 the arc taken out and the searchlight put in: each a frame slower where Beam's is quick, and a
 little heavier. The names were proposals, approved by the owner (2026-10-14).
 
@@ -2647,15 +2647,15 @@ Flash and the specials cancel into nothing.
 
 ### Frame advantage (measured)
 
-`tests/run.sh 17` (mx-gamma-fight), against a standing Hero, from the stand-in timings: Lamp Jab
+`tests/run.sh 17` (mx-gamma-fight), against a standing Hero, from Gamma's own animations (the same
+numbers as from the stand-in timings before they landed): Lamp Jab
 −4 on block / +1 on hit, Glare Lance −7 / 0, Scorch Sweep −14 / knockdown (+40), the Atomic Ray
 tapped at 6 m −13 / −12 (two ticks; held to the tip, out of reach), vented about −50 (scenario 221:
 the Hero's Charge Slash lands 22 frames into the vent), Rod Shot −9 / −5 to 10 m (the rod starts
 5 m out, inside the Hero's guard), −4 / 0 from 13 m and +1 / +5 from 16 m, Geiger Flare −20 on
 block and −2 on a ground hit, +15 caught 4.9 m up and about +29 at 6.8 m (scenarios 225 and 226),
 Lead Shielding +13 after absorbing a Tip Thrust (scenario 227; 47 frames whiffed), Ground Zero −30
-on block with the Hero 8 m off (a knockdown, +40, on a hit). To measure again once the animations
-land. (The estimates were −14 for the sweep, −12 for the ray, even from 10 m for the rod, −1 and +8
+on block with the Hero 8 m off (a knockdown, +40, on a hit). (The estimates were −14 for the sweep, −12 for the ray, even from 10 m for the rod, −1 and +8
 to +19 for the flare, +12 for the shield and −29 for Ground Zero.)
 
 ### Balance intent
@@ -2842,7 +2842,7 @@ Frame numbers here count from 1 as the tables do; the marks list counts from 0, 
 | `intro` | 90 | walks out of the booth's spot lights with the projector on its shoulder, the lamp lit and swept once across the floor, then lowered into the guard | stowed |
 
 - **The cover** (`cover.akr`'s `COVER_POSE[Gamma]`): the `win` frame with the searchlight high in
-  its sweep (about 40).
+  its sweep (about 40). Set to 40 (mx-gamma-fight).
 - **As animated** (mx-gamma-anim): every move is Gamma's own file on its `_body.anim.json`; every
   length, mark frame, root motion and hit box above is in the files as written (frames from 0:
   `sp_n` dig-in 0–12, ray 13–24, `charge` 24, guard on 40, vent 41–90 and the guard on 90;
@@ -2953,8 +2953,10 @@ Shielding's held ray at the brace's last frame; a ray's later tick is told by
 `tick_later` for `struck()`, `blocked()` and `absorb()` (an absorbed later tick posts no Armour and
 raises no hitstop either); `Fx.dazed` is set in the daze on the ground and `Fx.daze_drop` while
 the mech drops to it (not both), and `Fx.daze_spent` keeps a daze from being renewed until the
-mech has been actionable; the stand-ins are used for each of the eight moves whose animation still
-has Beam's length (no scan at `fight_init`). Phase 1 has Gamma play Beam's moves
+mech has been actionable; while the animations were Beam's placeholders, the stand-ins played each
+of the eight moves whose animation still had Beam's length (no scan at `fight_init`; now that all
+are animated, `use_standin` no longer asks, and scenario 200 checks that none is a placeholder).
+Phase 1 has Gamma play Beam's moves
 (the Volt Orb, the Arc Lance, the Thunder Pillar, the Reaction Prime, the Raikō Overload); the rule
 should be Seraph's: Beam's code asks predicates (in a `gamma.akr`, as `seraph.akr`'s for Shadow's),
 never Gamma's name, so each special moves to Gamma's own code by taking Gamma out of one
@@ -3076,13 +3078,13 @@ Prime and the reaction never apply to it (`meter_power` is Nuclear, so `try_pres
 
 Phase 2's fight and CPU (mx-gamma-fight) are in: Gamma plays its own moves as this section has
 them, its rules in `gamma.akr` and its CPU at the end of `cpu.akr`, and Beam's predicates
-(`has_volt_orb`, `has_shock_grip`, `has_arc_fx`) are Beam's alone. Until its own animations land,
-a move whose animation still has Beam's length (each of Gamma's eight own moves differs from
-Beam's in length; the air attack, the grab and the throw are Beam's timings in this section too)
-is played from `gamma.akr`'s stand-in data (this section's timings, boxes, marks and root motion;
-the drawing is still the placeholder's); the frames the rules need (the charge and vent frames,
-the brace's frames) are read once from whichever data plays. The rest of this list is phase 1's
-record, with what changed in phase 2 said:
+(`has_volt_orb`, `has_shock_grip`, `has_arc_fx`) are Beam's alone. Its animations are its own
+since the animators' part landed; until then a move whose animation still had Beam's length (each
+of Gamma's eight own moves differs from Beam's in length; the air attack, the grab and the throw
+are Beam's timings in this section too) was played from `gamma.akr`'s stand-in data (this
+section's timings, boxes, marks and root motion). The frames the rules need (the charge and vent
+frames, the brace's frames) are read once from the animation's marks. The rest of this list is
+phase 1's record, with what changed in phase 2 said:
 
 - **Real**: the model and rig (concept C refined, `models/gamma/`: the projector on Beam's mount,
   its muzzle Beam's (0, 0.8, −4.4) in `weapon_r`'s frame; the shield on `weapon_l`, stowed at 0,

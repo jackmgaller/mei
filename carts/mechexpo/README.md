@@ -392,13 +392,13 @@ What is real and what is still Beam's: [MOVES.md](MOVES.md#gamma-heartland-atomi
   (`pre` 6, `jv` 0.56, `grav` 0.028), the nuclear meter; its roster stats `0x3254`. Its CPU is
   its own (the end of `cpu.akr`), and the other CPUs answer its ray and its vent there too
   ([MOVES.md](MOVES.md#the-cpu-gamma)).
-- **Its stand-ins:** while a move's animation is still Beam's placeholder (each of its eight own
-  moves has a length of its own, so a move with Beam's length is a placeholder), the fight plays it
-  from `gamma.akr`'s stand-in data. Which ones is read once (`gm_std`, 16 table reads at the first
-  `fight_init`), and `moves.akr`'s `use_standin` asks it only while `GM_STANDINS` is set: the
-  compare costs every `mv_*` call (scenario 69's first frame, the Twins against Tank, 976,505
-  cycles with it, 967,691 without; 966,502 before). Once every move of Gamma's is animated,
-  `GM_STANDINS` is cleared; scenario 200 fails until it is.
+- **Its stand-ins:** none since its own animations landed: the fight plays every move from the
+  animation data. While a move's animation was still Beam's placeholder (each of its eight own
+  moves has a length of its own, so a move with Beam's length is one), `moves.akr`'s `use_standin`
+  asked `gamma.akr` and the fight played it from the stand-in data; that compare cost every `mv_*`
+  call (about 8,000 cycles on scenario 69's first frame, the Twins against Tank, with no Gamma in
+  it), so it is now the tests' (`gamma_placeholder`, asserted by scenario 200 for each move).
+  Scenario 69's first frame: 967,691 cycles (966,502 before Gamma's fight).
 
 - **Files:** `models/gamma/make_gamma.py` (the model and rig: the owner's concept C, military
   surplus, from `concepts/gamma_c/`, which stays as the record, refined after the owner's notes:
@@ -443,8 +443,9 @@ What is real and what is still Beam's: [MOVES.md](MOVES.md#gamma-heartland-atomi
   paint, the shroud's slots), as much again grey.
 - **Tests:** scenarios 200 (against Beam) and 201 (against the Hero) in `tests/harness.akr`
   (rewritten in mx-gamma-fight): 1,050 health, the nuclear meter, 19 parts a frame, its walk, each
-  of its own eight moves its length (animated or standing in, and the stand-ins in use the
-  placeholders), the Lamp Jab landing at 4 m and filling nothing, the other's jab filling the
+  of its own eight moves animated (none a placeholder of Beam's) and its length, the shield stowed
+  on its hand on every frame of every move but where it swings out (the brace, the block, the hits'
+  rattle, the win's raps), the Lamp Jab landing at 4 m and filling nothing, the other's jab filling the
   meter 3 a point, the Rod Shot landing at 12 m, Point Blank's throw-off, Lead Shielding without a
   reaction, Ground Zero from a full bar; 220-230 its own moves (`tests/harness.akr`, the fight
   alone): the ray's ticks, push, chip and scaling and a cornered mech, the heat and the vent, the
@@ -566,7 +567,8 @@ clear it holds becomes a NORMAL stamp, since the MVP's ladder was two fights at 
   `menus.akr`'s `draw_cover()` draws it). The owner's notes (2026-10-13): a photograph, a
   fanfare, and headlines that vary.
   - **A photograph:** the winner in 3D, frozen in one held frame of its win move
-    (`COVER_POSE`: the end of the win, weapons up; Tank at frame 40, square to the camera), on
+    (`COVER_POSE`: the end of the win, weapons up; Tank at frame 40, square to the camera; Gamma
+    at frame 40, the searchlight high in its sweep), on
     its maker's colour, cut at the knees; no idle motion and no turntable. Per mech: the turn
     toward the camera, the camera's distance, the feet's height and the backdrop's shades
     (lighter behind the dark Shadow).
