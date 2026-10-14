@@ -269,8 +269,9 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/mechexpo/models/expo_banner/make_expo_banner.py` | `expo_banner.asset.json`, `art/banner_expo.png`, `art/banner_2000.png`, `cameras.json` |
 | `carts/mechexpo/props/rooftop/make_rooftop.py` | The rooftop's props: `roof_stairwell.asset.json`, `roof_parapet.asset.json`, `roof_kerb.asset.json`, `art/stair_door.png`, `art/stair_sign.png`, `cameras.json` (`gen_mechexpo_rooftop.py` runs it) |
 | `carts/mechexpo/props/rooftop_city/make_city.py` | The rooftop's city in polygons (Yokohama's Minato Mirai 21): `city_mm`, `city_towers`, `city_wheel`, `city_bay`, `city_venue` and `city_quay` (`.asset.json`), the textures `art/city_*.png` (the windows by rank, kind and side; the wheel and its clock; the sail; the venue's sign; the reflections) and `cameras.json` (`gen_mechexpo_rooftop.py` runs it) |
+| `carts/mechexpo/concepts/gamma_c/make_gamma_c.py` | Gamma's look concept C (military surplus), not packed: `gamma_c_{idle,ray,shield,flare,ground_zero,rest}.asset.json`, `gamma_c_paint_{1,2}.asset.json`, `cameras.json`, `asset-preview.json` (it imports `make_hero.py`, `make_beam.py` and `make_tank.py`); `render_gamma_c.py` beside it draws the review sheets with Mei into a folder given with `-o` |
 
-The last twenty are run by their path from the repository root, not as `tools/NAME.py`; the
+The last twenty-three are run by their path from the repository root, not as `tools/NAME.py`; the
 garden's two audio generators share `carts/garden/audio/garden_dsp.py`, and Mech Expo's models
 `carts/mechexpo/models/hero/mxpaint.py`, which write nothing.
 
