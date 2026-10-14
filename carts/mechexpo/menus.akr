@@ -32,6 +32,7 @@ const DEEP: u32 = 0x200C06          // the darkest shade of a ramp
 fn menus_page() {
     stage_hide()
     hud_show(false)
+    line_off(TITLE_LC)                  // the title's shade
     layer_offset(0, 0, 0, 0)
     atlas_load(ATLAS_3, UI_PAGE_TILES, UI_PAGE_TILES_BYTES)
     load_palette(PAL_PAGE * 16, &UI_PAL[5 * 16], 16)
@@ -59,6 +60,7 @@ fn menus_sfx() {
 // The hangar (the title's attract and the fight).
 fn menus_hangar() {
     hud_show(false)
+    line_off(TITLE_LC)                  // the title's shade (draw_title() turns it on each frame)
     stage_show()
 }
 
@@ -176,9 +178,30 @@ private fn side_colour(s: s32) -> u32 {
 
 // ---- the title
 
+// The hall behind the logo's band (rows TITLE_SHADE_Y0 to Y1 - 1) is shaded on the title: BG1
+// there is half-blended with the hangar's dark roof (the backdrop under it), so the hanging
+// makers' banners recede behind the logo and its lines, by colour math on a line channel
+// (channel TITLE_LC, its table in LT_FREE). Below the band the hall is untouched.
+const TITLE_LC = 3
+const TITLE_SHADE_Y0 = 22
+const TITLE_SHADE_Y1 = 114
+
+private fn title_shade() {
+    let tbl = LT_FREE as *u32
+    let m = (4 | BLEND_HALF as u32) << (BG1 * 4) as u32
+    for y in 0..240 {
+        var v: u32 = 0
+        if y >= TITLE_SHADE_Y0 && y < TITLE_SHADE_Y1 { v = m }
+        tbl[y] = v
+    }
+    line_channel(TITLE_LC, LC_MATH, 1, LT_FREE)
+}
+
 fn draw_title() {
     let t = tick
+    title_shade()
     // the logo on a glass band, a shine across its chrome now and then
+    rect_blend(0, 22, 320, 92, 0x200804, BLEND_HALF)     // a darker glass under it: the banners recede
     rect_grad(0, 22, 320, 92, 0x301008, 0x100400, BLEND_HALF)
     rect_blend(0, 22, 320, 1, C_CYAN, BLEND_NONE)
     rect_blend(0, 113, 320, 1, C_CYAN, BLEND_NONE)
@@ -188,7 +211,7 @@ fn draw_title() {
     txt(FONT_MICRO, 8, 25, "EXPO HALL 1 // DEMO HANGAR", C_SKY, ALIGN_LEFT)
     txt(FONT_MICRO, 312, 25, "YOKOHAMA 2000.10.12", C_SKY, ALIGN_RIGHT)
     barcode(8, 102, 16, 7, C_SILVER)
-    txt(FONT_MICRO, 312, 101, "ADMIT ONE // PRESS", C_SILVER, ALIGN_RIGHT)
+    txt(FONT_MICRO, 312, 101, "ADMIT ONE // MEDIA", C_SILVER, ALIGN_RIGHT)
     // the press pass, hung from the band on its lanyard, swaying a little
     let sw = (sin(frame_angle(t, 0.045)) * 3.0) as s32
     let px = 160 + sw
@@ -205,7 +228,7 @@ fn draw_title() {
     txt(FONT_MICRO, 312, 226, "DEMO HANGAR 1", C_SILVER, ALIGN_RIGHT)
 }
 
-// The press pass (116 x 60): a navy PRESS header with the lanyard's slot, PRESS START, a
+// The press pass (116 x 60): a navy MEDIA header with the lanyard's slot, PRESS START, a
 // holographic seal, a barcode and the pass's number.
 private fn draw_pass(x: s32, y: s32, lit: bool) {
     let w = 116
@@ -214,7 +237,7 @@ private fn draw_pass(x: s32, y: s32, lit: bool) {
     rect_grad(x, y, w, 15, C_NAVY, C_GLASS, BLEND_NONE)
     rect_blend(x + w / 2 - 9, y + 3, 18, 4, 0x200C06, BLEND_NONE)          // the slot
     ui_chrome(x + w / 2 - 6, y - 4, 12, 8)                                   // the clip
-    txt(FONT_HEAD, x + 6, y + 1, "PRESS", C_WHITE, ALIGN_LEFT)
+    txt(FONT_HEAD, x + 6, y + 1, "MEDIA", C_WHITE, ALIGN_LEFT)
     txt(FONT_MICRO, x + w - 5, y + 3, "ALL AREAS", C_CYAN, ALIGN_RIGHT)
     var col = C_INK
     if lit { col = C_RED }
