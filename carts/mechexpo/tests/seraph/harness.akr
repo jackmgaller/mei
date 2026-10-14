@@ -8,9 +8,9 @@
 // 162 the budget with Seraph: CPU against CPU (level 2) through the real game, Seraph against the
 //     split Twins on the rooftop (four bodies' worth: three on screen, and the city) for 900
 //     frames, then against Shadow in the hangar for 900. As 109 does for Shadow, the scenario
-//     keeps Seraph's Rift Mine (armed) and Hex Bolt out (Shadow's, which Seraph plays for now),
-//     the other cursed, and every 300 frames a full bar for its super (Total Eclipse's
-//     afterimages and the dark). Prints the peak CPU, GPU and triangles of each half
+//     keeps Seraph's Mark of Judgement out, the other marked, and every 300 frames a full bar for
+//     its super (Judgement: the halo's flare, the stage brightened, the column). Prints the peak
+//     CPU, GPU and triangles of each half
 // 168 the same kept out, against the split Twins on the container port, for 900 frames
 // 163 the character select (Versus): Seraph unlocked, 1P's cursor on its card (the echo slot under
 //     Shadow), 2P's on Shadow: Seraph's catalogue page and spec sheet. Checks the roster row and
@@ -117,21 +117,20 @@ fn test_hook() {
     if SCENARIO == 162 && fr == 1800 { report_budget() }
 }
 
-// 162's and 168's worst case kept on screen: an armed mine behind Seraph, its bolt out, the other cursed,
-// a full bar now and then (Seraph's meter is kinetic: the super needs the bar).
+// 162's and 168's worst case kept on screen: Seraph's bolt out, the other marked, a full bar now and
+// then (Seraph's meter is kinetic: the super needs the bar).
 private fn keep_busy(f: *Fight) {
     let s = &f.f[0]
-    if !rift[0].on {
-        rift[0] = Rift { on: true, x: clamp(s.x - fixed(s.facing) * 3.0, -24.0, 24.0), t: MINE_ARM }
-    }
     let sh = &f.shot[0]
     if !sh.on && s.mv != Mv.sp_n {
-        shadow_bolt_fire(0, sh)
+        sh.hex = false
+        sh.refl = false
+        seraph_bolt_fire(0, sh)
         sh.on = true
         sh.t = 0
         sh.y = 0.0
     }
-    if f.f[1].curse < 10 { f.f[1].curse = CURSE_FRAMES }
+    if f.f[1].mark < 10 { f.f[1].mark = SER_MARK_FRAMES }
     if fr % 300 == 0 { s.meter = METER_BAR }
 }
 
@@ -165,7 +164,7 @@ private fn report_budget() {
     print(", the effects' peak ")
     print_int(peak_fx)
     println(" cycles")
-    println("OK the budget with Seraph (Shadow's mine, bolt, curse and super)")
+    println("OK the budget with Seraph (its bolt, the mark and Judgement)")
 }
 
 private fn report_fight() {

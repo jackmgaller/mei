@@ -3653,7 +3653,8 @@ private fn sr_check() {
 // 180 Judgement's column: locked at the Hero's root 30 m away, it hits there (280); a Hero moved
 //     6 m away after the lock is missed (the column does not track); the Double-blade Hero's Void
 //     Step on the first frame after the flash escapes it
-// 181 Seraph's CPU (level 2) against each mech, both sides: every match finishes, and over the
+// 181 Seraph's CPU (level 2, both sides through cpu_pad once a frame: Versus) against each mech,
+//     both sides: every match finishes, and over the
 //     run it uses each special, the throw and the super (and its ward sends a shot back)
 
 var sv_flag2: bool              // a second step of the current part was taken
@@ -3666,6 +3667,14 @@ var sv_cnt: [8]s32              // 181: Seraph's bolts, dives, ascensions, wards
 var sv_prev: [2]Mv
 var sv_prev_t: [2]s32
 var sv_matches: s32
+
+// The scenario's end: its OK line, after the frame it got there (to size check.sh's frames).
+private fn sv_ok(s: *u8) {
+    print("frames ")
+    print_int(frames)
+    println("")
+    ok(s)
+}
 
 private fn sv_scenario() -> bool { return SCENARIO >= 170 && SCENARIO <= 189 }
 
@@ -3685,7 +3694,7 @@ private fn sv_init() {
         }
         180 => sh_restart(Mech.Seraph, Mech.Hero, -15.0, 15.0)
         181 => {
-            fight_init(Mech.Seraph, Mech.Hero, FightMode.VsCpu, 2)
+            fight_init(Mech.Seraph, Mech.Hero, FightMode.Versus, 2)
             tick_per_frame = 40
         }
         else => {}
@@ -3890,7 +3899,7 @@ private fn sv_check_mark() {
             if sh_flag && fight.phase == Phase.Intro {
                 assert_eq(fight.round, 2, "round 2")
                 assert_eq(o.mark, 0, "the mark outlived the round")
-                ok("the mark: lands, refreshes, runs out, not on a block or a Parry, through armour, ends with the round")
+                sv_ok("the mark: lands, refreshes, runs out, not on a block or a Parry, through armour, ends with the round")
             }
         }
         else => {}
@@ -3966,7 +3975,7 @@ private fn sv_check_bonus() {
     if k == 4 { assert_eq(evc_side[0][Ev.Hit], 0, "the blocked Judgement hit") }
     sv_part += 1
     if sv_part == 6 {
-        ok("Judgement: 280, x 1.5 marked (420), not stacked with the debt, the chip not raised, 273 in a chain")
+        sv_ok("Judgement: 280, x 1.5 marked (420), not stacked with the debt, the chip not raised, 273 in a chain")
         return
     }
     sv_bonus_part(sv_part)
@@ -4016,7 +4025,7 @@ private fn sv_check_ward_wave() {
                 assert_eq(s.health, 1000 - dmg(0, Mv.atk_n), "the strike through the ward")
                 assert_eq(evc[Ev.Reflect], 0, "a strike was reflected")
                 println("the Guard Cut hit the warding Seraph")
-                ok("the Wing Ward sends the wave back; strikes go through it")
+                sv_ok("the Wing Ward sends the wave back; strikes go through it")
             }
         }
         else => {}
@@ -4056,7 +4065,7 @@ private fn sv_check_ward_orbs() {
         if lvl == 3 { assert(o.mv == Mv.hit_air, "the full orb did not knock Beam down") }
         sv_part += 1
         if sv_part == 3 {
-            ok("the Wing Ward sends every Volt Orb back, 1.25 times as fast")
+            sv_ok("the Wing Ward sends every Volt Orb back, 1.25 times as fast")
             return
         }
         sv_restart(Mech.Seraph, Mech.Beam, -10.0, 10.0)
@@ -4083,7 +4092,7 @@ private fn sv_check_ward_hex() {
         assert(s.curse == 0, "Seraph is cursed")
         assert_eq(o.health, 900 - 45, "the reflected bolt's damage")
         assert_eq(s.meter, KIN_SHOT, "Seraph's meter")
-        ok("the Wing Ward turns the Hex Bolt into a Mark: Shadow marked, not cursed")
+        sv_ok("the Wing Ward turns the Hex Bolt into a Mark: Shadow marked, not cursed")
     }
 }
 
@@ -4155,7 +4164,7 @@ private fn sv_check_rally() {
         assert(own.on && !own.refl && own.vx > 0.0, "side 1's own bolt was replaced")
         assert(fx[1].riposte, "the ward did not fling")
         assert_eq(b.health, 1000, "the taken bolt hurt")
-        ok("the mirror's rally: x 1.25 a ward, the last warder's Mark; no room, no reflect")
+        sv_ok("the mirror's rally: x 1.25 a ward, the last warder's Mark; no room, no reflect")
     }
 }
 
@@ -4297,7 +4306,7 @@ private fn sv_check_dive() {
                 print("the orb hit the Dive ")
                 print_fixed(sv_y)
                 println(" m up")
-                ok("the Seraph Dive: tapped, held, stops at the other, over the wave and a mine, stopped by an orb")
+                sv_ok("the Seraph Dive: tapped, held, stops at the other, over the wave and a mine, stopped by an orb")
             }
         }
         else => {}
@@ -4331,7 +4340,7 @@ private fn sv_check_ascension() {
     if stage == 3 && o.mv == Mv.knockdown {
         assert_eq(s.health, 1000, "Seraph was hit")
         assert_eq(o.health, 1000 - 120, "Ascension's damage")
-        ok("Ascension beats a jump-in")
+        sv_ok("Ascension beats a jump-in")
     }
 }
 
@@ -4386,7 +4395,7 @@ private fn sv_check_arc() {
             println("")
             assert(s.x > o.x, "the sides did not swap in the corner")
             assert(o.x < sv_lim(Mech.Hero) - 5.0, "the Hero did not come out of the corner")
-            ok("Heaven's Arc swaps the sides: open floor, Seraph's back to a wall, the other's")
+            sv_ok("Heaven's Arc swaps the sides: open floor, Seraph's back to a wall, the other's")
         }
         else => {}
     }
@@ -4428,7 +4437,7 @@ private fn sv_check_arc_roof() {
                 println(")")
                 assert_eq(evc[Ev.RingOut], 0, "a ring-out from 6 m")
                 assert(o.x > s.x, "the sides did not swap")
-                ok("Heaven's Arc rings out off the open edge from close, not from 6 m")
+                sv_ok("Heaven's Arc rings out off the open edge from close, not from 6 m")
             }
         }
         else => {}
@@ -4477,7 +4486,7 @@ private fn sv_check_column() {
                 assert(evc_side[1][Ev.Hit] == 0 && evc_side[0][Ev.Hit] == 0, "a hit")
                 assert_eq(o.health, STATS[Mech.Doubleblade].health, "the Void Step did not escape")
                 println("the Void Step on the first frame after the flash escaped it")
-                ok("Judgement's column: locked, hits there, does not track, the Void Step escapes it")
+                sv_ok("Judgement's column: locked, hits there, does not track, the Void Step escapes it")
             }
         }
         else => {}
@@ -4537,12 +4546,12 @@ private fn sv_check_cpu() {
         }
         println("")
         for k in 0..8 { assert(sv_cnt[k] > 0, "Seraph's CPU never used one of its moves") }
-        ok("Seraph's CPU: its matches finish, every special, the throw and the super used")
+        sv_ok("Seraph's CPU: its matches finish, every special, the throw and the super used")
         return
     }
     let foe = SV_FOES[sv_matches / 2]
-    if sv_matches % 2 == 1 { fight_init(foe, Mech.Seraph, FightMode.VsCpu, 2) }
-    else { fight_init(Mech.Seraph, foe, FightMode.VsCpu, 2) }
+    if sv_matches % 2 == 1 { fight_init(foe, Mech.Seraph, FightMode.Versus, 2) }
+    else { fight_init(Mech.Seraph, foe, FightMode.Versus, 2) }
     sv_prev[0] = Mv.idle
     sv_prev[1] = Mv.idle
     frames = 0
