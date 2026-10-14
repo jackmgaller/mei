@@ -38,6 +38,5 @@
               "upper_arm_r": [10, 0, -10], "forearm_r": [128, 0, 8], "hand_r": [-17, 0, 0],
               "upper_arm_l": [30, 0, 14], "forearm_l": [104, 0, -24], "pauldron_r": [3.5, 0, -5],
               "pauldron_l": [10.5, 0, 7], "hand_l": [-10, 0, 0]}, "reach": {"foot_r": [0.03, 0.0]}}
-  ],
-  "allow": [["pelvis", "shin_r"]]
+  ]
 }

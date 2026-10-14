@@ -307,35 +307,35 @@ const AK_MOVES: [330]AnimMove = [
     AnimMove { len: 52, flags: 1, frames: 10069656, box_first: 10101272, boxes: 10101380, marks: 10112820, root: 10113028 },   // gamma walk_f
     AnimMove { len: 52, flags: 1, frames: 10113444, box_first: 10145060, boxes: 10145168, marks: 10156608, root: 10156816 },   // gamma walk_b
     AnimMove { len: 8, flags: 0, frames: 10157232, box_first: 10162096, boxes: 10162116, marks: 10163876, root: 10163908 },   // gamma crouch
-    AnimMove { len: 45, flags: 2, frames: 10163972, box_first: 10191332, boxes: 10191424, marks: 10201324, root: 10201504 },   // gamma jump
-    AnimMove { len: 8, flags: 0, frames: 10201864, box_first: 10206728, boxes: 10206748, marks: 10208508, root: 10208540 },   // gamma land
-    AnimMove { len: 4, flags: 0, frames: 10208604, box_first: 10211036, boxes: 10211048, marks: 10211928, root: 10211944 },   // gamma block
-    AnimMove { len: 20, flags: 0, frames: 10211976, box_first: 10224136, boxes: 10224180, marks: 10228580, root: 10228660 },   // gamma hit_high
-    AnimMove { len: 20, flags: 0, frames: 10228820, box_first: 10240980, boxes: 10241024, marks: 10245424, root: 10245504 },   // gamma hit_low
-    AnimMove { len: 30, flags: 2, frames: 10245664, box_first: 10263904, boxes: 10263968, marks: 10270568, root: 10270688 },   // gamma hit_air
-    AnimMove { len: 32, flags: 0, frames: 10270928, box_first: 10290384, boxes: 10290452, marks: 10297492, root: 10297620 },   // gamma knockdown
-    AnimMove { len: 20, flags: 0, frames: 10297876, box_first: 10310036, boxes: 10310080, marks: 10314480, root: 10314560 },   // gamma getup
-    AnimMove { len: 90, flags: 0, frames: 10314720, box_first: 10369440, boxes: 10369624, marks: 10389424, root: 10389784 },   // gamma ko
-    AnimMove { len: 120, flags: 0, frames: 10390504, box_first: 10463464, boxes: 10463708, marks: 10490108, root: 10490588 },   // gamma win
-    AnimMove { len: 90, flags: 0, frames: 10491548, box_first: 10546268, boxes: 10546452, marks: 10566252, root: 10566612 },   // gamma intro
-    AnimMove { len: 24, flags: 0, frames: 10567332, box_first: 10581924, boxes: 10581976, marks: 10587496, root: 10587592 },   // gamma atk_n
-    AnimMove { len: 40, flags: 0, frames: 10587784, box_first: 10612104, boxes: 10612188, marks: 10621068, root: 10621228 },   // gamma atk_f
-    AnimMove { len: 41, flags: 0, frames: 10621548, box_first: 10646476, boxes: 10646560, marks: 10655680, root: 10655844 },   // gamma atk_d
-    AnimMove { len: 32, flags: 2, frames: 10656172, box_first: 10675628, boxes: 10675696, marks: 10682856, root: 10682984 },   // gamma atk_air
-    AnimMove { len: 45, flags: 0, frames: 10683240, box_first: 10710600, boxes: 10710692, marks: 10720592, root: 10720772 },   // gamma sp_n
-    AnimMove { len: 44, flags: 0, frames: 10721132, box_first: 10747884, boxes: 10747976, marks: 10758096, root: 10758272 },   // gamma sp_f
-    AnimMove { len: 42, flags: 0, frames: 10758624, box_first: 10784160, boxes: 10784248, marks: 10793648, root: 10793816 },   // gamma sp_u
-    AnimMove { len: 44, flags: 0, frames: 10794152, box_first: 10820904, boxes: 10820996, marks: 10830676, root: 10830852 },   // gamma sp_d
-    AnimMove { len: 7, flags: 0, frames: 10831204, box_first: 10835460, boxes: 10835476, marks: 10837056, root: 10837084 },   // gamma grab
-    AnimMove { len: 22, flags: 0, frames: 10837140, box_first: 10850516, boxes: 10850564, marks: 10855404, root: 10855492 },   // gamma grab_whiff
-    AnimMove { len: 46, flags: 0, frames: 10855668, box_first: 10883636, boxes: 10883732, marks: 10893852, root: 10894036 },   // gamma throw
-    AnimMove { len: 44, flags: 2, frames: 10894404, box_first: 10921156, boxes: 10921248, marks: 10930928, root: 10931104 },   // gamma thrown
-    AnimMove { len: 20, flags: 0, frames: 10931456, box_first: 10943616, boxes: 10943660, marks: 10948060, root: 10948140 },   // gamma grab_break
-    AnimMove { len: 100, flags: 0, frames: 10948300, box_first: 11009100, boxes: 11009304, marks: 11031624, root: 11032024 },   // gamma super
-    AnimMove { len: 40, flags: 2, frames: 11032824, box_first: 11057144, boxes: 11057228, marks: 11066028, root: 11066188 },   // gamma thrown_vault
-    AnimMove { len: 56, flags: 2, frames: 11066508, box_first: 11100556, boxes: 11100672, marks: 11112992, root: 11113216 },   // gamma thrown_slam
-    AnimMove { len: 60, flags: 4, frames: 11113664, box_first: 11150144, boxes: 11150268, marks: 11163468, root: 11163708 },   // gamma combine (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 11113664, box_first: 11150144, boxes: 11150268, marks: 11163468, root: 11163708 },   // gamma split (stand-in)
+    AnimMove { len: 46, flags: 2, frames: 10163972, box_first: 10191940, boxes: 10192036, marks: 10202156, root: 10202340 },   // gamma jump
+    AnimMove { len: 10, flags: 0, frames: 10202708, box_first: 10208788, boxes: 10208812, marks: 10211012, root: 10211052 },   // gamma land
+    AnimMove { len: 4, flags: 0, frames: 10211132, box_first: 10213564, boxes: 10213576, marks: 10214456, root: 10214472 },   // gamma block
+    AnimMove { len: 20, flags: 0, frames: 10214504, box_first: 10226664, boxes: 10226708, marks: 10231108, root: 10231188 },   // gamma hit_high
+    AnimMove { len: 20, flags: 0, frames: 10231348, box_first: 10243508, boxes: 10243552, marks: 10247952, root: 10248032 },   // gamma hit_low
+    AnimMove { len: 30, flags: 2, frames: 10248192, box_first: 10266432, boxes: 10266496, marks: 10273096, root: 10273216 },   // gamma hit_air
+    AnimMove { len: 32, flags: 0, frames: 10273456, box_first: 10292912, boxes: 10292980, marks: 10300020, root: 10300148 },   // gamma knockdown
+    AnimMove { len: 20, flags: 0, frames: 10300404, box_first: 10312564, boxes: 10312608, marks: 10317008, root: 10317088 },   // gamma getup
+    AnimMove { len: 90, flags: 0, frames: 10317248, box_first: 10371968, boxes: 10372152, marks: 10391952, root: 10392312 },   // gamma ko
+    AnimMove { len: 120, flags: 0, frames: 10393032, box_first: 10465992, boxes: 10466236, marks: 10492636, root: 10493116 },   // gamma win
+    AnimMove { len: 90, flags: 0, frames: 10494076, box_first: 10548796, boxes: 10548980, marks: 10568780, root: 10569140 },   // gamma intro
+    AnimMove { len: 25, flags: 0, frames: 10569860, box_first: 10585060, boxes: 10585112, marks: 10590852, root: 10590952 },   // gamma atk_n
+    AnimMove { len: 41, flags: 0, frames: 10591152, box_first: 10616080, boxes: 10616164, marks: 10625264, root: 10625428 },   // gamma atk_f
+    AnimMove { len: 42, flags: 0, frames: 10625756, box_first: 10651292, boxes: 10651380, marks: 10660720, root: 10660888 },   // gamma atk_d
+    AnimMove { len: 32, flags: 2, frames: 10661224, box_first: 10680680, boxes: 10680748, marks: 10687908, root: 10688036 },   // gamma atk_air
+    AnimMove { len: 91, flags: 0, frames: 10688292, box_first: 10743620, boxes: 10743804, marks: 10764464, root: 10764828 },   // gamma sp_n
+    AnimMove { len: 39, flags: 0, frames: 10765556, box_first: 10789268, boxes: 10789348, marks: 10798148, root: 10798304 },   // gamma sp_f
+    AnimMove { len: 41, flags: 0, frames: 10798616, box_first: 10823544, boxes: 10823628, marks: 10832768, root: 10832932 },   // gamma sp_u
+    AnimMove { len: 59, flags: 0, frames: 10833260, box_first: 10869132, boxes: 10869252, marks: 10882232, root: 10882468 },   // gamma sp_d
+    AnimMove { len: 7, flags: 0, frames: 10882940, box_first: 10887196, boxes: 10887212, marks: 10888792, root: 10888820 },   // gamma grab
+    AnimMove { len: 22, flags: 0, frames: 10888876, box_first: 10902252, boxes: 10902300, marks: 10907140, root: 10907228 },   // gamma grab_whiff
+    AnimMove { len: 46, flags: 0, frames: 10907404, box_first: 10935372, boxes: 10935468, marks: 10945588, root: 10945772 },   // gamma throw
+    AnimMove { len: 44, flags: 2, frames: 10946140, box_first: 10972892, boxes: 10972984, marks: 10982664, root: 10982840 },   // gamma thrown
+    AnimMove { len: 20, flags: 0, frames: 10983192, box_first: 10995352, boxes: 10995396, marks: 10999796, root: 10999876 },   // gamma grab_break
+    AnimMove { len: 96, flags: 0, frames: 11000036, box_first: 11058404, boxes: 11058600, marks: 11079880, root: 11080264 },   // gamma super
+    AnimMove { len: 40, flags: 2, frames: 11081032, box_first: 11105352, boxes: 11105436, marks: 11114236, root: 11114396 },   // gamma thrown_vault
+    AnimMove { len: 56, flags: 2, frames: 11114716, box_first: 11148764, boxes: 11148880, marks: 11161200, root: 11161424 },   // gamma thrown_slam
+    AnimMove { len: 60, flags: 4, frames: 11161872, box_first: 11198352, boxes: 11198476, marks: 11211676, root: 11211916 },   // gamma combine (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 11161872, box_first: 11198352, boxes: 11198476, marks: 11211676, root: 11211916 },   // gamma split (stand-in)
 ]
 
 // each mech's part meshes in anim.akr's Part order (null: no mesh)

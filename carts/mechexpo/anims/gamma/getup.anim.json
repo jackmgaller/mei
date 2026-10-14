@@ -1,9 +1,27 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Gamma's getup: a placeholder (phase 1), Beam's (../beam/getup.anim.json) on Gamma's rig, its keys, timing, boxes and marks as they are (the projector is on Beam's mount and reaches as far as the Arc Cannon); the shield (weapon_l) held stowed (\"still\"). To be replaced by its own move (MOVES.md, \"Gamma\"). On Beam's keys Gamma's bigger kit meets itself or the floor here (the stowed shield, the lamp, the racked cans, the whip antenna): \"allow\" and \"floor_allow\" say so until it is re-keyed.",
-  "base": "../beam/getup.anim.json",
-  "rig": "../../models/gamma/gamma.rig.json",
-  "still": ["weapon_l"],
-  "floor_allow": {"torso": 0.4}
+  "note": "Get up: Beam's (the Hero's) on Gamma's rig: from flat on its back (knockdown's last pose) it rolls forward over its feet, sits up onto bent knees with the projector braced against the floor's edge and the left arm thrown forward (6), steps the left foot back and rises (11) into the guard by 19. The pelvis lies 0.35 m higher than Beam's at the start (the jerrycan rack), and the left foot is drawn back under the body less deep, so the shin stays out of the pelvis.",
+  "base": "_body.anim.json",
+  "length": 20,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease", "offset": [-0.6, -2.5],
+     "pose": {"pelvis": [90, -2, 0], "torso": [10, 0, 0], "head": [8, 4, 0],
+              "upper_arm_r": [142, 0, -16], "forearm_r": [16, 0, 8], "hand_r": [0, 0, 0],
+              "upper_arm_l": [132, 0, 18], "forearm_l": [20, 0, -6], "thigh_r": [46, 0, -10],
+              "shin_r": [-74, 0, 0], "foot_r": [40, 0, 4], "thigh_l": [26, 0, 10],
+              "shin_l": [-44, 0, 0], "foot_l": [30, 0, -4]}},
+    {"at": 3, "reach": {"foot_r": [2.6, 0.0], "foot_l": [2.2, 0.0]}},
+    {"at": 6, "ease": "ease", "offset": [-0.6, -3.5],
+     "pose": {"pelvis": [40, -6, 0], "torso": [-30, -10, 0], "head": [20, 8, 0],
+              "upper_arm_r": [-10, 0, -24], "forearm_r": [90, 0, 8], "hand_r": [10, 0, 0],
+              "upper_arm_l": [60, 0, 30], "forearm_l": [50, 0, -6]},
+     "reach": {"foot_r": [1.8, 0.0], "foot_l": [1.2, 0.0]}},
+    {"at": 11, "ease": "ease", "offset": [-0.4, -2.75],
+     "pose": {"pelvis": [-6, -8, 0], "torso": [-26, -16, 0], "head": [24, 14, 0],
+              "upper_arm_r": [0, 0, -12], "forearm_r": [116, 0, 8], "hand_r": [0, 0, 0],
+              "upper_arm_l": [24, 0, 14], "forearm_l": [110, 0, -24]},
+     "reach": {"foot_r": [1.0, 0.0], "foot_l": [-1.6, 0.0]}},
+    {"at": 19, "from": "guard", "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}}
+  ]
 }
