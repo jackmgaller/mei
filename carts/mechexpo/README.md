@@ -451,6 +451,17 @@ of timed events. Then new stages are content, not engine work"). `stages.akr` ho
   edge (114); Osaka's cost 104,000 and 111,000, 105,000 and 145,000. Shadow against the split
   Twins (scenario 109's run, put on the rooftop for the measurement): 695,678 and 892,367, 2,339
   triangles, the worst fight measured there (729,468 and 932,847 with Osaka's); no late frames.
+- **The budget on the port** (scenarios 147–149, CPU against CPU through the real game, a release
+  build; 1P backs up to the quay edge for its first 400 frames): the Hero against the
+  Double-blade Hero 582,554 CPU cycles and 708,418 GPU cycles at the peak, 2,024 triangles
+  (536,217 and 610,847 with a mech within 8 m of the open edge); the split Twins against Tank
+  571,292 and 958,336, 1,992 triangles; Shadow against the split Twins, with its mine, bolt, curse
+  and Total Eclipse kept going (as scenario 109), 661,944 and 875,703, 2,152 triangles, the worst
+  fight measured there. No late frames. Without the props and the harbour they are 496,785 and
+  602,902 (1,743 triangles), 492,200 and 843,131 (1,646), 574,932 and 767,444 (1,850). With the
+  mechs idle (scenarios 140–143, the mean of 14 frames) the harbour alone costs 68,000–72,000 CPU
+  and 90,000–111,000 GPU cycles a frame and 258–284 drawn triangles; the props add 5,000–12,000
+  CPU cycles (and 41,000 GPU cycles with the container wall filling the right of the view, 142).
 
 ### The rooftop's city
 
