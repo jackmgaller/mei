@@ -98,6 +98,7 @@ fn hud_draw(f: *Fight, training: bool, who0: *u8, who1: *u8) {
         draw_meter(f, s)
         shadow_siphon_hud(f, s)         // Shadow's curse on this meter (shadow_fx.akr)
         seraph_mark_hud(f, s)           // Seraph's mark on this side (seraph_fx.akr)
+        gamma_heat_hud(f, s)            // Gamma's gun's heat (gamma_fx.akr)
         draw_pips(f, s)
     }
     draw_name(f, 0, who0)

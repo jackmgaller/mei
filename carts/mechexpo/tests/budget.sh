@@ -11,7 +11,9 @@
 # heaviest (against the split Twins on the container port, both marked: a wave sent back by the
 # ward and, while it flies, Judgement's flash, lock and column; tests/seraph/harness.akr), 202
 # Gamma with a full Volt Orb out and its super (against the split Twins on the rooftop, then on
-# the container port). make
+# the container port), 249 Gamma's effects at their heaviest (tests/gamma_fx/harness.akr: the
+# ray held hot against Seraph's Wing Ward on the container port, then against the split Twins
+# there with Ground Zero every 300 frames). make
 # test-carts runs them after check.sh. MEIC and RUN as in tools/cart_scenario.sh.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -20,7 +22,7 @@ mkdir -p "$O"
 POOL_DIR="$O"
 . "$HERE/pool.sh"
 pool_report() {
-    grep -E '^(OK|peak|late|Beam against|Tank and|Twins|frames split|Shadow against|Seraph against|Seraph.s effects|reflects|Gamma against|supers|Total Eclipses|blurb)' "$O/$1.log"
+    grep -E '^(OK|peak|late|Beam against|Tank and|Twins|frames split|Shadow against|Seraph against|Seraph.s effects|reflects|Gamma against|Gamma.s effects|Ground Zeros|supers|Total Eclipses|blurb)' "$O/$1.log"
 }
 run() {       # scenario frames (all through drawn mechs: the cost is the frames)
     pool_add "s$1" "$2" "$HERE/run.sh" "$1" "$2" "$O/s$1"
@@ -40,5 +42,6 @@ run 162 1801
 run 168 901
 run 198 1001
 run 202 1801
+run 249 1801
 pool_run
 echo "all Mech Expo budget checks passed"

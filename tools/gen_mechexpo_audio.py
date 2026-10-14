@@ -36,7 +36,11 @@ periodic: their filters run round the seam). Seraph's (mx-seraph-fx), after the 
 earlier sound keeps its index and bytes: the Mark bolt's cast, its hum (a loop) and the mark
 landing (a struck bell), the Wing Ward's sweep and the reflect, a wing beat, the glide's wind (a
 loop), the dive's whistle and touchdown, Ascension's rush, Judgement's choir, the column's lock
-and its impact.
+and its impact. Gamma's (mx-gamma-fx), after Seraph's: the Atomic Ray coming on, its hum
+(a loop) and going off, the heat's warning (a loop: Geiger clicks and a beep), the vent's steam,
+a shot burnt up in the ray, the ray cut, the Rod Shot's crack, the Geiger Flare and the daze's
+ringing (a loop), Lead Shielding swung out and a blow on it, Point Blank's blast, the normals'
+lamp, Ground Zero's klaxon and its blast, and Gamma's step.
 
 The reverb is the console's: preset 3 (hall) with its decay shortened a little, the demo hangar.
 
@@ -2641,6 +2645,288 @@ def sfx_column():
     return fade(sat(x, 1.6), 0.0004, 0.3)
 
 
+# ---- Gamma's (mx-gamma-fx): Heartland's searchlight turned ray projector, its reactor and steam
+
+def sfx_ray_on():
+    """The Atomic Ray comes on: a heavy relay clunks shut, the lamp strikes with a thump, the
+    supply's hum jumps up through an octave as the arc catches."""
+    rng = np.random.default_rng(7000)
+    dur = 0.7
+    t = tt(dur)
+    n = len(t)
+    x = 0.9 * clang_smp(rng, 170.0, dur, 0.07, 0.45) + 0.5 * at(n, 0.012, clang_smp(rng, 610.0, 0.3, 0.03, 0.8))
+    x += 1.1 * thump(t, 140, 48, 0.02, 0.12)
+    k = np.clip((t - 0.03) / 0.12, 0, 1)
+    f = 55 * 2 ** k
+    hum = buzz(n, f, 0.14, 1400) + 0.6 * sine(f * 2)
+    x += 0.55 * hum * np.clip((t - 0.03) / 0.02, 0, 1) * np.exp(-np.clip(t - 0.2, 0, None) / 0.25)
+    x += 0.35 * arc(rng, n, 3000, duty=0.7) * np.exp(-t / 0.08) * np.clip((t - 0.025) / 0.01, 0, 1)
+    return fade(sat(x * 1.1, 1.8), 0.0004, 0.15)
+
+
+def loop_ray(n):
+    """The Atomic Ray held (a loop of n samples): a deep electric drone, its supply buzzing, a
+    whine over it and a throb at the ray's ticks (ten a second). The cart raises the pitch with
+    the heat."""
+    rng = np.random.default_rng(7100)
+    t = np.arange(n) / FS
+    f0 = loop_hz(55.0, n)
+    drone = buzz(n, f0, 0.16, 1100) + 0.8 * sine(np.full(n, f0 * 2)) + 0.5 * sine(np.full(n, f0 * 3))
+    drone = mid3(filt(tile3(drone), 1600, 0.7))
+    fw = loop_hz(1320.0, n)
+    vib = 1 + 0.005 * np.sin(2 * math.pi * loop_hz(7.0, n) * t)
+    whine = np.sin(2 * math.pi * np.cumsum(np.full(n, fw) * vib) / FS) + 0.3 * sine(np.full(n, loop_hz(2640.0, n)))
+    throb = 0.7 + 0.3 * np.maximum(np.sin(2 * math.pi * loop_hz(10.0, n) * t), 0) ** 3
+    x = (0.7 * drone + 0.18 * whine) * throb
+    clicks = np.zeros(n)
+    for p in rng.integers(0, n, 50):
+        clicks[p] += rng.uniform(-1, 1)
+    x += 1.6 * mid3(filt(filt(tile3(clicks), 2500, 0.7, 'hp'), 8000, 0.7))
+    return x
+
+
+def sfx_ray_off():
+    """The ray let go: the relay clacks open, the drone falls away, the lamp's filament ticks as
+    it cools."""
+    rng = np.random.default_rng(7200)
+    dur = 0.8
+    t = tt(dur)
+    n = len(t)
+    x = 0.8 * clang_smp(rng, 820.0, dur, 0.03, 0.9) + 0.5 * thump(t, 110, 60, 0.01, 0.05)
+    f = 110 * np.exp(-t / 0.25) + 30
+    x += 0.6 * (buzz(n, f, 0.16, 900) + 0.5 * sine(f)) * np.exp(-t / 0.18)
+    for when in (0.22, 0.37, 0.55):
+        x += at(n, when, clang_smp(rng, 3100.0, 0.08, 0.008, 1.0), 0.08)
+    return fade(sat(x, 1.5), 0.0004, 0.15)
+
+
+def loop_heat(n):
+    """The gun too hot (a loop of n samples): a Geiger counter's clicks over a pulsing warning
+    tone. The cart quickens it (the pitch) as the heat climbs to 100."""
+    rng = np.random.default_rng(7300)
+    t = np.arange(n) / FS
+    x = np.zeros(n)
+    ck = filt(noise(rng, 60), 2500, 0.7, 'hp') * np.exp(-np.arange(60) / 9.0)
+    ck = ck + 0.6 * np.sin(2 * math.pi * 3300 * np.arange(60) / FS) * np.exp(-np.arange(60) / 14.0)
+    for p in rng.integers(0, n, int(28 * n / FS)):
+        put_circ(x, p, ck, rng.uniform(0.6, 1.0))
+    fb = loop_hz(1760.0, n)
+    gate = (np.sin(2 * math.pi * loop_hz(4.0, n) * t) > 0).astype(float)
+    gate = mid3(filt(tile3(gate), 120, 0.7))
+    beep = (sine(np.full(n, fb)) + 0.3 * sine(np.full(n, fb * 2))) * gate
+    return 1.0 * x + 0.22 * beep
+
+
+def sfx_vent():
+    """The gun vents: a valve bangs open, a white blast of steam out of the shroud's slots, a
+    whistle falling, the hiss dying away with the jet sputtering."""
+    rng = np.random.default_rng(7400)
+    dur = 1.8
+    t = tt(dur)
+    n = len(t)
+    jet = filt(filt(noise(rng, n), 10000, 0.7), 1100, 0.7, 'hp')
+    roar = filt(noise(rng, n), 700, 0.8, 'bp')
+    env = np.clip(t / 0.01, 0, 1) * (0.5 * np.exp(-t / 0.7) + 0.5 * np.exp(-t / 0.15))
+    k = np.clip((t - 0.7) / 0.5, 0, 1)
+    sput = 1 - 0.6 * k * (np.sin(2 * math.pi * (14 + 10 * k) * t) > 0.2)
+    x = (jet + 0.7 * roar) * env * sput * 1.3
+    f = 3200 * np.exp(-t / 0.9) + 600
+    x += 0.16 * filt(sine(f) + 0.4 * noise(rng, n), 2800, 3.0, 'bp') * env
+    x += 1.1 * thump(t, 160, 55, 0.012, 0.08)
+    x += 0.7 * clang_smp(rng, 540.0, dur, 0.06, 0.9)
+    return fade(sat(x, 1.6), 0.0004, 0.25)
+
+
+def sfx_burn():
+    """A shot burnt up in the ray: a short sizzle, crackling, with a zap as it goes."""
+    rng = np.random.default_rng(7500)
+    dur = 0.45
+    t = tt(dur)
+    n = len(t)
+    fc = 5200 * np.exp(-t / 0.2) + 900
+    x = tvf(noise(rng, n), fc, 1.6, 'bp', 32) * np.exp(-t / 0.13) * np.clip(t / 0.004, 0, 1)
+    x += 0.4 * sparks(rng, dur, 400, 0.1)
+    f = 2400 * np.exp(-t / 0.04) + 300
+    x += 0.35 * filt(pulse(f, 0.3), 4000, 0.7) * np.exp(-t / 0.05)
+    return fade(sat(x * 1.2, 1.6), 0.0004, 0.08)
+
+
+def sfx_cut():
+    """The ray cut (a strong shot through it, a Parry): an electric snap, sparks scattering, the
+    drone wrenched down to nothing."""
+    rng = np.random.default_rng(7600)
+    dur = 0.85
+    t = tt(dur)
+    n = len(t)
+    x = 1.0 * filt(noise(rng, n), 2500, 0.7, 'hp') * np.exp(-t / 0.006)
+    x += 0.6 * arc(rng, n, 2600, duty=0.85) * np.exp(-t / 0.07)
+    f = 220 * np.exp(-t / 0.12) + 28
+    x += 0.7 * (buzz(n, f, 0.2, 1200) + 0.5 * sine(f)) * np.exp(-t / 0.3) * np.clip(t / 0.01, 0, 1)
+    x += 0.3 * sparks(rng, dur, 300, 0.2)
+    x += 0.6 * thump(t, 180, 70, 0.01, 0.06)
+    return fade(sat(x * 1.1, 1.8), 0.0004, 0.15)
+
+
+def sfx_rod():
+    """The Rod Shot: a rail gun's hard crack, the barrel ringing, the recoil's thump and the rod
+    tearing away through the air."""
+    rng = np.random.default_rng(7700)
+    dur = 0.9
+    t = tt(dur)
+    n = len(t)
+    x = 1.4 * filt(noise(rng, n), 1800, 0.7, 'hp') * np.exp(-t / 0.0025)
+    x += 0.7 * sat(filt(noise(rng, n), 4000, 0.7) * np.exp(-t / 0.012) * 3, 3.0)
+    x += 0.55 * clang_smp(rng, 2350.0, dur, 0.12, 1.0) + 0.35 * clang_smp(rng, 1180.0, dur, 0.1, 0.6)
+    x += 1.0 * thump(t, 170, 55, 0.012, 0.07)
+    wh = tvf(noise(rng, n), 6000 * np.exp(-t / 0.18) + 700, 1.2, 'bp', 32)
+    x += 0.5 * wh * np.clip(t / 0.01, 0, 1) * np.exp(-t / 0.2)
+    return fade(sat(x, 1.8), 0.0004, 0.15)
+
+
+def sfx_flare():
+    """The Geiger Flare: the lamp thrown wide open with a bright pop, a rising flash of tone and a
+    burst of Geiger clicks thinning out."""
+    rng = np.random.default_rng(7800)
+    dur = 0.95
+    t = tt(dur)
+    n = len(t)
+    x = 1.0 * filt(noise(rng, n), 1500, 0.7, 'hp') * np.exp(-t / 0.008)
+    x += 0.8 * thump(t, 200, 80, 0.008, 0.05)
+    f = 900 * 3 ** np.clip(t / 0.18, 0, 1)
+    x += 0.3 * (sine(f) + 0.4 * sine(f * 1.5)) * np.exp(-t / 0.22) * np.clip(t / 0.005, 0, 1)
+    x += 0.9 * geiger(rng, n, 400 * np.exp(-t / 0.18) + 15)
+    x += 0.25 * hiss(rng, dur, 6000, 0.8, 0.003, 0.15)
+    return fade(sat(x, 1.5), 0.0004, 0.15)
+
+
+def loop_daze(n):
+    """A mech dazed by the flare (a loop of n samples): a high ringing in the ears, two tones
+    beating, Geiger clicks at random over it."""
+    rng = np.random.default_rng(7900)
+    t = np.arange(n) / FS
+    fa, fb = loop_hz(2093.0, n), loop_hz(2099.25, n)
+    ring = sine(np.full(n, fa)) + sine(np.full(n, fb)) + 0.4 * sine(np.full(n, loop_hz(3136.0, n)))
+    ring *= 0.6 + 0.4 * np.sin(2 * math.pi * loop_hz(2.5, n) * t)
+    x = np.zeros(n)
+    ck = filt(noise(rng, 60), 2500, 0.7, 'hp') * np.exp(-np.arange(60) / 9.0)
+    for p in rng.integers(0, n, int(14 * n / FS)):
+        put_circ(x, p, ck, rng.uniform(0.5, 1.0))
+    return 0.25 * ring + 0.9 * x
+
+
+def sfx_shield():
+    """Lead Shielding swung out: the arm's swing, the field gun's shield slammed across it like a
+    steel door, the latch dropping."""
+    rng = np.random.default_rng(8000)
+    dur = 1.0
+    t = tt(dur)
+    n = len(t)
+    wh, _ = whoosh(rng, dur, 0.05, 0.035, 300, 1800)
+    x = 0.45 * wh
+    c = 0.085
+    x += at(n, c, clang_smp(rng, 205.0, 0.9, 0.22, 0.6), 0.9)
+    x += at(n, c, clang_smp(rng, 311.0, 0.9, 0.15, 0.5), 0.6)
+    x += at(n, c, thump(tt(0.4), 130, 55, 0.015, 0.08), 1.0)
+    x += at(n, c + 0.09, clang_smp(rng, 980.0, 0.25, 0.03, 0.9), 0.3)
+    return fade(sat(x, 1.6), 0.0004, 0.15)
+
+
+def sfx_lead():
+    """A blow taken on the lead shield: a dead, dull clang (lead does not ring), the thud through
+    the arm, grit off the plate."""
+    rng = np.random.default_rng(8100)
+    dur = 0.7
+    t = tt(dur)
+    n = len(t)
+    x = 0.9 * clang_smp(rng, 150.0, dur, 0.05, 0.25) + 0.5 * clang_smp(rng, 236.0, dur, 0.035, 0.2)
+    x += 1.3 * thump(t, 100, 45, 0.015, 0.11)
+    x += 0.6 * crunch(rng, t, 900, 0.03, 2.5)
+    x += debris(rng, n, 0.02, 0.2, 3, 700, 1600, 0.12)
+    return fade(sat(filt(x, 3500, 0.7), 1.8), 0.0004, 0.12)
+
+
+def sfx_point_blank():
+    """Point Blank: the lamp jammed on a chest fires at full power: a deep blast, a crack, the
+    ray's roar and the other thrown off."""
+    rng = np.random.default_rng(8200)
+    dur = 1.2
+    t = tt(dur)
+    n = len(t)
+    x = 1.2 * thump(t, 120, 38, 0.03, 0.22)
+    x += 1.0 * filt(noise(rng, n), 1500, 0.7, 'hp') * np.exp(-t / 0.006)
+    x += 0.5 * crunch(rng, t, 1400, 0.08, 3.0)
+    f = 110 * np.exp(-t / 0.3) + 40
+    x += 0.5 * (buzz(n, f, 0.18, 1600) + 0.6 * sine(f * 2)) * np.exp(-t / 0.35)
+    x += 0.4 * arc(rng, n, 2800, duty=0.8) * np.exp(-t / 0.12)
+    x += 0.3 * filt(noise(rng, n), 600, 0.7) * np.exp(-t / 0.4)
+    return fade(sat(x * 1.1, 2.2), 0.0004, 0.2)
+
+
+def sfx_lamp():
+    """A normal's lamp: the searchlight's shutter snapping open, a white thump of light and a
+    short electric sizzle."""
+    rng = np.random.default_rng(8300)
+    dur = 0.4
+    t = tt(dur)
+    n = len(t)
+    x = 0.7 * clang_smp(rng, 1400.0, dur, 0.02, 1.0)
+    x += 0.8 * thump(t, 160, 70, 0.01, 0.05)
+    x += 0.4 * tvf(noise(rng, n), 4000 * np.exp(-t / 0.1) + 1200, 1.3, 'bp', 32) * np.exp(-t / 0.08)
+    wh, _ = whoosh(rng, dur, 0.03, 0.03, 600, 2600)
+    x += 0.3 * wh
+    return fade(sat(x, 1.5), 0.0004, 0.08)
+
+
+def sfx_klaxon():
+    """Ground Zero's alarm under the nuclear charge-up: a klaxon's rising whoop, twice."""
+    rng = np.random.default_rng(8400)
+    dur = 1.3
+    t = tt(dur)
+    ph = (t % 0.6) / 0.6
+    f = 330 * 2.6 ** np.clip(ph / 0.8, 0, 1)
+    src = saw(f) + 0.6 * pulse(f * 1.005, 0.4)
+    horn = filt(src, 1100, 2.0, 'bp') + 0.5 * filt(src, 2400, 3.0, 'bp')
+    env = np.clip(ph / 0.05, 0, 1) * np.clip((0.95 - ph) / 0.12, 0, 1) * (t < 1.2)
+    x = sat(horn * env * 2.0, 2.0) + 0.02 * filt(noise(rng, len(t)), 2000, 0.7) * env
+    return fade(x, 0.002, 0.08)
+
+
+def sfx_ground_zero():
+    """Ground Zero: the projector driven into the floor, a deep thump, the blast's rushing shock
+    wave, a boom rolling away and debris coming down."""
+    rng = np.random.default_rng(8500)
+    dur = 2.6
+    t = tt(dur)
+    n = len(t)
+    x = at(n, 0.0, boom_smp(rng, 2.0), 1.1)
+    x += 1.3 * thump(t, 160, 30, 0.04, 0.4)
+    x += 0.8 * crunch(rng, t, 1600, 0.1, 3.5)
+    x += 1.0 * filt(noise(rng, n), 1200, 0.7, 'hp') * np.exp(-t / 0.01)
+    rush = tvf(noise(rng, n), 5000 * np.exp(-t / 0.35) + 250, 0.8, 'lp', 32) * np.exp(-t / 0.6) * np.clip(t / 0.02, 0, 1)
+    x += 1.0 * rush
+    roll = rumble(rng, n, 85, 6.0) * np.exp(-t / 1.0) * np.clip(t / 0.08, 0, 1)
+    x += 1.1 * roll * (1 + 0.4 * np.sin(2 * math.pi * 5 * t))
+    x += debris(rng, n, 0.15, 2.2, 16, 600, 2800, 0.28)
+    x += 0.15 * at(n, 0.02, sparks(rng, 1.2, 260, 0.3))
+    return fade(sat(x * 1.2, 3.0), 0.0004, 0.35)
+
+
+def sfx_gamma_step():
+    """Gamma's step: a heavier plant than Beam's, the foot's plate, and the jerrycans on its back
+    rocking: a slosh and two hollow tonks."""
+    rng = np.random.default_rng(8600)
+    dur = 0.55
+    t = tt(dur)
+    n = len(t)
+    x = 1.3 * thump(t, 100, 42, 0.025, 0.1)
+    x += 0.5 * crunch(rng, t, 450, 0.03, 2.2)
+    x += 0.3 * clang_smp(rng, 210, dur, 0.05, 0.4)
+    for when, f in ((0.07, 380.0), (0.13, 330.0)):
+        x += at(n, when, clang_smp(rng, f, 0.2, 0.04, 0.3), 0.22)
+    sl = tvf(noise(rng, n), 500 + 300 * np.sin(2 * math.pi * 6 * t), 3.0, 'bp', 32)
+    x += 0.35 * sl * np.clip((t - 0.05) / 0.05, 0, 1) * np.exp(-np.clip(t - 0.1, 0, None) / 0.12)
+    return fade(sat(x, 1.8), 0.0004, 0.06)
+
 # per sound: name, render, its peak in the game (dB of full scale; the music peaks at -8),
 # reverb send
 ONE_SHOTS = [
@@ -2727,6 +3013,28 @@ SERAPH = [
 ]
 
 
+# Gamma's (mx-gamma-fx), after Seraph's so every sound before keeps its index and bytes: name,
+# render, seconds for a loop (None: a one-shot), peak in the game, reverb send
+GAMMA = [
+    ('ray_on', sfx_ray_on, None, -11, 1),
+    ('ray', loop_ray, 0.5, -16, 1),
+    ('ray_off', sfx_ray_off, None, -14, 1),
+    ('heat', loop_heat, 0.6, -18, 1),
+    ('vent', sfx_vent, None, -9, 1),
+    ('burn', sfx_burn, None, -13, 1),
+    ('cut', sfx_cut, None, -10, 1),
+    ('rod', sfx_rod, None, -9, 1),
+    ('flare', sfx_flare, None, -9, 1),
+    ('daze', loop_daze, 0.8, -20, 1),
+    ('shield', sfx_shield, None, -11, 1),
+    ('lead', sfx_lead, None, -9, 1),
+    ('point_blank', sfx_point_blank, None, -7, 1),
+    ('lamp', sfx_lamp, None, -13, 1),
+    ('klaxon', sfx_klaxon, None, -15, 1),
+    ('ground_zero', sfx_ground_zero, None, -5.5, 1),
+    ('gamma_step', sfx_gamma_step, None, -14, 1),
+]
+
 # ================================================================== output
 
 def _encode(args):
@@ -2791,7 +3099,7 @@ def render_sfx():
         n = int(round(secs * SR / BLK)) * BLK
         x = down(mid3(hp_dc(tile3(fn(n * OS)), 28.0)), True)
         out.append((name, x, level, rev, True))
-    for name, fn, secs, level, rev in SERAPH:
+    for name, fn, secs, level, rev in SERAPH + GAMMA:
         if secs is None:
             x = down(hp_dc(fn(), 28.0), False)
             x = np.concatenate([x, np.zeros(-len(x) % BLK)])
