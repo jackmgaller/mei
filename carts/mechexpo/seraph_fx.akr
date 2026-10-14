@@ -325,7 +325,7 @@ private fn srx_draw(f: *Fight) {
     // the light's motes: behind the Mark bolt, off a reflected shot
     for s in 0..2 {
         let sh = &f.shot[s]
-        if !tick || !sh.on || (!sh.mark && !sh.refl) || sh.t % 2 != 0 { continue }
+        if !tick || !sh.on || (!sh.mark && !sh.refl) || sh.t % 3 != 0 { continue }
         let back = -fixed(sgn(sh.vx))
         let y = (sh.y0 + sh.y1) / 2
         if sh.mark {
@@ -434,7 +434,8 @@ private fn srx_moves(f: *Fight, s: s32, tick: bool) {
     if seraph_gliding(s) {
         for w in 0..2 {
             let tp = srx_tip(fi, root, w)
-            srx_glow(vec3(tp.x, tp.y, tp.z - 0.6), 1.8, 1.3, col_scale(SRX_GOLD, 0.6))
+            srx_glow(vec3(tp.x, tp.y, tp.z - 0.6), 2.6, 1.4, col_scale(SRX_GOLD, 0.85))
+            srx_glow(vec3(tp.x, tp.y, tp.z - 0.7), 1.0, 1.0, SRX_CORE)
         }
     }
     if fi.mv == Mv.sp_f && tick {
@@ -593,7 +594,7 @@ private fn srx_judgement(f: *Fight, s: s32, root: mat4, tick: bool) {
     srx_seen[SRXS_COLUMN] += 1
     if tick && srx_at(s, fi, Mv.super, SRX_COL0) {
         // the slam: a flash, a ring on the floor, dust and grit thrown out at the foot
-        fx_flash_start(5)
+        fx_flash_start(4)
         let r = fx_burst_at(Pre.Floor, x, 0.05, SRX_WHITE, SRX_GOLD)
         r.s0 = 4.0
         r.s1 = 18.0
@@ -664,7 +665,7 @@ private fn srx_mark_draw(f: *Fight, i: s32, m: s32, tick: bool) {
     let fi = &f.f[i]
     let root = anim_place(vec2(fi.x, fi.y), fi.facing)
     let tor = (anim_part(fi.body, fi.mv, fi.frame, root, Part.torso) * vec4(0.0, 1.5, 0.0, 1.0)) as vec3
-    if tick && f.ticks % 7 == i {
+    if tick && f.ticks % 9 == i {
         srx_mote(tor.x + srx_sf() * 1.4, tor.y - 1.5 + srx_sf(), 0.0, 0.07, 30)
     }
     if m <= 60 && (srx_frame >> 2) & 1 != 0 { return }
