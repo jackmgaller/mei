@@ -38,6 +38,9 @@
 // (fx_power_index() maps Power to the row). Seraph's light (seraph_fx.akr) hooks in twice: its
 // shots (the Mark bolt, a reflected shot) are drawn by seraph_fx_shot() before the others, and
 // its trails (the fists', the wing tips' through the Seraph Dive) come from seraph_trail().
+// Gamma's (gamma_fx.akr) hooks in twice too: its Rod Shot (a shot with `pierce`) is drawn by
+// gamma_fx_rod() before every other shot, and the rod's Shot event is the bore's flash
+// (gamma_fx_rod_fire()) instead of the wave's dust.
 
 import "fx_art.akr"
 
@@ -614,6 +617,11 @@ fn fx_event(e: *Event, f: *Fight) {
             }
         }
         Shot => {
+            if f.shot[side].pierce {
+                gamma_fx_rod_fire(side, f)              // Gamma's Rod Shot: the bore's flash (gamma_fx.akr)
+                fx_ev_cycles += cycle_count() - c0
+                return
+            }
             // the wave leaves: dust kicked along the floor, a glow at the blade
             let dir = f.f[side].facing
             fx_burst_at(Pre.Glow, x, 1.5, 0xFFC080, 0x401000)
@@ -902,8 +910,9 @@ fn fx_update(f: *Fight) {
             let on1 = seraph_trail(fi, root, 1, &a, &b)
             trail_push(&fx_trails[s * 2 + 1], a, b, on1, fi.mech)
         } else if fi.mech == Mech.Beam || fi.mech == Mech.Tank || fi.mech == Mech.Twins
-            || fi.mech == Mech.Gamma {      // Gamma: Beam's discharges until its own (mx-gamma-rig)
-            // no blades: Beam's discharges are beam_fx.akr's; Tank's and the Twins' fists leave no trail
+            || fi.mech == Mech.Gamma {
+            // no blades: Beam's discharges are beam_fx.akr's, Gamma's lamp and ray gamma_fx.akr's;
+            // Tank's and the Twins' fists leave no trail
             fx_trails[s * 2].n = 0
             fx_trails[s * 2 + 1].n = 0
         } else if fi.mech == Mech.Shadow {
@@ -963,7 +972,7 @@ fn fx_update(f: *Fight) {
         }
         // the wave
         let sh = &f.shot[s]
-        let wave = !sh.hex && !sh.mark && !sh.refl          // (the Hex Bolt: shadow_fx.akr; Seraph's light: seraph_fx.akr)
+        let wave = !sh.hex && !sh.mark && !sh.refl && !sh.pierce    // (the Hex Bolt: shadow_fx.akr; Seraph's light: seraph_fx.akr; the rod: gamma_fx.akr)
         if sh.on && wave { fx_wave(sh) }
         if sd.shot_on && !sh.on && wave { fx_wave_end(sd.shot_x, sd.shot_y) }
         sd.shot_on = sh.on
@@ -1127,6 +1136,11 @@ fn fx_psprite(r: *s32, x: s32, y: s32, w: s32, h: s32, c: u32, mode: s32) {
     fx_spr(r, x, y, w, h, c, mode, false)
 }
 
+// ... mirrored when flip (it faces -x): gamma_fx.akr's.
+fn fx_psprite_ex(r: *s32, x: s32, y: s32, w: s32, h: s32, c: u32, mode: s32, flip: bool) {
+    fx_spr(r, x, y, w, h, c, mode, flip)
+}
+
 private fn fx_draw_pt(p: *Pt, n: s32) {
     let v = vec4(p.x, p.y, p.z, 1.0)
     let w = dot(fx_rw, v)
@@ -1227,6 +1241,7 @@ fn fx_draw_sprites(f: *Fight) {
     for s in 0..2 {
         let sh = &f.shot[s]
         if !sh.on { continue }
+        if sh.pierce { gamma_fx_rod(sh); continue }         // Gamma's Rod Shot, a reflected one too (gamma_fx.akr)
         if seraph_fx_shot(sh) { continue }                  // the Mark bolt, a reflected shot (seraph_fx.akr)
         if sh.hex { shadow_fx_bolt(sh); continue }          // Shadow's Hex Bolt (shadow_fx.akr)
         if sh.lvl > 0 { beam_fx_orb(sh); continue }        // Beam's Volt Orb (beam_fx.akr)

@@ -64,7 +64,7 @@ private fn bfx_streak(x0: fixed, y0: fixed, x1: fixed, y1: fixed, col: u32, flic
 fn beam_fx_draw(f: *Fight) {
     for s in 0..2 {
         let fi = &f.f[s]
-        if !has_arc_fx(fi.mech) { continue }        // Beam, and Gamma until its own (gamma.akr)
+        if !has_arc_fx(fi.mech) || fi.mech == Mech.Gamma { continue }     // Beam's (Gamma's own are gamma_fx.akr's)
         let flick = ((fx_tick + s * 3) % 3) as s32
         let root = anim_place(vec2(fi.x, fi.y), fi.facing)
         // the charge: a glow at the muzzle
@@ -147,7 +147,7 @@ var bsfx_react: [2]s32              // and its reaction
 fn beam_sfx(f: *Fight) {
     for s in 0..2 {
         let fi = &f.f[s]
-        if !has_volt_orb(fi.mech) && !has_shock_grip(fi.mech) { continue }    // Beam, Gamma (gamma.akr)
+        if !has_volt_orb(fi.mech) && !has_shock_grip(fi.mech) || fi.mech == Mech.Gamma { continue }    // Beam's (Gamma's: gamma_sfx)
         // the other's super flash freezes the world, the hum and the buzz with it
         let frozen = f.freeze > 0 && f.flash_side >= 0 && f.flash_side != s
         if fi.mv == Mv.sp_n && (cur_marks(s) & MARK_CHARGE) != 0 && fi.charge > 0 && fi.charge < ORB_CHARGE_MAX && !frozen {

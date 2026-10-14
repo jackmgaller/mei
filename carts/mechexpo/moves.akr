@@ -81,6 +81,7 @@ struct Hit {
     launch: fixed           // upward speed of a knockdown or an air hit
     nodebt: bool            // the antimatter debt's 25 % does not apply (Seraph's Judgement on a
                             // marked mech: the mark's 50 % does instead, seraph_judged)
+    daze: s32               // frames of daze (Gamma's Geiger Flare), 0 for every other hit
 }
 
 const HIT_NONE = Hit {}

@@ -66,6 +66,9 @@ struct Fx {
     l_age: s32                  // frames since L was pressed (the Twins switch forms on it)
     out: bool                   // rung out: falling past an open edge (the end of this file)
     out_t: s32                  // frames since
+    ray_t: s32                  // Gamma: frames the Atomic Ray has been on this move (the ticks' clock)
+    dazed: bool                 // in a Geiger Flare's daze (gamma.akr)
+    daze_drop: s32              // a daze waiting for the landing: its frames
 }
 
 // The bodies: 0 and 1 the two fighters, 2 and 3 their partners (the split Twins' twin B, of

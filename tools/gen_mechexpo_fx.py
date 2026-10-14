@@ -11,8 +11,10 @@ Writes, in carts/mechexpo/:
 The sprites: a glow with a hot core, the hit's starburst, a soft dot, a twinkle star, the impact flare (a star with an
 anamorphic streak, 1999 lens-flare style), a thin ring, the shield's hexagon, two smoke puffs, a
 flattened dust puff, a speed streak, a chevron, a bubble, two electric arcs and eight frames of
-a spinning metal shard (shaded: lit edge, body, dark edge; drawn opaque and tinted); and
-Seraph's (seraph_fx.akr): a four-point glint in four turns, the mark's sigil and a feather.
+a spinning metal shard (shaded: lit edge, body, dark edge; drawn opaque and tinted);
+Seraph's (seraph_fx.akr): a four-point glint in four turns, the mark's sigil and a feather; and
+Gamma's (gamma_fx.akr): a dome of light (Ground Zero's blast), the radiation trefoil (the daze),
+the Rod Shot's spike, a jet of steam (the vent) and two frames of Geiger static.
 
 python3 tools/gen_mechexpo_fx.py [--preview DIR]
 """
@@ -242,6 +244,87 @@ def feather(w, h):
     return levels((vane + quill) * np.clip((1 - u) * 6, 0, 1))
 
 
+def dome(w, h):
+    """Gamma's Ground Zero (gamma_fx.akr): the top half of a dome of light standing on the floor,
+    its rim bright, a soft fill inside, brightest along its foot where it meets the floor."""
+    y, x = np.mgrid[0:h, 0:w]
+    dx = (x - (w - 1) / 2) / (w / 2)
+    dy = (h - 1 - y) / h                    # 0 at the foot (the bottom row), 1 at the top
+    r = np.hypot(dx, dy)
+    rim = np.clip(1 - np.abs(r - 0.9) * 9, 0, 1)
+    fill = np.clip(1 - r, 0, 1) ** 0.6 * 0.35 * (r < 0.9)
+    foot = np.exp(-(dy * h / 1.6) ** 2) * np.clip(1 - np.abs(dx), 0, 1) ** 0.7 * 0.8
+    return levels(np.maximum(rim, fill) + foot)
+
+
+def trefoil(d):
+    """The radiation trefoil (gamma_fx.akr's daze): three blades round a dot, line art bright
+    enough to read at 6 pixels."""
+    S = d * SS
+    img = Image.new('L', (S, S), 0)
+    dr = ImageDraw.Draw(img)
+    c = (S - 1) / 2
+    R0, R1 = S * 0.16, S * 0.48
+    for k in range(3):
+        a = math.radians(90 + 120 * k)
+        pts = [(c, c)]
+        for j in range(9):
+            b = a - math.radians(30) + math.radians(60) * j / 8
+            pts.append((c + R1 * math.cos(b), c - R1 * math.sin(b)))
+        dr.polygon(pts, fill=255)
+    dr.ellipse([c - R0 * 1.25, c - R0 * 1.25, c + R0 * 1.25, c + R0 * 1.25], fill=0)
+    dr.ellipse([c - R0 * 0.7, c - R0 * 0.7, c + R0 * 0.7, c + R0 * 0.7], fill=255)
+    return levels(np.asarray(img.resize((d, d), Image.BOX)).astype(np.float64) / 255 * 1.1, 0.08)
+
+
+def spike(w, h):
+    """The Rod Shot (gamma_fx.akr): a needle of hot metal pointing right, its tip white-hot,
+    its body tapering back to nothing."""
+    y, x = np.mgrid[0:h, 0:w]
+    u = x / (w - 1)
+    dy = np.abs(y - (h - 1) / 2) / (h / 2)
+    width = np.where(u < 0.82, 0.3 + 0.7 * u / 0.82, 1.0 - (u - 0.82) / 0.18 * 0.9)
+    body = np.clip(1 - dy / np.maximum(width, 0.05), 0, 1) ** 0.6 * (0.25 + 0.75 * u ** 1.5)
+    tip = np.exp(-(((u - 0.86) / 0.07) ** 2 + (dy / 0.6) ** 2)) * 0.8
+    return levels(body + tip)
+
+
+def jet(w, h, seed=21):
+    """A jet of steam (gamma_fx.akr's vent) blowing right: a cone of vapour widening from a
+    tight bright root on the left, soft and broken at its far end."""
+    rng = np.random.default_rng(seed)
+    y, x = np.mgrid[0:h, 0:w]
+    u = x / (w - 1)
+    dy = np.abs(y - (h - 1) / 2) / (h / 2)
+    width = 0.18 + 0.82 * u ** 0.8
+    cone = np.clip(1 - dy / width, 0, 1) ** 0.9
+    lump = np.zeros((h, w))
+    for _ in range(14):
+        cx, cy = rng.uniform(0.15, 1.0) * w, rng.uniform(0.25, 0.75) * h
+        rr = rng.uniform(0.08, 0.18) * w
+        lump += np.exp(-(((x - cx) / rr) ** 2 + ((y - cy) / (rr * 0.6)) ** 2))
+    lump = 0.55 + 0.45 * lump / lump.max()
+    fall = (1 - u) ** 0.7 + 0.15
+    return levels(cone * lump * fall * 1.1, 0.06)
+
+
+def static(d, seed):
+    """Geiger static (gamma_fx.akr's daze): a crackle of short bright dashes and specks, sparse,
+    for a flicker that changes every frame or two."""
+    rng = np.random.default_rng(seed)
+    v = np.zeros((d, d))
+    r = radius(d)
+    for _ in range(int(d * 1.6)):
+        x0, y0 = rng.integers(0, d), rng.integers(0, d)
+        ln = rng.integers(1, 4)
+        hor = rng.uniform() < 0.5
+        for k in range(ln):
+            xx, yy = (x0 + k, y0) if hor else (x0, y0 + k)
+            if xx < d and yy < d:
+                v[yy, xx] = max(v[yy, xx], rng.uniform(0.5, 1.0))
+    return levels(v * np.clip(1.15 - r, 0, 1), 0.1)
+
+
 SHARD = [(-0.62, -0.30), (0.10, -0.62), (0.66, -0.12), (0.20, 0.50), (-0.40, 0.34)]
 
 
@@ -333,6 +416,13 @@ def main():
         sh.place('GLINT%d' % k, glint(24, k * 22.5))
     sh.place('SIGIL', sigil(32))
     sh.place('FEATHER', feather(24, 8))
+    # Gamma's (gamma_fx.akr), after Seraph's so every earlier rectangle stays where it was
+    sh.place('DOME', dome(64, 32))
+    sh.place('TREFOIL', trefoil(16))
+    sh.place('SPIKE', spike(32, 8))
+    sh.place('JET', jet(32, 16))
+    sh.place('STATIC0', static(16, 31))
+    sh.place('STATIC1', static(16, 37))
 
     pal = [0] + [c15(17 * k) for k in range(1, 16)]
     tex = sh.blob()
