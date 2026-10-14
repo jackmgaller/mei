@@ -95,7 +95,7 @@ worlds first, which needs NumPy ([WORLDKIT.md](WORLDKIT.md#using-a-world-in-a-ca
 
 Or drop a `.mei` file on the window. Keyboard: arrows = d-pad, WASD = analog stick,
 J K U I = A B X Y, Q E = L R, Enter = Start, Backspace or right Shift = Select, F2 home,
-F5 reset, F11 fullscreen, Esc quit.
+F5 reset, F10 fit or whole-number scale, F11 fullscreen, Esc quit.
 Gamepads work too. On macOS, XInput-only controllers (Xbox 360-protocol pads such as an
 8BitDo Ultimate 2C on a cable) have no system driver, so when libusb is installed
 (`brew install libusb`) the desktop build reads them directly over USB

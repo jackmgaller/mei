@@ -16,7 +16,7 @@
  * Gamepads come from SDL, plus XInput pads read directly over USB when built with libusb.
  * Keys: arrows d-pad, WASD stick, J/K/U/I = A/B/X/Y, Q/E = L/R, Enter = Start,
  *       Backspace or right Shift = Select,
- *       F2 home, F5 reset, F11 fullscreen, Esc quit. */
+ *       F2 home, F5 reset, F10 fit or whole-number scale, F11 fullscreen, Esc quit. */
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -345,7 +345,9 @@ SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
         return SDL_APP_FAILURE;
     }
     SDL_SetRenderVSync(app.renderer, 1);
-    SDL_SetRenderLogicalPresentation(app.renderer, MEI_W, MEI_H, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+    /* The picture fills the window's height (or width), at a scale that need not be a whole
+     * number; F10 switches to whole-number steps, with wider bars but even pixels. */
+    SDL_SetRenderLogicalPresentation(app.renderer, MEI_W, MEI_H, SDL_LOGICAL_PRESENTATION_LETTERBOX);
     /* VRAM pixels are R in bits 0-4, G 5-9, B 10-14: SDL's XBGR1555. */
     app.texture = SDL_CreateTexture(app.renderer, SDL_PIXELFORMAT_XBGR1555, SDL_TEXTUREACCESS_STREAMING, MEI_W, MEI_H);
     SDL_SetTextureScaleMode(app.texture, SDL_SCALEMODE_NEAREST);
@@ -461,6 +463,12 @@ SDL_AppResult SDL_AppEvent(void *state, SDL_Event *e) {
         } else if (e->key.key == SDLK_F5) {
             mei_reset(app.mei);
             SDL_ClearAudioStream(app.audio);
+        } else if (e->key.key == SDLK_F10) {
+            SDL_RendererLogicalPresentation mode;
+            SDL_GetRenderLogicalPresentation(app.renderer, NULL, NULL, &mode);
+            SDL_SetRenderLogicalPresentation(app.renderer, MEI_W, MEI_H,
+                mode == SDL_LOGICAL_PRESENTATION_LETTERBOX ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
+                                                           : SDL_LOGICAL_PRESENTATION_LETTERBOX);
         } else if (e->key.key == SDLK_F11) {
             SDL_SetWindowFullscreen(app.window, !(SDL_GetWindowFlags(app.window) & SDL_WINDOW_FULLSCREEN));
         }
