@@ -1,0 +1,570 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_roof_city_venue",
+ "budget": {
+  "vertices": 2000,
+  "triangles": 300
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.62
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "m_of": {
+   "color": "#18203c",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_m_of.png",
+    "projection": "box",
+    "scale": [
+     44.8,
+     44.8
+    ]
+   }
+  },
+  "steel": {
+   "color": "#3c4568"
+  },
+  "dark": {
+   "color": "#141a30"
+  },
+  "red": {
+   "color": "#ff3a2a",
+   "class": "emissive"
+  },
+  "banner": {
+   "color": "#2448a8",
+   "class": "emissive"
+  },
+  "hall_roof": {
+   "color": "#3a4466"
+  },
+  "sail": {
+   "color": "#bcc8e0",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_sail.png",
+    "projection": "fit"
+   }
+  },
+  "sign": {
+   "color": "#1e3c9a",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_sign.png",
+    "projection": "fit"
+   }
+  },
+  "refl_warm": {
+   "color": "#f0c060",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_refl_warm.png",
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "sail",
+   "op": "mesh",
+   "vertices": [
+    [
+     207.0,
+     -15.74,
+     296.0
+    ],
+    [
+     210.75,
+     -0.0381,
+     292.5558
+    ],
+    [
+     210.75,
+     -45.0,
+     292.5558
+    ],
+    [
+     207.0,
+     -45.0,
+     296.0
+    ],
+    [
+     214.5,
+     10.9072,
+     289.636
+    ],
+    [
+     214.5,
+     -45.0,
+     289.636
+    ],
+    [
+     218.25,
+     19.55,
+     287.6851
+    ],
+    [
+     218.25,
+     -45.0,
+     287.6851
+    ],
+    [
+     222.0,
+     25.9898,
+     287.0
+    ],
+    [
+     222.0,
+     -45.0,
+     287.0
+    ],
+    [
+     225.75,
+     30.1453,
+     287.6851
+    ],
+    [
+     225.75,
+     -45.0,
+     287.6851
+    ],
+    [
+     229.5,
+     31.9303,
+     289.636
+    ],
+    [
+     229.5,
+     -45.0,
+     289.636
+    ],
+    [
+     233.25,
+     26.9164,
+     292.5558
+    ],
+    [
+     233.25,
+     -45.0,
+     292.5558
+    ],
+    [
+     237.0,
+     -15.74,
+     296.0
+    ],
+    [
+     237.0,
+     -45.0,
+     296.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     1,
+     4,
+     5,
+     2
+    ],
+    [
+     4,
+     6,
+     7,
+     5
+    ],
+    [
+     6,
+     8,
+     9,
+     7
+    ],
+    [
+     8,
+     10,
+     11,
+     9
+    ],
+    [
+     10,
+     12,
+     13,
+     11
+    ],
+    [
+     12,
+     14,
+     15,
+     13
+    ],
+    [
+     14,
+     16,
+     17,
+     15
+    ]
+   ],
+   "face_materials": [
+    "sail",
+    "sail",
+    "sail",
+    "sail",
+    "sail",
+    "sail",
+    "sail",
+    "sail"
+   ],
+   "material": "sail",
+   "uvs": [
+    [
+     0.0,
+     0.62
+    ],
+    [
+     0.125,
+     0.4161
+    ],
+    [
+     0.125,
+     1.0
+    ],
+    [
+     0.0,
+     1.0
+    ],
+    [
+     0.25,
+     0.2739
+    ],
+    [
+     0.25,
+     1.0
+    ],
+    [
+     0.375,
+     0.1617
+    ],
+    [
+     0.375,
+     1.0
+    ],
+    [
+     0.5,
+     0.0781
+    ],
+    [
+     0.5,
+     1.0
+    ],
+    [
+     0.625,
+     0.0241
+    ],
+    [
+     0.625,
+     1.0
+    ],
+    [
+     0.75,
+     0.0009
+    ],
+    [
+     0.75,
+     1.0
+    ],
+    [
+     0.875,
+     0.066
+    ],
+    [
+     0.875,
+     1.0
+    ],
+    [
+     1.0,
+     0.62
+    ],
+    [
+     1.0,
+     1.0
+    ]
+   ]
+  },
+  {
+   "id": "sail_r",
+   "op": "box",
+   "size": [
+    1.2,
+    1.2,
+    1.2
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     229.5,
+     32.7303,
+     289.636
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "hall",
+   "op": "box",
+   "size": [
+    120.0,
+    20.0,
+    40.0
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     172.0,
+     -38.0,
+     246.0
+    ]
+   },
+   "faces": {
+    "top": "hall_roof",
+    "back": "m_of"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "eaves",
+   "op": "box",
+   "size": [
+    126.0,
+    2.0,
+    8.0
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     172.0,
+     -27.0,
+     225.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "sign",
+   "op": "box",
+   "size": [
+    92.0,
+    11.5,
+    0.2
+   ],
+   "material": "sign",
+   "transform": {
+    "translate": [
+     164.0,
+     -20.5,
+     228.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "banner_0",
+   "op": "box",
+   "size": [
+    4.0,
+    11.0,
+    0.2
+   ],
+   "material": "banner",
+   "transform": {
+    "translate": [
+     120.0,
+     -39.0,
+     225.7
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "banner_1",
+   "op": "box",
+   "size": [
+    4.0,
+    11.0,
+    0.2
+   ],
+   "material": "banner",
+   "transform": {
+    "translate": [
+     140.0,
+     -39.0,
+     225.7
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "banner_2",
+   "op": "box",
+   "size": [
+    4.0,
+    11.0,
+    0.2
+   ],
+   "material": "banner",
+   "transform": {
+    "translate": [
+     160.0,
+     -39.0,
+     225.7
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "banner_3",
+   "op": "box",
+   "size": [
+    4.0,
+    11.0,
+    0.2
+   ],
+   "material": "banner",
+   "transform": {
+    "translate": [
+     180.0,
+     -39.0,
+     225.7
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "banner_4",
+   "op": "box",
+   "size": [
+    4.0,
+    11.0,
+    0.2
+   ],
+   "material": "banner",
+   "transform": {
+    "translate": [
+     200.0,
+     -39.0,
+     225.7
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "banner_5",
+   "op": "box",
+   "size": [
+    4.0,
+    11.0,
+    0.2
+   ],
+   "material": "banner",
+   "transform": {
+    "translate": [
+     220.0,
+     -39.0,
+     225.7
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "hall_refl",
+   "op": "box",
+   "size": [
+    60.0,
+    14.0,
+    0.2
+   ],
+   "material": "refl_warm",
+   "transform": {
+    "translate": [
+     142.0,
+     -55.3,
+     225.5
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  }
+ ]
+}
