@@ -45,6 +45,7 @@ struct Fighter {
     charge: s32             // Beam: frames B has held the Volt Orb on its charge frame (the muzzle's glow)
     curse: s32              // frames left of Shadow's Siphon curse: its gains go to the other side (shadow.akr)
     siphoned: s32           // meter siphoned from it this round (the HUD's stream)
+    mark: s32               // frames left of Seraph's mark: Judgement does half as much again (seraph.akr)
 }
 
 struct Shot {               // a projectile (the Hero's wave)
@@ -60,6 +61,8 @@ struct Shot {               // a projectile (the Hero's wave)
     y1: fixed
     life: s32               // frames before it fades
     hex: bool               // Shadow's Hex Bolt (shadow.akr): it curses on a hit
+    mark: bool              // Seraph's Mark of Judgement (seraph.akr): it marks on a hit
+    refl: bool              // reflected by a Wing Ward: drawn as light
 }
 
 struct Fight {
@@ -98,7 +101,10 @@ enum Ev { Hit, Block, Chip, Whiff, Grab, Throw, Break, Land, Step, MeterFull, Su
           Curse,        // Shadow's Hex Bolt cursed the other (side: Shadow's; x, y: the cursed mech)
           Mine,         // Shadow laid a Rift Mine (side: Shadow's; x: the mine)
           Snare,        // a mine snared a mech (side: the mine's; x: the snared mech)
-          MineGone }    // a mine was destroyed (power 1) or faded (power 0) (side: the mine's; x: the mine)
+          MineGone,     // a mine was destroyed (power 1) or faded (power 0) (side: the mine's; x: the mine)
+          Mark,         // Seraph's mark landed (side: Seraph's; x, y: the marked mech; power 1 a new mark, 0 a refresh)
+          Reflect,      // a Wing Ward sent a shot back (side: the warding side; x, y: the contact; power: the shot's strength)
+          Column }      // Judgement's lock (side: Seraph's; x: the lock)
 
 struct Event {
     kind: Ev

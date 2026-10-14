@@ -11,7 +11,8 @@ Writes, in carts/mechexpo/:
 The sprites: a glow with a hot core, the hit's starburst, a soft dot, a twinkle star, the impact flare (a star with an
 anamorphic streak, 1999 lens-flare style), a thin ring, the shield's hexagon, two smoke puffs, a
 flattened dust puff, a speed streak, a chevron, a bubble, two electric arcs and eight frames of
-a spinning metal shard (shaded: lit edge, body, dark edge; drawn opaque and tinted).
+a spinning metal shard (shaded: lit edge, body, dark edge; drawn opaque and tinted); and
+Seraph's (seraph_fx.akr): a four-point glint in four turns, the mark's sigil and a feather.
 
 python3 tools/gen_mechexpo_fx.py [--preview DIR]
 """
@@ -196,6 +197,51 @@ def bolt(w, h, seed):
     return levels(v * 1.4, 0.05)
 
 
+def glint(d, angle):
+    """Seraph's four-point glint (seraph_fx.akr), turned by angle degrees: four long thin
+    points round a hot core, the light of the Mark bolt."""
+    y, x = np.mgrid[0:d, 0:d]
+    c = (d - 1) / 2
+    a = math.radians(angle)
+    u = ((x - c) * math.cos(a) + (y - c) * math.sin(a)) / (d / 2)
+    v = (-(x - c) * math.sin(a) + (y - c) * math.cos(a)) / (d / 2)
+    au, av = np.abs(u), np.abs(v)
+    arms = np.clip(1 - av * 7 - au, 0, 1) ** 1.2 + np.clip(1 - au * 7 - av, 0, 1) ** 1.2
+    core = np.clip(1 - np.hypot(u, v) * 3.0, 0, 1)
+    return levels(arms + core * 1.2)
+
+
+def sigil(d):
+    """The mark's sigil (seraph_fx.akr): a ring with a cross through it and Momentum's chevron
+    over the top, line art for the glow at the marked mech's chest."""
+    S = d * SS
+    img = Image.new('L', (S, S), 0)
+    dr = ImageDraw.Draw(img)
+    c = (S - 1) / 2
+    R = S * 0.36
+    w = int(SS * 1.6)
+    dr.ellipse([c - R, c - R + S * 0.06, c + R, c + R + S * 0.06], outline=255, width=w)
+    cy = c + S * 0.06
+    dr.line([(c, cy - R * 1.12), (c, cy + R * 1.12)], fill=255, width=w)
+    dr.line([(c - R * 1.12, cy), (c + R * 1.12, cy)], fill=255, width=w)
+    top = cy - R - S * 0.05
+    dr.line([(c - S * 0.2, top + S * 0.02), (c, top - S * 0.12), (c + S * 0.2, top + S * 0.02)], fill=255, width=w)
+    a = np.asarray(img.resize((d, d), Image.BOX)).astype(np.float64) / 255
+    return levels(np.maximum(a * 1.25, np.clip(1 - radius(d) * 4.0, 0, 1) * 0.6))
+
+
+def feather(w, h):
+    """A feather of light (seraph_fx.akr's wing beats): a slim vane along a bright quill,
+    pointing right, soft at its tip."""
+    y, x = np.mgrid[0:h, 0:w]
+    u = x / (w - 1)
+    dy = np.abs(y - (h - 1) / 2) / (h / 2)
+    width = np.sin(np.clip(u, 0, 1) * math.pi) ** 0.7 * 0.95 + 0.05
+    vane = np.clip(1 - dy / width, 0, 1) ** 0.8 * 0.6
+    quill = np.exp(-(dy * h / 2 / 0.6) ** 2) * np.clip(1 - u * 0.4, 0, 1)
+    return levels((vane + quill) * np.clip((1 - u) * 6, 0, 1))
+
+
 SHARD = [(-0.62, -0.30), (0.10, -0.62), (0.66, -0.12), (0.20, 0.50), (-0.40, 0.34)]
 
 
@@ -282,6 +328,11 @@ def main():
     sh.place('BUBBLE', bubble(16))
     for k in range(8):
         sh.place('SHARD%d' % k, shard(16, k * 45))
+    # Seraph's (seraph_fx.akr), after the rest so their rectangles stay where they were
+    for k in range(4):
+        sh.place('GLINT%d' % k, glint(24, k * 22.5))
+    sh.place('SIGIL', sigil(32))
+    sh.place('FEATHER', feather(24, 8))
 
     pal = [0] + [c15(17 * k) for k in range(1, 16)]
     tex = sh.blob()
@@ -310,11 +361,14 @@ def main():
            '',
            '// sprite rectangles: u, v, w, h']
     for n, u, v, w, h in sh.rects:
-        if not n.startswith('SHARD'):
+        if not n.startswith('SHARD') and not n.startswith('GLINT'):
             akr.append('const FXP_%s: [4]s32 = [%d, %d, %d, %d]' % (n, u, v, w, h))
     akr.append('// the shard turned by 0, 45, ... 315 degrees: frame k at FXP_SHARDS[k * 4]')
     sh_r = [rects['SHARD%d' % k] for k in range(8)]
     akr.append('const FXP_SHARDS: [32]s32 = [%s]' % ', '.join('%d, %d, %d, %d' % r for r in sh_r))
+    akr.append('// Seraph\'s glint turned by 0, 22.5, 45 and 67.5 degrees: frame k at FXP_GLINTS[k * 4]')
+    gl_r = [rects['GLINT%d' % k] for k in range(4)]
+    akr.append('const FXP_GLINTS: [16]s32 = [%s]' % ', '.join('%d, %d, %d, %d' % r for r in gl_r))
     with open(os.path.join(CART, 'fx_art.akr'), 'w') as fh:
         fh.write('\n'.join(akr) + '\n')
 
