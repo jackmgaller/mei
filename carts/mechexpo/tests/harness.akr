@@ -3743,13 +3743,34 @@ private fn sv_tt(i: s32, b: s32) -> s32 {
     return ((abs(near - s.x) - s.half) / abs(s.vx)) as s32
 }
 
-// Frames until side i's shot reaches body b's root less 1.6 m (Seraph's body in the ward), or -1.
+// How far in front of body b's root its hurt boxes reach at side i's shot's height, from the
+// animation data: in the pose it stands in now (the guard holds the fist out in front) and in the
+// Wing Ward's frames up to the first `ward` frame (the boxes a shot can touch before the ward is up).
+private fn sv_reach(i: s32, b: s32) -> fixed {
+    let s = &fight.shot[i]
+    let f = &fight.f[b]
+    let w0 = find_mark(f.body, Mv.sp_d, MARK_WARD)
+    var r: fixed = 0.0
+    var bx: Boxes
+    for k in 0..w0 + 2 {
+        if k == 0 { mv_boxes(f.body, f.mv, cur_frame(b), &bx) } else { mv_boxes(f.body, Mv.sp_d, k - 1, &bx) }
+        for n in 0..bx.n {
+            let h = &bx.b[n]
+            if h.kind != BOX_HURT || f.y + h.y0 >= s.y1 || f.y + h.y1 <= s.y0 { continue }
+            r = max(r, h.x1)
+        }
+    }
+    return r
+}
+
+// Frames until side i's shot reaches the front of Seraph b's hurt boxes in the guard or the ward's
+// first frames (sv_reach), or -1.
 private fn sv_tt_body(i: s32, b: s32) -> s32 {
     let s = &fight.shot[i]
     if !s.on || s.vx == 0.0 { return -1 }
     let x = fight.f[b].x
     if sgn(x - s.x) != sgn(s.vx) { return -1 }
-    return ((abs(x - s.x) - s.half - 1.6) / abs(s.vx)) as s32
+    return ((abs(x - s.x) - s.half - sv_reach(i, b)) / abs(s.vx)) as s32
 }
 
 // Seraph b wards side i's shot when it is about to touch (once a part): the ward's 20 frames
