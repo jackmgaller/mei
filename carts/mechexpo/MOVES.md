@@ -2210,7 +2210,7 @@ part's list is at the end ([For the animators](#for-the-animators-gamma),
 [For the effects and sound](#for-the-effects-and-sound-gamma),
 [Engine work needed](#engine-work-needed-gamma)).
 
-Code name `Gamma` (`enum Mech`, appended after `Seraph`); shown as GAMMA, model HA-58 (proposed).
+Code name `Gamma` (`enum Mech`, appended after `Seraph`); shown as GAMMA, model HA-58.
 On Beam's rig: the Hero's part ids and joints, the guard of `models/beam/`, **`weapon_r` the ray
 projector** (Beam's mount and muzzle, (0, 0.8, −4.4) in its frame, with the Rod Shot's bore under
 the lens at (0, 0.3, −4.86)) and **`weapon_l` the lead shield** (stowed along the left forearm at
@@ -3152,7 +3152,7 @@ the floor where Shadow goes under it, shots sent back, a mark instead of a curse
 
 Planned, not designed in numbers yet: Heartland Atomic Company's echo of Beam, in the echo slot
 under Beam (unlocked by clearing the arcade with Beam), on Beam's skeleton (the Hero's). Named
-**GAMMA** (card GAMMA); model number open (HA-58 proposed, after Tank's HA-57). Nuclear meter (Heartland's: fills as it takes damage).
+**GAMMA** (card GAMMA); model HA-58 (after Tank's HA-57). Nuclear meter (Heartland's: fills as it takes damage).
 
 - **Look: military surplus** (concept C, `concepts/gamma_c/`, refined in `models/gamma/`; chosen
   over an atomic-age ray gun and a walking reactor plant). Phase 1 is built
@@ -3302,4 +3302,4 @@ health of the Double-blade Hero and Shadow (the owner's decisions).
     renewed), and in the air the mech drops and is dazed on landing rather than knocked down.
     Ground Zero empties the gun's heat. The heat shows on the gun and on the HUD. **Decided by the
     owner (2026-10-14): approved as proposed.**
-  - **The model number**: HA-58 (after Tank's HA-57), as the owner's Gamma decision proposes.
+  - **The model number**: HA-58 (after Tank's HA-57), decided by the owner (2026-10-14): approved as proposed.
