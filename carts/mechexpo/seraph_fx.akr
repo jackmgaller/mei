@@ -141,6 +141,12 @@ private fn srx_pt(fi: *Fighter, root: mat4, part: Part, lp: vec4) -> vec3 {
     return (anim_part(fi.body, fi.mv, fi.frame, root, part) * lp) as vec3
 }
 
+// Wing w's tip (0 the left, 1 the right).
+private fn srx_tip(fi: *Fighter, root: mat4, w: s32) -> vec3 {
+    if w == 0 { return srx_pt(fi, root, Part.wing_l, SRX_TIP_L) }
+    return srx_pt(fi, root, Part.wing_r, SRX_TIP_R)
+}
+
 private fn srx_mote(x: fixed, y: fixed, vx: fixed, vy: fixed, life: s32) {
     fx_c0 = SRX_CORE
     fx_c1 = SRX_DEEP
@@ -258,18 +264,23 @@ fn seraph_trail(fi: *Fighter, root: mat4, k: s32, a: *vec3, b: *vec3) -> bool {
         }
         return true
     }
-    // the fists: the right's short trail on the active frames (and a little before)
-    a[0] = srx_pt(fi, root, Part.weapon_r, SRX_FIST_BACK)
-    b[0] = srx_pt(fi, root, Part.weapon_r, SRX_FIST)
+    // the fists: the right's short trail on the active frames (and a little before); the points
+    // only when it sweeps (a trail that is not sweeping only shrinks)
     if k != 0 { return false }
+    var on = false
     match fi.mv {
-        atk_n => return fr >= 1 && fr <= 5
-        atk_f => return fr >= 9 && fr <= 16
-        atk_air => return fr >= 6
-        sp_f => return fr >= SRX_DIVE0 && fr <= SRX_TOUCH
-        sp_u => return fr >= 6 && fr <= 15
-        else => return false
+        atk_n => on = fr >= 1 && fr <= 5
+        atk_f => on = fr >= 9 && fr <= 16
+        atk_air => on = fr >= 6
+        sp_f => on = fr >= SRX_DIVE0 && fr <= SRX_TOUCH
+        sp_u => on = fr >= 6 && fr <= 15
+        else => {}
     }
+    if on {
+        a[0] = srx_pt(fi, root, Part.weapon_r, SRX_FIST_BACK)
+        b[0] = srx_pt(fi, root, Part.weapon_r, SRX_FIST)
+    }
+    return on
 }
 
 // ---- once a frame in a fight (after the mechs, with fx.akr's effects)
@@ -405,8 +416,7 @@ private fn srx_moves(f: *Fight, s: s32, tick: bool) {
         if srx_at(s, fi, Mv.sp_f, SRX_HOP) { srx_downdraft(fi.x) }
         if fr >= SRX_GLIDE0 && fr <= SRX_GLIDE1 {
             for w in 0..2 {
-                var tp = srx_pt(fi, root, Part.wing_l, SRX_TIP_L)
-                if w == 1 { tp = srx_pt(fi, root, Part.wing_r, SRX_TIP_R) }
+                let tp = srx_tip(fi, root, w)
                 fx_c0 = SRX_WHITE
                 fx_c1 = SRX_GOLD
                 let st = fx_spawn(Pre.ShieldSpark, tp.x, tp.y, -dir * (0.12 + srx_sf() / 25), srx_sf() / 60)
@@ -442,15 +452,13 @@ private fn srx_moves(f: *Fight, s: s32, tick: bool) {
         if fr >= 11 && fr <= 16 {
             let k = 1.0 - fixed(abs(fr - SRX_ASC_BEAT)) / 4
             for w in 0..2 {
-                var tp = srx_pt(fi, root, Part.wing_l, SRX_TIP_L)
-                if w == 1 { tp = srx_pt(fi, root, Part.wing_r, SRX_TIP_R) }
+                let tp = srx_tip(fi, root, w)
                 srx_glow(vec3(tp.x, tp.y, -1.2), 2.0 + k * 1.5, 1.0, col_scale(SRX_GOLD, k))
             }
         }
         if tick && srx_at(s, fi, Mv.sp_u, SRX_ASC_BEAT) {
             for w in 0..2 {
-                var tp = srx_pt(fi, root, Part.wing_l, SRX_TIP_L)
-                if w == 1 { tp = srx_pt(fi, root, Part.wing_r, SRX_TIP_R) }
+                let tp = srx_tip(fi, root, w)
                 let st = fx_burst_at(Pre.Star, tp.x, tp.y, SRX_WHITE, SRX_GOLD)
                 st.s0 = 6.0
                 srx_feathers(2, tp.x, tp.y, 1.0)
@@ -463,8 +471,7 @@ private fn srx_moves(f: *Fight, s: s32, tick: bool) {
     if fi.mv == Mv.throw && tick && (srx_at(s, fi, Mv.throw, SRX_BEAT0) || srx_at(s, fi, Mv.throw, SRX_BEAT1)) {
         srx_downdraft(fi.x)
         for w in 0..2 {
-            var tp = srx_pt(fi, root, Part.wing_l, SRX_TIP_L)
-            if w == 1 { tp = srx_pt(fi, root, Part.wing_r, SRX_TIP_R) }
+            let tp = srx_tip(fi, root, w)
             let g = fx_burst_at(Pre.Glow, tp.x, tp.y, SRX_GOLD, SRX_DEEP)
             g.s1 = 4.0
             srx_feathers(2, tp.x, tp.y, 1.2)
