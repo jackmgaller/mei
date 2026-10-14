@@ -319,6 +319,13 @@ What is real and what is still Shadow's:
   glide's wind (a loop), the dive's whistle and touchdown, Ascension's rush, Judgement's choir
   (with the kinetic charge-up), the column's lock and its impact; 175,200 bytes in `sfx.adp`.
   VRAM: no new texture slot or palette (the particle sheet's glint, sigil and feather, below).
+  The budget with the effects (debug builds, budget.sh): 162 against the split Twins on the
+  rooftop 709,651 CPU and 1,030,911 GPU cycles at the peak, against Shadow in the hangar 581,483
+  and 969,225; 168 on the container port 657,430 and 1,019,057; 198 (Judgement and a reflect
+  against the split Twins on the container port, both marked) 671,195 and 1,103,457; the
+  effects (`prof_fx`, with fx.akr's) at most 79,722 cycles (Shadow's 109: 78,971), the most of
+  it fx.akr's pool of 80 particles; `seraph_fx_draw` itself about 7,000 to 22,000; no late
+  frames.
 - **The model:** 1,892 triangles (Shadow's 1,800 and the Hero's 1,776; the pack's limit for it
   is 1,900, `MECH_LIMITS`), 13.55 m to the top of the halo in the rest pose (the roster's 135).
   Packed after the other mechs (`LATE` in the generator), with its grey copy: 83,896 bytes of
