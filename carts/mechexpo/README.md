@@ -283,7 +283,13 @@ own moves, effects and fight code are later phases. What is real and what is Sha
   118 (Shadow's NORMAL run: the final is Seraph, the clear unlocks it) and 124 VIEWs 4 and 5
   (Seraph's reveal, the VS card).
 - **The budget** (scenarios 162 and 168, CPU against CPU, debug builds, Shadow's mine and bolt
-  kept out, the other cursed, a full bar every 300 frames): @BUDGET@
+  kept out, the other cursed, a full bar every 300 frames): against the split Twins on the
+  rooftop 707,271 CPU cycles and 796,571 GPU cycles at the peak, 2,325 triangles, the worst CPU
+  of any fight measured; against Shadow in the hangar 579,210 and 763,551, 1,835 triangles; against
+  the split Twins on the container port (168) 666,804 and 999,683, 2,152 triangles, the worst GPU;
+  the mechs' drawing at most 422,207 cycles, the effects' 75,959; no late frames. Mid-fight
+  (164-167, CPU against CPU without the extras): 500,937 to 616,904 CPU and 496,137 to 619,453
+  GPU cycles.
 
 ## The arcade ladder
 
@@ -303,8 +309,9 @@ run, the difficulties and the test unit's names; `game.akr` the flow; `menus.akr
   RESEARCH PRESENTS ITS COMPETING PRODUCT"), the Hero for the Double-blade Hero ("MOMENTUM
   ROBOTICS DEFENDS ITS TITLE"), Seraph for Shadow ("MOMENTUM ROBOTICS PRESENTS ITS COMPETING
   PRODUCT"), Shadow for Seraph ("UMBRAL RESEARCH DEFENDS ITS TITLE"). A mech whose echo's slot has
-  no mech yet (Beam, Tank, the Twins) meets **the UAPC test unit**: its own mech in the UAPC's grey, the client's own
-  evaluation unit ("THE UAPC WILL NOW EVALUATE YOUR PRODUCT AGAINST ITS OWN TEST UNIT";
+  no mech yet (Beam, Tank, the Twins) meets **the UAPC test unit**: its own mech in the UAPC's
+  grey, the client's own evaluation unit ("THE UAPC WILL NOW EVALUATE YOUR PRODUCT AGAINST ITS OWN
+  TEST UNIT";
   "SPECIFICATION: YOURS. BUILDER: NOT DISCLOSED."). Giving an echo's slot its `mech` replaces the
   test unit with the echo, with no other change.
 - **Stages:** the company fights in the hangar, the final on the rooftop (`LADDER_STAGES` in
@@ -409,8 +416,8 @@ clear it holds becomes a NORMAL stamp, since the MVP's ladder was two fights at 
 - **The masthead** is "PROCUREMENT TODAY", the owner's pick.
 
 **The test unit's grey** is made by `tools/gen_mechexpo_assets.py`, not by hand: for each body in
-`GREY_BODIES` (Shadow, Beam, Tank, the combined Twins, twin A, twin B, Seraph) every part recipe is packed
-again as `grey_NAME` (`ASSET_GREY_*`), the same geometry with its colours mapped by
+`GREY_BODIES` (Shadow, Beam, Tank, the combined Twins, twin A, twin B, Seraph) every part recipe
+is packed again as `grey_NAME` (`ASSET_GREY_*`), the same geometry with its colours mapped by
 `grey_colour()`: a maker's saturated colour to the UAPC's grey paint (lighter for a lighter
 colour), a neutral one to a gunmetal-to-primer ramp by its lightness, texture colours the same
 way, the emissive glows the UAPC's pale blue. `assets.akr` lists the pairs (`GREY_FROM`,
@@ -431,11 +438,13 @@ triangles); no late frames.
 `tests/check.sh` (`tests/ladder/run.sh SCENARIO VIEW FRAMES OUT`; `tests/run.sh` runs VIEW 0):
 116 EASY against the masher, 117-119 a whole run on each grade (EASY with the Hero, NORMAL with
 Shadow, HARD with Tank: the rivals drawn and checked, the Twins drawn while locked, a lost fight
-and its continue, the levels, the reveal, the test unit, the cover, the unlock on EASY, the
-stamps, the save written, each screen's budget), 120 the lot over 300 seeds a mech, 121 the
-save's migration (and the stamps on the select and the spec sheet), 122 the difficulty select,
-123 the schedule page, 124 the reveal, 125 the test unit in a fight, 126 the cover, 127 a
-continue.
+and its continue, the levels, the reveal, the final (the Double-blade Hero, Seraph, the test
+unit), the cover, the unlocks (the Double-blade Hero on EASY, Seraph on NORMAL), the stamps, the
+save written, each screen's budget), 120 the lot over 300 seeds a mech, 121 the save's migration
+(and the stamps on the select and the spec sheet), 122 the difficulty select, 123 the schedule
+page, 124 the reveal (VIEWs 4 and 5: Shadow's final, Seraph, and its VS card), 125 the test unit
+in a fight (VIEW 0's grey Shadow set by the harness, since Shadow's final is Seraph), 126 the
+cover, 127 a continue.
 
 ## Stages
 

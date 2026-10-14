@@ -149,9 +149,10 @@ run 167 301
 # the arcade ladder (mx-ladder, tests/ladder/harness.akr, the whole game; VIEWs as listed there):
 # 116 EASY against a scripted masher, 117-119 a whole run on each difficulty (EASY with the Hero,
 # NORMAL with Shadow, HARD with Tank: the rivals drawn, a loss and a continue, the reveal, the
-# test unit, the cover, the unlock and the stamps), 120 the lot, 121 the save's migration from
-# version 1 and the stamps on the select, 122 the difficulty select, 123 the schedule page, 124
-# the reveal, 125 the test unit in a fight, 126 the cover (a frozen pose per mech, the fanfare,
+# final (Seraph's for Shadow, the test unit's for Tank), the cover, the unlock and the stamps),
+# 120 the lot, 121 the save's migration from version 1 and the stamps on the select, 122 the
+# difficulty select, 123 the schedule page, 124 the reveal (VIEWs 4 and 5: Seraph and its VS
+# card), 125 the test unit in a fight, 126 the cover (a frozen pose per mech, the fanfare,
 # the headline pick and every line's width), 127 a continue. 117-119 and 121 get a
 # memory card each (out/check/ladder_card*.bin, made fresh)
 lrun() {      # scenario view frames [mei-headless args]
