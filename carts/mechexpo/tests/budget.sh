@@ -25,6 +25,6 @@ run 54 1810
 run 69 1800
 run 98 1801
 run 99 1801
-run 109 1800
+run 109 1801
 pool_run
 echo "all Mech Expo budget checks passed"

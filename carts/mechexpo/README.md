@@ -13,7 +13,7 @@ trial for a defence contract; every fight is a product demonstration. The pitch 
 | Two mechs: the Hero Mech (Momentum Robotics, kinetic) and its echo, the Double-blade Hero (Umbral Research, antimatter) | The other four base mechs and their echoes |
 | One stage: a flat demo hangar with walls on both sides (since: [stages as data](#stages), and the rooftop with ring-outs) | Stage events, moving stages |
 | Versus: two players, or one player against the CPU | Story scenes, endings, the secret boss |
-| Arcade ladder: CPU mirror match, then your echo (or, as the echo, the original). Clearing it with the Hero unlocks the Double-blade Hero, saved to the memory card | Memory card saves beyond the unlock |
+| Arcade ladder: CPU mirror match, then your echo (or, as the echo, the original). Clearing it with the Hero unlocks the Double-blade Hero, saved to the memory card (since: [the full ladder](#the-arcade-ladder), three fights on a difficulty) | Memory card saves beyond the unlock |
 | Training: a dummy and a move list | The announcer |
 | One power meter, one super a mech; rounds (best of three, 60 s), a timer, health bars, a HUD | A half-bar meter tier |
 | The brochure menus (mx-menus): title, mode select, the 5 x 2 character select from `roster.akr`, VS, pause, results, the unlock | |
@@ -137,7 +137,8 @@ D draws the fighters (`anim_draw` with `fight_get()`'s state), the effects and t
 events and state, and calls E's sound effects for each event. C never draws or plays sound.
 
 **Audio (E) → game (D).** `music.akr`: `music_menu()`, `music_fight()`, `music_stop()`,
-`music_tick()` (once a frame), `music_duck(on: bool)` (pause). `sfx.akr`: one-shots
+`music_tick()` (once a frame), `music_duck(on: bool)` (pause), `music_fanfare()` (the
+arcade's cover, mx-ladder: channels 6 and 7). `sfx.akr`: one-shots
 `sfx_hit(power: s32)`, `sfx_block()`, `sfx_chip()`, `sfx_swing(m: Mech)`, `sfx_grab()`,
 `sfx_throw()`, `sfx_break()`, `sfx_land()`, `sfx_step()`, `sfx_meter_full()`,
 `sfx_super(m: Mech)`, `sfx_ko()`, `sfx_round()`, `sfx_menu_move()`, `sfx_menu_ok()`,
@@ -238,6 +239,156 @@ Grip and Total Eclipse. The design is [MOVES.md](MOVES.md#shadow-umbral-research
   805,917 GPU cycles at the peak, 1,914 triangles; against Beam 557,418 and 740,850, 1,820
   triangles; Shadow's effects (`prof_fx`, with fx.akr's) at most about 76,000 cycles.
 
+## The arcade ladder
+
+The full ladder (mx-ladder), after the MVP's two fights; the owner's decisions are in
+[MOVES.md](MOVES.md#decided-by-the-owner-2026-10-13-the-arcade-ladder). `ladder.akr` holds the
+run, the difficulties and the test unit's names; `game.akr` the flow; `menus.akr` the screens.
+
+**A run** is `LADDER_N` (3) fights: `LADDER_N - 1` company fights, then the final.
+
+- **The company fights** are against the base mechs (roster slots 0-4) of rival companies, drawn
+  by lot (`ladder_make()`) from the run's seed: the game tick the run starts on, so a scripted
+  run replays exactly. Never your own maker, never the final opponent's maker, no maker twice.
+  The Twins are drawn while they are still locked. As the Hero or the Double-blade Hero the two
+  rivals come from Raikō, Heartland and Binary Mechanica; as Shadow, Beam, Tank or the Twins
+  from the other four makers.
+- **The final** is the slot below (or above) yours: the Double-blade Hero for the Hero ("UMBRAL
+  RESEARCH PRESENTS ITS COMPETING PRODUCT"), the Hero for the Double-blade Hero ("MOMENTUM
+  ROBOTICS DEFENDS ITS TITLE"). A mech whose echo's slot has no mech yet (Shadow, Beam, Tank,
+  the Twins) meets **the UAPC test unit**: its own mech in the UAPC's grey, the client's own
+  evaluation unit ("THE UAPC WILL NOW EVALUATE YOUR PRODUCT AGAINST ITS OWN TEST UNIT";
+  "SPECIFICATION: YOURS. BUILDER: NOT DISCLOSED."). Giving an echo's slot its `mech` replaces the
+  test unit with the echo, with no other change.
+- **Stages:** the company fights in the hangar, the final on the rooftop (`LADDER_STAGES` in
+  `stages.akr`; `stage_pick()` gives a longer ladder's extra company fights the last company
+  stage).
+- **Losing** offers another demonstration as often as wanted: the same fight again (the same
+  opponent, CPU level and stage), or B to the title.
+
+**Difficulty** (`DIFFS`, picked on the difficulty select before the character select; the cursor
+starts on the last grade picked, kept in the save). The levels are `cpu.akr`'s; they ramp from
+the first company fight to the final:
+
+| Grade | Its expo name | Company fights | Final |
+|---|---|---|---|
+| EASY | PUBLIC DEMO DAY | the novice (`CPU_NOVICE`, -1), the novice | 0 |
+| NORMAL | TRADE TRIAL | 1, 1 | 2 |
+| HARD | FULL UAPC AUDIT | 2, 3 | 3 |
+
+**The novice CPU** (`CPU_NOVICE_LEVEL`, below level 0): reacts after 40 frames, decides every 24
+to 48, blocks 6 % of what it sees coming, never anti-airs, chains or breaks a grab, never spends
+its super (A + B loses its B), and carries out 12 % of the grabs it decides on. Two fields with
+defaults were added to `CpuLevel` for it (`supers`, `grabs`); the other levels' rows and dice are
+unchanged.
+
+**EASY, measured** (scenario 116; its VIEW 1 and 2, not in `check.sh`, take every level): a
+scripted novice who walks in and mashes (a press on 22 % of frames: A mostly, then B, a jump, a
+grab; it never blocks), every mech against every mech (36 matches a level), CPU levels on the
+right:
+
+| Player | Novice | 0 | 1 | 2 | 3 |
+|---|---|---|---|---|---|
+| The masher | 97 % | 97 % | 94 % | 38 % | 30 % |
+| A weaker player (presses on 9 % of frames, wanders both ways, jumps more) | 100 % | 88 % | 83 % | 22 % | 11 % |
+
+So EASY is won by mashing; NORMAL's final (level 2) is the first real step up.
+
+**Any difficulty unlocks:** a clear marks the slot's clear bit (`save.unlocked`, bit 16 + slot)
+on every grade, so every unlock rule counts it (`roster_clear()`), and sets the grade's stamp
+(`save.medals`, bit 3 × slot + grade).
+
+**The clear icons:** an APPROVED seal per grade cleared, bronze (EASY), silver (NORMAL) and gold
+(HARD): award stickers on the select grid's card corner (9 px, only those earned), on the
+catalogue's spec sheet ("CLEARED", all three, the uncleared as outlines), on the difficulty
+select (with how many units carry each) and the schedule page.
+
+**The save** (`save.akr`) is version 2: `medals` and `diff` appended (24 bytes). A version-1 save
+(the MVP's 16 bytes) is migrated as it loads: its unlocks and clear count are kept, and each
+clear it holds becomes a NORMAL stamp, since the MVP's ladder was two fights at CPU levels 1 and
+2 (scenario 121).
+
+**The screens** (the brochure's, `menus.akr`; the round calls in `draw_fight_overlay()`):
+
+- **The difficulty select** ("TRIAL GRADES", P. 03): a card per grade, its seal, its expo name,
+  two lines and how many units carry its stamp.
+- **The character select** in the arcade: the right-hand page is the programme: the grade, two
+  rivals "drawn by lot", the final's details withheld.
+- **The schedule page** ("TODAY'S PROGRAMME", P. 09), before each fight: your exhibit (its
+  photograph on a turntable, its maker, booth and grade) and the main stage's programme: each
+  demonstration's day, time and venue, the rival's maker and unit; the fights won stamped
+  APPROVED (the latest coming down as the page opens), the next highlighted, the final "TO BE
+  ANNOUNCED" and stamped CLASSIFIED.
+- **The reveal**, before the final (330 frames, A after 60): the stage dark, two spotlights
+  coming up (on the print layer, BG0, so the unit stands in front of them), the announcement
+  typed a line at a time, the opponent in silhouette (the GPU's fog toward the dark, `gpu_fog`,
+  only on this screen: `draw()` turns it off on every other frame), then lit with a flash and
+  playing its intro, its nameplate sliding in.
+- **The VS card** is unchanged apart from the opponent (the test unit: TEST UNIT, UAPC, CLIENT
+  GALLERY, the UAPC's roundel) and "DEMONSTRATION n/3".
+- **The round calls**, in every mode (none in training): TEST n / "ROUND n // UNITS TO THEIR
+  MARKS" (DECIDING TEST for the last), COMMENCE, CONCLUDED / "UNIT NO LONGER OPERATIONAL" at a
+  KO, TIME EXPIRED / "THE JUDGES CONSULT THE DATA", OUT OF BOUNDS / "UNIT LEFT THE TEST AREA",
+  the round's winner / "TEST SCORED FOR 1P", the match's winner / "MEETS THE REQUIREMENTS", NO
+  RESULT and INCONCLUSIVE for draws.
+- **The results** name the test unit as such, show the next demonstration (the final
+  withheld), and after a loss ask "REQUEST ANOTHER DEMONSTRATION?".
+- **The cover**, after the final's results: a magazine cover (`cover.akr` says what is on it,
+  `menus.akr`'s `draw_cover()` draws it). The owner's notes (2026-10-13): a photograph, a
+  fanfare, and headlines that vary.
+  - **A photograph:** the winner in 3D, frozen in one held frame of its win move
+    (`COVER_POSE`: the end of the win, weapons up; Tank at frame 40, square to the camera), on
+    its maker's colour, cut at the knees; no idle motion and no turntable. Per mech: the turn
+    toward the camera, the camera's distance, the feet's height and the backdrop's shades
+    (lighter behind the dark Shadow).
+  - **The fanfare**, "Contract Awarded" (`music_fanfare()` in `music.akr`, made by
+    `tools/gen_mechexpo_audio.py`): 5.6 s at the menu's 128 bpm in E major. The expo's PA chime
+    and a polite electric-piano jingle, then a snare roll and a riser into big-beat drums,
+    supersaw brass stabs (E, E, E, C, D) and a hoover line, a held E major chord with the robot
+    choir, a crash and a sub boom, and a last chime. A stereo one-shot on channels 6 and 7 with
+    the reverb; the menu loop fades out under it and starts again when it ends (leaving the
+    cover cuts it short).
+  - **The words** are picked when the run is cleared (`cover_pick()`, before the save is
+    written) from the run's seed and unit: a headline from those for the final's case, the
+    maker's own among them (27 in all: 8 for a base mech's win, 7 for an echo's, 12 for a test
+    unit's), never the last clear's headline when another fits (kept in `save.diff`'s second
+    byte); then three cover lines: those about what is still locked first (who Binary Mechanica
+    are while the Twins are locked; the client's own mechs after a test unit, else the echoes
+    still in development), two variants each, then the trade press's own (18), without
+    repeats. Templates fill in the maker, the unit and the count of echoes. Scenario 126
+    measures every line against the layout (`COVER_W_*`).
+  - Then the masthead, the grade's APPROVED sticker and a barcode; then the unlock screen if
+    the clear unlocked a mech, then the title.
+- **The masthead** is "PROCUREMENT TODAY" for now; the other names pitched: "MECHA MONTHLY", "HEAVY
+  METAL REVIEW". The owner picks.
+
+**The test unit's grey** is made by `tools/gen_mechexpo_assets.py`, not by hand: for each body in
+`GREY_BODIES` (Shadow, Beam, Tank, the combined Twins, twin A, twin B) every part recipe is packed
+again as `grey_NAME` (`ASSET_GREY_*`), the same geometry with its colours mapped by
+`grey_colour()`: a maker's saturated colour to the UAPC's grey paint (lighter for a lighter
+colour), a neutral one to a gunmetal-to-primer ramp by its lightness, texture colours the same
+way, the emissive glows the UAPC's pale blue. `assets.akr` lists the pairs (`GREY_FROM`,
+`GREY_TO`); `anim.akr` fills a grey mesh table a mech at a time, the first time that mech is
+drawn grey, and draws from it while `anim_grey` is set, which the game sets around a test
+unit's bodies (`p_grey`), the split Twins' twin B included. The grey parts add about 410 KB of
+ROM and 16 4-bit palettes.
+
+**Budgets** (scenarios 117-119, debug builds, peaks): the schedule page 275,000 CPU and 353,000
+GPU cycles; the reveal 256,000 and 188,000; the cover 310,000 and 350,000; the fights with the
+test unit 699,000 and 616,000 (scenario 125: Shadow against its grey copy 587,377 and 506,820,
+1,888 triangles; the split Twins against theirs, four bodies, 595,066 and 529,384, 2,025
+triangles); no late frames.
+
+**Tests:** scenarios 116-127 in `tests/ladder/harness.akr` (the whole game), run by
+`tests/check.sh` (`tests/ladder/run.sh SCENARIO VIEW FRAMES OUT`; `tests/run.sh` runs VIEW 0):
+116 EASY against the masher, 117-119 a whole run on each grade (EASY with the Hero, NORMAL with
+Shadow, HARD with Tank: the rivals drawn and checked, the Twins drawn while locked, a lost fight
+and its continue, the levels, the reveal, the test unit, the cover, the unlock on EASY, the
+stamps, the save written, each screen's budget), 120 the lot over 300 seeds a mech, 121 the
+save's migration (and the stamps on the select and the spec sheet), 122 the difficulty select,
+123 the schedule page, 124 the reveal, 125 the test unit in a fight, 126 the cover, 127 a
+continue.
+
 ## Stages
 
 Stages are data (the pitch: "a floor (flat for now), edges (walls or open), and an optional list
@@ -267,8 +418,8 @@ of timed events. Then new stages are content, not engine work"). `stages.akr` ho
   `FIGHT_MAX_SEP` (36 m) stays a rule of every stage.
 - **Choosing:** Versus and Training pick the stage on the stage select after the character
   select (`stage_select.akr`, drawn by `draw_stage_select()` in `menus.akr`); with one stage it
-  is skipped. The arcade takes `LADDER_STAGES[ladder]`: the hangar, then the rooftop for the
-  final. The title's attract view is the hangar.
+  is skipped. The arcade takes its stages from `LADDER_STAGES`: the hangar for the company
+  fights, the rooftop for the final ([The arcade ladder](#the-arcade-ladder)). The title's attract view is the hangar.
 - **Loading:** `stage_show()` loads the current stage's art (BG1 into ATLAS_1 and palettes
   244–249, BG2 into ATLAS_0 and 240–243) whenever the planes go on, so only one stage's art is
   in VRAM; the rooftop's props' pack (slot 13, palettes 200–203) and its city's (slot 14, palettes
@@ -379,9 +530,10 @@ deck, the sea at −48.
   the menu page; texture slots 8 (fonts), 9 (UI sprites), 10 (effects); palettes 240–254 (244 is
   lent to the menu page and the hall's put back); a backdrop table at 0x582000; line channels 0,
   2 and 7. Priorities: BG2 0, BG1 1, the mechs 2, BG0 (the HUD's frame) 3, the interface list 4.
-- **Palettes, as built with Beam, Tank and the Twins:** the pack's 4-bit palettes are 0–25 (its
-  surface, emissive and texture palettes), counting up from 0; its 8-bit palettes would come down
-  from 14.
+- **Palettes, as built with Beam, Tank, the Twins, Shadow and the test units' grey parts
+  (mx-ladder):** the pack's 4-bit palettes are 0–43 (its surface, emissive and textured
+  palettes), counting up from 0 (0–27 before the grey parts); its 8-bit palettes would come down
+  from 14. The pack's textures still fit texture slot 0.
 - **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
   (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. A pool of 80 particles,
   at most 52 spawned a frame; at their busiest (scenarios 50–54) about 75,000 CPU cycles a frame
@@ -403,7 +555,14 @@ deck, the sea at −48.
   booth, power source, stats, blurb and unlock rule are its row. Adding a mech is filling in its
   slot's `mech` field (the file's first comment says how). `save.unlocked` keeps bit 0 for the
   Double-blade Hero (the MVP's saves still load), a bit per later unlockable slot, and bit
-  16 + slot once the arcade has been cleared with that slot's mech.
+  16 + slot once the arcade has been cleared with that slot's mech; `save.medals` (version 2)
+  the grades each slot cleared ([The arcade ladder](#the-arcade-ladder)).
+- **The arcade ladder (mx-ladder):** no new texture slot or palette of D's. Texture slot 10 holds,
+  under the effects' sprites, the cover's masthead font (`FONT_MAST`, rows 49-219); slot 12 the
+  APPROVED seals (`UI_SEAL*`, 13 and 9 px, at row 116 beside the strap); both written by
+  `tools/gen_mechexpo_ui.py`. The reveal uses the print layer (BG0, palettes 197-199) and the
+  GPU's fog register while it shows. The model pack took 4-bit palettes 28–43 for the grey
+  parts (above).
 - **Triangles:** a mech about 1,600–1,800 (the sketches are 1,632 and 1,734); the frame limit is
   4,000.
 - **Budgets a tick:** CPU 1,000,000 cycles, GPU 2,000,000 (`mei-headless --gpu-stats`). The

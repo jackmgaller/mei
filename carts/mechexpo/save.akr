@@ -1,17 +1,26 @@
 // Mech Expo 2000's save (D's): one small save on the memory card (save number 0) that holds the
-// unlocks. Clearing the arcade ladder with the Hero Mech unlocks the Double-blade Hero.
-// Read once at boot (blocking: the title is not up yet); written in the background
-// (save_write starts it, save_tick watches it) so the frame loop keeps running.
+// unlocks (roster.akr's rules), the difficulties each mech cleared the arcade on and the last
+// difficulty picked. Read once at boot (blocking: the title is not up yet); written in the
+// background (save_write starts it, save_tick watches it) so the frame loop keeps running.
+//
+// Version 2 (mx-ladder) appended medals and diff. A version-1 save (the MVP's: 16 bytes) is
+// migrated as it loads, its unlocks and clears kept; its clears were the MVP's two-fight ladder
+// at CPU levels 1 and 2, so each counts as a NORMAL clear.
 
 struct MxSave {
     magic: u32               // SAVE_MAGIC
     version: u32
-    unlocked: u32            // bit 0: the Double-blade Hero
+    unlocked: u32            // bit 0: the Double-blade Hero; roster.akr: a bit per unlockable slot,
+                             // bit 16 + slot once the arcade was cleared with that slot's mech
     clears: u32              // arcade clears, any mech
+    medals: u32              // version 2: bit 3 * slot + difficulty (ladder.akr's medal_bit)
+    diff: u32                // version 2: bits 0-7 the difficulty last picked (DIFF_*), bits 8-15
+                             // the last cover's headline + 1 (cover.akr; 0: none yet)
 }
 
 const SAVE_MAGIC: u32 = 0x3058454D   // "MEX0"
-const SAVE_VERSION: u32 = 1
+const SAVE_VERSION: u32 = 2
+const SAVE_V1_BYTES = 16             // a version-1 save: magic, version, unlocked, clears
 const SAVE_NUM = 0
 const UNLOCK_ECHO: u32 = 1
 
@@ -22,11 +31,24 @@ var save_result: s32 = -1    // the last write's error (CARD_OK...), -1 none yet
 var save_shown: s32          // frames the result has been on screen
 
 fn save_boot() {
-    save = MxSave { magic: SAVE_MAGIC, version: SAVE_VERSION }
+    save = MxSave { magic: SAVE_MAGIC, version: SAVE_VERSION, diff: DIFF_NORMAL as u32 }
     save_meta = *UI_SAVE_ICON
-    var got: MxSave
+    var got = MxSave {}
     let n = card_load(SAVE_NUM, &got, sizeof(MxSave))
-    if n == sizeof(MxSave) && got.magic == SAVE_MAGIC { save = got }
+    if n >= SAVE_V1_BYTES && got.magic == SAVE_MAGIC {
+        if got.version < 2 || n < sizeof(MxSave) { save_migrate(&got) }
+        save = got
+    }
+}
+
+// A version-1 save to version 2: every slot's clear becomes a NORMAL clear.
+fn save_migrate(s: *MxSave) {
+    s.medals = 0
+    for i in 0..ROSTER_N {
+        if s.unlocked & ((1 as u32) << (CLEAR_SHIFT + i)) != 0 { s.medals |= medal_bit(i, DIFF_NORMAL) }
+    }
+    s.diff = DIFF_NORMAL as u32
+    s.version = SAVE_VERSION
 }
 
 fn echo_unlocked() -> bool { return save.unlocked & UNLOCK_ECHO != 0 }

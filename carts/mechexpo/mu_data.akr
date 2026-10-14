@@ -21,6 +21,12 @@ const MU_STEM: [42]s32 = [0, 0, 1581216, 121632, 66, 66, 0,
     4, 3112128, 702576, 41328, 68, 0, 1,
     5, 3513600, 702576, 41328, 0, 70, 1]
 
+// The cover's fanfare (mx-ladder), a stereo one-shot on channels 6 and 7: per side, channel,
+// byte offset in MU_BANK, samples, left volume, right volume, reverb send
+const MU_STING: [12]s32 = [6, 3915072, 123480, 106, 0, 1,
+    7, 3985632, 123480, 0, 106, 1]
+const MU_STING_FRAMES = 336          // its length in frames
+
 // Sound effects: an index into SFX for each. The loops (tread, beam_hum, beam_grip) loop from their start.
 const SFX_HIT0 = 0
 const SFX_HIT1 = 1

@@ -15,7 +15,9 @@
 // tabs), the character select (the exhibitor catalogue: a spec sheet per side with the mech on a
 // turntable in its photograph, the 5 x 2 grid of roster.akr below), the VS screen (the
 // programme's next demonstration), pause (a translucent clipboard), results (the UAPC's judging
-// sheet), the unlock (a press release) and the memory card's messages.
+// sheet), the unlock (a press release) and the memory card's messages. The arcade's (mx-ladder,
+// at the end): the difficulty select (the trial's grades), the schedule page between fights
+// (the day's programme), the final's reveal and the magazine cover.
 
 const PAGE_SKY: [3]u32 = [0xF6EEE6, 0xEADCCC, 0xD6C0A8]   // 0xBBGGRR: white into pale blue
 const PAGE_SKY_Y: [3]s32 = [0, 120, 240]
@@ -44,11 +46,14 @@ fn menus_page() {
 }
 
 // The menus' sounds timed to what they draw, once a frame (game.akr's update): the rubber
-// stamps landing on the judging sheet (APPROVED, drawn from st_t 13) and the press release
-// (UNLOCKED, down on st_t 36). READY is stamped as the pick is made (game.akr).
+// stamps landing on the judging sheet (APPROVED, drawn from st_t 13), the press release
+// (UNLOCKED, down on st_t 36), the schedule page (the last win's APPROVED, down on st_t 16) and
+// the cover (the grade's, on st_t 30). READY is stamped as the pick is made (game.akr).
 fn menus_sfx() {
     if st == St.Results && st_t == 13 && fight_get().winner != 2 { sfx_stamp() }
     if st == St.Unlock && st_t == 36 { sfx_stamp() }
+    if st == St.Sched && st_t == 16 && ladder > 0 { sfx_stamp() }     // the last win's APPROVED
+    if st == St.Cover && st_t == 30 { sfx_stamp() }                    // the grade's stamp
 }
 
 // The hangar (the title's attract and the fight).
@@ -109,13 +114,25 @@ private fn print_photo(tx: s32, ty: s32, tw: s32, th: s32, k: s32) {
 // Mech m, posed by mv, standing at screen (sx, feet_y), as tall as a camera dist metres away
 // makes it, facing +x (facing 1) or -x, turned further by yaw (a turntable). One camera each.
 private fn menu_mech_at(m: Mech, mv: Mv, sx: s32, feet_y: s32, dist: fixed, facing: s32, yaw: fixed) {
+    let n = max(anim_len(m, mv), 1)
+    menu_mech_f(m, mv, fixed(tick % n), sx, feet_y, dist, facing, yaw)
+}
+
+// The same at frame f of the move.
+private fn menu_mech_f(m: Mech, mv: Mv, f: fixed, sx: s32, feet_y: s32, dist: fixed, facing: s32, yaw: fixed) {
     camera_look(vec3(0.0, 6.0, -dist), 0.0, -0.04)
     let p = project_point(vec3(0.0, 0.0, 0.0))
     camera_pan(sx - p.x, feet_y - p.y)
     var a = -HALF_PI
     if facing < 0 { a = HALF_PI }
-    let n = max(anim_len(m, mv), 1)
-    anim_draw(m, mv, fixed(tick % n), mat4_rotate_y(a + yaw))
+    anim_draw(m, mv, f, mat4_rotate_y(a + yaw))
+}
+
+// Side s's mech (p_mech), grey when it is the UAPC's test unit (mx-ladder).
+private fn side_mech_at(s: s32, mv: Mv, sx: s32, feet_y: s32, dist: fixed, facing: s32, yaw: fixed) {
+    anim_grey = p_grey[s]
+    menu_mech_at(p_mech[s], mv, sx, feet_y, dist, facing, yaw)
+    anim_grey = false
 }
 
 // The turntable's slow swing.
@@ -216,7 +233,7 @@ private fn draw_pass(x: s32, y: s32, lit: bool) {
 
 const MODE_NAMES: [3]*u8 = ["ARCADE", "VERSUS", "TRAINING"]
 const MODE_INFO: [3]*u8 = [
-    "TWO DEMONSTRATIONS\nAGAINST THE CPU, FOR\nTHE UAPC'S CONTRACT",
+    "THREE DEMONSTRATIONS\nAGAINST RIVAL MAKERS,\nFOR THE UAPC'S CONTRACT",
     "1P AGAINST 2P,\nOR AGAINST THE CPU",
     "A DUMMY, THE MOVE\nLIST AND THE HIT BOXES",
 ]
@@ -438,17 +455,22 @@ private fn draw_specs(c: s32, ix: s32, has_maker: bool) {
         txt(FONT_MICRO, ix + 24, 45, mk.short, C_INK, ALIGN_LEFT)
         txt(FONT_MICRO, ix + 24, 55, SRC_NAMES[mk.src], C_STEEL, ALIGN_LEFT)
     }
-    rect_blend(ix + 4, 73, 74, 1, C_SILVER, BLEND_NONE)
+    if slot_has_mech(c) {
+        // mx-ladder: the arcade cleared with it, by difficulty
+        txt(FONT_MICRO, ix + 4, 65, "CLEARED", C_STEEL, ALIGN_LEFT)
+        for d in 0..DIFF_N { medal_seal(d, ix + 47 + d * 10, 66, slot_medal(c, d), true) }
+    }
+    rect_blend(ix + 4, 77, 74, 1, C_SILVER, BLEND_NONE)
     for k in 0..4 {
-        let y = 78 + k * 10
+        let y = 81 + k * 10
         txt(FONT_MICRO, ix + 4, y - 1, STAT_NAMES[k], C_STEEL, ALIGN_LEFT)
         ui_pips(ix + 44, y + 1, ((r.stats >> ((3 - k) * 4)) & 15) as s32, col)
     }
-    rect_blend(ix + 4, 120, 74, 1, C_SILVER, BLEND_NONE)
+    rect_blend(ix + 4, 122, 74, 1, C_SILVER, BLEND_NONE)
     if !slot_has_mech(c) {
-        txt_lines(FONT_MICRO, ix + 4, 125, "IN TRANSIT:\nON SHOW LATER", 9, C_RED, ALIGN_LEFT)
+        txt_lines(FONT_MICRO, ix + 4, 126, "IN TRANSIT:\nON SHOW LATER", 9, C_RED, ALIGN_LEFT)
     } else {
-        txt_lines(FONT_MICRO, ix + 4, 125, r.blurb, 9, C_INK, ALIGN_LEFT)
+        txt_lines(FONT_MICRO, ix + 4, 126, r.blurb, 9, C_INK, ALIGN_LEFT)
     }
 }
 
@@ -470,35 +492,32 @@ private fn draw_hint(c: s32, x: s32, y: s32) {
     }
 }
 
-// The arcade's right-hand page: the demonstration schedule (the ladder).
+// The arcade's right-hand page: the trial's programme (mx-ladder): its grade, the rivals drawn
+// by lot when the run starts, the final withheld.
 private fn draw_schedule(x0: s32) {
+    let d = &DIFFS[clamp(diff_sel, 0, DIFF_N - 1)]
     rect_blend(x0, 24, 152, 15, C_NAVY, BLEND_NONE)
-    txt(FONT_HEAD, x0 + 148, 24, "SCHEDULE", C_WHITE, ALIGN_RIGHT)
+    txt(FONT_HEAD, x0 + 148, 24, "PROGRAMME", C_WHITE, ALIGN_RIGHT)
     tag(x0 + 2, 26, 22, "CPU", C_STEEL, C_WHITE)
     paper(x0, 40, 152, 108)
-    txt(FONT_MICRO, x0 + 5, 42, "DEMONSTRATIONS", C_STEEL, ALIGN_LEFT)
-    let ok = slot_ok(sel_cur[0])
-    let me = slot_mech(sel_cur[0])
+    medal_seal(diff_sel, x0 + 5, 43, true, false)
+    txt(FONT_LABEL, x0 + 22, 42, d.name, C_INK, ALIGN_LEFT)
+    txt(FONT_MICRO, x0 + 146, 43, d.grade, C_STEEL, ALIGN_RIGHT)
     for n in 0..LADDER_N {
-        let y = 54 + n * 34
-        rect_blend(x0 + 5, y, 142, 30, 0xE6DCD2, BLEND_NONE)
+        let y = 58 + n * 22
+        rect_blend(x0 + 5, y, 142, 19, 0xE6DCD2, BLEND_NONE)
         let b = sb()
-        str_append(b, 64, "DAY ")
-        str_append_int(b, 64, n + 1, 0, false)
-        txt(FONT_MICRO, x0 + 34, y + 1, b, C_NAVY, ALIGN_LEFT)
-        if n == LADDER_N - 1 {
+        if ladder_final(n) {
+            str_append(b, 64, "FINAL DAY")
             let fw = txt_w(FONT_LABEL, "FINAL") + 6
-            tag(x0 + 142 - fw, y + 2, fw, "FINAL", C_RED, C_WHITE)
-        }
-        if ok {
-            let foe = ladder_foe(me, n)
-            ui_slot_emblem(mech_slot(foe), x0 + 7, y + 3, true, 0x808080)
-            txt(FONT_LABEL, x0 + 34, y + 9, mech_name(foe), C_INK, ALIGN_LEFT)
-            if n == 0 { txt(FONT_MICRO, x0 + 146, y + 19, "MIRROR MATCH", C_STEEL, ALIGN_RIGHT) }
-            else { txt(FONT_MICRO, x0 + 146, y + 19, "YOUR RIVAL", C_STEEL, ALIGN_RIGHT) }
+            tag(x0 + 142 - fw, y + 4, fw, "FINAL", C_RED, C_WHITE)
+            txt(FONT_MICRO, x0 + 8, y + 9, "DETAILS WITHHELD", C_INK, ALIGN_LEFT)
         } else {
-            txt(FONT_LABEL, x0 + 34, y + 9, "?", C_INK, ALIGN_LEFT)
+            str_append(b, 64, "DAY ")
+            str_append_int(b, 64, n + 1, 0, false)
+            txt(FONT_MICRO, x0 + 8, y + 9, "A RIVAL MAKER, DRAWN BY LOT", C_INK, ALIGN_LEFT)
         }
+        txt(FONT_MICRO, x0 + 8, y, b, C_NAVY, ALIGN_LEFT)
     }
     rect_blend(x0 + 5, 124, 142, 1, C_SILVER, BLEND_NONE)
     ui_sprite(&UI_UAPC[0], PAL_LOGO, x0 + 6, 126, 0x808080, BLEND_NONE)
@@ -551,6 +570,10 @@ private fn draw_card(i: s32, x: s32, y: s32) {
         }
         ui_slot_emblem(i, x + 12, y + 3, true, tint)
         txt(FONT_MICRO, x + SEL_CW / 2, y + 24, r.card, tc, ALIGN_CENTRE)
+        // mx-ladder: the difficulties cleared with it, award stickers on the card's corner
+        for d in 0..DIFF_N {
+            if slot_medal(i, d) { medal_seal(d, x + 19 + d * 10, y - 3, true, true) }
+        }
     } else {
         // locked: a quiet tile, so the mechs on show stand out
         rect_blend(x, y, SEL_CW, SEL_CH, C_GLASS, BLEND_NONE)
@@ -561,7 +584,13 @@ private fn draw_card(i: s32, x: s32, y: s32) {
 
 // ---- VS: the programme's next demonstration
 
-const VS_TIMES: [2]*u8 = ["11:00", "15:00"]
+const VS_TIMES: [3]*u8 = ["11:00", "14:00", "16:30"]   // the arcade's fights; the last is the final's
+
+// The programme's time of fight n (the final always the last slot).
+fn ladder_time(n: s32) -> *u8 {
+    if ladder_final(n) { return VS_TIMES[2] }
+    return VS_TIMES[clamp(n, 0, 1)]
+}
 
 fn draw_vs() {
     page_scroll()
@@ -571,7 +600,7 @@ fn draw_vs() {
     // the two booths' backdrops open out from their middle rows
     let rows = min(1 + t, 10)
     for s in 0..2 {
-        print_ramp(s, mech_colour(p_mech[s]))
+        print_ramp(s, unit_colour(s))
         var tx = 1
         if s == 1 { tx = 25 }
         print_grad(tx, 14 - rows, 14, rows, s, 1, 4)
@@ -580,8 +609,8 @@ fn draw_vs() {
     let k = min(t, 16)
     let off = (16 - k) * 12
     if t > 4 {
-        menu_mech_at(p_mech[0], Mv.intro, 64, 184, 25.0, 1, 0.3)
-        menu_mech_at(p_mech[1], Mv.intro, 256, 184, 25.0, -1, -0.3)
+        side_mech_at(0, Mv.intro, 64, 184, 25.0, 1, 0.3)
+        side_mech_at(1, Mv.intro, 256, 184, 25.0, -1, -0.3)
     }
     // the programme card
     let cy = 30 + off / 4
@@ -589,13 +618,14 @@ fn draw_vs() {
     rect_blend(118, cy, 84, 14, C_NAVY, BLEND_NONE)
     txt(FONT_MICRO, 160, cy + 2, "MAIN STAGE", C_WHITE, ALIGN_CENTRE)
     var when = VS_TIMES[0]
-    if game == Game.Arcade { when = VS_TIMES[min(ladder, 1)] }
+    if game == Game.Arcade { when = ladder_time(ladder) }
     txt(FONT_HEAD, 160, cy + 16, when, C_INK, ALIGN_CENTRE)
     let b = sb()
     if game == Game.Arcade {
         str_append(b, 64, "DEMONSTRATION ")
         str_append_int(b, 64, ladder + 1, 0, false)
-        str_append(b, 64, "/2")
+        str_append(b, 64, "/")
+        str_append_int(b, 64, LADDER_N, 0, false)
     } else if game == Game.Versus {
         str_append(b, 64, "OPEN DEMONSTRATION")
     } else {
@@ -626,13 +656,13 @@ fn draw_vs() {
 // An exhibitor's badge for side s (140 x 32).
 private fn draw_badge(s: s32, x: s32, y: s32) {
     let m = p_mech[s]
-    let mk = mech_maker_of(m)
     paper(x, y, 140, 36)
-    rect_blend(x, y, 4, 36, mk.colour, BLEND_NONE)
-    ui_slot_emblem(mech_slot(m), x + 8, y + 6, true, 0x808080)
-    txt(FONT_HEAD, x + 36, y + 1, mech_short(m), C_INK, ALIGN_LEFT)
-    txt(FONT_MICRO, x + 36, y + 16, mk.short, C_STEEL, ALIGN_LEFT)
-    txt(FONT_MICRO, x + 36, y + 25, mk.booth_full, C_NAVY, ALIGN_LEFT)
+    rect_blend(x, y, 4, 36, unit_colour(s), BLEND_NONE)
+    unit_emblem24(s, x + 8, y + 6)
+    if p_grey[s] { txt(FONT_HEAD, x + 36, y + 1, TEST_SHORT, C_INK, ALIGN_LEFT) }
+    else { txt(FONT_HEAD, x + 36, y + 1, mech_short(m), C_INK, ALIGN_LEFT) }
+    txt(FONT_MICRO, x + 36, y + 16, unit_maker_short(s), C_STEEL, ALIGN_LEFT)
+    txt(FONT_MICRO, x + 36, y + 25, unit_booth(s), C_NAVY, ALIGN_LEFT)
     let who = who_label(s)
     let tw = max(txt_w(FONT_LABEL, who) + 6, 14)
     tag(x + 134 - tw, y + 26, tw, who, side_colour(s), C_WHITE)
@@ -646,39 +676,46 @@ fn draw_fight_overlay() {
     hud_draw(f, training, who_label(0), who_label(1))
     let t = f.phase_t
     match f.phase {
+        // the round calls in the trial's own words (mx-ladder): a round is a test of the
+        // demonstration, read out like a procurement minute
         Intro => {
             let b = sb()
+            let sub = sb2()
             if f.wins[0] == 1 && f.wins[1] == 1 {
-                str_append(b, 64, "FINAL ROUND")
+                str_append(b, 64, "DECIDING TEST")
+                str_append(sub, 64, "FINAL ROUND // UNITS TO THEIR MARKS")
             } else {
-                str_append(b, 64, "ROUND ")
+                str_append(b, 64, "TEST ")
                 str_append_int(b, 64, f.round, 0, false)
+                str_append(sub, 64, "ROUND ")
+                str_append_int(sub, 64, f.round, 0, false)
+                str_append(sub, 64, " // UNITS TO THEIR MARKS")
             }
-            if !training { hud_banner(b, "DEMONSTRATION IN PROGRESS", t, C_WHITE) }
+            if !training { hud_banner(b, sub, t, C_WHITE) }
         }
         Fight => {
-            if t < 50 && !training { hud_banner("FIGHT!", null, t, C_YELLOW) }
+            if t < 50 && !training { hud_banner("COMMENCE", null, t, C_YELLOW) }
         }
         Ko => {
-            if f.ringout >= 0 { hud_banner("RING OUT", null, t, C_TANGERINE) }
-            else if f.timer <= 0 { hud_banner("TIME UP", null, t, C_TANGERINE) }
-            else { hud_banner("K.O.", null, t, C_WHITE) }
+            if f.ringout >= 0 { hud_banner("OUT OF BOUNDS", "UNIT LEFT THE TEST AREA", t, C_TANGERINE) }
+            else if f.timer <= 0 { hud_banner("TIME EXPIRED", "THE JUDGES CONSULT THE DATA", t, C_TANGERINE) }
+            else { hud_banner("CONCLUDED", "UNIT NO LONGER OPERATIONAL", t, C_WHITE) }
         }
         RoundOver => {
             if f.round_winner == 0 || f.round_winner == 1 {
                 let b = sb()
+                str_append(b, 64, "TEST SCORED FOR ")
                 str_append(b, 64, who_label(f.round_winner))
-                str_append(b, 64, " TAKES THE ROUND")
-                hud_banner(fighter_short(&f.f[f.round_winner]), b, t, C_WHITE)
+                hud_banner(unit_short(f, f.round_winner), b, t, C_WHITE)
             } else {
-                hud_banner("DRAW", "NO DECISION", t, C_WHITE)
+                hud_banner("NO RESULT", "THE TEST WILL BE REPEATED", t, C_WHITE)
             }
         }
         MatchOver => {
             if f.winner == 0 || f.winner == 1 {
-                hud_banner(fighter_short(&f.f[f.winner]), "WINS THE DEMONSTRATION", t, C_YELLOW)
+                hud_banner(unit_short(f, f.winner), "MEETS THE REQUIREMENTS", t, C_YELLOW)
             } else {
-                hud_banner("DRAW GAME", null, t, C_WHITE)
+                hud_banner("INCONCLUSIVE", "BOTH UNITS TO BE RE-TESTED", t, C_WHITE)
             }
         }
     }
@@ -807,11 +844,11 @@ fn draw_results() {
     print_clear()
     // the winner's photograph
     var pcol = C_STEEL
-    if f.winner != 2 { pcol = mech_colour(wm) }
+    if f.winner != 2 { pcol = unit_colour(w) }
     print_ramp(0, pcol)
     print_photo(1, 4, 14, 23, 0)
     if f.winner == 0 || f.winner == 1 {
-        menu_mech_at(wm, Mv.win, 64, 204, 19.0, 1, turntable(0) / 2)
+        side_mech_at(w, Mv.win, 64, 204, 19.0, 1, turntable(0) / 2)
         tag(10, 36, 34, "WINNER", side_colour(w), C_WHITE)
         tag(48, 36, 18, who_label(w), C_INK, C_WHITE)
     }
@@ -826,9 +863,9 @@ fn draw_results() {
         sheet_row(x, 62, "UNIT", "NO DECISION", C_INK)
         sheet_row(x, 72, "MAKERS", "BOTH TO BE RE-TESTED", C_INK)
     } else {
-        sheet_row(x, 62, "UNIT", mech_name(wm), C_INK)
-        sheet_row(x, 72, "MAKER", mech_maker(wm), C_INK)
-        sheet_row(x, 82, "BOOTH", mech_booth(wm), C_INK)
+        sheet_row(x, 62, "UNIT", unit_name(w), C_INK)
+        sheet_row(x, 72, "MAKER", unit_maker(w), C_INK)
+        sheet_row(x, 82, "BOOTH", unit_booth(w), C_INK)
     }
     let b = sb()
     str_append_int(b, 64, f.wins[0], 0, false)
@@ -846,15 +883,23 @@ fn draw_results() {
     // what next
     if game == Game.Arcade {
         if !won {
-            txt(FONT_HEAD, x + 92, 122, "CONTINUE?", C_RED, ALIGN_CENTRE)
-            txt(FONT_MICRO, x + 92, 140, "A  RETRY THE DEMONSTRATION", C_INK, ALIGN_CENTRE)
-            txt(FONT_MICRO, x + 92, 150, "B  WITHDRAW FROM THE TRIAL", C_INK, ALIGN_CENTRE)
+            txt(FONT_MICRO, x + 92, 117, "THE EXHIBITOR MAY", C_STEEL, ALIGN_CENTRE)
+            txt(FONT_HEAD, x + 92, 125, "REQUEST ANOTHER", C_RED, ALIGN_CENTRE)
+            txt(FONT_HEAD, x + 92, 139, "DEMONSTRATION?", C_RED, ALIGN_CENTRE)
+            txt(FONT_MICRO, x + 92, 157, "A  SAME UNIT, SAME OPPONENT", C_INK, ALIGN_CENTRE)
+            txt(FONT_MICRO, x + 92, 167, "B  WITHDRAW FROM THE TRIAL", C_INK, ALIGN_CENTRE)
         } else if !cleared {
-            txt(FONT_MICRO, x + 92, 120, "NEXT DEMONSTRATION", C_STEEL, ALIGN_CENTRE)
-            txt(FONT_HEAD, x + 92, 129, mech_name(ladder_foe(p_mech[0], ladder + 1)), C_NAVY, ALIGN_CENTRE)
-            txt(FONT_MICRO, x + 92, 148, "A  CONTINUE", C_INK, ALIGN_CENTRE)
+            txt(FONT_MICRO, x + 92, 120, "NEXT ON THE PROGRAMME", C_STEEL, ALIGN_CENTRE)
+            if ladder_final(ladder + 1) {
+                txt(FONT_HEAD, x + 92, 129, "THE FINAL", C_NAVY, ALIGN_CENTRE)
+                txt(FONT_MICRO, x + 92, 146, "DETAILS WITHHELD", C_RED, ALIGN_CENTRE)
+            } else {
+                txt(FONT_HEAD, x + 92, 129, ladder_unit_name(ladder + 1), C_NAVY, ALIGN_CENTRE)
+                txt(FONT_MICRO, x + 92, 146, ladder_maker_name(ladder + 1), C_STEEL, ALIGN_CENTRE)
+            }
+            txt(FONT_MICRO, x + 92, 158, "A  CONTINUE", C_INK, ALIGN_CENTRE)
         } else {
-            txt(FONT_HEAD, x + 92, 120, "ARCADE CLEAR", C_NAVY, ALIGN_CENTRE)
+            txt(FONT_HEAD, x + 92, 120, "TRIAL COMPLETE", C_NAVY, ALIGN_CENTRE)
             txt(FONT_MICRO, x + 92, 138, "CONTRACT SHORTLISTED", C_INK, ALIGN_CENTRE)
             txt(FONT_MICRO, x + 92, 148, "A  CONTINUE", C_INK, ALIGN_CENTRE)
         }
@@ -1056,4 +1101,361 @@ private fn stage_diagram(s: *Stage, x: s32, y: s32, w: s32, h: s32) {
             rect_blend(px, y + 10, 5, 2, C_SILVER, BLEND_NONE)
         }
     }
+}
+
+// ---- the arcade's run (mx-ladder; ladder.akr)
+
+var diff_slide: [3]s32              // each grade card's pull, in 1/16 px
+
+// The difficulty select: the trial's three grades, a card each with its APPROVED seal in its ink
+// (bronze, silver, gold: the seals a clear earns on the select's cards), and how many units
+// carry it.
+fn draw_diff() {
+    page_scroll()
+    masthead("TRIAL GRADES", "ARCADE")
+    print_clear()
+    for i in 0..DIFF_N {
+        let d = &DIFFS[i]
+        let on = i == diff_sel
+        var target = 0
+        if on { target = 8 * 16 }
+        diff_slide[i] += (target - diff_slide[i]) / 3
+        let x = 14 + diff_slide[i] / 16
+        let y = 28 + i * 64
+        let w = 290
+        paper(x, y, w, 58)
+        rect_blend(x, y, 6, 58, d.ink, BLEND_NONE)
+        var tc = C_INK
+        var gc = C_NAVY
+        if !on {
+            tc = C_STEEL
+            gc = C_STEEL
+        }
+        medal_seal(i, x + 13, y + 9, true, false)
+        txt(FONT_TITLE, x + 31, y + 2, d.name, tc, ALIGN_LEFT)
+        txt(FONT_HEAD, x + 14, y + 34, d.grade, gc, ALIGN_LEFT)
+        rect_blend(x + 150, y + 8, 1, 42, C_SILVER, BLEND_NONE)
+        txt_lines(FONT_MICRO, x + 157, y + 8, d.blurb, 9, tc, ALIGN_LEFT)
+        // how many units carry this grade's stamp
+        var n = 0
+        var of = 0
+        for s in 0..ROSTER_N {
+            if !slot_has_mech(s) { continue }
+            of += 1
+            if slot_medal(s, i) { n += 1 }
+        }
+        let b = sb()
+        str_append(b, 64, "STAMPED: ")
+        str_append_int(b, 64, n, 0, false)
+        str_append(b, 64, " OF ")
+        str_append_int(b, 64, of, 0, false)
+        str_append(b, 64, " UNITS")
+        txt(FONT_MICRO, x + 157, y + 38, b, C_STEEL, ALIGN_LEFT)
+        if on {
+            rect_outline(x - 2, y - 2, w + 4, 62, C_NAVY, BLEND_NONE)
+            if (tick >> 3) & 1 == 0 { rect_outline(x - 1, y - 1, w + 2, 60, C_NAVY, BLEND_NONE) }
+            tri_fill(x - 12, y + 21, x - 12, y + 37, x - 5, y + 29, C_NAVY, BLEND_NONE)
+            ui_shine(x, y, w, 30, tick, 120)
+        }
+    }
+    footer("UP/DOWN CHOOSE  //  A ENTER  //  B BACK", "P. 03")
+}
+
+// The schedule page between fights: your exhibit on the left (its photograph, the mech on a
+// turntable), the day's programme on the right: each demonstration's day, time and venue, the
+// rival's maker and unit; those already won stamped APPROVED (the last one coming down), the
+// next highlighted, the final's details withheld until its reveal.
+fn draw_sched() {
+    page_scroll()
+    let t = st_t
+    let tb = sb2()
+    if ladder_final(ladder) {
+        str_append(tb, 64, "FINAL DAY")
+    } else {
+        str_append(tb, 64, "DAY ")
+        str_append_int(tb, 64, ladder + 1, 0, false)
+    }
+    masthead("TODAY'S PROGRAMME", tb)
+    print_clear()
+    // your exhibit
+    let me = p_mech[0]
+    let mk = mech_maker_of(me)
+    print_ramp(0, mk.colour)
+    print_photo(1, 4, 13, 14, 0)
+    menu_mech_at(me, Mv.idle, 60, 140, 30.0, 1, turntable(0))
+    tag(10, 36, txt_w(FONT_LABEL, "YOUR EXHIBIT") + 6, "YOUR EXHIBIT", C_RED, C_WHITE)
+    paper(8, 150, 104, 70)
+    rect_blend(8, 150, 104, 3, mk.colour, BLEND_NONE)
+    txt(FONT_HEAD, 13, 154, mech_short(me), C_INK, ALIGN_LEFT)
+    txt(FONT_MICRO, 13, 170, mk.short, C_STEEL, ALIGN_LEFT)
+    txt(FONT_MICRO, 13, 179, mk.booth_full, C_NAVY, ALIGN_LEFT)
+    rect_blend(13, 191, 94, 1, C_SILVER, BLEND_NONE)
+    let d = &DIFFS[run.diff]
+    medal_seal(run.diff, 13, 196, true, false)
+    txt(FONT_LABEL, 30, 194, d.name, C_INK, ALIGN_LEFT)
+    txt(FONT_MICRO, 30, 205, d.grade, C_STEEL, ALIGN_LEFT)
+    // the programme
+    let x = 120
+    paper(x, 28, 192, 194)
+    ui_sprite(&UI_UAPC[0], PAL_LOGO, x + 6, 31, 0x808080, BLEND_NONE)
+    txt(FONT_MICRO, x + 34, 30, "UAPC DEFENCE TRIAL", C_STEEL, ALIGN_LEFT)
+    txt(FONT_HEAD, x + 34, 40, "PROGRAMME", C_INK, ALIGN_LEFT)
+    rect_blend(x + 6, 57, 180, 1, C_NAVY, BLEND_NONE)
+    for n in 0..LADDER_N {
+        let y = 62 + n * 52
+        let next = n == ladder
+        let fin = ladder_final(n)
+        var ink = C_INK
+        var sub = C_STEEL
+        if next {
+            rect_blend(x + 3, y - 2, 186, 49, C_NAVY, BLEND_NONE)
+            ui_shine(x + 3, y - 2, 186, 49, t, 140)
+            ink = C_WHITE
+            sub = C_SKY
+        } else if n % 2 == 1 {
+            rect_blend(x + 3, y - 2, 186, 49, 0xE6DCD2, BLEND_NONE)
+        }
+        // day, time, venue
+        let b = sb()
+        if fin {
+            str_append(b, 64, "FINAL DAY")
+        } else {
+            str_append(b, 64, "DAY ")
+            str_append_int(b, 64, n + 1, 0, false)
+        }
+        str_append(b, 64, "  //  ")
+        str_append(b, 64, ladder_time(n))
+        str_append(b, 64, "  //  ")
+        var sti = LADDER_STAGES[len(LADDER_STAGES) - 1]
+        if !fin { sti = LADDER_STAGES[clamp(n, 0, len(LADDER_STAGES) - 2)] }
+        str_append(b, 64, stage_row(sti).short)
+        txt(FONT_MICRO, x + 8, y, b, sub, ALIGN_LEFT)
+        if fin && n >= ladder {
+            // the final: withheld until its reveal
+            txt(FONT_TITLE, x + 20, y + 10, "?", ink, ALIGN_CENTRE)
+            txt(FONT_MICRO, x + 38, y + 11, "OPPONENT TO BE ANNOUNCED", sub, ALIGN_LEFT)
+            txt(FONT_HEAD, x + 38, y + 20, "THE FINAL", ink, ALIGN_LEFT)
+            ui_stamp(&UI_STAMP_CLASSIFIED[0], x + 152, y + 33, C_RED)
+        } else {
+            ladder_emblem24(n, x + 8, y + 12, 0x808080)
+            txt(FONT_MICRO, x + 38, y + 11, ladder_maker_name(n), sub, ALIGN_LEFT)
+            txt(FONT_HEAD, x + 38, y + 20, ladder_unit_name(n), ink, ALIGN_LEFT)
+        }
+        if next {
+            let tw = txt_w(FONT_LABEL, "NEXT") + 6
+            if (tick >> 4) & 1 == 0 || t < 30 { tag(x + 180 - tw, y + 1, tw, "NEXT", C_RED, C_WHITE) }
+        }
+        if n < ladder {
+            // won: APPROVED, the latest coming down as the page opens
+            let r = &UI_STAMP_APPROVED[0]
+            var k = 0
+            if n == ladder - 1 { k = max(0, 16 - t) }
+            if n < ladder - 1 || t > 8 {
+                let sw = r[2] + k * 6
+                let shh = r[3] + k * 2
+                menu_sprite(r, x + 150 - sw / 2, y + 33 - shh / 2, sw, shh, col_tint(C_RED), BLEND_NONE)
+            }
+        }
+    }
+    if t > SCHED_WAIT && ((tick >> 4) & 1 == 0) {
+        footer("A  PROCEED TO THE MAIN STAGE", "P. 09")
+    } else {
+        footer("", "P. 09")
+    }
+}
+
+// The final's reveal: the stage goes dark, the trial's announcement is typed out a line at a
+// time, the opponent stands in silhouette (the GPU's fog toward the dark), then the lights come
+// up on it: your echo, the original "defending its title", or the UAPC's own test unit.
+fn draw_reveal() {
+    let t = st_t
+    let fin = run.fin
+    let foe = run.foe[ladder]
+    // the dark hall and two spotlights coming up on the stage, on the print layer (BG0) so the
+    // unit stands in front of them
+    print_ramp(0, 0x5A2810)
+    print_grad(0, 0, 40, 30, 0, 15, 13)
+    let lit = clamp((t - 20) / 10, 0, 3)
+    if lit > 0 {
+        let sh = 14 - 2 * lit                       // the cones' shade: 12, 10, 8
+        for ty in 0..26 {
+            let a0 = 5 + (15 - 5) * ty / 25         // the left cone's middle, in tiles
+            let b0 = 34 - (34 - 24) * ty / 25       // the right one's
+            let hw = 1 + 4 * ty / 25
+            spot_span(a0 - hw, a0 + hw, ty, sh)
+            spot_span(b0 - hw, b0 + hw, ty, sh)
+            let o0 = max(a0 - hw, b0 - hw)
+            let o1 = min(a0 + hw, b0 + hw)
+            if o1 >= o0 { spot_span(o0, o1, ty, sh - 2) }
+        }
+        spot_span(13, 26, 26, sh - 2)               // the pool of light on the floor
+    }
+    if t > 150 && t < 170 {
+        let k = (170 - t) * 12
+        rect_blend(0, 0, 320, 240, rgb(k, k, k), BLEND_ADD)
+    }
+    // the unit: a silhouette, then lit
+    if t > 50 {
+        var mv = Mv.idle
+        var f = fixed(tick % max(anim_len(foe, Mv.idle), 1))
+        if t >= 150 {
+            mv = Mv.intro
+            f = fixed(min(t - 150, anim_len(foe, Mv.intro) - 1))
+        }
+        if t < 185 {
+            var k = 1.0
+            if t > 150 { k = fixed(185 - t) / 35 }
+            gpu_fog(0x100604, 0.0, 22.0 / max(k, 0.02))
+        }
+        anim_grey = run.grey[ladder]
+        menu_mech_f(foe, mv, f, 160, 198, 24.0, -1, -0.2)
+        anim_grey = false
+    }
+    // the announcement
+    txt(FONT_MICRO, 160, 6, "UAPC DEFENCE TRIAL  //  THE FINAL DEMONSTRATION", C_SKY, ALIGN_CENTRE)
+    var l0 = ""
+    var l1 = ""
+    var l2 = ""
+    let mk = ladder_maker_name(ladder)
+    if fin == FIN_TEST {
+        l0 = "THE UAPC WILL NOW EVALUATE"
+        l1 = "YOUR PRODUCT AGAINST"
+        l2 = "ITS OWN TEST UNIT"
+    } else if fin == FIN_ORIGINAL {
+        l0 = mk
+        l1 = "DEFENDS ITS TITLE"
+    } else {
+        l0 = mk
+        l1 = "PRESENTS ITS COMPETING PRODUCT"
+    }
+    reveal_line(l0, 26, t - 20, C_WHITE)
+    reveal_line(l1, 42, t - 20 - strlen(l0) / 2, C_WHITE)
+    reveal_line(l2, 58, t - 20 - (strlen(l0) + strlen(l1)) / 2, C_WHITE)
+    // the nameplate, once lit
+    if t > 175 {
+        let s = min(t - 175, 10)
+        rect_blend(0, 196, 320, 28, C_GLASS, BLEND_NONE)
+        rect_blend(0, 196, 320, 1, C_CYAN, BLEND_NONE)
+        rect_blend(0, 223, 320, 1, C_CYAN, BLEND_NONE)
+        ladder_emblem24(ladder, 10, 198, 0x808080)
+        var nm = ladder_unit_name(ladder)
+        if txt_w(FONT_TITLE, nm) > 270 { nm = mech_short(foe) }
+        txt_sh(FONT_TITLE, 42 - (10 - s) * 6, 195, nm, C_WHITE, C_INK, 2, ALIGN_LEFT)
+        let b = sb()
+        if fin == FIN_TEST {
+            str_append(b, 64, "SPECIFICATION: YOURS.  BUILDER: NOT DISCLOSED.")
+        } else {
+            str_append(b, 64, "MODEL ")
+            str_append(b, 64, mech_model(foe))
+            if fin == FIN_ORIGINAL {
+                str_append(b, 64, "  //  THE ORIGINAL")
+            } else {
+                str_append(b, 64, "  //  ITS ANSWER TO THE ")
+                str_append(b, 64, mech_name(p_mech[0]))
+            }
+        }
+        txt(FONT_MICRO, 316, 226, b, C_SKY, ALIGN_RIGHT)
+    }
+    if t > 190 && (tick >> 4) & 1 == 0 { txt(FONT_MICRO, 316, 6, "A", C_CYAN, ALIGN_RIGHT) }
+}
+
+// A row of a spotlight on the print layer: tiles x0..x1 of row ty in shade sh, the ends dithered
+// into the dark.
+private fn spot_span(x0: s32, x1: s32, ty: s32, sh: s32) {
+    print_fill(x0, ty, 1, 1, 0, PT_DITHER + sh)
+    if x1 > x0 { print_fill(x1, ty, 1, 1, 0, PT_DITHER + sh) }
+    if x1 - x0 > 1 { print_fill(x0 + 1, ty, x1 - x0 - 1, 1, 0, PT_SOLID + sh) }
+}
+
+// A line of the announcement typed in, two letters a frame from t = 0, centred on the whole
+// line so the letters do not shift as they come.
+private fn reveal_line(s: *u8, y: s32, t: s32, col: u32) {
+    if t <= 0 || s[0] == 0 { return }
+    let n = min(t * 2, strlen(s))
+    var buf: [64]u8
+    var i = 0
+    while i < n && i < 63 {
+        buf[i] = s[i]
+        i += 1
+    }
+    buf[i] = 0
+    let w = txt_w(FONT_HEAD, s)
+    txt_sh(FONT_HEAD, 160 - w / 2, y, &buf[0], col, C_INK, 1, ALIGN_LEFT)
+}
+
+// The ending: a magazine cover (mx-ladder; cover.akr picks its words and holds its poses). The
+// winner frozen in one held frame of its win move on its maker's colour, the masthead over it,
+// the headline and three cover lines picked for the run, the grade's stamp, the barcode.
+const MAG_NAME = "PROCUREMENT"          // the masthead (the owner picks: README.md, "The arcade")
+const MAG_NAME2 = "TODAY"
+const COVER_TICKS: [3]u32 = [C_CYAN, C_TANGERINE, C_SILVER]   // the cover lines' colour ticks
+
+fn draw_cover() {
+    let t = st_t
+    let me = run.me
+    let mk = mech_maker_of(me)
+    print_clear()
+    print_ramp(0, mk.colour)
+    print_grad(0, 0, 40, 30, 0, COVER_SKY[me][0], COVER_SKY[me][1])
+    // the unit, a photograph: one held frame of its win move (cover.akr's COVER_POSE), its feet
+    // below the bottom edge as a cover photograph has them
+    menu_mech_f(me, Mv.win, fixed(COVER_POSE[me]), 226, COVER_FEET[me], COVER_DIST[me], 1, COVER_YAW[me])
+    // the masthead
+    txt_sh(FONT_MAST, 6, 1, MAG_NAME, C_WHITE, C_INK, 2, ALIGN_LEFT)
+    let tx = 10 + txt_w(FONT_MAST, MAG_NAME)
+    quad_fill(tx + 6, 14, tx + 58, 14, tx + 2, 30, tx + 54, 30, C_RED, BLEND_NONE)
+    txt(FONT_HEAD, tx + 29, 14, MAG_NAME2, C_WHITE, ALIGN_CENTRE)
+    rect_blend(0, 44, 320, 11, C_INK, BLEND_HALF)
+    txt(FONT_MICRO, 6, 45, "THE DEFENCE TRADE WEEKLY", C_WHITE, ALIGN_LEFT)
+    txt(FONT_MICRO, 314, 45, "ISSUE 41  //  OCTOBER 2000", C_WHITE, ALIGN_RIGHT)
+    // the headline (cover.akr's pick), on a panel as wide as its words
+    let hd = &COVER_HEADS[clamp(cover_head, 0, len(COVER_HEADS) - 1)]
+    let l0 = cover_l0(sb())
+    let l1 = cover_fill(sb2(), hd.l1)
+    let pw = max(max(txt_w(FONT_TITLE, hd.h0), txt_w(FONT_TITLE, hd.h1)), txt_w(FONT_LABEL, l1)) + 20
+    let hy = 152
+    rect_blend(0, hy - 2, pw, 82, C_INK, BLEND_HALF)
+    rect_blend(0, hy - 2, 4, 82, C_YELLOW, BLEND_NONE)
+    txt_sh(FONT_TITLE, 10, hy, hd.h0, C_YELLOW, C_INK, 2, ALIGN_LEFT)
+    txt_sh(FONT_TITLE, 10, hy + 24, hd.h1, C_YELLOW, C_INK, 2, ALIGN_LEFT)
+    txt_sh(FONT_HEAD, 10, hy + 52, l0, C_WHITE, C_INK, 1, ALIGN_LEFT)
+    txt_sh(FONT_LABEL, 10, hy + 67, l1, C_WHITE, C_INK, 1, ALIGN_LEFT)
+    // the cover lines
+    var ty = 62
+    for i in 0..3 {
+        let c = cover_tease[i]
+        if c == null { continue }
+        ty = teaser(ty, c.a, cover_fill(sb2(), c.b), COVER_TICKS[i])
+    }
+    // the sticker: the grade it was cleared on, stamped
+    let d = &DIFFS[run.diff]
+    let gx = 266
+    let gy = 60
+    paper(gx - 48, gy, 96, 46)
+    txt(FONT_MICRO, gx, gy + 2, "UAPC GRADE", C_STEEL, ALIGN_CENTRE)
+    let gb = sb2()
+    str_append(gb, 64, "CLEARED: ")
+    str_append(gb, 64, d.name)
+    txt(FONT_MICRO, gx, gy + 36, gb, C_INK, ALIGN_CENTRE)
+    if t > 20 {
+        let k = max(0, 30 - t)
+        let r = &UI_STAMP_APPROVED[0]
+        let sw = r[2] + k * 5
+        let shh = r[3] + k * 2
+        menu_sprite(r, gx - sw / 2, gy + 24 - shh / 2, sw, shh, col_tint(col_mix(d.ink, C_INK, 0.3)), BLEND_NONE)
+    }
+    // the barcode
+    rect_blend(262, 206, 52, 28, C_WHITE, BLEND_NONE)
+    barcode(265, 209, 12, 16, C_INK)
+    txt(FONT_MICRO, 288, 225, "2000-10", C_INK, ALIGN_CENTRE)
+    if t > COVER_WAIT && !save_writing && (tick >> 4) & 1 == 0 { txt_sh(FONT_MICRO, 314, 192, "PRESS A", C_WHITE, C_INK, 1, ALIGN_RIGHT) }
+    draw_save_status(160, 58)
+}
+
+// A cover line on the left: a colour tick, a line and a smaller one under it; returns the next y.
+private fn teaser(y: s32, a: *u8, b: *u8, col: u32) -> s32 {
+    rect_blend(6, y + 1, 3, 19, col, BLEND_NONE)
+    txt_sh(FONT_LABEL, 12, y - 1, a, C_WHITE, C_INK, 1, ALIGN_LEFT)
+    txt_sh(FONT_MICRO, 12, y + 10, b, col, C_INK, 1, ALIGN_LEFT)
+    return y + 27
 }
