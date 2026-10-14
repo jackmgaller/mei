@@ -1436,7 +1436,7 @@ a blocked hit; the super needs a full bar; no debt).
 | Diagonal jump | 0.17 m a frame across (6.1 m) |
 | Landing | 5 frames (8 after an air attack) |
 | Push box | 1.4 m either side of the root, 11.5 m tall (7.5 crouching): Shadow's |
-| Hurt box | follows the parts (`anims/seraph/_body.anim.json`, Shadow's boxes on Seraph's parts): about 1.6 m either side, 12.5 m tall standing, 8 crouching. The wings and the halo have no hurt boxes |
+| Hurt box | follows the parts (`anims/seraph/_body.anim.json`, Shadow's boxes on Seraph's parts): about 1.6 m either side of the body, 12.5 m tall standing, 8 crouching; the guard holds the fist's box out to about 3.3 m in front, and the Wing Ward's first frames reach about 3.7 m at a bolt's height (scenarios 172-175 time the ward from these boxes). The wings and the halo have no hurt boxes |
 | Height | 13.55 m to the top of the halo (the roster's 135) |
 
 These are the numbers in the game now (`moves.akr`'s `STATS` row). The walk is a boxer's: upright,
