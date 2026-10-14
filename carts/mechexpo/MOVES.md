@@ -1964,6 +1964,36 @@ placeholder. Frame numbers here count from 1 as the tables do; the files count f
 - **The Lunging Straight and the Jab** keep the reach phase 1 measured; only the Jab's height
   changes (its fist's box from y 8.6–9.8 to 6.6–7.8). Keep `design` boxes in the files so
   `verify` checks them.
+- **As animated** (mx-seraph-anim): every length, mark frame and root motion above is in the
+  files as written; the guard is `make_seraph.py`'s `STANCE`, a boxer's (`GUARD_DROP` 1.15, the
+  right fist's front at x 3.2, y 9.4), the wing's range text says y −10..130 and the rig names the
+  ward's angles (`wings.ward_l`, `ward_r`). Where the files differ from the words above:
+  - The Jab's arm is not straight: shoulder to knuckles is 6.3 m, so a straight arm at 7.2 m
+    reaches about 6 m. To keep the reach phase 1 measured it is a short punch from the ribs, the
+    elbow tucked in and the forearm and fist level; its boxes span x 1.6–3.2, y 6.6–7.8. At
+    that height it meets the lead forearm Shadow and the Hero hold out in their guards (Shadow's
+    reaches 5.4 m from its root at y 5.9–8.0, the Hero's 4.0 m at y 5.5–7.6), so at 6 m apart
+    the jab lands on the arm, out to about 8.7 m against Shadow and 7.3 m against the Hero:
+    scenarios 160 and 161's "the jab misses at 6 m" (phase 1's, made for the face-high fist)
+    changes with the fight's part. The
+    Ascension's fist ends over the head with the forearm upright (x 0.6–4.3, y 3.3–14.1), the
+    Lunging Straight's is straight (x 2.7–6.8, y 6.9–8.2).
+  - The Wing Ward's wrap is the spec's (−20, 120, 0): the wings hinge behind the shoulders and
+    the plates are 2.6 m deep, so at 120 they stand at the sides, their faces forward, rather than
+    closing in front; the effect's sheen covers the front. Wider (150) would bring them no nearer.
+  - The Reaping Kick drops the pelvis 2.3 m, not 3: the rear foot is drawn in under the hips
+    (frames 0–5) and steps back in the recovery, or the rear knee goes into the floor. Its boxes
+    span x 1.4–6.2, y 0.2–2.2 (the lower shin and the front of the foot as the leg comes round).
+  - The Seraph Dive's straight reaches x 2.1–5.6, y 1.4–5.0 (within `verify`'s 0.5 m of the
+    table). In the dive (26–31) the legs fold up behind, about 0.5 m below the root at most
+    on 31, so they stay off the floor while the fight brings the root down.
+  - Knocked down, Seraph lies on its forearms and knees (the hurt boxes 4.5 m tall), not flat;
+    the KO goes on to lie flat. `hit_air`'s last frame has the pelvis 2.1 m above the root.
+  - `thrown_vault`: from the top of the arc (17) the victim swings on head first and comes down
+    face down on 28, so on 20–26 its shoulders leave the thrower's fists; `thrown_slam` turns it
+    over on the slam (28–33). The three throws' victims are Shadow's to their slam (`"base"`).
+  - The cover (`COVER_POSE`) can stay 119: every frame of `win` from 40 on has the fist up, the
+    wings spread and the halo at 60.
 
 ### For the effects and sound (Seraph)
 
