@@ -676,7 +676,9 @@ private fn gx_pad_budget(n: s32) -> u32 {
     let p = cpu_pad(n, 2)
     if fight.phase != Phase.Fight { return p }
     if n == 1 {
-        if fr < 900 && actionable(1) && fr % 2 == 0 { return DOWN | B }        // Seraph wards (the ray)
+        // Seraph wards the ray as it comes on (its startup is 18 frames; the ward is up 4-23)
+        if fr < 900 && actionable(1) && fight.f[0].mv == Mv.sp_n && fight.f[0].frame >= 12.0 { return DOWN | B }
+        if fr < 900 { return 0 }
         if fr >= 900 && (fr % 300 < 90 || fr % 300 >= 270) { return 0 }       // the Twins wait for Ground Zero
         if fr >= 900 { return p & ~L }                  // the Twins stay split
         return p
