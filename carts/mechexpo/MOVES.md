@@ -2110,6 +2110,36 @@ phase 2 lands, this is what plays:
 - **The arcade**: Shadow's final is Seraph ("MOMENTUM ROBOTICS PRESENTS ITS COMPETING PRODUCT"),
   Seraph's final is Shadow (defending its title); Seraph's grey copy is packed as every body's is.
 
+## Gamma (Heartland Atomic Company, nuclear)
+
+Heartland's echo of Beam, the gunner (`Mech.Gamma`, GAMMA, HA-58): the owner's decisions are in
+[Decided by the owner (2026-10-14): Gamma](#decided-by-the-owner-2026-10-14-gamma-heartlands-ray-gun).
+
+### Phase 1: what is in the game now
+
+Phase 1 (mx-gamma-rig) put Gamma in the game with Beam's moves as placeholders; until each part of
+phase 2 lands, this is what plays:
+
+- **Real**: the model and rig (concept C refined, `models/gamma/`: the projector on Beam's mount,
+  its muzzle Beam's (0, 0.8, −4.4) in `weapon_r`'s frame; the shield on `weapon_l`, stowed at 0,
+  swung out at (0, 90, 0)), the roster row (GAMMA, HA-58, Heartland's emblem, stats `0x3253`,
+  Beam's since its numbers are Beam's; 11.9 m to the top of the searchlight; the owner's blurb
+  "THE GUNNER:\nRAYS, LEAD", 61 and 50 px of the spec sheet's 76), and the **nuclear meter**: 3
+  meter a point of damage taken, nothing for landing hits, carried over between rounds, the super
+  at a full bar, the HUD's reactor gauge and the reactor hatch's glow brightening with it
+  (`meter.akr`, `hud.akr` and `tank_fx.akr` go by the power source, so Tank's play as before).
+- **Placeholders**: every animation is Beam's on Gamma's rig (`anims/gamma/`, each `"base":
+  "../beam/MOVE.anim.json"`, the shield `"still"`); every hit's numbers (`gamma_hit` returns
+  `beam_hit`); health, walk and jump Beam's (`STATS`); `sp_n` the Volt Orb (`has_volt_orb`), `sp_f`
+  the Arc Lance, `sp_u` the Thunder Pillar, the throw the Shock Grip (`has_shock_grip`), the
+  super the Raikō Overload, Beam's discharges drawn over the boxes (`has_arc_fx`); `sp_d` plays
+  the Reaction Prime's animation as a brace and starts no reaction (the meter is not chemical);
+  the CPU plays it as Beam without the prime (`cpu_as_beam`); the sounds are the general ones (a
+  swing for the orb, the kinetic charge-up for the super); the training move list is Beam's under
+  Gamma's meter.
+- **The arcade**: Beam's final is Gamma ("HEARTLAND ATOMIC CO. PRESENTS ITS COMPETING PRODUCT"),
+  Gamma's final is Beam (defending its title); Gamma's grey copy is packed as every body's is.
+
 ## Reactions and the rest of the list
 
 | Move | Length | Notes |
@@ -2260,8 +2290,10 @@ Planned, not designed in numbers yet: Heartland Atomic Company's echo of Beam, i
 under Beam (unlocked by clearing the arcade with Beam), on Beam's skeleton (the Hero's). Named
 **GAMMA** (card GAMMA); model number open (HA-58 proposed, after Tank's HA-57). Nuclear meter (Heartland's: fills as it takes damage).
 
-- **Look: military surplus** (concept C, `concepts/gamma_c/`, on its own branch for now; chosen
-  over an atomic-age ray gun and a walking reactor plant). Beam's frame refitted from army
+- **Look: military surplus** (concept C, `concepts/gamma_c/`, refined in `models/gamma/`; chosen
+  over an atomic-age ray gun and a walking reactor plant). Phase 1 is built
+  ([Gamma](#gamma-heartland-atomic-company-nuclear): the mech, the nuclear meter, Beam's moves as
+  placeholders). Beam's frame refitted from army
   surplus: a searchlight head with a whip antenna, a louvred reactor hatch on the chest (the
   meter's glow), jerrycans and a toolbox racked on the back, primer-grey replacement panels on
   Heartland's faded green; Raikō's Arc Cannon becomes a searchlight converted to a ray projector
