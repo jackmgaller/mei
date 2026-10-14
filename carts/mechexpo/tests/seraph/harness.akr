@@ -1,8 +1,9 @@
 // Mech Expo 2000's Seraph scenarios that need the whole game (mx-seraph): the real game
 // (game.akr: the stages, the camera, the mechs drawn by anim.akr, the effects, the HUD and the
 // menus) driven through its test hooks, as tests/shadow/harness.akr does. tests/run.sh builds
-// scenarios 162-168 from this file and ../../game.akr; tests/check.sh runs 163-167 and
-// tests/budget.sh 162 and 168. 160 and 161 (the fight alone) are in ../harness.akr; the arcade's
+// scenarios 162-168 and 190-199 from this file and ../../game.akr; tests/check.sh runs 163-167,
+// 190-197 and 199, tests/budget.sh 162, 168 and 198. 190-199 (Seraph's effects, its HUD mark and
+// its sounds: mx-seraph-fx) are listed at their code, after the others. 160 and 161 (the fight alone) are in ../harness.akr; the arcade's
 // final for Shadow (Seraph's reveal and the VS card) is ladder scenario 124, VIEWs 4 and 5.
 //
 // 162 the budget with Seraph: CPU against CPU (level 2) through the real game, Seraph against the
@@ -345,9 +346,9 @@ private fn fx_fwd() -> u32 {
 private fn fx_ward_now() -> bool {
     let sh = &fight.shot[1]
     if !sh.on || fx_ward_at >= 0 || !actionable(0) { return false }
-    let d = abs(sh.x - fight.f[0].x) - sh.half - 1.6
+    let d = abs(sh.x - fight.f[0].x) - sh.half - 3.5       // the guard's fist about 3.3 m out
     let v = max(abs(sh.vx), 0.05)
-    return d / v <= 12.0
+    return d / v <= 10.0
 }
 
 private fn fx_pad(n: s32) -> u32 {
@@ -358,7 +359,7 @@ private fn fx_pad(n: s32) -> u32 {
         191 => if n == 0 && (fr == 140 || fr == 141 || fr == 230 || fr == 231) { return B }
         192, 193, 194 => {
             if n == 1 {
-                if SCENARIO == 193 { if fr >= 4 && fr < 4 + ORB_CHARGE_MAX + 2 { return B } }
+                if SCENARIO == 193 { if fr >= 4 && fr < 120 { return B } }
                 else if fr >= 4 && fr <= 6 { return B }
                 return 0
             }
@@ -430,7 +431,7 @@ private fn fx_hud_agrees(f: *Fight, s: s32) {
         return
     }
     let l = HUD_METER_W - HUD_SLANT
-    assert(abs(srx_hud_bar[s] - clamp(m, 0, SRX_MARK_TIME) * l / SRX_MARK_TIME) <= 1, "the mark's time bar")
+    assert(abs(srx_hud_bar[s] - clamp(m, 0, SER_MARK_FRAMES) * l / SER_MARK_FRAMES) <= 1, "the mark's time bar")
     if m > 61 { assert(srx_hud_label[s], "MARKED is not shown") }
 }
 
@@ -570,7 +571,7 @@ private fn fx_check_ascend(f: *Fight) {
 private fn fx_check_column(f: *Fight) {
     if fr == 2 {
         fight.f[0].meter = METER_BAR
-        fight.f[1].mark = SRX_MARK_TIME
+        fight.f[1].mark = SER_MARK_FRAMES
     }
     if fr == 4 { fx_hp0 = f.f[1].health }
     let s0 = &f.f[0]
@@ -600,33 +601,43 @@ private fn fx_check_column(f: *Fight) {
 }
 
 // 198: the budget, Seraph's effects at their heaviest: CPU against CPU on the container port
-// against the split Twins (three bodies, both marked), and every 300 frames a wave thrown at
-// Seraph that its ward sends back (the reflect, the shot drawn as light) and, while it flies,
-// Judgement (the flash, the lock, the column, the stage's light).
+// against the split Twins (three bodies, both marked) for 1,000 frames, and every 300 frames of
+// play a wave thrown at Seraph that its ward sends back (the reflect, the shot drawn as light)
+// and, while it flies, Judgement (the flash, the lock, the column, the stage's light); the Twins
+// hold still for those 140 frames so both happen.
+var fx_live: s32                        // 198: frames of play
+var fx_thrown: bool                     // 198: this cycle's wave thrown
+
 private fn fx_pad_budget(n: s32) -> u32 {
     if st != St.Fight { return 0 }
     let p = cpu_pad(n, 2)
-    if n == 1 { return p & ~L }                     // the Twins stay split
-    let k = fr % 300
-    if k >= 20 && k < 60 {
-        if fx_ward_now() {
-            fx_ward_at = fr
-            return DOWN | B
-        }
-        return 0
+    let k = fx_live % 300
+    if fight.phase != Phase.Fight || k >= 140 {
+        if n == 1 { return p & ~L }                 // the Twins stay split
+        return p
     }
-    if k >= 70 && k < 110 && fight.f[0].super_ok && actionable(0) { return A | B }
-    return p
+    if n == 1 { return 0 }
+    if fx_ward_now() {
+        fx_ward_at = fr
+        return DOWN | B
+    }
+    if fx_ward_at >= 0 && fight.f[0].super_ok && actionable(0) { return A | B }
+    return 0
 }
 
 private fn fx_check_budget(f: *Fight) {
     if fight.phase != Phase.Fight { return }
-    let k = fr % 300
-    if f.f[1].mark < 10 { fight.f[1].mark = SRX_MARK_TIME }
-    if k == 5 {
+    fx_live += 1
+    let k = fx_live % 300
+    if f.f[1].mark < 10 { fight.f[1].mark = SER_MARK_FRAMES }
+    if k == 1 {
         fx_ward_at = -1
+        fx_thrown = false
         fight.f[0].meter = METER_BAR
-        // a wave from the Twins' side, coming at Seraph
+    }
+    if k < 60 && !fx_thrown && actionable(0) && !f.shot[1].on {
+        // a wave from the Twins' side, coming at Seraph from 12 m
+        fx_thrown = true
         let s0 = &f.f[0]
         let dir = fixed(sgn(s0.x - f.f[1].x))
         let sh = &fight.shot[1]
@@ -645,7 +656,7 @@ private fn fx_check_budget(f: *Fight) {
         sh.mark = false
         sh.refl = false
     }
-    if fr == 900 {
+    if fr == 1000 {
         print("Seraph's effects against the split Twins on the container port: peak cpu ")
         print_int(peak_cpu[0])
         print(", gpu ")

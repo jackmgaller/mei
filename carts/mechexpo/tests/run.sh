@@ -5,8 +5,9 @@
 # Scenarios 50-54 (the effects') are built from tests/fx/harness.akr and the whole game, 68 and
 # 69 (the Twins') from tests/twins/harness.akr and the whole game, 80-89 (the sounds') from
 # tests/sfx/harness.akr and the whole game, 90-99, 112-115 and 140-150 (the stages') from
-# tests/stages/harness.akr and the whole game, 116-127 (the arcade ladder's) through
-# tests/ladder/run.sh (VIEW 0; that script takes a VIEW).
+# tests/stages/harness.akr and the whole game, 109 (Shadow's) from tests/shadow/harness.akr,
+# 162-168 and 190-199 (Seraph's) from tests/seraph/harness.akr, all with the whole game, 116-127
+# (the arcade ladder's) through tests/ladder/run.sh (VIEW 0; that script takes a VIEW).
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SC_HEAD="$(printf 'cart "Mech Expo Fight Test", "MECHEXPO-TEST"\nconst SCENARIO = %s' "$1")"

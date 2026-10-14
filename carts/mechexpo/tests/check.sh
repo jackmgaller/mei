@@ -14,11 +14,11 @@ mkdir -p "$O"
 POOL_DIR="$O"
 . "$HERE/pool.sh"
 pool_report() {
-    grep -E '^(OK|Seraph|the (fists|jab|lunging|throw|super)|blurb|stats|Shadow.s (final|Claw)|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|cover|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb|Judgement|orb level|ward [0-9]|Ascension|its back|6 m from|landing|Seraph.s CPU)' "$O/$1.log"
+    grep -E '^(OK|Seraph|the (fists|jab|lunging|throw|super)|blurb|stats|Shadow.s (final|Claw)|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|cover|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb|Judgement|orb level|ward [0-9]|Ascension|its back|6 m from|landing|Seraph.s CPU|  peak|mark_cast|the (bolt|mark|ward|Dive)|Judgement:)' "$O/$1.log"
 }
 run() {       # scenario frames: the scenarios through the whole game cost about 8 times a frame
     s="$1"; f="$2"; shift 2
-    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]|14[0-6]|150|16[3-7]) c=$((f * 8)) ;; 108|181) c=$((f * 40)) ;; *) c="$f" ;; esac
+    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]|14[0-6]|150|16[3-7]|19[0-79]) c=$((f * 8)) ;; 108|181) c=$((f * 40)) ;; *) c="$f" ;; esac
     pool_add "s$s" "$c" "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@"
 }
 run 1 800
@@ -162,6 +162,20 @@ run 178 250
 run 179 200
 run 180 400
 run 181 2600
+# Seraph's effects, HUD mark and sounds (mx-seraph-fx, tests/seraph/harness.akr, the whole game):
+# 190 the Mark bolt and the mark, 191 the mark's HUD on the split Twins (running out, a refresh),
+# 192-194 the Wing Ward sending back the wave, a full Volt Orb and a Hex Bolt (as a Mark), 195 the
+# Seraph Dive held, 196 Ascension and Heaven's Arc, 197 Judgement on a marked Hero, 199 every one
+# of its sounds (198, the budget, is budget.sh's)
+run 190 151
+run 191 301
+run 192 201
+run 193 201
+run 194 201
+run 195 141
+run 196 201
+run 197 161
+run 199 561
 # the arcade ladder (mx-ladder, tests/ladder/harness.akr, the whole game; VIEWs as listed there):
 # 116 EASY against a scripted masher, 117-119 a whole run on each difficulty (EASY with the Hero,
 # NORMAL with Shadow, HARD with Tank: the rivals drawn, a loss and a continue, the reveal, the
