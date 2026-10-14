@@ -1,8 +1,34 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Gamma's hit_high: a placeholder (phase 1), Beam's (../beam/hit_high.anim.json) on Gamma's rig, its keys, timing, boxes and marks as they are (the projector is on Beam's mount and reaches as far as the Arc Cannon); the shield (weapon_l) held stowed (\"still\"). To be replaced by its own move (MOVES.md, \"Gamma\").",
-  "base": "../beam/hit_high.anim.json",
-  "rig": "../../models/gamma/gamma.rig.json",
-  "still": ["weapon_l"]
+  "note": "Hit high: Beam's reel (the Hero's, with the projector kept clear of the head), on Gamma's rig: knocked back and twisted on 0-3, the head snapped round, recovering into the guard by 19 (the fight stretches it over the hitstun; a dazed Gamma plays it over the daze). The stowed shield rattles on its bracket: weapon_l y 0, 8, 0 over frames 0-6.",
+  "base": "_body.anim.json",
+  "length": 20,
+  "still": [],
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "offset": [-0.3, -0.85],
+     "pose": {"pelvis": [6, -10, 0], "torso": [14, -22, 4], "head": [4, 18, 0],
+              "upper_arm_r": [40, 0, -24], "forearm_r": [60, 0, 8], "hand_r": [10, 0, 0],
+              "upper_arm_l": [20, 0, 34], "forearm_l": [70, 0, -24], "pauldron_r": [13.3, 0, -12],
+              "pauldron_l": [8, 0, 14], "weapon_l": [0, 0, 0]},
+     "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}},
+    {"at": 3, "ease": "in", "offset": [-0.45, -1.05],
+     "pose": {"pelvis": [8, -12, 0], "torso": [20, -24, 6], "head": [22, 20, 0],
+              "upper_arm_r": [48, 0, -28], "forearm_r": [62, 0, 8], "hand_r": [14, 0, 0],
+              "upper_arm_l": [12, 0, 38], "forearm_l": [60, 0, -24], "pauldron_r": [16, 0, -14],
+              "weapon_l": [0, 8, 0]}},
+    {"at": 6, "ease": "out", "offset": [-0.352, -0.971],
+     "pose": {"forearm_l": [71.81, 0.0, -24.0], "forearm_r": [69.08, 0.0, 8.0],
+              "hand_r": [10.06, 0.0, 0.0], "head": [14.92, 18.03, 0.0],
+              "pauldron_l": [9.57, 0.0, 12.82], "pauldron_r": [11.79, 0.0, -11.24],
+              "pelvis": [5.64, -10.82, 0.0], "torso": [13.7, -21.64, 4.43],
+              "upper_arm_l": [19.87, 0.0, 32.49], "upper_arm_r": [35.41, 0.0, -22.49],
+              "weapon_l": [0, 0, 0]}},
+    {"at": 10, "ease": "ease", "offset": [-0.2, -0.85],
+     "pose": {"pelvis": [2, -9, 0], "torso": [4, -18, 2], "head": [4, 15, 0],
+              "upper_arm_r": [16, 0, -14], "forearm_r": [80, 0, 8], "hand_r": [4, 0, 0],
+              "upper_arm_l": [32, 0, 24], "forearm_l": [90, 0, -24], "pauldron_r": [5.3, 0, -7],
+              "pauldron_l": [12, 0, 11]}},
+    {"at": 19, "from": "guard", "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}}
+  ]
 }
