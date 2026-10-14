@@ -247,27 +247,37 @@ Grip and Total Eclipse. The design is [MOVES.md](MOVES.md#shadow-umbral-research
 
 Seraph (Momentum Robotics, kinetic; `Mech.Seraph`, roster slot 6 under Shadow, SERAPH MR-02) is
 Momentum's echo of Shadow, the paladin, unlocked by clearing the arcade with Shadow. Phase 1
-(mx-seraph) has the mech in the game, drawn and pickable, with Shadow's moves as placeholders; its
-own moves, effects and fight code are later phases. What is real and what is Shadow's for now:
-[MOVES.md](MOVES.md#seraph-momentum-robotics-kinetic).
+(mx-seraph) put the mech in the game, drawn and pickable, with Shadow's moves as placeholders;
+phase 2's fight and CPU (mx-seraph-fight) gave it its own moves: the Mark of Judgement and the
+mark, the Seraph Dive, Ascension, the Wing Ward, Heaven's Arc and Judgement. Its animations,
+effects and sounds are phase 2's other two parts. What is real and what is still Shadow's:
+[MOVES.md](MOVES.md#phase-1-what-is-in-the-game-now).
 
 - **Files:** `models/seraph/make_seraph.py` (the model and rig: the owner's concept A, round 4b,
   from `concepts/angel_a/`, which stays as the record), `anims/seraph/` (each move Shadow's on
   Seraph's rig, the weapon joints held at 0 with the kit's `"still"`; the jab and the lunge with
-  the fist's hit boxes), `seraph.akr` (its hits and stand-ins, Shadow's for now, its move list,
-  and the predicates `has_hex_bolt`, `has_sneak`, `has_rift_mine`, `has_phantom_grip`,
-  `has_eclipse` and `has_dive` that Shadow's rules ask instead of "is this Shadow", so each
-  special can be given to Seraph's own code without touching Shadow's). Its numbers are a row of
-  `STATS` (1,000 health, a walk of 0.080 m a frame forward and 0.064 back, the kinetic meter) and
-  its names a row of `ROSTER`.
-- **Where phase 2 branches for `Mech.Seraph`:** the six predicates in `seraph.akr` (the Hex Bolt
-  and the Siphon in `fighter.akr`'s `fires_shot` and `shot_fire` and `shadow.akr`; Shadow Sneak in
-  `fighter.akr`'s advance and `shadow_fx.akr`; the Rift Mine in `shadow_tick`; Phantom Grip in
-  `fighter.akr`'s throw; Total Eclipse in `fighter.akr`'s `resolve`, `shadow_fx.akr`'s
-  afterimages and its stage dark; the Diving Claw in `shadow_tick`), `seraph_hit` and the
-  stand-ins in `seraph.akr`, `cpu_as_shadow` in `cpu.akr`, the trails in `fx.akr`
-  (`fx_plate`, the no-trail branch), the bolt's sound in `sfx.akr`'s `sfx_shot`, the move list
-  (`SERAPH_MOVES`), `COVER_POSE` in `cover.akr` (it holds Shadow's win), and the animations.
+  the fist's hit boxes), `seraph.akr` (its hits, its stand-in timings, boxes, marks and root
+  motion, its move list, and its rules: the Mark bolt in the shot system (`Shot.mark`) and the
+  mark (`Fighter.mark`, 360 frames of play); the Dive's glide and dive (`seraph_advance`, called
+  from `fighter.akr`'s advance); the Wing Ward's reflect (`seraph_reflect`, from `shot_try`
+  before the Parry's test, on the `ward` frames: `MARK_WARD` in `anim.akr`), which moves the shot
+  to Seraph's slot (`Shot.refl`); Heaven's Arc (`seraph_hold`, from `throw_tick`; the victim plays
+  `thrown_vault`); Judgement's lock (`judge_x`, on the first frame after the flash), its column
+  (`seraph_column_box`, from `load_boxes`) and its x 1.5 on a marked mech (`seraph_judged`, from
+  `resolve`; `Hit.nodebt` keeps the antimatter debt's 25 % from stacking with it)), and
+  Seraph's CPU at the end of `cpu.akr`. Shadow's rules ask the predicates `has_hex_bolt`,
+  `has_sneak`, `has_rift_mine`, `has_phantom_grip` and `has_eclipse` (Shadow's alone now) and
+  `has_dive` (Shadow's and Seraph's); Seraph's ask `has_mark`, `has_glide`, `has_ward`,
+  `has_over_throw` and `has_judgement`. `enum Ev` gains `Mark`, `Reflect` and `Column`
+  (appended). Its numbers are a row of `STATS` (1,000 health, a walk of 0.080 m a frame forward
+  and 0.064 back, the kinetic meter) and its names a row of `ROSTER`.
+- **Its placeholders:** until a move's own animation lands, the fight plays it from
+  `seraph.akr`'s stand-in data (`ser_std`, filled by `seraph_init()` when a Seraph fights, tells
+  a placeholder of Shadow's from the data: [MOVES.md](MOVES.md#phase-1-what-is-in-the-game-now);
+  `moves.akr`'s `use_standin` reads it); the drawing is the placeholder's. Still to come from phase 2's other parts: the animations (`anims/seraph/`), the
+  fists' trails in `fx.akr`, the bolt, the mark, the ward, the reflect and the column drawn
+  (`seraph_fx.akr`) and heard (`sfx.akr`), and `COVER_POSE` in `cover.akr` (it holds frame 119
+  of Shadow's win until Seraph's own win is animated).
 - **The model:** 1,892 triangles (Shadow's 1,800 and the Hero's 1,776; the pack's limit for it
   is 1,900, `MECH_LIMITS`), 13.55 m to the top of the halo in the rest pose (the roster's 135).
   Packed after the other mechs (`LATE` in the generator), with its grey copy: 83,896 bytes of
@@ -275,21 +285,26 @@ own moves, effects and fight code are later phases. What is real and what is Sha
   the MR-02 plate on each thigh, the hazard stripes on each shin), four more 4-bit palettes.
 - **Tests:** scenarios 160 (against Shadow) and 161 (against the Hero) in `tests/harness.akr`:
   1,000 health, the kinetic meter, 22 parts a frame, the walk, the jab landing at 4 m and missing
-  at 6 m where Shadow's Claw Jab reaches, the lunge landing at 9 m and missing just past the
-  fist's reach, the throw's side swap, the super's five hits from a full bar without debt;
+  just past the fist where Shadow's Claw Jab reaches from 6 m, the lunge landing at 9 m and
+  missing just past the fist's reach, Heaven's Arc's side swap, Judgement's one hit (280) from a
+  full bar without debt; 170-181 its own moves (`tests/harness.akr`): the mark, Judgement's bonus
+  and the debt, the Wing Ward against the wave, every orb, the Hex Bolt and a mirror's Mark, the
+  Dive, Ascension, Heaven's Arc (and off the rooftop's edge), the column, the CPU;
   162-168 through the whole game in `tests/seraph/harness.akr`: 162 and 168 the budget
   (budget.sh), 163 the select with Seraph's card and spec sheet (and the roster row's checks),
   164-167 mid-fight against Shadow and the Hero in the hangar and on the rooftop; ladder scenario
   118 (Shadow's NORMAL run: the final is Seraph, the clear unlocks it) and 124 VIEWs 4 and 5
   (Seraph's reveal, the VS card).
-- **The budget** (scenarios 162 and 168, CPU against CPU, debug builds, Shadow's mine and bolt
-  kept out, the other cursed, a full bar every 300 frames): against the split Twins on the
-  rooftop 707,271 CPU cycles and 796,571 GPU cycles at the peak, 2,325 triangles, the worst CPU
-  of any fight measured; against Shadow in the hangar 579,210 and 763,551, 1,835 triangles; against
-  the split Twins on the container port (168) 666,804 and 999,683, 2,152 triangles, the worst GPU;
-  the mechs' drawing at most 422,207 cycles, the effects' 75,959; no late frames. Mid-fight
-  (164-167, CPU against CPU without the extras): 500,937 to 616,904 CPU and 496,137 to 619,453
-  GPU cycles.
+- **The budget** (scenarios 162 and 168, CPU against CPU, debug builds, Seraph's Mark bolt kept
+  out, the other marked, a full bar every 300 frames for Judgement; mx-seraph-fight, before
+  `seraph_fx.akr`): against the split Twins on the rooftop 712,455 CPU cycles and 935,109 GPU
+  cycles at the peak, 2,300 triangles, the worst CPU of any fight measured; against Shadow in the
+  hangar 567,762 and 774,901, 1,866 triangles; against the split Twins on the container port (168)
+  666,525 and 962,451, 2,149 triangles, the worst GPU; the fight at most 69,655 cycles, the
+  mechs' drawing 417,682, the effects' 74,880; no late frames. (Phase 1, with Shadow's mine, bolt
+  and Total Eclipse kept out: 707,271 and 796,571; 579,210 and 763,551; 666,804 and 999,683.)
+  Mid-fight (164-167, CPU against CPU without the extras): 504,681 to 629,409 CPU and 378,106 to
+  604,592 GPU cycles.
 
 ## The arcade ladder
 

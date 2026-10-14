@@ -70,6 +70,7 @@ struct Cpu {
     mine_plan: s32          // MP_*, kept for mine_t frames
     mine_t: s32
     shot_seen: bool         // the other's shot on its way was reacted to (once, whatever it holds)
+    plan: s32               // Seraph: what it does about that shot (SP_*: ward it, dive over it, block)
 }
 
 var cpu: [2]Cpu
@@ -240,6 +241,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
             c.chain_go = roll(c, if_else(landed, lv.chain, lv.chain / 2))
         }
         if c.chain_go && (cur_marks(i) & MARK_CANCEL) != 0 && fx[i].t % 2 == 0 {
+            if cpu_as_seraph(me.mech) { return seraph_chain(i, c, landed, fwd) }
             if me.mv == Mv.atk_n {
                 if me.mech == Mech.Doubleblade && fx[i].chain == 0 { return A }
                 return fwd | A
@@ -266,6 +268,8 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
     if me.mech == Mech.Twins && me.mv == Mv.sp_d && me.body == Mech.Twins && me.charge < c.charge_want { return B }
     // Shadow Sneak: B held while the shadow is still short of the other mech
     if cpu_as_shadow(me.mech) && me.mv == Mv.sp_f && dist > SH_SNEAK_STOP { return B }
+    // the Seraph Dive: B held (gliding on) while the other is further than the dive reaches
+    if cpu_as_seraph(me.mech) && me.mv == Mv.sp_f && dist > SR_DIVE_REACH { return B }
     if !actionable(i) {
         c.hold = 0
         c.hold_t = 0
@@ -290,8 +294,20 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         if roll(c, min(lv.block + 25, 95)) { return hold(c, R, 24) }
     }
     if seen && !c.decided {
-        // a jump coming in
-        if (op.mv == Mv.jump || op.mv == Mv.atk_air) && dist < 13.0 {
+        // Seraph's Judgement: its column falls wherever the other stands, so it is blocked on the
+        // flash at any distance, more often by a marked mech (MOVES.md, "The CPU (Seraph)")
+        if op.mv == Mv.super && has_judgement(op.mech) && ot < SR_COL_END {
+            c.decided = true
+            if roll(c, if_else(me.mark > 0, min(lv.block + 30, 95), lv.block)) { return hold(c, R, SR_COL_END + 2 - ot) }
+        }
+        // Seraph: Judgement on Beam's Reaction Prime, from anywhere
+        if cpu_as_seraph(me.mech) && op.mech == Mech.Beam && op.mv == Mv.sp_d && super_wise(i) {
+            c.decided = true
+            if roll(c, lv.punish) { return A | B }
+        }
+        // a jump coming in (Seraph's Ascension reaches about 5 m out: it waits until the jump is
+        // within SR_AA_RANGE)
+        if (op.mv == Mv.jump || op.mv == Mv.atk_air) && dist < 13.0 && !(cpu_as_seraph(me.mech) && dist > SR_AA_RANGE) {
             c.decided = true
             if roll(c, lv.aa) { return dir_bit(0) | UP | B }
             if roll(c, lv.block) { return hold(c, R, 30) }
@@ -310,6 +326,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         if roll(c, lv.punish) {
             if me.mech == Mech.Tank { return tank_punish(dist, fwd) }
             if me.mech == Mech.Shadow { return shadow_punish(dist, fwd) }
+            if cpu_as_seraph(me.mech) { return seraph_punish(i, c, dist, fwd) }
             if super_wise(i) && dist < 12.0 && roll(c, 50) { return A | B }
             if dist < jab_reach(me.body) + 1.0 { return A }    // its jab's own reach (mx-balance)
             if dist < tip(me.body) - 0.5 { return fwd | A }
@@ -320,6 +337,8 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
     let s = &fight.shot[j]
     if s.on && abs(s.x - me.x) < 12.0 && sgn(me.x - s.x) == sgn(s.vx) {
         // (once a shot even while it holds a walk: walking into it was a blind spot, mx-balance)
+        // Seraph: ward it, dive over it or block it, each at its moment (seraph_shot)
+        if cpu_as_seraph(me.mech) { return seraph_shot(i, c, lv, s, fwd) }
         if !c.decided || c.hold_t == 0 || !c.shot_seen {
             c.decided = true
             c.shot_seen = true
@@ -358,6 +377,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
     if me.mech == Mech.Tank { return tank_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Twins { return twins_neutral(i, c, lv, dist, fwd, back) }
     if cpu_as_shadow(me.mech) { return shadow_neutral(i, c, lv, dist, fwd, back) }
+    if cpu_as_seraph(me.mech) { return seraph_neutral(i, c, lv, dist, fwd, back) }
     // neutral: footsies around the tip of its forward attack
     let range = tip(me.body)
     if dist < tip(op.body) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
@@ -391,7 +411,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         return hold(c, fwd, 8)
     }
     if dist < range + 6.0 && roll(c, lv.jump) { return fwd | X }
-    if me.mech == Mech.Hero && dist > 14.0 && !fight.shot[i].on && roll(c, 25) { return B }
+    if me.mech == Mech.Hero && dist > 14.0 && !fight.shot[i].on && roll(c, if_else(ward_ready(other(i)), 10, 25)) { return B }
     if me.mech == Mech.Doubleblade && dist > 12.0 && roll(c, 12) { return B }
     if super_wise(i) && me.meter >= METER_BAR && dist < 14.0 && roll(c, 3) { return A | B }
     return hold(c, fwd, 10 + rnd_n(c, 20))
@@ -469,7 +489,7 @@ private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, b
     if dist > 7.0 && dist < 15.0 && (op.mv == Mv.walk_f || op.mv == Mv.jump) && roll(c, lv.poke) {
         return fwd | B
     }
-    if dist > 8.0 && safe && !fight.shot[i].on && roll(c, 45) {
+    if dist > 8.0 && safe && !fight.shot[i].on && roll(c, if_else(ward_ready(other(i)), 20, 45)) {
         c.charge_want = 0
         if dist > 20.0 && roll(c, 40) { c.charge_want = ORB_CHARGE_MAX }
         else if roll(c, 35) { c.charge_want = ORB_CHARGE_HALF + 4 }
@@ -669,10 +689,8 @@ private fn cpu_edge(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32) -> u3
 
 const SH_SNEAK_STOP: fixed = 4.5        // the Sneak's hold is let go this close (it erupts in reach)
 
-// Seraph plays Shadow's CPU (its chain, the Sneak, the mine, the bolt, the anti-air) until its own
-// moves land (mx-seraph, phase 2), but for a punish: Shadow's punish reaches with the talons, so
-// Seraph's fists use the general one (its jab's and lunge's own reach, from the data).
-private fn cpu_as_shadow(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
+// Shadow's CPU (Seraph has its own since mx-seraph-fight, at the end of this file).
+private fn cpu_as_shadow(m: Mech) -> bool { return m == Mech.Shadow }
 
 private fn shadow_punish(dist: fixed, fwd: u32) -> u32 {
     if dist < 6.0 { return A }
@@ -701,7 +719,7 @@ private fn shadow_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
     // a mine where the other must walk: laid in the open between them, or while it is down. A
     // mech with a shot keeps its distance and shoots (the Hero's wave clears a mine): against it
     // a mine in the open is time given away, so only while it is down (mx-balance)
-    let open_ok = !fires_shot(op.mech) || has_hex_bolt(op.mech)
+    let open_ok = !fires_shot(op.mech) || has_hex_bolt(op.mech) || has_mark(op.mech)
     if !mine && ((down && dist > 4.0) || (open_ok && dist > 8.0 && dist < 20.0 && !threat)) && roll(c, lv.special * 4) {
         return DOWN | B
     }
@@ -709,9 +727,10 @@ private fn shadow_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
     // (mx-balance: not inside the other's poke, where the bolt's 40 frames are a free hit, nor at a
     // mech with a stronger shot to answer it, the Hero's wave or Beam's charged orb: the bolt does
     // not win a projectile war, so against them the curse comes from the chain)
-    let beaten = fires_shot(op.mech) && !has_hex_bolt(op.mech)
+    let beaten = fires_shot(op.mech) && !has_hex_bolt(op.mech) && !has_mark(op.mech)
     let clear = dist > tip(op.body) + 2.0
-    if !fight.shot[i].on && !beaten && clear && dist < 24.0 && op.curse < 60 && !down && roll(c, 30 + lv.special * 2) {
+    let bolt_p = if_else(ward_ready(j), 12 + lv.special, 30 + lv.special * 2)    // fewer into a Wing Ward
+    if !fight.shot[i].on && !beaten && clear && dist < 24.0 && op.curse < 60 && !down && roll(c, bolt_p) {
         return B
     }
     // in front of its mine: step back behind it, so the other has to cross it
@@ -782,6 +801,11 @@ private fn mine_wary(i: s32, lv: *CpuLevel, p: u32) -> u32 {
         if (p & DOWN) != 0 { go = cpu_trav_d[me.body] }
         else if (p & fwd) != 0 { go = cpu_trav_f[me.body] }
     }
+    // the Seraph Dive passes over the floor: only its touchdown, 7 to 11 m on, sets a mine off
+    if cpu_as_seraph(me.mech) && (p & B) != 0 && (p & fwd) != 0 && (p & (UP | DOWN)) == 0 {
+        if ahead > SR_DIVE_LAND0 && ahead < SR_DIVE_LAND1 { return p & ~(fwd | B) }
+        return p
+    }
     if (p & A) != 0 && (p & fwd) != 0 && (p & DOWN) == 0 { go = cpu_trav_a[me.body] }
     if go < 0.0 || gap > go + MINE_WARY { return p }
     if c.mine_x != m.x || c.mine_t <= 0 {
@@ -808,6 +832,7 @@ private fn mine_wary(i: s32, lv: *CpuLevel, p: u32) -> u32 {
     }
     if c.mine_plan == MP_JUMP && gap < 2.5 {
         c.mine_t = 0
+        if cpu_as_seraph(me.mech) { return fwd | B }        // the Seraph Dive flies over it
         return fwd | X
     }
     return p & ~(fwd | A | B)
@@ -831,4 +856,152 @@ private fn shot_above(i: s32, c: *Cpu, lv: *CpuLevel, s: *Shot, fwd: u32) -> u32
     // the roll passes under it if it starts close enough that the shot is past when it stands
     if me.body == Mech.TwinA && far > 4.0 && far < 6.0 + abs(s.vx) * 20 && roll(c, lv.aa) { return DOWN | B }
     return hold(c, R, 20)
+}
+
+// ---- Seraph's CPU (mx-seraph-fight; MOVES.md, "The CPU (Seraph)"): mark the other with the bolt
+// from range, ward the shots it is sent and dive over the waves and mines, Ascension against a
+// jump, Judgement as the punish from anywhere (gladly on a marked mech), Heaven's Arc out of a
+// corner and off an open edge; up close, a boxer's footsies
+
+const SR_DIVE_REACH: fixed = 7.0        // the Dive's B is let go this close: the dive and the fist
+const SR_AA_RANGE: fixed = 9.0          // Ascension against a jump within this
+const SR_COL_END = 58                   // Judgement's column is out until this frame of the super
+const SR_WARD0 = 6                      // a shot is warded when it will touch in SR_WARD0..SR_WARD1
+const SR_WARD1 = 14                     // frames (the ward's 20 frames start 5 after the press)
+const SR_HOP0 = 19                      // a wave is dived over when it will touch in SR_HOP0..SR_HOP1
+const SR_HOP1 = 22                      // frames (the hop is clear of the floor 12 frames in)
+const SR_DIVE_LAND0: fixed = 6.5        // where a tapped Dive lands, ahead of the root
+const SR_DIVE_LAND1: fixed = 10.5
+const SR_MARK_LOW = 120                 // a mark this short is renewed
+const SP_BLOCK = 0
+const SP_WARD = 1
+const SP_DIVE = 2
+const SP_DONE = 3
+
+private fn cpu_as_seraph(m: Mech) -> bool { return m == Mech.Seraph }
+
+// Whether body j is a mech that could ward a shot now (a Seraph free to act): the others fire less.
+fn ward_ready(j: s32) -> bool { return has_ward(fight.f[j].mech) && actionable(j) }
+
+// The chain on contact: from the jab, Judgement on a marked mech, Ascension up close, else the
+// straight; from the straight, Judgement (gladly on a marked mech), the bolt to mark (or to renew
+// the mark on a hit), nothing more on a block.
+private fn seraph_chain(i: s32, c: *Cpu, landed: bool, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    let op = &fight.f[other(i)]
+    let marked = op.mark > SR_MARK_LOW
+    if me.mv == Mv.atk_n {
+        if landed && marked && super_wise(i) && roll(c, 50) { return A | B }
+        if landed && abs(op.x - me.x) < 4.5 && roll(c, 25) { return UP | B }
+        return fwd | A
+    }
+    if me.mv == Mv.atk_f {
+        if landed && super_wise(i) && roll(c, if_else(marked, 70, 25)) { return A | B }
+        if !marked || landed { return B }
+    }
+    return 0
+}
+
+private fn seraph_punish(i: s32, c: *Cpu, dist: fixed, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    let op = &fight.f[other(i)]
+    if super_wise(i) && roll(c, if_else(op.mark > 0, 80, 45)) { return A | B }   // anywhere on the stage
+    if dist < jab_reach(me.body) + 1.0 { return A }
+    if dist < tip(me.body) - 0.5 { return fwd | A }
+    if dist < 24.0 && roll(c, 80) { return fwd | B }                            // the Dive, held as far as it needs
+    return 0
+}
+
+// The other's shot on its way: once, a plan (the Dive over a wave at lv.aa, the ward at lv.special
+// x 5, else block), then each frame the press at its moment: the ward when the shot will touch in
+// SR_WARD0..SR_WARD1 frames, the Dive's hop in SR_HOP0..SR_HOP1, else block in time.
+private fn seraph_shot(i: s32, c: *Cpu, lv: *CpuLevel, s: *Shot, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    let tt = ((abs(s.x - me.x) - s.half - 1.6) / abs(s.vx)) as s32
+    if !c.shot_seen {
+        c.shot_seen = true
+        c.decided = true
+        c.hold = 0
+        c.hold_t = 0
+        c.plan = SP_BLOCK
+        let wave = s.y1 <= WAVE_H
+        if wave && tt >= SR_HOP0 && roll(c, lv.aa) { c.plan = SP_DIVE }
+        else if tt >= SR_WARD0 && roll(c, lv.special * 5) { c.plan = SP_WARD }
+    }
+    if c.plan == SP_WARD {
+        if tt > SR_WARD1 { return 0 }                   // wait for it
+        c.plan = SP_DONE
+        if tt >= SR_WARD0 { return DOWN | B }
+        return hold(c, R, 20)
+    }
+    if c.plan == SP_DIVE {
+        if tt > SR_HOP1 { return 0 }
+        c.plan = SP_DONE
+        if tt >= SR_HOP0 { return fwd | B }
+        return hold(c, R, 20)
+    }
+    if c.plan == SP_BLOCK {
+        if tt > 24 { return 0 }
+        c.plan = SP_DONE
+        return hold(c, R, min(tt + 8, 30))
+    }
+    if c.hold_t > 0 {
+        c.hold_t -= 1
+        return c.hold
+    }
+    return 0
+}
+
+private fn seraph_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, back: u32) -> u32 {
+    let me = &fight.f[i]
+    let j = other(i)
+    let op = &fight.f[j]
+    let threat = is_attack(op.mv) || op.mv == Mv.grab || fight.shot[j].on
+    let down = op.mv == Mv.knockdown || op.mv == Mv.getup || op.mv == Mv.hit_air
+    // Heaven's Arc out of a corner (its back within 6 m of a wall or a lip): the sides swap, and
+    // off an open edge the other goes over
+    if room_behind(i) < 6.0 && dist < 4.5 && grabbable(j) && roll(c, lv.grab + 25) { return Y }
+    // Judgement on a mech in a move anywhere on the stage (it cannot block the column in time), and
+    // on a marked mech standing in the open: the threat it must respect
+    if super_wise(i) && grounded(j) && !down {
+        if is_attack(op.mv) && roll(c, 40) { return A | B }
+        if op.mark > 90 && roll(c, 15) { return A | B }
+    }
+    // the bolt from outside the other's poke: to mark it, or to renew a mark running out; against a
+    // mech with a stronger shot (the Hero's wave, Beam's orbs) only while it is down or busy
+    let stronger = fires_shot(op.mech) && !has_hex_bolt(op.mech) && !has_mark(op.mech)
+    let clear = dist > tip(op.body) + 2.0
+    if clear && !fight.shot[i].on && !fight.shot[j].on && op.mark < SR_MARK_LOW && dist < 28.0
+        && (!stronger || down || is_attack(op.mv)) && roll(c, 20 + lv.special * 2) {
+        return B
+    }
+    // a shooter at range: stand and let it shoot (the ward answers), or walk in
+    if stronger && dist > 12.0 && roll(c, 25) { return hold(c, 0, 10 + rnd_n(c, 10)) }
+    // the Dive to close from mid range and far, when nothing is coming
+    if dist > tip(me.body) + 3.0 && dist < 22.0 && !threat && roll(c, lv.special * 3) { return fwd | B }
+    if dist < tip(op.body) + 2.0 && roll(c, lv.guard) { return hold(c, R, 16 + rnd_n(c, 20)) }
+    if dist < 5.0 {
+        if c.blocks_seen >= 1 && roll(c, lv.grab) { c.blocks_seen = 0; return Y }   // grabs beat block
+        let r = rnd_n(c, 100)
+        if r < 32 {
+            if dist < jab_reach(me.body) + 0.9 { return A }
+            return fwd | A                              // out of the short jab's reach: the straight
+        }
+        if r < 42 { return Y }
+        if r < 54 { return fwd | A }
+        if r < 60 { return DOWN | A }                   // the Reaping Kick
+        if r < 78 { return hold(c, back, 12) }
+        return hold(c, R, 10)
+    }
+    let range = tip(me.body)
+    if dist < range + 0.5 {
+        let r = rnd_n(c, 100)
+        if r < lv.poke { return fwd | A }
+        if r < lv.poke + 8 { return DOWN | A }
+        if r < lv.poke + 25 { return hold(c, back, 10) }
+        if r < lv.poke + 35 { return hold(c, R, 12) }
+        return hold(c, fwd, 8)
+    }
+    if dist < range + 6.0 && roll(c, lv.jump) { return fwd | X }
+    return hold(c, fwd, 10 + rnd_n(c, 16))
 }
