@@ -103,7 +103,7 @@ fn shadow_init() {
     shadow_in_fight = has_shadow_kit(fight.f[0].mech) || has_shadow_kit(fight.f[1].mech)
     for s in 0..2 { rift[s].on = false }
     for b in 0..4 { snare_t[b] = 0 }
-    if sh_found { return }
+    if sh_found || !shadow_in_fight { return }   // (read once, in the first fight with Shadow's rules)
     sh_found = true
     let h = find_mark(Mech.Shadow, Mv.sp_f, MARK_HIDE)
     let c = find_mark(Mech.Shadow, Mv.sp_f, MARK_CHARGE)

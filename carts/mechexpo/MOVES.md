@@ -1412,7 +1412,9 @@ with Shadow's moves as placeholders ([Phase 1](#phase-1-what-is-in-the-game-now)
 this section in three parts at once: the fight and the CPU, the animations, the effects and sound.
 Each part's list is at the end ([For the animators](#for-the-animators-seraph),
 [For the effects and sound](#for-the-effects-and-sound-seraph),
-[Engine work needed](#engine-work-needed-seraph)).
+[Engine work needed](#engine-work-needed-seraph)). The fight and the CPU are in (mx-seraph-fight):
+every rule below plays, from stand-in timings and boxes with this section's numbers wherever
+Seraph's animation is still Shadow's placeholder.
 
 Code name `Seraph` (`enum Mech`, index 8, appended after `Shadow`). The model is
 `models/seraph/make_seraph.py` (concept A, round 4b, 1,892 triangles): Shadow's skeleton and joint
@@ -1448,12 +1450,12 @@ Shadow's timing with the wings half opening at the top (to steady it) and foldin
 |---|---|---|---|---|---|---|---|---|
 | `atk_n` Jab | 3 | 2 | 12 | 17 | 50 | 15 / 11 | −3 / +1 | x 1.7–3.2, y 6.6–7.8 |
 | `atk_f` Lunging Straight | 12 | 4 | 20 | 36 | 105 | 25 / 18 | −6 / +1 | x 2.6–6.8, y 6.7–8.3 |
-| `atk_d` Reaping Kick | 10 | 4 | 22 | 36 | 85, knockdown | — / 16 | about −10 / KD | x 1.4–6.2, y 0–1.8 |
+| `atk_d` Reaping Kick | 10 | 4 | 22 | 36 | 85, knockdown | — / 16 | −10 / KD (+44) | x 1.4–6.2, y 0–1.8 |
 | `atk_air` Double-fist Dive | 7 | to landing | landing 8 | 26 | 85 | 19 / 14 | by height | x 0.5–3.6, y −1.0–2.4 (from the root, in the air) |
 
-(The on-block and on-hit columns of the jab and the lunge are Shadow's, measured with the same
-timing; the Reaping Kick's is estimated from the Fade Sweep's. All four want measuring with
-`tests/run.sh 17` once the animations land.)
+(The on-block and on-hit columns are measured with `tests/run.sh 17` against a standing Hero,
+from the stand-in timings above (mx-seraph-fight); KD (+44) is a knockdown, the attacker free 44
+frames before the other is up. Measure again once the animations land.)
 
 - **Jab** (`atk_n`): the game's fastest button with the Claw Jab (startup 3), and the chain's
   start. Shadow's timing and the reach phase 1 measured (the fist to 3.2 m), but **lower**: the
@@ -1493,13 +1495,15 @@ timing; the Reaping Kick's is estimated from the Fade Sweep's. All four want mea
 
 | Move | Startup | Active | Recovery | Total | Damage | Chip | Hitstun / blockstun | On block / hit |
 |---|---|---|---|---|---|---|---|---|
-| `sp_n` Mark of Judgement | 16 (fired on 17) | the bolt | 24 | 41 | 45, marks | 9 | 18 / 14 | about −11 / −7 at 6 m; safe far |
-| `sp_f` Seraph Dive | 28 (tapped) to 52 (held) | 4 | 22 | 54 to 78 | 110, knockdown | 22 | — / 16 | about −10 / KD |
-| `sp_u` Ascension | 7 | 8 | 28 | 43 | 120, knockdown | 24 | — / 14 | about −22 / KD |
+| `sp_n` Mark of Judgement | 16 (fired on 17) | the bolt | 24 | 41 | 45, marks | 9 | 18 / 14 | −11 / −7 at 6 m; safe far |
+| `sp_f` Seraph Dive | 28 (tapped) to 52 (held) | 4 | 22 | 54 to 78 | 110, knockdown | 22 | — / 16 | −10 / KD (+50) |
+| `sp_u` Ascension | 7 | 8 | 28 | 43 | 120, knockdown | 24 | — / 14 | −22 / KD (+48) |
 | `sp_d` Wing Ward | 4 | the ward, 20 | 16 | 40 (12 after a reflect) | — | — | — | — |
 
-(The on-block column is estimated from the moves with the same recovery: the Hex Bolt's −11 / −7,
-the Sneak's −10, the Rising Arc's and Eclipse Rise's −22. To measure.)
+(Measured with `tests/run.sh 17` against a standing Hero, from the stand-in timings: the bolt from
+6 m, the Dive from 7 m (where the glide meets the Hero after a frame and dives onto it), Ascension
+from 3.6 m. They match the estimates from the moves with the same recovery: the Hex Bolt's,
+the Sneak's, Eclipse Rise's.)
 
 **Against the defences** (the details are in each move's section):
 
@@ -1720,10 +1724,13 @@ slams it down on the far side. **The sides swap**: Phantom Grip's swap, over ins
 - **With the other's back to a wall** (Seraph cornering it), the throw takes it out of the corner
   and leaves Seraph in it: the swap is the point of the throw, not damage. Cornering, Seraph should
   chain instead.
-- **With Seraph's back to an open edge**, the lip counts as a wall for the carry (the other is
-  held over the deck and Seraph moves forward as at a wall); the release then carries the other
-  its last 1.3 m over the lip: **within about 5 m of an open edge, Heaven's Arc rings the other
-  out**, as the Vault Throw does from there.
+- **With Seraph's back to an open edge**, the edge counts as a wall for the carry, but the other
+  is held over the deck up to the edge itself (its root at most at the edge, not its push box
+  short of it, as a wall's limit is) and Seraph moves forward as at a wall; the release then
+  carries the other its last 1.3 m over the edge: **within about 5 m of an open edge, Heaven's Arc
+  rings the other out**, as the Vault Throw does from there (scenario 179: 1 m from the edge it
+  rings out, 6 m from it the other lands 1.6 m short). Held at the push box's lip instead, the
+  1.3 m bounce would leave every mech on the deck (their push boxes are 1.4 to 2.4 m).
 - Thrown mechs are not hittable, and neither is Seraph during the throw (every throw's rule).
   120 damage: the Vault Throw's; less than the Hero's 140 and Tank's 150, more than the Grip's 110.
 
@@ -1756,7 +1763,7 @@ effect's); the stage brightens toward white-gold. Then:
   does not stack with the antimatter debt's 25 % (the owner, 2026-10-14): a marked mech in debt
   takes the larger of the two, ×1.5, so 420 at most.
 - **Chip**: 70 through a block (which can finish a round), **not raised by the mark**: the mark
-  rewards landing it, and blocking is the answer. Blockstun 20; about −23 on block, at whatever
+  rewards landing it, and blocking is the answer. Blockstun 20; −24 on block (measured), at whatever
   distance the column fell. From far, little can punish that (the Momentum Drive, the Raikō
   Overload, Antimatter Rend, a held Sneak or Dive); up close, anything.
 - Not parried (no super is: the owner's rule), never absorbed by Tank's armour (no super is), not
@@ -1775,12 +1782,13 @@ Jab or the Lunging Straight**: the column falls 8 frames after the freeze, insid
 Wing Ward can be cancelled into (after a blocked Lunging Straight, against a mech that answers with
 a shot).
 
-### Frame advantage (estimated)
+### Frame advantage (measured)
 
-Until measured (`tests/run.sh 17`, against a standing Hero, once the animations land): Jab −3 on
-block / +1 on hit, Lunging Straight −6 / +1 (both Shadow's, the same timing), Reaping Kick about
-−10, Mark of Judgement about −11 / −7 at 6 m (safe from further out), Seraph Dive about −10,
-Ascension about −22, Judgement about −23.
+`tests/run.sh 17` (mx-seraph-fight), against a standing Hero, from the stand-in timings: Jab −3 on
+block / +1 on hit, Lunging Straight −6 / +1, Reaping Kick −10 / knockdown (+44), Mark of Judgement
+−11 / −7 at 6 m (safe from further out), Seraph Dive −10 / knockdown (+50) from 7 m, Ascension −22
+/ knockdown (+48), Judgement −24 on block with the column 8 m off (knockdown, +43, on a hit). The
+Wing Ward has no contact. To measure again once the animations land.
 
 ### Balance intent
 
@@ -1819,26 +1827,42 @@ little heavier.
 - **Seraph** (the mirror): the bolt rally, each Ward sending it back quicker; whoever wards last
   marks the other.
 
+**Measured, CPU against CPU** (mx-seraph-fight; `tests/balance/run.sh 8 B`, level 2 against level
+2, 10 matches a pairing on the hangar, the sides swapped every match, Seraph played from its
+stand-ins): Seraph won 13 to 14 of the 60 matches against the other six base mechs (0 to 4 of 10
+against each over four runs, 0 or 1 against the Twins); Shadow, measured the same way, won 22 of
+50. The gap is mostly the super: in 10 matches Shadow's Total Eclipse, from zero on the antimatter
+meter, came 36 to 57 times and dealt 6,300 to 12,800, where Judgement, a full kinetic bar, came 15
+to 19 times and dealt 3,700 to 4,100 (7 times against Shadow, whose Siphon takes its meter); and
+Shadow Sneak lands far more than the Seraph Dive (the CPUs block a Dive they see coming). The
+numbers are the owner's to tune in play.
+
 ### The CPU (Seraph)
 
-Seraph's own CPU replaces `cpu_as_shadow` for it (`cpu.akr`): a `seraph_neutral` like
-`shadow_neutral`, and lines in `cpu_think` where Shadow has them:
+Seraph's own CPU replaces `cpu_as_shadow` for it (`cpu.akr`, built in mx-seraph-fight: its
+section at the end, `seraph_neutral`, `seraph_chain`, `seraph_punish` and `seraph_shot`), with
+lines in `cpu_think` where Shadow has them:
 
 - **Neutral, far** (outside the other's forward attack plus 2 m): the Mark bolt when the other is
   not marked (or the mark has under 2 s left) and has no shot out; against a mech with a stronger
   shot, only while it is down or busy. Against the Hero and Beam at range, wait for their shot and
-  **ward it** (down + B when the shot will touch in 5 to 20 frames: the ward's 4 frames of
-  startup, then its 20) at its `lv.special` rate, else block it.
-- **A wave on its way**: the Dive over it when it is 13 to 24 frames out (the hop clears 3 m on
-  frame 12) at `lv.aa`, else ward or block. An orb or a bolt: ward, block or go under
-  (none of Seraph's moves go under).
+  **ward it** (down + B when the shot will touch in 6 to 14 frames: the ward's 4 frames of
+  startup, then its 20, with a margin) at `lv.special` × 5 (15 % at level 0 to 60 % at level
+  3; `lv.special` alone, 3 to 12 %, would leave the ward unused), else block it. From mid range
+  and far, the Dive to close when nothing is coming (`lv.special` × 3).
+- **A wave on its way**: the Dive over it when it will touch in 19 to 22 frames, at `lv.aa`, else
+  ward or block. (Not 13 to 24: the hop carries Seraph 1.5 m toward the wave before its root
+  clears 3 m on frame 12, so a wave closer than 19 frames meets the legs.) An orb or a bolt:
+  ward or block (none of Seraph's moves go under).
 - **The Dive held**: B held while the distance to the other is more than about 7 m (the dive's
   1.8 m and the fist's 5.5 m): the glide stops at the other anyway.
 - **Chain ender**: the Mark bolt if the other is not marked; Judgement if marked and the meter is
-  full (`super_wise`); else the Ascension from a Jab up close, or nothing on block.
+  full (`super_wise`; on an unmarked mech now and then too); else the Ascension from a Jab up
+  close, or nothing on block. Up close the jab only within its reach (else the straight).
 - **Anti-air**: up + B against a jump coming within about 9 m.
 - **Judgement**: on a whiff or an unsafe move anywhere on the stage (not only within 12 m, the
-  general punish's range), preferring a marked mech; on Beam's Reaction Prime; never on a mech
+  general punish's range), preferring a marked mech; on any move under way at a decision in
+  neutral (the column falls before it can block); on Beam's Reaction Prime; never on a mech
   knocked down or getting up through the column's frames.
 - **Throws**: the general rule, and Heaven's Arc whenever its back is within 6 m of a wall (the
   corner escape) or of an open edge with the other in reach (the ring-out).
@@ -1999,9 +2023,11 @@ contact; power: the shot's strength), `Column` (side: Seraph's; x: the lock). `g
 
 ### Engine work needed (Seraph)
 
-What the current code cannot do yet, and where it plugs in. The rule of phase 1 holds: Shadow's
-code asks `seraph.akr`'s predicates, never Seraph's name, so each special moves to Seraph's own
-code by taking Seraph out of one predicate (`seraph.akr`):
+What the code could not do in phase 1, and where it plugs in. Items 1 to 10 and 12, and the
+cover's `COVER_POSE` of item 11, are done (mx-seraph-fight); item 11's drawing and sound are the
+effects' part. The rule of phase 1 holds: Shadow's code asks `seraph.akr`'s predicates, never
+Seraph's name, so each special moved to Seraph's own code by taking Seraph out of one predicate
+(`seraph.akr`):
 
 | Predicate (phase 1: Shadow and Seraph) | Phase 2 | Seraph's own, in its place |
 |---|---|---|
@@ -2063,13 +2089,15 @@ code by taking Seraph out of one predicate (`seraph.akr`):
    once; the Parry and the armour already skip supers.
 8. **The marked bonus** (`fighter.akr`'s `resolve()`, beside the Total Eclipse line): for
    `has_judgement` and `mv == super`, `h.dmg = h.dmg × 3 / 2` when `fight.f[j & 1].mark > 0`; the
-   chip is left alone. `struck()` scales it for the combo, `meter_damage()` for debt, after.
+   chip is left alone. `struck()` scales it for the combo and skips `meter_damage()`'s debt for
+   it (`Hit.nodebt`, set by `seraph_judged()`): the bonuses do not stack, the larger applies.
 9. **Seraph's tables** (`seraph.akr`): its own `seraph_hit()` (the numbers of this section:
    jab 50, straight 105, kick 85 knockdown, air 85, bolt 45 / chip 9, Dive 110 / 22, Ascension
    120 / 24, throw 120, super 280 / 70), its own stand-ins (`seraph_tm`, `seraph_root`,
    `seraph_marks`, `seraph_boxes`: this section's timings, so the fight plays before the
    animations land), and `SERAPH_MOVES` (Jab, Lunging Straight, Reaping Kick, Double-fist Dive,
-   Mark of Judgement "B (marks: Judgement +50 %)", Seraph Dive "FWD + B (hold: farther)", Ascension,
+   Mark of Judgement "B (mark: Judgement +50%)" (as "B (marks: Judgement +50 %)" the row is 4 px wider
+   than the move list's 234), Seraph Dive "FWD + B (hold: farther)", Ascension,
    Wing Ward "DOWN + B (sends shots back)", Heaven's Arc "Y (swaps sides)", Judgement "A + B, full
    meter").
 10. **The CPU** (`cpu.akr`): [The CPU (Seraph)](#the-cpu-seraph); `cpu_as_shadow()` becomes
@@ -2090,8 +2118,19 @@ code by taking Seraph out of one predicate (`seraph.akr`):
 
 ### Phase 1: what is in the game now
 
-Phase 1 (mx-seraph) put Seraph in the game with Shadow's moves as placeholders; until each part of
-phase 2 lands, this is what plays:
+Phase 2's fight and CPU (mx-seraph-fight) are in: Seraph plays its own moves as this section has
+them, its rules in `seraph.akr` and its CPU at the end of `cpu.akr`, and the predicates of
+[Engine work needed](#engine-work-needed-seraph) give Shadow's specials to Shadow alone (Seraph
+keeps `has_dive`). Its animations are still Shadow's placeholders until the animators' part
+lands; meanwhile `seraph.akr` plays a move from its stand-in data (this section's timings, boxes,
+marks and root motion) whenever the move's animation is still a placeholder, which it tells from
+the data: a move that hides the mech, a Wing Ward without `ward` frames, a length more than 2
+frames off this section's, hit boxes more than 0.6 m off the design (or more than one hit), the
+bolt timed exactly as the Hex Bolt, or a guard (the idle, the walks, the crouch, the block)
+whose hurt boxes reach more than 4.5 m in front (Shadow's stance holds its claws 6.7 m out; Seraph's
+guard holds its fist about 3 m out). Each of Seraph's own animations is used as soon as it
+lands. The drawing is the placeholders' meanwhile (the Dive draws Shadow's Sneak, hidden in its
+sink). The rest of this list is phase 1's record, with what changed in phase 2 said:
 
 - **Real**: the model and rig, the roster row (SERAPH, MR-02, Momentum's emblem, stats `0x2323`:
   power 2, speed 3, reach 2, armour 3; 13.5 m to the top of the halo; the blurb "PALADIN:
@@ -2106,7 +2145,8 @@ phase 2 lands, this is what plays:
   (`seraph_hit` returns `shadow_hit`); the specials and the super are Shadow's (the six
   predicates, all true for Seraph); the CPU plays it as Shadow (`cpu_as_shadow`, with the general
   punish); the fists leave no trails; the bolt's sound is Shadow's; the training move list is
-  Shadow's under fist names.
+  Shadow's under fist names. (Phase 2's fight replaced the hits, the specials, the super, the CPU
+  and the move list; the animations, the trails and the sounds are the other two parts'.)
 - **The arcade**: Shadow's final is Seraph ("MOMENTUM ROBOTICS PRESENTS ITS COMPETING PRODUCT"),
   Seraph's final is Shadow (defending its title); Seraph's grey copy is packed as every body's is.
 
