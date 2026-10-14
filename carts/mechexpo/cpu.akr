@@ -85,13 +85,22 @@ var cpu_trav_a: [len(Mech)]fixed
 fn cpu_init(seed: s32) {
     cpu[0] = Cpu { rng: (seed as u32) * 2654435761 + 1 }
     cpu[1] = Cpu { rng: (seed as u32) * 40503 + 977 }
-    // the reaches of the mechs in this fight (fight_init set them; the Twins' split body too)
+    // the reaches of the mechs in this fight (fight_init set them; the Twins' split body too),
+    // read once a mech: the data does not change, and the frame a fight starts on has little to spare
     for i in 0..2 {
         let m = fight.f[i].mech
-        cpu_tip[m] = reach_of(m, Mv.atk_f)
-        if m == Mech.Twins { cpu_tip[Mech.TwinA] = reach_of(Mech.TwinA, Mv.atk_f) }
+        tip_read(m)
+        if m == Mech.Twins { tip_read(Mech.TwinA) }
     }
     if stage_has_open(stage_now()) { cpu_edge_init() }     // mx-stages: the open edge
+}
+
+var cpu_tip_read: [len(Mech)]bool       // cpu_tip read (tip_read)
+
+private fn tip_read(m: Mech) {
+    if cpu_tip_read[m] { return }
+    cpu_tip[m] = reach_of(m, Mv.atk_f)
+    cpu_tip_read[m] = true
 }
 
 // The furthest a move's hit boxes reach ahead of the root, with its root motion.

@@ -3454,6 +3454,71 @@ private fn sr_reach(m: Mech, mv: Mv) -> fixed {
     return r
 }
 
+// Whether one of Seraph's moves is still a placeholder of Shadow's on Seraph's rig (phase 1), told
+// from the animation data (the fight played such a move from seraph.akr's stand-in data until phase
+// 2's animations landed; now every move is Seraph's own, and scenarios 160 and 161 assert it): it
+// hides the mech (Seraph never vanishes), the Wing Ward has no `ward` frames, its length is more
+// than 2 frames off the stand-in's, its hit boxes are more than SV_BOX_TOL off the design's far or
+// low edge (or it hits more than once), the bolt is timed exactly as the Hex Bolt, or a guard's
+// hurt boxes reach past SV_GUARD_REACH (Shadow's stance, the claws held out 6.7 m in front;
+// Seraph's guard holds its fist about 3 m out).
+const SV_OWN_MVS: [16]Mv = [Mv.atk_n, Mv.atk_f, Mv.atk_d, Mv.atk_air, Mv.sp_n, Mv.sp_f, Mv.sp_u, Mv.sp_d,
+                            Mv.grab, Mv.throw, Mv.super, Mv.idle, Mv.walk_f, Mv.walk_b, Mv.crouch, Mv.block]
+const SV_GUARD_REACH: fixed = 4.5
+const SV_BOX_TOL: fixed = 0.6
+
+private fn sv_placeholder(mv: Mv) -> bool {
+    let m = Mech.Seraph
+    if anim_standin(m, mv) { return true }
+    let t = seraph_tm(mv)
+    let n = anim_len(m, mv)
+    var bx: Boxes
+    if is_neutral(mv) {
+        anim_boxes(m, mv, 0, &bx)
+        for k in 0..bx.n {
+            if bx.b[k].kind == BOX_HURT && bx.b[k].x1 > SV_GUARD_REACH { return true }
+        }
+        return false
+    }
+    if abs(n - t.len) > 2 { return true }
+    var ward = false
+    var rel = -1
+    for f in 0..n {
+        let k = anim_marks(m, mv, f)
+        if (k & MARK_HIDE) != 0 { return true }
+        if (k & MARK_WARD) != 0 { ward = true }
+        if (k & MARK_RELEASE) != 0 && rel < 0 { rel = f }
+    }
+    if mv == Mv.sp_d && !ward { return true }
+    if mv == Mv.sp_n {
+        // the Hex Bolt's timing exactly: Shadow's bolt
+        return n == anim_len(Mech.Shadow, mv) && rel == sv_anim_mark(Mech.Shadow, mv, MARK_RELEASE)
+    }
+    if t.a0 < 0 { return false }
+    var x1 = -99.0
+    var y0 = 99.0
+    for f in 0..n {
+        anim_boxes(m, mv, f, &bx)
+        for k in 0..bx.n {
+            let b = &bx.b[k]
+            if b.kind != BOX_HIT { continue }
+            if b.hit > 0 { return true }
+            x1 = max(x1, b.x1)
+            y0 = min(y0, b.y0)
+        }
+    }
+    if x1 < -90.0 { return true }               // no hit box at all
+    return abs(x1 - t.hx1) > SV_BOX_TOL || abs(y0 - t.hy0) > SV_BOX_TOL
+}
+
+private fn sv_anim_mark(m: Mech, mv: Mv, mark: u32) -> s32 {
+    for f in 0..anim_len(m, mv) {
+        if (anim_marks(m, mv, f) & mark) != 0 { return f }
+    }
+    return -1
+}
+
+
 // One attack by side i from distance d: restarted there, the press two frames in. Whether it
 // landed is read once the move is over.
 private fn sr_try(d: fixed, i: s32, b: u32) {
@@ -3504,6 +3569,7 @@ private fn sr_check() {
                 assert(meter_power(Mech.Seraph) == Power.Kinetic, "Seraph's meter is not kinetic")
                 assert_eq(AK_NPART[Mech.Seraph], len(Part), "Seraph's frames do not hold its wings and halo")
                 assert_eq(AK_NPART[Mech.Shadow], Part.wing_l as s32, "Shadow's frames hold parts it has not")
+                for k in 0..len(SV_OWN_MVS) { assert(!sv_placeholder(SV_OWN_MVS[k]), "a move of Seraph's is still Shadow's placeholder") }
                 let jab = sr_reach(Mech.Seraph, Mv.atk_n)
                 let lunge = sr_reach(Mech.Seraph, Mv.atk_f)
                 print("the fists reach ")

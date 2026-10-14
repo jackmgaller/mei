@@ -2149,18 +2149,17 @@ Seraph's name, so each special moved to Seraph's own code by taking Seraph out o
 ### Phase 1: what is in the game now
 
 Phase 2's fight and CPU (mx-seraph-fight) are in: Seraph plays its own moves as this section has
-them, its rules in `seraph.akr` and its CPU at the end of `cpu.akr`, and the predicates of
-[Engine work needed](#engine-work-needed-seraph) give Shadow's specials to Shadow alone (Seraph
-keeps `has_dive`). Its animations are still Shadow's placeholders until the animators' part
-lands; meanwhile `seraph.akr` plays a move from its stand-in data (this section's timings, boxes,
-marks and root motion) whenever the move's animation is still a placeholder, which it tells from
-the data: a move that hides the mech, a Wing Ward without `ward` frames, a length more than 2
-frames off this section's, hit boxes more than 0.6 m off the design (or more than one hit), the
-bolt timed exactly as the Hex Bolt, or a guard (the idle, the walks, the crouch, the block)
-whose hurt boxes reach more than 4.5 m in front (Shadow's stance holds its claws 6.7 m out; Seraph's
-guard holds its fist about 3 m out). Each of Seraph's own animations is used as soon as it
-lands. The drawing is the placeholders' meanwhile (the Dive draws Shadow's Sneak, hidden in its
-sink). The rest of this list is phase 1's record, with what changed in phase 2 said:
+them, its rules in `seraph.akr` and its CPU at the end of `cpu.akr`, and the predicates of [Engine
+work needed](#engine-work-needed-seraph) give Shadow's specials to Shadow alone (Seraph keeps
+`has_dive`). Its animations are its own since the animators' part landed; until then `seraph.akr`
+played a move from its stand-in data (this section's timings, boxes, marks and root motion) whenever
+the move's animation was still a placeholder, which it told from the data (now the tests do:
+`sv_placeholder` in `tests/harness.akr`, asserted by scenarios 160 and 161): a move that hides the
+mech, a Wing Ward without `ward` frames, a length more than 2 frames off this section's, hit boxes
+more than 0.6 m off the design (or more than one hit), the bolt timed exactly as the Hex Bolt, or a
+guard (the idle, the walks, the crouch, the block) whose hurt boxes reach more than 4.5 m in front
+(Shadow's stance holds its claws 6.7 m out; Seraph's guard holds its fist about 3 m out). The rest
+of this list is phase 1's record, with what changed in phase 2 said:
 
 - **Real**: the model and rig, the roster row (SERAPH, MR-02, Momentum's emblem, stats `0x2323`:
   power 2, speed 3, reach 2, armour 3; 13.5 m to the top of the halo; the blurb "PALADIN:

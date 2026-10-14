@@ -277,10 +277,13 @@ What is real and what is still Shadow's:
   `has_over_throw` and `has_judgement`. `enum Ev` gains `Mark`, `Reflect` and `Column`
   (appended). Its numbers are a row of `STATS` (1,000 health, a walk of 0.080 m a frame forward
   and 0.064 back, the kinetic meter) and its names a row of `ROSTER`.
-- **Its placeholders:** until a move's own animation lands, the fight plays it from
-  `seraph.akr`'s stand-in data (`ser_std`, filled by `seraph_init()` when a Seraph fights, tells
-  a placeholder of Shadow's from the data: [MOVES.md](MOVES.md#phase-1-what-is-in-the-game-now);
-  `moves.akr`'s `use_standin` reads it); the drawing is the placeholder's. Still to come:
+- **Its placeholders:** none since its own animations landed: the fight plays every move from
+  the animation data, as every other mech's (`seraph.akr`'s stand-in data serves only the moves
+  the export marks as stand-ins). Telling a placeholder of Shadow's from the data
+  ([MOVES.md](MOVES.md#phase-1-what-is-in-the-game-now)) was done at `fight_init` until then, and
+  cost the first frame of a fight with Seraph about 240,000 cycles (ladder scenario 118's final
+  went late); it is now the tests' (`sv_placeholder` in `tests/harness.akr`: scenarios 160 and
+  161 assert that no move of Seraph's is one). Still to come:
   `COVER_POSE` in `cover.akr` (it holds frame 119 of Shadow's win), and the halo's glow dimmed
   while Seraph lies (MOVES.md's effects table: the halo is an emissive part, so it needs a dimmed
   palette or mesh in the drawing, not a sprite).

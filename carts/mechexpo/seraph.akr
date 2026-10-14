@@ -102,7 +102,6 @@ const SER_CHARGE = 25               // the glide's last frame: held while B is h
 const SER_WARD0 = 4                 // the `ward` frames
 const SER_WARD1 = 23
 const SER_LOCK = 40                 // Judgement's lock: the first frame after the flash
-const SER_BOX_TOL: fixed = 0.6      // an animation's hit box this far off the design is a placeholder's
 
 var judge_x: [2]fixed               // each side's Judgement: where its column falls (world x)
 var judge_on: [2]bool               // locked, this super
@@ -113,7 +112,6 @@ var ser_arc_shift: [2]fixed         // and how far its wing beats carry it forwa
 
 // The frames the rules need, found once (ser_find): the stand-ins' or the animations'.
 var ser_found: bool
-var ser_std: [len(Mv)]bool          // a move still played from the stand-in data (seraph_standin)
 var ser_glide0: s32
 var ser_charge: s32
 var ser_dive0: s32
@@ -134,7 +132,7 @@ fn seraph_gliding(i: s32) -> bool {
     return fx[i].t >= ser_glide0 && fx[i].t < ser_dive0
 }
 
-// fight_init: whether a side has Seraph's rules; no marks, no columns.
+// fight_init: whether a side has Seraph's rules; its frames (once); no marks, no columns.
 fn seraph_init() {
     ser_in_fight = has_seraph_kit(fight.f[0].mech) || has_seraph_kit(fight.f[1].mech)
     if ser_in_fight { ser_find() }
@@ -149,37 +147,19 @@ fn seraph_round() {
     }
 }
 
-// ---- which moves still stand in (moves.akr's use_standin reads ser_std for Seraph)
+// ---- the frames the rules need, read from the data the fight plays (mv_*) once
 //
-// Every move of Seraph's has an animation file, but until each is made it is Shadow's on Seraph's
-// rig (anims/seraph/, phase 1), whose timing and boxes are Shadow's moves': the Sneak, the mine,
-// the Grip, Total Eclipse. Such a placeholder is played from the stand-in data below instead
-// (this section's timings and boxes; the drawing is still the placeholder's), and Seraph's own
-// animation is used as soon as it lands. A move's animation is a placeholder when it hides the
-// mech (Seraph never vanishes), when the Wing Ward has no `ward` frames, when its length is more
-// than 2 frames off this section's, when its hit boxes are more than SER_BOX_TOL off the design's
-// far or low edge (or it hits more than once), or when the bolt is timed exactly as the Hex Bolt.
-// The guard's moves (the idle, the walks, the crouch, the block) stand in while they are Shadow's
-// stance, the claws held out 6.7 m in front (Seraph's guard holds its fist about 3 m out): the
-// Wing Ward's 20 frames could not meet a slow shot that touches a hurt box reaching that far.
-
-fn seraph_standin(mv: Mv) -> bool {
-    ser_find()
-    return ser_std[mv]
-}
-
-const SER_OWN_MVS: [16]Mv = [Mv.atk_n, Mv.atk_f, Mv.atk_d, Mv.atk_air, Mv.sp_n, Mv.sp_f, Mv.sp_u, Mv.sp_d,
-                             Mv.grab, Mv.throw, Mv.super, Mv.idle, Mv.walk_f, Mv.walk_b, Mv.crouch, Mv.block]
-const SER_GUARD_REACH: fixed = 4.5  // a guard whose hurt boxes reach further in front is Shadow's
+// Every move of Seraph's is its own animation now (phase 2's animations: anims/seraph/), so the
+// fight plays each from the animation data, as every other mech's; the stand-in data below is for
+// the moves the export marks as stand-ins (anim_standin: the Twins' combine and split). Phase 1's
+// placeholders (Shadow's moves on Seraph's rig) were told from the data at fight_init; that scan
+// cost the first frame of a fight with Seraph about 240,000 cycles, so it is now the test
+// scenarios' (tests/harness.akr's sv_placeholder, asserted by scenarios 160 and 161 for every
+// move).
 
 private fn ser_find() {
     if ser_found { return }
     ser_found = true
-    for k in 0..len(SER_OWN_MVS) {
-        let mv = SER_OWN_MVS[k]
-        ser_std[mv] = ser_placeholder(mv)
-    }
-    // the frames, from the data the fight plays (mv_*: the stand-ins' or the animations')
     ser_charge = find_mark(Mech.Seraph, Mv.sp_f, MARK_CHARGE)
     ser_glide0 = SER_GLIDE0
     if ser_charge < 0 { ser_charge = SER_CHARGE }
@@ -200,57 +180,6 @@ private fn ser_find() {
             break
         }
     }
-}
-
-private fn ser_placeholder(mv: Mv) -> bool {
-    let m = Mech.Seraph
-    if anim_standin(m, mv) { return true }
-    let t = seraph_tm(mv)
-    let n = anim_len(m, mv)
-    var bx: Boxes
-    if is_neutral(mv) {
-        anim_boxes(m, mv, 0, &bx)
-        for k in 0..bx.n {
-            if bx.b[k].kind == BOX_HURT && bx.b[k].x1 > SER_GUARD_REACH { return true }
-        }
-        return false
-    }
-    if abs(n - t.len) > 2 { return true }
-    var ward = false
-    var rel = -1
-    for f in 0..n {
-        let k = anim_marks(m, mv, f)
-        if (k & MARK_HIDE) != 0 { return true }
-        if (k & MARK_WARD) != 0 { ward = true }
-        if (k & MARK_RELEASE) != 0 && rel < 0 { rel = f }
-    }
-    if mv == Mv.sp_d && !ward { return true }
-    if mv == Mv.sp_n {
-        // the Hex Bolt's timing exactly: Shadow's bolt
-        return n == anim_len(Mech.Shadow, mv) && rel == find_anim_mark(Mech.Shadow, mv, MARK_RELEASE)
-    }
-    if t.a0 < 0 { return false }
-    var x1 = -99.0
-    var y0 = 99.0
-    for f in 0..n {
-        anim_boxes(m, mv, f, &bx)
-        for k in 0..bx.n {
-            let b = &bx.b[k]
-            if b.kind != BOX_HIT { continue }
-            if b.hit > 0 { return true }
-            x1 = max(x1, b.x1)
-            y0 = min(y0, b.y0)
-        }
-    }
-    if x1 < -90.0 { return true }               // no hit box at all
-    return abs(x1 - t.hx1) > SER_BOX_TOL || abs(y0 - t.hy0) > SER_BOX_TOL
-}
-
-private fn find_anim_mark(m: Mech, mv: Mv, mark: u32) -> s32 {
-    for f in 0..anim_len(m, mv) {
-        if (anim_marks(m, mv, f) & mark) != 0 { return f }
-    }
-    return -1
 }
 
 // ---- each frame (fight_tick, outside the freezes): the marks run down on frames of play
@@ -510,7 +439,7 @@ fn seraph_hit(mv: Mv) -> Hit {
 }
 
 // ---- the stand-in timings, boxes, marks and root motion (MOVES.md's tables, from 0), for the
-// moves whose animation is still a placeholder (seraph_standin)
+// moves the export marks as stand-ins (anim_standin)
 
 fn seraph_tm(mv: Mv) -> Tm {
     return match mv {
