@@ -69,7 +69,7 @@ fn input_pad(n: s32) -> u32 {
     if st != St.Fight { return 0 }
     let p = cpu_pad(n, 2)
     if GM_BUDGET && n == 1 { return p & ~L }        // the Twins stay split: three bodies
-    if GM_BUDGET && n == 0 && fr % 300 >= 2 && fr % 300 < 40 && fight.f[0].super_ok && actionable(0) {
+    if GM_BUDGET && n == 0 && fr % 300 >= 2 && fr % 300 < 150 && fight.f[0].super_ok && actionable(0) {
         return A | B
     }
     return p

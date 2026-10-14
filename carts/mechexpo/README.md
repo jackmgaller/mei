@@ -268,7 +268,8 @@ What is real and what is still Shadow's:
   from `fighter.akr`'s advance); the Wing Ward's reflect (`seraph_reflect`, from `shot_try`
   before the Parry's test, on the `ward` frames: `MARK_WARD` in `anim.akr`), which moves the shot
   to Seraph's slot (`Shot.refl`); Heaven's Arc (`seraph_hold`, from `throw_tick`; the victim plays
-  `thrown_vault`); Judgement's lock (`judge_x`, on the first frame after the flash), its column
+  `thrown_vault`); Judgement's lock (`judge_x`, following the other's root for `SER_FOLLOW`, 8
+  frames, after the flash, then locked: the balance pass, 2026-10-14), its column
   (`seraph_column_box`, from `load_boxes`) and its x 1.5 on a marked mech (`seraph_judged`, from
   `resolve`; `Hit.nodebt` keeps the antimatter debt's 25 % from stacking with it)), and
   Seraph's CPU at the end of `cpu.akr`. Shadow's rules ask the predicates `has_hex_bolt`,

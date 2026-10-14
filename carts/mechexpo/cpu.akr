@@ -348,7 +348,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
             if roll(c, lv.aa) { return dir_bit(0) | UP | B }
             if roll(c, lv.block) { return hold(c, R, 30) }
         }
-        // an attack starting in range (Gamma's ray reaches 16 m: its dig-in is one out to there)
+        // an attack starting in range (Gamma's ray reaches 13 m: its dig-in is one out to there)
         let ray = gamma_ray_starting(j)
         var reach = tip(op.body) + 2.0
         if ray { reach = GM_RAY_X1 + 2.0 }
@@ -1086,13 +1086,13 @@ private fn seraph_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
 }
 
 // ---- Gamma's CPU (mx-gamma-fight; MOVES.md, "The CPU (Gamma)"): hold the middle with the Atomic
-// Ray (at a mech walking in, jumping in or recovering, within its 16 m, the gun under 60) and let
+// Ray (at a mech walking in, jumping in or recovering, within its 13 m, the gun under 60) and let
 // go when the other is pushed out of it or before the gun vents (level 0 and the novice hold it to
 // the vent); the Rod Shot beyond the ray, through a shot war and into armour; the Geiger Flare
 // against a jump close in and the ray against one further out, then the follow-up on a daze; Lead
 // Shielding in place of a block against a heavy attack; Point Blank to push a rushing mech back
 // out (gladly toward an open edge); Ground Zero when a mech has got in. The others' answers to it
-// are in the shared lines above: the ray's dig-in counts as an attack out to 16 m (block it, or go
+// are in the shared lines above: the ray's dig-in counts as an attack out to 13 m (block it, or go
 // under it: under_ray), the Hero's wave and Beam's charged orb at a ray held out of reach, the
 // vent punished by distance (vent_punish), no jump-ins at a cool gun (cpu_pad).
 
@@ -1103,7 +1103,7 @@ const GM_GZ_RANGE: fixed = 8.5          // Ground Zero's reach (8 m from the roo
 
 private fn cpu_as_gamma(m: Mech) -> bool { return has_ray(m) }
 
-// Whether body j is a Gamma whose ray is starting or on (its dig-in is an attack out to 16 m).
+// Whether body j is a Gamma whose ray is starting or on (its dig-in is an attack out to 13 m).
 fn gamma_ray_starting(j: s32) -> bool {
     let f = &fight.f[j]
     if !has_ray(f.mech) || f.mv != Mv.sp_n || fx[j].riposte { return false }
@@ -1162,7 +1162,7 @@ private fn gamma_chain(i: s32, c: *Cpu, lv: *CpuLevel, landed: bool, fwd: u32) -
 }
 
 // A whiff punished: Ground Zero within its reach, the jab (it reaches 9 m), the lance, the ray
-// within 16 m, else the rod.
+// within 13 m, else the rod.
 private fn gamma_punish(i: s32, c: *Cpu, dist: fixed, fwd: u32) -> u32 {
     let me = &fight.f[i]
     if super_wise(i) && dist < GM_GZ_RANGE && roll(c, 50) { return A | B }
@@ -1188,9 +1188,10 @@ private fn gamma_answer(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed) -> u32 {
     return CPU_NO_IDEA
 }
 
-// The other's ray starting: Seraph wards it when the gun is hot (each warded tick heats it 10),
-// the Double-blade Hero slides, the split Twins roll and Shadow sneaks under it (lv.special x 3);
-// 0: block it as any attack.
+// The other's ray starting (its 18 frames of dig-in are seen in time to answer at level 2): Seraph
+// wards it when the gun is hot (each warded tick heats it 10), the Double-blade Hero slides, the
+// split Twins roll and Shadow sneaks under it (lv.special x 5 at mid range, x 3 closer); 0: block
+// it as any attack. (A jump does not clear it: the ray at chest height meets every jump.)
 private fn under_ray(i: s32, c: *Cpu, lv: *CpuLevel, fwd: u32) -> u32 {
     let me = &fight.f[i]
     let op = &fight.f[other(i)]
@@ -1199,7 +1200,9 @@ private fn under_ray(i: s32, c: *Cpu, lv: *CpuLevel, fwd: u32) -> u32 {
         return 0
     }
     let under = me.mech == Mech.Doubleblade || me.body == Mech.TwinA || cpu_as_shadow(me.mech)
-    if !under || !roll(c, lv.special * 3) { return 0 }
+    // at mid range (outside the jab's reach) more often: there the ray is the threat (the balance pass)
+    let mid = abs(op.x - me.x) > 6.0
+    if !under || !roll(c, lv.special * if_else(mid, 5, 3)) { return 0 }
     if cpu_as_shadow(me.mech) { return fwd | B }
     return DOWN | B
 }

@@ -57,7 +57,7 @@ const GM_HEAT_MAX = 100             // the gun vents here
 const GM_HEAT_BURN = 10             // a shot burnt, a tick held off by a Wing Ward
 const GM_VENT_COOL = 2              // a frame through the vent (100 to 0 over its 50 frames)
 const GM_RAY_X0: fixed = 2.5        // the ray's box (the CPU's reach; the data has the box)
-const GM_RAY_X1: fixed = 16.0
+const GM_RAY_X1: fixed = 13.0
 const GM_RAY_Y0: fixed = 6.0
 const GM_RAY_Y1: fixed = 8.0
 
@@ -77,8 +77,8 @@ const GM_PB_VX: fixed = 0.30        // Point Blank's throw-off (the Hero's throw
 
 // ---- the stand-in frames (MOVES.md's tables, from 0), where the data has no marks for them
 
-const GM_CHARGE = 24                // sp_n: the ray's last frame, held while B is held
-const GM_VENT = 41                  // sp_n: the vent's first frame (`riposte`)
+const GM_CHARGE = 29                // sp_n: the ray's last frame, held while B is held
+const GM_VENT = 46                  // sp_n: the vent's first frame (`riposte`)
 const GM_SH0 = 5                    // sp_d: the `shield` frames
 const GM_SH1 = 28
 const GM_SH_RIP = 47                // sp_d: after an absorb (`riposte`)
@@ -106,7 +106,7 @@ var gm_sh_rip: s32
 // the stand-in data below is for the moves the export marks as stand-ins (anim_standin: the Twins'
 // combine and split), and the record of the timings it played while the animations were Beam's
 // placeholders. A placeholder of Beam's on Gamma's rig has Beam's length, and each of these eight
-// of Gamma's own differs from Beam's in length (MOVES.md: 25, 41, 42, 91, 39, 41, 59, 96 against
+// of Gamma's own differs from Beam's in length (MOVES.md: 25, 41, 42, 96, 39, 41, 59, 96 against
 // Beam's 24, 40, 41, 45, 44, 42, 44, 100); moves.akr's use_standin asked that while they were
 // (two table reads a call: about 8,000 cycles on the first frame of any fight, scenario 69's, so
 // it is now the tests': scenario 200 asserts that no move of Gamma's is one).
@@ -443,7 +443,7 @@ fn gamma_tm(mv: Mv) -> Tm {
                       m0: 3, m1: 12, dx: 0.08, reach: 4.5 }
         atk_d => Tm { len: 42, a0: 12, a1: 16, hx0: 1.5, hy0: 0.0, hx1: 8.0, hy1: 2.0, shape: 1, reach: 3.5 }
         atk_air => Tm { len: 32, a0: 9, a1: 14, hx0: 0.5, hy0: -3.0, hx1: 5.5, hy1: 3.0, shape: 2 }
-        sp_n => Tm { len: 91, ch: GM_CHARGE, rip: GM_VENT }
+        sp_n => Tm { len: 96, ch: GM_CHARGE, rip: GM_VENT }
         sp_f => Tm { len: 39, rel: GM_REL_F }
         sp_u => Tm { len: 41, a0: 7, a1: 12, hx0: 0.0, hy0: 6.0, hx1: 6.0, hy1: 18.0, i0: 0, i1: GM_INV_U }
         sp_d => Tm { len: 59, rip: GM_SH_RIP }
@@ -462,7 +462,7 @@ fn gamma_len(mv: Mv) -> s32 {
         atk_n => 25
         atk_f => 41
         atk_d => 42
-        sp_n => 91
+        sp_n => 96
         sp_f => 39
         sp_u => 41
         sp_d => 59
@@ -499,7 +499,7 @@ private fn if_u32(c: bool, k: u32) -> u32 {
 }
 
 // The stand-in boxes: Beam's body (standing, crouching in the sweep and the brace); the ray's box
-// x 2.5-16 at chest height on its frames and the arm out to 5.5 m until 8 frames after; the
+// x 2.5-13 at chest height on its frames and the arm out to 5.5 m until 8 frames after; the
 // projector out to 5 m after the rod; the hit boxes of the table (Ground Zero's on both sides).
 fn gamma_boxes(mv: Mv, f: s32, out: *Boxes) {
     let t = gamma_tm(mv)

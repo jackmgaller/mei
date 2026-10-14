@@ -3735,10 +3735,10 @@ private fn sr_check() {
 //     with the Hero's back to a wall the Hero comes out of the corner and Seraph is left in it
 // 179 Heaven's Arc on the rooftop: with its back to the drop it rings the Hero out; 6 m from the
 //     edge it does not
-// 180 Judgement's column: locked at the Hero's root 30 m away, it hits there (280); a Hero moved
-//     9 m away after the lock is missed (the column does not track); the Double-blade Hero's Void
-//     Step on the first frame after the flash escapes it; a second Judgement in the round locks
-//     afresh
+// 180 Judgement's column: it follows the other's root for 8 frames after the flash and locks on
+//     the last (the Column event); at the Hero 30 m away it hits there (280); a Hero moved 9 m
+//     during the follow is hit where it went; the Double-blade Hero's Void Step on the first frame
+//     after the flash escapes it; a second Judgement in the round follows and locks afresh
 // 181 Seraph's CPU (level 2, both sides through cpu_pad once a frame: Versus) against each mech,
 //     both sides: every match finishes, and over the
 //     run it uses each special, the throw and the super (and its ward sends a shot back)
@@ -4564,11 +4564,22 @@ private fn sv_check_column() {
         print(", the other at ")
         print_fixed(o.x)
         println("")
-        assert(abs(ev.e[e].x - o.x) < 0.01 && abs(judge_x[0] - o.x) < 0.01, "the lock is not the other's root")
+        // (the Void Step moves on after Seraph's frame has locked it: side 1 moves second)
+        assert(stage == 3 || abs(ev.e[e].x - o.x) < 0.01 && abs(judge_x[0] - o.x) < 0.01, "the lock is not the other's root")
         sv_x = o.x
-        if stage == 1 { o.x = o.x + 9.0 }           // moved away after the lock
+        // the lock comes on the follow's last frame, and the column falls on the next
+        assert(s.mv == Mv.super && fx[0].t == ser_lock + SER_FOLLOW, "the lock's frame")
     }
-    if stage == 2 && fight.freeze > 0 && fight.freeze <= 4 { sh_pad[1] = B }    // the Void Step, buffered
+    // while it follows (the SER_FOLLOW frames after the flash) the column has no lock yet
+    if s.mv == Mv.super && fx[0].t >= ser_lock && fx[0].t < ser_lock + SER_FOLLOW - 1 {
+        assert(!judge_on[0], "the column locked before its follow ended")
+    }
+    if stage == 1 && s.mv == Mv.super && fx[0].t == ser_lock + 3 && !sv_flag2 {
+        sv_flag2 = true
+        o.x = o.x - 9.0                             // moved during the follow: the column comes along
+        gx_x = o.x
+    }
+    if stage == 3 && fight.freeze > 0 && fight.freeze <= 4 { sh_pad[1] = B }    // the Void Step, buffered
     match stage {
         0 => {
             if evc_side[0][Ev.Hit] > 0 {
@@ -4580,15 +4591,16 @@ private fn sv_check_column() {
             }
         }
         1 => {
-            if evc[Ev.Super] > 0 && s.mv != Mv.super {
-                assert_eq(evc_side[0][Ev.Hit], 0, "the column tracked the Hero")
-                assert_eq(o.health, 1000, "the Hero moved away was hurt")
-                println("the Hero moved 9 m (out of the column and its guard with it) after the lock: missed")
+            if evc_side[0][Ev.Hit] > 0 {
+                assert(sv_flag2, "the Hero was not moved during the follow")
+                assert_eq(1000 - o.health, 280, "the followed column's damage")
+                assert(abs(sv_x - gx_x) < 0.01, "the column did not lock where the Hero went")
+                println("the Hero moved 9 m during the follow: the column came along and hit (280)")
                 sv_restart(Mech.Seraph, Mech.Doubleblade, -15.0, 15.0)
-                stage = 2
+                stage = 3
             }
         }
-        2 => {
+        3 => {
             if evc[Ev.Super] > 0 && s.mv != Mv.super {
                 assert(evc_side[1][Ev.Hit] == 0 && evc_side[0][Ev.Hit] == 0, "a hit")
                 assert_eq(o.health, STATS[Mech.Doubleblade].health, "the Void Step did not escape")
@@ -4596,17 +4608,17 @@ private fn sv_check_column() {
                 // a second Judgement in the same round locks afresh, where the other is now
                 mark = frames + 40
                 sh_flag = false
-                stage = 3
+                stage = 4
             }
         }
-        3 => {
+        4 => {
             if frames == mark + 2 { o.x = s.x + 12.0 }
             if evc_side[0][Ev.Hit] > 0 {
                 assert_eq(evc[Ev.Super], 2, "the second super")
                 assert_eq(evc[Ev.Column], 2, "the second super did not lock")
                 assert_eq(STATS[Mech.Doubleblade].health - o.health, 280, "the second column's damage")
                 println("a second Judgement in the round locked afresh and hit")
-                sv_ok("Judgement's column: locked, hits there, does not track, the Void Step escapes it")
+                sv_ok("Judgement's column: follows 8 frames, locks, hits there, the Void Step escapes it")
             }
         }
         else => {}
@@ -4682,7 +4694,7 @@ private fn sv_check_cpu() {
 // the arcade (tests/ladder/harness.akr), 220-230 its own moves in detail (below)
 //
 // 200 against Beam: idle (1,050 health, the nuclear meter, 19 parts a frame, its walk); each of its
-//     own eight moves plays its length (MOVES.md's 25, 41, 42, 91, 39, 41, 59, 96: from its own
+//     own eight moves plays its length (MOVES.md's 25, 41, 42, 96, 39, 41, 59, 96: from its own
 //     animation, or the stand-in while the animation is still Beam's placeholder); the walk back
 //     (0.050 m a frame); the Lamp Jab lands at 4 m (70) and gives Gamma no meter (nuclear: landing
 //     hits fill nothing); the other's jab fills Gamma's meter 3 a point of damage; the Rod Shot
@@ -4693,7 +4705,7 @@ private fn sv_check_cpu() {
 
 const GM_FOE: Mech = match SCENARIO { 201 => Mech.Hero, else => Mech.Beam }
 const GM_OWN_MVS: [8]Mv = [Mv.atk_n, Mv.atk_f, Mv.atk_d, Mv.sp_n, Mv.sp_f, Mv.sp_u, Mv.sp_d, Mv.super]
-const GM_OWN_LEN: [8]s32 = [25, 41, 42, 91, 39, 41, 59, 96]
+const GM_OWN_LEN: [8]s32 = [25, 41, 42, 96, 39, 41, 59, 96]
 
 private fn gm_scenario() -> bool { return SCENARIO == 200 || SCENARIO == 201 }
 
@@ -4931,8 +4943,9 @@ private fn gm_check() {
 //     dazed 32 frames from its touchdown (Daze power 1) with time for Point Blank (the dazed mech
 //     is grabbable), the Lamp Jab (its second hit: 80 %, and the daze ends) and a second flare
 //     (scaled, not dazed again); Tank's armour absorbs the flare without a daze
-// 226 the Ray from a high catch: a jump-in caught at its top is still dazed when the ray's first
-//     tick lands, and the ray pushes it out to the tip
+// 226 the Ray from a high catch: a jump-in caught at its top leaves Gamma free 15 frames or more
+//     before the daze ends; the ray (18 frames' dig-in) lands its first tick within 3 frames of the
+//     daze's end, and pushes it out to the tip
 // 227 Lead Shielding: a Tip Thrust absorbed (Armour, the 100 in full, the reactor 300, the jump to
 //     the after-absorb section), Gamma actionable 12 frames after and about +12 (its jab lands);
 //     the Hero's wave absorbed the same way; a grab and a super beat the brace; whiffed, 47 frames
@@ -5777,16 +5790,20 @@ private fn gx_check_high() {
     }
     if gx_c == 3 && evc_side[0][Ev.Hit] == 2 && gx_at < 0 {
         gx_at = frames
-        assert(sh_prev1 == Mv.hit_high, "the ray's first tick did not land in the daze")
-        print("the ray's first tick landed ")
-        print_int(gx_f0 + 11 + GM_DAZE - frames)
-        println(" frames before the daze would have ended")
+        // the daze runs GM_DAZE frames from the touchdown (gx_f0)
+        print("caught high: Gamma free ")
+        print_int(gx_f0 + GM_DAZE - gx_n)
+        print(" frames before the daze ends; the ray's first tick ")
+        print_int(frames - gx_f0 - GM_DAZE)
+        println(" frames after it")
+        assert(gx_f0 + GM_DAZE - gx_n >= 15, "a high catch leaves Gamma under 15 frames")
+        assert(frames - gx_f0 - GM_DAZE <= 3, "the ray's first tick came long after the daze")
     }
-    if gx_at > 0 && gamma_ray_on(0) && frames - gx_at > 30 && gx_h == o.health && o.x - g.x > 16.0 {
+    if gx_at > 0 && gamma_ray_on(0) && frames - gx_at > 30 && gx_h == o.health && o.x - g.x > GM_RAY_X1 {
         print("pushed out to ")
         print_fixed(o.x - g.x)
         println(" m")
-        gx_ok("the Geiger Flare's high catch leaves time for the Atomic Ray")
+        gx_ok("after the Geiger Flare's high catch the Atomic Ray lands as the daze ends")
     }
     sh_prev1 = o.mv
 }

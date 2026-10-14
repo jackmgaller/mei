@@ -57,7 +57,7 @@ const SRX_ASC_BEAT = 13                 // sp_u: the wings' beat at the top
 const SRX_BEAT0 = 9                     // throw: Heaven's Arc's wing beats
 const SRX_BEAT1 = 14
 const SRX_FLING = 40                    // sp_d: the fling after a reflect
-const SRX_LOCK = 40                     // super: the lock (the Column event)
+const SRX_LOCK = 40                     // super: the follow's first frame (the lock: the Column event, 47)
 const SRX_COL0 = 48                     // super: the column's active frames
 const SRX_COL1 = 57
 const SRX_FADE = 69                     // super: the column and the stage's light gone
@@ -70,6 +70,7 @@ var srx_pmv: [2]Mv                      // Seraph's move and frame last tick (fr
 var srx_pf: [2]s32
 var srx_lock: [2]fixed                  // Judgement's lock (the Column event's x)
 var srx_locked: [2]bool
+var srx_fixed: [2]bool                  // the Column event came: srx_lock no longer follows the other
 var srx_col_t: [2]s32                   // ticks since the column came down (its slam, through hitstop)
 var srx_ward: [2]fixed                  // the ward's sheen, 0..1
 var srx_hud_new: [2]s32                 // frames of the health bar's gold flash (a new mark)
@@ -395,6 +396,7 @@ private fn srx_event(e: *Event, f: *Fight) {
         Column => {
             srx_lock[side] = e.x
             srx_locked[side] = true
+            srx_fixed[side] = true
         }
         else => {}
     }
@@ -519,6 +521,7 @@ private fn srx_moves(f: *Fight, s: s32, tick: bool) {
         srx_judgement(f, s, root, tick)
     } else {
         srx_locked[s] = false
+        srx_fixed[s] = false
     }
 }
 
@@ -565,8 +568,9 @@ private fn srx_judgement(f: *Fight, s: s32, root: mat4, tick: bool) {
             srx_glow(hp, 2.2, 1.0, col_scale(SRX_GOLD, 0.6 + pulse * 0.2))
         }
     }
-    // the lock: the other's root x when the Column event did not come (it always should)
-    if tick && srx_at(s, fi, Mv.super, SRX_LOCK) && !srx_locked[s] {
+    // the lock follows the other's root x until the Column event fixes it (the fight's follow,
+    // seraph.akr's SER_FOLLOW frames from SRX_LOCK)
+    if fr >= SRX_LOCK && !srx_fixed[s] {
         srx_lock[s] = f.f[1 - s].x
         srx_locked[s] = true
     }

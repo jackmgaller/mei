@@ -101,10 +101,11 @@ const SER_GLIDE0 = 14               // the glide's first frame (after the hop's 
 const SER_CHARGE = 25               // the glide's last frame: held while B is held
 const SER_WARD0 = 4                 // the `ward` frames
 const SER_WARD1 = 23
-const SER_LOCK = 40                 // Judgement's lock: the first frame after the flash
+const SER_LOCK = 40                 // Judgement's follow: the first frame after the flash
+const SER_FOLLOW = 8                // the column follows the other this many frames, then locks
 
 var judge_x: [2]fixed               // each side's Judgement: where its column falls (world x)
-var judge_on: [2]bool               // locked, this super
+var judge_on: [2]bool               // locked, this super (judge_x follows the other until then)
 var ser_in_fight: bool              // a side has Seraph's rules (fight_init): else seraph_tick does nothing
 var ser_dive_h: [2]fixed            // the height the dive started from
 var ser_arc_x0: [2]fixed            // where Seraph stood when Heaven's Arc caught
@@ -187,7 +188,7 @@ private fn ser_find() {
 fn seraph_tick(live: bool) {
     if !ser_in_fight { return }
     for s in 0..2 {
-        if fight.f[s].mv != Mv.super { judge_on[s] = false }     // the next super locks afresh
+        if fight.f[s].mv != Mv.super { judge_on[s] = false }     // the next super follows afresh
         if live && fight.f[s].mark > 0 { fight.f[s].mark -= 1 }
     }
 }
@@ -261,11 +262,15 @@ fn seraph_advance(i: s32) -> bool {
     let x = &fx[i]
     let s = i & 1
     if f.mv == Mv.super {
-        // the first frame after the flash: the column's centre, the other mech's root (the leader's)
-        if has_judgement(f.mech) && x.t == ser_lock && !judge_on[s] {
-            judge_on[s] = true
+        // the column's centre follows the other mech's root (the leader's) for SER_FOLLOW frames
+        // after the flash (40-47), then locks there, the column falling on 48 (the balance pass: it
+        // locked on the first frame after the flash)
+        if has_judgement(f.mech) && x.t >= ser_lock && x.t < ser_lock + SER_FOLLOW && !judge_on[s] {
             judge_x[s] = fight.f[other(i)].x
-            ev_add(Ev.Column, s, judge_x[s], 0.0, 0)
+            if x.t == ser_lock + SER_FOLLOW - 1 {
+                judge_on[s] = true
+                ev_add(Ev.Column, s, judge_x[s], 0.0, 0)
+            }
         }
         return false
     }
