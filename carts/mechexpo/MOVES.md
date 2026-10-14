@@ -91,8 +91,9 @@ mech lands facing the wrong way and turns on landing).
 
 A stage (`stages.akr`, [README.md](README.md#stages)) has a half-width and two edges, each a
 **wall** or **open**. The demo hangar has walls at x = ±36; the rooftop showcase has the
-stairwell's housing (a wall) at x = −26 and an open edge at x = +26. The rules at an open edge
-(`fighter.akr`, the ring-out block at its end):
+stairwell's housing (a wall) at x = −26 and an open edge at x = +26; the container port has its
+open edge at x = −30 (the quay over the water, behind 1P at the start) and a wall of stacked
+containers at x = +30. The rules at an open edge (`fighter.akr`, the ring-out block at its end):
 
 - **The lip.** A mech stops at an open edge as at a wall, its push box against it (x = 26 − 1.5
   for the Double-blade Hero): walking, jumping, a move's root motion, a blocked hit's pushback

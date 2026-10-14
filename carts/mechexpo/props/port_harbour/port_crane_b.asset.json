@@ -1,0 +1,478 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_port_crane_b",
+ "budget": {
+  "vertices": 2000,
+  "triangles": 200
+ },
+ "lighting": {
+  "direction": [
+   0.0,
+   -0.75,
+   -0.6
+  ],
+  "ambient": 0.42
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "steel": {
+   "color": "#d8d4cc"
+  },
+  "trim": {
+   "color": "#af2214",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#af2214",
+     "#bd8d59"
+    ],
+    "params": {
+     "count": 2,
+     "axis": "v"
+    },
+    "size": 16,
+    "projection": "box",
+    "scale": [
+     8.0,
+     16.0
+    ]
+   }
+  },
+  "red": {
+   "color": "#ff3a2a",
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "leg_00",
+   "op": "box",
+   "size": [
+    2.2,
+    44.0,
+    2.2
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     49.0,
+     22.0,
+     20.6
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "leg_01",
+   "op": "box",
+   "size": [
+    2.2,
+    44.0,
+    2.2
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     49.0,
+     22.0,
+     48.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "leg_10",
+   "op": "box",
+   "size": [
+    2.2,
+    44.0,
+    2.2
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     67.0,
+     22.0,
+     20.6
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "leg_11",
+   "op": "box",
+   "size": [
+    2.2,
+    44.0,
+    2.2
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     67.0,
+     22.0,
+     48.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "portal_0",
+   "op": "box",
+   "size": [
+    20.8,
+    4.0,
+    2.6
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     58.0,
+     45.0,
+     20.6
+    ]
+   },
+   "open": [
+    "top",
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "portal_1",
+   "op": "box",
+   "size": [
+    20.8,
+    4.0,
+    2.6
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     58.0,
+     45.0,
+     48.0
+    ]
+   },
+   "open": [
+    "top",
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "sill_0",
+   "op": "box",
+   "size": [
+    2.4,
+    3.6,
+    24.8
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     49.0,
+     45.0,
+     34.3
+    ]
+   },
+   "open": [
+    "top",
+    "front",
+    "back"
+   ]
+  },
+  {
+   "id": "sill_1",
+   "op": "box",
+   "size": [
+    2.4,
+    3.6,
+    24.8
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     67.0,
+     45.0,
+     34.3
+    ]
+   },
+   "open": [
+    "top",
+    "front",
+    "back"
+   ]
+  },
+  {
+   "id": "backreach",
+   "op": "box",
+   "size": [
+    3.6,
+    4.0,
+    42.0
+   ],
+   "material": "trim",
+   "transform": {
+    "translate": [
+     58.0,
+     49.0,
+     25.0
+    ]
+   },
+   "faces": {
+    "bottom": "steel"
+   },
+   "open": [
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "boom",
+   "op": "box",
+   "size": [
+    3.6,
+    3.6,
+    56.0
+   ],
+   "material": "trim",
+   "transform": {
+    "translate": [
+     58.0,
+     76.0459,
+     55.2469
+    ],
+    "rotate": [
+     -75.0,
+     0,
+     0
+    ]
+   },
+   "open": [
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "apex_0",
+   "op": "box",
+   "size": [
+    1.8,
+    29.0,
+    1.8
+   ],
+   "material": "trim",
+   "transform": {
+    "translate": [
+     51.0,
+     63.5,
+     34.3
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "forestay_0",
+   "op": "box",
+   "size": [
+    0.5,
+    0.5,
+    38.4146
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     56.6,
+     91.0459,
+     48.3969
+    ],
+    "rotate": [
+     -42.7825334777497,
+     0,
+     0
+    ]
+   },
+   "open": [
+    "top",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "apex_1",
+   "op": "box",
+   "size": [
+    1.8,
+    29.0,
+    1.8
+   ],
+   "material": "trim",
+   "transform": {
+    "translate": [
+     65.0,
+     63.5,
+     34.3
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "forestay_1",
+   "op": "box",
+   "size": [
+    0.5,
+    0.5,
+    38.4146
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     59.4,
+     91.0459,
+     48.3969
+    ],
+    "rotate": [
+     -42.7825334777497,
+     0,
+     0
+    ]
+   },
+   "open": [
+    "top",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "apex_beam",
+   "op": "box",
+   "size": [
+    16.0,
+    2.2,
+    2.2
+   ],
+   "material": "trim",
+   "transform": {
+    "translate": [
+     58.0,
+     79.0,
+     34.3
+    ]
+   },
+   "open": [
+    "top",
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "apex_light_0",
+   "op": "box",
+   "size": [
+    0.6,
+    0.6,
+    0.6
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     51.0,
+     80.4,
+     34.3
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "apex_light_1",
+   "op": "box",
+   "size": [
+    0.6,
+    0.6,
+    0.6
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     65.0,
+     80.4,
+     34.3
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "tip_light",
+   "op": "box",
+   "size": [
+    0.7,
+    0.7,
+    0.7
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     58.0,
+     105.4918,
+     62.4939
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  }
+ ]
+}

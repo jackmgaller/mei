@@ -4,8 +4,9 @@
 # scenarios are (tests/pool.sh). 14 both MVP mechs drawn, 39 Beam against each mech, 49 Tank
 # against each, 54 the effects at their busiest, 69 three bodies (the split Twins against Tank),
 # 98 and 99 the rooftop, 109 Shadow with its mine, bolt, curse and super (against the split
-# Twins, then Beam). make test-carts runs them after check.sh. MEIC and RUN as in
-# tools/cart_scenario.sh.
+# Twins, then Beam), 147-149 the container port (the Hero against the Double-blade Hero, the
+# split Twins against Tank, Shadow against the split Twins). make test-carts runs them after
+# check.sh. MEIC and RUN as in tools/cart_scenario.sh.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 O="$HERE/out/check"
@@ -26,5 +27,8 @@ run 69 1800
 run 98 1801
 run 99 1801
 run 109 1801
+run 147 1801
+run 148 1801
+run 149 2400
 pool_run
 echo "all Mech Expo budget checks passed"

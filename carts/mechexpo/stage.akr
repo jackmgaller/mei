@@ -11,14 +11,18 @@
 //   PH        the interface list: the HUD's fills and text, the menus
 //
 // Priorities (PLN_PRIO, the stage's art.prio): the hangar BG2 0, BG1 1, PL 2, BG0 3, PH 4; the
-// rooftop BG1 0, PL 1 (its city in polygons), BG2 2 (the deck), BG0 3, PH 4 (props, mechs). The
+// rooftop and the container port BG1 0, PL 1 (the city, the harbour in polygons), BG2 2 (the
+// deck, the apron), BG0 3, PH 4 (props, mechs). The
 // plane chip costs no CPU or GPU beyond the tables: about 14,000 cycles for the floor's rows, 300
 // for the hall's scroll table.
 //
 // VRAM: ATLAS_0 the floor, ATLAS_1 the hall, ATLAS_2 the HUD frame, ATLAS_3 the menus' page;
 // MAP_BG2, MAP_BG1, MAP_BG0; line tables LT_BACKDROP (channel 0), LT_BG1 (2), LT_AFFINE (7) and
 // the backdrop's long table at ST_SKY_TAB (VRAM_FREE). Palettes 240-243 the floor, 244-249 the
-// hall (244 lent to the menus' page). One stage's art is loaded at a time (stage_show()).
+// hall (244 lent to the menus' page). One stage's art is loaded at a time (stage_show()); the
+// rooftop's polygon packs are loaded once at boot (texture slots 13 and 14, 4-bit palettes
+// 200-211), the port's the first time it is shown (slots 16 and 17, palettes 256-272 and 288-300,
+// the second bank); no other stage uses those.
 
 const ST_SKY_TAB = 0x582000       // 1,024 words in the free VRAM: row i is hall-line-relative i - ST_SKY_ZERO
 const ST_SKY_ZERO = 700
@@ -28,6 +32,7 @@ var st_floor_top: s32             // the floor's first row
 var st_cycles: s32
 var st_hall_loaded: bool
 var st_loaded: s32 = -1           // the stage whose floor and sky are loaded
+var st_port_packs: bool           // the port's polygon packs are in VRAM
 
 fn stage_boot() {
     stage_roof_props_load()             // the rooftop's props: slot 13 and palettes 200-203, once
@@ -41,6 +46,14 @@ private fn stage_load(s: *Stage) {
     let id = fight.stage
     if id == st_loaded { return }
     st_loaded = id
+    if id == ST_PORT && !st_port_packs {
+        // the container port's props (slot 16, palettes 256-272) and its harbour in polygons
+        // (slot 17, palettes 288-300): their own slots, loaded the first time the port is shown
+        // (not at boot, so the other stages' boot is unchanged)
+        stage_port_props_load()
+        stage_port_harbour_load()
+        st_port_packs = true
+    }
     let a = &s.art
     let t = ST_SKY_TAB as *u32
     for i in 0..1024 {

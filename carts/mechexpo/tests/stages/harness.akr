@@ -28,6 +28,23 @@
 // 98  the budget on the rooftop: CPU against CPU, the Hero against the Double-blade Hero, 1,800
 //     frames through the real game; the peaks overall and with a mech near the open edge
 // 99  the budget on the rooftop with three bodies: the split Twins against Tank, 1,800 frames
+// The container port (ST_PORT: the open quay edge at x = -30, the container wall at +30):
+// 140 the fight's start: the Hero and the Double-blade Hero at x = -9 and 9 (the stage's picture)
+// 141 the camera fully out: the mechs 36 m apart at x = -22 and 14
+// 142 near the container wall: the mechs at x = 21 and 27
+// 143 near the quay edge: the mechs at x = -27 and -21, the water in view
+// 144 a ring-out off the quay: the Hero's throw sends the Double-blade Hero, 3.5 m from the lip,
+//     over the edge at -x; the round is the Hero's; the loser 12 frames into its fall
+// 145 the container wall is a wall: a knockdown, a throw and a walk into it stop at x = 30
+// 146 the stage select: RIGHT twice and A pick the port, the fight is on it; every word of the
+//     cards fits their narrow sheets
+// 147 the budget on the port: CPU against CPU, the Hero against the Double-blade Hero, 1,800
+//     frames (1P backs up to the quay edge first); the peaks overall and near the open edge
+// 148 the budget on the port with three bodies: the split Twins against Tank, 1,800 frames
+// 149 the budget on the port, the worst fight: Shadow against the split Twins, 1,800 frames,
+//     with its mine, bolt, curse and Total Eclipse kept going (as scenario 109)
+// 150 the camera drifting: both mechs walk toward the quay edge (tests/run.sh with SEQ for the
+//     frames)
 
 var fr: s32                        // frames since the fight began (test_hook)
 var step: s32                      // the scenario's own steps
@@ -61,7 +78,7 @@ fn test_init() {
         cpu_matches_init()
         return
     }
-    if SCENARIO == 97 {
+    if SCENARIO == 97 || SCENARIO == 146 {
         game = Game.Versus
         enter_select()
         return
@@ -70,15 +87,20 @@ fn test_init() {
     p_cpu = false
     stage_sel = ST_ROOFTOP
     if SCENARIO == 90 { stage_sel = ST_HANGAR }
+    if SCENARIO >= 140 { stage_sel = ST_PORT }
     p_mech[0] = Mech.Hero
     p_mech[1] = Mech.Doubleblade
     if SCENARIO == 95 { p_mech[1] = Mech.Twins }
-    if SCENARIO == 99 {
+    if SCENARIO == 99 || SCENARIO == 148 {
         p_mech[0] = Mech.Twins
         p_mech[1] = Mech.Tank
     }
+    if SCENARIO == 149 {
+        p_mech[0] = Mech.Shadow
+        p_mech[1] = Mech.Twins
+    }
     enter_fight()
-    if SCENARIO == 98 || SCENARIO == 99 { return }
+    if budget_run() { return }
     skip_intro()
     match SCENARIO {
         90 => place(30.0, 33.0)
@@ -91,6 +113,13 @@ fn test_init() {
         113 => place(-14.0, 22.0)
         114 => place(edge() - 9.0, edge() - 3.0)
         115 => place(edge() - 5.0, edge() - 2.0)
+        140 => place(-9.0, 9.0)
+        141 => place(-22.0, 14.0)
+        142 => place(edge() - 9.0, edge() - 3.0)
+        143 => place(3.0 - edge(), 9.0 - edge())
+        144 => place(6.0 - edge(), 3.5 - edge())
+        145 => place(edge() - 6.0, edge() - 3.0)
+        150 => place(-4.0, 8.0)
         else => {}
     }
     for i in 0..2 { face_other(i) }
@@ -110,8 +139,11 @@ private fn place(x0: fixed, x1: fixed) {
     fight.f[1].x = x1
 }
 
-// The stage's edges are at x = +-edge() (the rooftop's open edge at +edge()).
+// The stage's edges are at x = +-edge() (the rooftop's open edge at +edge(), the port's at -edge()).
 private fn edge() -> fixed { return stage_now().half }
+
+// The CPU-against-CPU budget runs (98, 99, 147-149).
+private fn budget_run() -> bool { return SCENARIO == 98 || SCENARIO == 99 || (SCENARIO >= 147 && SCENARIO <= 149) }
 
 // Where body i stops at the open edge (its lip): the edge less its push box.
 private fn lip(i: s32) -> fixed { return stage_now().half - STATS[fight.f[i].body].push }
@@ -147,7 +179,16 @@ fn input_stick(n: s32) -> vec2 { return vec2(0.0, 0.0) }
 
 fn input_pad(n: s32) -> u32 {
     if SCENARIO == 97 { return menu_pad(n) }
+    if SCENARIO == 146 { return port_menu_pad(n) }
     if st != St.Fight { return 0 }
+    if SCENARIO >= 147 && SCENARIO <= 149 {
+        // the Twins split (three bodies) all through; 1P first backs up to the quay edge's lip
+        var p = cpu_pad(n, 2)
+        if (SCENARIO == 148 && n == 0) || (SCENARIO == 149 && n == 1) { p = p & ~L }
+        if SCENARIO == 149 && n == 0 && fr % 300 >= 2 && fr % 300 < 40 && fight.f[0].super_ok && actionable(0) { return A | B }
+        if n == 0 && fr < 400 && fight.phase == Phase.Fight { return LEFT }
+        return p
+    }
     if SCENARIO == 98 || SCENARIO == 99 {
         // the Twins split for the first half (three bodies), as scenario 69
         let p = cpu_pad(n, 2)
@@ -172,6 +213,13 @@ fn input_pad(n: s32) -> u32 {
         }
         95 => { if n == 0 && t == 5 && step == 0 { return DOWN | A } }
         115 => { if n == 0 && t == 5 { return DOWN | A } }
+        144 => { if n == 0 && t == 5 { return Y } }
+        145 => {
+            if n == 0 && t == 5 { return DOWN | A }
+            if n == 0 && t == 140 { return Y }
+            if n == 1 && t >= 320 && t < 440 { return RIGHT }
+        }
+        150 => { if t >= 10 && t < 130 { return LEFT } }
         else => {}
     }
     return 0
@@ -201,6 +249,14 @@ fn test_hook() {
         check_select()
         return
     }
+    if SCENARIO == 146 {
+        check_port_select()
+        return
+    }
+    if SCENARIO >= 147 && SCENARIO <= 149 && st != St.Fight && !done {
+        enter_fight()                   // a match over before the run's end: another on the port
+        return
+    }
     if st != St.Fight || done { return }
     let f = fight_get()
     // the last frame's events (one fight tick a frame)
@@ -211,7 +267,7 @@ fn test_hook() {
             let e = &ev.e[i]
             evc[e.kind] += 1
             if e.side == 0 || e.side == 1 { evs[e.side][e.kind] += 1 }
-            if SCENARIO < 98 && e.kind != Ev.Step && e.kind != Ev.Swing && e.kind != Ev.Whiff {
+            if !budget_run() && e.kind != Ev.Step && e.kind != Ev.Swing && e.kind != Ev.Whiff {
                 print("  event ")
                 print(EVS[e.kind])
                 print(" side ")
@@ -225,8 +281,10 @@ fn test_hook() {
         }
     }
     let s = stage_now()
-    if stage_has_open(s) { cam_beyond = max(cam_beyond, cam_x + cam_w / 2 - s.half) }
-    if SCENARIO == 98 || SCENARIO == 99 {
+    if stage_open(s, 1) { cam_beyond = max(cam_beyond, cam_x + cam_w / 2 - s.half) }
+    if stage_open(s, 0) { cam_beyond = max(cam_beyond, -(cam_x - cam_w / 2) - s.half) }
+    if SCENARIO == 149 && fight.phase == Phase.Fight { port_busy(f) }
+    if budget_run() {
         budget(f)
     } else {
         check()
@@ -246,6 +304,13 @@ private fn check() {
         113 => check_view(40, 36.0)
         114 => check_view(60, 6.0)
         115 => check_fall()
+        140 => check_port_view(40, 18.0)
+        141 => check_port_view(40, 36.0)
+        142 => check_port_view(40, 6.0)
+        143 => check_port_view(60, 6.0)
+        144 => check_port_fall()
+        145 => check_port_wall()
+        150 => { if fr == 110 { ok("the port: the camera drifting") } }
         else => {}
     }
 }
@@ -753,6 +818,7 @@ private fn budget(f: *Fight) {
     var near = false
     for i in 0..2 {
         if abs(f.f[i].x - s.half) < 8.0 && stage_open(s, 1) { near = true }
+        if abs(f.f[i].x + s.half) < 8.0 && stage_open(s, 0) { near = true }
     }
     if started && fr > 3 {
         for k in 0..2 {
@@ -770,8 +836,20 @@ private fn budget(f: *Fight) {
     if fr == 1799 {
         for k in 0..2 {
             print("stages budget, ")
-            if SCENARIO == 99 { print("the split Twins against Tank") } else { print("the Hero against the Double-blade Hero") }
-            if k == 0 { print(" on the rooftop: peak cpu ") } else { print(" near the open edge: peak cpu ") }
+            if SCENARIO == 99 || SCENARIO == 148 {
+                print("the split Twins against Tank")
+            } else if SCENARIO == 149 {
+                print("Shadow against the split Twins")
+            } else {
+                print("the Hero against the Double-blade Hero")
+            }
+            if k == 0 {
+                print(" on the ")
+                print(s.short)
+                print(": peak cpu ")
+            } else {
+                print(" near the open edge: peak cpu ")
+            }
             print_int(peak_cpu[k])
             print(", gpu ")
             print_int(peak_gpu[k])
@@ -798,6 +876,169 @@ private fn budget(f: *Fight) {
         print_fixed(cam_beyond)
         println(" m")
         assert(late == 0, "late frames")
-        ok("the budget on the rooftop")
+        if fight.stage == ST_PORT { ok("the budget on the port") } else { ok("the budget on the rooftop") }
     }
+}
+
+// ---- 140-150: the container port (ST_PORT)
+
+// The fight on the port at frame `at`, the mechs `gap` metres apart (the pictures; the checks
+// keep them honest: the stage's row, its layers).
+private fn check_port_view(at: s32, gap: fixed) {
+    no_ring_out()
+    if fr == at {
+        assert_eq(fight.stage, ST_PORT, "not the port")
+        let s = stage_now()
+        assert(s.half == 30.0 && stage_open(s, 0) && !stage_open(s, 1), "the port's edges")
+        assert(s.nprops == 2 && s.props[0].mesh == ASSET_STAGE_PORT_WALL && s.props[0].x == 30.0, "the container wall")
+        assert(s.ncity == 6 && s.art.dark & 8 != 0, "the port's harbour (PL) is not in its layers")
+        assert_eq(s.art.prio >> 24 & 15, 1, "the harbour's layer (PL) is not behind the apron")
+        assert(s.art.prio >> 16 & 15 > s.art.prio >> 24 & 15, "the apron (BG2) is not in front of the harbour")
+        assert_eq(s.nevents, 0, "the port has events")
+        assert(abs(fight.f[1].x - fight.f[0].x) > gap - 0.5, "the mechs moved")
+        print("stages port view: the mechs ")
+        print_fixed(fight.f[1].x - fight.f[0].x)
+        print(" m apart, the view ")
+        print_fixed(cam_w)
+        print(" m across at x ")
+        print_fixed(cam_x)
+        println("")
+        ok("the port's view")
+    }
+}
+
+// 144: the Hero's throw at the quay's lip: the Double-blade Hero goes over the edge at -x.
+private fn check_port_fall() {
+    let d = &fight.f[1]
+    if step == 0 && evc[Ev.RingOut] > 0 {
+        step = 1
+        mark = fr
+        assert(fx[1].out, "the loser is not falling")
+        assert(!fx[0].out, "the winner fell")
+        assert_eq(fight.ringout, 1, "fight.ringout")
+        assert_eq(fight.round_winner, 0, "the round's winner")
+        assert(d.x < -stage_now().half, "not over the quay's edge")
+        print("stages port: over the quay edge at frame ")
+        print_int(fr)
+        print(", x ")
+        print_fixed(d.x)
+        println("")
+    }
+    if step == 1 && fr == mark + 12 {
+        print("stages port fall: frame ")
+        print_int(fr)
+        print(", the loser at y ")
+        print_fixed(d.y)
+        println("")
+        ok("a ring-out off the quay")
+    }
+    if fr > 200 { assert(false, "no ring-out") }
+}
+
+// 145: the container wall stops a knockdown, a throw and a walk.
+private fn check_port_wall() {
+    no_ring_out()
+    let d = &fight.f[1]
+    let w = stage_now().half - STATS[d.body].push
+    lip_max = max(lip_max, d.x)
+    assert(d.x <= w, "through the container wall")
+    if fr == 130 {
+        assert(evc[Ev.Hit] >= 1, "the Low Sweep did not hit")
+        assert(d.x == w, "the knockdown did not stop at the wall")
+    }
+    if fr == 300 {
+        assert(evc[Ev.Throw] >= 1, "no throw")
+        assert(d.x == w, "the throw did not stop at the wall")
+    }
+    if fr == 460 {
+        assert(d.x == w, "the walk did not stop at the wall")
+        assert(cam_x + cam_w / 2 <= stage_now().half + 1.0 + 0.01, "the camera showed past the wall")
+        print("stages port wall: a knockdown, a throw and a walk stop at x ")
+        print_fixed(lip_max)
+        print(", the view's edge at ")
+        print_fixed(cam_x + cam_w / 2)
+        println("")
+        ok("the container wall is a wall")
+    }
+}
+
+// 146: the stage select to the port.
+private fn port_menu_pad(n: s32) -> u32 {
+    let t = fr + 1
+    if n == 0 {
+        if t == 10 || t == 20 { return A }          // 1P picks the Hero, then the CPU's Hero
+        if t == 70 || t == 76 { return RIGHT }      // the rooftop, then the port
+        if t == 86 { return A }
+    }
+    return 0
+}
+
+private fn check_port_select() {
+    if done { return }
+    fr += 1
+    if fr == 82 {
+        assert(st == St.Stage, "not the stage select")
+        assert_eq(stage_sel, ST_PORT, "RIGHT twice did not reach the port")
+        // three cards are narrow (menus.akr wraps the venue and the blurb to the sheet, 84 px):
+        // every word of them fits a line
+        for i in 0..STAGES_N {
+            let s = stage_row(i)
+            words_fit(s.venue, 84)
+            words_fit(s.blurb, 84)
+        }
+        print("stages select: the cursor on ")
+        println(stage_row(stage_sel).name)
+    }
+    if fr == 160 {
+        assert(st == St.Vs, "the stage select did not lead to the VS screen")
+        enter_fight()
+        assert_eq(fight.stage, ST_PORT, "the fight is not on the port")
+        assert_eq(LADDER_STAGES[len(LADDER_STAGES) - 1], ST_ROOFTOP, "the ladder's final moved")
+        // back to the stage select for the picture
+        enter_stage_select()
+        stage_sel = ST_PORT
+        stage_done_t = tick
+    }
+    if fr == 170 {
+        assert(st == St.Stage, "not the stage select")
+        ok("the stage select: the port picked, the fight on it")
+    }
+}
+
+// Every word of s (split at spaces and newlines) no wider than w in the micro font.
+private fn words_fit(s: *u8, w: s32) {
+    var word: [40]u8
+    var n = 0
+    var k = 0
+    while true {
+        let c = s[k]
+        if c == 0 || c == ' ' || c == 10 {
+            word[n] = 0
+            assert(txt_w(FONT_MICRO, &word[0]) <= w, "a word wider than the stage select's card")
+            n = 0
+            if c == 0 { return }
+        } else if n < 39 {
+            word[n] = c
+            n += 1
+        }
+        k += 1
+    }
+}
+
+// 149: Shadow's worst case kept on screen (as scenario 109): an armed mine, its bolt out, the
+// other cursed, a full bar every 300 frames for Total Eclipse.
+private fn port_busy(f: *Fight) {
+    let s = &f.f[0]
+    if !rift[0].on {
+        rift[0] = Rift { on: true, x: clamp(s.x - fixed(s.facing) * 3.0, -28.0, 28.0), t: MINE_ARM }
+    }
+    let sh = &f.shot[0]
+    if !sh.on && s.mv != Mv.sp_n {
+        shadow_bolt_fire(0, sh)
+        sh.on = true
+        sh.t = 0
+        sh.y = 0.0
+    }
+    if f.f[1].curse < 10 { f.f[1].curse = CURSE_FRAMES }
+    if fr % 300 == 0 { s.meter = METER_BAR }
 }

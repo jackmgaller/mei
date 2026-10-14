@@ -13,6 +13,9 @@ import "stage_art.akr"          // the hangar's art (tools/gen_mechexpo_stage.py
 import "roof_art.akr"           // the rooftop's (tools/gen_mechexpo_rooftop.py)
 import "roof_props.akr"         // and its props' pack (texture slot 13, palettes 200-203)
 import "roof_city3d.akr"        // and its city in polygons (texture slot 14, palettes 204-211)
+import "port_art.akr"           // the container port's (tools/gen_mechexpo_port.py)
+import "port_props.akr"         // and its props' pack (texture slot 16, palettes 256-272)
+import "port_harbour.akr"       // and its harbour in polygons (texture slot 17, palettes 288-300)
 
 // What ends the stage on one side.
 enum Edge {
@@ -24,7 +27,8 @@ enum Edge {
 // The stages, by row.
 const ST_HANGAR = 0
 const ST_ROOFTOP = 1
-const STAGES_N = 2
+const ST_PORT = 2
+const STAGES_N = 3
 
 // The plane chip's art for a stage (the generators write the constants it is filled from).
 struct StageArt {
@@ -112,7 +116,7 @@ struct Stage {
 const HANGAR_SKY: [4]u32 = [0x0A0806, 0x221810, 0x3A2C20, 0x4A3A2C]   // the roof's dark
 const HANGAR_SKY_DY: [4]s32 = [-420, -260, -200, -160]                // rows above the hall's line
 
-const STAGES: [2]Stage = [
+const STAGES: [3]Stage = [
     // the demo hangar: walls at x = +-36, the expo's banner towers behind the fight
     Stage { name: "DEMO HANGAR", short: "HANGAR", venue: "EXPO HALL 1 // TRIAL HALL 2", blurb: "WALLS ON BOTH SIDES\nFOR CORNER PRESSURE",
             colour: 0x8A6A50, half: 36.0, edge: [Edge.Wall, Edge.Wall],
@@ -163,6 +167,32 @@ const STAGES: [2]Stage = [
             ncity: 6, city: [ASSET_STAGE_ROOF_CITY_MM, ASSET_STAGE_ROOF_CITY_TOWERS,
                              ASSET_STAGE_ROOF_CITY_WHEEL, ASSET_STAGE_ROOF_CITY_BAY,
                              ASSET_STAGE_ROOF_CITY_VENUE, ASSET_STAGE_ROOF_CITY_QUAY, null, null],
+            music: 0, nevents: 0, events: [StageEvent {}, StageEvent {}, StageEvent {}, StageEvent {}] },
+    // the container port (Honmoku, at night): the open quay edge at x = -30 over the harbour,
+    // a wall of stacked containers at x = +30. Layers as the rooftop's: the far harbour on BG1,
+    // the harbour in polygons (PL: the water, the apron past the landside rail, the cranes, the
+    // ship, the yard) behind the apron on BG2, which is transparent past the open edge and past
+    // the rail; the props and the mechs PH. No events yet (its falling containers are to come)
+    Stage { name: "CONTAINER PORT", short: "PORT", venue: "HONMOKU PIER // BERTH D-5", blurb: "OPEN QUAY ON THE LEFT,\nCONTAINERS ON THE RIGHT",
+            colour: 0x2A5E9C, half: PORT_HALF, edge: [Edge.Open, Edge.Wall],
+            art: StageArt { hall_tiles: PORT_SKY_TILES, hall_bytes: PORT_SKY_TILES_BYTES,
+                            hall_map: PORT_SKY_MAP, hall_pal: PORT_SKY_PAL, hall_pals: PORT_SKY_PALS,
+                            hall_w: PORT_SKY_W, hall_line: PORT_SKY_LINE, hall_z: PORT_SKY_Z,
+                            bands: PORT_BANDS, band_y: PORT_BAND_Y, band_z: PORT_BAND_Z,
+                            floor_tiles: PORT_DECK_TILES, floor_bytes: PORT_DECK_TILES_BYTES,
+                            floor_map: PORT_DECK_MAP, floor_pal: PORT_DECK_PAL,
+                            floor_pals: PORT_DECK_PALS, floor_s: PORT_DECK_S, floor_c: PORT_DECK_C,
+                            floor_out: 0x10000, floor_far: PORT_DECK_VIEW,
+                            sky: PORT_SKY, sky_dy: PORT_SKY_DY, prio: PORT_PRIO,
+                            clip_far: PORT_CLIP_FAR, dark: PORT_DARK },
+            // the container wall and the open edge's coping and bollards (props/port/, port_props.akr)
+            nprops: 2, props: [
+                StageProp { mesh: ASSET_STAGE_PORT_WALL, x: PORT_HALF, near: 12.0 },
+                StageProp { mesh: ASSET_STAGE_PORT_KERB, x: -PORT_HALF, near: 10.0 },
+                StageProp {}, StageProp {}, StageProp {}, StageProp {}],
+            // the harbour (props/port_harbour/, port_harbour.akr)
+            ncity: 6, city: [ASSET_STAGE_PORT_WATER, ASSET_STAGE_PORT_APRON, ASSET_STAGE_PORT_SHIP,
+                             ASSET_STAGE_PORT_YARD, ASSET_STAGE_PORT_CRANE_A, ASSET_STAGE_PORT_CRANE_B, null, null],
             music: 0, nevents: 0, events: [StageEvent {}, StageEvent {}, StageEvent {}, StageEvent {}] },
 ]
 

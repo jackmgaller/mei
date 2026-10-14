@@ -1,0 +1,171 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_port_apron",
+ "budget": {
+  "vertices": 2000,
+  "triangles": 80
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.62
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "asphalt": {
+   "color": "#3a2f24",
+   "class": "emissive",
+   "texture": {
+    "image": "art/asphalt.png",
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     16.0,
+     16.0
+    ]
+   }
+  },
+  "rail": {
+   "color": "#866746",
+   "class": "emissive"
+  },
+  "coping": {
+   "color": "#6b5034",
+   "class": "emissive"
+  },
+  "edge": {
+   "color": "#ac6e26",
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "apron",
+   "op": "box",
+   "size": [
+    120.0,
+    1.0,
+    32.5
+   ],
+   "material": "asphalt",
+   "transform": {
+    "translate": [
+     30.0,
+     -0.5,
+     35.75
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "rail_sea",
+   "op": "box",
+   "size": [
+    120.0,
+    0.1,
+    0.6
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     30.0,
+     0.0,
+     48.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "berth_coping",
+   "op": "box",
+   "size": [
+    120.0,
+    0.3,
+    0.45
+   ],
+   "material": "coping",
+   "transform": {
+    "translate": [
+     30.0,
+     0.15,
+     51.775
+    ]
+   },
+   "faces": {
+    "top": "edge"
+   },
+   "open": [
+    "bottom",
+    "front",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "edge_coping",
+   "op": "box",
+   "size": [
+    0.45,
+    0.3,
+    32.0
+   ],
+   "material": "coping",
+   "transform": {
+    "translate": [
+     -29.775,
+     0.15,
+     35.55
+    ]
+   },
+   "faces": {
+    "top": "edge"
+   },
+   "open": [
+    "bottom",
+    "left",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "yard",
+   "op": "box",
+   "size": [
+    240.0,
+    1.0,
+    25.4
+   ],
+   "material": "asphalt",
+   "transform": {
+    "translate": [
+     180.0,
+     -0.5,
+     6.7
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  }
+ ]
+}

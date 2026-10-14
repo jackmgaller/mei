@@ -1,0 +1,549 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_port_ship",
+ "budget": {
+  "vertices": 2000,
+  "triangles": 160
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.62
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "hull_stern": {
+   "color": "#23292a",
+   "class": "emissive",
+   "texture": {
+    "image": "art/hull_stern.png",
+    "projection": "fit"
+   }
+  },
+  "hull_name": {
+   "color": "#23292a",
+   "class": "emissive",
+   "texture": {
+    "image": "art/hull_name.png",
+    "projection": "fit"
+   }
+  },
+  "hull_bow": {
+   "color": "#23292a",
+   "class": "emissive",
+   "texture": {
+    "image": "art/hull_bow.png",
+    "projection": "fit"
+   }
+  },
+  "transom": {
+   "color": "#191e1f",
+   "class": "emissive"
+  },
+  "house_f": {
+   "color": "#9e7b55",
+   "class": "emissive",
+   "texture": {
+    "image": "art/house_front.png",
+    "projection": "fit"
+   }
+  },
+  "house_s": {
+   "color": "#7a5f41",
+   "class": "emissive",
+   "texture": {
+    "image": "art/house_side.png",
+    "projection": "fit"
+   }
+  },
+  "wing": {
+   "color": "#7e6244",
+   "class": "emissive"
+  },
+  "wing_under": {
+   "color": "#5b4731",
+   "class": "emissive"
+  },
+  "funnel": {
+   "color": "#8e6f4c",
+   "class": "emissive",
+   "texture": {
+    "image": "art/funnel.png",
+    "projection": "fit"
+   }
+  },
+  "funnel_s": {
+   "color": "#654f37",
+   "class": "emissive"
+  },
+  "cargo": {
+   "color": "#232b2d",
+   "class": "emissive",
+   "texture": {
+    "image": "art/cargo_sides.png",
+    "projection": "box",
+    "scale": [
+     26.0,
+     10.36
+    ]
+   }
+  },
+  "cargo_end": {
+   "color": "#1a2021",
+   "class": "emissive",
+   "texture": {
+    "image": "art/cargo_ends.png",
+    "projection": "box",
+    "scale": [
+     9.76,
+     10.36
+    ]
+   }
+  },
+  "mast": {
+   "color": "#654f37",
+   "class": "emissive"
+  },
+  "red": {
+   "color": "#ff3a2a",
+   "class": "emissive"
+  },
+  "white": {
+   "color": "#fff4e0",
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "hull_stern",
+   "op": "box",
+   "size": [
+    80.0,
+    11.0,
+    32.0
+   ],
+   "material": "hull_stern",
+   "transform": {
+    "translate": [
+     20.0,
+     4.5,
+     70.0
+    ]
+   },
+   "faces": {
+    "back": "hull_stern",
+    "left": "transom"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "hull_name",
+   "op": "box",
+   "size": [
+    100.0,
+    11.0,
+    32.0
+   ],
+   "material": "hull_name",
+   "transform": {
+    "translate": [
+     110.0,
+     4.5,
+     70.0
+    ]
+   },
+   "faces": {
+    "back": "hull_name"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "right",
+    "left"
+   ]
+  },
+  {
+   "id": "hull_bow",
+   "op": "box",
+   "size": [
+    110.0,
+    11.0,
+    32.0
+   ],
+   "material": "hull_bow",
+   "transform": {
+    "translate": [
+     215.0,
+     4.5,
+     70.0
+    ]
+   },
+   "faces": {
+    "back": "hull_bow"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "right",
+    "left"
+   ]
+  },
+  {
+   "id": "house",
+   "op": "box",
+   "size": [
+    16.0,
+    32.0,
+    26.0
+   ],
+   "material": "house_f",
+   "transform": {
+    "translate": [
+     -10.0,
+     26.0,
+     70.0
+    ]
+   },
+   "faces": {
+    "left": "house_s",
+    "right": "house_s"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "wings",
+   "op": "box",
+   "size": [
+    17.0,
+    2.6,
+    34.0
+   ],
+   "material": "wing",
+   "transform": {
+    "translate": [
+     -10.0,
+     40.4,
+     70.0
+    ]
+   },
+   "faces": {
+    "bottom": "wing_under"
+   },
+   "open": [
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "funnel",
+   "op": "box",
+   "size": [
+    8.0,
+    12.0,
+    9.0
+   ],
+   "material": "funnel",
+   "transform": {
+    "translate": [
+     -10.0,
+     47.0,
+     76.0
+    ]
+   },
+   "faces": {
+    "left": "funnel_s",
+    "right": "funnel_s"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "mast",
+   "op": "box",
+   "size": [
+    0.5,
+    9.0,
+    0.5
+   ],
+   "material": "mast",
+   "transform": {
+    "translate": [
+     -10.0,
+     46.4,
+     64.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "mast_light",
+   "op": "box",
+   "size": [
+    0.6,
+    0.6,
+    0.6
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     -10.0,
+     51.2,
+     64.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "stern_light",
+   "op": "box",
+   "size": [
+    0.6,
+    0.6,
+    0.6
+   ],
+   "material": "white",
+   "transform": {
+    "translate": [
+     -19.5,
+     10.6,
+     56.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "cargo_0",
+   "op": "box",
+   "size": [
+    26.0,
+    15.54,
+    28.0
+   ],
+   "material": "cargo",
+   "transform": {
+    "translate": [
+     15.0,
+     17.75,
+     70.0
+    ]
+   },
+   "faces": {
+    "left": "cargo_end"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "cargo_1",
+   "op": "box",
+   "size": [
+    26.0,
+    18.13,
+    28.0
+   ],
+   "material": "cargo",
+   "transform": {
+    "translate": [
+     41.4,
+     19.045,
+     70.0
+    ]
+   },
+   "faces": {
+    "left": "cargo_end"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "cargo_2",
+   "op": "box",
+   "size": [
+    26.0,
+    12.95,
+    28.0
+   ],
+   "material": "cargo",
+   "transform": {
+    "translate": [
+     67.8,
+     16.455,
+     70.0
+    ]
+   },
+   "faces": {
+    "left": "cargo_end"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "cargo_3",
+   "op": "box",
+   "size": [
+    39.0,
+    15.54,
+    28.0
+   ],
+   "material": "cargo",
+   "transform": {
+    "translate": [
+     100.7,
+     17.75,
+     70.0
+    ]
+   },
+   "faces": {
+    "left": "cargo_end"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "cargo_4",
+   "op": "box",
+   "size": [
+    26.0,
+    18.13,
+    28.0
+   ],
+   "material": "cargo",
+   "transform": {
+    "translate": [
+     133.6,
+     19.045,
+     70.0
+    ]
+   },
+   "faces": {
+    "left": "cargo_end"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "cargo_5",
+   "op": "box",
+   "size": [
+    26.0,
+    10.36,
+    28.0
+   ],
+   "material": "cargo",
+   "transform": {
+    "translate": [
+     160.0,
+     15.16,
+     70.0
+    ]
+   },
+   "faces": {
+    "left": "cargo_end"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "cargo_6",
+   "op": "box",
+   "size": [
+    39.0,
+    15.54,
+    28.0
+   ],
+   "material": "cargo",
+   "transform": {
+    "translate": [
+     192.9,
+     17.75,
+     70.0
+    ]
+   },
+   "faces": {
+    "left": "cargo_end"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "cargo_7",
+   "op": "box",
+   "size": [
+    52.0,
+    12.95,
+    28.0
+   ],
+   "material": "cargo",
+   "transform": {
+    "translate": [
+     238.8,
+     16.455,
+     70.0
+    ]
+   },
+   "faces": {
+    "left": "cargo_end"
+   },
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "right"
+   ]
+  }
+ ]
+}
