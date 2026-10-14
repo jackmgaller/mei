@@ -1532,6 +1532,29 @@ instead of a curse.
   and Claw Jab's hit boxes, or the arm keys); Shadow's weapon-joint keys are zeroed; new
   animations for the idle, intro, win, `atk_d`, the four specials and the super.
 
+## Decided by the owner (2026-10-14): Atomic Beam, Heartland's ray gun
+
+Planned, not designed in numbers yet: Heartland Atomic Company's echo of Beam, in the echo slot
+under Beam (unlocked by clearing the arcade with Beam), on Beam's skeleton (the Hero's). Working
+name **ATOMIC BEAM** (card ATOM BEAM; the owner had no preference); model number open (HA-58
+proposed, after Tank's HA-57). Nuclear meter (Heartland's: fills as it takes damage).
+
+- **Look:** Beam's frame reworked by Heartland: faded forest green and primer grey, patched and
+  salvaged. Raikō's Arc Cannon becomes a 1950s atomic ray gun: a big glowing green tube, cooling
+  fins, a small radar dish; a Geiger counter ticks when it fires.
+- **How it plays:** a slow, heavy zoner that gets stronger when the plan fails: every hit that
+  gets through fills its reactor.
+- **`sp_n` the Atomic Ray** (the Volt Orb's slot): a held ray, on while B is held: a beam, not a
+  ball, that pushes the other mech back. The gun heats while it runs; held too long, it vents
+  and leaves the mech open.
+- **`sp_f` Rod Shot** (the Arc Lance's slot): a fast spike fired from the barrel that pierces.
+- **`sp_u` Geiger Flare** (the Thunder Pillar's slot): the anti-air: a burst of light upward that
+  stuns briefly on hit.
+- **`sp_d` Lead Shielding** (the Reaction Prime's slot): it braces behind a shield; the next hit
+  is absorbed (like Tank's armour), and its damage still feeds the reactor.
+- **Super, Ground Zero:** a blast all round it at short range: the zoner's answer to a mech that
+  has got in.
+
 ## Balance patch (2026-10-13)
 
 Measured with `tests/balance/matrix.sh` (CPU level 2 against level 2, every pairing, the sides
