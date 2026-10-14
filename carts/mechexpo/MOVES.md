@@ -1389,6 +1389,62 @@ Shadow rises out of it into the stance.
   from the Double-blade Hero (also black and violet) by its height, the cape, the single eye and
   the claws in place of blades.
 
+## Seraph (Momentum Robotics, kinetic)
+
+Momentum's echo of Shadow, the paladin: SERAPH, model MR-02, in the echo slot under Shadow
+(unlocked by clearing the arcade with Shadow). The design is the owner's
+([Decided by the owner (2026-10-14)](#decided-by-the-owner-2026-10-14-seraph-momentums-angel));
+**phase 1 (mx-seraph) puts the mech in the game with Shadow's moves as placeholders**. Its own
+moves, effects and fight code come in later phases.
+
+Code name `Seraph` (`enum Mech`, index 8, appended after `Shadow`). The model is
+`models/seraph/make_seraph.py` (concept A, round 4b, 1,892 triangles): Shadow's skeleton and joint
+offsets, the knuckle guards as the weapon parts, and three joints appended to the shared skeleton:
+`wing_l`, `wing_r` (the torso's, folded at 0) and `halo` (the head's: turning it x 0..60 lifts the
+ring 0.9 m).
+
+**Real so far:**
+
+| | Seraph | Shadow |
+|---|---|---|
+| Health | 1,000 (the Hero's) | 900 |
+| Walk forward | 0.080 m a frame (4.8 m/s) | 0.085 |
+| Walk back | 0.064 m a frame (3.8 m/s) | 0.068 |
+| Meter | kinetic (Momentum's): +125 a landed hit, +60 blocked; the super needs a full bar, no debt | antimatter |
+| Jab (`atk_n`) hit box | x 1.7–3.2, y 8.6–9.8: the fist (2.4 m shorter) | x 1.6–5.6, y 6.5–9.5 |
+| Lunging straight (`atk_f`) hit box | x 2.6–6.8, y 6.7–8.3: the fist and forearm (2.6 m shorter) | x 3.0–9.4, y 5.5–8.5 |
+
+The jab's and the lunge's boxes follow the fist, so nothing hits with the air in front of it
+(measured with `mei_anim.py pose`; scenario 150 checks them against Shadow's). The jab keeps
+Shadow's arm keys, which hold the fist at face height: it passes over a crouching mech (8 m),
+where the talons hooked down to reach one. The roster row: SERAPH, MR-02, Momentum's emblem,
+stats `0x2323` (power 2, speed 3, reach 2, armour 3), 13.5 m to the top of the halo, the blurb
+"PALADIN: WARD,\nJUDGEMENT" (the owner's "THE PALADIN:\nWARDS, JUDGEMENT" is 91 px on its second
+line, the spec sheet's 76 px; asked).
+
+**Placeholders (Shadow's, until Seraph's own):**
+
+- Every animation is Shadow's on Seraph's rig (`anims/seraph/`, each `"base":
+  "../shadow/MOVE.anim.json"`), the weapon joints held at 0 (`"still"`: Shadow opens its claws
+  there), the wings folded and the halo down. Where Seraph's bigger body passes into itself or the
+  floor on Shadow's keys, the files `allow` it (`allow`, `floor_allow`): lying down (knockdown,
+  KO, get-up) the folded wings go 2.1 m into the floor.
+- Every hit's numbers (`seraph_hit` in `seraph.akr` returns `shadow_hit`), every other move's
+  boxes (the claws' boxes in the Fade Sweep, Diving Claw, Shadow Sneak, Eclipse Rise and Total
+  Eclipse keep the talons' reach), the timings and the chains.
+- The specials and the super do Shadow's things: the Hex Bolt and its Siphon (`sp_n`), Shadow
+  Sneak (`sp_f`), Eclipse Rise (`sp_u`), the Rift Mine (`sp_d`), Phantom Grip (the throw), Total
+  Eclipse with the stage going dark (the super), the Diving Claw's dive (`atk_air`). Each of
+  Shadow's rules asks one predicate in `seraph.akr` (`has_hex_bolt`, `has_sneak`,
+  `has_rift_mine`, `has_phantom_grip`, `has_eclipse`, `has_dive`), so a later phase takes Seraph
+  out of one and gives it its own without touching Shadow's.
+- The CPU plays Seraph as Shadow (`cpu.akr`'s `cpu_as_shadow`), but punishes with the general
+  rule (its own jab's and lunge's reach). The fists leave no trails (`fx.akr`); the bolt's sound
+  is Shadow's (`sfx.akr`); the training move list is Shadow's under fist names (`SERAPH_MOVES`).
+- The arcade: Shadow's final is now Seraph ("MOMENTUM ROBOTICS PRESENTS ITS COMPETING PRODUCT"),
+  not the UAPC's grey test unit; Seraph's final is Shadow (defending its title). Seraph's grey
+  copy is packed as every body's is.
+
 ## Reactions and the rest of the list
 
 | Move | Length | Notes |
@@ -1496,12 +1552,13 @@ Built by mx-ladder; how it works is in [README.md](README.md#the-arcade-ladder).
 
 ## Decided by the owner (2026-10-14): Seraph, Momentum's angel
 
-Planned, not built: **SERAPH** (card SERAPH), Momentum Robotics' echo of Shadow, model MR-02, in the
-echo slot under Shadow (unlocked by clearing the arcade with Shadow), on Shadow's skeleton plus three
-joints (`wing_l`, `wing_r`, `halo`). The model is concept A, round 4b
-(`concepts/angel_a/`, on its own branch for now). Kinetic meter (Momentum's). Shadow's trickster
-mirrored as an honest boxer: over the floor where Shadow goes under it, shots sent back, a mark
-instead of a curse.
+**SERAPH** (card SERAPH), Momentum Robotics' echo of Shadow, model MR-02, in the echo slot under
+Shadow (unlocked by clearing the arcade with Shadow), on Shadow's skeleton plus three joints
+(`wing_l`, `wing_r`, `halo`). The model is concept A, round 4b (`concepts/angel_a/`, promoted to
+`models/seraph/`). Kinetic meter (Momentum's). Phase 1 is built
+([Seraph](#seraph-momentum-robotics-kinetic): the mech, its numbers and fists, Shadow's moves as
+placeholders); the moves below are planned. Shadow's trickster mirrored as an honest boxer: over
+the floor where Shadow goes under it, shots sent back, a mark instead of a curse.
 
 - **Look:** white plates on a gunmetal frame; red on the gauntlets and cuffs, the armour's edges
   (the pauldron rims stay) and the solid upper wing plates; chrome flight plates with a white

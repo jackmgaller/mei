@@ -87,7 +87,11 @@ generator: the parts, each with its `id`, `parent` (or null for the root), the j
 from the parent's joint in the rest pose, and its part recipe (`parts/NAME_ID.asset.json`, origin
 at the joint), plus the attachment points A or F need (each hand's weapon mount; a weapon is a
 part like any other). A owns the format and may add to it; B keeps the generators writing it.
-The echo shares the Hero's skeleton: same part ids, same joints.
+The echo shares the Hero's skeleton: same part ids, same joints. Seraph's rig (Shadow's skeleton)
+has three joints more, appended to `enum Part` and the kit's `PARTS` after `foot_l`: `wing_l`,
+`wing_r` (the torso's children) and `halo` (the head's). A mech whose rig lacks them draws nothing
+there; its exported frames hold only its first 19 parts (`AK_NPART`), so the other mechs' data
+did not change.
 
 **Animation runtime (A, data by F) → fight (C), scene (D)**, in `anim.akr`. A designs the API;
 this is what the others rely on, in substance:
@@ -239,6 +243,47 @@ Grip and Total Eclipse. The design is [MOVES.md](MOVES.md#shadow-umbral-research
   805,917 GPU cycles at the peak, 1,914 triangles; against Beam 557,418 and 740,850, 1,820
   triangles; Shadow's effects (`prof_fx`, with fx.akr's) at most about 76,000 cycles.
 
+## Seraph
+
+Seraph (Momentum Robotics, kinetic; `Mech.Seraph`, roster slot 6 under Shadow, SERAPH MR-02) is
+Momentum's echo of Shadow, the paladin, unlocked by clearing the arcade with Shadow. Phase 1
+(mx-seraph) has the mech in the game, drawn and pickable, with Shadow's moves as placeholders; its
+own moves, effects and fight code are later phases. What is real and what is Shadow's for now:
+[MOVES.md](MOVES.md#seraph-momentum-robotics-kinetic).
+
+- **Files:** `models/seraph/make_seraph.py` (the model and rig: the owner's concept A, round 4b,
+  from `concepts/angel_a/`, which stays as the record), `anims/seraph/` (each move Shadow's on
+  Seraph's rig, the weapon joints held at 0 with the kit's `"still"`; the jab and the lunge with
+  the fist's hit boxes), `seraph.akr` (its hits and stand-ins, Shadow's for now, its move list,
+  and the predicates `has_hex_bolt`, `has_sneak`, `has_rift_mine`, `has_phantom_grip`,
+  `has_eclipse` and `has_dive` that Shadow's rules ask instead of "is this Shadow", so each
+  special can be given to Seraph's own code without touching Shadow's). Its numbers are a row of
+  `STATS` (1,000 health, a walk of 0.080 m a frame forward and 0.064 back, the kinetic meter) and
+  its names a row of `ROSTER`.
+- **Where phase 2 branches for `Mech.Seraph`:** the six predicates in `seraph.akr` (the Hex Bolt
+  and the Siphon in `fighter.akr`'s `fires_shot` and `shot_fire` and `shadow.akr`; Shadow Sneak in
+  `fighter.akr`'s advance and `shadow_fx.akr`; the Rift Mine in `shadow_tick`; Phantom Grip in
+  `fighter.akr`'s throw; Total Eclipse in `fighter.akr`'s `resolve`, `shadow_fx.akr`'s
+  afterimages and its stage dark; the Diving Claw in `shadow_tick`), `seraph_hit` and the
+  stand-ins in `seraph.akr`, `cpu_as_shadow` in `cpu.akr`, the trails in `fx.akr`
+  (`fx_plate`, the no-trail branch), the bolt's sound in `sfx.akr`'s `sfx_shot`, the move list
+  (`SERAPH_MOVES`), `COVER_POSE` in `cover.akr` (it holds Shadow's win), and the animations.
+- **The model:** 1,892 triangles (Shadow's 1,800 and the Hero's 1,776; the pack's limit for it
+  is 1,900, `MECH_LIMITS`), 13.55 m to the top of the halo in the rest pose (the roster's 135).
+  Packed after the other mechs (`LATE` in the generator), with its grey copy: 83,896 bytes of
+  meshes, as much again grey, 2,556 bytes of texture tiles (Momentum's mark on each pauldron,
+  the MR-02 plate on each thigh, the hazard stripes on each shin), four more 4-bit palettes.
+- **Tests:** scenarios 150 (against Shadow) and 151 (against the Hero) in `tests/harness.akr`:
+  1,000 health, the kinetic meter, 22 parts a frame, the walk, the jab landing at 4 m and missing
+  at 6 m where Shadow's Claw Jab reaches, the lunge landing at 9 m and missing just past the
+  fist's reach, the throw's side swap, the super's five hits from a full bar without debt;
+  152-157 through the whole game in `tests/seraph/harness.akr`: 152 the budget (budget.sh), 153 the
+  select with Seraph's card and spec sheet (and the roster row's checks), 154-157 mid-fight against
+  Shadow and the Hero in the hangar and on the rooftop; ladder scenario 118 (Shadow's NORMAL run:
+  the final is Seraph, the clear unlocks it) and 124 VIEWs 4 and 5 (Seraph's reveal, the VS card).
+- **The budget** (scenario 152, CPU against CPU, a debug build, Shadow's mine and bolt kept out,
+  the other cursed, a full bar every 300 frames): @BUDGET@
+
 ## The arcade ladder
 
 The full ladder (mx-ladder), after the MVP's two fights; the owner's decisions are in
@@ -251,12 +296,13 @@ run, the difficulties and the test unit's names; `game.akr` the flow; `menus.akr
   by lot (`ladder_make()`) from the run's seed: the game tick the run starts on, so a scripted
   run replays exactly. Never your own maker, never the final opponent's maker, no maker twice.
   The Twins are drawn while they are still locked. As the Hero or the Double-blade Hero the two
-  rivals come from Raikō, Heartland and Binary Mechanica; as Shadow, Beam, Tank or the Twins
-  from the other four makers.
+  rivals come from Raikō, Heartland and Binary Mechanica; as Shadow or Seraph from Raikō,
+  Heartland and Binary Mechanica; as Beam, Tank or the Twins from the other four makers.
 - **The final** is the slot below (or above) yours: the Double-blade Hero for the Hero ("UMBRAL
   RESEARCH PRESENTS ITS COMPETING PRODUCT"), the Hero for the Double-blade Hero ("MOMENTUM
-  ROBOTICS DEFENDS ITS TITLE"). A mech whose echo's slot has no mech yet (Shadow, Beam, Tank,
-  the Twins) meets **the UAPC test unit**: its own mech in the UAPC's grey, the client's own
+  ROBOTICS DEFENDS ITS TITLE"), Seraph for Shadow ("MOMENTUM ROBOTICS PRESENTS ITS COMPETING
+  PRODUCT"), Shadow for Seraph ("UMBRAL RESEARCH DEFENDS ITS TITLE"). A mech whose echo's slot has
+  no mech yet (Beam, Tank, the Twins) meets **the UAPC test unit**: its own mech in the UAPC's grey, the client's own
   evaluation unit ("THE UAPC WILL NOW EVALUATE YOUR PRODUCT AGAINST ITS OWN TEST UNIT";
   "SPECIFICATION: YOURS. BUILDER: NOT DISCLOSED."). Giving an echo's slot its `mech` replaces the
   test unit with the echo, with no other change.
@@ -362,15 +408,17 @@ clear it holds becomes a NORMAL stamp, since the MVP's ladder was two fights at 
 - **The masthead** is "PROCUREMENT TODAY", the owner's pick.
 
 **The test unit's grey** is made by `tools/gen_mechexpo_assets.py`, not by hand: for each body in
-`GREY_BODIES` (Shadow, Beam, Tank, the combined Twins, twin A, twin B) every part recipe is packed
+`GREY_BODIES` (Shadow, Beam, Tank, the combined Twins, twin A, twin B, Seraph) every part recipe is packed
 again as `grey_NAME` (`ASSET_GREY_*`), the same geometry with its colours mapped by
 `grey_colour()`: a maker's saturated colour to the UAPC's grey paint (lighter for a lighter
 colour), a neutral one to a gunmetal-to-primer ramp by its lightness, texture colours the same
 way, the emissive glows the UAPC's pale blue. `assets.akr` lists the pairs (`GREY_FROM`,
 `GREY_TO`); `anim.akr` fills a grey mesh table a mech at a time, the first time that mech is
 drawn grey, and draws from it while `anim_grey` is set, which the game sets around a test
-unit's bodies (`p_grey`), the split Twins' twin B included. The grey parts add about 410 KB of
-ROM and 16 4-bit palettes.
+unit's bodies (`p_grey`), the split Twins' twin B included. The grey parts add 485,368 bytes of
+meshes to the ROM (83,896 of them Seraph's) and 18 4-bit palettes. Shadow's and Seraph's are
+packed though each has the other as its final: the owner's rule is a grey for every body
+(scenario 125's VIEW 0 still fights Shadow's).
 
 **Budgets** (scenarios 117-119, debug builds, peaks): the schedule page 275,000 CPU and 353,000
 GPU cycles; the reveal 256,000 and 188,000; the cover 310,000 and 350,000; the fights with the
@@ -530,10 +578,12 @@ deck, the sea at −48.
   the menu page; texture slots 8 (fonts), 9 (UI sprites), 10 (effects); palettes 240–254 (244 is
   lent to the menu page and the hall's put back); a backdrop table at 0x582000; line channels 0,
   2 and 7. Priorities: BG2 0, BG1 1, the mechs 2, BG0 (the HUD's frame) 3, the interface list 4.
-- **Palettes, as built with Beam, Tank, the Twins, Shadow and the test units' grey parts
-  (mx-ladder):** the pack's 4-bit palettes are 0–43 (its surface, emissive and textured
-  palettes), counting up from 0 (0–27 before the grey parts); its 8-bit palettes would come down
-  from 14. The pack's textures still fit texture slot 0.
+- **Palettes, as built with Beam, Tank, the Twins, Shadow, the test units' grey parts and Seraph
+  (mx-seraph):** the pack's 4-bit palettes are 0–47 (its surface, emissive and textured
+  palettes), counting up from 0 (0–27 before the grey parts, 0–43 before Seraph); its 8-bit
+  palettes would come down from 14. The pack's textures take texture slots 0 and 1: 30,848 bytes
+  in slot 0 and, since Seraph, 5,248 in slot 1 (47,608 bytes of tiles before de-duplication); the
+  pack's ROM in `art/` is 1,181,648 bytes (1,008,480 before Seraph).
 - **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
   (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. A pool of 80 particles,
   at most 52 spawned a frame; at their busiest (scenarios 50–54) about 75,000 CPU cycles a frame
@@ -563,7 +613,8 @@ deck, the sea at −48.
   `tools/gen_mechexpo_ui.py`. The reveal uses the print layer (BG0, palettes 197-199) and the
   GPU's fog register while it shows. The model pack took 4-bit palettes 28–43 for the grey
   parts (above).
-- **Triangles:** a mech about 1,600–1,800 (the sketches are 1,632 and 1,734); the frame limit is
+- **Triangles:** a mech about 1,600–1,800 (the sketches are 1,632 and 1,734; Seraph, with wings
+  and a halo, 1,892); the frame limit is
   4,000.
 - **Budgets a tick:** CPU 1,000,000 cycles, GPU 2,000,000 (`mei-headless --gpu-stats`). The
   sketches cost about 155,000 CPU cycles and 5 % of the GPU each, posed as one mesh; the rig's

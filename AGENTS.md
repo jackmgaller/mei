@@ -265,6 +265,7 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/mechexpo/models/tank/make_tank.py` | Tank's recipes in its folder: `tank.asset.json`, `tank_rest`, `tank_flex`, `parts/tank_*.asset.json`, `tank.rig.json`, `cameras*.json`, `heartland_emblem.png` (it imports `make_hero.py`'s helpers) |
 | `carts/mechexpo/models/twins/make_twins.py` | The Twins' three bodies, each in its folder (`models/twins/`, `models/twin_a/`, `models/twin_b/`): `NAME.asset.json`, `NAME_rest`, `NAME_flex`, `parts/NAME_*.asset.json`, `NAME.rig.json`, `cameras*.json`, `asset-preview.json`; and in `models/twins/` the docking review (`twins_docking`, `twins_docked`, `cameras_docking.json`) and `binary_emblem.png` (it imports `make_hero.py`'s helpers) |
 | `carts/mechexpo/models/shadow/make_shadow.py` | Shadow's recipes in its folder: `shadow.asset.json`, `shadow_rest`, `shadow_flex`, `shadow_sink`, `parts/shadow_*.asset.json` (the claws, `shadow_claw`, are both weapon parts), `shadow.rig.json`, `cameras*.json`, `asset-preview.json` (it imports `make_hero.py`'s helpers) |
+| `carts/mechexpo/models/seraph/make_seraph.py` | Seraph's recipes in its folder (the concept's round 4b, promoted): `seraph.asset.json`, `seraph_rest`, `seraph_flex`, `parts/seraph_*.asset.json` (the knuckle guards, `seraph_knuckle`, are both weapon parts; `seraph_wing_l`, `seraph_wing_r` and `seraph_halo` the three appended joints'), `seraph.rig.json`, `cameras*.json`, `asset-preview.json` (it imports `make_shadow.py`'s skeleton and `make_hero.py`'s helpers) |
 | `carts/mechexpo/models/hangar_wall/make_hangar_wall.py` | `hangar_wall_r.asset.json`, `hangar_wall_l.asset.json`, `art/wall_sign.png`, `cameras.json` |
 | `carts/mechexpo/models/expo_banner/make_expo_banner.py` | `expo_banner.asset.json`, `art/banner_expo.png`, `art/banner_2000.png`, `cameras.json` |
 | `carts/mechexpo/props/rooftop/make_rooftop.py` | The rooftop's props: `roof_stairwell.asset.json`, `roof_parapet.asset.json`, `roof_kerb.asset.json`, `art/stair_door.png`, `art/stair_sign.png`, `cameras.json` (`gen_mechexpo_rooftop.py` runs it) |
@@ -273,7 +274,7 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/mechexpo/concepts/angel_a/make_angel_a4.py` | The angel's fourth look study (solid red upper wings, a joint for each wing), beside the third: `angel_a4_{idle,attack,judgement,rest,spread}.asset.json`, `cameras_a4.json` (it imports `make_angel_a3.py`); `render_angel_a4.py` renders them, with a stand-in light column for Judgement, and draws the sheets (Pillow) |
 | `carts/mechexpo/concepts/angel_a/make_angel_a4b.py` | Round 4b: the halo on its own joint and the flight plates' treatments: `angel_a4b_{judgement,rest,raised}.asset.json`, `angel_a4b_edge_*.asset.json`, `cameras_a4b.json` (it imports `make_angel_a4.py`); `render_angel_a4b.py` renders them, with stand-ins for the column and the halo flare, and draws the sheets (Pillow) |
 
-The last twenty-three are run by their path from the repository root, not as `tools/NAME.py`; the
+The last twenty-five are run by their path from the repository root, not as `tools/NAME.py`; the
 garden's two audio generators share `carts/garden/audio/garden_dsp.py`, and Mech Expo's models
 `carts/mechexpo/models/hero/mxpaint.py`, which write nothing.
 
