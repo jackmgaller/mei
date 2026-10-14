@@ -149,7 +149,7 @@ fn seraph_round() {
     }
 }
 
-// ---- which moves still stand in (moves.akr's use_standin asks here for Seraph)
+// ---- which moves still stand in (moves.akr's use_standin reads ser_std for Seraph)
 //
 // Every move of Seraph's has an animation file, but until each is made it is Shadow's on Seraph's
 // rig (anims/seraph/, phase 1), whose timing and boxes are Shadow's moves': the Sneak, the mine,

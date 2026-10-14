@@ -14,9 +14,10 @@ import "seraph.akr"             // Seraph's data, and which of Shadow's rules it
 // guard pose there: anim_standin()), and for all of them while STANDIN_ALL is set.
 const STANDIN_ALL = false
 
+// (and Seraph's moves whose animation is still a placeholder of Shadow's: seraph.akr's ser_std,
+// filled by seraph_init() when a Seraph fights)
 fn use_standin(m: Mech, mv: Mv) -> bool {
-    if m == Mech.Seraph && seraph_standin(mv) { return true }  // a placeholder of Shadow's (seraph.akr)
-    return STANDIN_ALL || anim_standin(m, mv)
+    return STANDIN_ALL || anim_standin(m, mv) || (m == Mech.Seraph && ser_std[mv])
 }
 
 // The marks the fight reads are anim.akr's MARK_*; the stand-in below sets them too.
