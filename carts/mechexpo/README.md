@@ -164,7 +164,14 @@ source's charge-up with the burst, and a heavy or crushing `sfx_hit` scatters de
 (the Reflect event), `sfx_column_lock()` (the Column event), and from its state (`seraph_fx.akr`'s
 `seraph_sfx()`) `sfx_ward()`, `sfx_wing_beat()`, `sfx_dive(land: bool)` and the loops
 `SFX_GLIDE` and `SFX_MARK_HUM`; its branches of `sfx_attack` (the column's impact, Ascension's
-rush, the fists), `sfx_shot` (the bolt's cast) and `sfx_super` (the choir). By state,
+rush, the fists), `sfx_shot` (the bolt's cast) and `sfx_super` (the choir). Gamma's
+(mx-gamma-fx): `sfx_gamma(k)` (`GSX_*`: the ray coming on, let go and cut, the vent, a shot
+burnt, the shield swung out, a blow on the lead shield; the Vent and Burn events, the Armour
+event on a braced Gamma, a Parry of its ray, and `gamma_fx.akr`'s `gamma_sfx()`), the loops
+`SFX_RAY`, `SFX_HEAT` and `SFX_DAZE`, and its branches of `sfx_attack` (the lamp, the sweep's
+sizzle, the flare, Ground Zero's blast), `sfx_shot` (the rod's crack), `sfx_throw_by` (Point
+Blank's blast), `sfx_super` (the nuclear charge-up and a klaxon) and `sfx_step_of` (its own
+step); `sfx_clash` fizzles whenever an orb is one of the two shots. By state,
 once a fight frame from `game.akr`'s `sound_poll()` (the mechs' parts in `beam_fx.akr`'s
 `beam_sfx()`, `tank_fx.akr`'s `tank_sfx()` and `twins_fx.akr`'s `twins_sfx()`):
 `sfx_couple(on: bool)`, `sfx_react()`, `sfx_charge_full()`, `sfx_void(back: bool)`,
@@ -172,8 +179,10 @@ once a fight frame from `game.akr`'s `sound_poll()` (the mechs' parts in `beam_f
 `sfx_pass()`, `sfx_shutter()` (`menus.akr`'s `menus_sfx()` times the stamps to their drawing).
 
 **Loops** (Tank's treads, Beam's charge hum, which the Twins' Fusion Focus borrows lower, the
-Shock Grip's buzz, Seraph's glide and its Mark bolt's hum): `sfx_hold(slot, id, pri, x, pitch,
-gain)` every frame a loop should sound, a slot a side (0, 1) and a side's bolt (2, 3); `sfx_tick()` (once a frame, always, after the game's update) fades out over four
+Shock Grip's buzz, Seraph's glide and its Mark bolt's hum, Gamma's ray, its heat warning and the
+daze's count): `sfx_hold(slot, id, pri, x, pitch, gain)` every frame a loop should sound, a slot
+a side (0, 1), a side's bolt or Gamma's heat warning (2, 3) and the daze a side's Gamma caused
+(4, 5); `sfx_tick()` (once a frame, always, after the game's update) fades out over four
 frames and stops every loop not held that frame, so loops stop by themselves on the pause, on
 the menus, when the move ends and at a KO (`sfx_ko()` stops them at once).
 `sfx_stop_fight()` (in `leave_fight()`) stops every fight sound still playing. The voices'
@@ -397,6 +406,75 @@ and what is Beam's for now: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-n
   `game.akr`'s `sfx_clash` counts only Beam's orb), the trails in `fx.akr` (the no-trail branch),
   `COVER_POSE` in `cover.akr` (it holds Beam's win), and the animations (the shield swung out at
   `weapon_l` (0, 90, 0) for Lead Shielding).
+- **Effects and sounds (mx-gamma-fx):** `gamma_fx.akr`, from the fight's events (`Vent`, `Burn`,
+  `Daze`, appended to `enum Ev`; the shared `Shot`, `Throw`, `Armour`, `Parry`, `Swing`) and
+  state (`Fighter.heat`, `Fx.ray_t`, `Fx.dazed`, `Fx.daze_drop`, `Shot.pierce`, Gamma's move,
+  frame and hit boxes), called with a line each from `game.akr` (`gamma_fx_draw` after
+  Seraph's, `gamma_fx_offset` after Seraph's offset, `gamma_sfx` in `sound_poll`, and
+  `sound_event`'s Vent, Burn, Armour and Parry lines), `fx.akr` (`gamma_fx_rod` before every
+  other shot, `gamma_fx_rod_fire` for a rod's Shot event, no wave motes for a rod) and `hud.akr`
+  (`gamma_heat_hud` after Seraph's mark); `beam_fx.akr` leaves Gamma out (its discharges, charge
+  glow, hum and buzz are Beam's only), and fx.akr's no-trail branch keeps Gamma. Heartland's
+  colours (`GMX_GLOW` 0x6EFF8C, `GMX_CORE` 0xE0FFF0, `GMX_HALO` 0x40FF60, the shroud's ramp
+  0x2030A0, 0x2080FF, 0x80E0FF; 0xBBGGRR), anchored on the projector (`weapon_r`: the lens
+  (0, 0.8, −4.4), the bore (0, 0.3, −4.86), three slots along the shroud at z −1.2, −2.35 and
+  −3.3), the shield's face (`weapon_l`, (0.8, −0.1, 0)) and the hatch (torso, (0, 2.1, −1.5)).
+  The Atomic Ray is on while its hit box is out (sp_n's, found once in the data; while the data
+  has none, phase 1's placeholder, while `Fx.ray_t` counts up to the charge frame, 2.5 to 16 m):
+  the warm-up (the lens brightening, the slots lighting from the fist outward), then the beam from
+  the lens to the first hurt box it crosses (or its box's end, tapering over 1.4 m): a green halo
+  2 m thick whose edge flickers and flares on each tick, a white-green core 0.6 m thick (two bands
+  of additive Gouraud triangles off one projected middle line), two streaks running outward,
+  burning motes; at the contact a glow, a spark star, sparks and a burst on each tick (a green
+  hexagon on a guard, sparks thrown up and down off a braced lead shield, gold and green off a
+  Wing Ward); the lamp brighter with the heat; the shut-off's dimming lens and steam. The heat on
+  the gun for both players: the slots dull red from 30, orange from 60, yellow-white from 85,
+  haze over the shroud from 45, smoke from 60, a wisp of steam a frame from 85. The vent (the
+  Vent event, 50 frames): jets of steam both ways along the barrel, the lamp flickering out, the
+  hatch flaring, a column of steam rising and thinning, the slots from white through orange to
+  dark. A burn (the Burn event: a green-white flash 3 m across and sparks); a cut (the ray going
+  out while a shot of strength 2 or more was in it, or a Parry of it: a white snap, a star,
+  sparks). The Rod Shot (a shot with `pierce`): a white-hot spike in an orange glow, a 6 m trail
+  with a white thread, gold when a Wing Ward sent it back; the bore's flash and smoke; a spark
+  where it crosses another shot; a flare, a ring, shards and sparks where it ends against a body
+  on an armour frame or a braced shield. The lamp on the normals (a flash at the lens for the
+  Lamp Jab and the Down Flash, a white cone from the lens over the Glare Lance's box to 10 m, the
+  Scorch Sweep's spot at its box's far end on the floor and a scorched streak behind it for 12
+  frames). The Geiger Flare: a fan of white light 10 m long, 30° each side of the barrel, from
+  the lens while its box is out, green flecks in it; the daze on every dazed body (a split
+  Twins' partner too): two trefoils and three green spots circling the head, a green glow on the
+  chest flickering at random like a count, Geiger static over it, green ticks crackling off; on
+  the drop (`Fx.daze_drop`) a green streak above the falling body; the Daze event's star and
+  ring. Lead Shielding: a clank and sparks at the shield's top edge on sp_d's fifth frame; on an
+  absorb (the Armour event on a braced Gamma) a dull white dent-flash on the plate for 8 frames,
+  a star and grey sparks, with `tank_fx.akr`'s ring. Point Blank: the lamp blazing on the
+  other's chest from the throw's sixth frame, light streaming out of its back; the blast (the
+  Throw event) a white flash, a flare and a green ring. Ground Zero: the hatch flaring white-green
+  through the flash (a glow and a trefoil swelling), the stage tinted toward green-white
+  (`layer_offset`, from the super's first frame to the blast's eighth, fading over 12); the
+  blast when its box comes out: a dome of light 8 m in radius grown in 3 frames and fading over
+  20, a white flash at the impact, a green and a white ring along the floor (16 and 20 m across),
+  a ring in the air, dust thrown out both ways, pebbles and sparks, the reactor flaring white.
+  The reactor's glow by the meter is `tank_fx.akr`'s (for every nuclear mech). The HUD: a 2-pixel
+  heat bar 5 pixels under Gamma's meter gauge, its length, filling from the outer end: green, amber
+  from 60, red flashing from 85, white while venting; HEAT flashing from 85, VENT while venting
+  (FONT_MICRO, beside the bar on the screen's centre side). Sounds (`tools/gen_mechexpo_audio.py`,
+  `GAMMA` after Seraph's so every earlier sound keeps its index and bytes): the ray coming on, its
+  hum (a loop with a throb at the ticks, pitched 0.9 + heat / 200), let go and cut, the heat's
+  warning (a loop: Geiger clicks and a beep, slot 2 or 3, from 85), the vent's steam, a burn's
+  sizzle, the rod's crack, the flare, the daze's ringing and count (a loop, slot 4 or 5), the
+  shield swung out and a blow on lead, Point Blank's blast (and its lamp's hum: the ray's loop at
+  1.25), the normals' lamp, Ground Zero's klaxon and its blast, and Gamma's own step; 202,960
+  bytes in `sfx.adp`. VRAM: no new texture slot or palette (the particle sheet's dome, trefoil,
+  spike, jet and static, below). Tests: scenarios 240-249 in `tests/gamma_fx/harness.akr` (240
+  the ray to its vent and the gauge every frame, 241 a guard, a burn and two cuts, 242 the Wing
+  Ward, 243 and 244 the rod through a wave and through armour, 245 Lead Shielding, 246 the flare
+  and both dazes, 247 the normals, the steps and Point Blank, 248 Ground Zero, 249 the budget),
+  each checking what it drew and which sounds it heard; where the data has none of Gamma's own
+  moves yet, they stand in for the fight's part (MOVES.md's rules) and post its events.
+  The budget (249, budget.sh: the ray held at heat 88 against Seraph's Wing Ward on the container
+  port, then against the split Twins there with Ground Zero every 300 frames; debug builds):
+  BUDGET_NUMBERS.
 - **The model:** 1,936 triangles (Beam's 1,794; concept C's 1,940; the pack's limit for it is
   1,950, `MECH_LIMITS`), 11.9 m to the top of the searchlight head in the rest pose (the
   roster's 119) and 13.6 m to the whip antenna's tip. The muzzle is Beam's, (0, 0.8, −4.4) in
@@ -825,7 +903,9 @@ across the fight plane, z behind it, y up from the apron.
 - **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
   (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. Seraph's sprites
   (mx-seraph-fx: a four-point glint in four turns, the mark's sigil, a feather) are on the same
-  sheet after the others, which keep their rectangles: rows 0–154, 19,840 bytes (14,592 before). A pool of 80 particles,
+  sheet after the others, which keep their rectangles, and Gamma's (mx-gamma-fx: a dome of light,
+  the radiation trefoil, the rod's spike, a jet of steam, two frames of Geiger static) after
+  Seraph's: rows 0–171, 22,016 bytes (19,840 before Gamma's, 14,592 before Seraph's). A pool of 80 particles,
   at most 52 spawned a frame; at their busiest (scenarios 50–54) about 75,000 CPU cycles a frame
   in a release build.
 - **The menus (mx-menus):** texture slot 12 (`ui_menu.tex`: the small fonts FONT_MICRO and

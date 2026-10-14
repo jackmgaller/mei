@@ -5,7 +5,8 @@
 # 6 and 7 the chains, 8 the kinetic super, 9 the antimatter super and its debt, 10 CPU against
 # CPU twice (the same match), 11 the separation limit and the walls, 12 the Parry and the
 # anti-air, 13 the ladder's levels, 18 the Vault Throw, 19 the air attack, 15 training. The
-# budget scenarios (14, 39, 49, 54, 69, 98, 99, 109, 147-149, 162, 168, 202) are tests/budget.sh's.
+# budget scenarios (14, 39, 49, 54, 69, 98, 99, 109, 147-149, 162, 168, 198, 202, 249) are
+# tests/budget.sh's.
 # MEIC and RUN as in tools/cart_scenario.sh.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -14,11 +15,11 @@ mkdir -p "$O"
 POOL_DIR="$O"
 . "$HERE/pool.sh"
 pool_report() {
-    grep -E '^(OK|Seraph|the (fists|jab|lunging|throw|super)|blurb|stats|Shadow.s (final|Claw)|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|cover|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb|Judgement|orb level|ward [0-9]|Ascension|its back|6 m from|landing|Seraph.s CPU|  peak|mark_cast|the (bolt|mark|ward|Dive)|Judgement:|Gamma|every move|walked|Beam.s final)' "$O/$1.log"
+    grep -E '^(OK|Seraph|the (fists|jab|lunging|throw|super)|blurb|stats|Shadow.s (final|Claw)|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|cover|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb|Judgement|orb level|ward [0-9]|Ascension|its back|6 m from|landing|Seraph.s CPU|  peak|mark_cast|the (bolt|mark|ward|Dive)|Judgement:|Gamma|every move|walked|Beam.s final|Lead Shielding|Ground Zero|  heard)' "$O/$1.log"
 }
 run() {       # scenario frames: the scenarios through the whole game cost about 8 times a frame
     s="$1"; f="$2"; shift 2
-    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]|14[0-6]|150|16[3-7]|19[0-79]|20[3-7]) c=$((f * 8)) ;; 108|181) c=$((f * 40)) ;; *) c="$f" ;; esac
+    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]|14[0-6]|150|16[3-7]|19[0-79]|20[3-7]|24[0-8]) c=$((f * 8)) ;; 108|181) c=$((f * 40)) ;; *) c="$f" ;; esac
     pool_add "s$s" "$c" "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@"
 }
 run 1 800
@@ -189,6 +190,21 @@ run 204 301
 run 205 301
 run 206 301
 run 207 301
+# Gamma's effects, its HUD heat gauge and its sounds (mx-gamma-fx, tests/gamma_fx/harness.akr,
+# the whole game): 240 the Atomic Ray held to its vent (the heat on the gun and the gauge), 241
+# the ray blocked, a shot burnt up and the ray cut, 242 against the Wing Ward, 243 the Rod Shot
+# through a wave, 244 through Tank's armour, 245 Lead Shielding against a mirror's ray, 246 the
+# Geiger Flare's daze on the ground and in the air, 247 the normals' lamp, the steps and Point
+# Blank, 248 Ground Zero between the split Twins (249, the budget, is budget.sh's)
+run 240 201
+run 241 261
+run 242 201
+run 243 121
+run 244 121
+run 245 141
+run 246 201
+run 247 401
+run 248 161
 # the arcade ladder (mx-ladder, tests/ladder/harness.akr, the whole game; VIEWs as listed there):
 # 116 EASY against a scripted masher, 117-119 a whole run on each difficulty (EASY with the Hero,
 # NORMAL with Shadow, HARD with Tank: the rivals drawn, a loss and a continue, the reveal, the

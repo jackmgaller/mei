@@ -189,6 +189,11 @@ private fn gfx_pt_of(fi: *Fighter, root: mat4, part: Part, lp: vec4) -> vec3 {
     return (anim_part(fi.body, fi.mv, fi.frame, root, part) * lp) as vec3
 }
 
+// Gamma's projector (weapon_r) this frame, side s: its matrix (gfx_moves sets it once a frame) and
+// a point in its frame.
+var gfx_wm: [2]mat4
+private fn gfx_w(s: s32, lp: vec4) -> vec3 { return (gfx_wm[s] * lp) as vec3 }
+
 private fn gfx_mote(x: fixed, y: fixed, vx: fixed, vy: fixed, life: s32, c0: u32, c1: u32) -> *Pt {
     fx_c0 = c0
     fx_c1 = c1
@@ -335,15 +340,17 @@ fn gamma_fx_rod(sh: *Shot) {
     let tp = vec3(sh.x + back * 6.0, y, -0.6)
     let tq = project_point(tp)
     if tq.z >= 0 {
-        fx_sprite(&FX_STREAK[0], (q.x + tq.x) / 2, q.y, if_s32(back < 0.0, abs(tq.x - q.x), -abs(tq.x - q.x)),
-                  max(px / 2, 2), col_scale(trail, 0.8), BLEND_ADD)
-        line_ex(q.x, q.y, tq.x, tq.y, 1, core, 0, BLEND_ADD)
+        let tw = if_s32(back < 0.0, abs(tq.x - q.x), -abs(tq.x - q.x))
+        fx_sprite(&FX_STREAK[0], (q.x + tq.x) / 2, q.y, tw, max(px * 3 / 4, 3), trail, BLEND_ADD)
+        line_ex(q.x, q.y, tq.x, tq.y, 2, core, 0, BLEND_ADD)
     }
     // the glow, then the spike, its tip white-hot
     let flick = (sh.t & 1) as s32
-    fx_sprite(&FX_GLOW[0], q.x, q.y, px * 3, px + px / 2 + flick, col_scale(hot, 0.75), BLEND_ADD)
-    fx_psprite_ex(&FXP_SPIKE[0], q.x, q.y, px * 2, max(px / 2, 3), core, BLEND_ADD, back > 0.0)
-    fx_sprite(&FX_SPARK[0], q.x - (back * fixed(px) * 0.7) as s32, q.y, px + flick, px + flick, GMX_WHITE, BLEND_ADD)
+    let tip = q.x - (back * fixed(px) * 0.9) as s32
+    fx_sprite(&FX_GLOW[0], q.x, q.y, px * 4, px * 2 + flick, hot, BLEND_ADD)
+    fx_psprite_ex(&FXP_SPIKE[0], q.x, q.y, px * 3, max(px * 3 / 4, 4), GMX_WHITE, BLEND_ADD, back > 0.0)
+    fx_psprite_ex(&FXP_SPIKE[0], q.x, q.y, px * 3, max(px * 3 / 4, 4), core, BLEND_ADD, back > 0.0)
+    fx_sprite(&FX_SPARK[0], tip, q.y, px * 2 + flick, px * 2 + flick, GMX_WHITE, BLEND_ADD)
 }
 
 private fn if_s32(c: bool, a: s32, b: s32) -> s32 {
@@ -538,6 +545,7 @@ private fn gfx_cut(s: s32, x: fixed, y: fixed) {
 private fn gfx_moves(f: *Fight, s: s32, tick: bool) {
     let fi = &f.f[s]
     let root = anim_place(vec2(fi.x, fi.y), fi.facing)
+    gfx_wm[s] = anim_part(fi.body, fi.mv, fi.frame, root, Part.weapon_r)
     let dir = fixed(fi.facing)
     let live = tick && f.freeze <= 0                // the streams pause in hitstop
     let t = fx[s].t
@@ -568,7 +576,7 @@ private fn gfx_moves(f: *Fight, s: s32, tick: bool) {
         gfx_cut_t[s] = min(gfx_cut_t[s] + 1, 99)
         gfx_lead_t[s] = min(gfx_lead_t[s] + 1, 99)
     }
-    let lens = gfx_pt_of(fi, root, Part.weapon_r, GMX_LENS)
+    let lens = gfx_w(s, GMX_LENS)
     let lp = vec3(lens.x, lens.y, -1.0)
     // the warm-up: the lens brightening, the slots lighting from the fist outward
     var warm = t < gfx_ray0                         // before the ray's first box
@@ -583,7 +591,7 @@ private fn gfx_moves(f: *Fight, s: s32, tick: bool) {
         for j in 0..3 {
             let kj = clamp(k * 3 - fixed(j), 0.0, 1.0)
             if kj > 0.0 {
-                let sp = gfx_pt_of(fi, root, Part.weapon_r, slots[j])
+                let sp = gfx_w(s, slots[j])
                 gfx_glow(vec3(sp.x, sp.y, -1.0), 1.0, 1.4, col_scale(GMX_GLOW, kj * 0.7))
             }
         }
@@ -595,7 +603,7 @@ private fn gfx_moves(f: *Fight, s: s32, tick: bool) {
         let k = 1.0 - fixed(gfx_off_t[s]) / 10
         gfx_glow(lp, 1.0 + k * 1.4, 1.0, col_scale(GMX_GLOW, k * 0.8))
         if live && gfx_off_t[s] % 4 == 1 {
-            let m = gfx_pt_of(fi, root, Part.weapon_r, GMX_SLOT1)
+            let m = gfx_w(s, GMX_SLOT1)
             gfx_steam(m.x, m.y + 0.4, 0.0, 0.05, 3.0, 22)
         }
     }
@@ -619,7 +627,8 @@ private fn gfx_moves(f: *Fight, s: s32, tick: bool) {
     }
     if has_box && fi.mv == Mv.atk_f {
         gfx_cone(lp, hb, dir, 1.0 - fixed(min(gfx_hot[s] - 1, 3)) / 6)
-        gfx_glow(lp, 2.0, 1.0, GMX_CORE)
+        gfx_glow(lp, 2.6, 1.0, GMX_CORE)
+        gfx_psp(&FXP_FLARE[0], lp, 7.0, 0.5, GMX_WHITE, false)
         gfx_seen[GFXS_CONE] += 1
     }
     if has_box && fi.mv == Mv.atk_d {
@@ -642,7 +651,7 @@ private fn gfx_moves(f: *Fight, s: s32, tick: bool) {
     }
     // the Geiger Flare: a fan of light up and ahead from the lens
     if has_box && fi.mv == Mv.sp_u {
-        let ax = (anim_part(fi.body, fi.mv, fi.frame, root, Part.weapon_r) * GMX_AXIS) as vec3
+        let ax = (gfx_wm[s] * GMX_AXIS) as vec3
         var k = 1.0
         if gfx_hot[s] > 2 { k = max(1.0 - fixed(gfx_hot[s] - 2) / 6, 0.35) }
         gfx_fan(lp, ax, k)
@@ -735,7 +744,7 @@ private fn gfx_heat(f: *Fight, s: s32, root: mat4, live: bool) {
     let slots: [3]vec4 = [GMX_SLOT0, GMX_SLOT1, GMX_SLOT2]
     var mid: vec3
     for j in 0..3 {
-        let p = gfx_pt_of(fi, root, Part.weapon_r, slots[j])
+        let p = gfx_w(s, slots[j])
         if j == 1 { mid = p }
         gfx_glow(vec3(p.x, p.y, -1.0), 1.3, 1.5, col_scale(col, k * (0.85 + flick)))
     }
@@ -753,8 +762,8 @@ private fn gfx_heat(f: *Fight, s: s32, root: mat4, live: bool) {
         sm.dt = 1.0 / 30
     }
     if live && h >= 85 {
-        let p = gfx_pt_of(fi, root, Part.weapon_r, slots[(f.ticks % 3) as s32])
-        gfx_steam(p.x, p.y + 0.4, gfx_sf() / 40, 0.07, 2.4, 16)
+        let p = gfx_w(s, slots[(f.ticks % 3) as s32])
+        gfx_steam(p.x, p.y + 0.4, gfx_sf() / 40, 0.07, 1.6, 14)
         gfx_seen[GFXS_STEAM] += 1
     }
 }
@@ -765,7 +774,7 @@ private fn gfx_vent(f: *Fight, s: s32, root: mat4, live: bool) {
     let fi = &f.f[s]
     let vt = gfx_vent_t[s]
     gfx_seen[GFXS_VENT] += 1
-    let m = anim_part(fi.body, fi.mv, fi.frame, root, Part.weapon_r)
+    let m = gfx_wm[s]
     let mid = (m * GMX_SLOT1) as vec3
     let ax = (m * GMX_AXIS) as vec3
     if vt < 9 {
@@ -807,7 +816,7 @@ private fn gfx_vent(f: *Fight, s: s32, root: mat4, live: bool) {
 private fn gfx_ray_draw(f: *Fight, s: s32, root: mat4, b: vec4, tick: bool, live: bool) {
     let fi = &f.f[s]
     let dir = fixed(fi.facing)
-    let lens = gfx_pt_of(fi, root, Part.weapon_r, GMX_LENS)
+    let lens = gfx_w(s, GMX_LENS)
     var hit = -1
     let end = gfx_ray_end(s, b, &hit)
     let y = clamp(lens.y, b.y, b.w)
@@ -825,24 +834,30 @@ private fn gfx_ray_draw(f: *Fight, s: s32, root: mat4, b: vec4, tick: bool, live
     let heat = fixed(clamp(fi.heat, 0, 100)) / 100
     var dim = 1.0
     if fx[s].pause > 0 { dim = 0.5 }                // a Parry froze it
-    // the halo, its edge flickering, then the core, then the hot middle
-    let wob = gfx_sf() * 0.12
-    var taper = 1.4
-    if hit >= 0 { taper = 0.0 }
-    gfx_band(x0, end, y, 1.0 + wob + flare * 0.6, col_scale(GMX_HALO, (0.42 + flare) * dim), taper)
-    gfx_band(x0, end, y, 0.3 + flare * 0.15, col_scale(GMX_CORE, (0.8 + flare / 2) * dim), taper)
-    gfx_band(x0, end, y, 0.12, col_scale(GMX_WHITE, 0.5 * dim), taper)
-    // streaks running outward along it
+    // the beam: its middle line projected once (the lens, where the taper starts, the end), each
+    // band's edges offset from it on the screen; the halo, its edge flickering, then the core
     let len = abs(end - x0)
-    if len > 2.0 {
-        for j in 0..3 {
-            let u = fixed((gfx_frame * 9 + j * 33) % 100) / 100
-            let sx = x0 + dir * len * u
-            let p = vec3(sx, y + gfx_sf() * 0.25, -0.9)
-            let q = project_point(p)
-            if q.z >= 0 {
-                let px = fx_px(p, 1.0)
-                fx_sprite(&FX_STREAK[0], q.x, q.y, (if_fixed(dir > 0.0, 3.2, -3.2) * fixed(px)) as s32, max(px / 3, 1),
+    var xm = end
+    if hit < 0 && len > 1.4 { xm = end - dir * 1.4 }
+    let pa = vec3(x0, y, -0.8)
+    let pb = vec3(xm, y, -0.8)
+    let qa = project_point(pa)
+    let qb = project_point(pb)
+    let qc = project_point(vec3(end, y, -0.8))
+    if qa.z >= 0 && qb.z >= 0 && qc.z >= 0 {
+        let ka = fixed(fx_px(pa, 8.0)) / 8                 // pixels a metre at each end
+        let kb = fixed(fx_px(pb, 8.0)) / 8
+        let wob = gfx_sf() * 0.12
+        gfx_band(qa, qb, qc, ka, kb, 1.0 + wob + flare * 0.6, col_scale(GMX_HALO, (0.5 + flare) * dim))
+        gfx_band(qa, qb, qc, ka, kb, 0.3 + flare * 0.15, col_scale(0xF0FFF8, (0.95 + flare / 2) * dim))
+        // streaks running outward along it
+        if len > 2.0 {
+            for j in 0..2 {
+                let u = fixed((gfx_frame * 9 + j * 50) % 100) / 100
+                let sx = qa.x + ((qc.x - qa.x) as fixed * u) as s32
+                let sy = qa.y + ((qc.y - qa.y) as fixed * u) as s32 + ((gfx_sf() * 0.25 * ka) as s32)
+                let px = (ka + (kb - ka) * u) as s32
+                fx_sprite(&FX_STREAK[0], sx, sy, (if_fixed(dir > 0.0, 3.2, -3.2) * fixed(px)) as s32, max(px / 3, 1),
                           col_scale(GMX_CORE, 1.0 - u * 0.6), BLEND_ADD)
             }
         }
@@ -853,7 +868,7 @@ private fn gfx_ray_draw(f: *Fight, s: s32, root: mat4, b: vec4, tick: bool, live
     gfx_glow(lp, 1.2 + heat * 0.8, 1.0, col_scale(GMX_CORE, 0.8 + heat * 0.2))
     gfx_psp(&FXP_FLARE[0], lp, 3.0 + heat * 3.0 + flare * 4.0, 0.5, col_scale(GMX_CORE, 0.6 + heat * 0.4), false)
     // burning motes falling off
-    if live && f.ticks % 2 == 0 && len > 3.0 {
+    if live && f.ticks % 3 == 0 && len > 3.0 {
         let mx = x0 + dir * (1.0 + gfx_f() * (len - 1.0))
         let p = gfx_mote(mx, y + gfx_sf() * 0.5, dir * 0.02, -0.02, 22, GMX_GLOW, 0x0830A0)
         p.grav = 0.006
@@ -875,25 +890,25 @@ private fn gfx_ray_draw(f: *Fight, s: s32, root: mat4, b: vec4, tick: bool, live
     if gfx_braced(hit) {
         // lead stops the ray: it splashes off the plate, up and down
         gfx_seen[GFXS_LEADRAY] += 1
-        if live {
+        if live && f.ticks % 2 == 0 {
             fx_c0 = 0xE0F0E0
             fx_c1 = 0x305030
-            fx_spray(Pre.ShieldSpark, 2, end, y, 8, 2, 0.3)
-            fx_c0 = 0xE0F0E0
-            fx_c1 = 0x305030
-            fx_spray(Pre.ShieldSpark, 2, end, y, 24, 2, 0.3)
+            fx_spray(Pre.ShieldSpark, 2, end, y, if_s32((f.ticks & 2) != 0, 8, 24), 2, 0.3)
         }
     } else if o.mech == Mech.Seraph && seraph_warding(hit) {
         // held off by the ward: gold and green sparks deflected up and down its face
         gfx_seen[GFXS_WARDRAY] += 1
         gfx_glow(cp, 3.4, 0.6, col_scale(0x60D0FF, 0.6))
-        if live {
-            fx_c0 = 0xC0F0FF
-            fx_c1 = 0x2070A0
-            fx_spray(Pre.ShieldSpark, 2, end, y, back + if_s32(back == 0, 5, -5), 2, 0.32)
-            fx_c0 = GMX_CORE
-            fx_c1 = 0x10A020
-            fx_spray(Pre.ShieldSpark, 2, end, y, back + if_s32(back == 0, -5, 5), 2, 0.32)
+        if live && f.ticks % 2 == 0 {
+            if (f.ticks & 2) != 0 {
+                fx_c0 = 0xC0F0FF
+                fx_c1 = 0x2070A0
+                fx_spray(Pre.ShieldSpark, 2, end, y, back + if_s32(back == 0, 5, -5), 2, 0.32)
+            } else {
+                fx_c0 = GMX_CORE
+                fx_c1 = 0x10A020
+                fx_spray(Pre.ShieldSpark, 2, end, y, back + if_s32(back == 0, -5, 5), 2, 0.32)
+            }
         }
     } else {
         if o.mv == Mv.block {
@@ -918,29 +933,20 @@ private fn gfx_ray_draw(f: *Fight, s: s32, root: mat4, b: vec4, tick: bool, live
     }
 }
 
-// A horizontal band of light from x0 to x1 at height y, half thick: col along its middle, nothing
-// at its edges; fading out over its last `taper` metres (0: cut off sharp, at a body).
-private fn gfx_band(x0: fixed, x1: fixed, y: fixed, half: fixed, col: u32, taper: fixed) {
-    let dir = if_fixed(x1 >= x0, 1.0, -1.0)
-    var xm = x1
-    if taper > 0.0 && abs(x1 - x0) > taper { xm = x1 - dir * taper }
-    let a0 = project_point(vec3(x0, y + half, -0.8))
-    let a1 = project_point(vec3(x0, y, -0.8))
-    let a2 = project_point(vec3(x0, y - half, -0.8))
-    let b0 = project_point(vec3(xm, y + half, -0.8))
-    let b1 = project_point(vec3(xm, y, -0.8))
-    let b2 = project_point(vec3(xm, y - half, -0.8))
-    if a0.z < 0 || a2.z < 0 || b0.z < 0 || b2.z < 0 { return }
-    tri_grad(a0.x, a0.y, b0.x, b0.y, a1.x, a1.y, 0, 0, col, BLEND_ADD)
-    tri_grad(b0.x, b0.y, b1.x, b1.y, a1.x, a1.y, 0, col, col, BLEND_ADD)
-    tri_grad(a1.x, a1.y, b1.x, b1.y, a2.x, a2.y, col, col, 0, BLEND_ADD)
-    tri_grad(b1.x, b1.y, b2.x, b2.y, a2.x, a2.y, col, 0, 0, BLEND_ADD)
-    if xm == x1 { return }
+// A band of light along the beam's middle line (qa at the lens, qb where the taper starts, qc
+// the end; ka, kb pixels a metre at qa and qb), half metres thick: col along its middle, nothing
+// at its edges; from qb to qc fading to nothing (qb at qc: cut off sharp, at a body).
+private fn gfx_band(qa: ivec4, qb: ivec4, qc: ivec4, ka: fixed, kb: fixed, half: fixed, col: u32) {
+    let ha = (ka * half) as s32
+    let hb = (kb * half) as s32
+    tri_grad(qa.x, qa.y - ha, qb.x, qb.y - hb, qa.x, qa.y, 0, 0, col, BLEND_ADD)
+    tri_grad(qb.x, qb.y - hb, qb.x, qb.y, qa.x, qa.y, 0, col, col, BLEND_ADD)
+    tri_grad(qa.x, qa.y, qb.x, qb.y, qa.x, qa.y + ha, col, col, 0, BLEND_ADD)
+    tri_grad(qb.x, qb.y, qb.x, qb.y + hb, qa.x, qa.y + ha, col, 0, 0, BLEND_ADD)
+    if qb.x == qc.x { return }
     // the taper: from the middle's colour to nothing at the far end
-    let c1 = project_point(vec3(x1, y, -0.8))
-    if c1.z < 0 { return }
-    tri_grad(b0.x, b0.y, c1.x, c1.y, b1.x, b1.y, 0, 0, col, BLEND_ADD)
-    tri_grad(b1.x, b1.y, c1.x, c1.y, b2.x, b2.y, col, 0, 0, BLEND_ADD)
+    tri_grad(qb.x, qb.y - hb, qc.x, qc.y, qb.x, qb.y, 0, 0, col, BLEND_ADD)
+    tri_grad(qb.x, qb.y, qc.x, qc.y, qb.x, qb.y + hb, col, 0, 0, BLEND_ADD)
 }
 
 // The Glare Lance's cone: from the lens over its hit box, white, fading out at 10 m from the lens.
@@ -953,17 +959,17 @@ private fn gfx_cone(lp: vec3, hb: vec4, dir: fixed, k: fixed) {
     let c = project_point(vec3(far, cy - h, -0.8))
     let m = project_point(vec3(lp.x + dir * 6.0, cy, -0.8))
     if a.z < 0 || b.z < 0 || c.z < 0 || m.z < 0 { return }
-    let w = col_scale(0xE8FFF4, 0.75 * k)
-    let e = col_scale(0x406050, k)
+    let w = col_scale(0xFFFFFF, k)
+    let e = col_scale(0x80A890, k)
     tri_grad(a.x, a.y, b.x, b.y, m.x, m.y, w, 0, e, BLEND_ADD)
     tri_grad(a.x, a.y, m.x, m.y, c.x, c.y, w, e, 0, BLEND_ADD)
     tri_grad(m.x, m.y, b.x, b.y, c.x, c.y, e, 0, 0, BLEND_ADD)
 }
 
-// The Geiger Flare's fan: white light from the lens along ax, 30 degrees each side, 14 m long,
+// The Geiger Flare's fan: white light from the lens along ax, 30 degrees each side, 10 m long,
 // k its brightness.
 private fn gfx_fan(lp: vec3, ax: vec3, k: fixed) {
-    let len = 14.0
+    let len = 10.0
     let c = 0.866                                    // cos 30, sin 30: the fan's edges
     let sn = 0.5
     let ex = vec3(lp.x + (ax.x * c - ax.y * sn) * len, lp.y + (ax.x * sn + ax.y * c) * len, -0.8)
@@ -1057,7 +1063,7 @@ private fn gfx_ground_zero(f: *Fight, s: s32, root: mat4, has_box: bool, tick: b
         // the blast comes out
         gfx_gz_t[s] = 0
         gfx_gz_x[s] = fi.x
-        let lp = gfx_pt_of(fi, root, Part.weapon_r, GMX_LENS)
+        let lp = gfx_w(s, GMX_LENS)
         let ix = lp.x
         fx_flash_start(5)
         let fl = fx_burst_at(Pre.Flare, ix, 0.8, GMX_WHITE, GMX_GLOW)

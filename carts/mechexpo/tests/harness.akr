@@ -104,7 +104,7 @@ const MV_NAMES: [len(Mv)]*u8 = [
 const EV_NAMES: [len(Ev)]*u8 = [
     "Hit", "Block", "Chip", "Whiff", "Grab", "Throw", "Break", "Land", "Step", "MeterFull",
     "Super", "Ko", "TimeUp", "Shot", "Parry", "Clash", "Swing", "Armour", "RingOut", "Curse", "Mine",
-    "Snare", "MineGone", "Mark", "Reflect", "Column",
+    "Snare", "MineGone", "Mark", "Reflect", "Column", "Vent", "Burn", "Daze",
 ]
 
 fn init() {

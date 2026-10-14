@@ -127,7 +127,7 @@ fn test_init() {
 fn input_stick(n: s32) -> vec2 { return vec2(0.0, 0.0) }
 
 // Side n's forward on the pad.
-private fn fwd(n: s32) -> u32 {
+private fn gx_fwd(n: s32) -> u32 {
     if fight.f[n].facing > 0 { return RIGHT }
     return LEFT
 }
@@ -150,10 +150,10 @@ private fn gx_pad(n: s32) -> u32 {
             if n == 1 && fr >= 20 && actionable(1) { return DOWN | B }
         }
         243 => {
-            if n == 0 && fr >= 4 && fr <= 6 { return fwd(0) | B }
+            if n == 0 && fr >= 4 && fr <= 6 { return gx_fwd(0) | B }
             if n == 1 && fr >= 4 && fr <= 6 { return B }
         }
-        244 => if n == 0 && fr >= 4 && fr <= 6 { return fwd(0) | B }
+        244 => if n == 0 && fr >= 4 && fr <= 6 { return gx_fwd(0) | B }
         245 => {
             if n == 0 && fr >= 10 && fr <= 12 { return DOWN | B }
             if n == 1 && fr >= 4 && fr < 90 { return B }
@@ -166,12 +166,12 @@ private fn gx_pad(n: s32) -> u32 {
         247 => {
             if n != 0 { return 0 }
             if fr >= 4 && fr <= 6 { return A }
-            if fr >= 50 && fr <= 52 { return fwd(0) | A }
+            if fr >= 50 && fr <= 52 { return gx_fwd(0) | A }
             if fr >= 110 && fr <= 112 { return DOWN | A }
             if fr >= 170 && fr <= 172 { return X }
             if fr >= 182 && fr <= 184 { return A }
             if fr >= 240 && fr <= 242 { return Y }
-            if fr >= 320 && fr < 380 { return fwd(0) }
+            if fr >= 320 && fr < 380 { return gx_fwd(0) }
         }
         248 => if n == 0 && fr >= 4 && fr <= 6 { return A | B }
         249 => return gx_pad_budget(n)
@@ -200,23 +200,23 @@ fn test_hook() {
     for e in 0..ev.n { fxe[ev.e[e].kind] += 1 }
     // the checks first (they read what the last frame drew), then the stand-ins for this tick
     match SCENARIO {
-        240 => check_ray(f)
-        241 => check_shots(f)
-        242 => check_ward(f)
-        243 => check_rod(f)
-        244 => check_pierce(f)
-        245 => check_shield(f)
-        246 => check_flare(f)
-        247 => check_normals(f)
-        248 => check_gz(f)
-        249 => check_budget(f)
+        240 => gx_check_ray(f)
+        241 => gx_check_shots(f)
+        242 => gx_check_ward(f)
+        243 => gx_check_rod(f)
+        244 => gx_check_pierce(f)
+        245 => gx_check_shield(f)
+        246 => gx_check_flare(f)
+        247 => gx_check_normals(f)
+        248 => gx_check_gz(f)
+        249 => gx_check_budget(f)
         else => {}
     }
-    if !gx_real { sim(f) }
+    if !gx_real { gx_sim(f) }
 }
 
 // An event the fight would post (phase 1), to the effects and the sounds as the game hands them.
-private fn post(kind: Ev, side: s32, x: fixed, y: fixed, power: s32) {
+private fn gx_post(kind: Ev, side: s32, x: fixed, y: fixed, power: s32) {
     let e = Event { kind: kind, side: side, x: x, y: y, power: power }
     fxe[kind] += 1
     let f = fight_get()
@@ -227,7 +227,7 @@ private fn post(kind: Ev, side: s32, x: fixed, y: fixed, power: s32) {
 
 // ---- phase 1: the fight's part of Gamma's moves, as MOVES.md has them
 
-private fn sim(f: *Fight) {
+private fn gx_sim(f: *Fight) {
     for s in 0..2 {
         let fi = &f.f[s]
         if fi.mech != Mech.Gamma { continue }
@@ -239,7 +239,7 @@ private fn sim(f: *Fight) {
             x.ray_t += 1
             fi.heat = min(fi.heat + 1, 100)
             if fi.heat >= 100 {
-                post(Ev.Vent, s, fi.x, 0.0, 0)
+                gx_post(Ev.Vent, s, fi.x, 0.0, 0)
                 sim_vent[s] = 0
                 set_mv(s, Mv.idle)
             }
@@ -272,7 +272,7 @@ private fn sim(f: *Fight) {
             sh.mark = false
             sh.refl = false
             sh.pierce = true
-            post(Ev.Shot, s, sh.x, 6.8, 0)
+            gx_post(Ev.Shot, s, sh.x, 6.8, 0)
         }
         if fi.mv != Mv.sp_f { sim_rod = false }
     }
@@ -280,7 +280,7 @@ private fn sim(f: *Fight) {
 
 // ---- the checks
 
-private fn report() {
+private fn gx_report() {
     print("  peak cpu ")
     print_int(peak_cpu[0])
     print(", gpu ")
@@ -297,7 +297,7 @@ private fn report() {
     assert(peak_gpu[0] <= GPU_BUDGET, "over the GPU budget")
 }
 
-private fn need(id: s32) {
+private fn gx_need(id: s32) {
     if heard[id] == 0 {
         print("not heard: ")
         println(SFX_NAMES[id])
@@ -305,7 +305,7 @@ private fn need(id: s32) {
     assert(heard[id] > 0, "a sound of Gamma's was not heard")
 }
 
-private fn heard_list(ids: *s32, n: s32) {
+private fn gx_heard_list(ids: *s32, n: s32) {
     print("  heard")
     for k in 0..n {
         print(" ")
@@ -314,11 +314,11 @@ private fn heard_list(ids: *s32, n: s32) {
         print_int(heard[ids[k]])
     }
     println("")
-    for k in 0..n { need(ids[k]) }
+    for k in 0..n { gx_need(ids[k]) }
 }
 
 // 240: the ray held from a warm gun to its vent, and the gauge every frame.
-private fn check_ray(f: *Fight) {
+private fn gx_check_ray(f: *Fight) {
     let g = &f.f[0]
     if fr == 2 { g.heat = 55 }
     if gx_vented < 0 && (fxe[Ev.Vent] > 0 || sim_vent[0] >= 0) { gx_vented = fr }
@@ -378,14 +378,14 @@ private fn check_ray(f: *Fight) {
         print_int(gx_hud_vent)
         println("")
         let ids: [5]s32 = [SFX_RAY_ON, SFX_RAY, SFX_HEAT, SFX_VENT, SFX_CHIP]
-        heard_list(&ids[0], if_else(gx_real, 4, 4))
-        report()
+        gx_heard_list(&ids[0], if_else(gx_real, 4, 4))
+        gx_report()
         println("OK 240 the Atomic Ray, the heat on the gun and the HUD, the vent")
     }
 }
 
 // 241: blocked, a tapped orb burnt, a full orb cutting the ray, a Parry cutting the next.
-private fn check_shots(f: *Fight) {
+private fn gx_check_shots(f: *Fight) {
     let b = &f.f[1]
     let sh = &f.shot[1]
     let g = &f.f[0]
@@ -416,12 +416,12 @@ private fn check_shots(f: *Fight) {
     if !gx_real && sh.on && sh.lvl == 1 && abs(sh.x - g.x) < 15.0 && gfx_ray_was[0] {
         sh.on = false                                   // phase 1: the ray burns it up
         g.heat = min(g.heat + 10, 99)
-        post(Ev.Burn, 0, sh.x, (sh.y0 + sh.y1) / 2, 1)
+        gx_post(Ev.Burn, 0, sh.x, (sh.y0 + sh.y1) / 2, 1)
     }
     if fr >= 225 && gx_parry_at < 0 && gfx_ray_was[0] {
         // a Parry catching the second ray's tick (the Hero's, as the fight would post it)
         gx_parry_at = fr
-        post(Ev.Parry, 1, b.x - 2.0, 7.0, 1)
+        gx_post(Ev.Parry, 1, b.x - 2.0, 7.0, 1)
     }
     if fr == 260 {
         print("the ray against Beam: blocked ")
@@ -436,14 +436,14 @@ private fn check_shots(f: *Fight) {
         assert(gfx_seen[GFXS_BURN] == 1, "the burn's flash")
         assert(gfx_seen[GFXS_CUT] >= 2, "the ray was not cut (the full orb, the Parry)")
         let ids: [4]s32 = [SFX_BURN, SFX_CUT, SFX_RAY_ON, SFX_RAY]
-        heard_list(&ids[0], 4)
-        report()
+        gx_heard_list(&ids[0], 4)
+        gx_report()
         println("OK 241 the ray blocked, a shot burnt, the ray cut")
     }
 }
 
 // 242: the ray against the Wing Ward.
-private fn check_ward(f: *Fight) {
+private fn gx_check_ward(f: *Fight) {
     if fr == 2 { f.f[0].heat = 20 }
     if fr > 2 && f.f[0].heat > 80 { f.f[0].heat = 80 }       // no vent here
     if fr == 200 {
@@ -457,13 +457,13 @@ private fn check_ward(f: *Fight) {
         print_int(fxe[Ev.Reflect])
         println("")
         if gx_real { assert(fxe[Ev.Reflect] >= 1, "the ward's first tick posts Reflect") }
-        report()
+        gx_report()
         println("OK 242 the ray against the Wing Ward")
     }
 }
 
 // 243: the Rod Shot through the Hero's wave, into the Hero.
-private fn check_rod(f: *Fight) {
+private fn gx_check_rod(f: *Fight) {
     if fr == 120 {
         assert_eq(gfx_seen[GFXS_BORE], 1, "the bore's flash")
         assert(gfx_seen[GFXS_ROD] >= 8, "the rod was not drawn")
@@ -477,14 +477,14 @@ private fn check_rod(f: *Fight) {
         print_int(fxe[Ev.Hit])
         println("")
         let ids: [1]s32 = [SFX_ROD]
-        heard_list(&ids[0], 1)
-        report()
+        gx_heard_list(&ids[0], 1)
+        gx_report()
         println("OK 243 the Rod Shot through a wave")
     }
 }
 
 // 244: the Rod Shot through Tank's armour (held on the Reactor Vent's armour frames).
-private fn check_pierce(f: *Fight) {
+private fn gx_check_pierce(f: *Fight) {
     let t = &f.f[1]
     if fr >= 2 && gfx_seen[GFXS_PIERCE] == 0 && fr < 100 && !is_hurt(t.mv) {
         if t.mv != Mv.sp_n { set_mv(1, Mv.sp_n) }
@@ -502,16 +502,16 @@ private fn check_pierce(f: *Fight) {
         println(")")
         assert_eq(gfx_seen[GFXS_PIERCE], 1, "the rod's pierce through armour")
         if gx_real { assert(fxe[Ev.Hit] >= 1 && fxe[Ev.Armour] == 0, "the rod was absorbed") }
-        report()
+        gx_report()
         println("OK 244 the Rod Shot through armour")
     }
 }
 
 // 245: Lead Shielding against a mirror's ray.
-private fn check_shield(f: *Fight) {
+private fn gx_check_shield(f: *Fight) {
     let a = &f.f[0]
     if !gx_real && a.mv == Mv.sp_d && fx[0].t == 12 && fxe[Ev.Armour] == 0 {
-        post(Ev.Armour, 1, a.x + fixed(a.facing) * 3.0, 7.0, 0)     // the first tick absorbed
+        gx_post(Ev.Armour, 1, a.x + fixed(a.facing) * 3.0, 7.0, 0)     // the first tick absorbed
     }
     if !gx_real && a.mv == Mv.sp_d && fx[0].t >= 20 && fx[0].t < 28 { fx[0].t = 20 }  // held braced
     if fr > 60 && !gx_real && a.mv == Mv.sp_d { set_mv(0, Mv.idle) }
@@ -527,14 +527,14 @@ private fn check_shield(f: *Fight) {
         print_int(gfx_seen[GFXS_DENT])
         println("")
         let ids: [2]s32 = [SFX_SHIELD, SFX_LEAD]
-        heard_list(&ids[0], 2)
-        report()
+        gx_heard_list(&ids[0], 2)
+        gx_report()
         println("OK 245 Lead Shielding and the ray")
     }
 }
 
 // 246: the flare's daze on the ground, then in the air.
-private fn check_flare(f: *Fight) {
+private fn gx_check_flare(f: *Fight) {
     let h = &f.f[1]
     let ev = fight_events()
     if !gx_real {
@@ -552,10 +552,10 @@ private fn check_flare(f: *Fight) {
                 fx[1].stun = 32
                 fx[1].stun_len = 32
                 fx[1].slide = 0.0
-                post(Ev.Daze, 0, h.x, h.y + 8.0, 0)
+                gx_post(Ev.Daze, 0, h.x, h.y + 8.0, 0)
             } else {
                 fx[1].daze_drop = 32
-                post(Ev.Daze, 0, h.x, h.y + 8.0, 1)
+                gx_post(Ev.Daze, 0, h.x, h.y + 8.0, 1)
             }
         }
         if fx[1].daze_drop > 0 && h.y <= 0.0 && fr > 110 && grounded(1) {
@@ -595,20 +595,21 @@ private fn check_flare(f: *Fight) {
         assert(gfx_seen[GFXS_DAZE] >= 30, "the daze drawn")
         assert(gfx_seen[GFXS_DROP] >= 2, "the drop's streak")
         let ids: [2]s32 = [SFX_FLARE, SFX_DAZE]
-        heard_list(&ids[0], 2)
-        report()
+        gx_heard_list(&ids[0], 2)
+        gx_report()
         println("OK 246 the Geiger Flare and the daze")
     }
 }
 
 // 247: the normals, the walk, Point Blank.
-private fn check_normals(f: *Fight) {
+private fn gx_check_normals(f: *Fight) {
     let h = &f.f[1]
     let g = &f.f[0]
     if fr == 45 || fr == 105 || fr == 165 || fr == 235 || fr == 315 {
         // the Hero back on its feet in front, at the next move's reach
         var d = 4.5
-        if fr == 105 { d = 4.0 }
+        if fr == 45 { d = 18.0 }                     // the lance whiffs: its cone in the clear
+        if fr == 105 { d = 9.0 }                     // the sweep's spot on the floor in the clear
         if fr == 235 { d = 3.0 }
         if fr == 315 { d = 12.0 }
         h.x = g.x + fixed(g.facing) * d
@@ -633,14 +634,14 @@ private fn check_normals(f: *Fight) {
         print(" frames and its blast")
         println("")
         let ids: [4]s32 = [SFX_LAMP, SFX_POINT_BLANK, SFX_GAMMA_STEP, SFX_BURN]
-        heard_list(&ids[0], 4)
-        report()
+        gx_heard_list(&ids[0], 4)
+        gx_report()
         println("OK 247 the lamp, the scorch, the steps and Point Blank")
     }
 }
 
 // 248: Ground Zero between the split Twins.
-private fn check_gz(f: *Fight) {
+private fn gx_check_gz(f: *Fight) {
     if fr == 2 {
         fight.f[0].meter = METER_BAR
         fight.f[0].heat = 70
@@ -664,8 +665,8 @@ private fn check_gz(f: *Fight) {
         print_int(s0.heat)
         println("")
         let ids: [3]s32 = [SFX_CHARGE_NUCLEAR, SFX_KLAXON, SFX_GROUND_ZERO]
-        heard_list(&ids[0], 3)
-        report()
+        gx_heard_list(&ids[0], 3)
+        gx_report()
         println("OK 248 Ground Zero")
     }
 }
@@ -681,15 +682,22 @@ private fn gx_pad_budget(n: s32) -> u32 {
     if fight.phase != Phase.Fight { return p }
     if n == 1 {
         if fr < 900 && actionable(1) && gfx_ray_was[0] { return DOWN | B }      // Seraph wards the ray
+        if fr >= 900 && (fr % 300 < 90 || fr % 300 >= 270) { return 0 }       // the Twins wait for Ground Zero
         if fr >= 900 { return p & ~L }                  // the Twins stay split
         return p
     }
-    if fr >= 900 && fr % 300 >= 2 && fr % 300 < 40 && fight.f[0].super_ok && actionable(0) { return A | B }
-    if fr % 120 < 100 { return B }                       // the ray, held
+    if fr >= 900 && fr % 300 >= 250 { return 0 }          // the ray let go before Ground Zero
+    if fr >= 900 && fr % 300 < 60 {
+        // Ground Zero: the ray let go, then A + B (fresh presses) as soon as Gamma can act
+        if fight.f[0].super_ok && actionable(0) && fr % 2 == 0 { return A | B }
+        return 0
+    }
+    if fight.f[0].mv == Mv.sp_n { return B }               // the ray, held
+    if actionable(0) && fr % 2 == 0 { return B }
     return 0
 }
 
-private fn check_budget(f: *Fight) {
+private fn gx_check_budget(f: *Fight) {
     if fight.phase == Phase.Fight {
         f.f[0].heat = 88
         f.f[0].health = max(f.f[0].health, 400)
