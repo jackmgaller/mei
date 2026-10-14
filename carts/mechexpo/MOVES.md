@@ -2798,6 +2798,43 @@ Frame numbers here count from 1 as the tables do; the marks list counts from 0, 
 
 - **The cover** (`cover.akr`'s `COVER_POSE[Gamma]`): the `win` frame with the searchlight high in
   its sweep (about 40).
+- **As animated** (mx-gamma-anim): every move is Gamma's own file on its `_body.anim.json`; every
+  length, mark frame, root motion and hit box above is in the files as written (frames from 0:
+  `sp_n` dig-in 0–12, ray 13–24, `charge` 24, guard on 40, vent 41–90 and the guard on 90;
+  `sp_d` swing 0–4, `shield` 5–28, the guard on 46, after an absorb 47–58), and no move needs
+  `allow` or `floor_allow` beyond the rig's. Where the files differ from the words above:
+  - `thrown` is 44 frames, as every mech's (Beam's is 44, not 46).
+  - Scorch Sweep: the projector is 4.9 m long, so with its drum off the floor the light falls
+    about 4.3 m ahead on frame 11, not 3 m (the wrist bent down like a hand holding a torch), and
+    the sweep carries it to about 7.2 m on 16; the hit boxes are the table's (x 1.5–4.0 on 12 to
+    x 5.0–8.0 on 16).
+  - Ground Zero: a gun gripped up through the fist cannot hang muzzle down overhead, so on the
+    flash the projector is raised overhead pointing up (by 23, held), and on 40–42 it is swung
+    down over the top and onto the floor ahead, the lens on the floor (x about 3.3) on 43 and on
+    the active frames, touching it rather than in it.
+  - Lead Shielding: concept C's `shield` pose with the left elbow 8 degrees further out (the
+    concept's puts the forearm in the chest) and the projector at the hip pointing about 25
+    degrees down, under the shield side-on, rather than level; the right foot steps back half a
+    metre into the wide stance on 0–3 and back on 34–40.
+  - The Atomic Ray: the back foot drags a metre back into the `ray` stance on 0–10 and steps in
+    again on 28–36; in the vent the front foot steps back with the 0.8 m stagger. The ray pose's
+    lens is at about x 8.4, y 7.0. The 'projector' hurt box is a fixed rectangle, x 1.0–5.5,
+    y 5.5–8.5, on 13–32; the Rod Shot's x 1.0–5.0, y 5.6–8.4 on 14–24, its kick 12 degrees.
+  - The Geiger Flare's projector points about 60 degrees up (the lens at x 3.9, y 16.5), not
+    concept C's straight up.
+  - Win: the drum comes down on the shield's top lip from above (79 and 91), as the side-on camera
+    sees it; the projector stays on the near side of the body. No marks for the clangs (frames
+    79 and 91). It ends in the guard; frame 40 has the searchlight highest (about 72 degrees up),
+    so the cover can stay 40.
+  - Intro: the projector is carried at the shoulder pointing forward and up, not raked back over
+    it (the whip antenna is there); the lamp is swept across the floor from far (66) to near (76).
+  - Lying on its back (`hit_air`'s end, `knockdown`, `ko`, `thrown_slam`, `getup`'s start) the
+    pelvis is 0.35 m higher than Beam's: the jerrycan rack holds the torso off the floor. In
+    `ko` the projector arm sags onto the floor beyond the head instead of Beam's shaky lift. In
+    `thrown_slam` the projector arm flails down and away while the left hand claws at Tank's
+    wrists, so the projector and the shield stay apart.
+  - The jerrycans are part of the torso's mesh: they rock with the torso's dip on the walk's plants,
+    not on their own.
 
 ### For the effects and sound (Gamma)
 
