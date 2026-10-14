@@ -760,12 +760,15 @@ fn seraph_mark_hud(f: *Fight, s: s32) {
         txt(FONT_LABEL, lx, y - 13, "MARKED", SRX_GOLD, al)
     }
     // the health bar's shine, sweeping toward the screen's centre every 30 frames
+    // (over the health that is left: a gold band with a white core, drawn solid so it shows on
+    // the bar's pale yellow)
     let bl = HUD_BAR_W - HUD_SLANT
+    let lo = bl - clamp(fi.health, 0, max(fi.health_max, 1)) * bl / max(fi.health_max, 1)
     let ph = hud_tick % 30
     if ph < 16 {
-        let sx = ph * (bl + 12) / 16 - 12
-        span_quad(s, bar_x(s), HUD_BAR_W, HUD_BAR_Y, HUD_BAR_H, max(sx, 0), min(sx + 6, bl), 0x204060, 0x102030, BLEND_ADD)
-        span_quad(s, bar_x(s), HUD_BAR_W, HUD_BAR_Y, HUD_BAR_H, max(sx + 2, 0), min(sx + 4, bl), SRX_GOLD, SRX_DEEP, BLEND_ADD)
+        let sx = lo + ph * (bl - lo + 12) / 16 - 12
+        span_quad(s, bar_x(s), HUD_BAR_W, HUD_BAR_Y, HUD_BAR_H, max(sx, lo), min(sx + 6, bl), 0x60D8FF, 0x1878E0, BLEND_NONE)
+        span_quad(s, bar_x(s), HUD_BAR_W, HUD_BAR_Y, HUD_BAR_H, max(sx + 2, lo), min(sx + 4, bl), SRX_WHITE, SRX_CORE, BLEND_NONE)
     }
 }
 
