@@ -1,0 +1,663 @@
+{
+ "format": "mei-rig",
+ "version": 1,
+ "name": "gamma",
+ "units": "metres; Y up; the mech faces -Z, +X is its left",
+ "rotation": "degrees, applied X then Y then Z, in the parent joint frame (the Asset Kit's order). Not mirrored between sides: on a hanging limb +X swings it forward; +Z swings a left limb out (+X) and a right limb in, so a mirrored pose negates Y and Z",
+ "root": "pelvis",
+ "root_note": "the root (fight origin) is on the floor under the pelvis; pelvis.offset is the rest-pose hip-axle height, a pose lowers it by its 'drop'",
+ "parts": [
+  {
+   "id": "pelvis",
+   "parent": null,
+   "offset": [
+    0,
+    5.95,
+    0
+   ],
+   "recipe": "parts/gamma_pelvis.asset.json",
+   "asset": "ASSET_GAMMA_PELVIS",
+   "triangles": 120,
+   "vertices": 72,
+   "bounds": {
+    "min": [
+     -1.7297,
+     -0.92,
+     -0.7
+    ],
+    "max": [
+     1.7297,
+     0.57,
+     0.992
+    ]
+   }
+  },
+  {
+   "id": "torso",
+   "parent": "pelvis",
+   "offset": [
+    0,
+    0.7,
+    0
+   ],
+   "recipe": "parts/gamma_torso.asset.json",
+   "asset": "ASSET_GAMMA_TORSO",
+   "triangles": 280,
+   "vertices": 172,
+   "bounds": {
+    "min": [
+     -2.1,
+     -0.2,
+     -1.6504
+    ],
+    "max": [
+     2.1,
+     6.9718,
+     2.34
+    ]
+   }
+  },
+  {
+   "id": "head",
+   "parent": "torso",
+   "offset": [
+    0.0,
+    3.62,
+    -0.1
+   ],
+   "recipe": "parts/gamma_head.asset.json",
+   "asset": "ASSET_GAMMA_HEAD",
+   "triangles": 132,
+   "vertices": 84,
+   "bounds": {
+    "min": [
+     -0.75,
+     -0.09,
+     -0.84
+    ],
+    "max": [
+     0.75,
+     1.6279,
+     0.6
+    ]
+   }
+  },
+  {
+   "id": "pauldron_r",
+   "parent": "torso",
+   "offset": [
+    -2.3,
+    2.85,
+    0.05
+   ],
+   "recipe": "parts/gamma_pauldron_r.asset.json",
+   "asset": "ASSET_GAMMA_PAULDRON_R",
+   "triangles": 60,
+   "vertices": 32,
+   "bounds": {
+    "min": [
+     -1.38,
+     -0.68,
+     -1.0
+    ],
+    "max": [
+     0.5,
+     0.92,
+     1.0
+    ]
+   }
+  },
+  {
+   "id": "upper_arm_r",
+   "parent": "torso",
+   "offset": [
+    -2.3,
+    2.85,
+    0.05
+   ],
+   "recipe": "parts/gamma_upper_arm_r.asset.json",
+   "asset": "ASSET_GAMMA_UPPER_ARM_R",
+   "triangles": 50,
+   "vertices": 32,
+   "bounds": {
+    "min": [
+     -0.36,
+     -1.95,
+     -0.5
+    ],
+    "max": [
+     0.36,
+     0.5,
+     0.5
+    ]
+   }
+  },
+  {
+   "id": "forearm_r",
+   "parent": "upper_arm_r",
+   "offset": [
+    0,
+    -2.2,
+    0
+   ],
+   "recipe": "parts/gamma_forearm_r.asset.json",
+   "asset": "ASSET_GAMMA_FOREARM_R",
+   "triangles": 92,
+   "vertices": 52,
+   "bounds": {
+    "min": [
+     -0.5,
+     -1.85,
+     -0.5
+    ],
+    "max": [
+     0.5,
+     0.42,
+     0.6
+    ]
+   }
+  },
+  {
+   "id": "hand_r",
+   "parent": "forearm_r",
+   "offset": [
+    0,
+    -2.0,
+    0
+   ],
+   "recipe": "parts/gamma_hand_r.asset.json",
+   "asset": "ASSET_GAMMA_HAND_R",
+   "triangles": 64,
+   "vertices": 40,
+   "bounds": {
+    "min": [
+     -0.4671,
+     -0.69,
+     -0.39
+    ],
+    "max": [
+     0.2814,
+     0.22,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "weapon_r",
+   "parent": "hand_r",
+   "offset": [
+    0,
+    -0.42,
+    0
+   ],
+   "rotate": [
+    -90,
+    0,
+    0
+   ],
+   "recipe": "parts/gamma_projector.asset.json",
+   "asset": "ASSET_GAMMA_PROJECTOR",
+   "triangles": 212,
+   "vertices": 122,
+   "bounds": {
+    "min": [
+     -0.9986,
+     -0.25,
+     -4.86
+    ],
+    "max": [
+     0.9986,
+     1.85,
+     0.85
+    ]
+   }
+  },
+  {
+   "id": "pauldron_l",
+   "parent": "torso",
+   "offset": [
+    2.3,
+    2.85,
+    0.05
+   ],
+   "recipe": "parts/gamma_pauldron_l.asset.json",
+   "asset": "ASSET_GAMMA_PAULDRON_L",
+   "triangles": 60,
+   "vertices": 32,
+   "bounds": {
+    "min": [
+     -0.5,
+     -0.68,
+     -1.0
+    ],
+    "max": [
+     1.38,
+     0.92,
+     1.0
+    ]
+   }
+  },
+  {
+   "id": "upper_arm_l",
+   "parent": "torso",
+   "offset": [
+    2.3,
+    2.85,
+    0.05
+   ],
+   "recipe": "parts/gamma_upper_arm_l.asset.json",
+   "asset": "ASSET_GAMMA_UPPER_ARM_L",
+   "triangles": 50,
+   "vertices": 32,
+   "bounds": {
+    "min": [
+     -0.36,
+     -1.95,
+     -0.5
+    ],
+    "max": [
+     0.36,
+     0.5,
+     0.5
+    ]
+   }
+  },
+  {
+   "id": "forearm_l",
+   "parent": "upper_arm_l",
+   "offset": [
+    0,
+    -2.2,
+    0
+   ],
+   "recipe": "parts/gamma_forearm_l.asset.json",
+   "asset": "ASSET_GAMMA_FOREARM_L",
+   "triangles": 92,
+   "vertices": 52,
+   "bounds": {
+    "min": [
+     -0.5,
+     -1.85,
+     -0.5
+    ],
+    "max": [
+     0.5,
+     0.42,
+     0.6
+    ]
+   }
+  },
+  {
+   "id": "hand_l",
+   "parent": "forearm_l",
+   "offset": [
+    0,
+    -2.0,
+    0
+   ],
+   "recipe": "parts/gamma_hand_l.asset.json",
+   "asset": "ASSET_GAMMA_HAND_L",
+   "triangles": 64,
+   "vertices": 40,
+   "bounds": {
+    "min": [
+     -0.2814,
+     -0.69,
+     -0.39
+    ],
+    "max": [
+     0.4671,
+     0.22,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "weapon_l",
+   "parent": "hand_l",
+   "offset": [
+    0,
+    -0.42,
+    0
+   ],
+   "rotate": [
+    -90,
+    0,
+    0
+   ],
+   "recipe": "parts/gamma_shield.asset.json",
+   "asset": "ASSET_GAMMA_SHIELD",
+   "triangles": 84,
+   "vertices": 52,
+   "bounds": {
+    "min": [
+     0.233,
+     -1.25,
+     -1.3466
+    ],
+    "max": [
+     0.8,
+     1.4784,
+     2.4966
+    ]
+   }
+  },
+  {
+   "id": "thigh_r",
+   "parent": "pelvis",
+   "offset": [
+    -1.05,
+    0,
+    0
+   ],
+   "recipe": "parts/gamma_thigh_r.asset.json",
+   "asset": "ASSET_GAMMA_THIGH_R",
+   "triangles": 104,
+   "vertices": 56,
+   "bounds": {
+    "min": [
+     -0.56,
+     -2.42,
+     -0.66
+    ],
+    "max": [
+     0.56,
+     0.5,
+     0.58
+    ]
+   }
+  },
+  {
+   "id": "shin_r",
+   "parent": "thigh_r",
+   "offset": [
+    0,
+    -2.6,
+    0
+   ],
+   "recipe": "parts/gamma_shin_r.asset.json",
+   "asset": "ASSET_GAMMA_SHIN_R",
+   "triangles": 120,
+   "vertices": 66,
+   "bounds": {
+    "min": [
+     -0.62,
+     -2.68,
+     -0.66
+    ],
+    "max": [
+     0.62,
+     0.55,
+     0.92
+    ]
+   }
+  },
+  {
+   "id": "foot_r",
+   "parent": "shin_r",
+   "offset": [
+    0,
+    -2.5,
+    0
+   ],
+   "recipe": "parts/gamma_foot_r.asset.json",
+   "asset": "ASSET_GAMMA_FOOT_R",
+   "triangles": 64,
+   "vertices": 38,
+   "bounds": {
+    "min": [
+     -0.6,
+     -0.85,
+     -1.7
+    ],
+    "max": [
+     0.6,
+     0.4,
+     0.86
+    ]
+   }
+  },
+  {
+   "id": "thigh_l",
+   "parent": "pelvis",
+   "offset": [
+    1.05,
+    0,
+    0
+   ],
+   "recipe": "parts/gamma_thigh_l.asset.json",
+   "asset": "ASSET_GAMMA_THIGH_L",
+   "triangles": 104,
+   "vertices": 56,
+   "bounds": {
+    "min": [
+     -0.56,
+     -2.42,
+     -0.66
+    ],
+    "max": [
+     0.56,
+     0.5,
+     0.58
+    ]
+   }
+  },
+  {
+   "id": "shin_l",
+   "parent": "thigh_l",
+   "offset": [
+    0,
+    -2.6,
+    0
+   ],
+   "recipe": "parts/gamma_shin_l.asset.json",
+   "asset": "ASSET_GAMMA_SHIN_L",
+   "triangles": 120,
+   "vertices": 66,
+   "bounds": {
+    "min": [
+     -0.62,
+     -2.68,
+     -0.66
+    ],
+    "max": [
+     0.62,
+     0.55,
+     0.92
+    ]
+   }
+  },
+  {
+   "id": "foot_l",
+   "parent": "shin_l",
+   "offset": [
+    0,
+    -2.5,
+    0
+   ],
+   "recipe": "parts/gamma_foot_l.asset.json",
+   "asset": "ASSET_GAMMA_FOOT_L",
+   "triangles": 64,
+   "vertices": 38,
+   "bounds": {
+    "min": [
+     -0.6,
+     -0.85,
+     -1.7
+    ],
+    "max": [
+     0.6,
+     0.4,
+     0.86
+    ]
+   }
+  }
+ ],
+ "mounts": [
+  {
+   "id": "weapon_r",
+   "parent": "hand_r",
+   "offset": [
+    0,
+    -0.42,
+    0
+   ],
+   "rotate": [
+    -90,
+    0,
+    0
+   ],
+   "part": "weapon_r",
+   "note": "the grip's middle; the weapon's +Y points out of the fist's thumb side, its edge +Z"
+  },
+  {
+   "id": "weapon_l",
+   "parent": "hand_l",
+   "offset": [
+    0,
+    -0.42,
+    0
+   ],
+   "rotate": [
+    -90,
+    0,
+    0
+   ],
+   "part": "weapon_l",
+   "note": "the grip's middle; the weapon's +Y points out of the fist's thumb side, its edge +Z"
+  }
+ ],
+ "poses": {
+  "guard": {
+   "drop": 0.5,
+   "rotate": {
+    "pelvis": [
+     0,
+     -6,
+     0
+    ],
+    "torso": [
+     -4,
+     -6,
+     0
+    ],
+    "head": [
+     4,
+     10,
+     0
+    ],
+    "thigh_r": [
+     22,
+     0,
+     -9
+    ],
+    "thigh_l": [
+     -14,
+     0,
+     9
+    ],
+    "upper_arm_r": [
+     2,
+     0,
+     -10
+    ],
+    "forearm_r": [
+     86,
+     0,
+     8
+    ],
+    "hand_r": [
+     2,
+     0,
+     0
+    ],
+    "upper_arm_l": [
+     18,
+     0,
+     12
+    ],
+    "forearm_l": [
+     96,
+     0,
+     -24
+    ],
+    "hand_l": [
+     -10,
+     0,
+     0
+    ],
+    "pauldron_r": [
+     0.7,
+     0,
+     -5.0
+    ],
+    "pauldron_l": [
+     6.3,
+     0,
+     6.0
+    ],
+    "shin_r": [
+     -48.8,
+     0,
+     0
+    ],
+    "foot_r": [
+     26.8,
+     0,
+     9
+    ],
+    "shin_l": [
+     -18.03,
+     0,
+     0
+    ],
+    "foot_l": [
+     32.03,
+     0,
+     -9
+    ]
+   },
+   "note": "the fighting stance the sketch was built in: both soles on y = 0"
+  }
+ },
+ "allow": [
+  [
+   "forearm_r",
+   "weapon_r"
+  ],
+  [
+   "forearm_l",
+   "weapon_l"
+  ],
+  [
+   "torso",
+   "thigh_r"
+  ],
+  [
+   "torso",
+   "thigh_l"
+  ]
+ ],
+ "allow_note": "pairs of parts every move may pass into each other (a move's \"allow\" adds more): the weapon's grip in the forearm's cuff, a raised thigh under the torso's skirt",
+ "triangles": 1936,
+ "body": "Heartland Atomic Company's Gamma (HA-58): Beam's frame on the Hero's skeleton, refitted from army surplus: weapon_r the ray projector (held as Beam holds the Arc Cannon), weapon_l the lead shield",
+ "height": 13.622,
+ "muzzle": {
+  "part": "weapon_r",
+  "at": [
+   0.0,
+   0.8,
+   -4.4
+  ],
+  "note": "the projector's lens, in weapon_r's frame: Beam's effect point"
+ },
+ "shield": {
+  "part": "weapon_l",
+  "out": [
+   0,
+   90,
+   0
+  ],
+  "note": "weapon_l at 0 is the shield stowed along the left forearm; at 'out' it is swung out in front of the fist (Lead Shielding)"
+ }
+}
