@@ -2697,15 +2697,17 @@ light, its push is the point).
   Shielding holds a ray and the rod pierces the shield: shield the ray, rod the shield.
 
 **Measured, CPU against CPU** (mx-gamma-fight; `tests/balance/run.sh 9 B`, level 2 against level
-2, 10 matches a pairing on the hangar, the sides swapped every match, Gamma played from its
-stand-ins): Gamma won all 60 matches against the six base mechs (10 of 10 against each; rounds
-20-3 against the Double-blade Hero, 20-4 against Shadow, 20-0 against Tank and the Twins), and all
-14 against them and Seraph in scenario 230. The CPUs walk into the ray: at level 2 they react
+2, 10 matches a pairing on the hangar, the sides swapped every match, Gamma on its own
+animations; the same from its stand-ins before they landed): Gamma won all 60 matches against the
+six base mechs (10 of 10 against each; rounds 20-2 against the Hero, 20-6 against the Double-blade
+Hero, 20-1 against Beam, 20-5 against Shadow, 20-0 against Tank and the Twins), and 13 of 14
+against them and Seraph in scenario 230 (the Double-blade Hero took one). The CPUs walk into the
+ray: at level 2 they react
 to a move 13 frames in, the ray's startup, so its dig-in is not blocked, and a mech in it is
 pushed back to its tip; the Rod Shot (75, at 0.60 m a frame) then lands or chips from beyond it.
 Tank, the slowest walker, never reached Gamma (no damage in 10 matches; its CPU's punish of a whiff
 is the Bulldozer from any distance, so the ray's end draws it from 22 m). Against Beam, Gamma
-dealt 21,845 in the 10 matches to Beam's 15,364 (3,780 of it from 13 Raikō Overloads). The numbers
+dealt 20,540 in the 10 matches to Beam's 11,782 (2,340 of it from Raikō Overloads). The numbers
 are the owner's to tune in play; the CPUs' answers to the ray are as [the CPU (Gamma)](#the-cpu-gamma)
 lists them.
 
@@ -2724,8 +2726,8 @@ after a dazing catch the CPU acts without dice; Lead Shielding is rolled at `lv.
 + the other's grabs seen, at most 6); Ground Zero as a reversal is rolled at `lv.punish` within
 8.5 m. The Hero and Beam no longer answer a rod coming with a shot of their own (it passes
 through: they block it). Measured in scenario 230 (level 2, both sides, against each base mech
-and Seraph, 14 matches): 198 rays and 374 rods, 3 flares (3 dazes), 10 shields, 7 grabs, 10 supers,
-no vents; the others warded 9 of its ray's ticks.
+and Seraph, 14 matches, on its own animations): 194 rays and 357 rods, 2 flares (2 dazes), 14
+shields (8 hits absorbed), 10 grabs, 10 supers, no vents; Seraph warded 4 of its ray's ticks.
 
 - **The Ray**: B when the other is within 15 m and walking in, jumping in, or recovering from a
   move, and the heat is under 60; it holds B (a `ray_want`, as Beam's `charge_want`) until the
