@@ -166,11 +166,12 @@ fn fight_init(p1: Mech, p2: Mech, mode: FightMode, cpu_level: s32) {
     fight_opts = TrainOpts { dummy: Dummy.Stand, refill_health: true, refill_meter: false }
     seraph_init()                   // Seraph's stand-ins and frames, once (before the CPU reads its
                                     // reaches); no marks (seraph.akr)
+    gamma_init()                    // Gamma's stand-ins and frames, once (before the CPU reads its
+                                    // reaches); a cold gun (gamma.akr)
     cpu_init(0x5EED + (p1 as s32) * 7 + (p2 as s32) * 13 + cpu_level * 101)
     tank_find()                     // Tank's slam frames, once, outside the fight's frames
     twins_init()                    // whether a side is the Twins (twins.akr)
     shadow_init()                   // Shadow's frames, once; no mines (shadow.akr)
-    gamma_init()                    // Gamma's frames, once (constants while it stands in); a cold gun
     start_round()
 }
 

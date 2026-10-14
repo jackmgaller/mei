@@ -107,18 +107,41 @@ var gm_sh_rip: s32
 // Beam's 24, 40, 41, 45, 44, 42, 44, 100). Such a move plays from the stand-in data below (the
 // drawing is still the placeholder's); Gamma's own animation is used as soon as it lands. The
 // air attack, the grab and the throw are Beam's timings and boxes in the spec too, so their
-// placeholders play as they are. No scan: two table reads.
+// placeholders play as they are. Which ones stand in is read once (gm_std: 16 table reads, at the
+// first fight_init), and moves.akr's use_standin asks it only while GM_STANDINS is set: the test
+// costs every mv_* call a compare (about 8,000 cycles on the first frame of a fight, scenario 69's,
+// even without a Gamma in it), so once every move of Gamma's is animated GM_STANDINS is cleared
+// and the test compiles away (scenario 200 fails until it is, and while it is clear with a move
+// still standing in).
+
+const GM_STANDINS = true
 
 const GM_OWN: u32 = ((1 as u32) << (Mv.atk_n as u32)) | ((1 as u32) << (Mv.atk_f as u32))
     | ((1 as u32) << (Mv.atk_d as u32)) | ((1 as u32) << (Mv.sp_n as u32)) | ((1 as u32) << (Mv.sp_f as u32))
     | ((1 as u32) << (Mv.sp_u as u32)) | ((1 as u32) << (Mv.sp_d as u32)) | ((1 as u32) << (Mv.super as u32))
 
+var gm_std: u32                     // the moves of GM_OWN whose animation still has Beam's length
+var gm_std_read: bool
+
+// Whether Gamma's move mv plays from the stand-in data now (its animation still Beam's placeholder).
 fn gamma_standin(mv: Mv) -> bool {
+    return GM_STANDINS && (gm_std & ((1 as u32) << (mv as u32))) != 0
+}
+
+// Whether mv's animation still has Beam's length (a placeholder), from the data (the tests' too).
+fn gamma_placeholder(mv: Mv) -> bool {
     return (GM_OWN & ((1 as u32) << (mv as u32))) != 0 && anim_len(Mech.Gamma, mv) == anim_len(Mech.Beam, mv)
 }
 
-// fight_init: whether a side has Gamma's rules; its frames (once); a cold gun.
+// fight_init (before the CPU reads the reaches): which moves stand in (once); whether a side has
+// Gamma's rules; its frames (once); a cold gun.
 fn gamma_init() {
+    if !gm_std_read {
+        gm_std_read = true
+        for k in 0..len(Mv) {
+            if gamma_placeholder(k as Mv) { gm_std |= (1 as u32) << (k as u32) }
+        }
+    }
     gm_in_fight = has_gamma_kit(fight.f[0].mech) || has_gamma_kit(fight.f[1].mech)
     if gm_in_fight { gamma_find() }
     gamma_round()

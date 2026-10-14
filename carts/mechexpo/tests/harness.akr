@@ -4727,13 +4727,20 @@ private fn gm_check() {
                 assert(meter_power(Mech.Gamma) == Power.Nuclear, "Gamma's meter is not nuclear")
                 assert_eq(AK_NPART[Mech.Gamma], Part.wing_l as s32, "Gamma's frames hold parts it has not")
                 assert(STATS[Mech.Gamma].walk_f == 0.058 && STATS[Mech.Gamma].walk_b == 0.050, "Gamma's walk")
+                var standing = 0
                 for k in 0..len(GM_OWN_MVS) {
                     let mv = GM_OWN_MVS[k]
                     assert_eq(mv_len(Mech.Gamma, mv), GM_OWN_LEN[k], "a move of Gamma's is not its length")
+                    // the stand-ins in use are the placeholders' (gamma.akr's gm_std, GM_STANDINS)
+                    assert(gamma_standin(mv) == gamma_placeholder(mv),
+                           "a move of Gamma's is still Beam's placeholder: set GM_STANDINS in gamma.akr")
+                    if gamma_standin(mv) { standing += 1 }
                     print(MV_NAMES[mv])
                     print(if_s(gamma_standin(mv), " stands in, ", " animated, "))
                 }
                 println("each its own length")
+                assert(!GM_STANDINS || standing > 0,
+                       "every move of Gamma's is animated: clear GM_STANDINS in gamma.akr (it costs every fight's first frame)")
                 sh_x0 = s.x
                 sh_hold[0] = LEFT       // back, away from the other (side 0 faces +x)
                 gm_t0 = frames
