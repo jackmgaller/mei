@@ -381,9 +381,11 @@ and what is Beam's for now: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-n
   surplus, from `concepts/gamma_c/`, which stays as the record, refined after the owner's notes:
   a longer projector with a primer shroud and a round primer lamp, its lens a green dome; the
   head's lamp cut to a small eye; the shield in primer with bent-back wings; the cans' X and the
-  58 stencils gone), `anims/gamma/` (each move Beam's on Gamma's rig, the shield, `weapon_l`, held
-  stowed with the kit's `"still"`; where the bigger kit meets itself or the floor on Beam's keys,
-  `allow` and `floor_allow` say so), `gamma.akr` (its hits and stand-ins, Beam's for now, its move
+  58 stencils gone), `anims/gamma/` (Gamma's own moves from MOVES.md's "For the animators" (mx-gamma-anim),
+  each on Gamma's `_body.anim.json` alone; the reactions, crouch, jump and grabs Beam's keys copied
+  in and re-keyed where the bigger kit met itself or the floor; no `allow` or `floor_allow` beyond
+  the rig's; the shield, `weapon_l`, held stowed with the kit's `"still"` but in `block`, the
+  hits, `sp_d` and `win`), `gamma.akr` (its hits and stand-ins, Beam's for now, its move
   list, and the predicates `has_volt_orb`, `has_shock_grip` and `has_arc_fx` that Beam's rules
   ask instead of "is this Beam", so each special can be given to Gamma's own code without
   touching Beam's). Its numbers are a row of `STATS` (Beam's, on the nuclear meter) and its
@@ -898,8 +900,9 @@ across the fight plane, z behind it, y up from the apron.
   texture slots 0 and 1: 29,824 bytes in slot 0 and 8,320 in slot 1 (38,144 loaded; 36,096
   before Gamma; 56,018 bytes of tiles before de-duplication, 47,608 before Gamma); the pack's ROM
   in `art/` is 1,360,272 bytes (1,181,648 before Gamma, 1,008,480 before Seraph). The exported
-  `anims/anim_data.bin` is 11,164,188 bytes: 9,997,820 with Seraph's placeholders, 10,019,132 with
-  Seraph's own animations, and Gamma's after them (every other mech's bytes unchanged).
+  `anims/anim_data.bin` is 11,212,396 bytes: 9,997,820 with Seraph's placeholders, 10,019,132 with
+  Seraph's own animations, 11,164,188 with Gamma's placeholders after them, and Gamma's own
+  animations in their place (every other mech's bytes unchanged).
 - **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
   (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. Seraph's sprites
   (mx-seraph-fx: a four-point glint in four turns, the mark's sigil, a feather) are on the same

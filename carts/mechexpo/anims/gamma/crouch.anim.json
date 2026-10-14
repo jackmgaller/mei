@@ -1,9 +1,28 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Gamma's crouch: a placeholder (phase 1), Beam's (../beam/crouch.anim.json) on Gamma's rig, its keys, timing, boxes and marks as they are (the projector is on Beam's mount and reaches as far as the Arc Cannon); the shield (weapon_l) held stowed (\"still\"). To be replaced by its own move (MOVES.md, \"Gamma\"). On Beam's keys Gamma's bigger kit meets itself or the floor here (the stowed shield, the lamp, the racked cans, the whip antenna): \"allow\" and \"floor_allow\" say so until it is re-keyed.",
-  "base": "../beam/crouch.anim.json",
-  "rig": "../../models/gamma/gamma.rig.json",
-  "still": ["weapon_l"],
-  "allow": [["pauldron_l", "weapon_l"]]
+  "note": "Crouch: Beam's kneel (the Hero's) on Gamma's rig, from Beam's stance: 8 frames down onto the left knee, the last held. The projector stays level on the other mech, lowered to a crouching mech's chest; the left fist is kept low in front of the chest, the forearm less folded than Beam's so the stowed shield's end stays clear of the left pauldron. Push box 1.7 m either side, 7.5 m tall.",
+  "base": "_body.anim.json",
+  "length": 8,
+  "boxes": {"push": {"kind": "push", "rect": [-1.7, 0, 1.7, 7.5]}},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in", "offset": [-0.05, -0.8],
+     "pose": {"pelvis": [-2, -8, 0], "torso": [-8, -16, 0], "head": [-2, 14, 0],
+              "hand_r": [6, 0, 0]}, "reach": {"foot_l": [-2.13, 0.0]}},
+    {"at": 2, "ease": "ease", "offset": [-0.2, -1.6], "reach": {"foot_l": [-2.42, 0.35]}},
+    {"at": 3, "reach": {"foot_l": [-2.72, 0.25]}},
+    {"at": 4, "ease": "out", "offset": [-0.45, -2.69],
+     "pose": {"pelvis": [-10, -10, 0], "torso": [-26, -18, 0], "head": [28, 14, 0],
+              "thigh_l": [6, 0, 5], "shin_l": [-96, 0, 0], "foot_l": [-46, 0, -5],
+              "upper_arm_r": [13, 0, -10], "forearm_r": [129, 0, 8], "hand_r": [-21, 0, 0],
+              "upper_arm_l": [30, 0, 14], "forearm_l": [104, 0, -24], "pauldron_r": [4.5, 0, -5],
+              "pauldron_l": [10.5, 0, 7], "hand_l": [-10, 0, 0]}},
+    {"at": 7, "offset": [-0.42, -2.64],
+     "pose": {"pelvis": [-10, -10, 0], "torso": [-24, -18, 0], "head": [27, 14, 0],
+              "thigh_l": [8, 0, 5], "shin_l": [-94, 0, 0], "foot_l": [-46, 0, -5],
+              "upper_arm_r": [10, 0, -10], "forearm_r": [128, 0, 8], "hand_r": [-17, 0, 0],
+              "upper_arm_l": [30, 0, 14], "forearm_l": [104, 0, -24], "hand_l": [-10, 0, 0],
+              "pauldron_r": [3.5, 0, -5], "pauldron_l": [10.5, 0, 7]}}
+  ],
+  "plant": {"foot_r": [[0, 7]]}
 }
