@@ -112,7 +112,11 @@ const ROSTER_COLS = 5
 // Sneak's speed and the claws' reach (mx-shadow-fight); Seraph is SERAPH, MR-02, Momentum's echo of
 // Shadow (mx-seraph): stats 0x2323 (power 2: Shadow's hits for now; speed 3: a walk of 0.080 m a
 // frame, between the Hero's 0.075 (3) and Shadow's 0.085 (4); reach 2: fists 2.4-2.6 m shorter
-// than the talons; armour 3: 1,000 health, the Hero's), 13.5 m to the top of its halo.
+// than the talons; armour 3: 1,000 health, the Hero's), 13.5 m to the top of its halo; Gamma is
+// GAMMA, HA-58, Heartland's echo of Beam (mx-gamma-rig): stats 0x3253, Beam's, since its numbers
+// are Beam's for now (power 3: Beam's hits; speed 2: Beam's walk, 0.062 m a frame; reach 5: the
+// projector reaches as far as the Arc Cannon, the Arc Lance 15 m; armour 3: 1,000 health), 11.9 m
+// to the top of its searchlight head (13.6 to the whip antenna's tip).
 const ROSTER: [10]Slot = [
     // the base mechs
     Slot { maker: CO_MOMENTUM, mech: Mech.Hero as s32, rule: RULE_OPEN,
@@ -144,8 +148,10 @@ const ROSTER: [10]Slot = [
            mystery: true, emblem: UI_EMBLEM_HERO, emblem24: UI_EMBLEM24_MOMENTUM, epal: PAL_EMBLEM,
            name: "SERAPH", short: "SERAPH", card: "SERAPH", model: "MR-02", height: 135, stats: 0x2323,
            blurb: "PALADIN: WARD,\nJUDGEMENT", hint: "CLEAR ARCADE\nWITH SHADOW" },
-    Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 2, bit: 0x80, mystery: true, name: "?",
-           short: "?", card: "?", model: "?", stats: 0, blurb: "", hint: "CLEAR ARCADE\nWITH BEAM" },
+    Slot { maker: CO_HEARTLAND, echo: true, mech: Mech.Gamma as s32, rule: RULE_CLEAR, arg: 2, bit: 0x80,
+           mystery: true, emblem: UI_EMBLEM_HEARTLAND, emblem24: UI_EMBLEM24_HEARTLAND, epal: PAL_POWER,
+           name: "GAMMA", short: "GAMMA", card: "GAMMA", model: "HA-58", height: 119, stats: 0x3253,
+           blurb: "THE GUNNER:\nRAYS, LEAD", hint: "CLEAR ARCADE\nWITH BEAM" },
     Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 3, bit: 0x100, mystery: true, name: "?",
            short: "?", card: "?", model: "?", stats: 0, blurb: "", hint: "CLEAR ARCADE\nWITH TANK" },
     Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 4, bit: 0x200, mystery: true, name: "?",

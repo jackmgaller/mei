@@ -45,6 +45,9 @@
 //     end (162-168 are in tests/seraph/harness.akr)
 // 170-181 Seraph's own moves (mx-seraph-fight): the mark, Judgement's bonus and column, the Wing
 //     Ward against each shot, the Dive, Ascension, Heaven's Arc, the CPU; listed at the end
+// 200-201 Gamma's (mx-gamma-rig, phase 1: Beam's moves on Gamma's body, the nuclear meter):
+//     against Beam and against the Hero; listed with their code at the end (202-209 are in
+//     tests/gamma/harness.akr)
 // 40-49 Tank's (mx-tank): armour, its grabs and throws, the nuclear meter, its super, the CPU
 //     and the budget; listed with their code at the end of this file
 // 60-67 the Twins' (mx-twins-fight): combining and splitting, the partner, hits and throws on and
@@ -141,6 +144,10 @@ fn init() {
         sv_init()
         return
     }
+    if gm_scenario() {
+        gm_restart()
+        return
+    }
     if SCENARIO == 10 || SCENARIO == 13 || SCENARIO == 16 { tick_per_frame = 40 }
     if SCENARIO >= 1 && SCENARIO <= 9 || SCENARIO == 11 || SCENARIO == 12 || SCENARIO == 18 || SCENARIO == 19 { skip_intro() }
     match SCENARIO {
@@ -226,6 +233,7 @@ private fn script1() -> u32 {
     if sh_scenario() { return sh_script(0) }
     if sr_scenario() { return sh_script(0) }
     if sv_scenario() { return sv_script(0) }
+    if gm_scenario() { return sh_script(0) }
     let a = &fight.f[0]
     let fwd = if_u(a.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -290,6 +298,7 @@ private fn script2() -> u32 {
     if sh_scenario() { return sh_script(1) }
     if sr_scenario() { return sh_script(1) }
     if sv_scenario() { return sv_script(1) }
+    if gm_scenario() { return sh_script(1) }
     let b = &fight.f[1]
     let fwd = if_u(b.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -393,6 +402,7 @@ private fn check() {
             if sh_scenario() { sh_check() }
             if sr_scenario() { sr_check() }
             if sv_scenario() { sv_check() }
+            if gm_scenario() { gm_check() }
         }
     }
 }
@@ -1565,7 +1575,7 @@ private fn check_orb_beaten() {
     }
 }
 
-const MECH_NAMES: [len(Mech)]*u8 = ["Hero", "Double-blade", "Beam", "Tank", "Twins", "Twin A", "Twin B", "Shadow", "Seraph"]
+const MECH_NAMES: [len(Mech)]*u8 = ["Hero", "Double-blade", "Beam", "Tank", "Twins", "Twin A", "Twin B", "Shadow", "Seraph", "Gamma"]
 
 private fn check_beam_budget() {
     if frames > 3 && frames != 901 && frames != 902 {
@@ -4569,4 +4579,183 @@ private fn sv_check_cpu() {
     sv_prev[0] = Mv.idle
     sv_prev[1] = Mv.idle
     frames = 0
+}
+
+// ---- Gamma's scenarios, 200-201 (mx-gamma-rig; MOVES.md, "Gamma"): phase 1, Beam's moves on
+// Gamma's body, on the nuclear meter; 202-209 need the whole game (tests/gamma/harness.akr), 210
+// and 211 the arcade (tests/ladder/harness.akr)
+//
+// 200 against Beam: idle (1,000 health, the nuclear meter, 19 parts a frame, Beam's walk); every
+//     move Beam's length, and the shield (weapon_l) stowed on every frame of every move (its
+//     joint where Beam's empty hand's mount is); the Arc Jab lands at 4 m (Beam's 65) and gives
+//     Gamma no meter (nuclear: landing hits fill nothing); the other's jab fills Gamma's meter
+//     3 a point of damage; the Volt Orb (Beam's, for now) fired and landing at 12 m; the Shock
+//     Grip throws the other off about 9 m; the brace (Beam's Reaction Prime, for now) starts no
+//     reaction (the meter is not chemical); the super from a full bar (the Raikō Overload, for
+//     now: Beam's 300) spends the bar
+// 201 the same against the Hero
+
+const GM_FOE: Mech = match SCENARIO { 201 => Mech.Hero, else => Mech.Beam }
+
+private fn gm_scenario() -> bool { return SCENARIO == 200 || SCENARIO == 201 }
+
+private fn gm_restart() { sh_restart(Mech.Gamma, GM_FOE, -4.0, 4.0) }
+
+var gm_b: u32
+var gm_k: s32                   // stage 0: the move being compared with Beam's
+var gm_t0: s32                  // stage 0: the walk's first frame
+
+// One move by side i from distance d: restarted there, b pressed two frames in.
+private fn gm_try(d: fixed, i: s32, b: u32) {
+    gm_restart()
+    place(-d / 2, d / 2)
+    mark = frames
+    if i == 0 { mark_h = fight.f[1].health } else { mark_h = fight.f[0].health }
+    sh_part = i
+    mark2 = frames + 2
+    gm_b = b
+}
+
+private fn gm_over() -> bool { return frames > mark + 12 && actionable(0) && actionable(1) }
+
+// Two parts' matrices the same (to a hundredth of a millimetre).
+private fn gm_same(a: mat4, b: mat4) -> bool {
+    for i in 0..4 {
+        let d = a[i] - b[i]
+        if abs(d.x) > 0.0001 || abs(d.y) > 0.0001 || abs(d.z) > 0.0001 || abs(d.w) > 0.0001 { return false }
+    }
+    return true
+}
+
+private fn gm_check() {
+    let s = &fight.f[0]
+    let o = &fight.f[1]
+    if frames == mark2 { sh_pad[sh_part] = gm_b }
+    match stage {
+        0 => {
+            if frames == mark + 1 {
+                assert(s.mech == Mech.Gamma && s.body == Mech.Gamma, "Gamma is not side 0")
+                assert_eq(s.health, 1000, "Gamma's health")
+                assert(meter_power(Mech.Gamma) == Power.Nuclear, "Gamma's meter is not nuclear")
+                assert_eq(AK_NPART[Mech.Gamma], Part.wing_l as s32, "Gamma's frames hold parts it has not")
+                assert(STATS[Mech.Gamma].walk_f == STATS[Mech.Beam].walk_f, "the walk is not Beam's")
+                gm_k = 0
+            }
+            // a move a frame: its length Beam's, the projector where Beam's cannon is, the shield
+            // where Beam's empty hand's mount is, on every frame
+            if frames > mark + 1 && gm_k < len(Mv) {
+                let mv = gm_k as Mv
+                let n = anim_len(Mech.Beam, mv)
+                assert_eq(anim_len(Mech.Gamma, mv), n, "a move's length is not Beam's")
+                let root = anim_place(vec2(0.0, 0.0), 1)
+                for f in 0..n {
+                    let a = anim_part(Mech.Gamma, mv, fixed(f), root, Part.weapon_l)
+                    let b = anim_part(Mech.Beam, mv, fixed(f), root, Part.weapon_l)
+                    assert(gm_same(a, b), "the shield is not stowed")
+                    let c = anim_part(Mech.Gamma, mv, fixed(f), root, Part.weapon_r)
+                    let d = anim_part(Mech.Beam, mv, fixed(f), root, Part.weapon_r)
+                    assert(gm_same(c, d), "the projector is not where Beam's cannon is")
+                }
+                gm_k += 1
+                if gm_k == len(Mv) {
+                    println("every move Beam's length, the projector on Beam's mount, the shield stowed")
+                    sh_x0 = s.x
+                    sh_hold[0] = LEFT       // back, away from the other (side 0 faces +x)
+                    gm_t0 = frames
+                }
+            }
+            if gm_k == len(Mv) && frames == gm_t0 + 60 {
+                sh_hold[0] = 0
+                let w = sh_x0 - s.x
+                print("walked back 60 frames: ")
+                print_fixed(w)
+                println(" m")
+                assert(abs(w - STATS[Mech.Gamma].walk_b * 60) < 0.2, "the walk back")
+                gm_try(4.0, 0, A)
+                stage = 1
+            }
+        }
+        1 => {
+            if gm_over() {
+                assert_eq(evc_side[0][Ev.Hit], 1, "the Arc Jab did not land at 4 m")
+                assert_eq(mark_h - o.health, dmg(Mech.Gamma as s32, Mv.atk_n), "the jab's damage")
+                assert_eq(dmg(Mech.Gamma as s32, Mv.atk_n), dmg(Mech.Beam as s32, Mv.atk_n), "the jab is not Beam's")
+                assert_eq(s.meter, 0, "a landed hit filled the nuclear meter")
+                println("the jab lands at 4 m; the nuclear meter stays empty")
+                gm_try(4.0, 1, A)
+                stage = 2
+            }
+        }
+        2 => {
+            if gm_over() {
+                assert_eq(evc_side[1][Ev.Hit], 1, "the other's jab did not land")
+                let took = mark_h - s.health
+                assert_eq(took, dmg(GM_FOE as s32, Mv.atk_n), "the damage Gamma took")
+                assert_eq(s.meter, took * NUC_NUM / NUC_DEN, "the nuclear meter from the damage taken")
+                print("meter after taking ")
+                print_int(took)
+                print(": ")
+                print_int(s.meter)
+                println("")
+                gm_try(12.0, 0, B)
+                stage = 3
+            }
+        }
+        3 => {
+            if evc_side[0][Ev.Hit] == 1 || frames > mark + 240 {
+                assert_eq(evc_side[0][Ev.Shot], 1, "the orb was not fired")
+                assert_eq(evc_side[0][Ev.Hit], 1, "the orb did not land at 12 m")
+                assert_eq(mark_h - o.health, orb_hit(1).dmg, "the orb's damage")
+                println("the Volt Orb (Beam's, for now) lands at 12 m")
+                gm_try(4.0, 0, Y)
+                stage = 4
+            }
+        }
+        4 => {
+            if evc[Ev.Throw] == 1 && !sh_flag {
+                sh_flag = true
+                assert_eq(mark_h - o.health, dmg(Mech.Gamma as s32, Mv.throw), "the throw's damage")
+                assert_eq(s.meter, 0, "the throw filled Gamma's meter")
+            }
+            if sh_flag && gm_over() {
+                let d = abs(o.x - s.x)
+                print("thrown to ")
+                print_fixed(d)
+                println(" m (the Shock Grip, for now)")
+                assert(d > 7.0, "the Shock Grip did not throw the other off")
+                gm_try(14.0, 0, DOWN | B)
+                stage = 5
+            }
+        }
+        5 => {
+            if gm_over() {
+                assert(s.react == 0, "the brace started a chemical reaction")
+                assert_eq(s.meter, 0, "the brace filled the meter")
+                println("the brace (Beam's prime, for now) starts no reaction")
+                gm_try(8.0, 0, A | B)
+                s.meter = METER_BAR
+                stage = 6
+            }
+        }
+        6 => {
+            if evc[Ev.Super] == 1 && !sh_flag {
+                sh_flag = true
+                assert(s.meter >= 0 && s.meter < 10, "the super did not spend the bar")
+            }
+            if sh_flag && s.mv != Mv.super {
+                print("the super: ")
+                print_int(evc_side[0][Ev.Hit])
+                print(" hit, ")
+                print_int(mark_h - o.health)
+                print(" damage, the meter after ")
+                print_int(s.meter)
+                println("")
+                assert_eq(evc_side[0][Ev.Hit], 1, "the super did not land")
+                assert_eq(mark_h - o.health, dmg(Mech.Beam as s32, Mv.super), "the super's damage (Beam's)")
+                assert(s.meter >= 0, "a nuclear super went into debt")
+                if GM_FOE == Mech.Beam { ok("Gamma against Beam") } else { ok("Gamma against the Hero") }
+            }
+        }
+        else => {}
+    }
 }

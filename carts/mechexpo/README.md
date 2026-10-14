@@ -357,6 +357,68 @@ What is real and what is still Shadow's:
   Mid-fight (164-167, CPU against CPU without the extras): 504,681 to 629,409 CPU and 378,106 to
   604,592 GPU cycles.
 
+## Gamma
+
+Gamma (Heartland Atomic Company, nuclear; `Mech.Gamma`, roster slot 7 under Beam, GAMMA HA-58) is
+Heartland's echo of Beam, the gunner, unlocked by clearing the arcade with Beam. Phase 1
+(mx-gamma-rig) has the mech in the game, drawn and pickable, with Beam's moves as placeholders
+and its own nuclear meter; its own moves, effects and fight code are later phases. What is real
+and what is Beam's for now: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-nuclear).
+
+- **Files:** `models/gamma/make_gamma.py` (the model and rig: the owner's concept C, military
+  surplus, from `concepts/gamma_c/`, which stays as the record, refined after the owner's notes:
+  a longer projector with a primer shroud and a round primer lamp, its lens a green dome; the
+  head's lamp cut to a small eye; the shield in primer with bent-back wings; the cans' X and the
+  58 stencils gone), `anims/gamma/` (each move Beam's on Gamma's rig, the shield, `weapon_l`, held
+  stowed with the kit's `"still"`; where the bigger kit meets itself or the floor on Beam's keys,
+  `allow` and `floor_allow` say so), `gamma.akr` (its hits and stand-ins, Beam's for now, its move
+  list, and the predicates `has_volt_orb`, `has_shock_grip` and `has_arc_fx` that Beam's rules
+  ask instead of "is this Beam", so each special can be given to Gamma's own code without
+  touching Beam's). Its numbers are a row of `STATS` (Beam's, on the nuclear meter) and its
+  names a row of `ROSTER`; the CPU plays it as Beam (`cpu_as_beam` in `cpu.akr`), without the
+  prime.
+- **The nuclear meter goes by the power source**, not by Tank: `meter.akr` read
+  `STATS[m].power` already; the HUD's gauge (`hud.akr`'s `draw_meter`, `tank_meter_hud`) and the
+  reactor's glow (`tank_fx.akr`'s `tank_fx_draw`) now do too, for any nuclear mech. Gamma's glow
+  is one, at the louvred hatch on its sternum, brightening with the meter as Tank's do; Tank's
+  are as they were (scenarios 40-49 pass unchanged). Beam's Reaction Prime is a chemical meter's,
+  so on Gamma `sp_d` plays the prime's animation and starts no reaction.
+- **Where phase 2 branches for `Mech.Gamma`:** the three predicates in `gamma.akr` (the Volt
+  Orb, to become the Atomic Ray, in `fighter.akr`'s `fires_shot` and `shot_fire` and
+  `beam_fx.akr`'s charge glow and hum; the Shock Grip in `fighter.akr`'s throw and `beam_fx.akr`'s
+  buzz; Beam's discharges in `beam_fx.akr`), `gamma_hit`, the stand-ins and `GAMMA_MOVES` in
+  `gamma.akr`, its `STATS` row (health, walk, jump), `cpu_as_beam` and `cpu_primes` in `cpu.akr`,
+  Lead Shielding as a new branch in `fighter.akr`'s hits (an absorbed hit, as Tank's armour, that
+  still feeds the reactor), the sounds (`sfx.akr`: `sfx_shot` plays a swing for its orb,
+  `sfx_attack` its swings, `sfx_throw_by` a plain throw, `sfx_super` the kinetic charge-up;
+  `game.akr`'s `sfx_clash` counts only Beam's orb), the trails in `fx.akr` (the no-trail branch),
+  `COVER_POSE` in `cover.akr` (it holds Beam's win), and the animations (the shield swung out at
+  `weapon_l` (0, 90, 0) for Lead Shielding).
+- **The model:** 1,936 triangles (Beam's 1,794; concept C's 1,940; the pack's limit for it is
+  1,950, `MECH_LIMITS`), 11.9 m to the top of the searchlight head in the rest pose (the
+  roster's 119) and 13.6 m to the whip antenna's tip. The muzzle is Beam's, (0, 0.8, −4.4) in
+  `weapon_r`'s frame, so Beam's effects start at the lens (`gamma.rig.json`'s `muzzle` and
+  `shield`). Packed after Seraph (`LATE` in the generator), with its grey copy: 88,176 bytes of
+  meshes, as much again grey, 4,205 bytes of texture tiles before de-duplication (Heartland's
+  roundel on each pauldron, the HA-58 plate on each thigh, the trefoil on the shield, the chipped
+  paint, the shroud's slots), as much again grey.
+- **Tests:** scenarios 200 (against Beam) and 201 (against the Hero) in `tests/harness.akr`:
+  1,000 health, the nuclear meter, 19 parts a frame, Beam's walk, every move Beam's length with
+  the projector where Beam's cannon is and the shield stowed on every frame, the Arc Jab landing
+  at 4 m and filling nothing, the other's jab filling the meter 3 a point, the orb landing at
+  12 m, the Shock Grip's throw-off, the brace without a reaction, the super from a full bar;
+  202-207 through the whole game in `tests/gamma/harness.akr`: 202 the budget (budget.sh), 203 the
+  select with Gamma's card and spec sheet (and the roster row's checks), 204-207 mid-fight
+  against Beam and the Hero in the hangar, on the rooftop and on the container port; ladder
+  scenarios 210 (Beam's NORMAL run: the final is Gamma, the clear unlocks it) and 211 (Gamma's
+  reveal, VIEW 0, and the VS card, VIEW 1).
+- **The budget** (scenario 202, CPU against CPU, debug builds, a full Volt Orb kept out, a full
+  bar every 300 frames): against the split Twins on the rooftop 696,825 CPU cycles and 917,172
+  GPU cycles at the peak, 2,359 triangles; on the container port 662,403 and 979,223, 2,186
+  triangles, the worst GPU; the mechs' drawing at most 435,328 cycles, the effects' 47,863; no
+  late frames. Mid-fight (204-207, CPU against CPU without the extras): 536,666 to 631,217 CPU
+  and 458,025 to 659,901 GPU cycles.
+
 ## The arcade ladder
 
 The full ladder (mx-ladder), after the MVP's two fights; the owner's decisions are in
@@ -370,14 +432,16 @@ run, the difficulties and the test unit's names; `game.akr` the flow; `menus.akr
   run replays exactly. Never your own maker, never the final opponent's maker, no maker twice.
   The Twins are drawn while they are still locked. As the Hero or the Double-blade Hero the two
   rivals come from Raikō, Heartland and Binary Mechanica; as Shadow or Seraph from Raikō,
-  Heartland and Binary Mechanica; as Beam, Tank or the Twins from the other four makers.
+  Heartland and Binary Mechanica; as Beam or Gamma from Momentum, Umbral and Binary Mechanica;
+  as Tank or the Twins from the other four makers.
 - **The final** is the slot below (or above) yours: the Double-blade Hero for the Hero ("UMBRAL
   RESEARCH PRESENTS ITS COMPETING PRODUCT"), the Hero for the Double-blade Hero ("MOMENTUM
   ROBOTICS DEFENDS ITS TITLE"), Seraph for Shadow ("MOMENTUM ROBOTICS PRESENTS ITS COMPETING
-  PRODUCT"), Shadow for Seraph ("UMBRAL RESEARCH DEFENDS ITS TITLE"). A mech whose echo's slot has
-  no mech yet (Beam, Tank, the Twins) meets **the UAPC test unit**: its own mech in the UAPC's
-  grey, the client's own evaluation unit ("THE UAPC WILL NOW EVALUATE YOUR PRODUCT AGAINST ITS OWN
-  TEST UNIT";
+  PRODUCT"), Shadow for Seraph ("UMBRAL RESEARCH DEFENDS ITS TITLE"), Gamma for Beam ("HEARTLAND
+  ATOMIC CO. PRESENTS ITS COMPETING PRODUCT"), Beam for Gamma ("RAIKO CHEMICAL GROUP DEFENDS ITS
+  TITLE"). A mech whose echo's slot has no mech yet (Tank, the Twins) meets **the UAPC test
+  unit**: its own mech in the UAPC's grey, the client's own evaluation unit ("THE UAPC WILL NOW
+  EVALUATE YOUR PRODUCT AGAINST ITS OWN TEST UNIT";
   "SPECIFICATION: YOURS. BUILDER: NOT DISCLOSED."). Giving an echo's slot its `mech` replaces the
   test unit with the echo, with no other change.
 - **Stages:** the company fights in the hangar, the final on the rooftop (`LADDER_STAGES` in
@@ -482,17 +546,17 @@ clear it holds becomes a NORMAL stamp, since the MVP's ladder was two fights at 
 - **The masthead** is "PROCUREMENT TODAY", the owner's pick.
 
 **The test unit's grey** is made by `tools/gen_mechexpo_assets.py`, not by hand: for each body in
-`GREY_BODIES` (Shadow, Beam, Tank, the combined Twins, twin A, twin B, Seraph) every part recipe
-is packed again as `grey_NAME` (`ASSET_GREY_*`), the same geometry with its colours mapped by
+`GREY_BODIES` (Shadow, Beam, Tank, the combined Twins, twin A, twin B, Seraph, Gamma) every part
+recipe is packed again as `grey_NAME` (`ASSET_GREY_*`), the same geometry with its colours mapped by
 `grey_colour()`: a maker's saturated colour to the UAPC's grey paint (lighter for a lighter
 colour), a neutral one to a gunmetal-to-primer ramp by its lightness, texture colours the same
 way, the emissive glows the UAPC's pale blue. `assets.akr` lists the pairs (`GREY_FROM`,
 `GREY_TO`); `anim.akr` fills a grey mesh table a mech at a time, the first time that mech is
 drawn grey, and draws from it while `anim_grey` is set, which the game sets around a test
-unit's bodies (`p_grey`), the split Twins' twin B included. The grey parts add 485,368 bytes of
-meshes to the ROM (83,896 of them Seraph's) and 18 4-bit palettes. Shadow's and Seraph's are
-packed though each has the other as its final: the owner's rule is a grey for every body
-(scenario 125's VIEW 0 still fights Shadow's).
+unit's bodies (`p_grey`), the split Twins' twin B included. The grey parts add 573,544 bytes of
+meshes to the ROM (83,896 of them Seraph's, 88,176 Gamma's) and 18 4-bit palettes before Gamma.
+Shadow's, Seraph's, Beam's and Gamma's are packed though each pair has each other as their
+finals: the owner's rule is a grey for every body (scenario 125's VIEW 0 still fights Shadow's).
 
 **Budgets** (scenarios 117-119, debug builds, peaks): the schedule page 275,000 CPU and 353,000
 GPU cycles; the reveal 256,000 and 188,000; the cover 310,000 and 350,000; the fights with the
@@ -508,9 +572,11 @@ and its continue, the levels, the reveal, the final (the Double-blade Hero, Sera
 unit), the cover, the unlocks (the Double-blade Hero on EASY, Seraph on NORMAL), the stamps, the
 save written, each screen's budget), 120 the lot over 300 seeds a mech, 121 the save's migration
 (and the stamps on the select and the spec sheet), 122 the difficulty select, 123 the schedule
-page, 124 the reveal (VIEWs 4 and 5: Shadow's final, Seraph, and its VS card), 125 the test unit
-in a fight (VIEW 0's grey Shadow set by the harness, since Shadow's final is Seraph), 126 the
-cover, 127 a continue.
+page, 124 the reveal (VIEW 2 Tank's test unit, since Beam's final is Gamma; VIEWs 4 and 5:
+Shadow's final, Seraph, and its VS card), 125 the test unit in a fight (VIEW 0's grey Shadow set
+by the harness, since Shadow's final is Seraph), 126 the cover, 127 a continue; 210 a whole run
+on NORMAL with Beam (the final Gamma, the clear unlocks it; its fights peak at 801,664 CPU and
+563,087 GPU cycles) and 211 Gamma's reveal (VIEW 0) and VS card (VIEW 1) (mx-gamma-rig).
 
 ## Stages
 
@@ -744,12 +810,14 @@ across the fight plane, z behind it, y up from the apron.
   the menu page; texture slots 8 (fonts), 9 (UI sprites), 10 (effects); palettes 240–254 (244 is
   lent to the menu page and the hall's put back); a backdrop table at 0x582000; line channels 0,
   2 and 7. Priorities: BG2 0, BG1 1, the mechs 2, BG0 (the HUD's frame) 3, the interface list 4.
-- **Palettes, as built with Beam, Tank, the Twins, Shadow, the test units' grey parts and Seraph
-  (mx-seraph):** the pack's 4-bit palettes are 0–47 (its surface, emissive and textured
-  palettes), counting up from 0 (0–27 before the grey parts, 0–43 before Seraph); its 8-bit
-  palettes would come down from 14. The pack's textures take texture slots 0 and 1: 30,848 bytes
-  in slot 0 and, since Seraph, 5,248 in slot 1 (47,608 bytes of tiles before de-duplication); the
-  pack's ROM in `art/` is 1,181,648 bytes (1,008,480 before Seraph).
+- **Palettes, as built with Beam, Tank, the Twins, Shadow, the test units' grey parts, Seraph
+  (mx-seraph) and Gamma (mx-gamma-rig):** the pack's 4-bit palettes are 0–54 (its surface,
+  emissive and textured palettes), counting up from 0 (0–27 before the grey parts, 0–43 before
+  Seraph, 0–47 before Gamma); its 8-bit palettes would come down from 14. The pack's textures take
+  texture slots 0 and 1: 29,824 bytes in slot 0 and 8,320 in slot 1 (38,144 loaded; 36,096
+  before Gamma; 56,018 bytes of tiles before de-duplication, 47,608 before Gamma); the pack's ROM
+  in `art/` is 1,360,272 bytes (1,181,648 before Gamma, 1,008,480 before Seraph). Gamma's
+  animations take the exported `anims/anim_data.bin` from 9,997,820 to 11,142,876 bytes.
 - **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
   (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. Seraph's sprites
   (mx-seraph-fx: a four-point glint in four turns, the mark's sigil, a feather) are on the same
@@ -787,7 +855,7 @@ across the fight plane, z behind it, y up from the apron.
   GPU's fog register while it shows. The model pack took 4-bit palettes 28–43 for the grey
   parts (above).
 - **Triangles:** a mech about 1,600–1,800 (the sketches are 1,632 and 1,734; Seraph, with wings
-  and a halo, 1,892); the frame limit is
+  and a halo, 1,892; Gamma, with a lamp-headed gun and a shield, 1,936); the frame limit is
   4,000.
 - **Budgets a tick:** CPU 1,000,000 cycles, GPU 2,000,000 (`mei-headless --gpu-stats`). The
   sketches cost about 155,000 CPU cycles and 5 % of the GPU each, posed as one mesh; the rig's

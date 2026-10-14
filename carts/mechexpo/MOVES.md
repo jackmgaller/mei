@@ -2203,9 +2203,10 @@ The design is the owner's
 ([Decided by the owner (2026-10-14): Gamma](#decided-by-the-owner-2026-10-14-gamma-heartlands-ray-gun));
 the numbers below are this section's, to tune in play; the normals' and the throw's names, the
 health, the walk and this section's interpretations were proposals, which the owner approved as
-proposed (2026-10-14; the open questions at the end). Phase 1
-puts the mech in the game with Beam's moves as placeholders; phase 2 builds this section in three
-parts at once, as Seraph's: the fight and the CPU, the animations, the effects and sound. Each
+proposed (2026-10-14; the open questions at the end). Phase 1 (mx-gamma-rig) put the mech in the
+game with Beam's moves as placeholders ([Phase 1: what is in the game
+now](#phase-1-what-is-in-the-game-now-1)); phase 2 builds this section in three parts at once, as
+Seraph's: the fight and the CPU, the animations, the effects and sound. Each
 part's list is at the end ([For the animators](#for-the-animators-gamma),
 [For the effects and sound](#for-the-effects-and-sound-gamma),
 [Engine work needed](#engine-work-needed-gamma)).
@@ -2233,15 +2234,15 @@ taken, a bar per 400, carried over between rounds, the super at a full bar
 | Push box | 1.7 m either side of the root, 11.5 m tall (7.5 crouching): Beam's |
 | Hurt box | follows the parts (Beam's boxes on Gamma's parts); the shield has no hurt box of its own (Lead Shielding's protection is a rule, not a box) |
 
-These were proposals (the owner's "slow, heavy"), approved by the owner (2026-10-14). **Health 1,050**: the nuclear meter only fills by
-taking damage, so the mech that lives on it needs a little more health than Beam to live long
-enough to spend it; Tank's 1,150 stays the roster's most. **The walk**: slower than Beam's both
-ways, and its walk back (0.050) is the slowest of any mech on legs: Gamma does not back away from
-a rushing mech, it pushes it away (the Ray, Point Blank, Ground Zero). The walk is Beam's heavy
-plant with more weight: the body dips under the projector, which stays level; the jerrycans on
-the back rock on each plant (a light `step` mark, a heavier thud than Beam's). The jump is short,
-late and heavy: 6 frames' crouch, the projector held level throughout, the landing compressing
-the knees.
+These were proposals (the owner's "slow, heavy"), approved by the owner (2026-10-14). **Health
+1,050**: the nuclear meter only fills by taking damage, so the mech that lives on it needs a little
+more health than Beam to live long enough to spend it; Tank's 1,150 stays the roster's most. **The
+walk**: slower than Beam's both ways, and its walk back (0.050) is the slowest of any mech on legs:
+Gamma does not back away from a rushing mech, it pushes it away (the Ray, Point Blank, Ground Zero).
+The walk is Beam's heavy plant with more weight: the body dips under the projector, which stays
+level; the jerrycans on the back rock on each plant (a light `step` mark, a heavier thud than
+Beam's). The jump is short, late and heavy: 6 frames' crouch, the projector held level throughout,
+the landing compressing the knees.
 
 ### Attacks (A)
 
@@ -2979,6 +2980,31 @@ Prime and the reaction never apply to it (`meter_power` is Nuclear, so `try_pres
     an open edge, the heat to 0); Point Blank's 10 m; the nuclear meter on Gamma (damage, chip,
     absorbed hits; carried over). The budget scenarios are measured again with a Gamma in them.
 
+### Phase 1: what is in the game now
+
+Phase 1 (mx-gamma-rig) put Gamma in the game with Beam's moves as placeholders; until each part of
+phase 2 lands, this is what plays:
+
+- **Real**: the model and rig (concept C refined, `models/gamma/`: the projector on Beam's mount,
+  its muzzle Beam's (0, 0.8, −4.4) in `weapon_r`'s frame; the shield on `weapon_l`, stowed at 0,
+  swung out at (0, 90, 0)), the roster row (GAMMA, HA-58, Heartland's emblem, stats `0x3253`,
+  Beam's since its numbers are Beam's; 11.9 m to the top of the searchlight; the owner's blurb
+  "THE GUNNER:\nRAYS, LEAD", 61 and 50 px of the spec sheet's 76), and the **nuclear meter**: 3
+  meter a point of damage taken, nothing for landing hits, carried over between rounds, the super
+  at a full bar, the HUD's reactor gauge and the reactor hatch's glow brightening with it
+  (`meter.akr`, `hud.akr` and `tank_fx.akr` go by the power source, so Tank's play as before).
+- **Placeholders**: every animation is Beam's on Gamma's rig (`anims/gamma/`, each `"base":
+  "../beam/MOVE.anim.json"`, the shield `"still"`); every hit's numbers (`gamma_hit` returns
+  `beam_hit`); health, walk and jump Beam's (`STATS`); `sp_n` the Volt Orb (`has_volt_orb`), `sp_f`
+  the Arc Lance, `sp_u` the Thunder Pillar, the throw the Shock Grip (`has_shock_grip`), the
+  super the Raikō Overload, Beam's discharges drawn over the boxes (`has_arc_fx`); `sp_d` plays
+  the Reaction Prime's animation as a brace and starts no reaction (the meter is not chemical);
+  the CPU plays it as Beam without the prime (`cpu_as_beam`); the sounds are the general ones (a
+  swing for the orb, the kinetic charge-up for the super); the training move list is Beam's under
+  Gamma's meter.
+- **The arcade**: Beam's final is Gamma ("HEARTLAND ATOMIC CO. PRESENTS ITS COMPETING PRODUCT"),
+  Gamma's final is Beam (defending its title); Gamma's grey copy is packed as every body's is.
+
 ## Reactions and the rest of the list
 
 | Move | Length | Notes |
@@ -3129,8 +3155,10 @@ Planned, not designed in numbers yet: Heartland Atomic Company's echo of Beam, i
 under Beam (unlocked by clearing the arcade with Beam), on Beam's skeleton (the Hero's). Named
 **GAMMA** (card GAMMA); model number open (HA-58 proposed, after Tank's HA-57). Nuclear meter (Heartland's: fills as it takes damage).
 
-- **Look: military surplus** (concept C, `concepts/gamma_c/`, on its own branch for now; chosen
-  over an atomic-age ray gun and a walking reactor plant). Beam's frame refitted from army
+- **Look: military surplus** (concept C, `concepts/gamma_c/`, refined in `models/gamma/`; chosen
+  over an atomic-age ray gun and a walking reactor plant). Phase 1 is built
+  ([Gamma](#gamma-heartland-atomic-company-nuclear): the mech, the nuclear meter, Beam's moves as
+  placeholders). Beam's frame refitted from army
   surplus: a searchlight head with a whip antenna, a louvred reactor hatch on the chest (the
   meter's glow), jerrycans and a toolbox racked on the back, primer-grey replacement panels on
   Heartland's faded green; Raikō's Arc Cannon becomes a searchlight converted to a ray projector

@@ -1,0 +1,269 @@
+// Mech Expo 2000's Gamma scenarios that need the whole game (mx-gamma-rig): the real game
+// (game.akr: the stages, the camera, the mechs drawn by anim.akr, the effects, the HUD and the
+// menus) driven through its test hooks, as tests/seraph/harness.akr does. tests/run.sh builds
+// scenarios 202-209 from this file and ../../game.akr; tests/check.sh runs 203-207 and
+// tests/budget.sh 202. 200 and 201 (the fight alone) are in ../harness.akr; the arcade's final
+// for Beam (Gamma's reveal and the VS card, and a whole run that unlocks Gamma) are ladder
+// scenarios 210 and 211.
+//
+// 202 the budget with Gamma: CPU against CPU (level 2) through the real game, Gamma against the
+//     split Twins (three bodies on screen) on the rooftop (and its city) for 900 frames, then on
+//     the container port for 900: its worst matchups. The scenario keeps a full Volt Orb out
+//     (Beam's, which Gamma plays for now), and every 300 frames gives Gamma a full bar for its
+//     super (the Raikō Overload's beam across the stage, for now) and its reactor's glow at its
+//     brightest. Prints the peak CPU, GPU and triangles of each half
+// 203 the character select (Versus): Gamma unlocked, 1P's cursor on its card (the echo slot under
+//     Beam), 2P's on Beam: Gamma's catalogue page and spec sheet. Checks the roster row and what
+//     follows from it: the names, the model number, the maker and its nuclear meter icon, the
+//     stats, the blurb's two lines within 76 px, the height, the move list
+// 204-207 Gamma mid-fight, CPU against CPU for 300 frames (the pictures): 204 against Beam in the
+//     hangar, 205 against the Hero in the hangar, 206 against Beam on the rooftop, 207 against
+//     the Hero on the container port. Each within the budgets; Gamma's reactor glows by its meter
+
+var fr: s32
+var started: bool
+var peak_cpu: [2]s32               // 202: [0] on the rooftop, [1] on the port
+var peak_gpu: [2]s32
+var peak_tris: [2]s32
+var peak_fight: s32
+var peak_mechs: s32
+var peak_fx: s32
+var late: s32
+var supers: s32
+
+const GM_FOE = match SCENARIO { 205 => Mech.Hero, 207 => Mech.Hero, else => Mech.Beam }
+const GM_STAGE = match SCENARIO { 206 => ST_ROOFTOP, 207 => ST_PORT, else => ST_HANGAR }
+const GM_BUDGET = SCENARIO == 202
+
+fn test_init() {
+    match SCENARIO {
+        202 => {
+            game = Game.Versus
+            p_cpu = false
+            p_mech[0] = Mech.Gamma
+            p_mech[1] = Mech.Twins
+            stage_sel = ST_ROOFTOP
+            enter_fight()
+        }
+        203 => {
+            check_roster()
+            save.unlocked |= ROSTER[mech_slot(Mech.Gamma)].bit
+            game = Game.Versus
+            enter_select()
+        }
+        else => {
+            game = Game.Versus
+            p_cpu = false
+            p_mech[0] = Mech.Gamma
+            p_mech[1] = GM_FOE
+            stage_sel = GM_STAGE
+            enter_fight()
+        }
+    }
+}
+
+fn input_stick(n: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+fn input_pad(n: s32) -> u32 {
+    if SCENARIO == 203 { return 0 }
+    if st != St.Fight { return 0 }
+    let p = cpu_pad(n, 2)
+    if GM_BUDGET && n == 1 { return p & ~L }        // the Twins stay split: three bodies
+    if GM_BUDGET && n == 0 && fr % 300 >= 2 && fr % 300 < 40 && fight.f[0].super_ok && actionable(0) {
+        return A | B
+    }
+    return p
+}
+
+fn test_hook() {
+    if SCENARIO == 203 {
+        hook_select()
+        return
+    }
+    if st != St.Fight { return }
+    let f = fight_get()
+    var k = 0
+    if GM_BUDGET && fr >= 900 { k = 1 }
+    if started && fr > 3 && fr != 900 && fr != 901 {
+        peak_cpu[k] = max(peak_cpu[k], cpu_used())
+        peak_gpu[k] = max(peak_gpu[k], gpu_used())
+        peak_tris[k] = max(peak_tris[k], tris_drawn())
+        peak_fight = max(peak_fight, prof_fight)
+        peak_mechs = max(peak_mechs, prof_mechs)
+        peak_fx = max(peak_fx, prof_fx)
+        if frame_ticks() > 1 { late += 1 }
+    }
+    started = true
+    fr += 1
+    if !GM_BUDGET {
+        // the pictures: both kept on their feet, so the fight goes on; Gamma's meter half full,
+        // so its reactor glows and pulses
+        fight.f[0].health = max(fight.f[0].health, 300)
+        fight.f[1].health = max(fight.f[1].health, 300)
+        if fr == 2 { fight.f[0].meter = METER_BAR * 3 / 4 }
+        if fr == 300 { report_fight() }
+        return
+    }
+    if fight.phase == Phase.Fight { keep_busy(f) }
+    let ev = fight_events()
+    for e in 0..ev.n {
+        if ev.e[e].kind == Ev.Super && ev.e[e].side == 0 { supers += 1 }
+    }
+    if fr == 900 {
+        stage_sel = ST_PORT
+        enter_fight()
+    }
+    if fr == 1800 { report_budget() }
+}
+
+// 202's worst case kept on screen: a full Volt Orb out in front of Gamma, and a full bar now and
+// then (its super, and the reactor's glow at its brightest).
+private fn keep_busy(f: *Fight) {
+    let s = &f.f[0]
+    let sh = &f.shot[0]
+    if !sh.on && s.mv != Mv.sp_n {
+        let ft = fixed(s.facing)
+        sh.on = true
+        sh.t = 0
+        sh.y = 0.0
+        sh.hex = false
+        sh.lvl = 3
+        sh.str = 3
+        sh.x = s.x + ft * ORB_X
+        sh.vx = ft * orb_speed(3)
+        sh.half = orb_half(3)
+        sh.y0 = ORB_Y0
+        sh.y1 = ORB_Y1
+        sh.life = ORB_LIFE
+    }
+    if fr % 300 == 0 { s.meter = METER_BAR }
+}
+
+private fn report_budget() {
+    for k in 0..2 {
+        if k == 0 { print("Gamma against the split Twins on the rooftop: ") }
+        else { print("Gamma against the split Twins on the container port: ") }
+        print("peak cpu ")
+        print_int(peak_cpu[k])
+        print(", gpu ")
+        print_int(peak_gpu[k])
+        print(", triangles ")
+        print_int(peak_tris[k])
+        println("")
+        assert(peak_cpu[k] <= CPU_BUDGET, "over the CPU budget")
+        assert(peak_gpu[k] <= GPU_BUDGET, "over the GPU budget")
+        assert(peak_tris[k] < 4000, "over 4,000 triangles")
+    }
+    assert(supers >= 2, "Gamma's super was not measured")
+    print("supers ")
+    print_int(supers)
+    print(", late frames ")
+    print_int(late)
+    print(", the fight's peak ")
+    print_int(peak_fight)
+    print(", the mechs' drawing peak ")
+    print_int(peak_mechs)
+    print(", the effects' peak ")
+    print_int(peak_fx)
+    println(" cycles")
+    println("OK the budget with Gamma (a full orb out, the super, the reactor)")
+}
+
+private fn report_fight() {
+    print("Gamma against ")
+    print(mech_name(GM_FOE))
+    if GM_STAGE == ST_ROOFTOP { print(" on the rooftop") }
+    else if GM_STAGE == ST_PORT { print(" on the container port") }
+    else { print(" in the hangar") }
+    print(": peak cpu ")
+    print_int(peak_cpu[0])
+    print(", gpu ")
+    print_int(peak_gpu[0])
+    print(", triangles ")
+    print_int(peak_tris[0])
+    print(", late frames ")
+    print_int(late)
+    println("")
+    assert(fight.f[0].mech == Mech.Gamma && fight.f[1].mech == GM_FOE, "the fighters")
+    assert(peak_cpu[0] <= CPU_BUDGET, "over the CPU budget")
+    assert(peak_gpu[0] <= GPU_BUDGET, "over the GPU budget")
+    assert(peak_tris[0] < 4000, "over 4,000 triangles")
+    println("OK Gamma mid-fight")
+}
+
+// 203: the select, both cursors placed, then the shot.
+private fn hook_select() {
+    fr += 1
+    if st != St.Select { return }
+    sel_cur[0] = mech_slot(Mech.Gamma)
+    sel_cur[1] = mech_slot(Mech.Beam)
+    if fr == 60 {
+        assert(slot_ok(sel_cur[0]), "Gamma is not selectable once unlocked")
+        assert(slot_mech(sel_cur[0]) == Mech.Gamma, "the cursor is not on Gamma")
+        println("OK the select with Gamma's card and spec sheet")
+    }
+}
+
+// The roster's row and what follows from it.
+private fn check_roster() {
+    let i = mech_slot(Mech.Gamma)
+    let r = &ROSTER[i]
+    assert_eq(i, ROSTER_COLS + mech_slot(Mech.Beam), "Gamma is not the echo under Beam")
+    assert(r.echo && r.rule == RULE_CLEAR && r.arg == mech_slot(Mech.Beam) && r.bit == 0x80, "the unlock rule")
+    assert(!slot_unlocked(i), "Gamma unlocked from the start")
+    assert_eq(r.maker, CO_HEARTLAND, "Gamma's maker")
+    assert(str_eq(mech_name(Mech.Gamma), "GAMMA") && str_eq(mech_short(Mech.Gamma), "GAMMA"), "the names")
+    assert(str_eq(r.card, "GAMMA") && str_eq(mech_model(Mech.Gamma), "HA-58"), "the card and the model")
+    assert(str_eq(mech_maker(Mech.Gamma), "HEARTLAND ATOMIC CO."), "the maker's name")
+    assert_eq(mech_src(Mech.Gamma), SRC_NUCLEAR, "the meter icon's power source")
+    assert(meter_power(Mech.Gamma) == Power.Nuclear, "the meter")
+    assert(r.emblem == &UI_EMBLEM_HEARTLAND[0] && r.emblem24 == &UI_EMBLEM24_HEARTLAND[0], "Heartland's emblem")
+    assert_eq(STATS[Mech.Gamma].health, STATS[Mech.Beam].health, "the health is not Beam's")
+    assert(STATS[Mech.Gamma].walk_f == STATS[Mech.Beam].walk_f, "the walk is not Beam's")
+    assert_eq(r.stats, ROSTER[mech_slot(Mech.Beam)].stats, "the stats are not Beam's numbers")
+    assert_eq(r.height, 119, "the height")
+    var w = 0
+    var lines = 0
+    var line: [32]u8
+    var n = 0
+    var k = 0
+    while true {
+        let c = r.blurb[k]
+        if c == 10 || c == 0 {
+            line[n] = 0
+            w = txt_w(FONT_MICRO, &line[0])
+            print("blurb line ")
+            print_int(lines + 1)
+            print(": ")
+            print(&line[0])
+            print(", ")
+            print_int(w)
+            println(" px")
+            assert(w <= 76, "a blurb line wider than 76 px")
+            lines += 1
+            n = 0
+            if c == 0 { break }
+        } else {
+            line[n] = c
+            n += 1
+        }
+        k += 1
+    }
+    assert_eq(lines, 2, "the blurb is not two lines")
+    assert_eq(fight_moves(Mech.Gamma).n, 15, "Gamma's move list")
+    print("stats ")
+    print_hex(r.stats)
+    print(", card ")
+    print(r.card)
+    print(", model ")
+    println(mech_model(Mech.Gamma))
+}
+
+private fn str_eq(a: *u8, b: *u8) -> bool {
+    var k = 0
+    while a[k] == b[k] {
+        if a[k] == 0 { return true }
+        k += 1
+    }
+    return false
+}

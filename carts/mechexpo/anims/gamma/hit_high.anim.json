@@ -1,0 +1,8 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Gamma's hit_high: a placeholder (phase 1), Beam's (../beam/hit_high.anim.json) on Gamma's rig, its keys, timing, boxes and marks as they are (the projector is on Beam's mount and reaches as far as the Arc Cannon); the shield (weapon_l) held stowed (\"still\"). To be replaced by its own move (MOVES.md, \"Gamma\").",
+  "base": "../beam/hit_high.anim.json",
+  "rig": "../../models/gamma/gamma.rig.json",
+  "still": ["weapon_l"]
+}

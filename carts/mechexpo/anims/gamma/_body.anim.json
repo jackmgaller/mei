@@ -1,0 +1,8 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Gamma's body: Beam's hurt and push boxes (../beam/_body.anim.json) on Gamma's rig (the same part ids: a box that follows a part takes Gamma's part), and the stand-in for a move with no file (the guard, held). The shield (weapon_l) is held stowed along the left forearm (\"still\"), with no hurt box of its own.",
+  "base": "../beam/_body.anim.json",
+  "rig": "../../models/gamma/gamma.rig.json",
+  "still": ["weapon_l"]
+}

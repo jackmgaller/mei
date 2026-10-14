@@ -9,6 +9,7 @@ import "tank.akr"               // Tank's data (mx-tank)
 import "twins.akr"              // the Twins' data and rules (mx-twins-fight)
 import "shadow.akr"             // Shadow's data and rules (mx-shadow-fight)
 import "seraph.akr"             // Seraph's data, and which of Shadow's rules it plays (mx-seraph)
+import "gamma.akr"              // Gamma's data, and which of Beam's rules it plays (mx-gamma-rig)
 
 // The stand-in data (below) is used for every move anim.akr still stands in for (it holds the
 // guard pose there: anim_standin()), and for all of them while STANDIN_ALL is set.
@@ -65,6 +66,9 @@ const STATS: [len(Mech)]Stats = [
     // little slower than Shadow's (0.080 and 0.064 m a frame: 4.8 and 3.8 m/s), Momentum's kinetic meter
     Stats { health: 1000, walk_f: 0.080, walk_b: 0.064, pre: 4, jv: 0.688889, grav: 0.038272,
             jvx: 0.17, land: 5, land_air: 8, push: 1.4, power: Power.Kinetic },
+    // Gamma (MOVES.md, "Gamma"): Beam's numbers for now (phase 1), on Heartland's nuclear meter
+    Stats { health: 1000, walk_f: 0.062, walk_b: 0.058, pre: 5, jv: 0.6, grav: 0.03,
+            jvx: 0.14, land: 6, land_air: 9, push: 1.7, power: Power.Nuclear },
 ]
 
 // ---- what a hit does
@@ -105,6 +109,7 @@ fn move_hit(m: Mech, mv: Mv) -> Hit {
     if m == Mech.Tank { return tank_hit(mv) }
     if m == Mech.Shadow { return shadow_hit(mv) }
     if m == Mech.Seraph { return seraph_hit(mv) }
+    if m == Mech.Gamma { return gamma_hit(mv) }
     if m >= Mech.Twins && m <= Mech.TwinB { return twins_hit(m, mv) }
     return match mv {
         atk_n => Hit { dmg: 65, hitstun: 17, blockstun: 12, stop: 7, kb: 0.09 }
@@ -309,6 +314,7 @@ fn tm(m: Mech, mv: Mv) -> Tm {
     if m == Mech.Tank { return tank_tm(mv) }
     if m == Mech.Shadow { return shadow_tm(mv) }
     if m == Mech.Seraph { return seraph_tm(mv) }
+    if m == Mech.Gamma { return gamma_tm(mv) }
     if m >= Mech.Twins && m <= Mech.TwinB { return twins_tm(m, mv) }
     return match mv {
         idle => Tm { len: 60, loops: true }

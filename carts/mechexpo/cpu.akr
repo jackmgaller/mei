@@ -261,7 +261,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         return 0
     }
     // Beam charging its orb: B held until the charge it chose
-    if me.mech == Mech.Beam && me.mv == Mv.sp_n && c.charge_want > 0 && fx[i].t <= 12 && me.charge < c.charge_want {
+    if cpu_as_beam(me.mech) && me.mv == Mv.sp_n && c.charge_want > 0 && fx[i].t <= 12 && me.charge < c.charge_want {
         return B
     }
     // the Twins' Fusion Focus: B held for the frames it chose
@@ -347,7 +347,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
             // enough to pass under the jump (mx-balance)
             let tt = ((abs(s.x - me.x) - s.half - STATS[me.body].push) / abs(s.vx)) as s32
             // Beam answers the wave from far with a charged orb, which trades with it (MOVES.md)
-            if me.mech == Mech.Beam && tt > 48 && !fight.shot[i].on && roll(c, lv.aa) {
+            if cpu_as_beam(me.mech) && tt > 48 && !fight.shot[i].on && roll(c, lv.aa) {
                 c.charge_want = ORB_CHARGE_HALF + 4
                 return B
             }
@@ -373,7 +373,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         let e = cpu_edge(i, c, lv, dist, fwd)
         if e != CPU_NO_IDEA { return e }
     }
-    if me.mech == Mech.Beam { return beam_neutral(i, c, lv, dist, fwd, back) }
+    if cpu_as_beam(me.mech) { return beam_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Tank { return tank_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Twins { return twins_neutral(i, c, lv, dist, fwd, back) }
     if cpu_as_shadow(me.mech) { return shadow_neutral(i, c, lv, dist, fwd, back) }
@@ -449,7 +449,11 @@ fn dummy_pad(i: s32) -> u32 {
 
 // ---- Beam (mx-beam): the zoner in neutral. Orbs at range (charged when far), the Arc Lance at a
 // mech walking or jumping in, the prime when it is safe (far, nothing coming), the super from
-// anywhere it reaches; up close a jab, a grab or a step back out.
+// anywhere it reaches; up close a jab, a grab or a step back out. Gamma plays Beam's CPU until its
+// own moves land (mx-gamma-rig, phase 2), without the prime (its meter is nuclear: no reaction).
+
+private fn cpu_as_beam(m: Mech) -> bool { return m == Mech.Beam || m == Mech.Gamma }
+private fn cpu_primes(m: Mech) -> bool { return meter_power(m) == Power.Chemical }
 
 // The room behind side i, to the stage's edge (a wall or an open lip).
 private fn room_behind(i: s32) -> fixed {
@@ -467,7 +471,8 @@ private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, b
     if room_behind(i) < 6.0 { back = R }
     // the prime while the other is down: the safest moment there is
     let down = op.mv == Mv.knockdown || op.mv == Mv.getup || op.mv == Mv.hit_air
-    if down && me.react == 0 && me.meter < METER_BAR && dist > 6.0 && me.curse == 0 && roll(c, lv.special * 6) { return DOWN | B }
+    if down && me.react == 0 && me.meter < METER_BAR && dist > 6.0 && me.curse == 0 && cpu_primes(me.mech)
+        && roll(c, lv.special * 6) { return DOWN | B }
     if dist < tip(op.body) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
     if dist < 5.5 {
         if c.blocks_seen >= 2 && roll(c, lv.grab) { c.blocks_seen = 0; return Y }
@@ -479,7 +484,7 @@ private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, b
         return hold(c, R, 10)
     }
     if dist > 12.0 && me.react == 0 && me.meter < METER_BAR && !incoming && !is_attack(op.mv)
-        && me.curse == 0 && roll(c, lv.special * 4) {
+        && me.curse == 0 && cpu_primes(me.mech) && roll(c, lv.special * 4) {
         return DOWN | B
     }
     if super_wise(i) && dist < 28.0 && roll(c, 4) { return A | B }
@@ -849,7 +854,7 @@ private fn shot_above(i: s32, c: *Cpu, lv: *CpuLevel, s: *Shot, fwd: u32) -> u32
     if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
     if cpu_as_shadow(me.mech) && abs(fight.f[other(i)].x - me.x) < 19.0 && roll(c, lv.aa) { return fwd | B }
     if me.mech == Mech.Hero && s.str < 2 && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) { return B }
-    if me.mech == Mech.Beam && s.str < 2 && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) {
+    if cpu_as_beam(me.mech) && s.str < 2 && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) {
         c.charge_want = ORB_CHARGE_HALF + 4                 // a charged orb beats a bolt or a tap
         return B
     }

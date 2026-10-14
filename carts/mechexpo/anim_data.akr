@@ -5,7 +5,7 @@ import "assets.akr"
 
 embed AK_BLOB: u8 = "anims/anim_data.bin"
 
-const AK_MOVES: [297]AnimMove = [
+const AK_MOVES: [330]AnimMove = [
     AnimMove { len: 60, flags: 1, frames: 0, box_first: 36480, boxes: 36604, marks: 49804, root: 50044 },   // hero idle
     AnimMove { len: 48, flags: 1, frames: 50524, box_first: 79708, boxes: 79808, marks: 90368, root: 90560 },   // hero walk_f
     AnimMove { len: 48, flags: 1, frames: 90944, box_first: 120128, boxes: 120228, marks: 130788, root: 130980 },   // hero walk_b
@@ -303,10 +303,43 @@ const AK_MOVES: [297]AnimMove = [
     AnimMove { len: 56, flags: 2, frames: 9905676, box_first: 9945100, boxes: 9945216, marks: 9959776, root: 9960000 },   // seraph thrown_slam
     AnimMove { len: 60, flags: 4, frames: 9960448, box_first: 10002688, boxes: 10002812, marks: 10018412, root: 10018652 },   // seraph combine (stand-in)
     AnimMove { len: 60, flags: 4, frames: 9960448, box_first: 10002688, boxes: 10002812, marks: 10018412, root: 10018652 },   // seraph split (stand-in)
+    AnimMove { len: 60, flags: 1, frames: 10019132, box_first: 10055612, boxes: 10055736, marks: 10068936, root: 10069176 },   // gamma idle
+    AnimMove { len: 52, flags: 1, frames: 10069656, box_first: 10101272, boxes: 10101380, marks: 10112820, root: 10113028 },   // gamma walk_f
+    AnimMove { len: 52, flags: 1, frames: 10113444, box_first: 10145060, boxes: 10145168, marks: 10156608, root: 10156816 },   // gamma walk_b
+    AnimMove { len: 8, flags: 0, frames: 10157232, box_first: 10162096, boxes: 10162116, marks: 10163876, root: 10163908 },   // gamma crouch
+    AnimMove { len: 45, flags: 2, frames: 10163972, box_first: 10191332, boxes: 10191424, marks: 10201324, root: 10201504 },   // gamma jump
+    AnimMove { len: 8, flags: 0, frames: 10201864, box_first: 10206728, boxes: 10206748, marks: 10208508, root: 10208540 },   // gamma land
+    AnimMove { len: 4, flags: 0, frames: 10208604, box_first: 10211036, boxes: 10211048, marks: 10211928, root: 10211944 },   // gamma block
+    AnimMove { len: 20, flags: 0, frames: 10211976, box_first: 10224136, boxes: 10224180, marks: 10228580, root: 10228660 },   // gamma hit_high
+    AnimMove { len: 20, flags: 0, frames: 10228820, box_first: 10240980, boxes: 10241024, marks: 10245424, root: 10245504 },   // gamma hit_low
+    AnimMove { len: 30, flags: 2, frames: 10245664, box_first: 10263904, boxes: 10263968, marks: 10270568, root: 10270688 },   // gamma hit_air
+    AnimMove { len: 32, flags: 0, frames: 10270928, box_first: 10290384, boxes: 10290452, marks: 10297492, root: 10297620 },   // gamma knockdown
+    AnimMove { len: 20, flags: 0, frames: 10297876, box_first: 10310036, boxes: 10310080, marks: 10314480, root: 10314560 },   // gamma getup
+    AnimMove { len: 90, flags: 0, frames: 10314720, box_first: 10369440, boxes: 10369624, marks: 10389424, root: 10389784 },   // gamma ko
+    AnimMove { len: 120, flags: 0, frames: 10390504, box_first: 10463464, boxes: 10463708, marks: 10490108, root: 10490588 },   // gamma win
+    AnimMove { len: 90, flags: 0, frames: 10491548, box_first: 10546268, boxes: 10546452, marks: 10566252, root: 10566612 },   // gamma intro
+    AnimMove { len: 24, flags: 0, frames: 10567332, box_first: 10581924, boxes: 10581976, marks: 10587496, root: 10587592 },   // gamma atk_n
+    AnimMove { len: 40, flags: 0, frames: 10587784, box_first: 10612104, boxes: 10612188, marks: 10621068, root: 10621228 },   // gamma atk_f
+    AnimMove { len: 41, flags: 0, frames: 10621548, box_first: 10646476, boxes: 10646560, marks: 10655680, root: 10655844 },   // gamma atk_d
+    AnimMove { len: 32, flags: 2, frames: 10656172, box_first: 10675628, boxes: 10675696, marks: 10682856, root: 10682984 },   // gamma atk_air
+    AnimMove { len: 45, flags: 0, frames: 10683240, box_first: 10710600, boxes: 10710692, marks: 10720592, root: 10720772 },   // gamma sp_n
+    AnimMove { len: 44, flags: 0, frames: 10721132, box_first: 10747884, boxes: 10747976, marks: 10758096, root: 10758272 },   // gamma sp_f
+    AnimMove { len: 42, flags: 0, frames: 10758624, box_first: 10784160, boxes: 10784248, marks: 10793648, root: 10793816 },   // gamma sp_u
+    AnimMove { len: 44, flags: 0, frames: 10794152, box_first: 10820904, boxes: 10820996, marks: 10830676, root: 10830852 },   // gamma sp_d
+    AnimMove { len: 7, flags: 0, frames: 10831204, box_first: 10835460, boxes: 10835476, marks: 10837056, root: 10837084 },   // gamma grab
+    AnimMove { len: 22, flags: 0, frames: 10837140, box_first: 10850516, boxes: 10850564, marks: 10855404, root: 10855492 },   // gamma grab_whiff
+    AnimMove { len: 46, flags: 0, frames: 10855668, box_first: 10883636, boxes: 10883732, marks: 10893852, root: 10894036 },   // gamma throw
+    AnimMove { len: 44, flags: 2, frames: 10894404, box_first: 10921156, boxes: 10921248, marks: 10930928, root: 10931104 },   // gamma thrown
+    AnimMove { len: 20, flags: 0, frames: 10931456, box_first: 10943616, boxes: 10943660, marks: 10948060, root: 10948140 },   // gamma grab_break
+    AnimMove { len: 100, flags: 0, frames: 10948300, box_first: 11009100, boxes: 11009304, marks: 11031624, root: 11032024 },   // gamma super
+    AnimMove { len: 40, flags: 2, frames: 11032824, box_first: 11057144, boxes: 11057228, marks: 11066028, root: 11066188 },   // gamma thrown_vault
+    AnimMove { len: 56, flags: 2, frames: 11066508, box_first: 11100556, boxes: 11100672, marks: 11112992, root: 11113216 },   // gamma thrown_slam
+    AnimMove { len: 60, flags: 4, frames: 11113664, box_first: 11150144, boxes: 11150268, marks: 11163468, root: 11163708 },   // gamma combine (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 11113664, box_first: 11150144, boxes: 11150268, marks: 11163468, root: 11163708 },   // gamma split (stand-in)
 ]
 
 // each mech's part meshes in anim.akr's Part order (null: no mesh)
-const AK_MESH: [198]*Mesh = [
+const AK_MESH: [220]*Mesh = [
     ASSET_HERO_PELVIS, ASSET_HERO_TORSO, ASSET_HERO_HEAD, ASSET_HERO_PAULDRON_R, ASSET_HERO_UPPER_ARM_R, ASSET_HERO_FOREARM_R, ASSET_HERO_HAND_R, ASSET_HERO_SWORD, ASSET_HERO_PAULDRON_L, ASSET_HERO_UPPER_ARM_L, ASSET_HERO_FOREARM_L, ASSET_HERO_HAND_L, null, ASSET_HERO_THIGH_R, ASSET_HERO_SHIN_R, ASSET_HERO_FOOT_R, ASSET_HERO_THIGH_L, ASSET_HERO_SHIN_L, ASSET_HERO_FOOT_L, null, null, null,
     ASSET_DOUBLEBLADE_PELVIS, ASSET_DOUBLEBLADE_TORSO, ASSET_DOUBLEBLADE_HEAD, ASSET_DOUBLEBLADE_PAULDRON_R, ASSET_DOUBLEBLADE_UPPER_ARM_R, ASSET_DOUBLEBLADE_FOREARM_R, ASSET_DOUBLEBLADE_HAND_R, ASSET_DOUBLEBLADE_DAGGER, ASSET_DOUBLEBLADE_PAULDRON_L, ASSET_DOUBLEBLADE_UPPER_ARM_L, ASSET_DOUBLEBLADE_FOREARM_L, ASSET_DOUBLEBLADE_HAND_L, ASSET_DOUBLEBLADE_DAGGER, ASSET_DOUBLEBLADE_THIGH_R, ASSET_DOUBLEBLADE_SHIN_R, ASSET_DOUBLEBLADE_FOOT_R, ASSET_DOUBLEBLADE_THIGH_L, ASSET_DOUBLEBLADE_SHIN_L, ASSET_DOUBLEBLADE_FOOT_L, null, null, null,
     ASSET_BEAM_PELVIS, ASSET_BEAM_TORSO, ASSET_BEAM_HEAD, ASSET_BEAM_PAULDRON_R, ASSET_BEAM_UPPER_ARM_R, ASSET_BEAM_FOREARM_R, ASSET_BEAM_HAND_R, ASSET_BEAM_CANNON, ASSET_BEAM_PAULDRON_L, ASSET_BEAM_UPPER_ARM_L, ASSET_BEAM_FOREARM_L, ASSET_BEAM_HAND_L, null, ASSET_BEAM_THIGH_R, ASSET_BEAM_SHIN_R, ASSET_BEAM_FOOT_R, ASSET_BEAM_THIGH_L, ASSET_BEAM_SHIN_L, ASSET_BEAM_FOOT_L, null, null, null,
@@ -316,7 +349,8 @@ const AK_MESH: [198]*Mesh = [
     ASSET_TWIN_B_PELVIS, ASSET_TWIN_B_TORSO, ASSET_TWIN_B_HEAD, ASSET_TWIN_B_PAULDRON_R, ASSET_TWIN_B_UPPER_ARM_R, ASSET_TWIN_B_FOREARM_R, ASSET_TWIN_B_HAND_R, null, ASSET_TWIN_B_PAULDRON_L, ASSET_TWIN_B_UPPER_ARM_L, ASSET_TWIN_B_FOREARM_L, ASSET_TWIN_B_HAND_L, null, ASSET_TWIN_B_THIGH_R, ASSET_TWIN_B_SHIN_R, ASSET_TWIN_B_FOOT_R, ASSET_TWIN_B_THIGH_L, ASSET_TWIN_B_SHIN_L, ASSET_TWIN_B_FOOT_L, null, null, null,
     ASSET_SHADOW_PELVIS, ASSET_SHADOW_TORSO, ASSET_SHADOW_HEAD, ASSET_SHADOW_PAULDRON_R, ASSET_SHADOW_UPPER_ARM_R, ASSET_SHADOW_FOREARM_R, ASSET_SHADOW_HAND_R, ASSET_SHADOW_CLAW, ASSET_SHADOW_PAULDRON_L, ASSET_SHADOW_UPPER_ARM_L, ASSET_SHADOW_FOREARM_L, ASSET_SHADOW_HAND_L, ASSET_SHADOW_CLAW, ASSET_SHADOW_THIGH_R, ASSET_SHADOW_SHIN_R, ASSET_SHADOW_FOOT_R, ASSET_SHADOW_THIGH_L, ASSET_SHADOW_SHIN_L, ASSET_SHADOW_FOOT_L, null, null, null,
     ASSET_SERAPH_PELVIS, ASSET_SERAPH_TORSO, ASSET_SERAPH_HEAD, ASSET_SERAPH_PAULDRON_R, ASSET_SERAPH_UPPER_ARM_R, ASSET_SERAPH_FOREARM_R, ASSET_SERAPH_HAND_R, ASSET_SERAPH_KNUCKLE, ASSET_SERAPH_PAULDRON_L, ASSET_SERAPH_UPPER_ARM_L, ASSET_SERAPH_FOREARM_L, ASSET_SERAPH_HAND_L, ASSET_SERAPH_KNUCKLE, ASSET_SERAPH_THIGH_R, ASSET_SERAPH_SHIN_R, ASSET_SERAPH_FOOT_R, ASSET_SERAPH_THIGH_L, ASSET_SERAPH_SHIN_L, ASSET_SERAPH_FOOT_L, ASSET_SERAPH_WING_L, ASSET_SERAPH_WING_R, ASSET_SERAPH_HALO,
+    ASSET_GAMMA_PELVIS, ASSET_GAMMA_TORSO, ASSET_GAMMA_HEAD, ASSET_GAMMA_PAULDRON_R, ASSET_GAMMA_UPPER_ARM_R, ASSET_GAMMA_FOREARM_R, ASSET_GAMMA_HAND_R, ASSET_GAMMA_PROJECTOR, ASSET_GAMMA_PAULDRON_L, ASSET_GAMMA_UPPER_ARM_L, ASSET_GAMMA_FOREARM_L, ASSET_GAMMA_HAND_L, ASSET_GAMMA_SHIELD, ASSET_GAMMA_THIGH_R, ASSET_GAMMA_SHIN_R, ASSET_GAMMA_FOOT_R, ASSET_GAMMA_THIGH_L, ASSET_GAMMA_SHIN_L, ASSET_GAMMA_FOOT_L, null, null, null,
 ]
 
 // the parts a frame of each mech holds (its PartXf records a frame), in Mech order
-const AK_NPART: [9]s32 = [19, 19, 19, 19, 19, 19, 19, 19, 22]
+const AK_NPART: [10]s32 = [19, 19, 19, 19, 19, 19, 19, 19, 22, 19]

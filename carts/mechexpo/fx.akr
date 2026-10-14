@@ -438,7 +438,7 @@ private fn fx_plate(m: Mech) -> u32 {
     if m == Mech.Hero { return 0x2020B0 }           // Momentum red
     if m == Mech.Doubleblade { return 0x602848 }    // Umbral black-violet
     if m == Mech.Beam { return 0x18B8E0 }           // Raikō yellow
-    if m == Mech.Tank { return 0x406A4C }           // Heartland faded green
+    if m == Mech.Tank || m == Mech.Gamma { return 0x406A4C }   // Heartland faded green
     if m == Mech.Shadow { return 0x401830 }         // Umbral black-violet, darker
     if m == Mech.Seraph { return 0xE0DCD8 }         // Momentum white
     return 0x9C9690
@@ -901,7 +901,8 @@ fn fx_update(f: *Fight) {
             trail_push(&fx_trails[s * 2], a, b, on0, fi.mech)
             let on1 = seraph_trail(fi, root, 1, &a, &b)
             trail_push(&fx_trails[s * 2 + 1], a, b, on1, fi.mech)
-        } else if fi.mech == Mech.Beam || fi.mech == Mech.Tank || fi.mech == Mech.Twins {
+        } else if fi.mech == Mech.Beam || fi.mech == Mech.Tank || fi.mech == Mech.Twins
+            || fi.mech == Mech.Gamma {      // Gamma: Beam's discharges until its own (mx-gamma-rig)
             // no blades: Beam's discharges are beam_fx.akr's; Tank's and the Twins' fists leave no trail
             fx_trails[s * 2].n = 0
             fx_trails[s * 2 + 1].n = 0
