@@ -33,8 +33,11 @@
 //              source) for the rest of the super's freeze
 // Screen shake is the camera's (camera.akr), from fight.shake.
 //
-// For the other mechs' files: fx_spray(), fx_spawn() and fx_burst_at() are public, and a
-// power source's charge-up is a row of FX_POWERS (fx_power_index() maps Power to the row).
+// For the other mechs' files: fx_spray(), fx_spawn(), fx_burst_at() and fx_psprite() (a sprite
+// of the particle sheet) are public, and a power source's charge-up is a row of FX_POWERS
+// (fx_power_index() maps Power to the row). Seraph's light (seraph_fx.akr) hooks in twice: its
+// shots (the Mark bolt, a reflected shot) are drawn by seraph_fx_shot() before the others, and
+// its trails (the fists', the wing tips' through the Seraph Dive) come from seraph_trail().
 
 import "fx_art.akr"
 

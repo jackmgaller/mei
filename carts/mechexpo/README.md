@@ -159,16 +159,21 @@ strikes), `sfx_shot(m, lvl)` (the wave, or Beam's orb by level), `sfx_clash(orb:
 fizzling against a wave), `sfx_armour(power)` (Tank's armour), `sfx_tank_lift()` (a command
 grab caught), `sfx_throw_by(m, mv)` (Tank's slam, Beam's Shock Grip crack, else the throw),
 `sfx_knockdown()` (a Land of power 2), `sfx_step_of(m)`; `sfx_super(m)` plays the power
-source's charge-up with the burst, and a heavy or crushing `sfx_hit` scatters debris. By state,
+source's charge-up with the burst, and a heavy or crushing `sfx_hit` scatters debris. Seraph's
+(mx-seraph-fx): `sfx_mark(fresh: bool)` (the Mark event; a refresh quieter), `sfx_reflect()`
+(the Reflect event), `sfx_column_lock()` (the Column event), and from its state (`seraph_fx.akr`'s
+`seraph_sfx()`) `sfx_ward()`, `sfx_wing_beat()`, `sfx_dive(land: bool)` and the loops
+`SFX_GLIDE` and `SFX_MARK_HUM`; its branches of `sfx_attack` (the column's impact, Ascension's
+rush, the fists), `sfx_shot` (the bolt's cast) and `sfx_super` (the choir). By state,
 once a fight frame from `game.akr`'s `sound_poll()` (the mechs' parts in `beam_fx.akr`'s
 `beam_sfx()`, `tank_fx.akr`'s `tank_sfx()` and `twins_fx.akr`'s `twins_sfx()`):
 `sfx_couple(on: bool)`, `sfx_react()`, `sfx_charge_full()`, `sfx_void(back: bool)`,
 `sfx_smoulder()`. For the brochure: `sfx_page()` (from `menus_page()`), `sfx_stamp()`,
 `sfx_pass()`, `sfx_shutter()` (`menus.akr`'s `menus_sfx()` times the stamps to their drawing).
 
-**Loops** (Tank's treads, Beam's charge hum, which the Twins' Fusion Focus borrows lower, and the
-Shock Grip's buzz): `sfx_hold(slot, id, pri, x, pitch, gain)` every frame a loop should sound, a
-slot a side; `sfx_tick()` (once a frame, always, after the game's update) fades out over four
+**Loops** (Tank's treads, Beam's charge hum, which the Twins' Fusion Focus borrows lower, the
+Shock Grip's buzz, Seraph's glide and its Mark bolt's hum): `sfx_hold(slot, id, pri, x, pitch,
+gain)` every frame a loop should sound, a slot a side (0, 1) and a side's bolt (2, 3); `sfx_tick()` (once a frame, always, after the game's update) fades out over four
 frames and stops every loop not held that frame, so loops stop by themselves on the pause, on
 the menus, when the move ends and at a KO (`sfx_ko()` stops them at once).
 `sfx_stop_fight()` (in `leave_fight()`) stops every fight sound still playing. The voices'
@@ -685,7 +690,9 @@ across the fight plane, z behind it, y up from the apron.
   in slot 0 and, since Seraph, 5,248 in slot 1 (47,608 bytes of tiles before de-duplication); the
   pack's ROM in `art/` is 1,181,648 bytes (1,008,480 before Seraph).
 - **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
-  (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. A pool of 80 particles,
+  (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. Seraph's sprites
+  (mx-seraph-fx: a four-point glint in four turns, the mark's sigil, a feather) are on the same
+  sheet after the others, which keep their rectangles: rows 0–154, 19,840 bytes (14,592 before). A pool of 80 particles,
   at most 52 spawned a frame; at their busiest (scenarios 50–54) about 75,000 CPU cycles a frame
   in a release build.
 - **The menus (mx-menus):** texture slot 12 (`ui_menu.tex`: the small fonts FONT_MICRO and

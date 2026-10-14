@@ -274,7 +274,15 @@ fn seraph_trail(fi: *Fighter, root: mat4, k: s32, a: *vec3, b: *vec3) -> bool {
 
 // ---- once a frame in a fight (after the mechs, with fx.akr's effects)
 
+var srx_cycles: s32                     // CPU cycles of the last seraph_fx_draw (the tests read it)
+
 fn seraph_fx_draw(f: *Fight) {
+    let c0 = cycle_count()
+    srx_draw(f)
+    srx_cycles = cycle_count() - c0
+}
+
+private fn srx_draw(f: *Fight) {
     srx_on = f.f[0].mech == Mech.Seraph || f.f[1].mech == Mech.Seraph
     srx_marks_drawn = 0
     if !srx_on { return }
@@ -585,27 +593,35 @@ private fn srx_column(x: fixed, fr: s32) {
     let edge = col_scale(0x0C2840, k)                         // colours drawn (added), not tints
     let gold = col_scale(0x2484B8, k)
     let core = col_scale(0xB0E8FF, k)
-    srx_band(x - 3.1 - fl, x - 2.3, foot, top, 0, edge)
-    srx_band(x - 2.3, x - 1.0, foot, top, edge, gold)
-    srx_band(x - 1.0, x, foot, top, gold, core)
-    srx_band(x, x + 1.0, foot, top, core, gold)
-    srx_band(x + 1.0, x + 2.3, foot, top, gold, edge)
-    srx_band(x + 2.3, x + 3.1 + fl, foot, top, edge, 0)
-    srx_band(x - 0.4, x + 0.4, foot, top, col_scale(0x406070, k), col_scale(0x406070, k))
+    // the beam across: seven edges (each projected once, at the top and the foot), six bands
+    // between them from nothing at the rims through gold to white in the middle
+    let dx: [7]fixed = [-3.1 - fl, -2.3, -1.0, 0.0, 1.0, 2.3, 3.1 + fl]
+    let cs: [7]u32 = [0, edge, gold, core, gold, edge, 0]
+    var up: [7]ivec4
+    var dn: [7]ivec4
+    for j in 0..7 {
+        up[j] = project_point(vec3(x + dx[j], top, -0.6))
+        dn[j] = project_point(vec3(x + dx[j], foot, -0.6))
+        if up[j].z < 0 || dn[j].z < 0 { return }
+    }
+    for j in 0..6 {
+        let a = up[j]
+        let b = up[j + 1]
+        let c = dn[j]
+        let d = dn[j + 1]
+        tri_grad(a.x, a.y, b.x, b.y, c.x, c.y, cs[j], cs[j + 1], cs[j], BLEND_ADD)
+        tri_grad(b.x, b.y, d.x, d.y, c.x, c.y, cs[j + 1], cs[j + 1], cs[j], BLEND_ADD)
+    }
+    // the core's hot middle, 0.8 m: between the projected edges at -1, 0 and +1
+    let hot = col_scale(0x406070, k)
+    let l = up[2].x + (up[3].x - up[2].x) * 3 / 5
+    let r = up[3].x + (up[4].x - up[3].x) * 2 / 5
+    let lb = dn[2].x + (dn[3].x - dn[2].x) * 3 / 5
+    let rb = dn[3].x + (dn[4].x - dn[3].x) * 2 / 5
+    tri_grad(l, up[3].y, r, up[3].y, lb, dn[3].y, hot, hot, hot, BLEND_ADD)
+    tri_grad(r, up[3].y, rb, dn[3].y, lb, dn[3].y, hot, hot, hot, BLEND_ADD)
     srx_glow(vec3(x, foot + 0.6, -1.0), 8.0, 1.2, col_scale(SRX_GOLD, k * 0.7))
     srx_psp(&FXP_RING[0], vec3(x, 0.05, -0.4), 7.0 + fl * 4, 0.2, col_scale(SRX_GOLD, k))
-}
-
-// An additive band of light in the fight's plane, x0..x1 by y0..y1, coloured cl at its left edge
-// and cr at its right.
-private fn srx_band(x0: fixed, x1: fixed, y0: fixed, y1: fixed, cl: u32, cr: u32) {
-    let a = project_point(vec3(x0, y1, -0.6))
-    let b = project_point(vec3(x1, y1, -0.6))
-    let c = project_point(vec3(x0, y0, -0.6))
-    let d = project_point(vec3(x1, y0, -0.6))
-    if a.z < 0 || b.z < 0 || c.z < 0 || d.z < 0 { return }
-    tri_grad(a.x, a.y, b.x, b.y, c.x, c.y, cl, cr, cl, BLEND_ADD)
-    tri_grad(b.x, b.y, d.x, d.y, c.x, c.y, cr, cr, cl, BLEND_ADD)
 }
 
 // The mark on body i (m its frames left): the sigil at the chest pulsing once a second, the ring
