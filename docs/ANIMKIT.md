@@ -131,7 +131,7 @@ with `_` are not moves). Every path in a move is relative to its own file.
 | `plant` | feet held in place (below) |
 | `marks` | per-frame flags (below) |
 | `allow` | pairs of parts (`["forearm_r", "weapon_r"]`, or `part/node` ids) that may pass into each other, added to the rig's `allow` and the base's |
-| `floor_allow` | `{"wing_l": 2.15}`: parts that may go into the floor, each up to its depth in metres (at most 5): `verify`'s `floor` check warns instead of failing. For a move made for another body and not yet re-keyed (phase 1's Seraph: its folded wings on Shadow's knockdown); no move of the cart uses it now |
+| `floor_allow` | `{"wing_l": 2.15}`: parts that may go into the floor, each up to its depth in metres (at most 5): `verify`'s `floor` check warns instead of failing. For a move made for another body and not yet re-keyed (phase 1's Seraph: its folded wings on Shadow's knockdown, and phase 1's Gamma: its jerrycan rack on Beam's); no move of the cart uses it now |
 | `note` | free text: what the move is |
 
 ### Keys
@@ -254,6 +254,7 @@ The fight moves the root; the animation's poses are relative to it.
 | `hide` | 512 `MARK_HIDE` | `anim_draw()` draws nothing (the Void Step's gone frames) |
 | `charge` | 1024 `MARK_CHARGE` | the move holds this frame while its button is held (Beam's Volt Orb, `sp_n`) |
 | `ward` | 2048 `MARK_WARD` | Seraph's Wing Ward (`sp_d`): a shot of the other side that touches a hurt box on this frame, coming at the front, is sent back |
+| `shield` | 4096 `MARK_SHIELD` | Gamma's Lead Shielding (`sp_d`), the brace: the first hit that lands on this frame, on the ground, is absorbed (Tank's armour for one hit), then the move jumps to its `riposte` frame |
 
 ### A move made from another (`base`)
 
@@ -281,6 +282,14 @@ victims: `thrown`, `thrown_vault` and `thrown_slam` are Shadow's (`"base":
 Seraph's rig and `"still": ["weapon_r", "weapon_l"]` (Shadow's claw keys would twist the fists),
 their keys from the slam on replaced (`"remove"`) so they end face down in `hit_air`'s last frame.
 Every Seraph move keeps the weapon joints still the same way.
+
+Gamma's moves are its own too (`anims/gamma/`), every one based on Gamma's `_body.anim.json`
+(Beam's boxes on Gamma's rig) and on no other move: where MOVES.md says a move is Beam's (the
+reactions, the crouch, the jump, the grabs), Beam's keys were copied in with their bases merged,
+then re-keyed where Gamma's kit met itself or the floor (the stowed shield and the pauldron, the
+projector and the shield, the jerrycan rack lying on its back). The shield (`weapon_l`) is held at
+0 by the body's `"still"`; the moves that swing it (`block`, `hit_high`, `hit_low`, `sp_d`, `win`)
+give `"still": []` and key it about Y.
 
 The echo shares the Hero's skeleton, so a Double-blade move can be the Hero's with
 `"rig": "../../models/doubleblade/doubleblade.rig.json"` and the differences: `"from":
@@ -483,7 +492,8 @@ map), `relative` keys on the other rig's guard, the `"guard"` foot of each rig, 
 ended by `null`, `reach_ease`, the `legs` warning, `floor` keys and the offset `verify` names,
 the rig's and the base's `allow`, `still` holding joints at 0 through keys and bases, `floor_allow`
 turning a sinking part's failure into a warning only to its depth, the `ward` mark (its bit, Seraph's
-`sp_d` frames, the exported marks), each rig's part count (19,
+`sp_d` frames, the exported marks), the `shield` mark (its bit, Gamma's `sp_d` frames and its
+`riposte`, the exported marks), each rig's part count (19,
 Seraph's 22) and the export's `AK_NPART`; `pose`'s blade and boxes, `fmt` keeping every file's values
 (and the cart's files in the style); each `verify` check failing when it should, the export's
 layout; and with `meic` and `mei-headless`, the runtime's matrices, boxes and marks against the

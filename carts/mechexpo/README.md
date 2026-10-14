@@ -268,7 +268,8 @@ What is real and what is still Shadow's:
   from `fighter.akr`'s advance); the Wing Ward's reflect (`seraph_reflect`, from `shot_try`
   before the Parry's test, on the `ward` frames: `MARK_WARD` in `anim.akr`), which moves the shot
   to Seraph's slot (`Shot.refl`); Heaven's Arc (`seraph_hold`, from `throw_tick`; the victim plays
-  `thrown_vault`); Judgement's lock (`judge_x`, on the first frame after the flash), its column
+  `thrown_vault`); Judgement's lock (`judge_x`, following the other's root for `SER_FOLLOW`, 8
+  frames, after the flash, then locked: the balance pass, 2026-10-14), its column
   (`seraph_column_box`, from `load_boxes`) and its x 1.5 on a marked mech (`seraph_judged`, from
   `resolve`; `Hit.nodebt` keeps the antimatter debt's 25 % from stacking with it)), and
   Seraph's CPU at the end of `cpu.akr`. Shadow's rules ask the predicates `has_hex_bolt`,
@@ -364,17 +365,51 @@ What is real and what is still Shadow's:
 
 Gamma (Heartland Atomic Company, nuclear; `Mech.Gamma`, roster slot 7 under Beam, GAMMA HA-58) is
 Heartland's echo of Beam, the gunner, unlocked by clearing the arcade with Beam. Phase 1
-(mx-gamma-rig) has the mech in the game, drawn and pickable, with Beam's moves as placeholders
-and its own nuclear meter; its own moves, effects and fight code are later phases. What is real
-and what is Beam's for now: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-nuclear).
+(mx-gamma-rig) put the mech in the game, drawn and pickable, with Beam's moves as placeholders
+and its own nuclear meter; phase 2's fight and CPU (mx-gamma-fight) gave it its own moves: the
+Atomic Ray and the gun's heat, the Rod Shot, the Geiger Flare and its daze, Lead Shielding, Point
+Blank and Ground Zero; its animations and its effects and sounds are phase 2's other two parts.
+What is real and what is still Beam's: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-nuclear).
+
+- **Its fight (mx-gamma-fight):** `gamma.akr` holds its hits, its stand-in timings, boxes, marks
+  and root motion, its move list and its rules: the Atomic Ray, a held hit box (not a shot) whose
+  box `gamma_ray_advance` re-arms every 6 frames while B holds the charge frame (`fighter.akr`'s
+  `advance`, before the charge rule), the first tick an ordinary hit and the later ones without
+  hitstop or events and scaled as one hit (`gamma_ray_touch`, `fighter.akr`'s `tick_later`); the
+  heat (`Fighter.heat`: +1 a ray frame, -1 every second frame off it, +10 for a shot burnt or a
+  tick warded, the vent at 100 for 50 frames, 0 on Ground Zero's blast; `gamma_tick`); the ray
+  against the shots (`gamma_ray_shots`, from `shots_tick`: strength 1 burnt, 2 cutting it, 3
+  cutting it and going on), against the Parry (`Fx.ray_cut`) and the Wing Ward (`R_WARD` in
+  `strike()`: no damage, +10 heat); the Rod Shot in the shot system (`Shot.pierce`; the shot's
+  move is `shot_move()`: `sp_f` for Gamma) through every shot, through Tank's armour and Lead
+  Shielding, never through a mech; the daze (`Hit.daze`, `Fx.dazed`, `Fx.daze_drop`,
+  `Fx.daze_spent`: in `struck()`, the landing in `advance()`, `grabbable()`); Lead Shielding
+  (`MARK_SHIELD` in `anim.akr`, `gamma_shielded` and `gamma_shield_absorb` beside Tank's armour:
+  one hit, or a whole ray to the brace's end); Point Blank's throw-off (`GM_PB_VX`); Ground Zero's
+  box on both sides of the root. `enum Ev` gains `Vent`, `Burn` and `Daze` (appended). Beam's
+  predicates `has_volt_orb`, `has_shock_grip` and `has_arc_fx` are Beam's alone; Gamma's own ask
+  `has_ray`, `has_rod`, `has_flare`, `has_shielding`, `has_point_blank` and `has_ground_zero`.
+  Its `STATS` row: 1,050 health, a walk of 0.058 m a frame forward and 0.050 back, a 5.6 m jump
+  (`pre` 6, `jv` 0.56, `grav` 0.028), the nuclear meter; its roster stats `0x3254`. Its CPU is
+  its own (the end of `cpu.akr`), and the other CPUs answer its ray and its vent there too
+  ([MOVES.md](MOVES.md#the-cpu-gamma)).
+- **Its stand-ins:** none since its own animations landed: the fight plays every move from the
+  animation data. While a move's animation was still Beam's placeholder (each of its eight own
+  moves has a length of its own, so a move with Beam's length is one), `moves.akr`'s `use_standin`
+  asked `gamma.akr` and the fight played it from the stand-in data; that compare cost every `mv_*`
+  call (about 8,000 cycles on scenario 69's first frame, the Twins against Tank, with no Gamma in
+  it), so it is now the tests' (`gamma_placeholder`, asserted by scenario 200 for each move).
+  Scenario 69's first frame: 967,691 cycles (966,502 before Gamma's fight).
 
 - **Files:** `models/gamma/make_gamma.py` (the model and rig: the owner's concept C, military
   surplus, from `concepts/gamma_c/`, which stays as the record, refined after the owner's notes:
   a longer projector with a primer shroud and a round primer lamp, its lens a green dome; the
   head's lamp cut to a small eye; the shield in primer with bent-back wings; the cans' X and the
-  58 stencils gone), `anims/gamma/` (each move Beam's on Gamma's rig, the shield, `weapon_l`, held
-  stowed with the kit's `"still"`; where the bigger kit meets itself or the floor on Beam's keys,
-  `allow` and `floor_allow` say so), `gamma.akr` (its hits and stand-ins, Beam's for now, its move
+  58 stencils gone), `anims/gamma/` (Gamma's own moves from MOVES.md's "For the animators" (mx-gamma-anim),
+  each on Gamma's `_body.anim.json` alone; the reactions, crouch, jump and grabs Beam's keys copied
+  in and re-keyed where the bigger kit met itself or the floor; no `allow` or `floor_allow` beyond
+  the rig's; the shield, `weapon_l`, held stowed with the kit's `"still"` but in `block`, the
+  hits, `sp_d` and `win`), `gamma.akr` (its hits and stand-ins, Beam's for now, its move
   list, and the predicates `has_volt_orb`, `has_shock_grip` and `has_arc_fx` that Beam's rules
   ask instead of "is this Beam", so each special can be given to Gamma's own code without
   touching Beam's). Its numbers are a row of `STATS` (Beam's, on the nuclear meter) and its
@@ -386,7 +421,9 @@ and what is Beam's for now: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-n
   is one, at the louvred hatch on its sternum, brightening with the meter as Tank's do; Tank's
   are as they were (scenarios 40-49 pass unchanged). Beam's Reaction Prime is a chemical meter's,
   so on Gamma `sp_d` plays the prime's animation and starts no reaction.
-- **Where phase 2 branches for `Mech.Gamma`:** the three predicates in `gamma.akr` (the Volt
+- **Where phase 2 branches for `Mech.Gamma`** (phase 1's record: the fight's branches are made,
+  above; the animations, the effects and the sounds are the other two parts'): the three
+  predicates in `gamma.akr` (the Volt
   Orb, to become the Atomic Ray, in `fighter.akr`'s `fires_shot` and `shot_fire` and
   `beam_fx.akr`'s charge glow and hum; the Shock Grip in `fighter.akr`'s throw and `beam_fx.akr`'s
   buzz; Beam's discharges in `beam_fx.akr`), `gamma_hit`, the stand-ins and `GAMMA_MOVES` in
@@ -405,11 +442,16 @@ and what is Beam's for now: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-n
   meshes, as much again grey, 4,205 bytes of texture tiles before de-duplication (Heartland's
   roundel on each pauldron, the HA-58 plate on each thigh, the trefoil on the shield, the chipped
   paint, the shroud's slots), as much again grey.
-- **Tests:** scenarios 200 (against Beam) and 201 (against the Hero) in `tests/harness.akr`:
-  1,000 health, the nuclear meter, 19 parts a frame, Beam's walk, every move Beam's length with
-  the projector where Beam's cannon is and the shield stowed on every frame, the Arc Jab landing
-  at 4 m and filling nothing, the other's jab filling the meter 3 a point, the orb landing at
-  12 m, the Shock Grip's throw-off, the brace without a reaction, the super from a full bar;
+- **Tests:** scenarios 200 (against Beam) and 201 (against the Hero) in `tests/harness.akr`
+  (rewritten in mx-gamma-fight): 1,050 health, the nuclear meter, 19 parts a frame, its walk, each
+  of its own eight moves animated (none a placeholder of Beam's) and its length, the shield stowed
+  on its hand on every frame of every move but where it swings out (the brace, the block, the hits'
+  rattle, the win's raps), the Lamp Jab landing at 4 m and filling nothing, the other's jab filling the
+  meter 3 a point, the Rod Shot landing at 12 m, Point Blank's throw-off, Lead Shielding without a
+  reaction, Ground Zero from a full bar; 220-230 its own moves (`tests/harness.akr`, the fight
+  alone): the ray's ticks, push, chip and scaling and a cornered mech, the heat and the vent, the
+  ray against each shot and each defence, the Rod Shot, the daze, the ray after a high catch, Lead
+  Shielding, Point Blank, Ground Zero, the CPU against each mech;
   202-207 through the whole game in `tests/gamma/harness.akr`: 202 the budget (budget.sh), 203 the
   select with Gamma's card and spec sheet (and the roster row's checks), 204-207 mid-fight
   against Beam and the Hero in the hangar, on the rooftop and on the container port; ladder
@@ -420,7 +462,9 @@ and what is Beam's for now: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-n
   GPU cycles at the peak, 2,359 triangles; on the container port 662,403 and 979,223, 2,186
   triangles, the worst GPU; the mechs' drawing at most 435,328 cycles, the effects' 47,863; no
   late frames. Mid-fight (204-207, CPU against CPU without the extras): 536,666 to 631,217 CPU
-  and 458,025 to 659,901 GPU cycles.
+  and 458,025 to 659,901 GPU cycles. With its own fight and CPU (mx-gamma-fight, before
+  `gamma_fx.akr`; 202 keeps a Rod Shot out instead of the orb): 703,472 CPU and 885,144 GPU on
+  the rooftop, 676,469 and 711,365 on the port, the fight at most 49,104 cycles, no late frames.
 
 ## The arcade ladder
 
@@ -524,7 +568,8 @@ clear it holds becomes a NORMAL stamp, since the MVP's ladder was two fights at 
   `menus.akr`'s `draw_cover()` draws it). The owner's notes (2026-10-13): a photograph, a
   fanfare, and headlines that vary.
   - **A photograph:** the winner in 3D, frozen in one held frame of its win move
-    (`COVER_POSE`: the end of the win, weapons up; Tank at frame 40, square to the camera), on
+    (`COVER_POSE`: the end of the win, weapons up; Tank at frame 40, square to the camera; Gamma
+    at frame 40, the searchlight high in its sweep), on
     its maker's colour, cut at the knees; no idle motion and no turntable. Per mech: the turn
     toward the camera, the camera's distance, the feet's height and the backdrop's shades
     (lighter behind the dark Shadow).
@@ -820,8 +865,9 @@ across the fight plane, z behind it, y up from the apron.
   texture slots 0 and 1: 29,824 bytes in slot 0 and 8,320 in slot 1 (38,144 loaded; 36,096
   before Gamma; 56,018 bytes of tiles before de-duplication, 47,608 before Gamma); the pack's ROM
   in `art/` is 1,360,272 bytes (1,181,648 before Gamma, 1,008,480 before Seraph). The exported
-  `anims/anim_data.bin` is 11,164,188 bytes: 9,997,820 with Seraph's placeholders, 10,019,132 with
-  Seraph's own animations, and Gamma's after them (every other mech's bytes unchanged).
+  `anims/anim_data.bin` is 11,212,396 bytes: 9,997,820 with Seraph's placeholders, 10,019,132 with
+  Seraph's own animations, 11,164,188 with Gamma's placeholders after them, and Gamma's own
+  animations in their place (every other mech's bytes unchanged).
 - **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
   (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. Seraph's sprites
   (mx-seraph-fx: a four-point glint in four turns, the mark's sigil, a feather) are on the same

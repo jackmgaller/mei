@@ -45,9 +45,11 @@
 //     end (162-168 are in tests/seraph/harness.akr)
 // 170-181 Seraph's own moves (mx-seraph-fight): the mark, Judgement's bonus and column, the Wing
 //     Ward against each shot, the Dive, Ascension, Heaven's Arc, the CPU; listed at the end
-// 200-201 Gamma's (mx-gamma-rig, phase 1: Beam's moves on Gamma's body, the nuclear meter):
-//     against Beam and against the Hero; listed with their code at the end (202-209 are in
-//     tests/gamma/harness.akr)
+// 200-201 Gamma's (mx-gamma-rig, mx-gamma-fight): against Beam and against the Hero; listed with
+//     their code at the end (202-209 are in tests/gamma/harness.akr)
+// 220-230 Gamma's own moves (mx-gamma-fight): the Atomic Ray's ticks and heat, the ray against
+//     each shot and each defence, the Rod Shot, the daze, Lead Shielding, Point Blank, Ground
+//     Zero, the CPU; listed at the end
 // 40-49 Tank's (mx-tank): armour, its grabs and throws, the nuclear meter, its super, the CPU
 //     and the budget; listed with their code at the end of this file
 // 60-67 the Twins' (mx-twins-fight): combining and splitting, the partner, hits and throws on and
@@ -104,7 +106,7 @@ const MV_NAMES: [len(Mv)]*u8 = [
 const EV_NAMES: [len(Ev)]*u8 = [
     "Hit", "Block", "Chip", "Whiff", "Grab", "Throw", "Break", "Land", "Step", "MeterFull",
     "Super", "Ko", "TimeUp", "Shot", "Parry", "Clash", "Swing", "Armour", "RingOut", "Curse", "Mine",
-    "Snare", "MineGone", "Mark", "Reflect", "Column",
+    "Snare", "MineGone", "Mark", "Reflect", "Column", "Vent", "Burn", "Daze",
 ]
 
 fn init() {
@@ -146,6 +148,10 @@ fn init() {
     }
     if gm_scenario() {
         gm_restart()
+        return
+    }
+    if gx_scenario() {
+        gx_init()
         return
     }
     if SCENARIO == 10 || SCENARIO == 13 || SCENARIO == 16 { tick_per_frame = 40 }
@@ -234,6 +240,7 @@ private fn script1() -> u32 {
     if sr_scenario() { return sh_script(0) }
     if sv_scenario() { return sv_script(0) }
     if gm_scenario() { return sh_script(0) }
+    if gx_scenario() { return gx_script(0) }
     let a = &fight.f[0]
     let fwd = if_u(a.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -299,6 +306,7 @@ private fn script2() -> u32 {
     if sr_scenario() { return sh_script(1) }
     if sv_scenario() { return sv_script(1) }
     if gm_scenario() { return sh_script(1) }
+    if gx_scenario() { return gx_script(1) }
     let b = &fight.f[1]
     let fwd = if_u(b.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -403,6 +411,7 @@ private fn check() {
             if sr_scenario() { sr_check() }
             if sv_scenario() { sv_check() }
             if gm_scenario() { gm_check() }
+            if gx_scenario() { gx_check() }
         }
     }
 }
@@ -3726,10 +3735,10 @@ private fn sr_check() {
 //     with the Hero's back to a wall the Hero comes out of the corner and Seraph is left in it
 // 179 Heaven's Arc on the rooftop: with its back to the drop it rings the Hero out; 6 m from the
 //     edge it does not
-// 180 Judgement's column: locked at the Hero's root 30 m away, it hits there (280); a Hero moved
-//     9 m away after the lock is missed (the column does not track); the Double-blade Hero's Void
-//     Step on the first frame after the flash escapes it; a second Judgement in the round locks
-//     afresh
+// 180 Judgement's column: it follows the other's root for 8 frames after the flash and locks on
+//     the last (the Column event); at the Hero 30 m away it hits there (280); a Hero moved 9 m
+//     during the follow is hit where it went; the Double-blade Hero's Void Step on the first frame
+//     after the flash escapes it; a second Judgement in the round follows and locks afresh
 // 181 Seraph's CPU (level 2, both sides through cpu_pad once a frame: Versus) against each mech,
 //     both sides: every match finishes, and over the
 //     run it uses each special, the throw and the super (and its ward sends a shot back)
@@ -4555,11 +4564,22 @@ private fn sv_check_column() {
         print(", the other at ")
         print_fixed(o.x)
         println("")
-        assert(abs(ev.e[e].x - o.x) < 0.01 && abs(judge_x[0] - o.x) < 0.01, "the lock is not the other's root")
+        // (the Void Step moves on after Seraph's frame has locked it: side 1 moves second)
+        assert(stage == 3 || abs(ev.e[e].x - o.x) < 0.01 && abs(judge_x[0] - o.x) < 0.01, "the lock is not the other's root")
         sv_x = o.x
-        if stage == 1 { o.x = o.x + 9.0 }           // moved away after the lock
+        // the lock comes on the follow's last frame, and the column falls on the next
+        assert(s.mv == Mv.super && fx[0].t == ser_lock + SER_FOLLOW, "the lock's frame")
     }
-    if stage == 2 && fight.freeze > 0 && fight.freeze <= 4 { sh_pad[1] = B }    // the Void Step, buffered
+    // while it follows (the SER_FOLLOW frames after the flash) the column has no lock yet
+    if s.mv == Mv.super && fx[0].t >= ser_lock && fx[0].t < ser_lock + SER_FOLLOW - 1 {
+        assert(!judge_on[0], "the column locked before its follow ended")
+    }
+    if stage == 1 && s.mv == Mv.super && fx[0].t == ser_lock + 3 && !sv_flag2 {
+        sv_flag2 = true
+        o.x = o.x - 9.0                             // moved during the follow: the column comes along
+        gx_x = o.x
+    }
+    if stage == 3 && fight.freeze > 0 && fight.freeze <= 4 { sh_pad[1] = B }    // the Void Step, buffered
     match stage {
         0 => {
             if evc_side[0][Ev.Hit] > 0 {
@@ -4571,15 +4591,16 @@ private fn sv_check_column() {
             }
         }
         1 => {
-            if evc[Ev.Super] > 0 && s.mv != Mv.super {
-                assert_eq(evc_side[0][Ev.Hit], 0, "the column tracked the Hero")
-                assert_eq(o.health, 1000, "the Hero moved away was hurt")
-                println("the Hero moved 9 m (out of the column and its guard with it) after the lock: missed")
+            if evc_side[0][Ev.Hit] > 0 {
+                assert(sv_flag2, "the Hero was not moved during the follow")
+                assert_eq(1000 - o.health, 280, "the followed column's damage")
+                assert(abs(sv_x - gx_x) < 0.01, "the column did not lock where the Hero went")
+                println("the Hero moved 9 m during the follow: the column came along and hit (280)")
                 sv_restart(Mech.Seraph, Mech.Doubleblade, -15.0, 15.0)
-                stage = 2
+                stage = 3
             }
         }
-        2 => {
+        3 => {
             if evc[Ev.Super] > 0 && s.mv != Mv.super {
                 assert(evc_side[1][Ev.Hit] == 0 && evc_side[0][Ev.Hit] == 0, "a hit")
                 assert_eq(o.health, STATS[Mech.Doubleblade].health, "the Void Step did not escape")
@@ -4587,17 +4608,17 @@ private fn sv_check_column() {
                 // a second Judgement in the same round locks afresh, where the other is now
                 mark = frames + 40
                 sh_flag = false
-                stage = 3
+                stage = 4
             }
         }
-        3 => {
+        4 => {
             if frames == mark + 2 { o.x = s.x + 12.0 }
             if evc_side[0][Ev.Hit] > 0 {
                 assert_eq(evc[Ev.Super], 2, "the second super")
                 assert_eq(evc[Ev.Column], 2, "the second super did not lock")
                 assert_eq(STATS[Mech.Doubleblade].health - o.health, 280, "the second column's damage")
                 println("a second Judgement in the round locked afresh and hit")
-                sv_ok("Judgement's column: locked, hits there, does not track, the Void Step escapes it")
+                sv_ok("Judgement's column: follows 8 frames, locks, hits there, the Void Step escapes it")
             }
         }
         else => {}
@@ -4668,29 +4689,74 @@ private fn sv_check_cpu() {
     frames = 0
 }
 
-// ---- Gamma's scenarios, 200-201 (mx-gamma-rig; MOVES.md, "Gamma"): phase 1, Beam's moves on
-// Gamma's body, on the nuclear meter; 202-209 need the whole game (tests/gamma/harness.akr), 210
-// and 211 the arcade (tests/ladder/harness.akr)
+// ---- Gamma's scenarios, 200-201 (mx-gamma-rig, mx-gamma-fight; MOVES.md, "Gamma"): its numbers
+// and the round of its moves; 202-209 need the whole game (tests/gamma/harness.akr), 210 and 211
+// the arcade (tests/ladder/harness.akr), 220-230 its own moves in detail (below)
 //
-// 200 against Beam: idle (1,000 health, the nuclear meter, 19 parts a frame, Beam's walk); every
-//     move Beam's length, and the shield (weapon_l) stowed on every frame of every move (its
-//     joint where Beam's empty hand's mount is); the Arc Jab lands at 4 m (Beam's 65) and gives
-//     Gamma no meter (nuclear: landing hits fill nothing); the other's jab fills Gamma's meter
-//     3 a point of damage; the Volt Orb (Beam's, for now) fired and landing at 12 m; the Shock
-//     Grip throws the other off about 9 m; the brace (Beam's Reaction Prime, for now) starts no
-//     reaction (the meter is not chemical); the super from a full bar (the Raikō Overload, for
-//     now: Beam's 300) spends the bar
+// 200 against Beam: idle (1,050 health, the nuclear meter, 19 parts a frame, its walk); each of its
+//     own eight moves plays its length (MOVES.md's 25, 41, 42, 96, 39, 41, 59, 96: from its own
+//     animation, or the stand-in while the animation is still Beam's placeholder); the walk back
+//     (0.050 m a frame); the Lamp Jab lands at 4 m (70) and gives Gamma no meter (nuclear: landing
+//     hits fill nothing); the other's jab fills Gamma's meter 3 a point of damage; the Rod Shot
+//     fired and landing at 12 m (75); Point Blank throws the other off about 10 m; Lead Shielding
+//     whiffed starts no reaction (the meter is not chemical) and fills nothing; Ground Zero from a
+//     full bar (300) spends the bar
 // 201 the same against the Hero
 
 const GM_FOE: Mech = match SCENARIO { 201 => Mech.Hero, else => Mech.Beam }
+const GM_OWN_MVS: [8]Mv = [Mv.atk_n, Mv.atk_f, Mv.atk_d, Mv.sp_n, Mv.sp_f, Mv.sp_u, Mv.sp_d, Mv.super]
+const GM_OWN_LEN: [8]s32 = [25, 41, 42, 96, 39, 41, 59, 96]
 
 private fn gm_scenario() -> bool { return SCENARIO == 200 || SCENARIO == 201 }
 
 private fn gm_restart() { sh_restart(Mech.Gamma, GM_FOE, -4.0, 4.0) }
 
 var gm_b: u32
-var gm_k: s32                   // stage 0: the move being compared with Beam's
 var gm_t0: s32                  // stage 0: the walk's first frame
+var gm_k: s32                   // stage 0: the move whose shield is being checked
+
+// Where the shield is swung out (MOVES.md, "For the animators (Gamma)"): Lead Shielding's swing,
+// brace and stow (0-40) and its knock after an absorb (47-55), the block, the hits' rattle (0-6),
+// the win's swing out, raps and stow (56-117: out 64-104 in the spec, swung on either side).
+private fn gm_shield_out(mv: Mv, f: s32) -> bool {
+    return match mv {
+        sp_d => f <= 40 || (f >= 47 && f <= 55)
+        block => true
+        hit_high, hit_low => f <= 6
+        win => f >= 56 && f <= 117
+        else => false
+    }
+}
+
+// The shield's turn on its hand at frame f of mv: the hand's rotation transposed times the shield's
+// (the rows' first three entries; weapon_l's parent is hand_l).
+private fn gm_rel(root: mat4, mv: Mv, f: s32) -> mat4 {
+    let h = anim_part(Mech.Gamma, mv, fixed(f), root, Part.hand_l)
+    let w = anim_part(Mech.Gamma, mv, fixed(f), root, Part.weapon_l)
+    var r = mat4_identity()
+    for a in 0..3 {
+        var row = vec4(0.0, 0.0, 0.0, 0.0)
+        row.x = gm_c(h[0], a) * w[0].x + gm_c(h[1], a) * w[1].x + gm_c(h[2], a) * w[2].x
+        row.y = gm_c(h[0], a) * w[0].y + gm_c(h[1], a) * w[1].y + gm_c(h[2], a) * w[2].y
+        row.z = gm_c(h[0], a) * w[0].z + gm_c(h[1], a) * w[1].z + gm_c(h[2], a) * w[2].z
+        r[a] = row
+    }
+    return r
+}
+
+private fn gm_c(v: vec4, a: s32) -> fixed {
+    if a == 0 { return v.x }
+    if a == 1 { return v.y }
+    return v.z
+}
+
+private fn gm_same3(a: mat4, b: mat4) -> bool {
+    for i in 0..3 {
+        let d = a[i] - b[i]
+        if abs(d.x) > 0.01 || abs(d.y) > 0.01 || abs(d.z) > 0.01 { return false }
+    }
+    return true
+}
 
 // One move by side i from distance d: restarted there, b pressed two frames in.
 private fn gm_try(d: fixed, i: s32, b: u32) {
@@ -4705,15 +4771,6 @@ private fn gm_try(d: fixed, i: s32, b: u32) {
 
 private fn gm_over() -> bool { return frames > mark + 12 && actionable(0) && actionable(1) }
 
-// Two parts' matrices the same (to a hundredth of a millimetre).
-private fn gm_same(a: mat4, b: mat4) -> bool {
-    for i in 0..4 {
-        let d = a[i] - b[i]
-        if abs(d.x) > 0.0001 || abs(d.y) > 0.0001 || abs(d.z) > 0.0001 || abs(d.w) > 0.0001 { return false }
-    }
-    return true
-}
-
 private fn gm_check() {
     let s = &fight.f[0]
     let o = &fight.f[1]
@@ -4722,36 +4779,46 @@ private fn gm_check() {
         0 => {
             if frames == mark + 1 {
                 assert(s.mech == Mech.Gamma && s.body == Mech.Gamma, "Gamma is not side 0")
-                assert_eq(s.health, 1000, "Gamma's health")
+                assert_eq(s.health, 1050, "Gamma's health")
                 assert(meter_power(Mech.Gamma) == Power.Nuclear, "Gamma's meter is not nuclear")
                 assert_eq(AK_NPART[Mech.Gamma], Part.wing_l as s32, "Gamma's frames hold parts it has not")
-                assert(STATS[Mech.Gamma].walk_f == STATS[Mech.Beam].walk_f, "the walk is not Beam's")
+                assert(STATS[Mech.Gamma].walk_f == 0.058 && STATS[Mech.Gamma].walk_b == 0.050, "Gamma's walk")
+                for k in 0..len(GM_OWN_MVS) {
+                    let mv = GM_OWN_MVS[k]
+                    assert_eq(mv_len(Mech.Gamma, mv), GM_OWN_LEN[k], "a move of Gamma's is not its length")
+                    // the fight plays every move from its animation (no stand-ins asked): none may
+                    // be a placeholder of Beam's still (gamma.akr's gamma_placeholder)
+                    assert(!gamma_placeholder(mv) && !use_standin(Mech.Gamma, mv), "a move of Gamma's is still Beam's placeholder")
+                }
+                println("each of its own moves animated, its own length")
                 gm_k = 0
+                gm_t0 = -1000
             }
-            // a move a frame: its length Beam's, the projector where Beam's cannon is, the shield
-            // where Beam's empty hand's mount is, on every frame
+            // a move a frame: the shield (weapon_l) stowed on its hand on every frame but where
+            // it is swung out (gm_shield_out), as in the idle's first frame
             if frames > mark + 1 && gm_k < len(Mv) {
                 let mv = gm_k as Mv
-                let n = anim_len(Mech.Beam, mv)
-                assert_eq(anim_len(Mech.Gamma, mv), n, "a move's length is not Beam's")
                 let root = anim_place(vec2(0.0, 0.0), 1)
-                for f in 0..n {
-                    let a = anim_part(Mech.Gamma, mv, fixed(f), root, Part.weapon_l)
-                    let b = anim_part(Mech.Beam, mv, fixed(f), root, Part.weapon_l)
-                    assert(gm_same(a, b), "the shield is not stowed")
-                    let c = anim_part(Mech.Gamma, mv, fixed(f), root, Part.weapon_r)
-                    let d = anim_part(Mech.Beam, mv, fixed(f), root, Part.weapon_r)
-                    assert(gm_same(c, d), "the projector is not where Beam's cannon is")
+                let rest = gm_rel(root, Mv.idle, 0)
+                for f in 0..anim_len(Mech.Gamma, mv) {
+                    if gm_shield_out(mv, f) { continue }
+                    if !gm_same3(gm_rel(root, mv, f), rest) {
+                        print(MV_NAMES[mv])
+                        print(" frame ")
+                        print_int(f)
+                        println("")
+                        assert(false, "the shield is not stowed")
+                    }
                 }
                 gm_k += 1
                 if gm_k == len(Mv) {
-                    println("every move Beam's length, the projector on Beam's mount, the shield stowed")
+                    println("the shield stowed on every frame but the brace, the block, the hits' rattle and the win's")
                     sh_x0 = s.x
                     sh_hold[0] = LEFT       // back, away from the other (side 0 faces +x)
                     gm_t0 = frames
                 }
             }
-            if gm_k == len(Mv) && frames == gm_t0 + 60 {
+            if frames == gm_t0 + 60 {
                 sh_hold[0] = 0
                 let w = sh_x0 - s.x
                 print("walked back 60 frames: ")
@@ -4764,11 +4831,10 @@ private fn gm_check() {
         }
         1 => {
             if gm_over() {
-                assert_eq(evc_side[0][Ev.Hit], 1, "the Arc Jab did not land at 4 m")
-                assert_eq(mark_h - o.health, dmg(Mech.Gamma as s32, Mv.atk_n), "the jab's damage")
-                assert_eq(dmg(Mech.Gamma as s32, Mv.atk_n), dmg(Mech.Beam as s32, Mv.atk_n), "the jab is not Beam's")
+                assert_eq(evc_side[0][Ev.Hit], 1, "the Lamp Jab did not land at 4 m")
+                assert_eq(mark_h - o.health, 70, "the jab's damage")
                 assert_eq(s.meter, 0, "a landed hit filled the nuclear meter")
-                println("the jab lands at 4 m; the nuclear meter stays empty")
+                println("the Lamp Jab lands at 4 m; the nuclear meter stays empty")
                 gm_try(4.0, 1, A)
                 stage = 2
             }
@@ -4784,41 +4850,41 @@ private fn gm_check() {
                 print(": ")
                 print_int(s.meter)
                 println("")
-                gm_try(12.0, 0, B)
+                gm_try(12.0, 0, RIGHT | B)
                 stage = 3
             }
         }
         3 => {
             if evc_side[0][Ev.Hit] == 1 || frames > mark + 240 {
-                assert_eq(evc_side[0][Ev.Shot], 1, "the orb was not fired")
-                assert_eq(evc_side[0][Ev.Hit], 1, "the orb did not land at 12 m")
-                assert_eq(mark_h - o.health, orb_hit(1).dmg, "the orb's damage")
-                println("the Volt Orb (Beam's, for now) lands at 12 m")
-                gm_try(4.0, 0, Y)
+                assert_eq(evc_side[0][Ev.Shot], 1, "the rod was not fired")
+                assert_eq(evc_side[0][Ev.Hit], 1, "the rod did not land at 12 m")
+                assert_eq(mark_h - o.health, 75, "the rod's damage")
+                println("the Rod Shot lands at 12 m")
+                gm_try(3.0, 0, Y)
                 stage = 4
             }
         }
         4 => {
             if evc[Ev.Throw] == 1 && !sh_flag {
                 sh_flag = true
-                assert_eq(mark_h - o.health, dmg(Mech.Gamma as s32, Mv.throw), "the throw's damage")
+                assert_eq(mark_h - o.health, 120, "Point Blank's damage")
                 assert_eq(s.meter, 0, "the throw filled Gamma's meter")
             }
             if sh_flag && gm_over() {
                 let d = abs(o.x - s.x)
                 print("thrown to ")
                 print_fixed(d)
-                println(" m (the Shock Grip, for now)")
-                assert(d > 7.0, "the Shock Grip did not throw the other off")
+                println(" m (Point Blank)")
+                assert(d > 9.0, "Point Blank did not throw the other off")
                 gm_try(14.0, 0, DOWN | B)
                 stage = 5
             }
         }
         5 => {
             if gm_over() {
-                assert(s.react == 0, "the brace started a chemical reaction")
-                assert_eq(s.meter, 0, "the brace filled the meter")
-                println("the brace (Beam's prime, for now) starts no reaction")
+                assert(s.react == 0, "Lead Shielding started a chemical reaction")
+                assert_eq(s.meter, 0, "Lead Shielding filled the meter")
+                println("Lead Shielding starts no reaction")
                 gm_try(8.0, 0, A | B)
                 s.meter = METER_BAR
                 stage = 6
@@ -4830,7 +4896,7 @@ private fn gm_check() {
                 assert(s.meter >= 0 && s.meter < 10, "the super did not spend the bar")
             }
             if sh_flag && s.mv != Mv.super {
-                print("the super: ")
+                print("Ground Zero: ")
                 print_int(evc_side[0][Ev.Hit])
                 print(" hit, ")
                 print_int(mark_h - o.health)
@@ -4838,11 +4904,1231 @@ private fn gm_check() {
                 print_int(s.meter)
                 println("")
                 assert_eq(evc_side[0][Ev.Hit], 1, "the super did not land")
-                assert_eq(mark_h - o.health, dmg(Mech.Beam as s32, Mv.super), "the super's damage (Beam's)")
+                assert_eq(mark_h - o.health, 300, "Ground Zero's damage")
                 assert(s.meter >= 0, "a nuclear super went into debt")
                 if GM_FOE == Mech.Beam { ok("Gamma against Beam") } else { ok("Gamma against the Hero") }
             }
         }
         else => {}
     }
+}
+
+// ---- Gamma's phase 2 scenarios, 220-231 (mx-gamma-fight; MOVES.md, "Gamma"): its own moves
+//
+// 220 the Atomic Ray's ticks: held on the Hero from 6 m, a tick every 6 frames (the first with a
+//     light hit's hitstop and the Hit event, the later ones neither), 10 each, the Hero pushed
+//     about 1.4 m a tick to the ray's tip; blocked: 2 chip a tick, one Block and one Chip event,
+//     about 1.1 m a tick; ending a chain of two (the Lamp Jab, the Glare Lance): 6 a tick (65 %),
+//     one hit for the scaling; the Hero against the wall stays there and Gamma slides back off it;
+//     the heat a point a ray frame throughout
+// 221 the heat: held from a cold gun with nothing in reach, 99 frames of ray (17 ticks' worth) and
+//     the gun vents on the 100th (Vent, the heat at 100), 50 frames open, cold at the vent's end;
+//     off the ray it cools a point every second frame; a ray started at 88 vents inside its 12
+//     frames; a vented Gamma is punished (the Hero's Tip Thrust lands while it vents)
+// 222 the ray against the shots: the Hero's wave passes under it and hits Gamma's shins (the ray
+//     ends); a tapped Volt Orb is burnt (Burn, +10 heat, the ray goes on); a charged orb is gone
+//     and cuts the ray (no heat); a full orb cuts it and goes on to hit Gamma; a Hex Bolt and a
+//     Mark bolt are burnt (no curse, no mark); a mirror's Rod Shot passes through and hits
+// 223 the ray against the defences: the Parry catches the touching tick (Gamma frozen 20 frames,
+//     then the shut-off, the riposte lands at 6 m); a Wing Ward holds it off (no damage, +10 heat
+//     a warded tick, one Reflect of power 0) and the ray hits Seraph after the ward; Tank's
+//     armour absorbs each tick (10, its reactor 30, no push, one Armour event); a mirror's Lead
+//     Shielding holds the whole ray to the brace's end; the Void Step passes through it
+// 224 the Rod Shot: 5 m out at 0.60 m a frame, 75 on the Hero at 16 m, one at a time; it and the
+//     Hero's wave pass through each other and both land, as do it and a full Volt Orb; it pierces
+//     Tank's armour and a mirror's Lead Shielding (an ordinary hit); a Wing Ward sends it back
+//     at 0.45 m a frame, still piercing, and it hits Gamma
+// 225 the daze: on the ground 32 frames from the hitstop's end, no slide, the Daze event (power
+//     0); blocked, no daze (chip 14, blockstun 14); a jump-in caught drops straight down and is
+//     dazed 32 frames from its touchdown (Daze power 1) with time for Point Blank (the dazed mech
+//     is grabbable), the Lamp Jab (its second hit: 80 %, and the daze ends) and a second flare
+//     (scaled, not dazed again); Tank's armour absorbs the flare without a daze
+// 226 the Ray from a high catch: a jump-in caught at its top leaves Gamma free 15 frames or more
+//     before the daze ends; the ray (18 frames' dig-in) lands its first tick within 3 frames of the
+//     daze's end, and pushes it out to the tip
+// 227 Lead Shielding: a Tip Thrust absorbed (Armour, the 100 in full, the reactor 300, the jump to
+//     the after-absorb section), Gamma actionable 12 frames after and about +12 (its jab lands);
+//     the Hero's wave absorbed the same way; a grab and a super beat the brace; whiffed, 47 frames
+// 228 Point Blank: 120, a knockdown, the other thrown about 10 m, the heat untouched; on the
+//     rooftop it rings out a Hero 8 m from the drop, not one 14 m from it
+// 229 Ground Zero: from a full bar, 300 on the Hero 6 m in front and 300 on one 5 m behind, both
+//     blown away from Gamma; nothing on one 13 m away; invulnerable through the flash and the
+//     startup (the Hero's thrust passes through); blocked, 75 chip; the heat to 0 on its first
+//     active frame; on the rooftop it rings out a Hero 4 m from the drop, not one 9 m from it
+// 230 Gamma's CPU (level 2, both sides through cpu_pad: Versus) against each mech, both sides:
+//     every match finishes, and over the run it uses the ray, the Rod Shot, the Geiger Flare, Lead
+//     Shielding, Point Blank (grabs) and Ground Zero; prints how often the gun vented, its dazes,
+//     its burns, the other's wards of the ray, its Lead Shielding's absorbs and the vents punished
+
+var gx_part: s32
+var gx_n: s32                   // ticks (or hits) counted in this part
+var gx_h: s32                   // the other's health last frame
+var gx_gh: s32                  // Gamma's health last frame
+var gx_heat: s32                // Gamma's heat last frame
+var gx_f0: s32                  // a frame noted (the first tick, the absorb, the catch ...)
+var gx_fl: s32                  // the last tick's frame
+var gx_c: s32                   // a step within the part
+var gx_at: s32                  // a press's frame
+var gx_x: fixed                 // a position noted
+var gx_d: [32]fixed             // the other's x at each tick
+var gx_w: s32                   // ticks warded or absorbed
+var gx_cnt: [12]s32             // 230: Gamma's rays, rods, flares, shields, grabs, supers, vents,
+                                // dazes, burns, and the others' wards of the ray, vents punished
+var gx_prev: [2]Mv
+var gx_prev_t: [2]s32
+var gx_matches: s32
+var gx_vent_prev: bool          // Gamma was venting last frame
+
+private fn gx_scenario() -> bool { return SCENARIO >= 220 && SCENARIO <= 239 }
+
+private fn gx_ok(s: *u8) {
+    print("frames ")
+    print_int(frames)
+    println("")
+    ok(s)
+}
+
+// A part starts over: Gamma (side 0) against b, at x0 and x1.
+private fn gx_restart(b: Mech, x0: fixed, x1: fixed) {
+    sh_restart(Mech.Gamma, b, x0, x1)
+    gx_n = 0
+    gx_c = 0
+    gx_w = 0
+    gx_at = -1
+    gx_h = fight.f[1].health
+    gx_gh = fight.f[0].health
+    gx_heat = 0
+    gx_f0 = -1
+    gx_fl = -1
+    gx_vent_prev = false
+}
+
+private fn gx_lim(m: Mech) -> fixed { return stage_now().half - STATS[m].push }
+
+// The rooftop (its open edge at +x): Gamma at d0 metres from the edge facing it, the other at d1.
+private fn gx_roof(b: Mech, d0: fixed, d1: fixed) {
+    fight_stage(ST_ROOFTOP)
+    gx_restart(b, 0.0, 1.0)
+    place(stage_now().half - d0, stage_now().half - d1)
+    fight.f[0].facing = 1
+    fight.f[1].facing = -1
+}
+
+private fn gx_init() {
+    match SCENARIO {
+        220 => gx_restart(Mech.Hero, -3.0, 3.0)
+        221 => gx_restart(Mech.Hero, -15.0, 15.0)
+        222 => gx_restart(Mech.Hero, -11.0, 11.0)
+        223 => gx_restart(Mech.Hero, -8.5, 8.5)
+        224 => gx_restart(Mech.Hero, -8.0, 8.0)
+        225 => gx_restart(Mech.Hero, -1.8, 1.8)
+        226 => gx_restart(Mech.Hero, -5.0, 5.0)
+        227 => gx_restart(Mech.Hero, -3.0, 3.0)
+        228 => gx_restart(Mech.Hero, -1.5, 1.5)
+        229 => {
+            gx_restart(Mech.Hero, -3.0, 3.0)
+            fight.f[0].meter = METER_BAR
+        }
+        230 => {
+            fight_init(Mech.Gamma, Mech.Hero, FightMode.Versus, 2)
+            tick_per_frame = 40
+        }
+        else => {}
+    }
+    gx_part = 0
+}
+
+private fn gx_script(i: s32) -> u32 {
+    if SCENARIO == 230 { return cpu_pad(i, 2) }
+    return sh_script(i)
+}
+
+private fn gx_check() {
+    match SCENARIO {
+        220 => gx_check_ticks()
+        221 => gx_check_heat()
+        222 => gx_check_shots()
+        223 => gx_check_defences()
+        224 => gx_check_rod()
+        225 => gx_check_daze()
+        226 => gx_check_high()
+        227 => gx_check_shield()
+        228 => gx_check_throw()
+        229 => gx_check_gz()
+        230 => gx_check_cpu()
+        else => {}
+    }
+    gx_h = fight.f[1].health
+    gx_gh = fight.f[0].health
+    gx_heat = fight.f[0].heat
+    gx_vent_prev = gamma_venting(0)
+    sh_prev0 = fight.f[0].mv
+}
+
+private fn gx_timeout(n: s32) {
+    if frames > mark + n {
+        show_state()
+        print("part ")
+        print_int(gx_part)
+        println("")
+        assert(false, "the part did not finish in time")
+    }
+}
+
+// Whether this frame has an event of that kind for that side.
+private fn gx_ev(kind: Ev, side: s32) -> bool {
+    let ev = fight_events()
+    for e in 0..ev.n {
+        if ev.e[e].kind == kind && ev.e[e].side == side { return true }
+    }
+    return false
+}
+
+// ---- 220
+
+private fn gx_check_ticks() {
+    let g = &fight.f[0]
+    let o = &fight.f[1]
+    gx_timeout(400)
+    if gx_part == 1 { sh_hold[1] = R }
+    if gx_part == 2 {
+        // the chain: the Lamp Jab, the Glare Lance on its hit, the ray on the lance's
+        if frames == mark + 2 { sh_pad[0] = A }
+        if evc_side[0][Ev.Hit] == 1 && gx_c == 0 { gx_c = 1; gx_at = frames + 2 }
+        if evc_side[0][Ev.Hit] == 2 && gx_c == 1 { gx_c = 2; gx_at = frames + 2 }
+        if frames == gx_at && gx_c == 1 { sh_pad[0] = RIGHT | A }
+        if frames == gx_at && gx_c == 2 { sh_hold[0] = B }
+    } else if frames == mark + 2 {
+        sh_hold[0] = B
+    }
+    // the ticks: the other's health drops while Gamma's ray is on
+    let d = gx_h - o.health
+    if d > 0 && g.mv == Mv.sp_n {
+        if gx_n == 1 {
+            assert_eq(frames - gx_fl, GM_TICK + if_i(gx_part == 1, BLOCK_STOP, 8), "the first tick's hitstop")
+        } else if gx_n > 1 {
+            assert_eq(frames - gx_fl, GM_TICK, "a tick every 6 frames")
+        }
+        let want = match gx_part { 1 => 2, 2 => 6, else => 10 }
+        assert_eq(d, want, "a tick's damage")
+        if gx_n < 32 { gx_d[gx_n] = o.x }
+        if gx_n == 0 { gx_x = g.x }
+        gx_fl = frames
+        gx_n += 1
+    }
+    if gamma_ray_on(0) && gx_part < 2 { assert_eq(g.heat, fx[0].ray_t, "the heat is not a point a ray frame") }
+    if gx_part == 3 {
+        if gx_n == 6 && sh_hold[0] != 0 {
+            sh_hold[0] = 0
+            print("against the wall: the Hero at ")
+            print_fixed(o.x)
+            print(" (the wall ")
+            print_fixed(gx_lim(Mech.Hero))
+            print("), Gamma slid back ")
+            print_fixed(gx_x - g.x)
+            println(" m over 5 ticks")
+            assert(abs(o.x - gx_lim(Mech.Hero)) < 0.01, "the Hero left the wall")
+            assert(gx_x - g.x > 5.0, "Gamma was not pushed back off the cornered Hero")
+            gx_ok("the Atomic Ray's ticks, push, chip and scaling; a cornered mech pushes Gamma back")
+        }
+        return
+    }
+    // out of the box: let go, and the part's numbers
+    if gx_n >= 2 && gamma_ray_on(0) && frames - gx_fl > 13 && sh_hold[0] != 0 {
+        sh_hold[0] = 0
+        let n = min(gx_n, 32)
+        let push = (gx_d[n - 1] - gx_d[1]) / (n - 2)
+        print(match gx_part { 1 => "blocked: ", 2 => "after the jab and the lance: ", else => "on hit: " })
+        print_int(gx_n)
+        print(" ticks, ")
+        print_int(gx_h0() - o.health)
+        print(" damage, pushed ")
+        print_fixed(push)
+        print(" m a tick, out of the box at ")
+        print_fixed(o.x - g.x)
+        print(" m, the heat ")
+        print_int(g.heat)
+        println("")
+        assert(o.x - g.x > 16.5 && o.x - g.x < 24.0, "the ray did not push the Hero to its tip")
+        match gx_part {
+            0 => {
+                assert_eq(evc_side[0][Ev.Hit], 1, "a later tick posted Hit")
+                assert(push > 1.30 && push < 1.45, "the push a tick hit")
+            }
+            1 => {
+                assert_eq(evc_side[0][Ev.Block], 1, "a later tick posted Block")
+                assert_eq(evc_side[0][Ev.Chip], 1, "a later tick posted Chip")
+                assert_eq(evc_side[0][Ev.Hit], 0, "a blocked tick hit")
+                assert(push > 1.0 && push < 1.15, "the push a tick blocked")
+            }
+            else => {
+                assert_eq(evc_side[0][Ev.Hit], 3, "the chain's hits: the jab, the lance, the ray's first tick")
+            }
+        }
+        gx_f0 = frames
+    }
+    if gx_f0 > 0 && sh_hold[0] == 0 && actionable(0) && frames > gx_f0 + 20 {
+        gx_part += 1
+        if gx_part == 1 { gx_restart(Mech.Hero, -3.0, 3.0) }
+        if gx_part == 2 { gx_restart(Mech.Hero, -2.0, 2.0) }
+        if gx_part == 3 {
+            gx_restart(Mech.Hero, 0.0, 1.0)
+            place(gx_lim(Mech.Hero) - 6.0, gx_lim(Mech.Hero))
+        }
+    }
+}
+
+// The other's health at the start of a part (the Hero's).
+private fn gx_h0() -> s32 { return STATS[fight.f[1].mech].health }
+
+// ---- 221
+
+private fn gx_check_heat() {
+    let g = &fight.f[0]
+    let o = &fight.f[1]
+    gx_timeout(400)
+    match gx_part {
+        0 => {
+            // held from a cold gun, nothing in reach: the vent
+            if frames == mark + 2 { sh_hold[0] = B }
+            if gamma_ray_on(0) {
+                gx_n += 1
+                gx_w = max(gx_w, fx[0].ray_t)
+                assert_eq(g.heat, fx[0].ray_t, "the heat is not a point a ray frame")
+            }
+            if gx_ev(Ev.Vent, 0) {
+                assert_eq(evc[Ev.Vent], 1, "one Vent")
+                gx_f0 = frames
+                print("held from cold: ")
+                print_int(gx_n)
+                print(" frames of ray (")
+                print_int((gx_w - 1) / GM_TICK + 1)
+                println(" ticks), the gun vents on the next")
+                assert_eq(gx_n, GM_HEAT_MAX - 1, "the ray's frames from a cold gun")
+                assert(gamma_venting(0) && !gamma_ray_on(0), "not venting")
+                assert_eq(g.heat, GM_HEAT_MAX - GM_VENT_COOL, "the vent's first frame: the heat")
+                sh_hold[0] = 0
+            }
+            if gx_f0 > 0 && frames > gx_f0 {
+                if gamma_venting(0) {
+                    assert(!actionable(0), "actionable while venting")
+                    assert_eq(g.heat, GM_HEAT_MAX - GM_VENT_COOL * (frames - gx_f0 + 1), "the vent's cooling")
+                } else {
+                    print("vented for ")
+                    print_int(frames - gx_f0)
+                    print(" frames, the heat after ")
+                    print_int(g.heat)
+                    println("")
+                    assert_eq(frames - gx_f0, 50, "the vent's length")
+                    assert(actionable(0), "not actionable after the vent")
+                    assert_eq(g.heat, 0, "the gun is not cold after the vent")
+                    gx_part = 1
+                    gx_restart(Mech.Hero, -15.0, 15.0)
+                    fight.f[0].heat = 60
+                }
+            }
+        }
+        1 => {
+            // off the ray: a point every second frame
+            if frames == mark + 41 {
+                print("cooling: 60 to ")
+                print_int(g.heat)
+                println(" in 40 frames")
+                assert(g.heat >= 39 && g.heat <= 41, "the cooling")
+                gx_part = 2
+                gx_restart(Mech.Hero, -15.0, 15.0)
+            }
+        }
+        2 => {
+            // a ray started at 88 vents inside its 12 frames
+            if frames == mark + 2 { sh_hold[0] = B }
+            if g.mv == Mv.sp_n && fx[0].t == gm_ray0 - 1 && gx_c == 0 {
+                gx_c = 1
+                g.heat = 88
+            }
+            if gamma_ray_on(0) { gx_n += 1 }
+            if gx_ev(Ev.Vent, 0) {
+                print("started at 88: vented after ")
+                print_int(gx_n)
+                println(" frames of ray")
+                assert_eq(gx_n, 11, "a ray started at 88 vents on its 12th frame")
+                gx_part = 3
+                gx_restart(Mech.Hero, -4.0, 4.0)
+            }
+        }
+        3 => {
+            // a vent punished: the ray vents on the Hero at 10 m; the Hero walks in and thrusts
+            if frames == mark + 2 { sh_hold[0] = B }
+            if g.mv == Mv.sp_n && fx[0].t == gm_ray0 - 1 && gx_c == 0 {
+                gx_c = 1
+                g.heat = 88
+            }
+            if gx_ev(Ev.Vent, 0) {
+                sh_hold[0] = 0
+                gx_f0 = frames
+            }
+            if gx_f0 > 0 && actionable(1) && gx_c == 1 {
+                if o.x - g.x > 12.0 { sh_hold[1] = LEFT } else {
+                    sh_hold[1] = 0
+                    sh_pad[1] = LEFT | B
+                    gx_c = 2
+                }
+            }
+            if evc_side[1][Ev.Hit] > 0 {
+                if !gx_vent_prev { show_state(); print("vent at "); print_int(gx_f0); print(" hit at "); print_int(frames); println("") }
+                assert(gx_vent_prev, "Gamma was not venting when the punish landed")
+                print("the vent punished: the Charge Slash landed ")
+                print_int(frames - gx_f0)
+                println(" frames into the vent")
+                gx_ok("the heat: a point a ray frame, the vent at 100 for 50 frames, the cooling")
+            }
+        }
+        else => {}
+    }
+}
+
+// ---- 222
+
+const GX_SHOT_FOES: [7]Mech = [Mech.Hero, Mech.Beam, Mech.Beam, Mech.Beam, Mech.Shadow, Mech.Seraph, Mech.Gamma]
+
+private fn gx_check_shots() {
+    let g = &fight.f[0]
+    let o = &fight.f[1]
+    let s = &fight.shot[1]
+    gx_timeout(300)
+    if frames == mark + 2 { sh_hold[0] = B }
+    // the other's shot, fired as the ray comes on: tapped, charged or full for Beam's orbs
+    if frames == mark + 6 {
+        if gx_part == 6 { sh_pad[1] = LEFT | B } else { sh_pad[1] = B }
+        if gx_part == 2 || gx_part == 3 { sh_hold[1] = B }
+    }
+    if gx_part == 2 && o.charge >= ORB_CHARGE_HALF + 2 { sh_hold[1] = 0 }
+    if gx_part == 3 && o.charge >= ORB_CHARGE_MAX { sh_hold[1] = 0 }
+    let burnt = gx_ev(Ev.Burn, 0)
+    match gx_part {
+        0 => {
+            if evc_side[1][Ev.Hit] > 0 {
+                assert_eq(gx_gh - g.health, 80, "the wave's damage")
+                assert(g.mv == Mv.hit_low || g.mv == Mv.hit_high, "Gamma was not hit out of the ray")
+                assert_eq(evc[Ev.Burn], 0, "the wave was burnt")
+                println("the wave passed under the ray and hit Gamma: the ray ended")
+                gx_next_shot()
+            }
+        }
+        1, 4, 5 => {
+            if burnt {
+                assert(!s.on, "the burnt shot goes on")
+                assert(gamma_ray_on(0), "the ray did not go on")
+                assert_eq(g.heat, fx[0].ray_t + GM_HEAT_BURN, "a burnt shot's heat")
+                assert_eq(g.curse, 0, "a burnt Hex Bolt cursed")
+                assert_eq(g.mark, 0, "a burnt Mark bolt marked")
+                print(match gx_part { 1 => "a tapped orb", 4 => "a Hex Bolt", else => "a Mark bolt" })
+                print(" burnt: the heat ")
+                print_int(g.heat)
+                print(" at ray frame ")
+                print_int(fx[0].ray_t)
+                println("")
+                gx_next_shot()
+            }
+        }
+        2 => {
+            if gx_c == 0 && gx_ev(Ev.Shot, 1) { gx_c = 1 }
+            if gx_c == 1 && !s.on {
+                assert(!gamma_ray_on(0) && g.mv == Mv.sp_n, "the charged orb did not cut the ray")
+                assert_eq(fx[0].t, gm_charge + 1, "the ray was not cut to the shut-off")
+                assert_eq(g.heat, gx_heat + 1, "the cut added heat")
+                assert_eq(evc[Ev.Burn], 0, "a charged orb was burnt")
+                assert_eq(evc[Ev.Vent], 0, "the cut vented")
+                println("a charged orb cut the ray and was gone")
+                gx_next_shot()
+            }
+        }
+        3 => {
+            if gx_c == 0 && gx_ev(Ev.Shot, 1) { gx_c = 1 }
+            if gx_c == 1 && !gamma_ray_on(0) {
+                assert(s.on, "the full orb did not go on")
+                assert_eq(fx[0].t, gm_charge + 1, "the full orb did not cut the ray")
+                gx_c = 2
+            }
+            if evc_side[1][Ev.Hit] > 0 {
+                assert_eq(gx_c, 2, "the full orb hit without cutting the ray")
+                assert_eq(gx_gh - g.health, orb_hit(3).dmg, "the full orb's damage")
+                println("a full orb cut the ray and went on to hit Gamma")
+                gx_next_shot()
+            }
+        }
+        6 => {
+            if evc_side[1][Ev.Hit] > 0 {
+                assert_eq(gx_gh - g.health, rod_hit().dmg, "the rod's damage")
+                assert_eq(evc[Ev.Burn], 0, "the rod was burnt")
+                println("a mirror's Rod Shot passed through the ray and hit")
+                gx_ok("the ray against each shot: under, burnt, cut, cut and through, pierced")
+            }
+        }
+        else => {}
+    }
+}
+
+private fn gx_next_shot() {
+    gx_part += 1
+    // (Shadow further off: its claws in the guard reach 6.7 m in front, into the ray)
+    let d = if_f(GX_SHOT_FOES[gx_part % len(GX_SHOT_FOES)] == Mech.Shadow, 13.0, 11.0)
+    if gx_part < len(GX_SHOT_FOES) { gx_restart(GX_SHOT_FOES[gx_part], -d, d) }
+}
+
+// ---- 223
+
+private fn gx_check_defences() {
+    let g = &fight.f[0]
+    let o = &fight.f[1]
+    gx_timeout(300)
+    match gx_part {
+        0 => {
+            // the Parry: the touching tick caught; from 17 m the ray is only cut (Gamma frozen 20
+            // frames, then the shut-off), from 6 m the riposte lands in the freeze
+            if frames == mark + 2 { sh_hold[0] = B }
+            if frames == mark + 8 { sh_pad[1] = DOWN | B }
+            if evc[Ev.Parry] == 1 && gx_c == 0 {
+                gx_c = 1
+                gx_f0 = frames
+                assert_eq(o.health, 1000, "the parried tick hurt")
+                assert(fx[0].ray_cut, "the ray is not marked cut")
+            }
+            if gx_n == 0 && gx_c == 1 && frames == gx_f0 + 6 + PARRY_FREEZE {
+                if !(gamma_ray_on(0) && fx[0].pause == 0) { show_state(); print("pause "); print_int(fx[0].pause); println("") }
+                assert(gamma_ray_on(0) && fx[0].pause == 0, "Gamma's ray not frozen for the Parry's freeze")
+            }
+            if gx_n == 0 && gx_c == 1 && frames == gx_f0 + 7 + PARRY_FREEZE {
+                gx_c = 2
+                assert(!gamma_ray_on(0) && fx[0].t == gm_charge + 1, "the ray was not cut after the freeze")
+                print("parried from 17 m: Gamma frozen, then the shut-off ")
+                print_int(frames - gx_f0)
+                println(" frames after the Parry")
+                sh_hold[0] = 0
+            }
+            if gx_n == 0 && gx_c == 2 && actionable(0) {
+                assert_eq(evc_side[1][Ev.Hit], 0, "the riposte reached 17 m")
+                gx_restart(Mech.Hero, -3.0, 3.0)
+                gx_n = 1
+            }
+            if gx_n == 1 && evc_side[1][Ev.Hit] > 0 {
+                assert(gx_c == 1, "no Parry")
+                assert_eq(1050 - g.health, dmg(Mech.Hero as s32, Mv.sp_d), "the riposte's damage")
+                print("parried from 6 m: the riposte landed ")
+                print_int(frames - gx_f0)
+                println(" frames after the Parry")
+                gx_part = 1
+                gx_restart(Mech.Seraph, -4.0, 4.0)
+            }
+        }
+        1 => {
+            // the Wing Ward: held off, the heat
+            if frames == mark + 2 { sh_hold[0] = B }
+            if frames == mark + 9 { sh_pad[1] = DOWN | B }
+            if g.heat == gx_heat + 1 + GM_HEAT_BURN && gamma_ray_on(0) { gx_w += 1 }
+            if seraph_warding(1) { assert_eq(o.health, 1000, "a warded tick hurt Seraph") }
+            if evc_side[0][Ev.Hit] > 0 && gx_c == 0 {
+                gx_c = 1
+                assert(gx_w >= 3, "fewer than three ticks warded")
+                assert_eq(evc[Ev.Reflect], 1, "one Reflect for the ward")
+                assert(o.mv == Mv.hit_high || o.mv == Mv.hit_low, "the ray did not hit Seraph after its ward")
+                print("the Wing Ward held off ")
+                print_int(gx_w)
+                print(" ticks (+")
+                print_int(gx_w * GM_HEAT_BURN)
+                print(" heat, ")
+                print_int(g.heat)
+                println(" in all); the ray hit Seraph after it")
+                sh_hold[0] = 0
+            }
+            if gx_c == 1 && actionable(0) {
+                gx_part = 2
+                gx_restart(Mech.Tank, -6.0, 6.0)
+            }
+        }
+        2 => {
+            // Tank's armour: each tick absorbed
+            if frames == mark + 2 { sh_hold[0] = B }
+            if frames == mark + 11 { sh_pad[1] = B }               // the Reactor Vent's armour
+            let d = gx_h - o.health
+            if d > 0 && gx_c == 0 {
+                if o.mv == Mv.sp_n {
+                    assert_eq(d, 10, "an absorbed tick's damage")
+                    assert(fx[1].slide == 0.0, "an absorbed tick pushed Tank")
+                    gx_w += 1
+                } else {
+                    gx_c = 1
+                    print("Tank's armour absorbed ")
+                    print_int(gx_w)
+                    print(" ticks (its reactor ")
+                    print_int(o.meter)
+                    println("), the next tick hit")
+                    assert(gx_w >= 2, "fewer than two ticks absorbed")
+                    assert_eq(o.meter, (gx_w + 1) * 30, "the reactor from the absorbed ticks (and the tick that hit)")
+                    assert_eq(evc[Ev.Armour], 1, "one Armour event")
+                    sh_hold[0] = 0
+                }
+            }
+            if gx_c == 1 && actionable(0) {
+                gx_part = 3
+                gx_restart(Mech.Gamma, -4.0, 4.0)
+            }
+        }
+        3 => {
+            // a mirror's Lead Shielding holds the whole ray to the brace's end
+            if frames == mark + 2 { sh_hold[0] = B }
+            if frames == mark + 9 { sh_pad[1] = DOWN | B }
+            let d = gx_h - o.health
+            if d > 0 && gx_c == 0 {
+                if o.mv == Mv.sp_d {
+                    assert_eq(d, 10, "a shielded tick's damage")
+                    assert(fx[1].slide == 0.0, "a shielded tick pushed")
+                    gx_w += 1
+                    gx_x = o.x
+                } else {
+                    gx_c = 1
+                    print("Lead Shielding held ")
+                    print_int(gx_w)
+                    print(" ticks (its reactor ")
+                    print_int(o.meter)
+                    println("), the next tick hit after the brace")
+                    assert(gx_w >= 3, "fewer than three ticks held")
+                    assert_eq(o.meter, (gx_w + 1) * 30, "the reactor from the held ticks (and the tick that hit)")
+                    assert_eq(evc[Ev.Armour], 1, "one Armour event")
+                    sh_hold[0] = 0
+                }
+            }
+            if gx_c == 0 && o.mv == Mv.sp_d && fx[1].riposte && fx[1].t >= gm_sh_rip && gx_f0 < 0 {
+                gx_f0 = frames
+                println("the brace ended at its last frame and jumped to the after-absorb")
+            }
+            if gx_c == 1 && actionable(0) {
+                gx_part = 4
+                gx_restart(Mech.Doubleblade, -5.0, 5.0)
+            }
+        }
+        4 => {
+            // the Void Step passes through
+            if frames == mark + 2 { sh_hold[0] = B }
+            if frames == mark + 9 && gx_c == 0 {
+                gx_c = 1
+                sh_pad[1] = B
+            }
+            if (cur_marks(1) & MARK_NOPUSH) != 0 {
+                gx_w += 1
+                assert_eq(o.health, 950, "the Void Step was hit while gone")
+            }
+            if gx_c == 1 && gx_w > 0 && (cur_marks(1) & MARK_NOPUSH) == 0 {
+                print("the Void Step passed through the ray (")
+                print_int(gx_w)
+                print(" frames gone), reappearing ")
+                print_fixed(o.x - g.x)
+                println(" m in front of Gamma")
+                gx_ok("the ray against the Parry, the Wing Ward, Tank's armour, Lead Shielding, the Void Step")
+            }
+        }
+        else => {}
+    }
+}
+
+// ---- 224
+
+private fn gx_check_rod() {
+    let g = &fight.f[0]
+    let o = &fight.f[1]
+    let s = &fight.shot[0]
+    gx_timeout(300)
+    match gx_part {
+        0 => {
+            // 75 on the Hero 16 m away; one at a time
+            if frames == mark + 2 { sh_pad[0] = RIGHT | B }
+            if gx_ev(Ev.Shot, 0) {
+                gx_f0 = frames
+                assert(s.on && s.pierce, "no rod")
+                assert(abs(s.vx - GM_ROD_SPEED) < 0.001, "the rod's speed")
+                assert(abs(s.x - g.x - GM_ROD_X) < 0.001, "where the rod starts")
+                assert_eq(s.life, GM_ROD_LIFE, "the rod's life")
+            }
+            if evc_side[0][Ev.Hit] > 0 && gx_c == 0 {
+                gx_c = 1
+                assert(!s.on, "the rod went on through the Hero")
+                assert_eq(gx_h - o.health, 75, "the rod's damage")
+                assert_eq(fx[1].stun_len, 20, "the rod's hitstun")
+                print("the rod hit the Hero 16 m away ")
+                print_int(frames - gx_f0)
+                println(" frames after it left")
+                gx_part = 1
+                gx_restart(Mech.Hero, -17.0, 17.0)
+            }
+        }
+        1 => {
+            if frames == mark + 2 { sh_pad[0] = RIGHT | B }
+            if gx_ev(Ev.Shot, 0) { gx_f0 = frames }
+            if gx_f0 > 0 && actionable(0) && s.on && gx_c == 0 {
+                gx_c = 1
+                sh_pad[0] = RIGHT | B
+                gx_at = frames + 4
+            }
+            if frames == gx_at {
+                assert_eq(evc_side[0][Ev.Shot], 1, "a second rod while the first is out")
+                assert(actionable(0), "forward + B with the rod out did something")
+                println("one rod at a time")
+                gx_part = 2
+                gx_restart(Mech.Hero, -10.0, 10.0)
+            }
+        }
+        2, 3 => {
+            // through the wave, through a full orb: neither stops the other
+            if frames == mark + 2 {
+                sh_pad[1] = B
+                if gx_part == 3 { sh_hold[1] = B }
+            }
+            if gx_part == 3 && fight.f[1].charge >= ORB_CHARGE_MAX { sh_hold[1] = 0 }
+            if fight.shot[1].on && gx_c == 0 {
+                gx_c = 1
+                sh_pad[0] = RIGHT | B
+            }
+            assert_eq(evc[Ev.Clash], 0, "the rod clashed")
+            if evc_side[0][Ev.Hit] > 0 && evc_side[1][Ev.Hit] > 0 {
+                print("the rod and ")
+                print(if_s(gx_part == 2, "the wave", "a full orb"))
+                println(" passed through each other and both landed")
+                assert_eq(gx_h0() - o.health, 75, "the rod's damage")
+                gx_part += 1
+                if gx_part == 3 { gx_restart(Mech.Beam, -10.0, 10.0) }
+                else { gx_restart(Mech.Tank, -5.0, 5.0) }
+            }
+        }
+        4, 5 => {
+            // through Tank's armour (the Piston Haymaker) and a mirror's Lead Shielding
+            if frames == mark + if_i(gx_part == 4, 12, 8) { sh_pad[1] = if_u(gx_part == 4, LEFT | A, DOWN | B) }
+            if frames == mark + 4 { sh_pad[0] = RIGHT | B }
+            if gx_ev(Ev.Hit, 0) {
+                let armoured = (fight.f[1].mv == Mv.hit_high || fight.f[1].mv == Mv.hit_low) && sh_prev1 != Mv.idle
+                assert(armoured, "the rod did not cut the armoured move")
+                assert_eq(evc[Ev.Armour], 0, "the rod was absorbed")
+                assert_eq(gx_h0() - o.health, 75, "the rod's damage")
+                print(if_s(gx_part == 4, "the rod pierced Tank's armour", "the rod pierced Lead Shielding"))
+                print(" (the ")
+                print(MV_NAMES[sh_prev1])
+                println(" cut)")
+                gx_part += 1
+                if gx_part == 5 { gx_restart(Mech.Gamma, -6.0, 6.0) } else { gx_restart(Mech.Seraph, -8.0, 8.0) }
+            }
+        }
+        6 => {
+            // a Wing Ward sends it back, slower, still piercing
+            if frames == mark + 2 { sh_pad[0] = RIGHT | B }
+            sv_ward(0, 1)
+            if evc[Ev.Reflect] > 0 && gx_c == 0 {
+                gx_c = 1
+                let r = &fight.shot[1]
+                assert(r.on && r.pierce && r.refl, "the rod was not sent back piercing")
+                assert(abs(r.vx + SER_REFL_MAX) < 0.001, "the reflected rod's speed")
+                print("a Wing Ward sent the rod back at ")
+                print_fixed(r.vx)
+                println(" m a frame")
+            }
+            if evc_side[1][Ev.Hit] > 0 {
+                assert_eq(1050 - g.health, 75, "the reflected rod's damage")
+                gx_ok("the Rod Shot: its speed, one at a time, through shots and armour, not through a mech")
+            }
+        }
+        else => {}
+    }
+    sh_prev1 = fight.f[1].mv
+}
+
+var sh_prev1: Mv
+
+// ---- 225
+
+private fn gx_check_daze() {
+    let g = &fight.f[0]
+    let o = &fight.f[1]
+    gx_timeout(300)
+    match gx_part {
+        0, 1 => {
+            // on the ground; blocked
+            if frames == mark + 2 { sh_pad[0] = UP | B }
+            if gx_part == 1 { sh_hold[1] = R }
+            if gx_part == 0 && gx_ev(Ev.Daze, 0) {
+                gx_f0 = frames
+                gx_x = o.x
+                assert_eq(gx_h - o.health, 70, "the flare's damage")
+                assert(fx[1].dazed && o.mv == Mv.hit_high, "not dazed")
+                assert_eq(fx[1].stun_len, GM_DAZE, "the daze's length")
+                assert_eq(evc_side[0][Ev.Hit], 1, "the flare's Hit")
+            }
+            if gx_part == 0 && gx_f0 > 0 {
+                if fx[1].dazed { assert(o.x == gx_x, "the dazed Hero slid") }
+                if actionable(0) && gx_c == 0 { gx_c = frames }
+                if actionable(1) && gx_n == 0 {
+                    gx_n = frames
+                    assert_eq(frames - gx_f0 - 11, GM_DAZE, "the daze's frames")
+                }
+                if gx_c > 0 && gx_n > 0 {
+                    print("dazed on the ground for ")
+                    print_int(gx_n - gx_f0 - 11)
+                    print(" frames after the hitstop; Gamma ")
+                    print_int(gx_n - gx_c)
+                    println(" on the daze")
+                    gx_part = 1
+                    gx_restart(Mech.Hero, -1.8, 1.8)
+                }
+            }
+            if gx_part == 1 && evc_side[0][Ev.Block] > 0 {
+                assert_eq(evc[Ev.Daze], 0, "a blocked flare dazed")
+                assert_eq(gx_h - o.health, 14, "the flare's chip")
+                assert_eq(fx[1].stun_len, 14, "the flare's blockstun")
+                println("blocked: no daze, 14 chip")
+                gx_part = 2
+                gx_restart(Mech.Hero, -3.0, 3.0)
+            }
+        }
+        2, 3, 4 => {
+            // a jump-in caught low: the drop, the daze on landing, and Gamma's follow-up: Point
+            // Blank, the Lamp Jab, a second flare
+            if frames == mark + 2 { sh_pad[1] = LEFT | X }
+            if gx_c == 0 && o.y > 0.0 && fx[1].air {
+                gx_c = 1
+                sh_pad[0] = UP | B
+            }
+            if gx_ev(Ev.Daze, 0) && gx_c == 1 {
+                gx_c = 2
+                gx_x = o.x
+                assert(o.mv == Mv.jump && fx[1].vx == 0.0 && fx[1].vy == 0.0, "the caught mech does not drop")
+                print("caught in the air ")
+                print_fixed(o.y)
+                print(" m up, ")
+                print_fixed(o.x - g.x)
+                println(" m out")
+            }
+            if gx_c == 2 {
+                if o.mv == Mv.jump { assert(o.x == gx_x, "the drop is not straight down") }
+                if o.mv == Mv.hit_high && fx[1].dazed {
+                    gx_c = 3
+                    gx_f0 = frames
+                    assert_eq(fx[1].stun_len, GM_DAZE, "the daze on landing")
+                    assert_eq(evc[Ev.Land], 1, "the landing")
+                }
+            }
+            if gx_c == 3 && actionable(0) {
+                gx_c = 4
+                gx_n = frames
+                sh_pad[0] = match gx_part { 2 => Y, 3 => A, else => UP | B }
+            }
+            if gx_c == 4 {
+                if gx_part == 2 && evc_side[0][Ev.Grab] > 0 {
+                    assert(is_thrown(o.mv), "the dazed Hero was not caught")
+                    print("dazed on landing; Gamma free ")
+                    print_int(gx_f0 + GM_DAZE - gx_n)
+                    println(" frames before the daze ends: Point Blank caught it")
+                    gx_part = 3
+                    gx_restart(Mech.Hero, -3.0, 3.0)
+                } else if gx_part == 3 && evc_side[0][Ev.Hit] == 2 {
+                    assert_eq(gx_h - o.health, 70 * COMBO_2 / 100, "the jab after the daze: the combo's second")
+                    assert(!fx[1].dazed && fx[1].stun_len == 19, "the hit did not end the daze")
+                    println("the Lamp Jab ended the daze as the combo's second hit (80 %)")
+                    gx_part = 4
+                    gx_restart(Mech.Hero, -3.0, 3.0)
+                } else if gx_part == 4 && evc_side[0][Ev.Hit] == 2 {
+                    assert_eq(gx_h - o.health, 70 * COMBO_2 / 100, "the second flare's damage")
+                    assert_eq(evc[Ev.Daze], 1, "dazed again")
+                    assert(!fx[1].dazed && fx[1].stun_len == 20, "the second flare dazed")
+                    println("a second flare on the dazed Hero: scaled, not dazed again")
+                    gx_part = 5
+                    gx_restart(Mech.Tank, -2.2, 2.2)
+                }
+            }
+        }
+        5 => {
+            // Tank's armour absorbs it: no daze
+            if frames == mark + 2 { sh_pad[1] = B }
+            if frames == mark + 3 { sh_pad[0] = UP | B }
+            if evc_side[0][Ev.Armour] > 0 && gx_c == 0 {
+                gx_c = 1
+                assert_eq(gx_h - o.health, 70, "the absorbed flare's damage")
+            }
+            if gx_c == 1 && frames > mark + 40 {
+                assert_eq(evc[Ev.Daze], 0, "Tank's armour was dazed")
+                assert(!fx[1].dazed, "Tank is dazed")
+                println("Tank's armour absorbed the flare: no daze")
+                gx_ok("the daze: 32 frames, no slide, grabbable, one opening, the combo's first hit")
+            }
+        }
+        else => {}
+    }
+}
+
+// ---- 226
+
+private fn gx_check_high() {
+    let g = &fight.f[0]
+    let o = &fight.f[1]
+    gx_timeout(300)
+    if frames == mark + 2 { sh_pad[1] = LEFT | X }
+    if gx_c == 0 && fx[1].air && o.x - g.x < 8.3 {
+        gx_c = 1
+        sh_pad[0] = UP | B
+    }
+    if gx_ev(Ev.Daze, 0) {
+        assert(gx_c == 1, "caught early")
+        gx_c = 2
+        gx_x = o.y
+        print("caught at its top: ")
+        print_fixed(o.y)
+        print(" m up, ")
+        print_fixed(o.x - g.x)
+        println(" m out")
+        assert(o.y > 5.0, "not a high catch")
+    }
+    if gx_c == 2 && o.mv == Mv.hit_high { gx_f0 = frames; gx_c = 3 }
+    if gx_c >= 2 && actionable(0) && gx_n == 0 {
+        gx_n = frames
+        sh_hold[0] = B
+    }
+    if gx_c == 3 && evc_side[0][Ev.Hit] == 2 && gx_at < 0 {
+        gx_at = frames
+        // the daze runs GM_DAZE frames from the touchdown (gx_f0)
+        print("caught high: Gamma free ")
+        print_int(gx_f0 + GM_DAZE - gx_n)
+        print(" frames before the daze ends; the ray's first tick ")
+        print_int(frames - gx_f0 - GM_DAZE)
+        println(" frames after it")
+        assert(gx_f0 + GM_DAZE - gx_n >= 15, "a high catch leaves Gamma under 15 frames")
+        assert(frames - gx_f0 - GM_DAZE <= 3, "the ray's first tick came long after the daze")
+    }
+    if gx_at > 0 && gamma_ray_on(0) && frames - gx_at > 30 && gx_h == o.health && o.x - g.x > GM_RAY_X1 {
+        print("pushed out to ")
+        print_fixed(o.x - g.x)
+        println(" m")
+        gx_ok("after the Geiger Flare's high catch the Atomic Ray lands as the daze ends")
+    }
+    sh_prev1 = o.mv
+}
+
+// ---- 227
+
+private fn gx_check_shield() {
+    let g = &fight.f[0]
+    let o = &fight.f[1]
+    gx_timeout(300)
+    match gx_part {
+        0 => {
+            // a Tip Thrust absorbed; about +12
+            if frames == mark + 2 { sh_pad[0] = DOWN | B }
+            if frames == mark + 3 { sh_pad[1] = LEFT | A }
+            if evc_side[1][Ev.Armour] > 0 && gx_f0 < 0 {
+                gx_f0 = frames
+                assert_eq(gx_gh - g.health, dmg(Mech.Hero as s32, Mv.atk_f), "the absorbed hit's damage")
+                assert_eq(g.meter, (gx_gh - g.health) * NUC_NUM / NUC_DEN, "the reactor from the absorbed hit")
+                assert(g.mv == Mv.sp_d && fx[0].riposte && fx[0].t == gm_sh_rip, "the brace did not jump")
+            }
+            if gx_f0 > 0 && actionable(0) && gx_c == 0 {
+                gx_c = frames
+                print("absorbed the Tip Thrust: Gamma actionable ")
+                print_int(frames - gx_f0)
+                print(" frames after (")
+                print_int(fight_hitstop_of(Mech.Hero, Mv.atk_f))
+                println(" of them the hitstop)")
+                assert_eq(frames - gx_f0, 12 + fight_hitstop_of(Mech.Hero, Mv.atk_f), "actionable 12 frames after the absorb")
+            }
+            if gx_c > 0 && actionable(1) {
+                print("Gamma +")
+                print_int(frames - gx_c)
+                println(" after absorbing the Tip Thrust")
+                assert(frames - gx_c >= 8, "Gamma is not well ahead after the absorb")
+                gx_part = 1
+                gx_restart(Mech.Hero, -6.0, 6.0)
+            }
+        }
+        1 => {
+            // the Hero's wave absorbed
+            if frames == mark + 2 { sh_pad[1] = B }
+            let tt = sv_tt(1, 0)
+            if tt >= 7 && tt <= 14 && gx_c == 0 {
+                gx_c = 1
+                sh_pad[0] = DOWN | B
+            }
+            if evc_side[1][Ev.Armour] > 0 {
+                assert_eq(gx_gh - g.health, 80, "the absorbed wave's damage")
+                assert_eq(g.meter, 240, "the reactor from the absorbed wave")
+                assert(!fight.shot[1].on, "the wave went on")
+                assert(fx[0].t == gm_sh_rip, "the brace did not jump")
+                println("the Hero's wave absorbed: 80, the reactor 240")
+                gx_part = 2
+                gx_restart(Mech.Hero, -1.5, 1.5)
+            }
+        }
+        2 => {
+            // a grab beats the brace
+            if frames == mark + 2 { sh_pad[0] = DOWN | B }
+            if (cur_marks(0) & MARK_SHIELD) != 0 && gx_c == 0 {
+                gx_c = 1
+                sh_pad[1] = Y
+            }
+            if evc_side[1][Ev.Grab] > 0 {
+                assert(is_thrown(g.mv), "the grab did not catch the brace")
+                println("a grab caught Gamma's brace")
+                gx_part = 3
+                gx_restart(Mech.Hero, -4.0, 4.0)
+                fight.f[1].meter = METER_BAR
+            }
+        }
+        3 => {
+            // a super beats it
+            if frames == mark + 2 { sh_pad[0] = DOWN | B }
+            if frames == mark + 4 { sh_pad[1] = A | B }
+            if evc_side[1][Ev.Hit] > 0 {
+                assert(sh_prev0 == Mv.sp_d && (cur_marks_prev0 & MARK_SHIELD) != 0, "the super did not land on the brace")
+                assert_eq(evc[Ev.Armour], 0, "the super was absorbed")
+                println("the Momentum Drive went through the brace")
+                gx_part = 4
+                gx_restart(Mech.Hero, -10.0, 10.0)
+            }
+        }
+        4 => {
+            // whiffed: 47 frames
+            if frames == mark + 2 { sh_pad[0] = DOWN | B }
+            if g.mv == Mv.sp_d && gx_f0 < 0 { gx_f0 = frames }
+            if gx_f0 > 0 && actionable(0) {
+                print("whiffed: ")
+                print_int(frames - gx_f0)
+                println(" frames")
+                assert_eq(frames - gx_f0, 47, "a whiffed brace's length")
+                gx_ok("Lead Shielding: one hit absorbed into the reactor, +12, beaten by grabs and supers")
+            }
+        }
+        else => {}
+    }
+    cur_marks_prev0 = cur_marks(0)
+}
+
+var sh_prev0: Mv
+var cur_marks_prev0: u32
+
+private fn fight_hitstop_of(m: Mech, mv: Mv) -> s32 { return move_hit(m, mv).stop }
+
+// ---- 228
+
+private fn gx_check_throw() {
+    let g = &fight.f[0]
+    let o = &fight.f[1]
+    gx_timeout(300)
+    if frames == mark + 2 { sh_pad[0] = Y }
+    match gx_part {
+        0 => {
+            if frames == mark + 1 { g.heat = 40 }
+            if evc[Ev.Throw] == 1 && gx_c == 0 {
+                gx_c = 1
+                assert_eq(gx_h0() - o.health, 120, "Point Blank's damage")
+            }
+            if gx_c == 1 && o.mv == Mv.knockdown {
+                print("Point Blank: thrown to ")
+                print_fixed(o.x - g.x)
+                print(" m, the heat ")
+                print_int(g.heat)
+                println("")
+                assert(o.x - g.x > 9.0 && o.x - g.x < 11.5, "not thrown about 10 m")
+                assert(g.heat <= 40, "the throw heated the gun")
+                gx_part = 1
+                gx_roof(Mech.Hero, 9.5, 8.0)
+            }
+        }
+        1 => {
+            if evc[Ev.RingOut] > 0 {
+                assert_eq(fight.round_winner, 0, "the ring-out's winner")
+                println("8 m from the drop: rung out")
+                gx_part = 2
+                gx_roof(Mech.Hero, 15.5, 14.0)
+            }
+        }
+        2 => {
+            if evc[Ev.Throw] == 1 && o.mv == Mv.knockdown {
+                assert_eq(evc[Ev.RingOut], 0, "rung out from 14 m")
+                print("14 m from the drop: lands ")
+                print_fixed(stage_now().half - o.x)
+                println(" m from it")
+                gx_ok("Point Blank throws about 10 m")
+            }
+        }
+        else => {}
+    }
+}
+
+// ---- 229
+
+private fn gx_check_gz() {
+    let g = &fight.f[0]
+    let o = &fight.f[1]
+    gx_timeout(300)
+    if frames == mark + 1 { g.meter = METER_BAR }
+    match gx_part {
+        0 => {
+            // 6 m in front; the Hero's thrust passes through the startup; the heat to 0
+            if frames == mark + 1 { g.heat = 70 }
+            if frames == mark + 2 { sh_pad[1] = LEFT | A }
+            if frames == mark + 11 { sh_pad[0] = A | B }
+            if g.mv == Mv.super && gx_c == 0 && gx_has_hit(0) {
+                gx_c = 1
+                assert_eq(g.heat, 0, "Ground Zero did not empty the heat")
+                print("the heat emptied on Ground Zero's first active frame (")
+                print_int(fx[0].t)
+                println(")")
+            }
+            gx_gz_hit(1, "6 m in front")
+        }
+        1 => {
+            // 5 m behind (the super started on the spot, Gamma's back to the Hero)
+            if frames == mark + 2 { start_super(0) }
+            gx_gz_hit(-1, "5 m behind")
+        }
+        2 => {
+            // 13 m: out of reach (the Hero's guard holds its sword about 4 m out in front)
+            if frames == mark + 2 { sh_pad[0] = A | B }
+            if gx_ev(Ev.Whiff, 0) {
+                assert_eq(evc_side[0][Ev.Hit], 0, "Ground Zero reached 13 m")
+                println("13 m: missed")
+                gx_part = 3
+                gx_restart(Mech.Hero, -3.0, 3.0)
+            }
+        }
+        3 => {
+            // blocked: 75 chip
+            sh_hold[1] = R
+            if frames == mark + 2 { sh_pad[0] = A | B }
+            if evc_side[0][Ev.Block] > 0 && gx_c == 0 {
+                gx_c = 1
+                assert_eq(gx_h0() - o.health, 75, "Ground Zero's chip")
+                println("blocked: 75 chip")
+                gx_part = 4
+                gx_roof(Mech.Hero, 9.0, 4.0)
+            }
+        }
+        4 => {
+            if frames == mark + 2 { sh_pad[0] = A | B }
+            if evc[Ev.RingOut] > 0 {
+                assert_eq(fight.round_winner, 0, "the ring-out's winner")
+                assert(!fx[0].out, "Gamma fell")
+                println("4 m from the drop: rung out")
+                gx_part = 5
+                gx_roof(Mech.Hero, 14.0, 9.0)
+            }
+        }
+        5 => {
+            if frames == mark + 2 { sh_pad[0] = A | B }
+            if evc_side[0][Ev.Hit] > 0 && o.mv == Mv.knockdown {
+                assert_eq(evc[Ev.RingOut], 0, "rung out from 9 m")
+                print("9 m from the drop: lands ")
+                print_fixed(stage_now().half - o.x)
+                println(" m from it")
+                gx_ok("Ground Zero: both sides, 8 m, invulnerable to its blast, 75 chip, the heat, ring-outs")
+            }
+        }
+        else => {}
+    }
+}
+
+// Ground Zero's hit on the Hero (dir: which way from Gamma it is blown, in Gamma's facing).
+private fn gx_gz_hit(dir: s32, what: *u8) {
+    let g = &fight.f[0]
+    let o = &fight.f[1]
+    if gx_part == 1 && frames == mark + 1 {
+        place(0.0, -5.0)
+        g.facing = 1
+        o.facing = 1
+    }
+    if gx_ev(Ev.Hit, 0) {
+        assert_eq(evc_side[1][Ev.Hit], 0, "Gamma was hit through its invulnerability")
+        assert_eq(gx_h0() - o.health, 300, "Ground Zero's damage")
+        assert(o.mv == Mv.hit_air, "not knocked down")
+        assert(sgn(fx[1].vx) == sgn(o.x - g.x), "not blown away from Gamma")
+        print(what)
+        print(": 300, blown away (")
+        print_fixed(fx[1].vx)
+        println(" m a frame)")
+        gx_part += 1
+        if gx_part == 1 { gx_restart(Mech.Hero, -3.0, 3.0) } else { gx_restart(Mech.Hero, -6.5, 6.5) }
+        fight.f[0].meter = METER_BAR
+    }
+}
+
+private fn gx_has_hit(i: s32) -> bool {
+    let b = &fbox[i]
+    for k in 0..b.n {
+        if b.b[k].kind == BOX_HIT { return true }
+    }
+    return false
+}
+
+// ---- 230
+
+const GX_FOES: [7]Mech = [Mech.Hero, Mech.Doubleblade, Mech.Beam, Mech.Tank, Mech.Twins, Mech.Shadow, Mech.Seraph]
+const GX_CNT_NAMES: [12]*u8 = ["rays", "rods", "flares", "shields", "grabs", "supers", "vents", "dazes",
+                               "burns", "wards", "absorbs", "vents punished"]
+
+private fn gx_check_cpu() {
+    for s in 0..2 {
+        let f = &fight.f[s]
+        if f.mech != Mech.Gamma { continue }
+        let fresh = f.mv != gx_prev[s] || fx[s].t < gx_prev_t[s]
+        if fresh && f.mv == Mv.sp_n { gx_cnt[0] += 1 }
+        if fresh && f.mv == Mv.sp_u { gx_cnt[2] += 1 }
+        if fresh && f.mv == Mv.sp_d { gx_cnt[3] += 1 }
+        if fresh && f.mv == Mv.grab { gx_cnt[4] += 1 }
+        gx_prev[s] = f.mv
+        gx_prev_t[s] = fx[s].t
+    }
+    let ev = fight_events()
+    for e in 0..ev.n {
+        let k = &ev.e[e]
+        let sd = clamp(k.side, 0, 1)
+        let gm = fight.f[sd].mech == Mech.Gamma
+        if gm && k.kind == Ev.Shot { gx_cnt[1] += 1 }
+        if gm && k.kind == Ev.Super { gx_cnt[5] += 1 }
+        if gm && k.kind == Ev.Vent { gx_cnt[6] += 1 }
+        if gm && k.kind == Ev.Daze { gx_cnt[7] += 1 }
+        if gm && k.kind == Ev.Burn { gx_cnt[8] += 1 }
+        if !gm && k.kind == Ev.Reflect && k.power == 0 { gx_cnt[9] += 1 }
+        if !gm && k.kind == Ev.Armour && fight.f[1 - sd].mech == Mech.Gamma { gx_cnt[10] += 1 }
+        // a hit on a venting Gamma
+        if k.kind == Ev.Hit && !gm && gamma_venting(1 - sd) { gx_cnt[11] += 1 }
+    }
+    if fight.phase != Phase.MatchOver { return }
+    print("run ")
+    print_int(gx_matches + 1)
+    print(": ")
+    print(MECH_NAMES[fight.f[0].mech])
+    print(" against ")
+    print(MECH_NAMES[fight.f[1].mech])
+    print(", winner ")
+    print_int(fight.winner)
+    print(" (")
+    print_int(fight.wins[0])
+    print("-")
+    print_int(fight.wins[1])
+    print(") after ")
+    print_int(frames)
+    println(" frames")
+    gx_matches += 1
+    if gx_matches == 2 * len(GX_FOES) {
+        print("Gamma's CPU over the run:")
+        for k in 0..12 {
+            print(" ")
+            print(GX_CNT_NAMES[k])
+            print(" ")
+            print_int(gx_cnt[k])
+        }
+        println("")
+        for k in 0..6 { assert(gx_cnt[k] > 0, "Gamma's CPU never used one of its moves") }
+        gx_ok("Gamma's CPU: its matches finish, every special, the throw and the super used")
+        return
+    }
+    let foe = GX_FOES[gx_matches / 2]
+    if gx_matches % 2 == 1 { fight_init(foe, Mech.Gamma, FightMode.Versus, 2) }
+    else { fight_init(Mech.Gamma, foe, FightMode.Versus, 2) }
+    gx_prev[0] = Mv.idle
+    gx_prev[1] = Mv.idle
+    frames = 0
 }

@@ -430,6 +430,24 @@ class AuthoringTests(Files, unittest.TestCase):
         marks = struct.unpack_from(f'<{ward.length}I', blob, at)
         self.assertEqual(list(marks), ward.marks)
 
+    def test_shield_mark(self):
+        # Lead Shielding's mark (Gamma's sp_d): a bit of its own, set on its frames like any mark
+        self.assertEqual(MARKS['shield'], 4096)
+        m = Move(self.move('s', base=str(BODY), marks={'shield': [[2, 4]], 'riposte': [7]}))
+        self.assertEqual([f for f in range(m.length) if m.marks[f] & MARKS['shield']], [2, 3, 4])
+        self.assertEqual(m.marks[7], MARKS['riposte'])
+        # Gamma's sp_d: the brace on 5-28 and the after-absorb section's riposte on 47 (MOVES.md),
+        # 59 frames, exported as is
+        brace = Move(CART/'anims'/'gamma'/'sp_d.anim.json')
+        self.assertEqual(brace.length, 59)
+        self.assertEqual([f for f in range(brace.length) if brace.marks[f] & MARKS['shield']], list(range(5, 29)))
+        self.assertEqual([f for f in range(brace.length) if brace.marks[f] & MARKS['riposte']], [47])
+        line = next(s for s in (CART/'anim_data.akr').read_text().splitlines() if s.endswith('// gamma sp_d'))
+        at = int(line.split('marks: ')[1].split(',')[0])
+        blob = (CART/'anims'/'anim_data.bin').read_bytes()
+        marks = struct.unpack_from(f'<{brace.length}I', blob, at)
+        self.assertEqual(list(marks), brace.marks)
+
     def test_allow_comes_from_the_rig_and_merges(self):
         rig = load_rig(HERO_RIG)
         self.assertIn(frozenset(('forearm_r', 'weapon_r')), rig.allow)

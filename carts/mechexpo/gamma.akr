@@ -1,63 +1,554 @@
-// Mech Expo 2000: Gamma (mx-gamma-rig). Heartland Atomic Company's echo of Beam, HA-58, the
-// gunner (MOVES.md, "Decided by the owner (2026-10-14): Gamma, Heartland's ray gun"): Beam's frame
-// on the Hero's skeleton refitted from army surplus (models/gamma/make_gamma.py: a searchlight
-// turned ray projector on the right hand, a lead shield stowed on the left forearm), on
-// Heartland's nuclear meter.
+// Mech Expo 2000: Gamma (mx-gamma-rig, mx-gamma-fight). Heartland Atomic Company's echo of Beam,
+// HA-58, the gunner (MOVES.md, "Gamma"): Beam's frame on the Hero's skeleton refitted from army
+// surplus (models/gamma/make_gamma.py: a searchlight turned ray projector on the right hand, a lead
+// shield stowed on the left forearm), on Heartland's nuclear meter. What its hits do, its stand-in
+// timings, boxes, marks and root motion until its own animations land (moves.akr asks here for
+// Mech.Gamma), and its rules (phase 2's fight, mx-gamma-fight):
 //
-// Phase 1 (this file as it is): Gamma is in the game, drawn and pickable, and plays Beam's moves
-// as placeholders: Beam's animations on Gamma's rig (anims/gamma/, each based on Beam's, the
-// shield held stowed), Beam's hits (gamma_hit), and Beam's rules for its specials. Its own: the
-// nuclear meter (moves.akr's STATS: it fills as Gamma takes damage, as Tank's does; meter.akr and
-// the HUD's gauge go by the power source, not the mech) and the reactor's glow on its chest
-// (tank_fx.akr's, for any nuclear mech). Health, walk and jump are Beam's for now.
+//   the Atomic Ray     sp_n: a held beam, Gamma's own hit box (not a shot): on while B is held from
+//                      the charge frame, hitting once every GM_TICK frames (the box re-armed), the
+//                      first tick an ordinary hit and the later ones without hitstop or events,
+//                      scaled as one hit (gamma_ray_touch); it heats the gun (Fighter.heat) a point
+//                      a frame and vents at GM_HEAT_MAX (the riposte frame: 50 frames open); it
+//                      burns a strength-1 shot (+10 heat) and is cut by a stronger one
+//                      (gamma_ray_shots), cut by a Parry (Fx.ray_cut) and held off by a Wing Ward
+//                      (fighter.akr's R_WARD: +10 heat a tick)
+//   the Rod Shot       sp_f: a shot in fighter.akr's shot system (Shot.pierce): through every shot,
+//                      through Tank's armour and Lead Shielding, never through a mech
+//   the Geiger Flare   sp_u: the anti-air; its hit dazes (Hit.daze: fighter.akr's struck(), Fx.dazed)
+//   Lead Shielding     sp_d: on its `shield` frames (MARK_SHIELD) the next hit is absorbed as by
+//                      Tank's armour (absorb()), then the move jumps to its riposte frame; a ray is
+//                      held to the brace's end (Fx.shield_ray); grabs, supers and the rod beat it
+//   Point Blank        the throw: the other blasted off about 10 m (GM_PB_VX, fighter.akr's throw)
+//   Ground Zero        the super: its hit box on both sides of the root (the data), the heat to 0
 //
-// Each of Beam's mechanics asks one predicate below whether a mech has it. Beam's code reads the
-// predicate, never Gamma's name, so phase 2 can give Gamma one of its own specials by taking
-// Gamma out of that predicate and adding its own branch, without touching Beam's:
-//
-//   sp_n   has_volt_orb     the Volt Orb: the shot (fighter.akr's fires_shot and shot_fire), its
-//                           charge on the charge frame, the charge's glow and hum (beam_fx.akr);
-//                           Gamma's: the Atomic Ray (held while B is held, the gun heating)
-//   throw  has_shock_grip   the Shock Grip's throw-off (fighter.akr's throw) and its buzz
-//                           (beam_fx.akr); Gamma's own throw is still to be designed
-//   all    has_arc_fx       the discharges drawn over Beam's hit boxes (beam_fx.akr); Gamma's own
-//                           effects: the ray, the Rod Shot, the Geiger Flare, Ground Zero
-//   CPU    cpu_as_beam      (cpu.akr) the charge, the orb against a shot, the zoning neutral
-//
-// The Arc Lance (sp_f: the Rod Shot's slot), the Thunder Pillar (sp_u: the Geiger Flare's) and the
-// Raikō Overload (super: Ground Zero's) are data only, in the animations and gamma_hit. Beam's
-// Reaction Prime (sp_d: Lead Shielding's slot) is a chemical meter's (meter.akr, by the power
-// source): on Gamma it plays the prime's animation and starts no reaction. Lead Shielding will be a
-// branch in fighter.akr's hits (an absorbed hit, like Tank's armour, still feeding the reactor).
+// Beam's code asks predicates, never Gamma's name: has_volt_orb, has_shock_grip and has_arc_fx are
+// Beam's alone now, and Gamma's own sit beside them. The shared files call these with a line each;
+// the drawing and the sounds are gamma_fx.akr's. Frames here count from 0 (MOVES.md's tables
+// count from 1).
 
 import "moves.akr"
+import "fight.akr"
 
-fn has_volt_orb(m: Mech) -> bool { return m == Mech.Beam || m == Mech.Gamma }
-fn has_shock_grip(m: Mech) -> bool { return m == Mech.Beam || m == Mech.Gamma }
-fn has_arc_fx(m: Mech) -> bool { return m == Mech.Beam || m == Mech.Gamma }
+// ---- which mech has which rule: Beam's (fighter.akr, beam_fx.akr) and Gamma's own
 
-// ---- what Gamma's hits do: Beam's (phase 1)
+fn has_volt_orb(m: Mech) -> bool { return m == Mech.Beam }
+fn has_shock_grip(m: Mech) -> bool { return m == Mech.Beam }
+fn has_arc_fx(m: Mech) -> bool { return m == Mech.Beam }
 
-fn gamma_hit(mv: Mv) -> Hit { return beam_hit(mv) }
+fn has_ray(m: Mech) -> bool { return m == Mech.Gamma }            // the Atomic Ray and the heat
+fn has_rod(m: Mech) -> bool { return m == Mech.Gamma }            // the Rod Shot
+fn has_flare(m: Mech) -> bool { return m == Mech.Gamma }          // the Geiger Flare's daze (its Hit)
+fn has_shielding(m: Mech) -> bool { return m == Mech.Gamma }      // Lead Shielding
+fn has_point_blank(m: Mech) -> bool { return m == Mech.Gamma }    // the throw's distance
+fn has_ground_zero(m: Mech) -> bool { return m == Mech.Gamma }    // the super's heat reset
 
-// The stand-in timings and boxes, for a move with no animation (none: every move of the list has
-// one, based on Beam's, but the Twins' combine and split): Beam's.
-fn gamma_tm(mv: Mv) -> Tm { return beam_tm(mv) }
+// Any of Gamma's: gamma_tick runs in the fight.
+fn has_gamma_kit(m: Mech) -> bool {
+    return has_ray(m) || has_rod(m) || has_flare(m) || has_shielding(m) || has_point_blank(m) || has_ground_zero(m)
+}
 
-// ---- the training move list: Beam's moves, the meter Heartland's
+// ---- the Atomic Ray (sp_n) and the heat
+
+const GM_RAY_MIN = 12               // the ray's frames however briefly B was held (to the charge frame)
+const GM_TICK = 6                   // it hits once every GM_TICK frames it is on
+const GM_TICK_FLASH = 3             // a later tick: the defender shakes this long (no hitstop)
+const GM_HEAT_MAX = 100             // the gun vents here
+const GM_HEAT_BURN = 10             // a shot burnt, a tick held off by a Wing Ward
+const GM_VENT_COOL = 2              // a frame through the vent (100 to 0 over its 50 frames)
+const GM_RAY_X0: fixed = 2.5        // the ray's box (the CPU's reach; the data has the box)
+const GM_RAY_X1: fixed = 13.0
+const GM_RAY_Y0: fixed = 6.0
+const GM_RAY_Y1: fixed = 8.0
+
+// ---- the Rod Shot (sp_f)
+
+const GM_ROD_X: fixed = 5.0         // where it starts, ahead of the mech
+const GM_ROD_SPEED: fixed = 0.60    // m a frame: the fastest shot
+const GM_ROD_HALF: fixed = 0.6
+const GM_ROD_Y0: fixed = 6.4
+const GM_ROD_Y1: fixed = 7.2
+const GM_ROD_LIFE = 60              // 36 m
+
+// ---- the Geiger Flare (sp_u), Point Blank (throw)
+
+const GM_DAZE = 32                  // frames of daze
+const GM_PB_VX: fixed = 0.30        // Point Blank's throw-off (the Hero's throw's), about 10 m
+
+// ---- the stand-in frames (MOVES.md's tables, from 0), where the data has no marks for them
+
+const GM_CHARGE = 29                // sp_n: the ray's last frame, held while B is held
+const GM_VENT = 46                  // sp_n: the vent's first frame (`riposte`)
+const GM_SH0 = 5                    // sp_d: the `shield` frames
+const GM_SH1 = 28
+const GM_SH_RIP = 47                // sp_d: after an absorb (`riposte`)
+const GM_REL_F = 14                 // sp_f: the rod leaves (`release`)
+const GM_GZ0 = 44                   // super: the blast's active frames
+const GM_GZ1 = 51
+const GM_FLASH = 40                 // super: the flash
+const GM_INV_U = 6                  // sp_u: invulnerable 0..GM_INV_U
+const GM_INV_S = 44                 // super: invulnerable 0..GM_INV_S
+
+var gm_in_fight: bool               // a side has Gamma's rules (fight_init): else gamma_tick does nothing
+var gm_on: [2]bool                  // the side's ray was on this frame (gamma_ray_advance): no cooling
+var gm_cool: [2]s32                 // the cooling's every second frame
+
+// The frames the rules need, found once (gamma_find): the stand-ins' or the animations'.
+var gm_found: bool
+var gm_charge: s32
+var gm_ray0: s32
+var gm_vent: s32
+var gm_sh1: s32
+var gm_sh_rip: s32
+
+// ---- its own animations and the placeholders: every move of Gamma's is its own animation now
+// (phase 2's anims/gamma/), so the fight plays each from the animation data, as every other mech's;
+// the stand-in data below is for the moves the export marks as stand-ins (anim_standin: the Twins'
+// combine and split), and the record of the timings it played while the animations were Beam's
+// placeholders. A placeholder of Beam's on Gamma's rig has Beam's length, and each of these eight
+// of Gamma's own differs from Beam's in length (MOVES.md: 25, 41, 42, 96, 39, 41, 59, 96 against
+// Beam's 24, 40, 41, 45, 44, 42, 44, 100); moves.akr's use_standin asked that while they were
+// (two table reads a call: about 8,000 cycles on the first frame of any fight, scenario 69's, so
+// it is now the tests': scenario 200 asserts that no move of Gamma's is one).
+
+const GM_OWN: u32 = ((1 as u32) << (Mv.atk_n as u32)) | ((1 as u32) << (Mv.atk_f as u32))
+    | ((1 as u32) << (Mv.atk_d as u32)) | ((1 as u32) << (Mv.sp_n as u32)) | ((1 as u32) << (Mv.sp_f as u32))
+    | ((1 as u32) << (Mv.sp_u as u32)) | ((1 as u32) << (Mv.sp_d as u32)) | ((1 as u32) << (Mv.super as u32))
+
+// Whether mv's animation still has Beam's length (a placeholder of Beam's): the tests ask.
+fn gamma_placeholder(mv: Mv) -> bool {
+    return (GM_OWN & ((1 as u32) << (mv as u32))) != 0 && anim_len(Mech.Gamma, mv) == anim_len(Mech.Beam, mv)
+}
+
+// fight_init (before the CPU reads the reaches): whether a side has Gamma's rules; its frames
+// (once); a cold gun.
+fn gamma_init() {
+    gm_in_fight = has_gamma_kit(fight.f[0].mech) || has_gamma_kit(fight.f[1].mech)
+    if gm_in_fight { gamma_find() }
+    gamma_round()
+}
+
+// The start of a round: a cold gun.
+fn gamma_round() {
+    for s in 0..2 {
+        fight.f[s].heat = 0
+        gm_on[s] = false
+        gm_cool[s] = 0
+    }
+}
+
+// The frames, read once from the data the fight plays (a few dozen reads of a u32: the data does
+// not change); the stand-ins' constants where a mark is missing.
+fn gamma_find() {
+    if gm_found { return }
+    gm_found = true
+    gm_charge = GM_CHARGE
+    gm_vent = GM_VENT
+    gm_sh1 = GM_SH1
+    gm_sh_rip = GM_SH_RIP
+    let c = gm_mark_from(Mv.sp_n, MARK_CHARGE, 0)
+    if c >= 0 { gm_charge = c }
+    let v = gm_mark_from(Mv.sp_n, MARK_RIPOSTE, gm_charge + 1)
+    if v >= 0 { gm_vent = v }
+    let s0 = gm_mark_from(Mv.sp_d, MARK_SHIELD, 0)
+    var s1 = s0
+    if s0 >= 0 {
+        let n = mv_len(Mech.Gamma, Mv.sp_d)
+        while s1 + 1 < n && (mv_marks(Mech.Gamma, Mv.sp_d, s1 + 1) & MARK_SHIELD) != 0 { s1 += 1 }
+        gm_sh1 = s1
+    }
+    let r = gm_mark_from(Mv.sp_d, MARK_RIPOSTE, max(s1, 0))
+    if r >= 0 { gm_sh_rip = r }
+    gm_ray0 = gm_charge - GM_RAY_MIN + 1
+}
+
+private fn gm_mark_from(mv: Mv, mark: u32, from: s32) -> s32 {
+    let n = mv_len(Mech.Gamma, mv)
+    for k in from..n {
+        if (mv_marks(Mech.Gamma, mv, k) & mark) != 0 { return k }
+    }
+    return -1
+}
+
+// The riposte frame of Gamma's sp_n (the vent) and sp_d (after an absorb): fighter.akr's rip_frame.
+fn gamma_rip(mv: Mv) -> s32 {
+    gamma_find()
+    if mv == Mv.sp_n { return gm_vent }
+    if mv == Mv.sp_d { return gm_sh_rip }
+    return find_mark(Mech.Gamma, mv, MARK_RIPOSTE)
+}
+
+// ---- the ray's state, for the fight, the CPU and the effects
+
+// Whether side i's ray is on now (its hit box out, or held on the charge frame).
+fn gamma_ray_on(i: s32) -> bool {
+    let f = &fight.f[i]
+    if !has_ray(f.mech) || f.mv != Mv.sp_n || fx[i].riposte { return false }
+    gamma_find()
+    return fx[i].t >= gm_ray0 && fx[i].t <= gm_charge
+}
+
+// Whether side i is venting (sp_n's vent section: open, no block, no move).
+fn gamma_venting(i: s32) -> bool {
+    let f = &fight.f[i]
+    if !has_ray(f.mech) || f.mv != Mv.sp_n || !fx[i].riposte { return false }
+    gamma_find()
+    return fx[i].t >= gm_vent
+}
+
+// Frames left of side i's vent (0: not venting).
+fn gamma_vent_left(i: s32) -> s32 {
+    if !gamma_venting(i) { return 0 }
+    return max(mv_len(fight.f[i].body, Mv.sp_n) - fx[i].t, 0)
+}
+
+// ---- each frame (fight_tick, outside the freezes): the gun cools, the vent empties it, Ground
+// Zero's blast takes it with it
+
+fn gamma_tick(live: bool) {
+    if !gm_in_fight { return }
+    for s in 0..2 {
+        let f = &fight.f[s]
+        if !has_ray(f.mech) { continue }
+        if f.mv == Mv.super && has_ground_zero(f.mech) && gm_has_hit(s) {
+            f.heat = 0                              // the blast's active frames: the heat with it
+        } else if gamma_venting(s) {
+            f.heat = max(f.heat - GM_VENT_COOL, 0)
+        } else if !gm_on[s] && live && f.heat > 0 {
+            gm_cool[s] += 1
+            if gm_cool[s] >= 2 {
+                gm_cool[s] = 0
+                f.heat -= 1
+            }
+        }
+        gm_on[s] = false
+    }
+}
+
+private fn gm_has_hit(i: s32) -> bool {
+    let b = &fbox[i]
+    for k in 0..b.n {
+        if b.b[k].kind == BOX_HIT { return true }
+    }
+    return false
+}
+
+// Adds n to side i's heat (a shot burnt, a warded tick): at GM_HEAT_MAX with the ray on, it vents.
+fn gamma_heat_add(i: s32, n: s32) {
+    let f = &fight.f[i]
+    f.heat = min(f.heat + n, GM_HEAT_MAX)
+    if f.heat >= GM_HEAT_MAX && gamma_ray_on(i) { gamma_vent(i) }
+}
+
+// The gun vents: the ray out at once, the move jumps to the vent (its riposte frame), the event.
+private fn gamma_vent(i: s32) {
+    let f = &fight.f[i]
+    let x = &fx[i]
+    f.heat = GM_HEAT_MAX
+    x.t = gm_vent
+    x.riposte = true
+    x.ray_t = 0
+    ev_add(Ev.Vent, i & 1, f.x, f.y, 0)
+}
+
+// The ray is cut (a stronger shot, a Parry): the move goes on from the shut-off, no vent.
+fn gamma_ray_cut(i: s32) {
+    if !gamma_ray_on(i) { return }
+    fx[i].t = gm_charge + 1
+    fx[i].ray_t = 0
+}
+
+// ---- the held ray and Lead Shielding's held ray (fighter.akr's advance asks here, before the
+// charge rule, for a mech with either). Whether it handled the frame.
+
+fn gamma_ray_advance(i: s32) -> bool {
+    let f = &fight.f[i]
+    let x = &fx[i]
+    if f.mv == Mv.sp_d && has_shielding(f.mech) {
+        if x.t == 0 { x.shield_ray = false }
+        // a ray held on the brace: when the brace's last frame has been shown, the after-absorb section
+        if x.riposte && x.shield_ray && x.t >= gm_sh1 {
+            x.shield_ray = false
+            x.t = gm_sh_rip
+            return true
+        }
+        return false
+    }
+    if f.mv != Mv.sp_n || !has_ray(f.mech) { return false }
+    gamma_find()
+    let t = x.t
+    if t == 0 {
+        x.ray_t = 0
+        x.ray_n = 0
+        x.ray_cut = false
+        x.ray_ward = false
+    }
+    if x.ray_cut {
+        // parried: the Parry's freeze is over and the ray is cut
+        x.ray_cut = false
+        gamma_ray_cut(i)
+        return true
+    }
+    if x.riposte || t < gm_ray0 - 1 || t > gm_charge { return false }   // the dig-in, the shut-off, the vent
+    var nt = t + 1
+    if t == gm_charge {
+        if (x.pad & B) == 0 { return false }        // let go: the shut-off
+        nt = t                                      // held: the ray stays on
+    }
+    // a frame of the ray: the tick clock, the box re-armed every GM_TICK frames, the heat
+    x.t = nt
+    x.ray_t += 1
+    if x.ray_t > 1 && (x.ray_t - 1) % GM_TICK == 0 { x.hits = 0 }
+    gm_on[i & 1] = true
+    f.heat += 1
+    if f.heat >= GM_HEAT_MAX { gamma_vent(i) }
+    return true
+}
+
+// Side i's ray touched body j (resolve(), before what it does): whether this is a later tick of the
+// same ray (the last tick also touched, GM_TICK frames before) goes to fighter.akr's tick_later,
+// and the combo its first tick found to tick_combo.
+fn gamma_ray_touch(i: s32, j: s32) {
+    let x = &fx[i]
+    let later = x.ray_n > 0 && x.ray_t - x.ray_last <= GM_TICK
+    if !later { x.ray_combo = fx[j].combo }
+    tick_later = later
+    tick_combo = x.ray_combo
+    x.ray_n += 1
+    x.ray_last = x.ray_t
+}
+
+// Whether side i's ray touching body j is held off by a Wing Ward (j warding, from in front).
+fn gamma_ray_warded(i: s32, j: s32) -> bool {
+    let f = &fight.f[i]
+    if f.mv != Mv.sp_n || !has_ray(f.mech) || !seraph_warding(j) { return false }
+    return sgn(f.x - fight.f[j].x) == fight.f[j].facing
+}
+
+// A tick held off by a Wing Ward: nothing to Seraph, 10 heat to the gun; the first posts Reflect
+// (power 0: a held beam, nothing sent back) for the flash and the clang.
+fn gamma_warded(i: s32, j: s32, p: vec2) {
+    if !fx[i].ray_ward {
+        fx[i].ray_ward = true
+        ev_add(Ev.Reflect, j & 1, p.x, p.y, 0)
+    }
+    gamma_heat_add(i, GM_HEAT_BURN)
+}
+
+// ---- the ray against the shots (fighter.akr's shots_tick, after the meet rule): a shot of the
+// other side whose box overlaps the ray's this frame, in x and y. Strength 1 is burnt up (+10
+// heat, Burn); 2 is gone and cuts the ray; 3 cuts the ray and goes on; the Rod Shot passes through.
+
+fn gamma_ray_shots() {
+    if !gm_in_fight { return }
+    for i in 0..2 {
+        if !gamma_ray_on(i) || fx[i].pause > 0 { continue }
+        let s = &fight.shot[other(i)]
+        if !s.on || s.pierce || s.t < 0 { continue }
+        let bb = &fbox[i]
+        for k in 0..bb.n {
+            if bb.b[k].kind != BOX_HIT { continue }
+            let w = world_box(i, &bb.b[k])
+            if !overlap(w, vec4(s.x - s.half, s.y0, s.x + s.half, s.y1)) { continue }
+            if s.str <= 1 {
+                s.on = false
+                ev_add(Ev.Burn, i, s.x, (s.y0 + s.y1) / 2, s.str)
+                gamma_heat_add(i, GM_HEAT_BURN)
+            } else {
+                if s.str == 2 { s.on = false }
+                gamma_ray_cut(i)
+            }
+            break
+        }
+    }
+}
+
+// ---- Lead Shielding: whether body j absorbs a hit from move mv of side i's (pierce: the Rod
+// Shot): on a `shield` frame, on the ground, not a super, not the rod, nothing absorbed yet this
+// move, or a ray it is already holding.
+
+fn gamma_shielded(i: s32, j: s32, mv: Mv, pierce: bool) -> bool {
+    let d = &fight.f[j]
+    if !has_shielding(d.mech) || d.mv != Mv.sp_d || mv == Mv.super || pierce || !grounded(j) { return false }
+    if (cur_marks(j) & MARK_SHIELD) == 0 { return false }
+    if !fx[j].riposte { return true }
+    return fx[j].shield_ray && mv == Mv.sp_n && has_ray(fight.f[i].mech)
+}
+
+// Absorbs it (Tank's armour's absorb(): the damage in full, the reactor, the hitstop, Armour), then
+// the brace ends: the move jumps to its riposte frame. A ray is held to the brace's last frame.
+fn gamma_shield_absorb(i: s32, j: s32, h: Hit, p: vec2, shot: bool) {
+    absorb(i, j, h, p, shot)
+    let x = &fx[j]
+    if x.riposte { return }                     // a held ray's later tick
+    x.riposte = true
+    if !shot && fight.f[i].mv == Mv.sp_n && has_ray(fight.f[i].mech) {
+        x.shield_ray = true
+        return
+    }
+    gamma_find()
+    x.t = gm_sh_rip
+}
+
+// ---- the Rod Shot
+
+// Fires side i's rod (fighter.akr's shot_fire, on sp_f's release frame).
+fn gamma_rod_fire(i: s32, s: *Shot) {
+    let f = &fight.f[i]
+    let ft = fixed(f.facing)
+    s.pierce = true
+    s.lvl = 0
+    s.str = 0
+    s.x = f.x + ft * GM_ROD_X
+    s.vx = ft * GM_ROD_SPEED
+    s.half = GM_ROD_HALF
+    s.y0 = GM_ROD_Y0
+    s.y1 = GM_ROD_Y1
+    s.life = GM_ROD_LIFE
+    ev_add(Ev.Shot, i, s.x, (GM_ROD_Y0 + GM_ROD_Y1) / 2, 1)
+}
+
+fn rod_hit() -> Hit { return Hit { dmg: 75, chip: 15, hitstun: 20, blockstun: 16, stop: 9, power: 1, kb: 0.14 } }
+
+// ---- what Gamma's hits do (MOVES.md's tables)
+
+fn gamma_hit(mv: Mv) -> Hit {
+    return match mv {
+        atk_n => Hit { dmg: 70, hitstun: 19, blockstun: 14, stop: 8, kb: 0.10 }
+        atk_f => Hit { dmg: 105, hitstun: 26, blockstun: 19, stop: 11, power: 1, kb: 0.14 }
+        atk_d => Hit { dmg: 90, blockstun: 16, stop: 11, power: 1, kb: 0.10, kd: true, launch: 0.30 }
+        atk_air => Hit { dmg: 95, hitstun: 20, blockstun: 15, stop: 11, power: 1, kb: 0.08 }
+        sp_n => Hit { dmg: 10, chip: 2, hitstun: 10, blockstun: 9, stop: 8, kb: 0.26 }     // a tick
+        sp_f => rod_hit()
+        // the daze in place of the hitstun; a mech dazed since it last acted takes the hitstun
+        sp_u => Hit { dmg: 70, chip: 14, hitstun: 20, blockstun: 14, stop: 11, power: 1, daze: GM_DAZE }
+        throw => Hit { dmg: 120, stop: 10, power: 2, kd: true, launch: 0.30 }
+        super => Hit { dmg: 300, chip: 75, blockstun: 22, stop: 20, power: 3, kb: 0.30, kd: true, launch: 0.70 }
+        else => HIT_NONE
+    }
+}
+
+// ---- the stand-in timings, boxes, marks and root motion (MOVES.md's tables, from 0), for the
+// moves the export marks as stand-ins (anim_standin)
+
+fn gamma_tm(mv: Mv) -> Tm {
+    return match mv {
+        idle => Tm { len: 60, loops: true }
+        walk_f, walk_b => Tm { len: 52, loops: true }
+        crouch => Tm { len: 8, loops: true, shape: 1 }
+        jump => Tm { len: 46, shape: 2 }
+        land => Tm { len: 10 }
+        atk_n => Tm { len: 25, a0: 7, a1: 9, hx0: 1.8, hy0: 6.0, hx1: 9.0, hy1: 9.0, c1: 15, reach: 8.9 }
+        atk_f => Tm { len: 41, a0: 15, a1: 18, hx0: 3.5, hy0: 6.0, hx1: 10.0, hy1: 8.5, c1: 24,
+                      m0: 3, m1: 12, dx: 0.08, reach: 4.5 }
+        atk_d => Tm { len: 42, a0: 12, a1: 16, hx0: 1.5, hy0: 0.0, hx1: 8.0, hy1: 2.0, shape: 1, reach: 3.5 }
+        atk_air => Tm { len: 32, a0: 9, a1: 14, hx0: 0.5, hy0: -3.0, hx1: 5.5, hy1: 3.0, shape: 2 }
+        sp_n => Tm { len: 96, ch: GM_CHARGE, rip: GM_VENT }
+        sp_f => Tm { len: 39, rel: GM_REL_F }
+        sp_u => Tm { len: 41, a0: 7, a1: 12, hx0: 0.0, hy0: 6.0, hx1: 6.0, hy1: 18.0, i0: 0, i1: GM_INV_U }
+        sp_d => Tm { len: 59, rip: GM_SH_RIP }
+        grab => Tm { len: 7, a0: 5, a1: 6, hx0: 1.0, hy0: 2.0, hx1: 3.6, hy1: 10.0 }
+        throw, thrown => Tm { len: 46, rel: 32 }
+        thrown_vault => Tm { len: 40, rel: 28 }
+        super => Tm { len: 96, a0: GM_GZ0, a1: GM_GZ1, hx0: -8.0, hy0: 0.0, hx1: 8.0, hy1: 12.0, flash: GM_FLASH,
+                      i0: 0, i1: GM_INV_S }
+        else => common_tm(mv)
+    }
+}
+
+// A stand-in move's length (moves.akr's mv_len: no Tm built a call).
+fn gamma_len(mv: Mv) -> s32 {
+    return match mv {
+        atk_n => 25
+        atk_f => 41
+        atk_d => 42
+        sp_n => 96
+        sp_f => 39
+        sp_u => 41
+        sp_d => 59
+        super => 96
+        else => gamma_tm(mv).len
+    }
+}
+
+// The root motion of frame f: the Glare Lance's half step (0.8 m over 3-12); the vent's stagger
+// back (0.8 m over 41-49).
+fn gamma_root(mv: Mv, f: s32) -> vec2 {
+    if mv == Mv.atk_f && f >= 3 && f <= 12 { return vec2(0.08, 0.0) }
+    if mv == Mv.sp_n && f >= GM_VENT && f <= GM_VENT + 8 { return vec2(-0.088889, 0.0) }
+    return vec2(0.0, 0.0)
+}
+
+// The marks of frame f (a frame at a time, for find_mark's and count_mark's loops).
+fn gamma_marks(mv: Mv, f: s32) -> u32 {
+    return match mv {
+        atk_n => if_u32(f >= 7 && f <= 15, MARK_CANCEL)
+        atk_f => if_u32(f >= 15 && f <= 24, MARK_CANCEL)
+        sp_n => if_u32(f == GM_CHARGE, MARK_CHARGE) | if_u32(f == GM_VENT, MARK_RIPOSTE)
+        sp_f => if_u32(f == GM_REL_F, MARK_RELEASE)
+        sp_u => if_u32(f >= 0 && f <= GM_INV_U, MARK_INVULN)
+        sp_d => if_u32(f >= GM_SH0 && f <= GM_SH1, MARK_SHIELD) | if_u32(f == GM_SH_RIP, MARK_RIPOSTE)
+        super => if_u32(f >= 0 && f <= GM_INV_S, MARK_INVULN) | if_u32(f >= 0 && f < GM_FLASH, MARK_FLASH)
+        else => 0
+    }
+}
+
+private fn if_u32(c: bool, k: u32) -> u32 {
+    if c { return k }
+    return 0
+}
+
+// The stand-in boxes: Beam's body (standing, crouching in the sweep and the brace); the ray's box
+// x 2.5-13 at chest height on its frames and the arm out to 5.5 m until 8 frames after; the
+// projector out to 5 m after the rod; the hit boxes of the table (Ground Zero's on both sides).
+fn gamma_boxes(mv: Mv, f: s32, out: *Boxes) {
+    let t = gamma_tm(mv)
+    out.n = 0
+    var hy1 = 12.0
+    var py1 = 11.5
+    if t.shape == 1 || (mv == Mv.sp_d && f <= GM_SH1) {
+        hy1 = 8.0
+        py1 = 7.5
+    }
+    let p = STATS[Mech.Gamma].push
+    gm_box(out, BOX_HURT, -1.8, 0.0, 1.8, hy1)
+    gm_box(out, BOX_PUSH, -p, 0.0, p, py1)
+    if mv == Mv.sp_n {
+        let r0 = GM_CHARGE - GM_RAY_MIN + 1
+        if f >= r0 && f <= GM_CHARGE { gm_box(out, BOX_HIT, GM_RAY_X0, GM_RAY_Y0, GM_RAY_X1, GM_RAY_Y1) }
+        if f >= r0 && f <= GM_CHARGE + 8 { gm_box(out, BOX_HURT, 0.0, 5.5, 5.5, 8.5) }
+        return
+    }
+    if mv == Mv.sp_f {
+        if f >= GM_REL_F && f <= GM_REL_F + 10 { gm_box(out, BOX_HURT, 0.0, 5.5, 5.0, 8.5) }
+        return
+    }
+    if t.a0 >= 0 && f >= t.a0 && f <= t.a1 { gm_box(out, BOX_HIT, t.hx0, t.hy0, t.hx1, t.hy1) }
+    // the arm reaching out: hurtable from the first active frame until it comes back
+    if t.reach > 0.0 && f >= t.a0 && f <= t.a1 + 10 {
+        gm_box(out, BOX_HURT, 0.0, t.hy0 - 1.0, t.reach, t.hy1 + 1.0)
+    }
+}
+
+private fn gm_box(out: *Boxes, kind: u8, x0: fixed, y0: fixed, x1: fixed, y1: fixed) {
+    out.b[out.n] = Box { kind: kind, x0: x0, y0: y0, x1: x1, y1: y1 }
+    out.n += 1
+}
+
+// ---- the training move list
 
 const GAMMA_MOVES = MoveList { n: 15, e: [
-    MoveEntry { name: "Arc Jab", input: "A" },
-    MoveEntry { name: "Static Lance", input: "FWD + A" },
-    MoveEntry { name: "Ground Spark", input: "DOWN + A" },
-    MoveEntry { name: "Down Arc", input: "A in the air" },
-    MoveEntry { name: "Volt Orb", input: "B (hold to charge)" },
-    MoveEntry { name: "Arc Lance", input: "FWD + B" },
-    MoveEntry { name: "Thunder Pillar", input: "UP + B" },
-    MoveEntry { name: "Brace", input: "DOWN + B" },
-    MoveEntry { name: "Shock Grip", input: "Y" },
+    MoveEntry { name: "Lamp Jab", input: "A" },
+    MoveEntry { name: "Glare Lance", input: "FWD + A" },
+    MoveEntry { name: "Scorch Sweep", input: "DOWN + A" },
+    MoveEntry { name: "Down Flash", input: "A in the air" },
+    MoveEntry { name: "Atomic Ray", input: "B (hold: heats)" },
+    MoveEntry { name: "Rod Shot", input: "FWD + B (pierces)" },
+    MoveEntry { name: "Geiger Flare", input: "UP + B (dazes)" },
+    MoveEntry { name: "Lead Shielding", input: "DOWN + B (absorbs)" },
+    MoveEntry { name: "Point Blank", input: "Y" },
     MoveEntry { name: "Break a grab", input: "Y when grabbed" },
-    MoveEntry { name: "Overload", input: "A + B, one bar" },
+    MoveEntry { name: "Ground Zero", input: "A + B, one bar" },
     MoveEntry { name: "Block", input: "hold R" },
     MoveEntry { name: "Jump", input: "X (+ FWD or BACK)" },
     MoveEntry { name: "Chain", input: "A, FWD + A, B" },

@@ -113,10 +113,11 @@ const ROSTER_COLS = 5
 // Shadow (mx-seraph): stats 0x2323 (power 2: Shadow's hits for now; speed 3: a walk of 0.080 m a
 // frame, between the Hero's 0.075 (3) and Shadow's 0.085 (4); reach 2: fists 2.4-2.6 m shorter
 // than the talons; armour 3: 1,000 health, the Hero's), 13.5 m to the top of its halo; Gamma is
-// GAMMA, HA-58, Heartland's echo of Beam (mx-gamma-rig): stats 0x3253, Beam's, since its numbers
-// are Beam's for now (power 3: Beam's hits; speed 2: Beam's walk, 0.062 m a frame; reach 5: the
-// projector reaches as far as the Arc Cannon, the Arc Lance 15 m; armour 3: 1,000 health), 11.9 m
-// to the top of its searchlight head (13.6 to the whip antenna's tip).
+// GAMMA, HA-58, Heartland's echo of Beam (mx-gamma-rig): stats 0x3254 since its own numbers
+// (mx-gamma-fight; power 3: its normals a little heavier than Beam's, its specials lighter; speed 2:
+// a walk of 0.058 m a frame, between Tank's 0.055 (1) and Beam's 0.062 (2); reach 5: the ray's
+// 16 m and the Rod Shot across the stage; armour 4: 1,050 health, between Beam's 1,000 (3) and
+// Tank's 1,150 (5)), 11.9 m to the top of its searchlight head (13.6 to the whip antenna's tip).
 const ROSTER: [10]Slot = [
     // the base mechs
     Slot { maker: CO_MOMENTUM, mech: Mech.Hero as s32, rule: RULE_OPEN,
@@ -150,7 +151,7 @@ const ROSTER: [10]Slot = [
            blurb: "PALADIN: WARD,\nJUDGEMENT", hint: "CLEAR ARCADE\nWITH SHADOW" },
     Slot { maker: CO_HEARTLAND, echo: true, mech: Mech.Gamma as s32, rule: RULE_CLEAR, arg: 2, bit: 0x80,
            mystery: true, emblem: UI_EMBLEM_HEARTLAND, emblem24: UI_EMBLEM24_HEARTLAND, epal: PAL_POWER,
-           name: "GAMMA", short: "GAMMA", card: "GAMMA", model: "HA-58", height: 119, stats: 0x3253,
+           name: "GAMMA", short: "GAMMA", card: "GAMMA", model: "HA-58", height: 119, stats: 0x3254,
            blurb: "THE GUNNER:\nRAYS, LEAD", hint: "CLEAR ARCADE\nWITH BEAM" },
     Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 3, bit: 0x100, mystery: true, name: "?",
            short: "?", card: "?", model: "?", stats: 0, blurb: "", hint: "CLEAR ARCADE\nWITH TANK" },

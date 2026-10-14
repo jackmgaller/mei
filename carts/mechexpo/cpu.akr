@@ -71,6 +71,8 @@ struct Cpu {
     mine_t: s32
     shot_seen: bool         // the other's shot on its way was reacted to (once, whatever it holds)
     plan: s32               // Seraph: what it does about that shot (SP_*: ward it, dive over it, block)
+    grabs_seen: s32         // the other's grabs (Gamma shields less against a mech that grabs)
+    ray_seen: bool          // the other's Atomic Ray held with this mech out of its reach was answered
 }
 
 var cpu: [2]Cpu
@@ -199,6 +201,9 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
     let lv = cpu_level_row(level)
     var p = cpu_think(i, level)
     if rift[other(i)].on { p = mine_wary(i, lv, p) }
+    // no jump-ins within the ray's reach of a Gamma with a cool gun: its first tick knocks a jump
+    // down (MOVES.md, "The CPU (Gamma)")
+    if (p & X) != 0 && gamma_ray_ready(other(i)) && abs(fight.f[other(i)].x - fight.f[i].x) < GM_RAY_X1 { p &= ~X }
     // the novice's limits (mx-ladder); the other levels skip both (no dice rolled)
     if !lv.supers && (p & (A | B)) == (A | B) { p &= ~B }
     if lv.grabs < 100 && (p & Y) != 0 && !is_thrown(fight.f[i].mv) && !roll(&cpu[i], lv.grabs) { p &= ~Y }
@@ -224,6 +229,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         c.decided = false
         c.punish_rolled = false
         if op.mv == Mv.block { c.blocks_seen += 1 }
+        if op.mv == Mv.grab { c.grabs_seen += 1 }
     }
     c.opp_t = ot
     if fx[j].had_hit { c.opp_active = true }
@@ -240,6 +246,12 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
     }
     c.break_roll = false
 
+    // Gamma's Atomic Ray: B held while it is worth holding (gamma_ray_hold)
+    if cpu_as_gamma(me.mech) && me.mv == Mv.sp_n {
+        if gamma_ray_hold(i, level) { return B }
+        return 0
+    }
+
     // a chain on contact
     if fx[i].contact && is_attack(me.mv) {
         // on a hit the chain goes on; on a block the special at the end would be blocked too
@@ -251,6 +263,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         }
         if c.chain_go && (cur_marks(i) & MARK_CANCEL) != 0 && fx[i].t % 2 == 0 {
             if cpu_as_seraph(me.mech) { return seraph_chain(i, c, landed, fwd) }
+            if cpu_as_gamma(me.mech) { return gamma_chain(i, c, lv, landed, fwd) }
             if me.mv == Mv.atk_n {
                 if me.mech == Mech.Doubleblade && fx[i].chain == 0 { return A }
                 return fwd | A
@@ -292,6 +305,13 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
     if cpu_as_shadow(me.mech) && shadow_snared(j) && snare_t[j] <= SNARE_FRAMES - lv.react / 2 {
         return shadow_snare_punish(i, c, dist, fwd)
     }
+    // Gamma: a mech its Geiger Flare dazed: the ray if it is still dropping, else the jab or Point
+    // Blank
+    if cpu_as_gamma(me.mech) && (fx[j].dazed || fx[j].daze_drop > 0) {
+        if !grounded(j) && me.heat < GM_CPU_HOLD { return B }
+        if dist < 4.8 && grabbable(j) { return Y }
+        if dist < 9.5 { return A }
+    }
 
     // reactions to the other's move, once it has been seen long enough
     let opp_attacking = is_attack(op.mv) || op.mv == Mv.grab
@@ -314,6 +334,13 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
             c.decided = true
             if roll(c, lv.punish) { return A | B }
         }
+        // Gamma against a jump: the Geiger Flare close, the ray further out (a tick knocks it down)
+        if cpu_as_gamma(me.mech) && (op.mv == Mv.jump || op.mv == Mv.atk_air) && dist < GM_RAY_X1 - 1.0 {
+            c.decided = true
+            if dist < GM_AA_RANGE && roll(c, lv.aa) { return UP | B }
+            if dist >= GM_AA_RANGE && me.heat < GM_CPU_HOLD && roll(c, lv.aa) { return B }
+            if roll(c, lv.block) { return hold(c, R, 30) }
+        }
         // a jump coming in (Seraph's Ascension reaches about 5 m out: it waits until the jump is
         // within SR_AA_RANGE)
         if (op.mv == Mv.jump || op.mv == Mv.atk_air) && dist < 13.0 && !(cpu_as_seraph(me.mech) && dist > SR_AA_RANGE) {
@@ -321,13 +348,31 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
             if roll(c, lv.aa) { return dir_bit(0) | UP | B }
             if roll(c, lv.block) { return hold(c, R, 30) }
         }
-        // an attack starting in range
-        if opp_attacking && !c.opp_active && dist < tip(op.body) + 2.0 && op.mv != Mv.grab {
+        // an attack starting in range (Gamma's ray reaches 13 m: its dig-in is one out to there)
+        let ray = gamma_ray_starting(j)
+        var reach = tip(op.body) + 2.0
+        if ray { reach = GM_RAY_X1 + 2.0 }
+        if opp_attacking && !c.opp_active && dist < reach && op.mv != Mv.grab {
             c.decided = true
+            // Gamma: a reversal with Ground Zero, or Lead Shielding in place of the block
+            if cpu_as_gamma(me.mech) {
+                let g = gamma_answer(i, c, lv, dist)
+                if g != CPU_NO_IDEA { return g }
+            }
             // (never against a super: armour does not take a super's hit, so it is blocked: mx-balance)
             if me.mech == Mech.Tank && op.mv != Mv.super && roll(c, lv.punish / 2) { return tank_armour_through(dist, fwd) }
+            // under Gamma's ray (the slide, the Low Roll, the Sneak), or Seraph's ward into a hot gun
+            if ray {
+                let u = under_ray(i, c, lv, fwd)
+                if u != 0 { return u }
+            }
             if roll(c, lv.block) { return hold(c, R, 24) }
         }
+    }
+    // Gamma's gun venting: punished by what reaches it (MOVES.md, "The CPU (Gamma)")
+    if gamma_venting(j) && !c.punish_rolled {
+        c.punish_rolled = true
+        if roll(c, lv.punish) { return vent_punish(i, c, dist, fwd) }
     }
     // a whiff, or a move left unsafe on block: punish the recovery
     if seen && !c.punish_rolled && is_attack(op.mv) && c.opp_active && !fx[j].had_hit && grounded(j) {
@@ -336,6 +381,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
             if me.mech == Mech.Tank { return tank_punish(dist, fwd) }
             if me.mech == Mech.Shadow { return shadow_punish(dist, fwd) }
             if cpu_as_seraph(me.mech) { return seraph_punish(i, c, dist, fwd) }
+            if cpu_as_gamma(me.mech) { return gamma_punish(i, c, dist, fwd) }
             if super_wise(i) && dist < 12.0 && roll(c, 50) { return A | B }
             if dist < jab_reach(me.body) + 1.0 { return A }    // its jab's own reach (mx-balance)
             if dist < tip(me.body) - 0.5 { return fwd | A }
@@ -360,6 +406,8 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
                 c.charge_want = ORB_CHARGE_HALF + 4
                 return B
             }
+            // Gamma: the Rod Shot, which passes through it (a trade)
+            if cpu_as_gamma(me.mech) && tt > 24 && !fight.shot[i].on && roll(c, lv.aa) { return fwd | B }
             if tt > 24 { return hold(c, R, min(tt - 20, 20)) }
             if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
             if tt >= 8 && roll(c, lv.aa / 2) { return fwd | X }
@@ -367,6 +415,20 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         }
     } else {
         c.shot_seen = false
+    }
+    // Gamma's ray held with this mech out of its reach: the Hero's wave goes under it to Gamma's
+    // shins, Beam's charged orb cuts it (once a ray)
+    if gamma_ray_on(j) && dist > GM_RAY_X1 + 2.0 && !fight.shot[i].on {
+        if !c.ray_seen {
+            c.ray_seen = true
+            if me.mech == Mech.Hero && roll(c, lv.aa) { return B }
+            if cpu_as_beam(me.mech) && roll(c, lv.aa) {
+                c.charge_want = ORB_CHARGE_HALF + 4
+                return B
+            }
+        }
+    } else if !gamma_ray_on(j) {
+        c.ray_seen = false
     }
 
     // keep holding what was decided
@@ -383,6 +445,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         if e != CPU_NO_IDEA { return e }
     }
     if cpu_as_beam(me.mech) { return beam_neutral(i, c, lv, dist, fwd, back) }
+    if cpu_as_gamma(me.mech) { return gamma_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Tank { return tank_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Twins { return twins_neutral(i, c, lv, dist, fwd, back) }
     if cpu_as_shadow(me.mech) { return shadow_neutral(i, c, lv, dist, fwd, back) }
@@ -458,10 +521,10 @@ fn dummy_pad(i: s32) -> u32 {
 
 // ---- Beam (mx-beam): the zoner in neutral. Orbs at range (charged when far), the Arc Lance at a
 // mech walking or jumping in, the prime when it is safe (far, nothing coming), the super from
-// anywhere it reaches; up close a jab, a grab or a step back out. Gamma plays Beam's CPU until its
-// own moves land (mx-gamma-rig, phase 2), without the prime (its meter is nuclear: no reaction).
+// anywhere it reaches; up close a jab, a grab or a step back out. (Gamma has its own since
+// mx-gamma-fight, at the end of this file.)
 
-private fn cpu_as_beam(m: Mech) -> bool { return m == Mech.Beam || m == Mech.Gamma }
+private fn cpu_as_beam(m: Mech) -> bool { return m == Mech.Beam }
 private fn cpu_primes(m: Mech) -> bool { return meter_power(m) == Power.Chemical }
 
 // The room behind side i, to the stage's edge (a wall or an open lip).
@@ -862,8 +925,10 @@ private fn shot_above(i: s32, c: *Cpu, lv: *CpuLevel, s: *Shot, fwd: u32) -> u32
     let far = abs(s.x - me.x)
     if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
     if cpu_as_shadow(me.mech) && abs(fight.f[other(i)].x - me.x) < 19.0 && roll(c, lv.aa) { return fwd | B }
-    if me.mech == Mech.Hero && s.str < 2 && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) { return B }
-    if cpu_as_beam(me.mech) && s.str < 2 && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) {
+    if me.mech == Mech.Hero && s.str < 2 && !s.pierce && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) { return B }
+    // Gamma: the Rod Shot passes through it (the answer to a shot war)
+    if cpu_as_gamma(me.mech) && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) { return fwd | B }
+    if cpu_as_beam(me.mech) && s.str < 2 && !s.pierce && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) {
         c.charge_want = ORB_CHARGE_HALF + 4                 // a charged orb beats a bolt or a tap
         return B
     }
@@ -1018,4 +1083,201 @@ private fn seraph_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
     }
     if dist < range + 6.0 && roll(c, lv.jump) { return fwd | X }
     return hold(c, fwd, 10 + rnd_n(c, 16))
+}
+
+// ---- Gamma's CPU (mx-gamma-fight; MOVES.md, "The CPU (Gamma)"): hold the middle with the Atomic
+// Ray (at a mech walking in, jumping in or recovering, within its 13 m, the gun under 60) and let
+// go when the other is pushed out of it or before the gun vents (level 0 and the novice hold it to
+// the vent); the Rod Shot beyond the ray, through a shot war and into armour; the Geiger Flare
+// against a jump close in and the ray against one further out, then the follow-up on a daze; Lead
+// Shielding in place of a block against a heavy attack; Point Blank to push a rushing mech back
+// out (gladly toward an open edge); Ground Zero when a mech has got in. The others' answers to it
+// are in the shared lines above: the ray's dig-in counts as an attack out to 13 m (block it, or go
+// under it: under_ray), the Hero's wave and Beam's charged orb at a ray held out of reach, the
+// vent punished by distance (vent_punish), no jump-ins at a cool gun (cpu_pad).
+
+const GM_CPU_HEAT = 60                  // the ray is started only below this heat
+const GM_CPU_HOLD = 85                  // and held below this one (levels 1-3)
+const GM_AA_RANGE: fixed = 8.5          // the Geiger Flare against a jump within this; the ray beyond
+const GM_GZ_RANGE: fixed = 8.5          // Ground Zero's reach (8 m from the root to a hurt box), near enough
+
+private fn cpu_as_gamma(m: Mech) -> bool { return has_ray(m) }
+
+// Whether body j is a Gamma whose ray is starting or on (its dig-in is an attack out to 13 m).
+fn gamma_ray_starting(j: s32) -> bool {
+    let f = &fight.f[j]
+    if !has_ray(f.mech) || f.mv != Mv.sp_n || fx[j].riposte { return false }
+    return fx[j].t <= gm_charge
+}
+
+// Whether body j is a Gamma ready to ray a jump: free to act, or firing, with the gun cool.
+fn gamma_ray_ready(j: s32) -> bool {
+    let f = &fight.f[j]
+    return has_ray(f.mech) && f.heat < GM_CPU_HEAT && (actionable(j) || gamma_ray_starting(j))
+}
+
+// Whether body j is in a move that goes under the ray (the Double-blade Hero's slide, the split
+// Twins' Low Roll, Shadow Sneak's travel): blocked, not rayed.
+private fn under_ray_now(j: s32) -> bool {
+    let f = &fight.f[j]
+    if f.mv == Mv.sp_d && (f.mech == Mech.Doubleblade || f.body == Mech.TwinA) { return true }
+    return f.mv == Mv.sp_f && has_sneak(f.mech)
+}
+
+// B held on the ray: through its first 12 frames, then while its ticks still touch the other (the
+// last one within a tick), the gun under GM_CPU_HOLD; level 0 and the novice hold it to the vent.
+private fn gamma_ray_hold(i: s32, level: s32) -> bool {
+    let me = &fight.f[i]
+    let x = &fx[i]
+    if gamma_venting(i) { return false }
+    if level <= 0 { return me.heat < GM_HEAT_MAX }
+    if me.heat >= GM_CPU_HOLD { return false }
+    if x.ray_t < GM_RAY_MIN { return true }
+    return x.ray_n > 0 && x.ray_t - x.ray_last <= GM_TICK + 1
+}
+
+// The chain on contact: from the jab, Ground Zero within its reach, the flare up close now and
+// then (a reset), else the lance; from the lance on a hit, Ground Zero, the rod from beyond 9 m,
+// else the ray (the push); on a block, Lead Shielding to take the punish (lv.special).
+private fn gamma_chain(i: s32, c: *Cpu, lv: *CpuLevel, landed: bool, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    let op = &fight.f[other(i)]
+    let dist = abs(op.x - me.x)
+    if me.mv == Mv.atk_n {
+        if landed && super_wise(i) && dist < GM_GZ_RANGE && roll(c, 30) { return A | B }
+        if landed && dist < 5.5 && roll(c, 15) { return UP | B }
+        return fwd | A
+    }
+    if me.mv == Mv.atk_f {
+        if landed {
+            if super_wise(i) && dist < GM_GZ_RANGE && roll(c, 40) { return A | B }
+            if dist > 9.0 && !fight.shot[i].on && (me.heat >= GM_CPU_HOLD || roll(c, 40)) { return fwd | B }
+            if me.heat < GM_CPU_HOLD { return B }
+            if !fight.shot[i].on { return fwd | B }
+            return 0
+        }
+        if roll(c, lv.special) { return DOWN | B }
+    }
+    return 0
+}
+
+// A whiff punished: Ground Zero within its reach, the jab (it reaches 9 m), the lance, the ray
+// within 13 m, else the rod.
+private fn gamma_punish(i: s32, c: *Cpu, dist: fixed, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    if super_wise(i) && dist < GM_GZ_RANGE && roll(c, 50) { return A | B }
+    if dist < jab_reach(me.body) + 1.0 { return A }
+    if dist < tip(me.body) - 0.5 { return fwd | A }
+    if dist < GM_RAY_X1 && me.heat < GM_CPU_HOLD { return B }
+    if !fight.shot[i].on { return fwd | B }
+    return 0
+}
+
+// The other's attack starting in range: Ground Zero as a reversal within its reach (lv.punish),
+// or Lead Shielding in place of the block against a forward attack or a special (lv.special x 3,
+// less often against a mech that grabs: grabs beat the brace); never against a super's flash.
+// CPU_NO_IDEA: block it as the others do.
+private fn gamma_answer(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed) -> u32 {
+    let j = other(i)
+    let op = &fight.f[j]
+    if op.mv == Mv.super { return CPU_NO_IDEA }
+    if super_wise(i) && dist < GM_GZ_RANGE && roll(c, lv.punish) { return A | B }
+    if (op.mv == Mv.atk_f || is_special(op.mv)) && !gamma_ray_starting(j) {
+        if roll(c, lv.special * 6 / (2 + min(c.grabs_seen, 6))) { return DOWN | B }
+    }
+    return CPU_NO_IDEA
+}
+
+// The other's ray starting (its 18 frames of dig-in are seen in time to answer at level 2): Seraph
+// wards it when the gun is hot (each warded tick heats it 10), the Double-blade Hero slides, the
+// split Twins roll and Shadow sneaks under it (lv.special x 5 at mid range, x 3 closer); 0: block
+// it as any attack. (A jump does not clear it: the ray at chest height meets every jump.)
+private fn under_ray(i: s32, c: *Cpu, lv: *CpuLevel, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    let op = &fight.f[other(i)]
+    if cpu_as_seraph(me.mech) {
+        if op.heat > 50 && roll(c, lv.special * 5) { return DOWN | B }
+        return 0
+    }
+    let under = me.mech == Mech.Doubleblade || me.body == Mech.TwinA || cpu_as_shadow(me.mech)
+    // at mid range (outside the jab's reach) more often: there the ray is the threat (the balance pass)
+    let mid = abs(op.x - me.x) > 6.0
+    if !under || !roll(c, lv.special * if_else(mid, 5, 3)) { return 0 }
+    if cpu_as_shadow(me.mech) { return fwd | B }
+    return DOWN | B
+}
+
+// Gamma venting (50 frames open): what reaches it, by distance: the jab, the forward attack, a
+// super that reaches, the Hero's Charge Slash, Beam's Arc Lance, the Double-blade Hero's Charge
+// Slash, Tank's Bulldozer, a held Sneak or Dive; else a walk in.
+private fn vent_punish(i: s32, c: *Cpu, dist: fixed, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    if dist < jab_reach(me.body) + 1.0 { return A }
+    if dist < tip(me.body) - 0.5 { return fwd | A }
+    if super_wise(i) && me.mech != Mech.Tank && (dist < 12.0 || has_judgement(me.mech)) { return A | B }
+    if (me.mech == Mech.Hero || me.mech == Mech.Doubleblade) && dist < 12.0 { return fwd | B }
+    if cpu_as_beam(me.mech) && dist < 14.5 { return fwd | B }
+    if cpu_as_shadow(me.mech) || cpu_as_seraph(me.mech) { return fwd | B }
+    if me.mech == Mech.Tank && dist < 12.0 { return DOWN | B }
+    return hold(c, fwd, 12)
+}
+
+private fn gamma_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, back0: u32) -> u32 {
+    let me = &fight.f[i]
+    let j = other(i)
+    let op = &fight.f[j]
+    let sh = &fight.shot[j]
+    let incoming = sh.on && sgn(me.x - sh.x) == sgn(sh.vx)
+    let cool = me.heat < GM_CPU_HEAT
+    let under = under_ray_now(j)
+    let edge = edge_behind(j)
+    // it does not back away from a rushing mech (the slowest walk back): near its wall it holds
+    var back = back0
+    if room_behind(i) < 6.0 { back = R }
+    // Ground Zero on a mech that has got in: gladly with its back to a drop
+    if super_wise(i) && dist < GM_GZ_RANGE && grounded(j) {
+        if edge < 5.0 && roll(c, 50) { return A | B }
+        if roll(c, 8) { return A | B }
+    }
+    // Point Blank toward an open edge (about 10 m of throw)
+    if dist < 4.8 && edge < 10.0 && grabbable(j) && roll(c, lv.grab + 30) { return Y }
+    // the Rod Shot at armour, at any range: it pierces
+    if !fight.shot[i].on && (cur_marks(j) & (MARK_ARMOUR | MARK_SHIELD)) != 0 && roll(c, lv.punish) { return fwd | B }
+    // a mech going under the ray is blocked
+    if under && dist < GM_RAY_X1 { return hold(c, R, 14) }
+    // the ray at a mech walking in or jumping in within its reach, the gun cool, nothing coming
+    let coming = op.mv == Mv.walk_f || op.mv == Mv.jump || op.mv == Mv.atk_air
+    if dist > 5.5 && dist < GM_RAY_X1 - 1.0 && cool && !incoming && coming && roll(c, lv.poke + 25) { return B }
+    // the Rod Shot from beyond the ray (fewer into a Wing Ward)
+    if dist > GM_RAY_X1 && !fight.shot[i].on && roll(c, if_else(ward_ready(j), 15, 35)) { return fwd | B }
+    if dist < tip(op.body) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
+    // up close: the jab, Point Blank to push it back out, the lance, the sweep, a step back
+    if dist < 5.5 {
+        if c.blocks_seen >= 2 && roll(c, lv.grab) { c.blocks_seen = 0; return Y }
+        let r = rnd_n(c, 100)
+        if r < 30 { return A }
+        if r < 45 { return Y }
+        if r < 55 { return fwd | A }
+        if r < 62 { return DOWN | A }
+        if r < 80 { return hold(c, back, 12) }
+        return hold(c, R, 10)
+    }
+    // its own range: the jab reaches 9 m, the lance a little further, the ray holds the middle
+    if dist < tip(me.body) + 0.5 {
+        let r = rnd_n(c, 100)
+        if r < lv.poke { return if_u32(dist < 9.5, A, fwd | A) }
+        if r < lv.poke + 8 { return DOWN | A }
+        if r < lv.poke + 25 && cool && !incoming && !under { return B }
+        if r < lv.poke + 45 { return hold(c, R, 12) }
+        return hold(c, 0, 8)
+    }
+    if dist < GM_RAY_X1 - 1.0 && cool && !incoming && !under && roll(c, 20) { return B }
+    if dist > 22.0 { return hold(c, fwd, 8 + rnd_n(c, 10)) }
+    if dist > GM_RAY_X1 && roll(c, 30) { return hold(c, fwd, 8 + rnd_n(c, 8)) }
+    return hold(c, 0, 8 + rnd_n(c, 8))
+}
+
+private fn if_u32(c: bool, a: u32, b: u32) -> u32 {
+    if c { return a }
+    return b
 }
