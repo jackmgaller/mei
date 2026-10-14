@@ -99,7 +99,7 @@ const MV_NAMES: [len(Mv)]*u8 = [
 const EV_NAMES: [len(Ev)]*u8 = [
     "Hit", "Block", "Chip", "Whiff", "Grab", "Throw", "Break", "Land", "Step", "MeterFull",
     "Super", "Ko", "TimeUp", "Shot", "Parry", "Clash", "Swing", "Armour", "RingOut", "Curse", "Mine",
-    "Snare", "MineGone",
+    "Snare", "MineGone", "Mark", "Reflect", "Column",
 ]
 
 fn init() {
@@ -3404,15 +3404,16 @@ private fn sh_check_stats() {
     ok("Shadow's statistics")
 }
 
-// ---- Seraph's scenarios, 160-161 (mx-seraph; MOVES.md, "Seraph"): phase 1, Shadow's moves on
-// Seraph's body, with its own numbers; 162-168 need the whole game (tests/seraph/harness.akr)
+// ---- Seraph's scenarios, 160-161 (mx-seraph; MOVES.md, "Seraph"): its own numbers and fists
+// (phase 1), its own throw and super (phase 2); 162-168 need the whole game
+// (tests/seraph/harness.akr); 170-181, phase 2's moves, follow
 //
 // 160 against Shadow: idle (1,000 health, the kinetic meter, 22 parts a frame, the walk slower than
-//     Shadow's); the jab lands at 4 m (50 damage, the kinetic meter's 125) and misses at 6 m, where
-//     Shadow's Claw Jab still reaches Seraph; the lunging straight lands at 9 m and misses just
-//     past the fist's reach (where the talons would still reach by 2.5 m); Phantom Grip
-//     (Shadow's throw, for now) swaps the sides; the super from a full bar:
-//     Total Eclipse's five hits (for now), the bar spent, no debt (kinetic)
+//     Shadow's); the jab lands at 4 m (50 damage, the kinetic meter's 125) and misses just past the
+//     fist (and the other's guard), where Shadow's Claw Jab still reaches Seraph from 6 m; the lunging straight lands at 9 m and misses just
+//     past the fist's reach (where the talons would still reach by 2.5 m); Heaven's Arc swaps the
+//     sides; the super from a full bar: Judgement's one hit (280, unmarked), the bar spent, no
+//     debt (kinetic)
 // 161 the same against the Hero
 
 const SR_FOE: Mech = match SCENARIO { 161 => Mech.Hero, else => Mech.Shadow }
@@ -3518,15 +3519,22 @@ private fn sr_check() {
                 assert_eq(mark_h - o.health, dmg(Mech.Seraph as s32, Mv.atk_n), "the jab's damage")
                 assert_eq(s.meter, KIN_HIT, "the kinetic meter's gain for a landed hit")
                 println("the jab lands at 4 m")
-                sr_try(6.0, 0, A)
+                // just out of the fist's reach (the front of the other's hurt boxes in its guard:
+                // Shadow's claws are held out in front)
+                sr_far = sr_reach(Mech.Seraph, Mv.atk_n) + sr_front(SR_FOE) + 0.3
+                sr_try(sr_far, 0, A)
                 stage = 2
             }
         }
         2 => {
             if sr_over() {
-                assert_eq(evc_side[0][Ev.Hit], 0, "the jab landed at 6 m: air in front of the fist")
-                assert_eq(o.health, mark_h, "damage from a jab at 6 m")
-                println("the jab misses at 6 m")
+                assert_eq(evc_side[0][Ev.Hit], 0, "the jab landed out of reach: air in front of the fist")
+                assert_eq(o.health, mark_h, "damage from a jab out of reach")
+                print("the jab misses at ")
+                print_fixed(sr_far)
+                print(" m (the other's guard reaches ")
+                print_fixed(sr_front(SR_FOE))
+                println(" m in front of it)")
                 if SR_FOE == Mech.Shadow {
                     sr_try(6.0, 1, A)
                     stage = 3
@@ -3576,7 +3584,7 @@ private fn sr_check() {
             }
             if sh_flag && o.mv == Mv.knockdown {
                 assert(s.x > o.x, "the throw did not swap the sides")
-                println("the throw (Phantom Grip, for now) swaps the sides")
+                println("the throw (Heaven's Arc) swaps the sides")
                 sr_try(4.0, 0, A | B)
                 s.meter = METER_BAR
                 stage = 7
@@ -3595,9 +3603,8 @@ private fn sr_check() {
                 print(" damage, the meter after ")
                 print_int(s.meter)
                 println("")
-                assert_eq(evc_side[0][Ev.Hit], 5, "five hits")
-                let want = 70 + 70 * COMBO_2 / 100 + 70 * COMBO_3 / 100 * 2 + 120 * COMBO_3 / 100
-                assert_eq(mark_h - o.health, want, "the five hits' scaled damage")
+                assert_eq(evc_side[0][Ev.Hit], 1, "Judgement hits once")
+                assert_eq(mark_h - o.health, dmg(Mech.Seraph as s32, Mv.super), "Judgement's damage (unmarked)")
                 assert(s.meter >= 0, "a kinetic super went into debt")
                 if SR_FOE == Mech.Shadow { ok("Seraph against Shadow") } else { ok("Seraph against the Hero") }
             }

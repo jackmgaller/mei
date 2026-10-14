@@ -1,74 +1,619 @@
 // Mech Expo 2000: Seraph (mx-seraph). Momentum Robotics' echo of Shadow, MR-02, the paladin
 // (MOVES.md, "Seraph"): Shadow's skeleton with an angel's body, two wings and a halo
-// (models/seraph/make_seraph.py), on Momentum's kinetic meter.
+// (models/seraph/make_seraph.py), on Momentum's kinetic meter. What its hits do, its stand-in
+// timings, boxes and marks until its own animations land (moves.akr asks here for Mech.Seraph),
+// and its rules (mx-seraph-fight, phase 2):
 //
-// Phase 1 (this file as it is): Seraph is in the game, drawn and pickable, and plays Shadow's
-// moves as placeholders: Shadow's animations on Seraph's rig (anims/seraph/, each based on
-// Shadow's, the fists closed), Shadow's hits (seraph_hit), and Shadow's rules for its specials
-// and super. Its own numbers: 1,000 health, a walk a little slower than Shadow's, the kinetic
-// meter (moves.akr's STATS), and fists that reach about 2.5 m less than the talons (the jab's and
-// the lunge's hit boxes, in its animations).
+//   the Mark of Judgement  sp_n: a slow bolt of light in fighter.akr's shot system (Shot.mark),
+//                          strength 1; a hit (or one absorbed by armour) marks the other side
+//                          for SER_MARK_FRAMES of play (Fighter.mark, refreshed, never stacked)
+//   the Seraph Dive        sp_f: a hop (root motion), a glide the fight moves (held on the charge
+//                          frame while B is held, up to SER_GLIDE_HOLD), a dive to the floor; in
+//                          the air from the hop to the touchdown, so it passes over the floor
+//   Ascension              sp_u: the anti-air; its data is all in the animation
+//   the Wing Ward          sp_d: on its `ward` frames (MARK_WARD) a shot of the other side coming
+//                          at its front is turned round (x 1.25, at most 0.45 m a frame) and
+//                          becomes Seraph's (seraph_reflect); the move then plays its fling
+//   Heaven's Arc           the throw: over the top (the victim plays thrown_vault), the sides swap;
+//                          Seraph's back to a wall (or an open edge) carries it forward instead
+//   Judgement              the super: the other mech's position is locked on the first frame after
+//                          the flash and a column of light falls there (seraph_column_box); x 1.5
+//                          on a marked mech, damage only, never stacked with the antimatter debt
 //
-// Each of Shadow's mechanics asks one predicate below whether a mech has it. Shadow's code reads
-// the predicate, never Seraph's name, so phase 2 can give Seraph one of its own specials by
-// taking Seraph out of that predicate and adding its own branch, without touching Shadow's:
-//
-//   sp_n   has_hex_bolt      the Hex Bolt (a shot, Shot.hex) and its Siphon curse; Seraph's:
-//                            the Mark of Judgement
-//   sp_f   has_sneak         Shadow Sneak's travel (shadow_advance) and its shadow and
-//                            afterimages (shadow_fx.akr); Seraph's: the Seraph Dive
-//   sp_d   has_rift_mine     the Rift Mine and its snare; Seraph's: the Wing Ward
-//   throw  has_phantom_grip  Phantom Grip's slide under and side swap; Seraph's: over the top
-//   super  has_eclipse       Total Eclipse's five hits by box index, its afterimages and the
-//                            stage going dark; Seraph's: Judgement
-//   atk_air has_dive         the Diving Claw's steepened fall
-//
-// Eclipse Rise (sp_u) has no rules of its own (its data is all in the animation); Seraph's
-// Ascension will be its own animation. The CPU plays Seraph as Shadow (cpu.akr, cpu_as_shadow),
-// the effects draw no trails for its fists (fx.akr) and the Hex Bolt's sound is Shadow's
-// (sfx.akr's sfx_shot): each says so where it does.
+// Shadow's code asks the predicates below, never Seraph's name: each of Shadow's specials is
+// Shadow's alone now, and Seraph's own sit beside them with their own predicates. Seraph keeps
+// Shadow's Diving Claw fall (has_dive) for its Double-fist Dive. The shared files call these
+// with a line each; the drawing is seraph_fx.akr's. Frames here count from 0 (MOVES.md's tables
+// count from 1).
 
 import "moves.akr"
 import "fight.akr"
 
-fn has_hex_bolt(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
-fn has_sneak(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
-fn has_rift_mine(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
-fn has_phantom_grip(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
-fn has_eclipse(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
+// ---- which mech has which rule: Shadow's (shadow.akr) and Seraph's own
+
+fn has_hex_bolt(m: Mech) -> bool { return m == Mech.Shadow }
+fn has_sneak(m: Mech) -> bool { return m == Mech.Shadow }
+fn has_rift_mine(m: Mech) -> bool { return m == Mech.Shadow }
+fn has_phantom_grip(m: Mech) -> bool { return m == Mech.Shadow }
+fn has_eclipse(m: Mech) -> bool { return m == Mech.Shadow }
 fn has_dive(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
 
-// Any of Shadow's mechanics: shadow.akr's rules and shadow_fx.akr's drawing run in the fight.
+fn has_mark(m: Mech) -> bool { return m == Mech.Seraph }          // the Mark bolt and the mark
+fn has_glide(m: Mech) -> bool { return m == Mech.Seraph }         // the Seraph Dive's glide and dive
+fn has_ward(m: Mech) -> bool { return m == Mech.Seraph }          // the Wing Ward and the reflect
+fn has_over_throw(m: Mech) -> bool { return m == Mech.Seraph }    // Heaven's Arc
+fn has_judgement(m: Mech) -> bool { return m == Mech.Seraph }     // the lock, the column, the bonus
+
+// Any of Shadow's mechanics: shadow.akr's rules and shadow_fx.akr's drawing run in the fight
+// (Seraph through the dive).
 fn has_shadow_kit(m: Mech) -> bool {
     return has_hex_bolt(m) || has_sneak(m) || has_rift_mine(m) || has_phantom_grip(m) || has_eclipse(m)
         || has_dive(m)
 }
 
-// ---- what Seraph's hits do: Shadow's (phase 1)
+// Any of Seraph's: seraph_tick runs in the fight.
+fn has_seraph_kit(m: Mech) -> bool {
+    return has_mark(m) || has_glide(m) || has_ward(m) || has_over_throw(m) || has_judgement(m)
+}
 
-fn seraph_hit(mv: Mv) -> Hit { return shadow_hit(mv) }
+// ---- the Mark of Judgement (sp_n) and the mark
 
-// The stand-in timings, boxes, marks and root motion, for a move with no animation (none: every
-// move of the list has one, based on Shadow's, but the Twins' combine and split): Shadow's.
-fn seraph_tm(mv: Mv) -> Tm { return shadow_tm(mv) }
-fn seraph_root(mv: Mv, f: s32) -> vec2 { return shadow_root(mv, f) }
-fn seraph_marks(mv: Mv, f: s32) -> u32 { return shadow_marks(mv, f) }
-fn seraph_boxes(mv: Mv, f: s32, out: *Boxes) { shadow_boxes(mv, f, out) }
+const SER_BOLT_X: fixed = 3.5       // where it starts, ahead of the mech
+const SER_BOLT_Y0: fixed = 5.0      // its box's height: mid height, over the slides and the roll
+const SER_BOLT_Y1: fixed = 7.4
+const SER_BOLT_HALF: fixed = 0.8
+const SER_BOLT_SPEED: fixed = 0.16  // m a frame: a little quicker than the Hex Bolt
+const SER_BOLT_LIFE = 180
+const SER_BOLT_STR = 1              // against the other shots: as the Hex Bolt
+const SER_MARK_FRAMES = 360         // 6 s of play
+const SER_MARKED_NUM = 3            // Judgement on a marked mech: x 1.5
+const SER_MARKED_DEN = 2
 
-// ---- the training move list: Shadow's moves under the names they have on a fist
+// ---- the Wing Ward (sp_d): a reflected shot
+
+const SER_REFL_NUM = 5              // x 1.25
+const SER_REFL_DEN = 4
+const SER_REFL_MAX: fixed = 0.45    // m a frame at most
+
+// ---- the Seraph Dive (sp_f)
+
+const SER_GLIDE_VX: fixed = 0.40    // the glide: m a frame forward
+const SER_GLIDE_VY: fixed = 0.02    // and down
+const SER_GLIDE_HOLD = 24           // frames B may hold the charge frame
+const SER_GLIDE_PUSH: fixed = 7.0   // the push box's height above the root in the air (x +- push)
+const SER_DIVE_N = 6                // the dive: the root down to the floor over these frames
+const SER_DIVE_VX: fixed = 0.30     // and forward
+
+// ---- Heaven's Arc (throw)
+
+const SER_ARC_BACK: fixed = 3.5     // the other lands this far behind Seraph's root
+const SER_ARC_SHIFT: fixed = 5.0    // at most this far forward with Seraph's back to a wall
+const SER_ARC_TOSS_VX: fixed = 0.08 // the bounce on, back (about 1.3 m)
+
+// ---- Judgement (super): the column
+
+const SER_COL_HALF: fixed = 2.5     // x lock +- this
+const SER_COL_H: fixed = 20.0       // from the floor up
+
+// ---- the stand-in frames (MOVES.md's tables, from 0), where the data has no marks for them
+
+const SER_GLIDE0 = 14               // the glide's first frame (after the hop's root motion)
+const SER_CHARGE = 25               // the glide's last frame: held while B is held
+const SER_WARD0 = 4                 // the `ward` frames
+const SER_WARD1 = 23
+const SER_LOCK = 40                 // Judgement's lock: the first frame after the flash
+const SER_BOX_TOL: fixed = 0.6      // an animation's hit box this far off the design is a placeholder's
+
+var judge_x: [2]fixed               // each side's Judgement: where its column falls (world x)
+var judge_on: [2]bool               // locked, this super
+var ser_in_fight: bool              // a side has Seraph's rules (fight_init): else seraph_tick does nothing
+var ser_dive_h: [2]fixed            // the height the dive started from
+var ser_arc_x0: [2]fixed            // where Seraph stood when Heaven's Arc caught
+var ser_arc_shift: [2]fixed         // and how far its wing beats carry it forward (a wall behind)
+
+// The frames the rules need, found once (ser_find): the stand-ins' or the animations'.
+var ser_found: bool
+var ser_std: [len(Mv)]bool          // a move still played from the stand-in data (seraph_standin)
+var ser_glide0: s32
+var ser_charge: s32
+var ser_dive0: s32
+var ser_lock: s32
+
+// Whether body j is on a Wing Ward's `ward` frames now, with nothing caught yet.
+fn seraph_warding(j: s32) -> bool {
+    let f = &fight.f[j]
+    return has_ward(f.mech) && f.mv == Mv.sp_d && !fx[j].riposte && (cur_marks(j) & MARK_WARD) != 0
+}
+
+// Whether side i is in the Seraph Dive's glide (from the hop to the dive): the effects' streaks
+// and the glide's sound.
+fn seraph_gliding(i: s32) -> bool {
+    let f = &fight.f[i]
+    if !has_glide(f.mech) || f.mv != Mv.sp_f { return false }
+    ser_find()
+    return fx[i].t >= ser_glide0 && fx[i].t < ser_dive0
+}
+
+// fight_init: whether a side has Seraph's rules; no marks, no columns.
+fn seraph_init() {
+    ser_in_fight = has_seraph_kit(fight.f[0].mech) || has_seraph_kit(fight.f[1].mech)
+    if ser_in_fight { ser_find() }
+    seraph_round()
+}
+
+// The start of a round: no marks (a mark ends with the round), no columns.
+fn seraph_round() {
+    for s in 0..2 {
+        fight.f[s].mark = 0
+        judge_on[s] = false
+    }
+}
+
+// ---- which moves still stand in (moves.akr's use_standin asks here for Seraph)
+//
+// Every move of Seraph's has an animation file, but until each is made it is Shadow's on Seraph's
+// rig (anims/seraph/, phase 1), whose timing and boxes are Shadow's moves': the Sneak, the mine,
+// the Grip, Total Eclipse. Such a placeholder is played from the stand-in data below instead
+// (this section's timings and boxes; the drawing is still the placeholder's), and Seraph's own
+// animation is used as soon as it lands. A move's animation is a placeholder when it hides the
+// mech (Seraph never vanishes), when the Wing Ward has no `ward` frames, when its length is more
+// than 2 frames off this section's, when its hit boxes are more than SER_BOX_TOL off the design's
+// far or low edge (or it hits more than once), or when the bolt is timed exactly as the Hex Bolt.
+
+fn seraph_standin(mv: Mv) -> bool {
+    ser_find()
+    return ser_std[mv]
+}
+
+const SER_OWN_MVS: [11]Mv = [Mv.atk_n, Mv.atk_f, Mv.atk_d, Mv.atk_air, Mv.sp_n, Mv.sp_f, Mv.sp_u, Mv.sp_d,
+                             Mv.grab, Mv.throw, Mv.super]
+
+private fn ser_find() {
+    if ser_found { return }
+    ser_found = true
+    for k in 0..len(SER_OWN_MVS) {
+        let mv = SER_OWN_MVS[k]
+        ser_std[mv] = ser_placeholder(mv)
+    }
+    // the frames, from the data the fight plays (mv_*: the stand-ins' or the animations')
+    ser_charge = find_mark(Mech.Seraph, Mv.sp_f, MARK_CHARGE)
+    ser_glide0 = SER_GLIDE0
+    if ser_charge < 0 { ser_charge = SER_CHARGE }
+    else {
+        // the frame after the hop's root motion ends
+        var g = -1
+        for f in 0..ser_charge {
+            if mv_root(Mech.Seraph, Mv.sp_f, f).y > 0.0 { g = f + 1 }
+        }
+        if g > 0 { ser_glide0 = g }
+    }
+    ser_dive0 = ser_charge + 1
+    ser_lock = SER_LOCK
+    let n = mv_len(Mech.Seraph, Mv.super)
+    for f in 0..n {
+        if (mv_marks(Mech.Seraph, Mv.super, f) & MARK_FLASH) == 0 {
+            ser_lock = f
+            break
+        }
+    }
+}
+
+private fn ser_placeholder(mv: Mv) -> bool {
+    let m = Mech.Seraph
+    if anim_standin(m, mv) { return true }
+    let t = seraph_tm(mv)
+    let n = anim_len(m, mv)
+    if abs(n - t.len) > 2 { return true }
+    var ward = false
+    var rel = -1
+    for f in 0..n {
+        let k = anim_marks(m, mv, f)
+        if (k & MARK_HIDE) != 0 { return true }
+        if (k & MARK_WARD) != 0 { ward = true }
+        if (k & MARK_RELEASE) != 0 && rel < 0 { rel = f }
+    }
+    if mv == Mv.sp_d && !ward { return true }
+    if mv == Mv.sp_n {
+        // the Hex Bolt's timing exactly: Shadow's bolt
+        return n == anim_len(Mech.Shadow, mv) && rel == find_anim_mark(Mech.Shadow, mv, MARK_RELEASE)
+    }
+    if t.a0 < 0 { return false }
+    var bx: Boxes
+    var x1 = -99.0
+    var y0 = 99.0
+    for f in 0..n {
+        anim_boxes(m, mv, f, &bx)
+        for k in 0..bx.n {
+            let b = &bx.b[k]
+            if b.kind != BOX_HIT { continue }
+            if b.hit > 0 { return true }
+            x1 = max(x1, b.x1)
+            y0 = min(y0, b.y0)
+        }
+    }
+    if x1 < -90.0 { return true }               // no hit box at all
+    return abs(x1 - t.hx1) > SER_BOX_TOL || abs(y0 - t.hy0) > SER_BOX_TOL
+}
+
+private fn find_anim_mark(m: Mech, mv: Mv, mark: u32) -> s32 {
+    for f in 0..anim_len(m, mv) {
+        if (anim_marks(m, mv, f) & mark) != 0 { return f }
+    }
+    return -1
+}
+
+// ---- each frame (fight_tick, outside the freezes): the marks run down on frames of play
+
+fn seraph_tick(live: bool) {
+    if !ser_in_fight || !live { return }
+    for s in 0..2 {
+        if fight.f[s].mark > 0 { fight.f[s].mark -= 1 }
+    }
+}
+
+// ---- the Mark of Judgement
+
+// Fires side i's bolt (fighter.akr's shot_fire, on sp_n's release frame).
+fn seraph_bolt_fire(i: s32, s: *Shot) {
+    let f = &fight.f[i]
+    let ft = fixed(f.facing)
+    s.mark = true
+    s.lvl = 0
+    s.str = SER_BOLT_STR
+    s.x = f.x + ft * SER_BOLT_X
+    s.vx = ft * SER_BOLT_SPEED
+    s.half = SER_BOLT_HALF
+    s.y0 = SER_BOLT_Y0
+    s.y1 = SER_BOLT_Y1
+    s.life = SER_BOLT_LIFE
+    ev_add(Ev.Shot, i, s.x, (SER_BOLT_Y0 + SER_BOLT_Y1) / 2, 0)
+}
+
+fn mark_hit() -> Hit { return Hit { dmg: 45, chip: 9, hitstun: 18, blockstun: 14, stop: 8, power: 1, kb: 0.08 } }
+
+// Side i's shot s landed on body j (a hit, or absorbed by armour): a Mark marks its side, for
+// SER_MARK_FRAMES (a second mark refreshes it). The Mark event: x the marked mech's root, y its
+// chest; power 1 a new mark, 0 a refresh.
+fn seraph_marked(i: s32, j: s32, s: *Shot) {
+    if !s.mark { return }
+    let o = &fight.f[j & 1]
+    let fresh = o.mark == 0
+    o.mark = SER_MARK_FRAMES
+    ev_add(Ev.Mark, i & 1, fight.f[j].x, fight.f[j].y + 8.0, if_else(fresh, 1, 0))
+}
+
+// ---- the Wing Ward: side i's shot touched body j's ward at p, coming at its front (fighter.akr's
+// shot_try, before the Parry's test). The shot is turned round and becomes Seraph's: it moves to
+// Seraph's shot slot (the thrower may fire again), comes back x 1.25 (at most SER_REFL_MAX), its
+// life starts again, it is drawn as light, and a Hex Bolt becomes a Mark. With Seraph's own shot
+// still out there is no room for it: it is only removed. Either way Seraph plays its fling.
+
+fn seraph_reflect(i: s32, j: s32, p: vec2) {
+    let s = &fight.shot[i]
+    let js = j & 1
+    let f = &fight.f[j]
+    let to = &fight.shot[js]
+    let str = s.str
+    if !to.on {
+        *to = *s
+        to.vx = fixed(f.facing) * min(abs(s.vx) * SER_REFL_NUM / SER_REFL_DEN, SER_REFL_MAX)
+        to.t = -1                       // not moved or tried against a mech until the next frame
+        to.refl = true
+        if to.hex {
+            to.hex = false              // the hex is lost in the light: it marks instead
+            to.mark = true
+        }
+        if to.mark { to.life = SER_BOLT_LIFE } else if to.lvl > 0 { to.life = ORB_LIFE } else { to.life = WAVE_LIFE }
+    }
+    s.on = false
+    fx[j].riposte = true
+    let rip = find_mark(f.body, Mv.sp_d, MARK_RIPOSTE)
+    if rip >= 0 { fx[j].t = rip }
+    ev_add(Ev.Reflect, js, p.x, p.y, str)
+}
+
+// ---- the Seraph Dive and Judgement's lock (fighter.akr's advance asks here for a mech with the
+// glide or Judgement). Whether it handled the frame.
+
+fn seraph_advance(i: s32) -> bool {
+    let f = &fight.f[i]
+    let x = &fx[i]
+    let s = i & 1
+    if f.mv == Mv.super {
+        // the first frame after the flash: the column's centre, the other mech's root (the leader's)
+        if has_judgement(f.mech) && x.t == ser_lock && !judge_on[s] {
+            judge_on[s] = true
+            judge_x[s] = fight.f[other(i)].x
+            ev_add(Ev.Column, s, judge_x[s], 0.0, 0)
+        }
+        return false
+    }
+    if f.mv != Mv.sp_f || !has_glide(f.mech) { return false }
+    let t = x.t
+    if t < ser_glide0 || t >= ser_dive0 + SER_DIVE_N { return false }   // the crouch, the hop, the recovery
+    if t < ser_dive0 {
+        // the glide: forward and a little down; it ends at the other's push box, a wall, the limit
+        // or a lip, and the dive starts there
+        f.y = max(f.y - SER_GLIDE_VY, 0.0)
+        if ser_fly(i, SER_GLIDE_VX) {
+            x.t = ser_dive0
+            ser_dive_h[s] = f.y
+            return true
+        }
+        if t == ser_charge && (x.pad & B) != 0 && f.charge < SER_GLIDE_HOLD {
+            f.charge += 1
+            return true
+        }
+        x.t += 1
+        if x.t == ser_dive0 { ser_dive_h[s] = f.y }
+        return true
+    }
+    // the dive: down to the floor evenly over SER_DIVE_N frames, whatever the height
+    if t == ser_dive0 + SER_DIVE_N - 1 { f.y = 0.0 }
+    else { f.y = max(f.y - ser_dive_h[s] / SER_DIVE_N, 0.0) }
+    ser_fly(i, SER_DIVE_VX)
+    x.t += 1
+    return true
+}
+
+// Seraph i moves v forward in the air, stopping at the other side's push boxes (overlapping its
+// own, x +- push, y 0..SER_GLIDE_PUSH above the root, in height: a low box passes under), at the
+// stage's edges (a wall or a lip) and at the separation limit. Whether something stopped it.
+private fn ser_fly(i: s32, v: fixed) -> bool {
+    let f = &fight.f[i]
+    let o = other(i)
+    var go = v
+    var stop = false
+    let a = ser_meet(i, o)
+    if a < go { go = a; stop = true }
+    if twins_on(o) {
+        let b = ser_meet(i, o + 2)
+        if b < go { go = b; stop = true }
+    }
+    var nx = f.x + fixed(f.facing) * go
+    let lim = stage_now().half - STATS[f.body].push
+    if nx > lim { nx = lim; stop = true }
+    if nx < -lim { nx = -lim; stop = true }
+    let ox = fight.f[o].x
+    if abs(nx - ox) > FIGHT_MAX_SEP {
+        nx = ox + fixed(sgn(nx - ox)) * FIGHT_MAX_SEP
+        stop = true
+    }
+    f.x = nx
+    return stop
+}
+
+// How far Seraph i may move forward before its push box meets body b's (1,000: nothing in the way,
+// it is behind, or it passes under or over).
+private fn ser_meet(i: s32, b: s32) -> fixed {
+    let f = &fight.f[i]
+    let bb = &fbox[b]
+    let p = STATS[f.body].push
+    for k in 0..bb.n {
+        if bb.b[k].kind != BOX_PUSH { continue }
+        let w = world_box(b, &bb.b[k])
+        if !(f.y < w.w && w.y < f.y + SER_GLIDE_PUSH) { return 1000.0 }
+        if (fight.f[b].x - f.x) * fixed(f.facing) < 0.0 { return 1000.0 }     // passed it
+        var gap = w.x - f.x - p
+        if f.facing < 0 { gap = f.x - w.z - p }
+        return max(gap, 0.0)
+    }
+    return 1000.0
+}
+
+// ---- Heaven's Arc: thrower i (Seraph) holding body j at frame t of its throw (throw_tick).
+// The other is placed from Seraph's root (MOVES.md's table): held in front, heaved up on two wing
+// beats, swung over the top and slammed down 3.5 m behind. With Seraph's back to a wall there is
+// no room behind: the beats carry Seraph forward by the shortfall (at most SER_ARC_SHIFT) over
+// frames 8-23, so the other lands at the wall and the sides still swap. An open edge counts as a
+// wall for the carry, but the other is held over the deck up to the edge itself (not its push
+// box's lip), so the release's bounce takes it over: within about 5 m of the drop it rings out.
+
+fn seraph_hold(i: s32, j: s32, t: s32) {
+    let f = &fight.f[i]
+    let o = &fight.f[j]
+    let s = i & 1
+    let ft = fixed(f.facing)
+    if t <= 7 {
+        ser_arc_x0[s] = f.x
+        let st = stage_now()
+        var lim = st.half - STATS[o.body].push
+        let behind = f.x - ft * SER_ARC_BACK
+        var side = 1
+        if f.facing > 0 { side = 0 }            // the edge behind Seraph
+        if st.edge[side] == Edge.Open { lim = st.half }
+        ser_arc_shift[s] = clamp(abs(behind) - lim, 0.0, SER_ARC_SHIFT)
+        if behind * ft > 0.0 { ser_arc_shift[s] = 0.0 }     // behind it is the stage's middle
+        o.x = f.x + ft * 3.0
+        o.y = f.y + 1.0 * fixed(t) / 7
+        return
+    }
+    if t <= 23 {
+        f.x = ser_arc_x0[s] + ft * ser_arc_shift[s] * fixed(t - 7) / 16
+    }
+    if t <= 15 {
+        // two wing beats: heaved up in front
+        let k = fixed(t - 7) / 8
+        o.x = f.x + ft * (3.0 - k)
+        o.y = f.y + 1.0 + 5.0 * k
+        return
+    }
+    if t <= 23 {
+        // over the top, from 2 m in front to 3 m behind, 9 m up at the top
+        let k = fixed(t - 15) / 8
+        o.x = f.x + ft * (2.0 - 5.0 * k)
+        o.y = f.y + 6.0 + 12.0 * k * (1.0 - k)
+        return
+    }
+    // the slam: down behind it, on the floor at 3.5 m on the release frame
+    let k = clamp(fixed(t - 23) / 5, 0.0, 1.0)
+    o.x = f.x - ft * (3.0 + 0.5 * k)
+    o.y = (f.y + 6.0) * (1.0 - k)
+}
+
+// ---- Judgement
+
+// The column's hit box (fighter.akr's load_boxes, after the move's boxes): wherever the move's hit
+// box is, it is moved to the lock, x judge_x +- SER_COL_HALF, y 0..SER_COL_H in the world.
+fn seraph_column_box(i: s32) {
+    let f = &fight.f[i]
+    if f.mv != Mv.super || !has_judgement(f.mech) || !judge_on[i & 1] { return }
+    let c = (judge_x[i & 1] - f.x) * fixed(f.facing)
+    let bb = &fbox[i]
+    for k in 0..bb.n {
+        let b = &bb.b[k]
+        if b.kind != BOX_HIT { continue }
+        b.x0 = c - SER_COL_HALF
+        b.x1 = c + SER_COL_HALF
+        b.y0 = -f.y
+        b.y1 = SER_COL_H - f.y
+    }
+}
+
+// Judgement's hit on a marked mech (fighter.akr's resolve()): 50 % more damage, never stacked with
+// the antimatter debt's 25 % (the larger applies: struck() skips the debt); the chip is not raised.
+fn seraph_judged(i: s32, j: s32, h: Hit, mv: Mv) -> Hit {
+    if mv != Mv.super || !has_judgement(fight.f[i].mech) || fight.f[j & 1].mark <= 0 { return h }
+    var g = h
+    g.dmg = h.dmg * SER_MARKED_NUM / SER_MARKED_DEN
+    g.nodebt = true
+    return g
+}
+
+// ---- what Seraph's hits do (MOVES.md's tables)
+
+fn seraph_hit(mv: Mv) -> Hit {
+    return match mv {
+        atk_n => Hit { dmg: 50, hitstun: 15, blockstun: 11, stop: 7, kb: 0.08 }
+        atk_f => Hit { dmg: 105, hitstun: 25, blockstun: 18, stop: 10, power: 1, kb: 0.13 }
+        atk_d => Hit { dmg: 85, blockstun: 16, stop: 10, power: 1, kb: 0.09, kd: true, launch: 0.30 }
+        atk_air => Hit { dmg: 85, hitstun: 19, blockstun: 14, stop: 10, power: 1, kb: 0.08 }
+        sp_n => mark_hit()
+        sp_f => Hit { dmg: 110, chip: 22, blockstun: 16, stop: 12, power: 2, kb: 0.16, kd: true, launch: 0.40 }
+        sp_u => Hit { dmg: 120, chip: 24, blockstun: 14, stop: 12, power: 2, kb: 0.10, kd: true, launch: 0.55 }
+        throw => Hit { dmg: 120, stop: 10, power: 2, kd: true, launch: 0.30 }
+        super => Hit { dmg: 280, chip: 70, blockstun: 20, stop: 20, power: 3, kb: 0.25, kd: true, launch: 0.60 }
+        else => HIT_NONE
+    }
+}
+
+// ---- the stand-in timings, boxes, marks and root motion (MOVES.md's tables, from 0), for the
+// moves whose animation is still a placeholder (seraph_standin)
+
+fn seraph_tm(mv: Mv) -> Tm {
+    return match mv {
+        idle => Tm { len: 60, loops: true }
+        walk_f, walk_b => Tm { len: 44, loops: true }
+        crouch => Tm { len: 8, loops: true, shape: 1 }
+        jump => Tm { len: 40, shape: 2 }
+        atk_n => Tm { len: 17, a0: 3, a1: 4, hx0: 1.7, hy0: 6.6, hx1: 3.2, hy1: 7.8, c1: 10, reach: 2.5 }
+        atk_f => Tm { len: 36, a0: 12, a1: 15, hx0: 2.6, hy0: 6.7, hx1: 6.8, hy1: 8.3, c1: 21,
+                      m0: 2, m1: 10, dx: 0.222223, reach: 4.5 }
+        atk_d => Tm { len: 36, a0: 10, a1: 13, hx0: 1.4, hy0: 0.0, hx1: 6.2, hy1: 1.8, shape: 1, reach: 4.0 }
+        atk_air => Tm { len: 26, a0: 7, a1: 25, hx0: 0.5, hy0: -1.0, hx1: 3.6, hy1: 2.4, shape: 2 }
+        sp_n => Tm { len: 41, rel: 16 }
+        sp_f => Tm { len: 54, a0: 28, a1: 31, hx0: 2.0, hy0: 1.0, hx1: 5.5, hy1: 4.5, ch: SER_CHARGE }
+        sp_u => Tm { len: 43, a0: 7, a1: 14, hx0: 0.5, hy0: 3.0, hx1: 4.0, hy1: 14.0, i0: 0, i1: 7, reach: 4.0 }
+        sp_d => Tm { len: 52, rip: 40 }
+        grab => Tm { len: 7, a0: 5, a1: 6, hx0: 1.0, hy0: 2.0, hx1: 3.6, hy1: 10.0 }
+        throw => Tm { len: 40, rel: 28 }
+        thrown => Tm { len: 44, rel: 30 }
+        thrown_vault => Tm { len: 40, rel: 28 }
+        super => Tm { len: 92, a0: 48, a1: 57, hx0: 0.0, hy0: 0.0, hx1: 5.0, hy1: 20.0, flash: 40, i0: 0, i1: 48 }
+        else => common_tm(mv)
+    }
+}
+
+// The root motion of frame f: the Lunging Straight's glide (the Tm's); the Dive's hop (2 m forward
+// and 4 m up over 6-13; the fight moves the glide and the dive); Ascension's step in (1.2 m over
+// 1-6), rise (6 m over 7-14) and fall (6 m over 15-37, accelerating); Heaven's Arc's wing beats
+// (2 m up over 8-15) and the slam (2 m down over 24-27).
+fn seraph_root(mv: Mv, f: s32) -> vec2 {
+    let t = seraph_tm(mv)
+    var r = vec2(0.0, 0.0)
+    if f >= t.m0 && f <= t.m1 { r = vec2(t.dx, t.dy) }
+    match mv {
+        sp_f => { if f >= 6 && f <= 13 { r = vec2(0.25, 0.5) } }
+        sp_u => {
+            if f >= 1 && f <= 6 { r = vec2(0.2, 0.0) }
+            if f >= 7 && f <= 14 { r = vec2(0.0, 0.75) }
+            if f >= 15 && f <= 37 {
+                r = vec2(0.0, -6.0 * fixed(2 * (f - 15) + 1) / 529)
+                if f == 37 { r.y = r.y - 0.05 }     // the floor's rounding: it lands
+            }
+        }
+        throw => {
+            if f >= 8 && f <= 15 { r = vec2(0.0, 0.25) }
+            if f >= 24 && f <= 27 { r = vec2(0.0, -0.5) }
+        }
+        else => {}
+    }
+    return r
+}
+
+// The marks the Tm cannot say: the Wing Ward's `ward` frames; the touchdowns' steps.
+fn seraph_marks(mv: Mv, f: s32) -> u32 {
+    if mv == Mv.sp_d && f >= SER_WARD0 && f <= SER_WARD1 { return MARK_WARD }
+    if (mv == Mv.sp_f && f == 32) || (mv == Mv.sp_u && f == 38) { return MARK_STEP }
+    return 0
+}
+
+// The stand-in boxes: Shadow's tall body; crouching in the Reaping Kick and the crouches; in the
+// Dive's glide and dive nothing below the root (the legs trail level with it) and the push box
+// x +- push, y 0..SER_GLIDE_PUSH; one column box in Judgement (seraph_column_box moves it).
+fn seraph_boxes(mv: Mv, f: s32, out: *Boxes) {
+    let t = seraph_tm(mv)
+    out.n = 0
+    var hx0 = -1.6
+    var hx1 = 1.6
+    var hy0 = 0.0
+    var hy1 = 12.5
+    var py1 = 11.5
+    match t.shape {
+        1 => { hy1 = 8.0; py1 = 7.5 }
+        2 => { hx0 = -1.5; hx1 = 1.5; hy0 = 1.0; hy1 = 11.5 }
+        4 => { hx0 = -5.0; hx1 = 5.0; hy1 = 2.0; py1 = 2.0 }
+        else => {}
+    }
+    if mv == Mv.sp_f {
+        if f < 6 || f >= 32 && f < 40 { hy1 = 8.0; py1 = 7.5 }        // the crouch; the knee
+        else if f >= SER_GLIDE0 && f < 32 {                           // laid forward on the wings
+            hx0 = -4.0
+            hx1 = 3.0
+            hy1 = 4.5
+            py1 = SER_GLIDE_PUSH
+        }
+    }
+    if mv == Mv.sp_u && f < 7 { hy1 = 8.0; py1 = 7.5 }                // dropped into a crouch
+    let p = STATS[Mech.Seraph].push
+    ser_box(out, BOX_HURT, 0, hx0, hy0, hx1, hy1)
+    ser_box(out, BOX_PUSH, 0, -p, 0.0, p, py1)
+    if t.a0 >= 0 && f >= t.a0 && f <= t.a1 { ser_box(out, BOX_HIT, 0, t.hx0, t.hy0, t.hx1, t.hy1) }
+    // the arm (or the leg) reaching out: hurtable from the first active frame until it comes back
+    if t.reach > 0.0 && f >= t.a0 && f <= t.a1 + 10 {
+        ser_box(out, BOX_HURT, 0, 0.0, t.hy0 - 1.0, t.reach, t.hy1 + 1.0)
+    }
+}
+
+private fn ser_box(out: *Boxes, kind: u8, hit: s32, x0: fixed, y0: fixed, x1: fixed, y1: fixed) {
+    out.b[out.n] = Box { kind: kind, hit: hit as u8, x0: x0, y0: y0, x1: x1, y1: y1 }
+    out.n += 1
+}
+
+// ---- the training move list
 
 const SERAPH_MOVES = MoveList { n: 15, e: [
     MoveEntry { name: "Jab", input: "A" },
     MoveEntry { name: "Lunging Straight", input: "FWD + A" },
-    MoveEntry { name: "Fade Sweep", input: "DOWN + A" },
-    MoveEntry { name: "Diving Strike", input: "A in the air" },
-    MoveEntry { name: "Hex Bolt", input: "B (curses: Siphon)" },
-    MoveEntry { name: "Shadow Sneak", input: "FWD + B (hold: farther)" },
-    MoveEntry { name: "Eclipse Rise", input: "UP + B" },
-    MoveEntry { name: "Rift Mine", input: "DOWN + B" },
-    MoveEntry { name: "Phantom Grip", input: "Y (swaps sides)" },
+    MoveEntry { name: "Reaping Kick", input: "DOWN + A" },
+    MoveEntry { name: "Double-fist Dive", input: "A in the air" },
+    MoveEntry { name: "Mark of Judgement", input: "B (marks: Judgement +50 %)" },
+    MoveEntry { name: "Seraph Dive", input: "FWD + B (hold: farther)" },
+    MoveEntry { name: "Ascension", input: "UP + B" },
+    MoveEntry { name: "Wing Ward", input: "DOWN + B (sends shots back)" },
+    MoveEntry { name: "Heaven's Arc", input: "Y (swaps sides)" },
     MoveEntry { name: "Break a grab", input: "Y when grabbed" },
-    MoveEntry { name: "Total Eclipse", input: "A + B, full meter" },
+    MoveEntry { name: "Judgement", input: "A + B, full meter" },
     MoveEntry { name: "Block", input: "hold R" },
     MoveEntry { name: "Jump", input: "X (+ FWD or BACK)" },
     MoveEntry { name: "Chain", input: "A, FWD + A, B" },

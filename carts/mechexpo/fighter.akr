@@ -407,6 +407,8 @@ private fn advance(i: s32) {
         return
     }
     if has_sneak(f.mech) && shadow_advance(i) { return }   // Shadow Sneak's travel (shadow.akr)
+    // the Seraph Dive's glide and dive, Judgement's lock (seraph.akr)
+    if (has_glide(f.mech) || has_judgement(f.mech)) && seraph_advance(i) { return }
     // a charge frame (Beam's Volt Orb) holds while B is held, up to ORB_CHARGE_MAX frames
     if (mv_marks(f.body, mv, x.t) & MARK_CHARGE) != 0 && (x.pad & B) != 0 && f.charge < ORB_CHARGE_MAX {
         f.charge += 1
@@ -563,6 +565,8 @@ fn throw_tick(i: s32) {
     let ft = fixed(f.facing)
     if has_phantom_grip(f.mech) {
         shadow_hold(i, j, t)                    // shadow.akr: Phantom Grip's side swap
+    } else if has_over_throw(f.mech) {
+        seraph_hold(i, j, t)                    // seraph.akr: Heaven's Arc, over the top
     } else if f.mech == Mech.Twins {
         twins_hold(i, j, t)                     // twins.akr: the Tag Toss and the Binary Buster
     } else if f.mech == Mech.Tank {
@@ -592,6 +596,7 @@ fn throw_tick(i: s32) {
         if f.mech == Mech.Beam { fx[j].vx = ft * 0.24 }        // the Shock Grip throws it off, about 9 m
         if f.mech == Mech.Twins { fx[j].vx = ft * twins_toss_vx(f.body) }
         if has_phantom_grip(f.mech) { fx[j].vx = ft * GRIP_TOSS_VX }   // flung back where Shadow came from
+        if has_over_throw(f.mech) { fx[j].vx = -ft * SER_ARC_TOSS_VX }  // Heaven's Arc: bounced on, behind Seraph
         fight.freeze = h.stop
         fight.flash_side = -1
         o.flash = h.stop
@@ -605,6 +610,7 @@ fn grab_break(i: s32) {
     let j = vic[i]
     set_mv(i, Mv.grab_break)
     set_mv(j, Mv.grab_break)
+    fight.f[i].y = 0.0                  // (Heaven's Arc lifts its thrower from frame 8)
     fight.f[j].y = 0.0
     fx[j].air = false
     fx[i].break_t = 0
@@ -693,6 +699,7 @@ fn load_boxes() {
     for i in 0..2 {
         let f = &fight.f[i]
         mv_boxes(f.body, f.mv, cur_frame(i), &fbox[i])
+        if f.mv == Mv.super && has_judgement(f.mech) { seraph_column_box(i) }   // the column, at the lock
     }
     if twins_in_fight { twins_load_boxes() }
 }
@@ -762,6 +769,7 @@ fn resolve(i: s32, j: s32, r: s32, h0: Hit, mv: Mv) {
     if r == R_NONE { return }
     var h = h0
     if has_eclipse(fight.f[i].mech) { h = shadow_hit_k(mv, c_hit[i], h0) }   // Total Eclipse's five hits
+    if has_judgement(fight.f[i].mech) { h = seraph_judged(i, j, h, mv) }     // Judgement on a marked mech
     fx[i].hits |= (1 as u32) << (c_hit[i] as u32)
     match r {
         R_GRAB => catch(i, j)
@@ -796,7 +804,8 @@ private fn catch(i: s32, j: s32) {
     let early = fx[j & 1].age[BI_Y] <= BREAK_EARLY
     set_mv(i, Mv.throw)
     // the Vault Throw's victim has its own animation (flipped over the thrower's head)
-    if f.mech == Mech.Doubleblade { set_mv(j, Mv.thrown_vault) } else { set_mv(j, Mv.thrown) }
+    // (and Heaven's Arc's, carried over Seraph's head: seraph.akr)
+    if f.mech == Mech.Doubleblade || has_over_throw(f.mech) { set_mv(j, Mv.thrown_vault) } else { set_mv(j, Mv.thrown) }
     fight.f[j].facing = -f.facing
     fx[j].slide = 0.0
     fx[i].slide = 0.0
@@ -830,7 +839,8 @@ fn struck(i: s32, j: s32, h: Hit, p: vec2, shot: bool) {
     let a = &fight.f[i]
     let d = &fight.f[j]
     let dx = &fx[j]
-    let dmg = meter_damage(d, combo_scale(h.dmg, dx.combo))
+    var dmg = combo_scale(h.dmg, dx.combo)
+    if !h.nodebt { dmg = meter_damage(d, dmg) }
     damage(j, dmg, true)
     meter_on_hit(&fight.f[i & 1], true, shot)
     var dir = sgn(d.x - a.x)
@@ -889,10 +899,11 @@ fn blocked(i: s32, j: s32, h: Hit, mv: Mv, p: vec2, shot: bool) {
     }
 }
 
-// ---- the shots: the Hero's wave, Beam's Volt Orb and Shadow's Hex Bolt (one each at a time)
+// ---- the shots: the Hero's wave, Beam's Volt Orb, Shadow's Hex Bolt and Seraph's Mark of
+// Judgement (one each at a time; a shot Seraph's Wing Ward sends back is Seraph's)
 
 // Whether a mech's neutral special fires a shot.
-fn fires_shot(m: Mech) -> bool { return m == Mech.Hero || m == Mech.Beam || has_hex_bolt(m) }
+fn fires_shot(m: Mech) -> bool { return m == Mech.Hero || m == Mech.Beam || has_hex_bolt(m) || has_mark(m) }
 
 // Fires side i's shot (on its neutral special's release frame).
 private fn shot_fire(i: s32) {
@@ -903,8 +914,14 @@ private fn shot_fire(i: s32) {
     s.t = 0
     s.y = 0.0
     s.hex = false
+    s.mark = false
+    s.refl = false
     if has_hex_bolt(f.mech) {
         shadow_bolt_fire(i, s)                  // the Hex Bolt (shadow.akr)
+        return
+    }
+    if has_mark(f.mech) {
+        seraph_bolt_fire(i, s)                  // the Mark of Judgement (seraph.akr)
         return
     }
     if f.mech == Mech.Beam {
@@ -933,6 +950,7 @@ private fn shot_fire(i: s32) {
 
 // What a shot does when it lands.
 private fn shot_hit(s: *Shot) -> Hit {
+    if s.mark { return mark_hit() }
     if s.hex { return hex_hit() }
     if s.lvl > 0 { return orb_hit(s.lvl) }
     return move_hit(Mech.Hero, Mv.sp_n)
@@ -966,7 +984,7 @@ fn shots_tick() {
         ev_add(Ev.Clash, 0, cx, cy, 1)
     }
     for i in 0..2 {
-        if !fight.shot[i].on { continue }
+        if !fight.shot[i].on || fight.shot[i].t < 0 { continue }    // (t < 0: reflected this frame)
         let j = other(i)
         // the leader first, then a split Twins' partner (twins.akr)
         if !shot_try(i, j) && twins_on(j) { shot_try(i, j + 2) }
@@ -984,9 +1002,13 @@ private fn shot_try(i: s32, j: s32) -> bool {
         if hu.kind != BOX_HURT { continue }
         let u = world_box(j, hu)
         if overlap(w, u) {
-            s.on = false
             var p = vec2(s.x, 1.5)
-            if s.lvl > 0 { p = vec2(s.x, (s.y0 + s.y1) / 2) }
+            if s.lvl > 0 || s.mark { p = vec2(s.x, (s.y0 + s.y1) / 2) }
+            if seraph_warding(j) && sgn(s.vx) == -fight.f[j].facing {
+                seraph_reflect(i, j, p)         // the Wing Ward sends it back (seraph.akr)
+                return true
+            }
+            s.on = false
             let h = shot_hit(s)
             c_pt[i] = p
             if parrying(j) {
@@ -1000,9 +1022,11 @@ private fn shot_try(i: s32, j: s32) -> bool {
             } else if tank_armoured(j, Mv.sp_n) {
                 absorb(i, j, h, p, true)
                 shadow_hexed(i, j, s)           // the Hex Bolt curses through armour
+                seraph_marked(i, j, s)          // and the Mark marks through it
             } else {
                 struck(i, j, h, p, true)
                 shadow_hexed(i, j, s)
+                seraph_marked(i, j, s)
             }
             return true
         }

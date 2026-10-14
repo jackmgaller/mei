@@ -14,7 +14,10 @@ import "seraph.akr"             // Seraph's data, and which of Shadow's rules it
 // guard pose there: anim_standin()), and for all of them while STANDIN_ALL is set.
 const STANDIN_ALL = false
 
-fn use_standin(m: Mech, mv: Mv) -> bool { return STANDIN_ALL || anim_standin(m, mv) }
+fn use_standin(m: Mech, mv: Mv) -> bool {
+    if m == Mech.Seraph && seraph_standin(mv) { return true }  // a placeholder of Shadow's (seraph.akr)
+    return STANDIN_ALL || anim_standin(m, mv)
+}
 
 // The marks the fight reads are anim.akr's MARK_*; the stand-in below sets them too.
 
@@ -75,6 +78,8 @@ struct Hit {
     kb: fixed               // the knockback slide's speed, m a frame
     kd: bool                // knocks down
     launch: fixed           // upward speed of a knockdown or an air hit
+    nodebt: bool            // the antimatter debt's 25 % does not apply (Seraph's Judgement on a
+                            // marked mech: the mark's 50 % does instead, seraph_judged)
 }
 
 const HIT_NONE = Hit {}
