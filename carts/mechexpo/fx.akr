@@ -433,6 +433,7 @@ private fn fx_plate(m: Mech) -> u32 {
     if m == Mech.Beam { return 0x18B8E0 }           // Raikō yellow
     if m == Mech.Tank { return 0x406A4C }           // Heartland faded green
     if m == Mech.Shadow { return 0x401830 }         // Umbral black-violet, darker
+    if m == Mech.Seraph { return 0xE0DCD8 }         // Momentum white
     return 0x9C9690
 }
 
@@ -880,8 +881,9 @@ fn fx_update(f: *Fight) {
         let sd = &fx_side[s]
         let root = anim_place(vec2(fi.x, fi.y), fi.facing)
         let on = is_swing(fi.mv)
-        if fi.mech == Mech.Beam || fi.mech == Mech.Tank || fi.mech == Mech.Twins {
-            // no blades: Beam's discharges are beam_fx.akr's, Tank's and the Twins' fists leave no trail
+        if fi.mech == Mech.Beam || fi.mech == Mech.Tank || fi.mech == Mech.Twins || fi.mech == Mech.Seraph {
+            // no blades: Beam's discharges are beam_fx.akr's, Tank's, the Twins' and Seraph's fists
+            // leave no trail (Seraph's own effects come with its moves: mx-seraph's phase 2)
             fx_trails[s * 2].n = 0
             fx_trails[s * 2 + 1].n = 0
         } else if fi.mech == Mech.Shadow {

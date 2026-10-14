@@ -14,7 +14,8 @@
 //     twice), a lost fight and a continue, the final's reveal, the Double-blade Hero, the cover,
 //     the unlock (an EASY clear unlocks it), the title. The fights are real until a moment in,
 //     then the harness ends each round (the loser's health to 0)
-// 118 the same on NORMAL with Shadow: the final is the UAPC's grey test unit (Shadow has no echo)
+// 118 the same on NORMAL with Shadow: the final is its echo, Seraph (mx-seraph: "MOMENTUM ROBOTICS
+//     PRESENTS ITS COMPETING PRODUCT"), drawn in its own paint, and the clear unlocks Seraph
 // 119 the same on HARD with Tank (the test unit; the CPU levels 2, 3, 3)
 // 120 the lot: every mech over 300 seeds: no own maker, no final's maker, no repeats, the Twins
 //     drawn while locked, every rival drawn, the same seed the same programme
@@ -26,14 +27,18 @@
 //     grade (NORMAL), UP to EASY, A: the run is on EASY
 // 123 the schedule page: VIEW 0 day 1, VIEW 1 day 2 (day 1 stamped), VIEW 2 the final day
 // 124 the final's reveal: VIEW 0 the Double-blade Hero in silhouette, VIEW 1 lit, VIEW 2 the
-//     test unit (Beam's), VIEW 3 the original (as the Double-blade Hero)
-// 125 the test unit in a fight: VIEW 0 Shadow against its grey copy, VIEW 1 the split Twins
-//     against theirs (four bodies, two grey), each CPU against CPU for 600 frames on the rooftop
+//     test unit (Beam's), VIEW 3 the original (as the Double-blade Hero), VIEW 4 Shadow's final:
+//     Seraph lit (mx-seraph: "MOMENTUM ROBOTICS PRESENTS ITS COMPETING PRODUCT"), VIEW 5 its VS
+//     card, Shadow against Seraph
+// 125 the test unit in a fight: VIEW 0 Shadow against its grey copy (set by the harness: since
+//     Seraph joined, Shadow's arcade final is Seraph), VIEW 1 the split Twins against theirs (four
+//     bodies, two grey), each CPU against CPU for 600 frames on the rooftop
 // 126 the cover: VIEW 0-5 a cover for each mech (the Hero's contract, the Double-blade Hero's
-//     upset, Beam, Tank, the Twins and Shadow beating the test unit), each frozen in its held
-//     pose with the fanfare playing; VIEW 6 another seed's cover; VIEW 7 after the fanfare (the
-//     menu loop back). VIEW 0 also measures every headline and cover line against the layout,
-//     and checks the pick (two seeds differ, a replay is the same, no headline twice running)
+//     upset, Beam, Tank, the Twins beating the test unit, Shadow's contract over Seraph), each
+//     frozen in its held pose with the fanfare playing; VIEW 6 another seed's cover; VIEW 7 after
+//     the fanfare (the menu loop back). VIEW 0 also measures every headline and cover line
+//     against the layout, and checks the pick (two seeds differ, a replay is the same, no
+//     headline twice running)
 // 127 a continue: the second fight lost; VIEW 0 the results ask for another demonstration; VIEW 1
 //     A gives the same fight again (the same opponent, level and stage); VIEW 2 B withdraws: the
 //     title
@@ -56,7 +61,7 @@ const SHOT_AT = match SCENARIO {
     121 => 60
     122 => 80
     123 => 60
-    124 => match VIEW { 0 => 120, else => 240 }
+    124 => match VIEW { 0 => 120, 5 => 140, else => 240 }
     125 => 600
     126 => match VIEW { 7 => 400, else => 150 }
     127 => match VIEW { 0 => 60, 1 => 140, else => 120 }
@@ -105,6 +110,7 @@ fn test_hook() {
         117, 118, 119 => full_run()
         121 => hook_121()
         122 => hook_122()
+        124 => { if VIEW == 5 { press(0, 95, A) } }        // past the reveal, to the VS card
         125 => hook_125()
         127 => hook_127()
         else => {}
@@ -401,6 +407,12 @@ private fn finish_run() {
     if RUN_MECH == 0 {
         assert(run.foe[LADDER_N - 1] == Mech.Doubleblade && !run.grey[LADDER_N - 1], "the Hero's final is its echo")
         assert_eq(run.fin, FIN_ECHO, "the Hero's final kind")
+    } else if RUN_MECH == 1 {
+        // Shadow's echo slot has its mech (mx-seraph): Seraph, not the test unit
+        assert(run.foe[LADDER_N - 1] == Mech.Seraph && !run.grey[LADDER_N - 1], "Shadow's final is Seraph")
+        assert_eq(run.fin, FIN_ECHO, "Shadow's final kind")
+        assert_eq(run.maker[LADDER_N - 1], CO_MOMENTUM, "Seraph's maker")
+        assert(!rn_seen_grey, "a test unit fought in Shadow's run")
     } else {
         assert(run.foe[LADDER_N - 1] == me && run.grey[LADDER_N - 1], "no echo: the final is the test unit")
         assert_eq(run.fin, FIN_TEST, "the final kind")
@@ -420,6 +432,9 @@ private fn finish_run() {
     if RUN_MECH == 0 {
         assert(rn_unlock, "no unlock screen")
         assert(slot_ok(ROSTER_COLS), "the clear did not unlock the Double-blade Hero")
+    } else if RUN_MECH == 1 {
+        assert(rn_unlock, "no unlock screen")
+        assert(slot_ok(ROSTER_COLS + 1), "the clear did not unlock Seraph")
     } else {
         assert(!rn_unlock, "an unlock screen with nothing to unlock")
     }
@@ -585,6 +600,7 @@ private fn setup_reveal() {
     match VIEW {
         0, 1 => arcade_at(0, DIFF_NORMAL, LADDER_N - 1, 5)
         2 => arcade_at(2, DIFF_HARD, LADDER_N - 1, 5)
+        4, 5 => arcade_at(1, DIFF_NORMAL, LADDER_N - 1, 5)
         else => arcade_at(ROSTER_COLS, DIFF_EASY, LADDER_N - 1, 5)
     }
     enter_reveal()
@@ -596,6 +612,11 @@ private fn setup_test_fight() {
     else { arcade_at(4, DIFF_HARD, LADDER_N - 1, 5) }
     p_mech[1] = run.foe[ladder]
     p_grey[1] = run.grey[ladder]
+    if VIEW == 0 {
+        // Shadow's final is Seraph now (mx-seraph): its grey copy, as a mech with no echo meets
+        p_mech[1] = Mech.Shadow
+        p_grey[1] = true
+    }
     enter_fight()
 }
 
@@ -610,7 +631,8 @@ private fn hook_125() {
 }
 
 // 126's covers: VIEW 0-5 one per mech (the Hero's contract, the Double-blade Hero's upset, Beam,
-// Tank, the combined Twins and Shadow beating the test unit), frozen in their held pose, with
+// Tank, the combined Twins beating the test unit, and Shadow's contract over Seraph), frozen in
+// their held pose, with
 // the fanfare playing; VIEW 6 the Hero with another seed (another cover); VIEW 7 the Hero's after
 // the fanfare (the menu loop back). VIEW 0 also measures every pool line against the layout and
 // checks the pick: two seeds, two covers; the same seed twice, not the same headline twice.
@@ -772,9 +794,14 @@ private fn check_shot() {
             assert_eq(ladder, VIEW, "the programme's day")
         }
         124 => {
-            assert(st == St.Reveal, "not the reveal")
+            if VIEW == 5 { assert(st == St.Vs, "not the VS card") } else { assert(st == St.Reveal, "not the reveal") }
             if VIEW == 2 { assert(run.grey[ladder] && run.fin == FIN_TEST, "Beam's final is not the test unit") }
             if VIEW == 3 { assert(run.fin == FIN_ORIGINAL && run.foe[ladder] == Mech.Hero, "the echo's final is not the Hero") }
+            if VIEW >= 4 {
+                assert(run.fin == FIN_ECHO && run.foe[ladder] == Mech.Seraph && !run.grey[ladder], "Shadow's final is not Seraph")
+                assert(p_mech[0] == Mech.Shadow && p_mech[1] == Mech.Seraph && !p_grey[1], "the final's units")
+                println("Shadow's final: Seraph (MR-02, Momentum Robotics), not the test unit")
+            }
         }
         125 => {
             assert(st == St.Fight, "not the fight")

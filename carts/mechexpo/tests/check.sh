@@ -5,7 +5,7 @@
 # 6 and 7 the chains, 8 the kinetic super, 9 the antimatter super and its debt, 10 CPU against
 # CPU twice (the same match), 11 the separation limit and the walls, 12 the Parry and the
 # anti-air, 13 the ladder's levels, 18 the Vault Throw, 19 the air attack, 15 training. The
-# budget scenarios (14, 39, 49, 54, 69, 98, 99) are tests/budget.sh's. MEIC and RUN as in
+# budget scenarios (14, 39, 49, 54, 69, 98, 99, 109, 152) are tests/budget.sh's. MEIC and RUN as in
 # tools/cart_scenario.sh.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -14,11 +14,11 @@ mkdir -p "$O"
 POOL_DIR="$O"
 . "$HERE/pool.sh"
 pool_report() {
-    grep -E '^(OK|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|cover|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb)' "$O/$1.log"
+    grep -E '^(OK|Seraph|the (fists|jab|lunging|throw|super)|blurb|stats|Shadow.s (final|Claw)|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|cover|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb)' "$O/$1.log"
 }
 run() {       # scenario frames: the scenarios through the whole game cost about 8 times a frame
     s="$1"; f="$2"; shift 2
-    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]) c=$((f * 8)) ;; 108) c=$((f * 40)) ;; *) c="$f" ;; esac
+    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]|15[3-7]) c=$((f * 8)) ;; 108) c=$((f * 40)) ;; *) c="$f" ;; esac
     pool_add "s$s" "$c" "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@"
 }
 run 1 800
@@ -123,6 +123,17 @@ run 106 900
 run 107 1600
 run 108 2500
 run 110 900
+# Seraph (mx-seraph, phase 1: Shadow's moves on its body): 150 against Shadow, 151 against the
+# Hero (its numbers, the fists' reach, a throw, the kinetic super); through the whole game
+# (tests/seraph/harness.akr): 153 the select with its card and spec sheet, 154-157 mid-fight
+# against Shadow and the Hero in the hangar and on the rooftop (152, the budget, is budget.sh's)
+run 150 1500
+run 151 1500
+run 153 61
+run 154 301
+run 155 301
+run 156 301
+run 157 301
 # the arcade ladder (mx-ladder, tests/ladder/harness.akr, the whole game; VIEWs as listed there):
 # 116 EASY against a scripted masher, 117-119 a whole run on each difficulty (EASY with the Hero,
 # NORMAL with Shadow, HARD with Tank: the rivals drawn, a loss and a continue, the reveal, the
@@ -152,6 +163,8 @@ lrun 124 0 121
 lrun 124 1 241
 lrun 124 2 241
 lrun 124 3 241
+lrun 124 4 241
+lrun 124 5 141
 lrun 125 0 601
 lrun 125 1 601
 lrun 126 0 151

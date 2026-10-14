@@ -56,7 +56,7 @@ const DK_C = 5
 const DK_O = 6
 const DK_NAMES: [7]*u8 = ["N", "S", "P", "T", "X", "C", "O"]
 
-const NAMES: [8]*u8 = ["Hero", "Doubleblade", "Beam", "Tank", "Twins", "TwinA", "TwinB", "Shadow"]
+const NAMES: [len(Mech)]*u8 = ["Hero", "Doubleblade", "Beam", "Tank", "Twins", "TwinA", "TwinB", "Shadow", "Seraph"]
 const EV_NAMES: [len(Ev)]*u8 = [
     "Hit", "Block", "Chip", "Whiff", "Grab", "Throw", "Break", "Land", "Step", "MeterFull",
     "Super", "Ko", "TimeUp", "Shot", "Parry", "Clash", "Swing", "Armour", "RingOut", "Curse", "Mine",

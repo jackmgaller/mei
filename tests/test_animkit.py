@@ -19,7 +19,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
 
-from animkit.rig import AnimError, load_rig, rot_xyz, apply, PARTS        # noqa: E402
+from animkit.rig import AnimError, load_rig, rot_xyz, apply, PARTS, SKELETON  # noqa: E402
 from animkit.move import Move, ease, MARKS                                  # noqa: E402
 from animkit.verify import verify                                           # noqa: E402
 from animkit import export as EX                                            # noqa: E402
@@ -27,6 +27,7 @@ from animkit import export as EX                                            # no
 CART = ROOT/'carts'/'mechexpo'
 HERO_RIG = CART/'models'/'hero'/'hero.rig.json'
 DB_RIG = CART/'models'/'doubleblade'/'doubleblade.rig.json'
+SERAPH_RIG = CART/'models'/'seraph'/'seraph.rig.json'
 ATK_F = CART/'anims'/'hero'/'atk_f.anim.json'
 BODY = CART/'anims'/'hero'/'_body.anim.json'
 
@@ -79,10 +80,19 @@ class RigTests(unittest.TestCase):
             self.assertLess(abs(low), 0.03, path)
 
     def test_every_part_has_a_joint(self):
-        for path in (HERO_RIG, DB_RIG):
+        for path in (HERO_RIG, DB_RIG, SERAPH_RIG):
             rig = load_rig(path)
-            for pid in PARTS:
+            for pid in SKELETON:
                 self.assertIn(pid, rig.joints, f'{path}: {pid}')
+        # the joints appended after the shared skeleton are Seraph's alone
+        self.assertEqual(PARTS[len(SKELETON):], ['wing_l', 'wing_r', 'halo'])
+        for pid in PARTS[len(SKELETON):]:
+            self.assertIn(pid, load_rig(SERAPH_RIG).joints)
+            self.assertNotIn(pid, load_rig(HERO_RIG).joints)
+
+    def test_part_count(self):
+        self.assertEqual(EX.part_count(load_rig(HERO_RIG)), len(SKELETON))
+        self.assertEqual(EX.part_count(load_rig(SERAPH_RIG)), len(PARTS))
 
 
 class FormatTests(Files, unittest.TestCase):
@@ -372,6 +382,38 @@ class AuthoringTests(Files, unittest.TestCase):
         g = load_rig(HERO_RIG).poses['guard']['offset'][1]
         self.assertAlmostEqual(sunk[0]['offset_up'], g, delta=0.05)
 
+    def test_still_holds_joints_at_zero(self):
+        keys = [{'at': 0, 'from': 'guard', 'pose': {'weapon_r': [20, 0, 0]}},
+                {'at': 10, 'pose': {'weapon_r': [-30, 5, 0], 'head': [10, 0, 0]}}]
+        free = Move(self.move('a', base=str(BODY), keys=keys))
+        held = Move(self.move('b', base=str(BODY), keys=keys, still=['weapon_r']))
+        for f in (0, 5, 10):
+            self.assertNotEqual(free.pose_at(f)[0].get('weapon_r'), [0.0, 0.0, 0.0])
+            self.assertEqual(held.pose_at(f)[0]['weapon_r'], [0.0, 0.0, 0.0])
+            self.assertEqual(held.pose_at(f)[0]['head'], free.pose_at(f)[0]['head'])
+        # it carries into a derived move, and names parts only
+        d = Move(self.move('c', base=str(self.dir/'b.anim.json')))
+        self.assertEqual(d.still, ['weapon_r'])
+        with self.assertRaises(AnimError) as ctx:
+            Move(self.move('e', base=str(BODY), still=['tail']))
+        self.assertEqual(ctx.exception.path, '/still/0')
+
+    def test_floor_allow(self):
+        sunk = [{'at': 0, 'from': 'guard', 'offset': [0, -2.0]}]
+        r = verify(self.move('s', base=str(BODY), keys=sunk))
+        deepest = max((f for f in r['failures'] if f['check'] == 'floor'), key=lambda f: f['depth'])
+        parts = {f['part']: f['depth'] for f in r['failures'] if f['check'] == 'floor'}
+        # every sunk part allowed to its depth: warnings, not failures
+        r = verify(self.move('t', base=str(BODY), keys=sunk, floor_allow={p: d+0.01 for p, d in parts.items()}))
+        self.assertNotIn('floor', [f['check'] for f in r['failures']])
+        self.assertIn('floor', [w['check'] for w in r['warnings']])
+        # not deep enough: still a failure
+        r = verify(self.move('u', base=str(BODY), keys=sunk, floor_allow={deepest['part']: deepest['depth']/2}))
+        self.assertIn(deepest['part'], [f.get('part') for f in r['failures'] if f['check'] == 'floor'])
+        with self.assertRaises(AnimError) as ctx:
+            Move(self.move('v', base=str(BODY), floor_allow={'head': -1}))
+        self.assertEqual(ctx.exception.path, '/floor_allow/head')
+
     def test_allow_comes_from_the_rig_and_merges(self):
         rig = load_rig(HERO_RIG)
         self.assertIn(frozenset(('forearm_r', 'weapon_r')), rig.allow)
@@ -437,7 +479,13 @@ class ExportTests(Files, unittest.TestCase):
         self.assertEqual(a['flags'] & EX.FLAG_STANDIN, 0)
         self.assertTrue(heads[('hero', 'idle')]['flags'] & EX.FLAG_LOOP)
         self.assertTrue(heads[('hero', 'super')]['flags'] & EX.FLAG_STANDIN)
-        self.assertEqual(a['box_first']-a['frames'], 38*len(PARTS)*EX.XF_BYTES)
+        self.assertEqual(a['box_first']-a['frames'], 38*len(SKELETON)*EX.XF_BYTES)
+        # a mech with the appended joints holds them all in each frame (AK_NPART says how many)
+        s = heads[('seraph', 'idle')]
+        self.assertEqual(s['box_first']-s['frames'], s['len']*len(PARTS)*EX.XF_BYTES)
+        npart = [l for l in akr.splitlines() if l.startswith('const AK_NPART')][0]
+        counts = [int(v) for v in npart[npart.index('[', npart.index('=')) + 1:npart.rindex(']')].split(',')]
+        self.assertEqual(counts, [len(PARTS) if m == 'seraph' else len(SKELETON) for m in EX.MECHS])
         # the first frame's pelvis matrix, as anim.akr reads it
         r = struct.unpack_from('<10h3i', blob, a['frames'])
         m = Move(ATK_F).matrices(0)['pelvis']
@@ -490,7 +538,7 @@ class RuntimeTests(unittest.TestCase):
             for a, b in zip(got, want):
                 self.assertLess(abs(a-b), 0.002, f'frame {f} {PARTS[p]}')
             seen += 1
-        self.assertEqual(seen, 3*len(PARTS))
+        self.assertEqual(seen, 3*len([p for p in PARTS if p in move.rig.joints]))
 
     def test_boxes_and_marks(self):
         move = Move(ATK_F)

@@ -41,6 +41,8 @@
 // 100-108 Shadow's (mx-shadow-fight): the Hex Bolt and the Siphon, the curse's time, the Rift
 //     Mine, Shadow Sneak, Eclipse Rise, Phantom Grip, Total Eclipse, throws with Tank and the
 //     Twins, the CPU; listed with their code at the end (109 is in tests/shadow/harness.akr)
+// 150-151 Seraph's (mx-seraph, phase 1: Shadow's moves on Seraph's body): against Shadow and
+//     against the Hero; listed with their code at the end (152-157 are in tests/seraph/harness.akr)
 // 40-49 Tank's (mx-tank): armour, its grabs and throws, the nuclear meter, its super, the CPU
 //     and the budget; listed with their code at the end of this file
 // 60-67 the Twins' (mx-twins-fight): combining and splitting, the partner, hits and throws on and
@@ -129,6 +131,10 @@ fn init() {
         sh_init()
         return
     }
+    if sr_scenario() {
+        sr_restart()
+        return
+    }
     if SCENARIO == 10 || SCENARIO == 13 || SCENARIO == 16 { tick_per_frame = 40 }
     if SCENARIO >= 1 && SCENARIO <= 9 || SCENARIO == 11 || SCENARIO == 12 || SCENARIO == 18 || SCENARIO == 19 { skip_intro() }
     match SCENARIO {
@@ -212,6 +218,7 @@ private fn script1() -> u32 {
     if tk_scenario() { return tk_script(0) }
     if tw_scenario() { return tw_script(0) }
     if sh_scenario() { return sh_script(0) }
+    if sr_scenario() { return sh_script(0) }
     let a = &fight.f[0]
     let fwd = if_u(a.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -274,6 +281,7 @@ private fn script2() -> u32 {
     if tk_scenario() { return tk_script(1) }
     if tw_scenario() { return tw_script(1) }
     if sh_scenario() { return sh_script(1) }
+    if sr_scenario() { return sh_script(1) }
     let b = &fight.f[1]
     let fwd = if_u(b.facing > 0, RIGHT, LEFT)
     match SCENARIO {
@@ -375,6 +383,7 @@ private fn check() {
             if tk_scenario() { tk_check() }
             if tw_scenario() { tw_check() }
             if sh_scenario() { sh_check() }
+            if sr_scenario() { sr_check() }
         }
     }
 }
@@ -1547,7 +1556,7 @@ private fn check_orb_beaten() {
     }
 }
 
-const MECH_NAMES: [len(Mech)]*u8 = ["Hero", "Double-blade", "Beam", "Tank", "Twins", "Twin A", "Twin B", "Shadow"]
+const MECH_NAMES: [len(Mech)]*u8 = ["Hero", "Double-blade", "Beam", "Tank", "Twins", "Twin A", "Twin B", "Shadow", "Seraph"]
 
 private fn check_beam_budget() {
     if frames > 3 && frames != 901 && frames != 902 {
@@ -3393,4 +3402,206 @@ private fn sh_check_stats() {
     print_int(sh_tot[3])
     println(" in 40 matches")
     ok("Shadow's statistics")
+}
+
+// ---- Seraph's scenarios, 150-151 (mx-seraph; MOVES.md, "Seraph"): phase 1, Shadow's moves on
+// Seraph's body, with its own numbers; 152-157 need the whole game (tests/seraph/harness.akr)
+//
+// 150 against Shadow: idle (1,000 health, the kinetic meter, 22 parts a frame, the walk slower than
+//     Shadow's); the jab lands at 4 m (50 damage, the kinetic meter's 125) and misses at 6 m, where
+//     Shadow's Claw Jab still reaches Seraph; the lunging straight lands at 9 m and misses just
+//     past the fist's reach (where the talons would still reach by 2.5 m); Phantom Grip
+//     (Shadow's throw, for now) swaps the sides; the super from a full bar:
+//     Total Eclipse's five hits (for now), the bar spent, no debt (kinetic)
+// 151 the same against the Hero
+
+const SR_FOE: Mech = match SCENARIO { 151 => Mech.Hero, else => Mech.Shadow }
+
+private fn sr_scenario() -> bool { return SCENARIO == 150 || SCENARIO == 151 }
+
+private fn sr_restart() { sh_restart(Mech.Seraph, SR_FOE, -4.0, 4.0) }
+
+// The furthest a move's hit boxes reach over its frames (fight-local x).
+private fn sr_reach(m: Mech, mv: Mv) -> fixed {
+    var bx: Boxes
+    var r = -99.0
+    for f in 0..mv_len(m, mv) {
+        mv_boxes(m, mv, f, &bx)
+        for k in 0..bx.n {
+            if bx.b[k].kind == BOX_HIT { r = max(r, bx.b[k].x1) }
+        }
+    }
+    return r
+}
+
+// One attack by side i from distance d: restarted there, the press two frames in. Whether it
+// landed is read once the move is over.
+private fn sr_try(d: fixed, i: s32, b: u32) {
+    sr_restart()
+    place(-d / 2, d / 2)
+    mark = frames
+    sh_flag = false
+    if i == 0 { mark_h = fight.f[1].health } else { mark_h = fight.f[0].health }
+    sh_x0 = 0.0
+    sh_part = i
+    sh_prev_t = 0
+    mark2 = frames + 2
+    sh_hold[0] = 0
+    sh_hold[1] = 0
+    sr_b = b
+}
+
+var sr_b: u32
+var sr_far: fixed
+
+// How far in front of its root a mech's hurt boxes reach in its guard (idle, frame 0).
+private fn sr_front(m: Mech) -> fixed {
+    var bx: Boxes
+    var r = 0.0
+    mv_boxes(m, Mv.idle, 0, &bx)
+    for k in 0..bx.n {
+        if bx.b[k].kind == BOX_HURT { r = max(r, bx.b[k].x1) }
+    }
+    return r
+}
+
+private fn sr_press() {
+    if frames == mark2 { sh_pad[sh_part] = sr_b }
+}
+
+// The attack of the last sr_try is over (both idle again a while after): its hits.
+private fn sr_over() -> bool { return frames > mark + 12 && actionable(0) && actionable(1) }
+
+private fn sr_check() {
+    let s = &fight.f[0]
+    let o = &fight.f[1]
+    sr_press()
+    match stage {
+        0 => {
+            if frames == mark + 1 {
+                assert(s.mech == Mech.Seraph && s.body == Mech.Seraph, "Seraph is not side 0")
+                assert_eq(s.health, 1000, "Seraph's health")
+                assert(meter_power(Mech.Seraph) == Power.Kinetic, "Seraph's meter is not kinetic")
+                assert_eq(AK_NPART[Mech.Seraph], len(Part), "Seraph's frames do not hold its wings and halo")
+                assert_eq(AK_NPART[Mech.Shadow], Part.wing_l as s32, "Shadow's frames hold parts it has not")
+                let jab = sr_reach(Mech.Seraph, Mv.atk_n)
+                let lunge = sr_reach(Mech.Seraph, Mv.atk_f)
+                print("the fists reach ")
+                print_fixed(jab)
+                print(" (jab) and ")
+                print_fixed(lunge)
+                print(" (lunge); Shadow's talons ")
+                print_fixed(sr_reach(Mech.Shadow, Mv.atk_n))
+                print(" and ")
+                print_fixed(sr_reach(Mech.Shadow, Mv.atk_f))
+                println("")
+                assert(jab < 3.3 && jab < sr_reach(Mech.Shadow, Mv.atk_n) - 2.0, "the jab reaches as far as a claw")
+                assert(lunge < 6.9 && lunge < sr_reach(Mech.Shadow, Mv.atk_f) - 2.0, "the lunge reaches as far as a claw")
+                sh_x0 = s.x
+                sh_hold[0] = LEFT       // back, away from the other (side 0 faces +x)
+            }
+            if frames == mark + 61 {
+                sh_hold[0] = 0
+                let w = sh_x0 - s.x
+                print("walked back 60 frames: ")
+                print_fixed(w)
+                println(" m")
+                assert(abs(w - STATS[Mech.Seraph].walk_b * 60) < 0.2, "the walk back")
+                assert(STATS[Mech.Seraph].walk_f < STATS[Mech.Shadow].walk_f, "the walk is not slower than Shadow's")
+                sr_try(4.0, 0, A)
+                stage = 1
+            }
+        }
+        1 => {
+            if sr_over() {
+                assert_eq(evc_side[0][Ev.Hit], 1, "the jab did not land at 4 m")
+                assert_eq(mark_h - o.health, dmg(Mech.Seraph as s32, Mv.atk_n), "the jab's damage")
+                assert_eq(s.meter, KIN_HIT, "the kinetic meter's gain for a landed hit")
+                println("the jab lands at 4 m")
+                sr_try(6.0, 0, A)
+                stage = 2
+            }
+        }
+        2 => {
+            if sr_over() {
+                assert_eq(evc_side[0][Ev.Hit], 0, "the jab landed at 6 m: air in front of the fist")
+                assert_eq(o.health, mark_h, "damage from a jab at 6 m")
+                println("the jab misses at 6 m")
+                if SR_FOE == Mech.Shadow {
+                    sr_try(6.0, 1, A)
+                    stage = 3
+                } else {
+                    sr_try(9.0, 0, RIGHT | A)
+                    stage = 4
+                }
+            }
+        }
+        3 => {
+            if sr_over() {
+                assert_eq(evc_side[1][Ev.Hit], 1, "Shadow's Claw Jab did not reach Seraph at 6 m")
+                println("Shadow's Claw Jab reaches Seraph at 6 m")
+                sr_try(9.0, 0, RIGHT | A)
+                stage = 4
+            }
+        }
+        4 => {
+            if sr_over() {
+                assert_eq(evc_side[0][Ev.Hit], 1, "the lunging straight did not land at 9 m")
+                assert_eq(mark_h - o.health, dmg(Mech.Seraph as s32, Mv.atk_f), "the lunge's damage")
+                println("the lunging straight lands at 9 m")
+                // just out of the fist's reach: the lunge's 2 m glide, the fist, and the front of
+                // the other's hurt boxes in its guard (Shadow's claws are held out in front)
+                sr_far = sr_reach(Mech.Seraph, Mv.atk_f) + 2.0 + sr_front(SR_FOE) + 0.3
+                sr_try(sr_far, 0, RIGHT | A)
+                stage = 5
+            }
+        }
+        5 => {
+            if sr_over() {
+                assert_eq(evc_side[0][Ev.Hit], 0, "the lunging straight landed out of the fist's reach")
+                print("the lunging straight misses at ")
+                print_fixed(sr_far)
+                print(" m, where Shadow's talons would reach ")
+                print_fixed(sr_reach(Mech.Shadow, Mv.atk_f) + 2.0 + sr_front(SR_FOE))
+                println(" m")
+                assert(sr_reach(Mech.Shadow, Mv.atk_f) + 2.0 + sr_front(SR_FOE) > sr_far + 2.0, "the talons' reach")
+                sr_try(4.0, 0, Y)
+                stage = 6
+            }
+        }
+        6 => {
+            if evc[Ev.Throw] == 1 && !sh_flag {
+                sh_flag = true
+                assert_eq(mark_h - o.health, dmg(Mech.Seraph as s32, Mv.throw), "the throw's damage")
+            }
+            if sh_flag && o.mv == Mv.knockdown {
+                assert(s.x > o.x, "the throw did not swap the sides")
+                println("the throw (Phantom Grip, for now) swaps the sides")
+                sr_try(4.0, 0, A | B)
+                s.meter = METER_BAR
+                stage = 7
+            }
+        }
+        7 => {
+            if evc[Ev.Super] == 1 && !sh_flag {
+                sh_flag = true
+                assert(s.meter >= 0 && s.meter < 10, "the super did not spend the bar (kinetic: no debt)")
+            }
+            if sh_flag && s.mv != Mv.super {
+                print("the super: ")
+                print_int(evc_side[0][Ev.Hit])
+                print(" hits, ")
+                print_int(mark_h - o.health)
+                print(" damage, the meter after ")
+                print_int(s.meter)
+                println("")
+                assert_eq(evc_side[0][Ev.Hit], 5, "five hits")
+                let want = 70 + 70 * COMBO_2 / 100 + 70 * COMBO_3 / 100 * 2 + 120 * COMBO_3 / 100
+                assert_eq(mark_h - o.health, want, "the five hits' scaled damage")
+                assert(s.meter >= 0, "a kinetic super went into debt")
+                if SR_FOE == Mech.Shadow { ok("Seraph against Shadow") } else { ok("Seraph against the Hero") }
+            }
+        }
+        else => {}
+    }
 }

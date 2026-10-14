@@ -180,7 +180,7 @@ fn sfx_attack(m: Mech, mv: Mv) {
 // A shot fired: the Hero's wave (its sword's swing), Beam's Volt Orb by level (1 a tap, 2
 // charged, 3 full: lower and louder).
 fn sfx_shot(m: Mech, lvl: s32) {
-    if m == Mech.Shadow {
+    if m == Mech.Shadow || m == Mech.Seraph {       // Seraph fires Shadow's bolt until its own (phase 2)
         sx_play(SFX_VOID_IN, 6, 1, false, 0.72, 240, sx_take_pan())     // the Hex Bolt (a stand-in)
         return
     }

@@ -425,5 +425,6 @@ fn fight_moves(m: Mech) -> *MoveList {
     if m == Mech.Hero { move_list = HERO_MOVES } else if m == Mech.Tank { move_list = TANK_MOVES } else { move_list = DB_MOVES }
     if m == Mech.Beam { move_list = BEAM_MOVES }
     if m == Mech.Shadow { move_list = SHADOW_MOVES }
+    if m == Mech.Seraph { move_list = SERAPH_MOVES }
     return &move_list
 }

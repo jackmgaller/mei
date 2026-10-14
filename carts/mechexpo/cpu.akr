@@ -246,7 +246,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
             }
             if me.mv == Mv.atk_f {
                 if landed && super_wise(i) && roll(c, 30) { return A | B }
-                if me.mech == Mech.Shadow { return B }                  // Shadow: the Hex Bolt (the curse)
+                if cpu_as_shadow(me.mech) { return B }                  // Shadow: the Hex Bolt (the curse)
                 // not a dash onto the other's mine: the neutral special instead (mx-balance)
                 if me.mech == Mech.Tank {
                     if mine_in_path(i, cpu_trav_d[me.body]) { return B }
@@ -265,7 +265,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
     // the Twins' Fusion Focus: B held for the frames it chose
     if me.mech == Mech.Twins && me.mv == Mv.sp_d && me.body == Mech.Twins && me.charge < c.charge_want { return B }
     // Shadow Sneak: B held while the shadow is still short of the other mech
-    if me.mech == Mech.Shadow && me.mv == Mv.sp_f && dist > SH_SNEAK_STOP { return B }
+    if cpu_as_shadow(me.mech) && me.mv == Mv.sp_f && dist > SH_SNEAK_STOP { return B }
     if !actionable(i) {
         c.hold = 0
         c.hold_t = 0
@@ -276,7 +276,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         return 0
     }
     // Shadow: a mech its mine snared is punished at once (once seen)
-    if me.mech == Mech.Shadow && shadow_snared(j) && snare_t[j] <= SNARE_FRAMES - lv.react / 2 {
+    if cpu_as_shadow(me.mech) && shadow_snared(j) && snare_t[j] <= SNARE_FRAMES - lv.react / 2 {
         return shadow_snare_punish(i, c, dist, fwd)
     }
 
@@ -357,7 +357,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
     if me.mech == Mech.Beam { return beam_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Tank { return tank_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Twins { return twins_neutral(i, c, lv, dist, fwd, back) }
-    if me.mech == Mech.Shadow { return shadow_neutral(i, c, lv, dist, fwd, back) }
+    if cpu_as_shadow(me.mech) { return shadow_neutral(i, c, lv, dist, fwd, back) }
     // neutral: footsies around the tip of its forward attack
     let range = tip(me.body)
     if dist < tip(op.body) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
@@ -669,6 +669,11 @@ private fn cpu_edge(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32) -> u3
 
 const SH_SNEAK_STOP: fixed = 4.5        // the Sneak's hold is let go this close (it erupts in reach)
 
+// Seraph plays Shadow's CPU (its chain, the Sneak, the mine, the bolt, the anti-air) until its own
+// moves land (mx-seraph, phase 2), but for a punish: Shadow's punish reaches with the talons, so
+// Seraph's fists use the general one (its jab's and lunge's own reach, from the data).
+private fn cpu_as_shadow(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
+
 private fn shadow_punish(dist: fixed, fwd: u32) -> u32 {
     if dist < 6.0 { return A }
     if dist < 10.0 { return fwd | A }
@@ -696,7 +701,7 @@ private fn shadow_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
     // a mine where the other must walk: laid in the open between them, or while it is down. A
     // mech with a shot keeps its distance and shoots (the Hero's wave clears a mine): against it
     // a mine in the open is time given away, so only while it is down (mx-balance)
-    let open_ok = !fires_shot(op.mech) || op.mech == Mech.Shadow
+    let open_ok = !fires_shot(op.mech) || has_hex_bolt(op.mech)
     if !mine && ((down && dist > 4.0) || (open_ok && dist > 8.0 && dist < 20.0 && !threat)) && roll(c, lv.special * 4) {
         return DOWN | B
     }
@@ -704,7 +709,7 @@ private fn shadow_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
     // (mx-balance: not inside the other's poke, where the bolt's 40 frames are a free hit, nor at a
     // mech with a stronger shot to answer it, the Hero's wave or Beam's charged orb: the bolt does
     // not win a projectile war, so against them the curse comes from the chain)
-    let beaten = fires_shot(op.mech) && op.mech != Mech.Shadow
+    let beaten = fires_shot(op.mech) && !has_hex_bolt(op.mech)
     let clear = dist > tip(op.body) + 2.0
     if !fight.shot[i].on && !beaten && clear && dist < 24.0 && op.curse < 60 && !down && roll(c, 30 + lv.special * 2) {
         return B
@@ -817,7 +822,7 @@ private fn shot_above(i: s32, c: *Cpu, lv: *CpuLevel, s: *Shot, fwd: u32) -> u32
     let me = &fight.f[i]
     let far = abs(s.x - me.x)
     if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
-    if me.mech == Mech.Shadow && abs(fight.f[other(i)].x - me.x) < 19.0 && roll(c, lv.aa) { return fwd | B }
+    if cpu_as_shadow(me.mech) && abs(fight.f[other(i)].x - me.x) < 19.0 && roll(c, lv.aa) { return fwd | B }
     if me.mech == Mech.Hero && s.str < 2 && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) { return B }
     if me.mech == Mech.Beam && s.str < 2 && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) {
         c.charge_want = ORB_CHARGE_HALF + 4                 // a charged orb beats a bolt or a tap

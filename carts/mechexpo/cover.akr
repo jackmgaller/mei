@@ -21,17 +21,19 @@ const COVER_W_SUB = 300             // its first small line (FONT_HEAD), across 
 const COVER_W_LINE = 184            // its second (FONT_LABEL), inside the headline's panel
 const COVER_W_TEASE = 196           // a cover line (FONT_LABEL, then FONT_MICRO)
 
-// Per mech (Mech order: Hero, Doubleblade, Beam, Tank, Twins, TwinA, TwinB, Shadow): the held
-// frame of its win move (the end of the win, weapons up; Tank early in it, square to the camera,
-// before its fist swings across the lens), how far it is turned toward the camera, the camera's
-// distance and where its feet are (below the bottom edge: the photograph is cut at the knees).
-const COVER_POSE: [8]s32 = [119, 119, 119, 40, 119, 119, 119, 119]
-const COVER_YAW: [8]fixed = [1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05]
-const COVER_DIST: [8]fixed = [12.5, 12.5, 12.5, 13.5, 12.5, 12.5, 12.5, 12.5]
-const COVER_FEET: [8]s32 = [300, 300, 300, 272, 300, 300, 300, 300]
+// Per mech (Mech order: Hero, Doubleblade, Beam, Tank, Twins, TwinA, TwinB, Shadow, Seraph): the
+// held frame of its win move (the end of the win, weapons up; Tank early in it, square to the
+// camera, before its fist swings across the lens), how far it is turned toward the camera, the
+// camera's distance and where its feet are (below the bottom edge: the photograph is cut at the
+// knees). Seraph holds Shadow's win (its own is still to be animated), a little further off for
+// its halo, which stands 1.4 m above Shadow's hood.
+const COVER_POSE: [len(Mech)]s32 = [119, 119, 119, 40, 119, 119, 119, 119, 119]
+const COVER_YAW: [len(Mech)]fixed = [1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05]
+const COVER_DIST: [len(Mech)]fixed = [12.5, 12.5, 12.5, 13.5, 12.5, 12.5, 12.5, 12.5, 13.5]
+const COVER_FEET: [len(Mech)]s32 = [300, 300, 300, 272, 300, 300, 300, 300, 300]
 // The backdrop's shades, top and bottom (print ramp shades: 1 lightest, 15 darkest): lighter
 // behind the dark Shadow.
-const COVER_SKY: [8][2]s32 = [[12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [8, 1]]
+const COVER_SKY: [len(Mech)][2]s32 = [[12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [8, 1], [12, 3]]
 
 const CO_ANY = -1
 
