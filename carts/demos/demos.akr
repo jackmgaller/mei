@@ -1,16 +1,20 @@
-// Language features showcase: an enum state machine drives a menu; screens are picked
-// with `match`; a particle system is updated with each/filter/map_into/reduce; orbit
+// Mei Demos: short screens showing what the machine and its language can do, one menu for all
+// of them. The textured cube (cube.akr) and Sound Lab (soundlab.akr) show the GPU and the
+// audio hardware; the rest show Akari: an enum state machine drives the menu; screens are
+// picked with `match`; a particle system is updated with each/filter/map_into/reduce; orbit
 // curves are function values, and the colour ramps are closures. Flocking uses vectors,
 // creatures use enum states, and cellular automata use double-buffered arrays.
-// Up/Down + A to choose,
-// B to go back. Left alone, the cart cycles through its screens by itself.
-cart "Features"
+// Up/Down + A to choose, B to go back. Left alone, the cart cycles through its screens by
+// itself (Sound Lab waits while it is making a sound).
+cart "Mei Demos", "MEI-DEMOS"
 
+import "cube.akr"
+import "soundlab.akr"
 import "flocking.akr"
 import "creatures.akr"
 import "automata.akr"
 
-enum Screen { Menu, Particles, Orbits, Flocking, Creatures, Automata, About }
+enum Screen { Menu, Cube, SoundLab, Particles, Orbits, Flocking, Creatures, Automata, About }
 
 struct Item { label: *u8, target: Screen }
 struct Particle { pos: vec2, vel: vec2, life: s32, hue: u8 }
@@ -23,7 +27,7 @@ const IDLE_SIM = 600         // let the new simulations demonstrate their behavi
 var screen = Screen.Menu
 var cursor = 0
 var idle = 0
-var items: [6]Item
+var items: [8]Item
 var parts: [96]Particle
 var count = 0
 var speeds: [96]fixed
@@ -32,12 +36,14 @@ var curves: [3]fn(fixed) -> vec2      // orbit shapes
 var t: fixed
 
 fn init() {
-    items[0] = Item { label: "PARTICLES", target: Screen.Particles }
-    items[1] = Item { label: "ORBITS", target: Screen.Orbits }
-    items[2] = Item { label: "FLOCKING", target: Screen.Flocking }
-    items[3] = Item { label: "TINY CREATURES", target: Screen.Creatures }
-    items[4] = Item { label: "CELLULAR AUTOMATA", target: Screen.Automata }
-    items[5] = Item { label: "ABOUT", target: Screen.About }
+    items[0] = Item { label: "TEXTURED CUBE", target: Screen.Cube }
+    items[1] = Item { label: "SOUND LAB", target: Screen.SoundLab }
+    items[2] = Item { label: "PARTICLES", target: Screen.Particles }
+    items[3] = Item { label: "ORBITS", target: Screen.Orbits }
+    items[4] = Item { label: "FLOCKING", target: Screen.Flocking }
+    items[5] = Item { label: "TINY CREATURES", target: Screen.Creatures }
+    items[6] = Item { label: "CELLULAR AUTOMATA", target: Screen.Automata }
+    items[7] = Item { label: "ABOUT", target: Screen.About }
     tint[0] = ramp(255, -1, 40)
     tint[1] = ramp(60, 255, -1)
     tint[2] = ramp(-1, 140, 255)
@@ -60,8 +66,12 @@ fn channel(c: s32, l: s32) -> s32 {
 }
 
 fn enter(s: Screen) {
+    if screen == Screen.Cube { cube_leave() }
+    if screen == Screen.SoundLab { lab_leave() }
     screen = s
     idle = 0
+    if s == Screen.Cube { cube_enter() }
+    if s == Screen.SoundLab { lab_enter() }
     if s == Screen.Particles { count = 0 }
     if s == Screen.Flocking { flocking_reset() }
     if s == Screen.Creatures { creatures_reset() }
@@ -76,6 +86,11 @@ fn update() {
     if btn(UP | DOWN | LEFT | RIGHT | A | B | X | Y | L | R | START | SELECT) { idle = 0 }
     match screen {
         Menu => update_menu()
+        Cube => cube_update()
+        SoundLab => {
+            lab_update()
+            if sound_active() != 0 { idle = 0 }     // let a sound finish before the tour moves on
+        }
         Particles => update_particles()
         Flocking => flocking_update()
         Creatures => creatures_update()
@@ -132,6 +147,8 @@ fn update_particles() {
 fn draw() {
     match screen {
         Menu => draw_menu()
+        Cube => cube_draw()
+        SoundLab => lab_draw()
         Particles => draw_particles()
         Orbits => draw_orbits()
         Flocking => flocking_draw()
@@ -151,9 +168,9 @@ fn heading(s: *u8) {
 
 fn draw_menu() {
     cls(rgb(12, 14, 30))
-    heading("MEI LANGUAGE FEATURES")
+    heading("MEI DEMOS")
     for i in 0..len(items) {
-        let y = 54 + i * 22
+        let y = 36 + i * 19
         var colour = rgb(150, 150, 170)
         if i == cursor {
             colour = rgb(255, 220, 90)
@@ -205,7 +222,8 @@ fn draw_orbits() {
 fn draw_about() {
     cls(rgb(20, 12, 24))
     heading("ABOUT")
-    let lines = ["enum Screen { Menu, ... }", "match screen { ... }", "ramp(r, g, b): closures",
+    let lines = ["mesh(), fog(), subdivide()", "ADPCM, 16 channels, reverb",
+                 "enum Screen { Menu, ... }", "match screen { ... }", "ramp(r, g, b): closures",
                  "fn(p) => p.life > 0", "each / filter / map_into", "reduce(xs, 0, f, n)",
                  "vec2: steering a flock", "enum states: tiny creatures",
                  "arrays: cellular automata"]

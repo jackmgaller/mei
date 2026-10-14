@@ -75,8 +75,8 @@ Kit's `verify`, `preview` and `build` take `--build-dir build-mine`, or read `B=
 ([ASSETKIT.md](docs/ASSETKIT.md#native-tools)):
 `python3 tools/mei_assets.py preview model.asset.json -o build-mine/assets/model --build-dir build-mine --closeups`.
 
-Mei Demo, Sound Lab and World Viewer are built only on request (`make build/carts/demo.mei
-build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out. The
+World Viewer is built only on request (`make build/carts/worldview.mei`); `make` and `make web`
+leave it out. The
 movement garden is built by `make`, which therefore needs NumPy for its world (the shrine town),
 and Pillow for its textures (its assets and `carts/garden/shrine`'s read PNG sheets).
 The Reference Renderer
@@ -229,11 +229,11 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_boot_eclipse.py` | `system/boot/eclipse/`: textures, palette, sound, volumes and `gen.akr` for Eclipse |
 | `gen_shell_assets.py` | `system/shell/`: font and art textures, palettes, glyph metrics, UI sounds (`snd_*.raw`), `wave.raw` and `assets.akr` |
 | `gen_shell_music.py` | `system/shell/mu_crystal.adp` (samples) and `system/shell/mu_data.akr` (the score) |
-| `gen_demo_assets.py` | `carts/demo/art/`: a cube, a ground mesh, a texture and its palette |
+| `gen_demo_assets.py` | `carts/demos/art/`: Mei Demos' cube, a ground mesh, a texture and its palette |
 | `gen_lantern_assets.py` | `carts/lantern/art/` and `carts/lantern/assets.akr`; then runs `gen_lantern_audio.py` |
 | `gen_lantern_audio.py` | `carts/lantern/audio/` |
 | `gen_orbs_assets.py` | `carts/orbs/art/` (meshes, textures, palettes, the save icon), `carts/orbs/audio/` (sounds, music) and `carts/orbs/level_data.akr` |
-| `gen_soundlab_assets.py` | `carts/soundlab/audio/` (clips, PCM and ADPCM) and `carts/soundlab/assets.akr` |
+| `gen_soundlab_assets.py` | `carts/demos/audio/` (Sound Lab's clips, PCM and ADPCM) and `carts/demos/soundlab_assets.akr` |
 | `gen_weather_assets.py` | `carts/weather/art/` and `carts/weather/art.akr` |
 | `gen_weather_audio.py` | `carts/weather/audio/` and `carts/weather/mu_data.akr` |
 | `gen_weather_tape.py` | `carts/weather/demo_tape.bin`, Mei Weather's sample broadcast |

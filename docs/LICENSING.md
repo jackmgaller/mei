@@ -52,7 +52,7 @@ outputs were regenerated on 2026-10-10:
 
 Clean: the standard library's fonts (`src/core/font8x8.h`, after the public-domain
 font8x8_basic shapes; `stdlib/font_small.akr`, a pixel font drawn by `meifont.py --pixel`),
-Orbs, Sound Lab, Mei Demo, the movement garden's other textures.
+Orbs, Mei Demos, the movement garden's other textures.
 
 Still open: `tools/gen_eyewitness_assets.py` draws in Palatino (see 2), and the examples and
 development scripts below.
@@ -101,6 +101,6 @@ list in `tools/meinet/cities.py` uses 2020 census figures (public domain).
 - No real brand names in the lab models, carts or recipes (searched for drink, convenience
   store, electronics, game and car brands). "PlayStation" appears only as a description in
   `docs/` and comments.
-- The music of the shell, the boot themes, Lantern, Orbs, Mei Weather and Sound Lab is
+- The music of the shell, the boot themes, Lantern, Orbs, Mei Weather and Mei Demos' Sound Lab is
   synthesised by its generators; nothing in them is described as a transcription.
 - The git history has never held Eyewitness, video frames, MP3s or Apple's font files.

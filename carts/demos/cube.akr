@@ -1,0 +1,56 @@
+// The textured cube: a spinning textured, Gouraud-shaded cube over a fogged checkerboard
+// (once the Mei Demo cart). Assets come from tools/gen_demo_assets.py. D-pad left/right orbits
+// the camera, up/down tilts it, A toggles fog.
+
+embed CUBE: Mesh = "art/cube.bin"
+embed GROUND: Mesh = "art/ground.bin"
+embed BRICKS: u8 = "art/tex.bin"
+embed BRICK_PAL: u16 = "art/pal.bin"
+
+const CUBE_SKY = 0x5A3C28       // rgb(40, 60, 90)
+
+var cube_spin: fixed
+var cube_orbit: fixed = 0.6
+var cube_tilt: fixed = -0.25
+var cube_fog = true
+
+fn cube_enter() {
+    load_texture(0, BRICKS, len(BRICKS))
+    load_palette(0, BRICK_PAL, len(BRICK_PAL))
+    subdivide(2)                // split the cube's faces when they span a lot of depth
+    subdivide_tuning(10, 12.0)  // (less affine warping of the bricks)
+}
+
+// Back to the 2D screens' state: no fog, no subdivision (the stdlib's defaults).
+fn cube_leave() {
+    fog_off()
+    subdivide(0)
+    subdivide_tuning(25, 8.0)
+}
+
+fn cube_update() {
+    cube_spin += 0.025
+    if btn(LEFT) { cube_orbit -= 0.03 }
+    if btn(RIGHT) { cube_orbit += 0.03 }
+    if btn(UP) { cube_tilt = min(cube_tilt + 0.02, 0.5) }
+    if btn(DOWN) { cube_tilt = max(cube_tilt - 0.02, -1.2) }
+    if btnp(A) { cube_fog = !cube_fog }
+}
+
+fn cube_draw() {
+    cls(CUBE_SKY)
+    if cube_fog { fog(CUBE_SKY, 6.0, 22.0) } else { fog_off() }
+    // orbit the camera around the cube, always looking at it
+    let dist: fixed = 7.0
+    let eye = vec3(-sin(cube_orbit) * dist * cos(cube_tilt), 1.0 - sin(cube_tilt) * dist,
+                   -cos(cube_orbit) * dist * cos(cube_tilt))
+    camera_look(eye, cube_orbit, cube_tilt)
+    mesh(GROUND)
+    depth_bias(-60)     // keep the cube in front of the big ground tiles under it
+    mesh_at(CUBE, vec3(0.0, 0.2 + sin(cube_spin * 2) * 0.3, 0.0), cube_spin)
+    depth_bias(0)
+    text(8, 8, "TEXTURED CUBE", rgb(255, 255, 255))
+    let x = text_int(216, 8, tris_drawn(), rgb(160, 220, 255))
+    text(x, 8, " TRIS", rgb(160, 220, 255))
+    text(8, 212, "D-PAD: ORBIT  A: FOG", rgb(255, 230, 120))
+}

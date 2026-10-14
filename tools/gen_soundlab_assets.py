@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Generates the assets of the Sound Lab cart in carts/soundlab/ (the sounds in audio/):
+"""Generates the assets of Mei Demos' Sound Lab in carts/demos/ (the sounds in audio/):
 
   clip16.raw   a 2.4 s musical phrase, signed 16-bit at 22,050 Hz
   clip8.raw    the same clip as signed 8-bit
   clip.adp     the same clip as Mei ADPCM (tools/mei_adpcm.py)
   snap.adp     a short dry clap and pluck, for hearing the reverb presets
   pad.adp      a soft tone with a seamless loop (84-sample period), for the 16-channel chord
-  assets.akr   embeds plus sizes, sample counts and measured SNRs (generated code)
+  soundlab_assets.akr  embeds plus sizes, sample counts and measured SNRs (generated code)
 """
 import math, os, sys
 import numpy as np
@@ -17,7 +17,7 @@ import mei_adpcm as A
 
 SR = 22050
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'carts', 'soundlab')
+OUT = os.path.join(ROOT, 'carts', 'demos')
 AUDIO = os.path.join(OUT, 'audio')
 rng = np.random.default_rng(7)
 
@@ -143,7 +143,7 @@ const PAD_LOOP = {loop}
 const CLIP8_SNR = {round(snr8)}       // dB against the 16-bit clip
 const CLIP_ADPCM_SNR = {round(snra)}
 """
-    with open(os.path.join(OUT, 'assets.akr'), 'w') as f:
+    with open(os.path.join(OUT, 'soundlab_assets.akr'), 'w') as f:
         f.write(akr)
     print(f"clip: {len(c)} samples; 16-bit {2 * len(c)} B, 8-bit {len(c)} B (SNR {snr8:.1f} dB), "
           f"ADPCM {len(cadp)} B (SNR {snra:.1f} dB)")

@@ -1,0 +1,230 @@
+// Sound Lab: the audio hardware in one screen (once a cart of its own). One clip in 16-bit
+// PCM, 8-bit PCM and ADPCM; the reverb presets on a dry snap; a 16-channel ADPCM chord through
+// the reverb. Up/down selects a row, left/right changes it, A plays.
+// Assets: tools/gen_soundlab_assets.py
+import "soundlab_assets.akr"
+
+const LAB_ROWS = 8
+const LAB_ROW_PCM16 = 0
+const LAB_ROW_PCM8 = 1
+const LAB_ROW_ADPCM = 2
+const LAB_ROW_SEND = 3
+const LAB_ROW_PRESET = 4
+const LAB_ROW_WET = 5
+const LAB_ROW_DECAY = 6
+const LAB_ROW_CHORD = 7
+
+const LAB_CH_CLIP = 0
+const LAB_CH_SNAP = 1
+
+fn lab_preset_name(p: s32) -> *u8 {
+    match p {
+        1 => return "ROOM"
+        2 => return "STUDIO"
+        3 => return "HALL"
+        4 => return "SPACE"
+        5 => return "ECHO"
+        else => return "OFF"
+    }
+}
+
+// C major pentatonic over four octaves, as playback rates of the 262.5 Hz pad
+const LAB_CHORD: [16]fixed = [0.5, 0.7491, 1.0, 1.1225, 1.2599, 1.4983, 1.6818, 2.0,
+                          2.2449, 2.5198, 2.9966, 3.3636, 4.0, 4.4898, 5.0397, 5.9932]
+const LAB_CHORD_VOL = 26
+
+var lab_sel = 0
+var lab_preset = REVERB_HALL
+var lab_wet = 160
+var lab_decay = 0
+var lab_clip_send = false
+var lab_clip_fmt = -1           // the row whose clip is playing
+var lab_chord_on = false
+var lab_chord_next = 0          // next voice to start
+var lab_chord_timer = 0
+var lab_chord_fade = 0          // volume while fading out
+var lab_digit: [2]u8
+const LAB_HEX = "0123456789ABCDEF"
+
+fn lab_apply_reverb() {
+    reverb(lab_preset, lab_wet, lab_wet)
+    reverb_decay(lab_decay)
+}
+
+fn lab_enter() {
+    lab_apply_reverb()
+}
+
+// Silence every channel and switch the reverb off, for the screens that make no sound.
+fn lab_leave() {
+    for c in 0..16 { stop(c) }
+    reverb(REVERB_OFF, 0, 0)
+    reverb_decay(0)
+    lab_chord_on = false
+    lab_chord_fade = 0
+    lab_clip_fmt = -1
+}
+
+fn lab_play_clip(row: s32) {
+    var flags: u32 = 0
+    if lab_clip_send { flags = SND_REVERB }
+    if row == LAB_ROW_PCM16 { play_sample(LAB_CH_CLIP, CLIP16, CLIP_SAMPLES, 0, 1.0, 200, 200, SND_16BIT | flags) }
+    else if row == LAB_ROW_PCM8 { play_sample(LAB_CH_CLIP, CLIP8, CLIP_SAMPLES, 0, 1.0, 200, 200, flags) }
+    else { play_sample(LAB_CH_CLIP, CLIP_ADPCM, CLIP_SAMPLES, 0, 1.0, 200, 200, SND_ADPCM | flags) }
+    lab_clip_fmt = row
+}
+
+fn lab_chord_start() {
+    lab_chord_on = true
+    lab_chord_next = 0
+    lab_chord_timer = 0
+    lab_chord_fade = LAB_CHORD_VOL
+}
+
+fn lab_chord_update() {
+    if lab_chord_on && lab_chord_next < 16 {
+        lab_chord_timer -= 1
+        if lab_chord_timer <= 0 {
+            let c = lab_chord_next
+            let pan = c * 12 - 90                 // spread across the stereo field
+            let l = clamp(LAB_CHORD_VOL - pan / 8, 4, 40)
+            let r = clamp(LAB_CHORD_VOL + pan / 8, 4, 40)
+            play_sample(c, PAD, PAD_SAMPLES, PAD_LOOP, LAB_CHORD[c], l, r, SND_ADPCM | SND_LOOP | SND_REVERB)
+            lab_chord_next += 1
+            lab_chord_timer = 5
+        }
+    }
+    if !lab_chord_on && lab_chord_fade > 0 {
+        lab_chord_fade -= 1
+        for c in 0..16 {
+            if lab_chord_fade == 0 { stop(c) }
+            else {
+                let pan = c * 12 - 90
+                sound_vol(c, clamp(lab_chord_fade - pan / 8, 1, 40) * lab_chord_fade / LAB_CHORD_VOL,
+                          clamp(lab_chord_fade + pan / 8, 1, 40) * lab_chord_fade / LAB_CHORD_VOL)
+            }
+        }
+    }
+}
+
+fn lab_change(dir: s32) {
+    if lab_sel == LAB_ROW_SEND {
+        lab_clip_send = !lab_clip_send
+        if sound_playing(LAB_CH_CLIP) && lab_clip_fmt >= 0 { reverb_send(LAB_CH_CLIP, lab_clip_send) }   // live, no restart
+    } else if lab_sel == LAB_ROW_PRESET {
+        lab_preset = (lab_preset + dir + 6) % 6
+        lab_apply_reverb()
+    } else if lab_sel == LAB_ROW_WET {
+        lab_wet = clamp(lab_wet + dir * 16, 0, 255)
+        lab_apply_reverb()
+    } else if lab_sel == LAB_ROW_DECAY {
+        lab_decay = clamp(lab_decay + dir * 32, 0, 224)
+        lab_apply_reverb()
+    }
+}
+
+fn lab_press() {
+    if lab_sel <= LAB_ROW_ADPCM { lab_play_clip(lab_sel) }
+    else if lab_sel == LAB_ROW_CHORD {
+        if lab_chord_on { lab_chord_on = false } else { lab_chord_start() }
+    } else {
+        play_sample(LAB_CH_SNAP, SNAP, SNAP_SAMPLES, 0, 1.0, 220, 220, SND_ADPCM | SND_REVERB)
+    }
+}
+
+fn lab_update() {
+    if btnp(UP) { lab_sel = (lab_sel + LAB_ROWS - 1) % LAB_ROWS }
+    if btnp(DOWN) { lab_sel = (lab_sel + 1) % LAB_ROWS }
+    if btnp(LEFT) { lab_change(-1) }
+    if btnp(RIGHT) { lab_change(1) }
+    if btnp(A) { lab_press() }
+    if !sound_playing(LAB_CH_CLIP) { lab_clip_fmt = -1 }
+    lab_chord_update()
+}
+
+const LAB_WHITE = 0xFFFFFF
+const LAB_DIM = 0x9A8C84
+const LAB_HEAD = 0x60C8F0
+const LAB_HI = 0x40D0FF
+
+fn lab_row_y(row: s32) -> s32 {
+    if row <= LAB_ROW_ADPCM { return 40 + row * 12 }
+    if row == LAB_ROW_SEND { return 80 }
+    if row <= LAB_ROW_DECAY { return 112 + (row - LAB_ROW_PRESET) * 12 }
+    return 164
+}
+
+fn lab_label(row: s32, s: *u8) {
+    let y = lab_row_y(row)
+    if lab_sel == row {
+        rect(10, y - 2, 300, 12, 0x5A3A28)
+        text(14, y, ">", LAB_HI)
+    }
+    text(26, y, s, lab_if_col(lab_sel == row))
+}
+
+fn lab_if_col(on: bool) -> u32 {
+    if on { return LAB_WHITE }
+    return LAB_DIM
+}
+
+fn lab_bytes_col(row: s32, x: s32, n: s32, snr: s32) {
+    let y = lab_row_y(row)
+    let e = text_int(x, y, n, LAB_DIM)
+    text(e, y, " B", LAB_DIM)
+    if snr > 0 {
+        let e2 = text_int(x + 80, y, snr, LAB_DIM)
+        text(e2, y, " dB", LAB_DIM)
+    }
+    if lab_clip_fmt == row {                   // progress of the playing clip, under its name
+        rect(26, y + 9, (sound_pos(LAB_CH_CLIP) as s32) * 120 / CLIP_SAMPLES, 1, LAB_HI)
+    }
+}
+
+fn lab_draw() {
+    cls(rgb(24, 26, 40))
+    text(12, 10, "SOUND LAB", LAB_HI)
+    text(100, 10, "16 CHANNELS  ADPCM  REVERB", LAB_DIM)
+
+    text(12, 28, "ONE CLIP IN", LAB_HEAD)
+    text(160, 28, "SIZE", LAB_HEAD)
+    text(240, 28, "SNR", LAB_HEAD)
+    lab_label(LAB_ROW_PCM16, "16-BIT PCM")
+    lab_bytes_col(LAB_ROW_PCM16, 160, len(CLIP16) * 2, 0)
+    lab_label(LAB_ROW_PCM8, "8-BIT PCM")
+    lab_bytes_col(LAB_ROW_PCM8, 160, len(CLIP8), CLIP8_SNR)
+    lab_label(LAB_ROW_ADPCM, "ADPCM")
+    lab_bytes_col(LAB_ROW_ADPCM, 160, len(CLIP_ADPCM), CLIP_ADPCM_SNR)
+    lab_label(LAB_ROW_SEND, "CLIP TO REVERB")
+    if lab_clip_send { text(176, lab_row_y(LAB_ROW_SEND), "< ON >", LAB_WHITE) } else { text(176, lab_row_y(LAB_ROW_SEND), "< OFF >", LAB_WHITE) }
+
+    text(12, 100, "REVERB  (A PLAYS A DRY SNAP)", LAB_HEAD)
+    lab_label(LAB_ROW_PRESET, "PRESET")
+    text(176, lab_row_y(LAB_ROW_PRESET), "<", LAB_WHITE)
+    text(192, lab_row_y(LAB_ROW_PRESET), lab_preset_name(lab_preset), LAB_WHITE)
+    text(256, lab_row_y(LAB_ROW_PRESET), ">", LAB_WHITE)
+    lab_label(LAB_ROW_WET, "WET VOLUME")
+    text(176, lab_row_y(LAB_ROW_WET), "<", LAB_WHITE)
+    text_int(192, lab_row_y(LAB_ROW_WET), lab_wet, LAB_WHITE)
+    text(256, lab_row_y(LAB_ROW_WET), ">", LAB_WHITE)
+    lab_label(LAB_ROW_DECAY, "DECAY")
+    text(176, lab_row_y(LAB_ROW_DECAY), "<", LAB_WHITE)
+    if lab_decay == 0 { text(192, lab_row_y(LAB_ROW_DECAY), "PRESET", LAB_WHITE) }
+    else { text_int(192, lab_row_y(LAB_ROW_DECAY), lab_decay, LAB_WHITE) }
+    text(256, lab_row_y(LAB_ROW_DECAY), ">", LAB_WHITE)
+
+    text(12, 152, "16 CHANNELS", LAB_HEAD)
+    lab_label(LAB_ROW_CHORD, "ADPCM CHORD")
+    if lab_chord_on { text(176, lab_row_y(LAB_ROW_CHORD), "A: RELEASE", LAB_WHITE) } else { text(176, lab_row_y(LAB_ROW_CHORD), "A: PLAY", LAB_WHITE) }
+
+    // channel activity
+    let active = sound_active()
+    for c in 0..16 {
+        let x = 16 + c * 18
+        let on = (active >> (c as u32)) & 1 != 0
+        if on { rect(x, 180, 14, 18, LAB_HI) } else { rect(x, 180, 14, 18, 0x403028) }
+        lab_digit[0] = LAB_HEX[c]
+        text(x + 3, 201, &lab_digit[0], LAB_DIM)
+    }
+    text(12, 213, "UP/DOWN: SELECT  L/R: CHANGE  A: PLAY", LAB_DIM)
+}

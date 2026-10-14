@@ -88,10 +88,9 @@ To run a cart, either directly or after the boot animation:
 ./build/mei --no-boot build/carts/orbs.mei
 ```
 
-`make` builds every cart except Mei Demo, Sound Lab and World Viewer, which are built on
-request (`make build/carts/demo.mei build/carts/soundlab.mei build/carts/worldview.mei`) and so
-are not in the shell's list. Carts that use worlds (Movement Garden, World Viewer) build their
-worlds first, which needs NumPy ([WORLDKIT.md](WORLDKIT.md#using-a-world-in-a-cart)).
+`make` builds every cart except World Viewer, which is built on request (`make
+build/carts/worldview.mei`) and so is not in the shell's list. Carts that use worlds (Movement
+Garden, World Viewer) build their worlds first, which needs NumPy ([WORLDKIT.md](WORLDKIT.md#using-a-world-in-a-cart)).
 
 Or drop a `.mei` file on the window. Keyboard: arrows = d-pad, WASD = analog stick,
 J K U I = A B X Y, Q E = L R, Enter = Start, Backspace or right Shift = Select, F2 home,
@@ -149,7 +148,7 @@ is rebuilt when any file in its folder changes.
 
 **Assets.** A cart keeps its binary assets in two folders beside its source, `art/` (meshes,
 textures, palettes, icons) and `audio/` (sounds and music), and embeds them by path:
-`embed CUBE: Mesh = "art/cube.bin"` (Mei Demo's). Generated Akari files, such as Lantern Lake's
+`embed CUBE: Mesh = "art/cube.bin"` (Mei Demos'). Generated Akari files, such as Lantern Lake's
 `assets.akr` of embeds and constants, sit at the top of the cart's folder. A mesh can be
 made with the [Asset Kit](ASSETKIT.md) from a JSON recipe (`mei_assets.py build` writes the
 mesh and an `.akr` to import).
@@ -216,8 +215,7 @@ If something has a name, it matters. These are the named things in the project.
 | **Lantern Lake** | A fishing game on a lake, day into night | `carts/lantern/` |
 | **Sun & Moon Orbs** | A small 3D collect-a-thon in a courtyard | `carts/orbs/` |
 | **Mei Weather** | A weather channel fed by MeiNet | `carts/weather/` |
-| **Features** | Short screens showing what the machine can do | `carts/features/` |
-| **Sound Lab**, **Mei Demo** | The audio hardware test and the smallest example; built on request | `carts/soundlab/`, `carts/demo/` |
+| **Mei Demos** | Short screens showing what the machine and Akari can do, from one menu: a textured cube, Sound Lab (the audio hardware), particles, orbits, flocking, tiny creatures, cellular automata | `carts/demos/` |
 | **World Viewer** | Fly or walk through the World Kit's example worlds, with palette variants, layers and costs on screen; the reference for a cart that uses a world. Built on request | `carts/worldview/`, [WORLDKIT.md](WORLDKIT.md#using-a-world-in-a-cart) |
 
 **Retired names**, which still appear in history and in some measurements: **Tsumiki** (a 3D
