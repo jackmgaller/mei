@@ -1491,8 +1491,8 @@ Built by mx-ladder; how it works is in [README.md](README.md#the-arcade-ladder).
   masthead, a headline and side teasers: one layout, text per case (a base mech wins: CONTRACT
   AWARDED; an echo beats its original: UPSET AT THE EXPO; a win over the test unit: EVALUATION
   PASSED), teasers about what is still locked ("WHO IS BINARY MECHANICA?"). Then the unlock
-  screen if something unlocked, then the title. The masthead's name is the owner's to pick
-  (pitched: PROCUREMENT TODAY, on screen for now; MECHA MONTHLY; HEAVY METAL REVIEW).
+  screen if something unlocked, then the title. The masthead is PROCUREMENT TODAY, the owner's
+  pick.
 
 ## Balance patch (2026-10-13)
 
@@ -1583,7 +1583,5 @@ health of the Double-blade Hero and Shadow (the owner's decisions).
   level 1 alike (94-97 % of matches) and level 2 only 38 % (README.md, "The arcade ladder"). So
   EASY's final could take level 1 without getting hard, and NORMAL's final (level 2) is a big
   step from its company fights (level 1); both want the owner's own play.
-- The cover's masthead: PROCUREMENT TODAY is on screen; MECHA MONTHLY and HEAVY METAL REVIEW are
-  the other names pitched.
 - The test unit's grey is one ramp for every body; a UAPC marking on it (a roundel on the
   shoulder) would need a texture in the grey parts.

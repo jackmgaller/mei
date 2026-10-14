@@ -359,8 +359,7 @@ clear it holds becomes a NORMAL stamp, since the MVP's ladder was two fights at 
     measures every line against the layout (`COVER_W_*`).
   - Then the masthead, the grade's APPROVED sticker and a barcode; then the unlock screen if
     the clear unlocked a mech, then the title.
-- **The masthead** is "PROCUREMENT TODAY" for now; the other names pitched: "MECHA MONTHLY", "HEAVY
-  METAL REVIEW". The owner picks.
+- **The masthead** is "PROCUREMENT TODAY", the owner's pick.
 
 **The test unit's grey** is made by `tools/gen_mechexpo_assets.py`, not by hand: for each body in
 `GREY_BODIES` (Shadow, Beam, Tank, the combined Twins, twin A, twin B) every part recipe is packed
