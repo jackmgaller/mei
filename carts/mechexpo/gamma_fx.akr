@@ -563,9 +563,15 @@ private fn gfx_moves(f: *Fight, s: s32, tick: bool) {
     } else if tick && gfx_ray_was[s] {
         // the ray went out: cut by a strong shot through it?
         let o = 1 - s
-        if gfx_shot_on[o] && gfx_shot_str[o] >= 2 && (gfx_shot_x[o] - gfx_end[s]) * dir <= 1.5
-           && (gfx_shot_x[o] - fi.x) * dir >= 0.0 {
-            gfx_cut(s, gfx_shot_x[o], gfx_ray_y[s])
+        let os = &f.shot[o]
+        var sx = gfx_shot_x[o]
+        var strong = gfx_shot_on[o] && gfx_shot_str[o] >= 2
+        if os.on && os.str >= 2 {
+            strong = true                           // (a full orb goes on through the cut)
+            sx = os.x
+        }
+        if strong && (sx - gfx_end[s]) * dir <= 1.5 && (sx - fi.x) * dir >= 0.0 {
+            gfx_cut(s, sx, gfx_ray_y[s])
         }
         gfx_off_t[s] = 0
     }
@@ -1278,7 +1284,7 @@ fn gamma_sfx(f: *Fight) {
         if !ray && gsx_ray[s] && !vented {
             sfx_pan(fi.x)
             let o = 1 - s
-            if gsx_shot_on[o] && gsx_shot_str[o] >= 2 {
+            if (gsx_shot_on[o] && gsx_shot_str[o] >= 2) || (f.shot[o].on && f.shot[o].str >= 2) {
                 sfx_gamma(GSX_CUT)
             } else if !is_hurt(fi.mv) {
                 sfx_gamma(GSX_RAY_OFF)
