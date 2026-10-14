@@ -19,11 +19,26 @@
   "steel": {
    "color": "#3c4568"
   },
+  "dark": {
+   "color": "#141a30"
+  },
+  "warm": {
+   "color": "#e8b060",
+   "class": "emissive"
+  },
   "wheel": {
-   "color": "#9fe0f0",
+   "color": "#6aa6c0",
    "class": "emissive",
    "texture": {
     "image": "art/city_wheel.png",
+    "projection": "fit"
+   }
+  },
+  "refl_white": {
+   "color": "#dcd6cc",
+   "class": "emissive",
+   "texture": {
+    "image": "art/city_refl_white.png",
     "projection": "fit"
    }
   }
@@ -33,16 +48,16 @@
    "id": "disc",
    "op": "box",
    "size": [
-    68.0,
-    68.0,
+    72.0,
+    72.0,
     0.2
    ],
    "material": "wheel",
    "transform": {
     "translate": [
-     18.0,
+     72.0,
      20.0,
-     200.0
+     196.0
     ]
    },
    "open": [
@@ -64,9 +79,9 @@
    "material": "steel",
    "transform": {
     "translate": [
-     9.75,
+     63.75,
      -10.0,
-     202.5
+     198.5
     ],
     "rotate": [
      0,
@@ -91,9 +106,9 @@
    "material": "steel",
    "transform": {
     "translate": [
-     26.25,
+     80.25,
      -10.0,
-     202.5
+     198.5
     ],
     "rotate": [
      0,
@@ -104,6 +119,76 @@
    "open": [
     "bottom",
     "top",
+    "front"
+   ]
+  },
+  {
+   "id": "base",
+   "op": "box",
+   "size": [
+    40.0,
+    9.0,
+    16.0
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     72.0,
+     -43.5,
+     202.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "right"
+   ]
+  },
+  {
+   "id": "base_lit",
+   "op": "box",
+   "size": [
+    36.0,
+    1.2,
+    0.2
+   ],
+   "material": "warm",
+   "transform": {
+    "translate": [
+     72.0,
+     -42.0,
+     193.8
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "refl",
+   "op": "box",
+   "size": [
+    30.0,
+    26.0,
+    0.2
+   ],
+   "material": "refl_white",
+   "transform": {
+    "translate": [
+     72.0,
+     -61.3,
+     193.5
+    ]
+   },
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
     "front"
    ]
   }

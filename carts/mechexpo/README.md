@@ -431,14 +431,14 @@ of timed events. Then new stages are content, not engine work"). `stages.akr` ho
   budget, and four views of the rooftop's city (112 the fight's start, 113 the camera fully out,
   114 the open edge, 115 a ring-out; `tests/run.sh N FRAMES OUT` writes `OUT.png`).
 - **The budget on the rooftop** (scenarios 98 and 99, CPU against CPU through the real game, a
-  release build, with the city): the Hero against the Double-blade Hero 619,133 CPU cycles and
-  762,371 GPU cycles at the peak, 2,195 triangles (577,165 and 640,455 with a mech within 8 m of
-  the open edge); the split Twins against Tank 599,396 and 1,001,968, 2,135 triangles. With
+  release build, with the city): the Hero against the Double-blade Hero 620,732 CPU cycles and
+  780,013 GPU cycles at the peak, 2,197 triangles (577,457 and 642,509 with a mech within 8 m of
+  the open edge); the split Twins against Tank 600,660 and 1,002,370, 2,135 triangles. With
   Osaka's city in polygons (until 2026-10-13) they were 654,591 and 825,722, 2,317 triangles, and
-  633,953 and 1,059,699, 2,257. The city alone costs about 69,000 CPU and 70,000 GPU cycles a
-  frame with the camera fully out (scenario 113, the mechs idle), 70,000 and 79,000 at the open
+  633,953 and 1,059,699, 2,257. The city alone costs about 69,000 CPU and 71,000 GPU cycles a
+  frame with the camera fully out (scenario 113, the mechs idle), 70,000 and 80,000 at the open
   edge (114); Osaka's cost 104,000 and 111,000, 105,000 and 145,000. Shadow against the split
-  Twins (scenario 109's run, put on the rooftop for the measurement): 695,472 and 873,118, 2,335
+  Twins (scenario 109's run, put on the rooftop for the measurement): 695,678 and 892,367, 2,339
   triangles, the worst fight measured there (729,468 and 932,847 with Osaka's); no late frames.
 
 ### The rooftop's city
@@ -448,7 +448,7 @@ Minato Mirai 21 (the district built out for a real expo, YES'89), and the roofto
 at the blue hour. Its buildings are polygons, made with the Asset Kit by
 `props/rooftop_city/make_city.py` (its recipes and its Pillow-drawn textures) and packed by
 `tools/gen_mechexpo_rooftop.py` into `roof_city3d.akr` and `art/stage_roof_city_*`; the far
-shore, the moon and the sea are BG1's, painted by the same generator. Six meshes, 414
+shore, the moon and the sea are BG1's, painted by the same generator. Six meshes, 420
 triangles, each in the world's coordinates and drawn at the origin; every recipe passes
 `verify`. As the place stood in 2000: nothing that opened later. Positions are in metres: x
 across the fight plane (the open edge at +26), z behind it (the parapet at 30), y up from the
@@ -456,18 +456,19 @@ deck, the sea at −48.
 
 | Mesh | Triangles | What |
 |---|---|---|
-| `city_mm` | 76 | Landmark Tower (x −112, z 330): a square shaft tapering from 44 m to 30 m, 118 m above the deck, under a stepped crown of four set-back storeys (a cool lit band, a storey of windows, a white lit band, a dark cap) with red aircraft lights; Queen's Square (x −90 to −22, z 300): three towers stepping down toward the sea, 78, 56 and 37 m above the deck, each roof a slope falling seaward with a white lit edge, the three slopes one wave |
+| `city_mm` | 76 | Landmark Tower (x −112, z 330): a square shaft tapering from 44 m to 30 m, 118 m above the deck, under a stepped crown of four set-back storeys (a cool lit band, a storey of windows, a white lit band, a dark cap) with red aircraft lights; Queen's Square (x −90 to −22, z 300): three towers stepping down toward the sea, 78, 56 and 36 m above the deck, each roof a gentle slope falling seaward with a cool lit edge (the steps between the towers larger than the slopes, so the three edges do not line up into one) |
 | `city_towers` | 64 | eleven office and hotel towers inland (x −262 to 12, z 196–334), 11 to 72 m above the deck, three with a cool lit crown band |
-| `city_wheel` | 14 | Cosmo Clock 21 (x 18, z 200): the wheel as one disc 68 m across facing the fight, its hub 20 m above the deck, in a 64 × 64 cutout texture (a solid lit rim with 16 gondola lights, eight spokes two texels thick, and at the hub the clock, a dark disc in a lit ring reading 20:00 in digits 4 × 7 texels), and its two legs |
+| `city_wheel` | 24 | Cosmo Clock 21 (x 72, z 196), on the harbour side: the wheel as one disc 72 m across facing the fight (so that a texel of the clock is a pixel or more from every view), its hub 20 m above the deck, in a 64 × 64 cutout texture (a muted lit rim with 16 dim gondola lights, eight spokes two texels thick, and at the hub the clock, a dark disc in a lit ring reading 20:00 in white digits 4 × 7 texels); its two legs, the low building at its foot and its reflection |
 | `city_bay` | 90 | across the harbour: the Bay Bridge (z 356, x 150–330: a girder with its lit lamp line, two towers of two legs, the outer and middle stays of its four fans), the Marine Tower (x 132, z 336: a slim tapering hexagon, its lit observation deck, a green beacon) and the moon's glade on the open water |
-| `city_venue` | 50 | by the water on the right: the sail hotel (x 69–99, z 231–240, rising to 80 m above the water: a crescent of eight faces bowed toward the fight, its outline rising to a rounded peak near its seaward end, white with faint floor lines and a few lit rooms, lit from its foot) and the convention centre's exhibition hall (x 112–232, z 226–266, 20 m high: windows along its front, its eaves, six blue banners and a MECH EXPO 2000 sign on its roof), with their reflections |
-| `city_quay` | 120 | below the open edge: the promenade (x 54–80, z 40–300) with 17 lamps, four kiosks with neon signs and two sign pylons; the tall ship in her dock (a white four-masted barque 44 m long, broadside at z 124, three square-rigged masts and a fourth without yards, her deck lights and her reflection), the dock's arm behind her, and a harbour launch with her cabin lit |
+| `city_venue` | 46 | by the water on the right: the convention centre's exhibition hall (x 112–232, z 226–266, 20 m high: windows along its front, its eaves, six blue banners and a MECH EXPO 2000 sign on its roof) and its reflection, and behind it the sail hotel (x 207–237, z 287–296, rising to 80 m above the water: a crescent of eight faces bowed toward the fight, its outline rising to a rounded peak near its seaward end, white with faint floor lines and a few lit rooms) |
+| `city_quay` | 120 | below the open edge: the promenade (x 54–80, z 40–300) with 17 lamps, four kiosks with neon signs and two sign pylons; the tall ship in her dock (a white four-masted barque 44 m long, broadside at z 124, three square-rigged masts and a fourth without yards, 22–24 m tall so that they stay under the venue's sign from the open edge, her deck lights and her reflection), the dock's arm behind her, and a harbour launch with her cabin lit |
 
-- **The views.** The fight's start (scenario 112) has the wheel and its clock between the mechs,
-  Landmark Tower and Queen's Square behind 1P and the moon over the bay; the widest view (113)
-  the whole skyline from the district to the sail hotel and the venue's sign; the open edge
-  (114) and a ring-out (115) the harbour below: the venue and its sign, the tall ship, the
-  promenade's lamps and neon, the Bay Bridge and the moon. The city stays cooler and quieter than
+- **The views.** The space between the mechs is kept quiet. The fight's start (scenario 112)
+  has Landmark Tower and Queen's Square behind 1P, the wheel behind 2P and the moon over the
+  bay; the widest view (113) the whole skyline from the district to the wheel and its clock
+  beside 2P, the venue's sign and the sail hotel; the open edge (114) and a ring-out (115) the
+  harbour below: the wheel, the venue and its sign, the tall ship, the promenade's lamps and
+  neon, the sail hotel, the Bay Bridge and the moon. The city stays cooler and quieter than
   the mechs: the warm lights are sparse windows, the lamps and the moon.
 - **What is a polygon.** Everything with sides to turn. What stays on BG1 (repainted) is what is
   too far to have any: the far shore across the harbour (inland a low skyline in the haze with a
@@ -479,7 +480,7 @@ deck, the sea at −48.
 - **Reflections.** A light's reflection is a card hanging below the waterline under it, where its
   mirror image would be (an 8 × 32 cutout streak broken into ripples, warm or white); only
   nearer polygons hide it. Only lights with open water between them and the camera have one: the
-  ship, the launch, the sail hotel, the hall and the moon. The promenade's lamps would not show
+  ship, the launch, the wheel, the hall and the moon. The promenade's lamps would not show
   one (from the roof the quay hides where it would be), and the far landmarks' are below the
   parapet's sight line.
 - **Windows.** A building is a box (Queen's Square a prism) in emissive textures: a 32 × 32 texel
@@ -502,15 +503,15 @@ deck, the sea at −48.
   −22 at z = 330), so a building left of the open edge starts there. Past the open edge the
   sea's level shows only from about x = 45 (the camera at its furthest, 23.5) or x = 70 (at 20).
   A roof above the eye (14 m), the +x face of a building right of x = 32 and the −x face of one
-  left of x = −30 (the camera's x runs −22 to 24) are not made, nor the wheel's foot, nor the
-  promenade's +x edge (the camera is always to its left); a sign, a lamp, a stay or a reflection
-  is one face.
+  left of x = −30 (the camera's x runs −22 to 24) are not made, nor the sail hotel's foot
+  (behind the hall), nor the promenade's +x edge (the camera is always to its left); a sign, a
+  lamp, a stay or a reflection is one face.
 - **Levels of detail and near culling are not used.** The camera only dollies 16–31 m, so a mesh
   100 m or more away changes size by a tenth: no level would ever be chosen. Cutting Osaka's
   ranks into meshes 70 m wide, each drawn only while the view reached it, saved 11,000 CPU
   cycles (2 %) on the widest view; the meshes stay whole.
 - **VRAM.** Texture slot 14 (13 tiles, 8,781 bytes of 32,768, loaded once at boot) and 4-bit
-  palettes 204–210 (the swatch's five and the textures' two; 211 is free). Nothing else: no
+  palettes 204–211 (the swatch's six and the textures' two). Nothing else: no
   atlas, no table, no second palette bank; BG1's art is 180 tiles (279 with Osaka's). The
   camera's far plane on the rooftop is 400 m (`ROOF_CLIP_FAR`; the hangar keeps 300): the Bay
   Bridge's far side, 364 m back, is the farthest polygon.

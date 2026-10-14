@@ -6,9 +6,9 @@ tools/gen_mechexpo_rooftop.py's, which also packs what this writes).
 Yokohama, October 2000, at the blue hour, seen from the expo tower's roof on the waterfront of
 Minato Mirai 21: the fight plane is z = 0, the deck's far edge (the parapet) z = DECK_FAR = 30,
 and the sea is SEA_Y below the deck. Inland to the left (-x) the district's towers, with
-Landmark Tower and Queen's Square; in the middle, in the harbour, Cosmo Clock 21; to the right,
-by the water, the sail hotel and the convention centre's exhibition hall (the expo's venue),
-and far across the harbour the Marine Tower and the Bay Bridge. Below the open edge
+Landmark Tower and Queen's Square; to the right, on the harbour side, Cosmo Clock 21, the
+convention centre's exhibition hall (the expo's venue) with the sail hotel behind it, and far
+across the harbour the Marine Tower and the Bay Bridge. Below the open edge
 (x > ROOF_HALF) the promenade along the quay, its lamps, kiosks and signs, and the tall ship in
 her dock. As it stood in 2000: nothing that opened later.
 
@@ -26,8 +26,8 @@ Writes, beside this script:
   city_wheel.asset.json  Cosmo Clock 21: the wheel, its clock at the hub (20:00) and its legs
   city_bay.asset.json    across the harbour: the Bay Bridge and the Marine Tower, and the
                          moon's glade on the water
-  city_venue.asset.json  by the water on the right: the sail hotel and the exhibition hall with
-                         its MECH EXPO 2000 sign band and banners, and their reflections
+  city_venue.asset.json  by the water on the right: the exhibition hall with its MECH EXPO 2000
+                         sign and banners, and the sail hotel rising behind it
   city_quay.asset.json   below the open edge: the promenade, its lamps, kiosks and signs, the
                          dock and the tall ship, a harbour launch, and their reflections
   art/city_*.png         the textures: the windows (32 x 32 texels, 8 x 8 cells; each rank and
@@ -72,8 +72,8 @@ WINDOW = {                       # the windows of every building
     'warm': '#b88c52', 'pale': '#dcbc80', 'amber': '#9c6c3a', 'cool': '#7a9cc4',
 }
 LANDMARK = {                     # the wheel and its clock, the sail, the sign, the reflections
-    'rim': '#8ccfe4', 'rim_dk': '#3c7890', 'gold': '#f0c060', 'pink': '#e070a0',
-    'spoke': '#5aa8c8', 'hub': '#0e1630', 'white': '#eef2f6',
+    'rim': '#6aa6c0', 'rim_dk': '#335f7a', 'gold': '#f0c060', 'g_gold': '#b8964e',
+    'g_pink': '#a65c88', 'spoke': '#4a7f9e', 'hub': '#0e1630', 'white': '#eef2f6',
     'sail_top': '#7e8cb4', 'sail_mid': '#a4b0cc', 'sail_low': '#dcd6cc', 'sail_win': '#6a789e',
     'blue': '#1e3c9a',
 }
@@ -162,8 +162,9 @@ CLOCK = '20:00'
 
 def write_wheel(path):
     """64 x 64, round, the rest a hole (alpha): Cosmo Clock 21 seen from the front, clean at game
-    scale: a solid lit rim 3 texels thick with 16 gondola lights on it, eight spokes 2 texels
-    thick, and at the hub the clock: a dark disc in a lit ring with CLOCK in large digits."""
+    scale and dimmer than the clock: a solid lit rim 3 texels thick with 16 gondola lights on it,
+    eight spokes 2 texels thick, and at the hub the clock: a dark disc in a lit ring with CLOCK in
+    large digits."""
     s = 64
     c = (s - 1) / 2
     a = np.zeros((s, s, 4), np.uint8)
@@ -185,7 +186,7 @@ def write_wheel(path):
         t = k * math.pi / 8
         gx, gy = c + 30.6 * math.cos(t), c + 30.6 * math.sin(t)
         m = (np.abs(xx - gx) < 1.3) & (np.abs(yy - gy) < 1.3)
-        put(m, L['gold'] if k % 2 else L['pink'])
+        put(m, L['g_gold'] if k % 2 else L['g_pink'])
     # the clock
     put(r < 13.5, L['rim'])
     put(r < 12.0, L['hub'])
@@ -306,7 +307,7 @@ def materials():
     m['neon_y'] = {'color': '#e0c040', 'class': 'emissive'}
     m['banner'] = {'color': '#2448a8', 'class': 'emissive'}
     m['hall_roof'] = {'color': '#3a4466'}
-    m['wheel'] = {'color': '#9fe0f0', 'class': 'emissive', 'texture': {
+    m['wheel'] = {'color': '#6aa6c0', 'class': 'emissive', 'texture': {
         'image': 'art/city_wheel.png', 'projection': 'fit'}}
     m['sail'] = {'color': '#bcc8e0', 'class': 'emissive', 'texture': {
         'image': 'art/city_sail.png', 'projection': 'fit'}}
@@ -464,12 +465,13 @@ def landmark():
 
 def queens():
     """Queen's Square Yokohama (1997): three towers side by side stepping down toward the sea,
-    each roof a slope falling seaward (+x), the three slopes one wave; the slopes lit cool."""
+    each roof a gentle slope falling seaward (+x) with a cool lit edge; the steps between the
+    towers are larger than the slopes, so the three edges read as three, not one line."""
     nodes = []
     z0, d = 300.0, 22.0
     base = hidden_base(z0) - 4.0
-    for i, (x0, w, hi, lo) in enumerate(((-90.0, 20.0, 78.0, 62.0), (-63.0, 18.0, 56.0, 43.0),
-                                          (-38.0, 16.0, 37.0, 27.0))):
+    for i, (x0, w, hi, lo) in enumerate(((-90.0, 20.0, 78.0, 70.0), (-63.0, 18.0, 56.0, 49.0),
+                                          (-38.0, 16.0, 36.0, 30.0))):
         x1 = x0 + w
         prof = [(x0, base), (x1, base), (x1, lo), (x0, hi)]
         polys = [([(x, y, z0) for x, y in prof], (0, 0, -1))]
@@ -482,7 +484,7 @@ def queens():
         nodes.append(mesh(f'qs_{i}', polys, mats))
         # the lit edge of the slope's front
         nodes.append(mesh(f'qs_{i}_e', [([(x0, hi-1.6, z0-0.15), (x1, lo-1.6, z0-0.15), (x1, lo, z0-0.15),
-                                           (x0, hi, z0-0.15)], (0, 0, -1))], ['crown_w']))
+                                           (x0, hi, z0-0.15)], (0, 0, -1))], ['crown']))
     nodes.append(box('qs_r', [1.4, 1.4, 1.4], 'red', [-88.0, 78.0+1.0, z0+4.0], open_=['bottom', 'front', 'top']))
     return nodes
 
@@ -518,14 +520,14 @@ def district():
 
 # ---- Cosmo Clock 21
 
-WHEEL_X, WHEEL_Z, WHEEL_R, WHEEL_Y = 18.0, 200.0, 34.0, 20.0
+WHEEL_X, WHEEL_Z, WHEEL_R, WHEEL_Y = 72.0, 196.0, 36.0, 20.0   # 72 m across: a clock texel >= a pixel
 
 
 def wheel():
-    """Cosmo Clock 21 on Shinko: the wheel a single disc facing the fight (its texture: the rim,
-    the gondolas' lights, eight spokes and the clock) and its two legs behind it. Its foot and
-    its reflection are below the parapet's sight line from wherever the camera goes (left of
-    the open edge), so they are not made."""
+    """Cosmo Clock 21 on Shinko, on the harbour side (behind 2P at the fight's start, clear of
+    the space between the mechs): the wheel a single disc facing the fight (its texture: the
+    rim, the gondolas' lights, eight spokes and the clock), its two legs behind it, the low
+    building at its foot and the wheel's reflection, both seen past the open edge."""
     x, z, r, y = WHEEL_X, WHEEL_Z, WHEEL_R, WHEEL_Y
     nodes = [card('disc', 2*r, 2*r, 'wheel', [x, y, z])]
     for i, s in enumerate((-1, 1)):
@@ -536,6 +538,9 @@ def wheel():
         ang = math.degrees(math.atan2(dx, dy))
         nodes.append(box(f'leg_{i}', [1.6, ln, 1.6], 'steel', [(top[0]+foot[0])/2, (top[1]+foot[1])/2, z+2.5],
                          rot=[0, 0, round(-ang, 3)], open_=['bottom', 'top', 'front']))
+    nodes.append(box('base', [40.0, 9.0, 16.0], 'dark', [x, SEA_Y+4.5, z+6.0], open_=['bottom', 'front', 'right']))
+    nodes.append(card('base_lit', 36.0, 1.2, 'warm', [x, SEA_Y+6.0, z-2.2]))
+    nodes.append(refl('refl', 'refl_white', x, z-2.0, 30.0, 26.0))
     return nodes
 
 
@@ -596,16 +601,16 @@ def bay():
 
 # ---- by the water on the right: the sail hotel and the exhibition hall
 
-SAIL_X, SAIL_Z = 84.0, 240.0
+SAIL_X, SAIL_Z = 222.0, 296.0
 SAIL_W, SAIL_TOP = 30.0, 32.0
 
 
 def venue():
-    """The sail hotel (1991): a crescent bowed toward the fight, its outline a sail's (rising
-    from the landward end to a rounded peak near the seaward one), white and lit from below; and
-    the convention centre's exhibition hall beside it (the expo's venue): a long low hall with
-    windows along its front, its roof's eaves, the MECH EXPO 2000 sign on its roof and blue
-    banners; and the lights' reflections."""
+    """The convention centre's exhibition hall (the expo's venue): a long low hall with windows
+    along its front, its roof's eaves, the MECH EXPO 2000 sign on its roof, blue banners and the
+    lights' reflection; and behind it the sail hotel (1991), a crescent bowed toward the fight,
+    its outline a sail's (rising from the landward end to a rounded peak near the seaward one),
+    white and lit from below (its foot is behind the hall from every view)."""
     nodes = []
     # the sail: 8 faces along an arc bowed toward -z; its height a sail's curve
     n = 8
@@ -632,9 +637,7 @@ def venue():
         uv.append([round((v[0]-x0)/(x1-x0), 4), round(1.0-(v[1]-base)/(SAIL_TOP-base), 4)])
     sail['uvs'] = uv
     nodes.append(sail)
-    nodes.append(card('sail_foot', SAIL_W+4.0, 3.0, 'deck_lit', [SAIL_X, base-1.5, SAIL_Z-10.0]))
     nodes.append(box('sail_r', [1.2, 1.2, 1.2], 'red', [pts[-3][0], pts[-3][2]+0.8, pts[-3][1]], open_=ONLY_BACK))
-    nodes.append(refl('sail_refl', 'refl_white', SAIL_X+4.0, SAIL_Z-9.0, 26.0, 40.0))
     # the exhibition hall: 120 m long, low, windows along its front, the roof's eaves, the sign
     hx0, hx1, hz0, hz1 = 112.0, 232.0, 226.0, 266.0
     top = SEA_Y + 20.0
@@ -703,9 +706,9 @@ def quay():
     nodes.append(card('hull_band', ln + 6.0, 0.8, 'hull_band', [sx + 2.0, SEA_Y + 2.2, sz - 0.25]))
     masts = [stern + 7.0 + i*9.5 for i in range(4)]
     for i, mx in enumerate(masts):
-        h = 34.0 if i in (1, 2) else 31.0
+        h = 24.0 if i in (1, 2) else 22.0
         nodes.append(card(f'mast_{i}', 0.8, h, 'mast', [mx, hull_top + h/2, sz + 4.0]))
-        for j, (yy, yw) in enumerate(((0.42, 14.0), (0.66, 11.0), (0.86, 8.0))):
+        for j, (yy, yw) in enumerate(((0.42, 11.0), (0.66, 9.0), (0.86, 6.5))):
             if i == 0:
                 continue
             nodes.append(card(f'yard_{i}_{j}', yw, 0.6, 'mast', [mx, hull_top + h*yy, sz + 3.9 - 0.15*i]))
