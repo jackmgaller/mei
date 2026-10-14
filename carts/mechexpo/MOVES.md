@@ -1494,6 +1494,35 @@ Built by mx-ladder; how it works is in [README.md](README.md#the-arcade-ladder).
   screen if something unlocked, then the title. The masthead is PROCUREMENT TODAY, the owner's
   pick.
 
+## Decided by the owner (2026-10-14): Momentum's angel
+
+Planned, not built: Momentum Robotics' echo of Shadow, model MR-02, on Shadow's skeleton plus three
+joints (`wing_l`, `wing_r`, `halo`). The model is concept A, round 4b
+(`concepts/angel_a/`, on its own branch for now). Kinetic meter (Momentum's). Shadow's trickster
+mirrored as an honest boxer: over the floor where Shadow goes under it, shots sent back, a mark
+instead of a curse.
+
+- **Look:** white plates on a gunmetal frame; red on the gauntlets and cuffs, the armour's edges
+  (the pauldron rims stay) and the solid upper wing plates; chrome flight plates with a white
+  trailing edge; gold only on the halo, crest, core setting and knuckles.
+- **`sp_n` Mark of Judgement:** a slow bolt of light (the Hex Bolt's slot). On hit it marks the
+  other mech for about 6 s instead of cursing it; Judgement against a marked mech does more
+  damage.
+- **`sp_f` Seraph Dive:** a hop, a glide on spread wings (holding B glides farther), a diving
+  straight. In the air, so it passes over the floor (a wave, a Rift Mine, Shadow Sneak's shadow)
+  and anything that hits in the air stops it.
+- **`sp_u` Ascension:** the anti-air: a rising uppercut, the wings flaring, invulnerable on its
+  first frames.
+- **`sp_d` Wing Ward:** the folded wings wrap forward as a shield for about 20 frames; a shot that
+  touches it is sent back as light, now the angel's. Strikes are not caught (the Hero's Parry
+  does that).
+- **Super, Judgement:** the fist raised, the wings spread, the halo lifts on its joint (0.9 m);
+  a white-gold column of light slams down on the other mech, the halo's flare drawn by the
+  effect.
+- To do with the move set: the fist reaches about 3 m less than Shadow's talons (Lunging Claw's
+  and Claw Jab's hit boxes, or the arm keys); Shadow's weapon-joint keys are zeroed; new
+  animations for the idle, intro, win, `atk_d`, the four specials and the super.
+
 ## Balance patch (2026-10-13)
 
 Measured with `tests/balance/matrix.sh` (CPU level 2 against level 2, every pairing, the sides
