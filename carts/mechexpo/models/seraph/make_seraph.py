@@ -36,16 +36,17 @@ Shadow's moves play on it unchanged, with three joints appended to the shared sk
 
   wing_l   parent torso, offset (0.82, 2.72, 0.95): the root high on the back at the side of the
            wing pack; its frame is the torso's (no rest rotation), folded at rotation 0.
-           Spread (WING_SPREAD) is x -122, y 50, z -24. Range x -130..10, y -10..65, z -35..10
+           Spread (WING_SPREAD) is x -122, y 50, z -24. Range x -130..10, y -10..130, z -35..10:
+           y past 65 only for the Wing Ward's wrap (WING_WARD, about 120: the plates swung round
+           the sides to the front)
   wing_r   parent torso, offset (-0.82, 2.72, 0.95): the left one mirrored (y and z negated)
   halo     parent head, its pivot 0.45 m above and 0.78 m behind the ring (HALO_PIVOT): turning
            it x 0..60 swings the ring up an arc whose chord is vertical, 0.9 m straight up at 60
            (HALO_RAISED), its tilt from 30 degrees back to 30 forward
 
-At rotation 0 the wings are folded and the halo sits on the helm, so every move carried over from
-Shadow (which keys none of them) shows them at rest. The rig's guard and sink are Shadow's with
-the weapon joints at 0 (Shadow opens its claws there; on Seraph they would twist the knuckle
-guard), so Shadow's keys land where they were made for.
+At rotation 0 the wings are folded and the halo sits on the helm. The rig's guard is Seraph's
+own, a boxer's (STANCE: upright, the right fist leading at chin height, the left by the jaw);
+its sink is Shadow's with the weapon joints at 0 (a fist does not open).
 
 1,892 triangles (Shadow 1,800, the Hero 1,776): three parts more than the others.
 
@@ -140,6 +141,8 @@ WING_ROOT = (0.82, 2.72, 0.95)      # the left wing's joint, in the torso's fram
 WING_TURN = [5, -10, -7]            # the folded plates' turn in the wing's frame: trailing edge
                                     # in toward the spine, top out
 WING_SPREAD = [-122, 50, -24]       # the left wing spread; the right's is mirrored (y, z negated)
+WING_WARD = [-20, 120, 0]           # the Wing Ward's wrap: the left wing swung round the side to
+                                    # the front (sp_d); the right's mirrored
 
 HALO_AT, HALO_TILT = [0, 2.42, 0.34], [-30, 0, 0]  # the ring in the helm's frame
 HELM_LIFT = 0.16                                    # the helm raised on its longer neck
@@ -165,8 +168,10 @@ RANGES = {
     'weapon':    ('the knuckle guard: a gold band round the fist\'s end; its +Y runs out of the '
                   'knuckles (the weapon joint: keep it at 0, the fist does not open)', 'x, y and z 0'),
     'wing':      ('the wing: the red upper wing plate and two chrome flight plates, folded at 0; '
-                  'its frame is the torso\'s', 'left x -130..10, y -10..65, z -35..10 (the right '
-                  'mirrored: y and z negated); spread is x -122, y 50, z -24'),
+                  'its frame is the torso\'s', 'left x -130..10, y -10..130, z -35..10 (the right '
+                  'mirrored: y and z negated); spread is x -122, y 50, z -24; y past 65 only '
+                  'for the Wing Ward\'s wrap, about x -20, y 120, z 0: the plates round the sides '
+                  'to the front'),
     'halo':      ('the gold halo, hung from a pivot 0.45 m above and 0.78 m behind it: turning it '
                   'about x lifts it (60: 0.9 m straight up, tilted 30 degrees forward)', 'x 0..60'),
 }
@@ -539,9 +544,22 @@ def spread(stance):
                                                               -WING_SPREAD[2]]}
 
 
-# The guard and the sink are Shadow's (its moves start from them), the fists closed.
-STANCE = fists(S.STANCE)
-DRAWN_DROP = S.DRAWN_DROP
+# ---- the guard: a boxer's, upright, fists up (MOVES.md, "Seraph", "For the animators") --------
+# The right side leads, as Shadow's and the Hero's: the right foot forward, the body bladed (the
+# right shoulder turned in). Upright where Shadow crouches, the knees soft; the right fist leads at
+# chin height about 3 m out, the left by the jaw, both elbows in under the shoulders and the
+# forearms near upright, the chin tucked behind the lead fist. The wings folded, the halo down.
+# Every one of Seraph's moves starts and ends here.
+
+GUARD_DROP = 1.15
+STANCE = fists(S.pose({
+    'pelvis': [0, -10, 0], 'torso': [-6, -12, 0], 'head': [8, 12, 0],
+    'thigh_r': [30, 0, -8], 'thigh_l': [-22, 0, 8],
+    'upper_arm_r': [16, -10, 4], 'forearm_r': [124, 0, -4], 'hand_r': [14, 0, 0],
+    'upper_arm_l': [4, 24, -10], 'forearm_l': [144, 0, 10], 'hand_l': [14, 0, 0],
+}, GUARD_DROP))
+DRAWN_DROP = GUARD_DROP - 0.03
+# The sink is Shadow's (its placeholder moves used it), the fists closed.
 SINK = fists(S.SINK)
 SINK_DROP = S.SINK_DROP
 # The flex check: Shadow's, the halo raised, the left wing at the far end of its range (swung up,
@@ -623,11 +641,15 @@ def flex_cameras(stance, drop):
 # ---- writing ---------------------------------------------------------------------------------
 
 # Pairs every move may pass into each other: Shadow's (the knuckle guard in the forearm's cuff
-# when the wrist bends; the waist and chest with a raised thigh), and each wing's hinge in the
-# wing pack it is set into.
+# when the wrist bends; the waist and chest with a raised thigh), each wing's hinge in the wing
+# pack it is set into, and each wing with the helm and the halo: the parts check fits the wing's
+# plates with one box (its 'folded' node, 7.4 m by 2.9 m), which reaches the neck and the ring
+# behind the helm as soon as the wing lifts, while the plates themselves pass under the ring
+# (checked on the moves' previews, the wings half open and spread).
 ALLOW = [['forearm_r', 'weapon_r'], ['forearm_l', 'weapon_l']] + [
     [f'torso/{n}', f'thigh_{s}/{m}'] for s in 'rl' for n in ('waist', 'chest')
-    for m in ('thigh', 'hip_drum')] + [['torso', 'wing_l'], ['torso', 'wing_r']]
+    for m in ('thigh', 'hip_drum')] + [['torso', 'wing_l'], ['torso', 'wing_r']] + [
+    [p, f'wing_{s}'] for s in 'lr' for p in ('head', 'halo')]
 
 
 def write_rig(stance, drop, part_recipes, height):
@@ -675,9 +697,12 @@ def write_rig(stance, drop, part_recipes, height):
         },
         'wings': {
             'note': 'wing_l and wing_r are folded at rotation 0. Spread is the left wing at '
-                    'WING_SPREAD, the right mirrored (y and z negated)',
+                    'WING_SPREAD, the right mirrored (y and z negated); ward is the Wing Ward\'s '
+                    'wrap, the plates round the sides to the front',
             'spread_l': list(WING_SPREAD),
             'spread_r': [WING_SPREAD[0], -WING_SPREAD[1], -WING_SPREAD[2]],
+            'ward_l': list(WING_WARD),
+            'ward_r': [WING_WARD[0], -WING_WARD[1], -WING_WARD[2]],
         },
         'halo': {
             'note': "the halo joint's pivot is 0.45 m above and 0.78 m behind the ring; 'raised' "
@@ -687,17 +712,19 @@ def write_rig(stance, drop, part_recipes, height):
             'centre': [round(HALO_CENTRE[k]-HALO_PIVOT[k], 4) for k in range(3)],
         },
         'poses': {'guard': {'drop': round(drop, 4), 'rotate': dict(stance),
-                            'note': "Shadow's guard with the fists closed (the weapon joints at "
-                                    "0), so Shadow's moves play as made; Seraph's own idle is "
-                                    'still to be animated'},
+                            'note': "Seraph's boxer's guard: upright, the right foot and fist "
+                                    'leading, the right fist at chin height about 3 m out, the '
+                                    'left by the jaw, the elbows in, the knees soft, the wings '
+                                    'folded, the halo down; every move starts and ends in it'},
                   'sink': {'drop': SINK_DROP, 'rotate': dict(SINK),
-                           'note': "Shadow's sink (its moves use it), the fists closed"},
+                           'note': "Shadow's sink, the fists closed"},
                   'spread': {'drop': round(drop, 4), 'rotate': spread(stance),
                              'note': 'the guard with both wings spread'}},
         'allow': ALLOW,
         'allow_note': "pairs of parts every move may pass into each other (a move's \"allow\" adds "
-                      "more), or part/piece pairs: Shadow's, and each wing's hinge drum set into "
-                      "the wing pack",
+                      "more), or part/piece pairs: Shadow's, each wing's hinge drum set into the "
+                      "wing pack, and each wing with the helm and the halo (the plates' one box "
+                      "reaches them when a wing lifts; the plates pass under the ring)",
         'triangles': sum(p['triangles'] for p in parts),
     }
     H.write(HERE/'seraph.rig.json', rig)

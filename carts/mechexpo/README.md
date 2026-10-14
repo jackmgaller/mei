@@ -259,9 +259,9 @@ effects and sounds are phase 2's other two parts. What is real and what is still
 [MOVES.md](MOVES.md#phase-1-what-is-in-the-game-now).
 
 - **Files:** `models/seraph/make_seraph.py` (the model and rig: the owner's concept A, round 4b,
-  from `concepts/angel_a/`, which stays as the record), `anims/seraph/` (each move Shadow's on
-  Seraph's rig, the weapon joints held at 0 with the kit's `"still"`; the jab and the lunge with
-  the fist's hit boxes), `seraph.akr` (its hits, its stand-in timings, boxes, marks and root
+  from `concepts/angel_a/`, which stays as the record; its guard is Seraph's boxer's guard),
+  `anims/seraph/` (Seraph's own moves, the weapon joints held at 0 with the kit's `"still"`; the
+  throws' victims Shadow's to the slam, then face down), `seraph.akr` (its hits, its stand-in timings, boxes, marks and root
   motion, its move list, and its rules: the Mark bolt in the shot system (`Shot.mark`) and the
   mark (`Fighter.mark`, 360 frames of play); the Dive's glide and dive (`seraph_advance`, called
   from `fighter.akr`'s advance); the Wing Ward's reflect (`seraph_reflect`, from `shot_try`
