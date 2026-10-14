@@ -276,8 +276,9 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/mechexpo/concepts/angel_a/make_angel_a3.py` | A look study, outside `models/` so the model pack leaves it out: Momentum's angel (concept A, fists) on Shadow's skeleton, `angel_a3_{idle,attack,judgement,rest}.asset.json`, the idle in each paint scheme tried (`angel_a3_paint_*.asset.json`), `cameras.json`, `asset-preview.json` (it imports `make_shadow.py` and `make_hero.py`); `render_angel_a3.py` beside it renders them with Shadow and the Hero and draws the sheets (Pillow) |
 | `carts/mechexpo/concepts/angel_a/make_angel_a4.py` | The angel's fourth look study (solid red upper wings, a joint for each wing), beside the third: `angel_a4_{idle,attack,judgement,rest,spread}.asset.json`, `cameras_a4.json` (it imports `make_angel_a3.py`); `render_angel_a4.py` renders them, with a stand-in light column for Judgement, and draws the sheets (Pillow) |
 | `carts/mechexpo/concepts/angel_a/make_angel_a4b.py` | Round 4b: the halo on its own joint and the flight plates' treatments: `angel_a4b_{judgement,rest,raised}.asset.json`, `angel_a4b_edge_*.asset.json`, `cameras_a4b.json` (it imports `make_angel_a4.py`); `render_angel_a4b.py` renders them, with stand-ins for the column and the halo flare, and draws the sheets (Pillow) |
+| `carts/mechexpo/concepts/gamma_c/make_gamma_c.py` | Gamma's look concept C (military surplus), not packed: `gamma_c_{idle,ray,shield,flare,ground_zero,rest}.asset.json`, `gamma_c_paint_{1,2}.asset.json`, `cameras.json`, `asset-preview.json` (it imports `make_hero.py`, `make_beam.py` and `make_tank.py`); `render_gamma_c.py` beside it draws the review sheets with Mei into a folder given with `-o` |
 
-The last twenty-seven are run by their path from the repository root, not as `tools/NAME.py`; the
+The last twenty-eight are run by their path from the repository root, not as `tools/NAME.py`; the
 garden's two audio generators share `carts/garden/audio/garden_dsp.py`, and Mech Expo's models
 `carts/mechexpo/models/hero/mxpaint.py`, which write nothing.
 
