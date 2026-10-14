@@ -414,6 +414,22 @@ class AuthoringTests(Files, unittest.TestCase):
             Move(self.move('v', base=str(BODY), floor_allow={'head': -1}))
         self.assertEqual(ctx.exception.path, '/floor_allow/head')
 
+    def test_ward_mark(self):
+        # the Wing Ward's mark (Seraph's sp_d): a bit of its own, set on its frames like any mark
+        self.assertEqual(MARKS['ward'], 2048)
+        m = Move(self.move('w', base=str(BODY), marks={'ward': [[4, 6]], 'riposte': [9]}))
+        self.assertEqual([f for f in range(m.length) if m.marks[f] & MARKS['ward']], [4, 5, 6])
+        self.assertEqual(m.marks[9], MARKS['riposte'])
+        # Seraph's sp_d: the ward on 4-23 and the fling's riposte on 40 (MOVES.md), exported as is
+        ward = Move(CART/'anims'/'seraph'/'sp_d.anim.json')
+        self.assertEqual([f for f in range(ward.length) if ward.marks[f] & MARKS['ward']], list(range(4, 24)))
+        self.assertEqual([f for f in range(ward.length) if ward.marks[f] & MARKS['riposte']], [40])
+        line = next(s for s in (CART/'anim_data.akr').read_text().splitlines() if s.endswith('// seraph sp_d'))
+        at = int(line.split('marks: ')[1].split(',')[0])
+        blob = (CART/'anims'/'anim_data.bin').read_bytes()
+        marks = struct.unpack_from(f'<{ward.length}I', blob, at)
+        self.assertEqual(list(marks), ward.marks)
+
     def test_allow_comes_from_the_rig_and_merges(self):
         rig = load_rig(HERO_RIG)
         self.assertIn(frozenset(('forearm_r', 'weapon_r')), rig.allow)

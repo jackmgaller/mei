@@ -1,8 +1,35 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Seraph's thrown (Vault Throw): a placeholder (phase 1), Shadow's (../shadow/thrown_vault.anim.json) on Seraph's rig, its keys as they are but the weapon joints held at 0 (\"still\": Shadow's claw keys would twist the knuckle guards). The wings stay folded and the halo down (no keys).",
+  "note": "Seraph thrown by the Double-blade Hero's Vault Throw or a mirror Seraph's Heaven's Arc (the fight carries the root over the thrower's head to behind it; the slam on 28, then hit_air): Shadow's (../shadow/thrown_vault.anim.json) on Seraph's rig to the top of the arc (17, upside down over the thrower's head), the shoulders following the thrower's fists, the weapon joints held at 0 (\"still\"), the wings folded. Where Shadow turns on over and comes down on its back, Seraph's legs swing on over the thrower first and it comes down head first on the far side (20-26: the pelvis back from -180 to -90 degrees), so it is slammed face down on 28 in hit_air's last frame, which the release jumps the victim to, and stays so (MOVES.md, Seraph: it ends face down, the folded wings up off its back). Airborne: no floor check.",
   "base": "../shadow/thrown_vault.anim.json",
   "rig": "../../models/seraph/seraph.rig.json",
-  "still": ["weapon_r", "weapon_l"]
+  "still": ["weapon_r", "weapon_l"],
+  "keys": [
+    {"at": 20, "remove": true},
+    {"at": 23, "remove": true},
+    {"at": 26, "remove": true},
+    {"at": 28, "remove": true},
+    {"at": 32, "remove": true},
+    {"at": 39, "remove": true},
+    {"at": 20, "ease": "linear", "offset": [4.54, 6.47], "pose": {"pelvis": [-164, 0, 0]}},
+    {"at": 23, "ease": "linear", "offset": [5.2, 4.0], "pose": {"pelvis": [-136, 0, 0]}},
+    {"at": 26, "ease": "in", "offset": [2.6, 0.4], "pose": {"pelvis": [-108, 0, 0]}},
+    {"at": 28, "from": "guard", "ease": "out", "offset": [0.0, -4.4],
+     "pose": {"pelvis": [-90, 0, 0], "torso": [10, 0, 0], "head": [40, 0, 0],
+              "upper_arm_r": [160, 0, 18], "forearm_r": [20, 0, 0], "hand_r": [0, 0, 0],
+              "upper_arm_l": [156, 0, -18], "forearm_l": [24, 0, 0], "hand_l": [0, 0, 0],
+              "thigh_r": [16, 0, -6], "shin_r": [-30, 0, 0], "foot_r": [-20, 0, 0],
+              "thigh_l": [8, 0, 6], "shin_l": [-20, 0, 0], "foot_l": [-20, 0, 0],
+              "pauldron_r": [56, 0, 9], "pauldron_l": [54.6, 0, -9], "wing_l": [-6, 0, 0],
+              "wing_r": [-6, 0, 0]}},
+    {"at": 39, "from": "guard", "offset": [0.0, -4.4],
+     "pose": {"pelvis": [-90, 0, 0], "torso": [10, 0, 0], "head": [40, 0, 0],
+              "upper_arm_r": [160, 0, 18], "forearm_r": [20, 0, 0], "hand_r": [0, 0, 0],
+              "upper_arm_l": [156, 0, -18], "forearm_l": [24, 0, 0], "hand_l": [0, 0, 0],
+              "thigh_r": [16, 0, -6], "shin_r": [-30, 0, 0], "foot_r": [-20, 0, 0],
+              "thigh_l": [8, 0, 6], "shin_l": [-20, 0, 0], "foot_l": [-20, 0, 0],
+              "pauldron_r": [56, 0, 9], "pauldron_l": [54.6, 0, -9], "wing_l": [-6, 0, 0],
+              "wing_r": [-6, 0, 0]}}
+  ]
 }

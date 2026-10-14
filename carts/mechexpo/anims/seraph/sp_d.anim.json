@@ -1,7 +1,7 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Wing Ward (MOVES.md, Seraph): frames 0-3 the wrap: the body squares up and sinks a little, the forearms cross in front of the face, the head bows behind them and the wings swing round the sides to the front (the left to x -20, y 120, z 0, the right mirrored: the rig's wings.ward), their flat faces forward from the shoulders to the knees; 4-23 the ward (the ward mark): held, the plates trembling a degree or two; 24-39 recovery: the wings swing back and fold, the arms come down into the guard, and frame 39 is the guard (the fight ends the move on frame 40, the riposte mark, when nothing was reflected). 40-51 the fling, only after a reflect: the arms throw open and the wings snap to the spread pose by 43, the chest lifting, then fold again into the guard by 51. No hit box (the reflect is the fight's); the halo stays down. Feet planted. The wings' covert plates swing through the pauldrons and the shoulder drums on the wrap (the root of each wing is just behind its shoulder), and the plates past the side skirts: \"allow\" lists the pairs, hidden behind the arms and the plates from the side, with the fists' brief passes as the arms cross and uncross (frames 1-2, 24-27) and the wings' covert past the helm and the halo as they snap open.",
+  "note": "Wing Ward (MOVES.md, Seraph): frames 0-3 the wrap: the body squares up and sinks a little, the forearms cross in front of the face, the head bows behind them and the wings swing round the sides to the front (the left to x -20, y 120, z 0, the right mirrored: the rig's wings.ward), their flat faces forward from the shoulders to the knees; 4-23 the ward (the ward mark): held, the plates trembling a degree or two; 24-39 recovery: the wings swing back and fold, the arms come down into the guard, and frame 39 is the guard (the fight ends the move on frame 40, the riposte mark, when nothing was reflected). 40-51 the fling, only after a reflect: the arms throw open and the wings snap to the spread pose by 43, the chest lifting, then fold again into the guard by 51. No hit box (the reflect is the fight's); the halo stays down. Feet planted. The wings' covert plates swing through the pauldrons and the shoulder drums on the wrap (the root of each wing is just behind its shoulder), and the plates past the side skirts: \"allow\" lists the pairs, hidden behind the arms and the plates from the side, with the fists' brief passes as the arms cross and uncross (frames 1-2, 24-27).",
   "base": "_body.anim.json",
   "length": 52,
   "keys": [
@@ -10,8 +10,8 @@
      "pose": {"pelvis": [0, -4, 0], "torso": [-12, -2, 0], "head": [-6, 4, 0],
               "upper_arm_r": [86, 0, -12], "forearm_r": [90, -60, 0], "hand_r": [0, 0, 0],
               "upper_arm_l": [34, 0, 14], "forearm_l": [112, 64, 0], "hand_l": [0, 0, 0],
-              "pauldron_r": [30, 0, -6], "pauldron_l": [12, 0, 7],
-              "wing_l": [-20, 120, 0], "wing_r": [-20, -120, 0]}},
+              "pauldron_r": [30, 0, -6], "pauldron_l": [12, 0, 7], "wing_l": [-20, 120, 0],
+              "wing_r": [-20, -120, 0]}},
     {"at": 9, "ease": "ease", "offset": [-0.12, -1.26],
      "pose": {"torso": [-13, -2, 0], "wing_l": [-22, 118, 1], "wing_r": [-21, -121, -1]}},
     {"at": 15, "ease": "ease", "offset": [-0.1, -1.22],
@@ -22,8 +22,8 @@
      "pose": {"pelvis": [0, -8, 0], "torso": [-8, -8, 0], "head": [3, 9, 0],
               "upper_arm_r": [40, -6, -14], "forearm_r": [116, 0, -4], "hand_r": [8, 0, 0],
               "upper_arm_l": [20, 14, 4], "forearm_l": [130, 0, 10], "hand_l": [8, 0, 0],
-              "pauldron_r": [14, 0, -2], "pauldron_l": [12, 0, 0],
-              "wing_l": [-8, 36, 0], "wing_r": [-8, -36, 0]}},
+              "pauldron_r": [14, 0, -2], "pauldron_l": [12, 0, 0], "wing_l": [-8, 36, 0],
+              "wing_r": [-8, -36, 0]}},
     {"at": 39, "from": "guard", "ease": "out"},
     {"at": 43, "relative": true, "ease": "ease", "offset": [-0.15, 0.05],
      "pose": {"torso": [8, 4, 0], "head": [-6, -2, 0], "upper_arm_r": [-6, 0, -20],
@@ -38,8 +38,8 @@
   "plant": {"foot_r": [[0, 51]], "foot_l": [[0, 51]]},
   "marks": {"ward": [[4, 23]], "riposte": [40]},
   "allow": [["pauldron_l", "wing_l"], ["pauldron_r", "wing_r"], ["upper_arm_l", "wing_l"],
-            ["upper_arm_r", "wing_r"], ["pelvis", "wing_l"], ["pelvis", "wing_r"], ["head", "wing_l"],
-            ["head", "wing_r"], ["wing_l", "halo"], ["wing_r", "halo"], ["forearm_r", "hand_l"],
-            ["forearm_r", "weapon_l"], ["hand_r", "hand_l"], ["hand_r", "weapon_l"], ["torso", "forearm_l"],
-            ["torso", "hand_l"], ["torso", "weapon_l"]]
+            ["upper_arm_r", "wing_r"], ["pelvis", "wing_l"], ["pelvis", "wing_r"],
+            ["forearm_r", "hand_l"], ["forearm_r", "weapon_l"], ["hand_r", "hand_l"],
+            ["hand_r", "weapon_l"], ["torso", "forearm_l"], ["torso", "hand_l"],
+            ["torso", "weapon_l"]]
 }

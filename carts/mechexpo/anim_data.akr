@@ -285,24 +285,24 @@ const AK_MOVES: [297]AnimMove = [
     AnimMove { len: 90, flags: 0, frames: 9054372, box_first: 9117732, boxes: 9117916, marks: 9141316, root: 9141676 },   // seraph ko
     AnimMove { len: 120, flags: 0, frames: 9142396, box_first: 9226876, boxes: 9227120, marks: 9258320, root: 9258800 },   // seraph win
     AnimMove { len: 90, flags: 0, frames: 9259760, box_first: 9323120, boxes: 9323304, marks: 9346704, root: 9347064 },   // seraph intro
-    AnimMove { len: 17, flags: 0, frames: 9347784, box_first: 9359752, boxes: 9359788, marks: 9364008, root: 9364076 },   // seraph atk_n
-    AnimMove { len: 36, flags: 0, frames: 9364212, box_first: 9389556, boxes: 9389632, marks: 9398592, root: 9398736 },   // seraph atk_f
-    AnimMove { len: 36, flags: 0, frames: 9399024, box_first: 9424368, boxes: 9424444, marks: 9429044, root: 9429188 },   // seraph atk_d
-    AnimMove { len: 26, flags: 2, frames: 9429476, box_first: 9447780, boxes: 9447836, marks: 9455356, root: 9455460 },   // seraph atk_air
-    AnimMove { len: 40, flags: 0, frames: 9455668, box_first: 9483828, boxes: 9483912, marks: 9494312, root: 9494472 },   // seraph sp_n
-    AnimMove { len: 50, flags: 0, frames: 9494792, box_first: 9529992, boxes: 9530096, marks: 9540616, root: 9540816 },   // seraph sp_f
-    AnimMove { len: 44, flags: 0, frames: 9541216, box_first: 9572192, boxes: 9572284, marks: 9582884, root: 9583060 },   // seraph sp_u
-    AnimMove { len: 26, flags: 0, frames: 9583412, box_first: 9601716, boxes: 9601772, marks: 9608532, root: 9608636 },   // seraph sp_d
-    AnimMove { len: 7, flags: 0, frames: 9608844, box_first: 9613772, boxes: 9613788, marks: 9615648, root: 9615676 },   // seraph grab
-    AnimMove { len: 22, flags: 0, frames: 9615732, box_first: 9631220, boxes: 9631268, marks: 9636988, root: 9637076 },   // seraph grab_whiff
-    AnimMove { len: 44, flags: 0, frames: 9637252, box_first: 9668228, boxes: 9668320, marks: 9678000, root: 9678176 },   // seraph throw
-    AnimMove { len: 44, flags: 2, frames: 9678528, box_first: 9709504, boxes: 9709596, marks: 9721036, root: 9721212 },   // seraph thrown
-    AnimMove { len: 20, flags: 0, frames: 9721564, box_first: 9735644, boxes: 9735688, marks: 9740888, root: 9740968 },   // seraph grab_break
-    AnimMove { len: 106, flags: 0, frames: 9741128, box_first: 9815752, boxes: 9815968, marks: 9843968, root: 9844392 },   // seraph super
-    AnimMove { len: 40, flags: 2, frames: 9845240, box_first: 9873400, boxes: 9873484, marks: 9883884, root: 9884044 },   // seraph thrown_vault
-    AnimMove { len: 56, flags: 2, frames: 9884364, box_first: 9923788, boxes: 9923904, marks: 9938464, root: 9938688 },   // seraph thrown_slam
-    AnimMove { len: 60, flags: 4, frames: 9939136, box_first: 9981376, boxes: 9981500, marks: 9997100, root: 9997340 },   // seraph combine (stand-in)
-    AnimMove { len: 60, flags: 4, frames: 9939136, box_first: 9981376, boxes: 9981500, marks: 9997100, root: 9997340 },   // seraph split (stand-in)
+    AnimMove { len: 17, flags: 0, frames: 9347784, box_first: 9359752, boxes: 9359788, marks: 9363768, root: 9363836 },   // seraph atk_n
+    AnimMove { len: 36, flags: 0, frames: 9363972, box_first: 9389316, boxes: 9389392, marks: 9398352, root: 9398496 },   // seraph atk_f
+    AnimMove { len: 36, flags: 0, frames: 9398784, box_first: 9424128, boxes: 9424204, marks: 9433704, root: 9433848 },   // seraph atk_d
+    AnimMove { len: 26, flags: 2, frames: 9434136, box_first: 9452440, boxes: 9452496, marks: 9460016, root: 9460120 },   // seraph atk_air
+    AnimMove { len: 41, flags: 0, frames: 9460328, box_first: 9489192, boxes: 9489276, marks: 9499936, root: 9500100 },   // seraph sp_n
+    AnimMove { len: 54, flags: 0, frames: 9500428, box_first: 9538444, boxes: 9538556, marks: 9552516, root: 9552732 },   // seraph sp_f
+    AnimMove { len: 43, flags: 0, frames: 9553164, box_first: 9583436, boxes: 9583524, marks: 9594864, root: 9595036 },   // seraph sp_u
+    AnimMove { len: 52, flags: 0, frames: 9595380, box_first: 9631988, boxes: 9632096, marks: 9645616, root: 9645824 },   // seraph sp_d
+    AnimMove { len: 7, flags: 0, frames: 9646240, box_first: 9651168, boxes: 9651184, marks: 9653044, root: 9653072 },   // seraph grab
+    AnimMove { len: 22, flags: 0, frames: 9653128, box_first: 9668616, boxes: 9668664, marks: 9674384, root: 9674472 },   // seraph grab_whiff
+    AnimMove { len: 40, flags: 0, frames: 9674648, box_first: 9702808, boxes: 9702892, marks: 9713292, root: 9713452 },   // seraph throw
+    AnimMove { len: 44, flags: 2, frames: 9713772, box_first: 9744748, boxes: 9744840, marks: 9756280, root: 9756456 },   // seraph thrown
+    AnimMove { len: 20, flags: 0, frames: 9756808, box_first: 9770888, boxes: 9770932, marks: 9776132, root: 9776212 },   // seraph grab_break
+    AnimMove { len: 92, flags: 0, frames: 9776372, box_first: 9841140, boxes: 9841328, marks: 9865448, root: 9865816 },   // seraph super
+    AnimMove { len: 40, flags: 2, frames: 9866552, box_first: 9894712, boxes: 9894796, marks: 9905196, root: 9905356 },   // seraph thrown_vault
+    AnimMove { len: 56, flags: 2, frames: 9905676, box_first: 9945100, boxes: 9945216, marks: 9959776, root: 9960000 },   // seraph thrown_slam
+    AnimMove { len: 60, flags: 4, frames: 9960448, box_first: 10002688, boxes: 10002812, marks: 10018412, root: 10018652 },   // seraph combine (stand-in)
+    AnimMove { len: 60, flags: 4, frames: 9960448, box_first: 10002688, boxes: 10002812, marks: 10018412, root: 10018652 },   // seraph split (stand-in)
 ]
 
 // each mech's part meshes in anim.akr's Part order (null: no mesh)

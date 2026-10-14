@@ -131,7 +131,7 @@ with `_` are not moves). Every path in a move is relative to its own file.
 | `plant` | feet held in place (below) |
 | `marks` | per-frame flags (below) |
 | `allow` | pairs of parts (`["forearm_r", "weapon_r"]`, or `part/node` ids) that may pass into each other, added to the rig's `allow` and the base's |
-| `floor_allow` | `{"wing_l": 2.15}`: parts that may go into the floor, each up to its depth in metres (at most 5): `verify`'s `floor` check warns instead of failing. For a move made for another body and not yet re-keyed (Seraph's folded wings on Shadow's knockdown) |
+| `floor_allow` | `{"wing_l": 2.15}`: parts that may go into the floor, each up to its depth in metres (at most 5): `verify`'s `floor` check warns instead of failing. For a move made for another body and not yet re-keyed (phase 1's Seraph: its folded wings on Shadow's knockdown); no move of the cart uses it now |
 | `note` | free text: what the move is |
 
 ### Keys
@@ -253,6 +253,7 @@ The fight moves the root; the animation's poses are relative to it.
 | `nopush` | 256 `MARK_NOPUSH` | no push box and no hurt (`verify` then needs neither) |
 | `hide` | 512 `MARK_HIDE` | `anim_draw()` draws nothing (the Void Step's gone frames) |
 | `charge` | 1024 `MARK_CHARGE` | the move holds this frame while its button is held (Beam's Volt Orb, `sp_n`) |
+| `ward` | 2048 `MARK_WARD` | Seraph's Wing Ward (`sp_d`): a shot of the other side that touches a hurt box on this frame, coming at the front, is sent back |
 
 ### A move made from another (`base`)
 
@@ -274,10 +275,12 @@ frame merge, the later over the earlier; the derived file's keys then go by the 
 `remove` drops a retimed key). The Double-blade's Jump is the Hero's with nothing but a retime
 and its rig.
 
-Seraph's moves are all of this kind for now (phase 1): each of `anims/seraph/` is Shadow's
-(`"base": "../shadow/MOVE.anim.json"`) with Seraph's rig and `"still": ["weapon_r",
-"weapon_l"]`; the jab and the lunge replace the claw's hit box with the fist's, and where Seraph's
-bigger body meets itself or the floor on Shadow's keys, `allow` and `floor_allow` say so.
+Seraph's moves are its own (`anims/seraph/`, on its boxer's guard), but for the three throws'
+victims: `thrown`, `thrown_vault` and `thrown_slam` are Shadow's (`"base":
+"../shadow/MOVE.anim.json"`, so the shoulders follow the throwers' hands as Shadow's do) with
+Seraph's rig and `"still": ["weapon_r", "weapon_l"]` (Shadow's claw keys would twist the fists),
+their keys from the slam on replaced (`"remove"`) so they end face down in `hit_air`'s last frame.
+Every Seraph move keeps the weapon joints still the same way.
 
 The echo shares the Hero's skeleton, so a Double-blade move can be the Hero's with
 `"rig": "../../models/doubleblade/doubleblade.rig.json"` and the differences: `"from":
@@ -479,7 +482,8 @@ map), `relative` keys on the other rig's guard, the `"guard"` foot of each rig, 
 0.05° under a twisted torso, `travel` holding plants in the world and the slide warning, a reach
 ended by `null`, `reach_ease`, the `legs` warning, `floor` keys and the offset `verify` names,
 the rig's and the base's `allow`, `still` holding joints at 0 through keys and bases, `floor_allow`
-turning a sinking part's failure into a warning only to its depth, each rig's part count (19,
+turning a sinking part's failure into a warning only to its depth, the `ward` mark (its bit, Seraph's
+`sp_d` frames, the exported marks), each rig's part count (19,
 Seraph's 22) and the export's `AK_NPART`; `pose`'s blade and boxes, `fmt` keeping every file's values
 (and the cart's files in the style); each `verify` check failing when it should, the export's
 layout; and with `meic` and `mei-headless`, the runtime's matrices, boxes and marks against the

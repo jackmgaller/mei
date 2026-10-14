@@ -7,10 +7,10 @@
   "keys": [
     {"at": 0, "from": "guard", "ease": "out", "reach": {"foot_r": "guard", "foot_l": "guard"}},
     {"at": 3, "relative": true, "offset": [-0.15, -0.4],
-     "pose": {"pelvis": [-4, 4, 0], "torso": [-4, 6, 0], "head": [-6, -6, 0], "upper_arm_r": [26, 6, 6],
-              "forearm_r": [4, 0, 0], "hand_r": [-6, 0, 0], "upper_arm_l": [34, -10, 0],
-              "forearm_l": [-12, -6, 0], "hand_l": [-6, 0, 0], "pauldron_r": [9, 0, 0],
-              "pauldron_l": [12, 0, 0], "wing_l": [-6, 40, 0], "wing_r": [-6, -40, 0]},
-     "reach": {"foot_r": "guard", "foot_l": "guard"}}
+     "pose": {"pelvis": [-4, 4, 0], "torso": [-4, 6, 0], "head": [-6, -6, 0],
+              "upper_arm_r": [26, 6, 6], "forearm_r": [4, 0, 0], "hand_r": [-6, 0, 0],
+              "upper_arm_l": [34, -10, 0], "forearm_l": [-12, -6, 0], "hand_l": [-6, 0, 0],
+              "pauldron_r": [9, 0, 0], "pauldron_l": [12, 0, 0], "wing_l": [-6, 40, 0],
+              "wing_r": [-6, -40, 0]}, "reach": {"foot_r": "guard", "foot_l": "guard"}}
   ]
 }
