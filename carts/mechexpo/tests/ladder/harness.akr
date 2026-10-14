@@ -17,6 +17,9 @@
 // 118 the same on NORMAL with Shadow: the final is its echo, Seraph (mx-seraph: "MOMENTUM ROBOTICS
 //     PRESENTS ITS COMPETING PRODUCT"), drawn in its own paint, and the clear unlocks Seraph
 // 119 the same on HARD with Tank (the test unit; the CPU levels 2, 3, 3)
+// 210 the same on NORMAL with Beam (mx-gamma-rig): the final is its echo, Gamma (HA-58, Heartland
+//     Atomic Co.: "HEARTLAND ATOMIC CO. PRESENTS ITS COMPETING PRODUCT"), drawn in its own paint,
+//     not the test unit, and the clear unlocks Gamma
 // 120 the lot: every mech over 300 seeds: no own maker, no final's maker, no repeats, the Twins
 //     drawn while locked, every rival drawn, the same seed the same programme
 // 121 the save's migration: a version-1 save on the card (the MVP's: the Hero and Beam cleared,
@@ -27,7 +30,8 @@
 //     grade (NORMAL), UP to EASY, A: the run is on EASY
 // 123 the schedule page: VIEW 0 day 1, VIEW 1 day 2 (day 1 stamped), VIEW 2 the final day
 // 124 the final's reveal: VIEW 0 the Double-blade Hero in silhouette, VIEW 1 lit, VIEW 2 the
-//     test unit (Beam's), VIEW 3 the original (as the Double-blade Hero), VIEW 4 Shadow's final:
+//     test unit (Tank's: Beam's final is Gamma since mx-gamma-rig, 211), VIEW 3 the original (as
+//     the Double-blade Hero), VIEW 4 Shadow's final:
 //     Seraph lit (mx-seraph: "MOMENTUM ROBOTICS PRESENTS ITS COMPETING PRODUCT"), VIEW 5 its VS
 //     card, Shadow against Seraph
 // 125 the test unit in a fight: VIEW 0 Shadow against its grey copy (set by the harness: since
@@ -39,6 +43,8 @@
 //     the fanfare (the menu loop back). VIEW 0 also measures every headline and cover line
 //     against the layout, and checks the pick (two seeds differ, a replay is the same, no
 //     headline twice running)
+// 211 Beam's final's reveal (mx-gamma-rig): VIEW 0 Gamma lit, Heartland's competing product, not the
+//     test unit; VIEW 1 its VS card, Beam against Gamma
 // 127 a continue: the second fight lost; VIEW 0 the results ask for another demonstration; VIEW 1
 //     A gives the same fight again (the same opponent, level and stage); VIEW 2 B withdraws: the
 //     title
@@ -62,6 +68,7 @@ const SHOT_AT = match SCENARIO {
     122 => 80
     123 => 60
     124 => match VIEW { 0 => 120, 5 => 140, else => 240 }
+    211 => match VIEW { 1 => 140, else => 240 }
     125 => 600
     126 => match VIEW { 7 => 400, else => 150 }
     127 => match VIEW { 0 => 60, 1 => 140, else => 120 }
@@ -71,12 +78,12 @@ const SHOT_AT = match SCENARIO {
 fn test_init() {
     match SCENARIO {
         116 => {}
-        117, 118, 119 => { save.unlocked = 0; save.medals = 0 }
+        117, 118, 119, 210 => { save.unlocked = 0; save.medals = 0 }
         120 => lot_check()
         121 => {}                       // at frame 5, once the card is idle (test_hook)
         122 => {}
         123 => setup_sched()
-        124 => setup_reveal()
+        124, 211 => setup_reveal()
         125 => setup_test_fight()
         126 => setup_cover()
         127 => setup_continue()
@@ -107,10 +114,11 @@ fn test_hook() {
     }
     match SCENARIO {
         116 => measure()
-        117, 118, 119 => full_run()
+        117, 118, 119, 210 => full_run()
         121 => hook_121()
         122 => hook_122()
         124 => { if VIEW == 5 { press(0, 95, A) } }        // past the reveal, to the VS card
+        211 => { if VIEW == 1 { press(0, 95, A) } }
         125 => hook_125()
         127 => hook_127()
         else => {}
@@ -283,8 +291,8 @@ private fn ms_report() {
 
 // ---- 117-119: a whole run
 
-const RUN_MECH = match SCENARIO { 117 => 0, 118 => 1, else => 3 }      // roster slots: Hero, Shadow, Tank
-const RUN_DIFF = match SCENARIO { 117 => DIFF_EASY, 118 => DIFF_NORMAL, else => DIFF_HARD }
+const RUN_MECH = match SCENARIO { 117 => 0, 118 => 1, 210 => 2, else => 3 }  // roster slots: Hero, Shadow, Beam, Tank
+const RUN_DIFF = match SCENARIO { 117 => DIFF_EASY, 118 => DIFF_NORMAL, 210 => DIFF_NORMAL, else => DIFF_HARD }
 const RUN_LOSE = 1              // the fight on the ladder lost once (then continued)
 
 var rn_fight: s32               // fights entered
@@ -413,6 +421,12 @@ private fn finish_run() {
         assert_eq(run.fin, FIN_ECHO, "Shadow's final kind")
         assert_eq(run.maker[LADDER_N - 1], CO_MOMENTUM, "Seraph's maker")
         assert(!rn_seen_grey, "a test unit fought in Shadow's run")
+    } else if RUN_MECH == 2 {
+        // Beam's echo slot has its mech (mx-gamma-rig): Gamma, not the test unit
+        assert(run.foe[LADDER_N - 1] == Mech.Gamma && !run.grey[LADDER_N - 1], "Beam's final is Gamma")
+        assert_eq(run.fin, FIN_ECHO, "Beam's final kind")
+        assert_eq(run.maker[LADDER_N - 1], CO_HEARTLAND, "Gamma's maker")
+        assert(!rn_seen_grey, "a test unit fought in Beam's run")
     } else {
         assert(run.foe[LADDER_N - 1] == me && run.grey[LADDER_N - 1], "no echo: the final is the test unit")
         assert_eq(run.fin, FIN_TEST, "the final kind")
@@ -435,6 +449,9 @@ private fn finish_run() {
     } else if RUN_MECH == 1 {
         assert(rn_unlock, "no unlock screen")
         assert(slot_ok(ROSTER_COLS + 1), "the clear did not unlock Seraph")
+    } else if RUN_MECH == 2 {
+        assert(rn_unlock, "no unlock screen")
+        assert(slot_ok(ROSTER_COLS + 2), "the clear did not unlock Gamma")
     } else {
         assert(!rn_unlock, "an unlock screen with nothing to unlock")
     }
@@ -597,9 +614,14 @@ private fn setup_sched() {
 
 private fn setup_reveal() {
     save.unlocked = UNLOCK_ECHO
+    if SCENARIO == 211 {
+        arcade_at(2, DIFF_NORMAL, LADDER_N - 1, 5)          // Beam's final: Gamma
+        enter_reveal()
+        return
+    }
     match VIEW {
         0, 1 => arcade_at(0, DIFF_NORMAL, LADDER_N - 1, 5)
-        2 => arcade_at(2, DIFF_HARD, LADDER_N - 1, 5)
+        2 => arcade_at(3, DIFF_HARD, LADDER_N - 1, 5)
         4, 5 => arcade_at(1, DIFF_NORMAL, LADDER_N - 1, 5)
         else => arcade_at(ROSTER_COLS, DIFF_EASY, LADDER_N - 1, 5)
     }
@@ -795,13 +817,19 @@ private fn check_shot() {
         }
         124 => {
             if VIEW == 5 { assert(st == St.Vs, "not the VS card") } else { assert(st == St.Reveal, "not the reveal") }
-            if VIEW == 2 { assert(run.grey[ladder] && run.fin == FIN_TEST, "Beam's final is not the test unit") }
+            if VIEW == 2 { assert(run.grey[ladder] && run.fin == FIN_TEST, "Tank's final is not the test unit") }
             if VIEW == 3 { assert(run.fin == FIN_ORIGINAL && run.foe[ladder] == Mech.Hero, "the echo's final is not the Hero") }
             if VIEW >= 4 {
                 assert(run.fin == FIN_ECHO && run.foe[ladder] == Mech.Seraph && !run.grey[ladder], "Shadow's final is not Seraph")
                 assert(p_mech[0] == Mech.Shadow && p_mech[1] == Mech.Seraph && !p_grey[1], "the final's units")
                 println("Shadow's final: Seraph (MR-02, Momentum Robotics), not the test unit")
             }
+        }
+        211 => {
+            if VIEW == 1 { assert(st == St.Vs, "not the VS card") } else { assert(st == St.Reveal, "not the reveal") }
+            assert(run.fin == FIN_ECHO && run.foe[ladder] == Mech.Gamma && !run.grey[ladder], "Beam's final is not Gamma")
+            assert(p_mech[0] == Mech.Beam && p_mech[1] == Mech.Gamma && !p_grey[1], "the final's units")
+            println("Beam's final: Gamma (HA-58, Heartland Atomic Co.), not the test unit")
         }
         125 => {
             assert(st == St.Fight, "not the fight")

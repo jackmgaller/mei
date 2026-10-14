@@ -16,6 +16,7 @@ case "$1" in
     8[0-9]) SC_HEAD="$SC_HEAD" SC_APP="../../game.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE/sfx" "$@" ;;
     109) SC_HEAD="$SC_HEAD" SC_APP="../../game.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE/shadow" "$@" ;;
     16[2-8]) SC_HEAD="$SC_HEAD" SC_APP="../../game.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE/seraph" "$@" ;;
+    20[2-9]) SC_HEAD="$SC_HEAD" SC_APP="../../game.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE/gamma" "$@" ;;
     11[6-9]|12[0-7]) S="$1"; shift; exec "$HERE/ladder/run.sh" "$S" 0 "$@" ;;   # mx-ladder: VIEW 0
     9[0-9]|11[2-5]|14[0-9]|150) SC_HEAD="$SC_HEAD" SC_APP="../../game.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE/stages" "$@" ;;
 esac

@@ -7,8 +7,9 @@
 # Twins, then Beam), 147-149 the container port (the Hero against the Double-blade Hero, the
 # split Twins against Tank, Shadow against the split Twins), 162 Seraph with Shadow's mine, bolt,
 # curse and super kept out (against the split Twins on the rooftop, then Shadow in the hangar),
-# 168 the same against the split Twins on the container port. make test-carts runs them after
-# check.sh. MEIC and RUN as in tools/cart_scenario.sh.
+# 168 the same against the split Twins on the container port, 202 Gamma with a full Volt Orb out
+# and its super (against the split Twins on the rooftop, then on the container port). make
+# test-carts runs them after check.sh. MEIC and RUN as in tools/cart_scenario.sh.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 O="$HERE/out/check"
@@ -16,7 +17,7 @@ mkdir -p "$O"
 POOL_DIR="$O"
 . "$HERE/pool.sh"
 pool_report() {
-    grep -E '^(OK|peak|late|Beam against|Tank and|Twins|frames split|Shadow against|Seraph against|supers|Total Eclipses|blurb)' "$O/$1.log"
+    grep -E '^(OK|peak|late|Beam against|Tank and|Twins|frames split|Shadow against|Seraph against|Gamma against|supers|Total Eclipses|blurb)' "$O/$1.log"
 }
 run() {       # scenario frames (all through drawn mechs: the cost is the frames)
     pool_add "s$1" "$2" "$HERE/run.sh" "$1" "$2" "$O/s$1"
@@ -34,5 +35,6 @@ run 148 1801
 run 149 2400
 run 162 1801
 run 168 901
+run 202 1801
 pool_run
 echo "all Mech Expo budget checks passed"

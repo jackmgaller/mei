@@ -151,7 +151,7 @@ const ROSTER: [10]Slot = [
     Slot { maker: CO_HEARTLAND, echo: true, mech: Mech.Gamma as s32, rule: RULE_CLEAR, arg: 2, bit: 0x80,
            mystery: true, emblem: UI_EMBLEM_HEARTLAND, emblem24: UI_EMBLEM24_HEARTLAND, epal: PAL_POWER,
            name: "GAMMA", short: "GAMMA", card: "GAMMA", model: "HA-58", height: 119, stats: 0x3253,
-           blurb: "THE GUNNER:\nRAYS, LEAD", hint: "CLEAR ARCADE\nWITH BEAM" },
+           blurb: "THE GUNNER:\nRAY, LEAD", hint: "CLEAR ARCADE\nWITH BEAM" },
     Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 3, bit: 0x100, mystery: true, name: "?",
            short: "?", card: "?", model: "?", stats: 0, blurb: "", hint: "CLEAR ARCADE\nWITH TANK" },
     Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 4, bit: 0x200, mystery: true, name: "?",
