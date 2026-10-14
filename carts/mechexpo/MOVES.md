@@ -1827,6 +1827,16 @@ little heavier.
 - **Seraph** (the mirror): the bolt rally, each Ward sending it back quicker; whoever wards last
   marks the other.
 
+**Measured, CPU against CPU** (mx-seraph-fight; `tests/balance/run.sh 8 B`, level 2 against level
+2, 10 matches a pairing on the hangar, the sides swapped every match, Seraph played from its
+stand-ins): Seraph won 13 to 14 of the 60 matches against the other six base mechs (0 to 4 of 10
+against each over four runs, 0 or 1 against the Twins); Shadow, measured the same way, won 22 of
+50. The gap is mostly the super: in 10 matches Shadow's Total Eclipse, from zero on the antimatter
+meter, came 36 to 57 times and dealt 6,300 to 12,800, where Judgement, a full kinetic bar, came 15
+to 19 times and dealt 3,700 to 4,100 (7 times against Shadow, whose Siphon takes its meter); and
+Shadow Sneak lands far more than the Seraph Dive (the CPUs block a Dive they see coming). The
+numbers are the owner's to tune in play.
+
 ### The CPU (Seraph)
 
 Seraph's own CPU replaces `cpu_as_shadow` for it (`cpu.akr`, built in mx-seraph-fight: its
@@ -2079,13 +2089,15 @@ Seraph's name, so each special moved to Seraph's own code by taking Seraph out o
    once; the Parry and the armour already skip supers.
 8. **The marked bonus** (`fighter.akr`'s `resolve()`, beside the Total Eclipse line): for
    `has_judgement` and `mv == super`, `h.dmg = h.dmg × 3 / 2` when `fight.f[j & 1].mark > 0`; the
-   chip is left alone. `struck()` scales it for the combo, `meter_damage()` for debt, after.
+   chip is left alone. `struck()` scales it for the combo and skips `meter_damage()`'s debt for
+   it (`Hit.nodebt`, set by `seraph_judged()`): the bonuses do not stack, the larger applies.
 9. **Seraph's tables** (`seraph.akr`): its own `seraph_hit()` (the numbers of this section:
    jab 50, straight 105, kick 85 knockdown, air 85, bolt 45 / chip 9, Dive 110 / 22, Ascension
    120 / 24, throw 120, super 280 / 70), its own stand-ins (`seraph_tm`, `seraph_root`,
    `seraph_marks`, `seraph_boxes`: this section's timings, so the fight plays before the
    animations land), and `SERAPH_MOVES` (Jab, Lunging Straight, Reaping Kick, Double-fist Dive,
-   Mark of Judgement "B (marks: Judgement +50 %)", Seraph Dive "FWD + B (hold: farther)", Ascension,
+   Mark of Judgement "B (mark: Judgement +50%)" (as "B (marks: Judgement +50 %)" the row is 4 px wider
+   than the move list's 234), Seraph Dive "FWD + B (hold: farther)", Ascension,
    Wing Ward "DOWN + B (sends shots back)", Heaven's Arc "Y (swaps sides)", Judgement "A + B, full
    meter").
 10. **The CPU** (`cpu.akr`): [The CPU (Seraph)](#the-cpu-seraph); `cpu_as_shadow()` becomes

@@ -245,7 +245,17 @@ private fn check_roster() {
         k += 1
     }
     assert_eq(lines, 2, "the blurb is not two lines")
-    assert_eq(fight_moves(Mech.Seraph).n, 15, "Seraph's move list")
+    let ml = fight_moves(Mech.Seraph)
+    assert_eq(ml.n, 15, "Seraph's move list")
+    // each row's name and input side by side in the move list's 234 px (menus.akr's draw_move_list)
+    var widest = 0
+    for i in 0..ml.n {
+        widest = max(widest, txt_w(FONT_LABEL, ml.e[i].name) + 6 + txt_w(FONT_LABEL, ml.e[i].input))
+    }
+    print("the move list's widest row ")
+    print_int(widest)
+    println(" px of 234")
+    assert(widest <= 234, "a row of Seraph's move list is too wide")
     print("stats ")
     print_hex(r.stats)
     print(", card ")

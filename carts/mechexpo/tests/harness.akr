@@ -3651,8 +3651,9 @@ private fn sr_check() {
 // 179 Heaven's Arc on the rooftop: with its back to the drop it rings the Hero out; 6 m from the
 //     edge it does not
 // 180 Judgement's column: locked at the Hero's root 30 m away, it hits there (280); a Hero moved
-//     6 m away after the lock is missed (the column does not track); the Double-blade Hero's Void
-//     Step on the first frame after the flash escapes it
+//     9 m away after the lock is missed (the column does not track); the Double-blade Hero's Void
+//     Step on the first frame after the flash escapes it; a second Judgement in the round locks
+//     afresh
 // 181 Seraph's CPU (level 2, both sides through cpu_pad once a frame: Versus) against each mech,
 //     both sides: every match finishes, and over the
 //     run it uses each special, the throw and the super (and its ward sends a shot back)
@@ -4486,6 +4487,19 @@ private fn sv_check_column() {
                 assert(evc_side[1][Ev.Hit] == 0 && evc_side[0][Ev.Hit] == 0, "a hit")
                 assert_eq(o.health, STATS[Mech.Doubleblade].health, "the Void Step did not escape")
                 println("the Void Step on the first frame after the flash escaped it")
+                // a second Judgement in the same round locks afresh, where the other is now
+                mark = frames + 40
+                sh_flag = false
+                stage = 3
+            }
+        }
+        3 => {
+            if frames == mark + 2 { o.x = s.x + 12.0 }
+            if evc_side[0][Ev.Hit] > 0 {
+                assert_eq(evc[Ev.Super], 2, "the second super")
+                assert_eq(evc[Ev.Column], 2, "the second super did not lock")
+                assert_eq(STATS[Mech.Doubleblade].health - o.health, 280, "the second column's damage")
+                println("a second Judgement in the round locked afresh and hit")
                 sv_ok("Judgement's column: locked, hits there, does not track, the Void Step escapes it")
             }
         }

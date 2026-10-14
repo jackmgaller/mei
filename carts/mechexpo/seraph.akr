@@ -256,9 +256,10 @@ private fn find_anim_mark(m: Mech, mv: Mv, mark: u32) -> s32 {
 // ---- each frame (fight_tick, outside the freezes): the marks run down on frames of play
 
 fn seraph_tick(live: bool) {
-    if !ser_in_fight || !live { return }
+    if !ser_in_fight { return }
     for s in 0..2 {
-        if fight.f[s].mark > 0 { fight.f[s].mark -= 1 }
+        if fight.f[s].mv != Mv.super { judge_on[s] = false }     // the next super locks afresh
+        if live && fight.f[s].mark > 0 { fight.f[s].mark -= 1 }
     }
 }
 
@@ -621,7 +622,7 @@ const SERAPH_MOVES = MoveList { n: 15, e: [
     MoveEntry { name: "Lunging Straight", input: "FWD + A" },
     MoveEntry { name: "Reaping Kick", input: "DOWN + A" },
     MoveEntry { name: "Double-fist Dive", input: "A in the air" },
-    MoveEntry { name: "Mark of Judgement", input: "B (marks: Judgement +50 %)" },
+    MoveEntry { name: "Mark of Judgement", input: "B (mark: Judgement +50%)" },
     MoveEntry { name: "Seraph Dive", input: "FWD + B (hold: farther)" },
     MoveEntry { name: "Ascension", input: "UP + B" },
     MoveEntry { name: "Wing Ward", input: "DOWN + B (sends shots back)" },

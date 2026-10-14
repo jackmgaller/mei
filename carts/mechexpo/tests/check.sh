@@ -160,7 +160,7 @@ run 176 650
 run 177 150
 run 178 250
 run 179 200
-run 180 300
+run 180 400
 run 181 2600
 # the arcade ladder (mx-ladder, tests/ladder/harness.akr, the whole game; VIEWs as listed there):
 # 116 EASY against a scripted masher, 117-119 a whole run on each difficulty (EASY with the Hero,
