@@ -1,8 +1,21 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Seraph's crouch: a placeholder (phase 1), Shadow's (../shadow/crouch.anim.json) on Seraph's rig, its keys as they are but the weapon joints held at 0 (\"still\": Shadow's claw keys would twist the knuckle guards). The wings stay folded and the halo down (no keys).",
-  "base": "../shadow/crouch.anim.json",
-  "rig": "../../models/seraph/seraph.rig.json",
-  "still": ["weapon_r", "weapon_l"]
+  "note": "Crouch: 8 frames down, then the last frame is held by the fight. A boxer ducking: both feet stay planted, the knees bend deep and the hips sit down, the back leaning in with the head up behind the fists; the guard stays up in front of the face, the elbows tucked in over the knees. The wings stay folded on the back, lifting a little as the body drops. Push box 7.5 m tall (MOVES.md); the hurt boxes top out at about 7.8 m.",
+  "base": "_body.anim.json",
+  "length": 8,
+  "boxes": {"push": {"kind": "push", "rect": [-1.4, 0, 1.4, 7.5]}},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in"},
+    {"at": 3, "relative": true, "ease": "out", "offset": [-0.5, -1.76],
+     "pose": {"pelvis": [-24, 0, 0], "torso": [-24, 2, 0], "head": [46, -2, 0], "upper_arm_r": [50, 0, -8],
+              "forearm_r": [-6, 0, 0], "hand_r": [-14, 0, 0], "upper_arm_l": [44, 0, 4],
+              "forearm_l": [-10, 0, 0], "hand_l": [-14, 0, 0], "wing_l": [-3, 0, 0], "wing_r": [-3, 0, 0]}},
+    {"at": 7, "relative": true, "offset": [-0.48, -1.74],
+     "pose": {"pelvis": [-23, 0, 0], "torso": [-24, 2, 0], "head": [45, -2, 0], "upper_arm_r": [49, 0, -8],
+              "forearm_r": [-6, 0, 0], "hand_r": [-14, 0, 0], "upper_arm_l": [44, 0, 4],
+              "forearm_l": [-10, 0, 0], "hand_l": [-14, 0, 0], "wing_l": [-1, 0, 0], "wing_r": [-1, 0, 0]}}
+  ],
+  "plant": {"foot_r": [[0, 7]], "foot_l": [[0, 7]]},
+  "allow": [["wing_l", "halo"], ["wing_r", "halo"]]
 }

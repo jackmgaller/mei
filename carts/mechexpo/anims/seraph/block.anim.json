@@ -1,8 +1,16 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Seraph's block: a placeholder (phase 1), Shadow's (../shadow/block.anim.json) on Seraph's rig, its keys as they are but the weapon joints held at 0 (\"still\": Shadow's claw keys would twist the knuckle guards). The wings stay folded and the halo down (no keys).",
-  "base": "../shadow/block.anim.json",
-  "rig": "../../models/seraph/seraph.rig.json",
-  "still": ["weapon_r", "weapon_l"]
+  "note": "Block: 4 frames to raise it, then the last frame is held (the fight shakes it in blockstun). The body squares up and sinks onto the knees, both forearms come up in front of the face and chest, the elbows in, the chin tucked down behind them; the folded wings swing a third of the way round the sides (y 40 on the left, the right mirrored) as a half shield.",
+  "base": "_body.anim.json",
+  "length": 4,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "reach": {"foot_r": "guard", "foot_l": "guard"}},
+    {"at": 3, "relative": true, "offset": [-0.15, -0.4],
+     "pose": {"pelvis": [-4, 4, 0], "torso": [-4, 6, 0], "head": [-6, -6, 0], "upper_arm_r": [26, 6, 6],
+              "forearm_r": [4, 0, 0], "hand_r": [-6, 0, 0], "upper_arm_l": [34, -10, 0],
+              "forearm_l": [-12, -6, 0], "hand_l": [-6, 0, 0], "pauldron_r": [9, 0, 0],
+              "pauldron_l": [12, 0, 0], "wing_l": [-6, 40, 0], "wing_r": [-6, -40, 0]},
+     "reach": {"foot_r": "guard", "foot_l": "guard"}}
+  ]
 }

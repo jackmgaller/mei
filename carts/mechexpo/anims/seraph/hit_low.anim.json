@@ -1,8 +1,32 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Seraph's low hit reaction: a placeholder (phase 1), Shadow's (../shadow/hit_low.anim.json) on Seraph's rig, its keys as they are but the weapon joints held at 0 (\"still\": Shadow's claw keys would twist the knuckle guards). The wings stay folded and the halo down (no keys).",
-  "base": "../shadow/hit_low.anim.json",
-  "rig": "../../models/seraph/seraph.rig.json",
-  "still": ["weapon_r", "weapon_l"]
+  "note": "Hit low (stretched to the hitstun): hit high's snap from the crouch. The ducked body is knocked up and back off its knees on frame 0, the head whips back a beat later, the guard flies open and the folded wings jolt open (x -12); then it ducks back down into the crouch's last pose (the fight returns a crouching mech to crouch), the wings settling. Feet planted; push box 7.5 m tall.",
+  "base": "crouch.anim.json",
+  "length": 20,
+  "keys": [
+    {"at": 0, "remove": true},
+    {"at": 3, "remove": true},
+    {"at": 7, "remove": true},
+    {"at": 0, "from": "guard", "relative": true, "ease": "out", "offset": [-0.75, -1.5],
+     "pose": {"pelvis": [-14, 2, 0], "torso": [-10, 4, 0], "head": [40, -2, 0], "upper_arm_r": [30, 0, -16],
+              "forearm_r": [-34, 0, 0], "hand_r": [-24, 0, 0], "upper_arm_l": [30, 0, 12],
+              "forearm_l": [-36, 0, 0], "hand_l": [-24, 0, 0], "wing_l": [-12, 0, 0],
+              "wing_r": [-12, 0, 0]}},
+    {"at": 3, "relative": true, "ease": "ease", "offset": [-0.9, -1.45],
+     "pose": {"pelvis": [-10, 2, 0], "torso": [-4, 4, 0], "head": [46, -2, 0], "upper_arm_r": [24, 0, -20],
+              "forearm_r": [-46, 0, 0], "hand_r": [-30, 0, 0], "upper_arm_l": [26, 0, 16],
+              "forearm_l": [-48, 0, 0], "hand_l": [-30, 0, 0], "wing_l": [-10, 0, 0],
+              "wing_r": [-10, 0, 0]}},
+    {"at": 10, "relative": true, "ease": "ease", "offset": [-0.6, -1.66],
+     "pose": {"pelvis": [-20, 1, 0], "torso": [-19, 3, 0], "head": [45, -2, 0], "upper_arm_r": [42, 0, -10],
+              "forearm_r": [-16, 0, 0], "hand_r": [-18, 0, 0], "upper_arm_l": [38, 0, 6],
+              "forearm_l": [-20, 0, 0], "hand_l": [-18, 0, 0], "wing_l": [-4, 0, 0],
+              "wing_r": [-4, 0, 0]}},
+    {"at": 19, "relative": true, "offset": [-0.48, -1.74],
+     "pose": {"pelvis": [-23, 0, 0], "torso": [-24, 2, 0], "head": [45, -2, 0], "upper_arm_r": [49, 0, -8],
+              "forearm_r": [-6, 0, 0], "hand_r": [-14, 0, 0], "upper_arm_l": [44, 0, 4],
+              "forearm_l": [-10, 0, 0], "hand_l": [-14, 0, 0], "wing_l": [-1, 0, 0], "wing_r": [-1, 0, 0]}}
+  ],
+  "plant": {"foot_r": [[0, 19]], "foot_l": [[0, 19]]}
 }

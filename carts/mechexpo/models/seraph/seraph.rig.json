@@ -557,7 +557,7 @@
     ]
    },
    "role": "the wing: the red upper wing plate and two chrome flight plates, folded at 0; its frame is the torso's",
-   "range": "left x -130..10, y -10..65, z -35..10 (the right mirrored: y and z negated); spread is x -122, y 50, z -24"
+   "range": "left x -130..10, y -10..130, z -35..10 (the right mirrored: y and z negated); spread is x -122, y 50, z -24; y past 65 only for the Wing Ward's wrap, about x -20, y 120, z 0: the plates round the sides to the front"
   },
   {
    "id": "wing_r",
@@ -584,7 +584,7 @@
     ]
    },
    "role": "the wing: the red upper wing plate and two chrome flight plates, folded at 0; its frame is the torso's",
-   "range": "left x -130..10, y -10..65, z -35..10 (the right mirrored: y and z negated); spread is x -122, y 50, z -24"
+   "range": "left x -130..10, y -10..130, z -35..10 (the right mirrored: y and z negated); spread is x -122, y 50, z -24; y past 65 only for the Wing Ward's wrap, about x -20, y 120, z 0: the plates round the sides to the front"
   },
   {
    "id": "halo",
@@ -657,7 +657,7 @@
   ]
  },
  "wings": {
-  "note": "wing_l and wing_r are folded at rotation 0. Spread is the left wing at WING_SPREAD, the right mirrored (y and z negated)",
+  "note": "wing_l and wing_r are folded at rotation 0. Spread is the left wing at WING_SPREAD, the right mirrored (y and z negated); ward is the Wing Ward's wrap, the plates round the sides to the front",
   "spread_l": [
    -122,
    50,
@@ -667,6 +667,16 @@
    -122,
    -50,
    24
+  ],
+  "ward_l": [
+   -20,
+   120,
+   0
+  ],
+  "ward_r": [
+   -20,
+   -120,
+   0
   ]
  },
  "halo": {
@@ -684,65 +694,95 @@
  },
  "poses": {
   "guard": {
-   "drop": 1.07,
+   "drop": 1.12,
    "rotate": {
     "pelvis": [
      0,
-     -8,
+     -10,
      0
     ],
     "torso": [
-     -14,
-     -8,
+     -6,
+     -12,
      0
     ],
     "head": [
-     16,
      8,
+     12,
      0
     ],
     "thigh_r": [
-     34,
+     30,
      0,
-     -11
+     -8
     ],
     "thigh_l": [
-     -12,
+     -22,
      0,
-     12
+     8
     ],
     "upper_arm_r": [
-     64,
-     0,
-     -26
+     16,
+     -10,
+     4
     ],
     "forearm_r": [
-     34,
+     124,
      0,
-     12
+     -4
     ],
     "hand_r": [
-     -24,
-     0,
-     0
-    ],
-    "weapon_r": [
-     0,
+     14,
      0,
      0
     ],
     "upper_arm_l": [
-     36,
-     0,
-     30
-    ],
-    "forearm_l": [
-     44,
-     0,
+     4,
+     24,
      -10
     ],
+    "forearm_l": [
+     144,
+     0,
+     10
+    ],
     "hand_l": [
-     -10,
+     14,
+     0,
+     0
+    ],
+    "pauldron_r": [
+     5.6,
+     0,
+     2.0
+    ],
+    "pauldron_l": [
+     1.4,
+     0,
+     -5.0
+    ],
+    "shin_r": [
+     -72.05,
+     0,
+     0
+    ],
+    "foot_r": [
+     42.05,
+     0,
+     8
+    ],
+    "shin_l": [
+     -25.04,
+     0,
+     0
+    ],
+    "foot_l": [
+     47.04,
+     0,
+     -8
+    ],
+    "weapon_r": [
+     0,
      0,
      0
     ],
@@ -750,39 +790,9 @@
      0,
      0,
      0
-    ],
-    "pauldron_r": [
-     22.4,
-     0,
-     -13.0
-    ],
-    "pauldron_l": [
-     12.6,
-     0,
-     15.0
-    ],
-    "shin_r": [
-     -69.74,
-     0,
-     0
-    ],
-    "foot_r": [
-     35.74,
-     0,
-     11
-    ],
-    "shin_l": [
-     -36.06,
-     0,
-     0
-    ],
-    "foot_l": [
-     48.06,
-     0,
-     -12
     ]
    },
-   "note": "Shadow's guard with the fists closed (the weapon joints at 0), so Shadow's moves play as made; Seraph's own idle is still to be animated"
+   "note": "Seraph's boxer's guard: upright, the right foot and fist leading, the right fist at chin height about 3 m out, the left by the jaw, the elbows in, the knees soft, the wings folded, the halo down; every move starts and ends in it"
   },
   "sink": {
    "drop": 5.2,
@@ -883,68 +893,98 @@
      9
     ]
    },
-   "note": "Shadow's sink (its moves use it), the fists closed"
+   "note": "Shadow's sink, the fists closed"
   },
   "spread": {
-   "drop": 1.07,
+   "drop": 1.12,
    "rotate": {
     "pelvis": [
      0,
-     -8,
+     -10,
      0
     ],
     "torso": [
-     -14,
-     -8,
+     -6,
+     -12,
      0
     ],
     "head": [
-     16,
      8,
+     12,
      0
     ],
     "thigh_r": [
-     34,
+     30,
      0,
-     -11
+     -8
     ],
     "thigh_l": [
-     -12,
+     -22,
      0,
-     12
+     8
     ],
     "upper_arm_r": [
-     64,
-     0,
-     -26
+     16,
+     -10,
+     4
     ],
     "forearm_r": [
-     34,
+     124,
      0,
-     12
+     -4
     ],
     "hand_r": [
-     -24,
-     0,
-     0
-    ],
-    "weapon_r": [
-     0,
+     14,
      0,
      0
     ],
     "upper_arm_l": [
-     36,
-     0,
-     30
-    ],
-    "forearm_l": [
-     44,
-     0,
+     4,
+     24,
      -10
     ],
+    "forearm_l": [
+     144,
+     0,
+     10
+    ],
     "hand_l": [
-     -10,
+     14,
+     0,
+     0
+    ],
+    "pauldron_r": [
+     5.6,
+     0,
+     2.0
+    ],
+    "pauldron_l": [
+     1.4,
+     0,
+     -5.0
+    ],
+    "shin_r": [
+     -72.05,
+     0,
+     0
+    ],
+    "foot_r": [
+     42.05,
+     0,
+     8
+    ],
+    "shin_l": [
+     -25.04,
+     0,
+     0
+    ],
+    "foot_l": [
+     47.04,
+     0,
+     -8
+    ],
+    "weapon_r": [
+     0,
      0,
      0
     ],
@@ -952,36 +992,6 @@
      0,
      0,
      0
-    ],
-    "pauldron_r": [
-     22.4,
-     0,
-     -13.0
-    ],
-    "pauldron_l": [
-     12.6,
-     0,
-     15.0
-    ],
-    "shin_r": [
-     -69.74,
-     0,
-     0
-    ],
-    "foot_r": [
-     35.74,
-     0,
-     11
-    ],
-    "shin_l": [
-     -36.06,
-     0,
-     0
-    ],
-    "foot_l": [
-     48.06,
-     0,
-     -12
     ],
     "wing_l": [
      -122,
@@ -1045,8 +1055,24 @@
   [
    "torso",
    "wing_r"
+  ],
+  [
+   "head",
+   "wing_l"
+  ],
+  [
+   "halo",
+   "wing_l"
+  ],
+  [
+   "head",
+   "wing_r"
+  ],
+  [
+   "halo",
+   "wing_r"
   ]
  ],
- "allow_note": "pairs of parts every move may pass into each other (a move's \"allow\" adds more), or part/piece pairs: Shadow's, and each wing's hinge drum set into the wing pack",
+ "allow_note": "pairs of parts every move may pass into each other (a move's \"allow\" adds more), or part/piece pairs: Shadow's, each wing's hinge drum set into the wing pack, and each wing with the helm and the halo (the plates' one box reaches them when a wing lifts; the plates pass under the ring)",
  "triangles": 1892
 }
