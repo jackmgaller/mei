@@ -1596,9 +1596,13 @@ Planned, not designed in numbers yet: Heartland Atomic Company's echo of Beam, i
 under Beam (unlocked by clearing the arcade with Beam), on Beam's skeleton (the Hero's). Named
 **GAMMA** (card GAMMA); model number open (HA-58 proposed, after Tank's HA-57). Nuclear meter (Heartland's: fills as it takes damage).
 
-- **Look:** Beam's frame reworked by Heartland, in Heartland's faded forest green and primer grey,
-  its Arc Cannon replaced by a nuclear ray projector. The look is open: three concept directions
-  are being drawn (an atomic-age ray gun, a walking reactor plant, military surplus).
+- **Look: military surplus** (concept C, `concepts/gamma_c/`, on its own branch for now; chosen
+  over an atomic-age ray gun and a walking reactor plant). Beam's frame refitted from army
+  surplus: a searchlight head with a whip antenna, a louvred reactor hatch on the chest (the
+  meter's glow), jerrycans and a toolbox racked on the back, primer-grey replacement panels on
+  Heartland's faded green; Raikō's Arc Cannon becomes a searchlight converted to a ray projector
+  (the muzzle at Beam's effect point); Lead Shielding is a field gun's shield stowed on the left
+  forearm (`weapon_l`) and swung out in front for the brace.
 - **How it plays:** a slow, heavy zoner that gets stronger when the plan fails: every hit that
   gets through fills its reactor.
 - **`sp_n` the Atomic Ray** (the Volt Orb's slot): a held ray, on while B is held: a beam, not a
