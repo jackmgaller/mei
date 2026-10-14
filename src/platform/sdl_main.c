@@ -340,7 +340,7 @@ SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
         SDL_Log("SDL_Init: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
-    if (!SDL_CreateWindowAndRenderer("Mei", MEI_W * 3, MEI_H * 3, SDL_WINDOW_RESIZABLE, &app.window, &app.renderer)) {
+    if (!SDL_CreateWindowAndRenderer("Mei", MEI_W * 3, MEI_H * 3, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &app.window, &app.renderer)) {
         SDL_Log("window: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
