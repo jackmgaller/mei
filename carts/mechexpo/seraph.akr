@@ -159,14 +159,18 @@ fn seraph_round() {
 // mech (Seraph never vanishes), when the Wing Ward has no `ward` frames, when its length is more
 // than 2 frames off this section's, when its hit boxes are more than SER_BOX_TOL off the design's
 // far or low edge (or it hits more than once), or when the bolt is timed exactly as the Hex Bolt.
+// The guard's moves (the idle, the walks, the crouch, the block) stand in while they are Shadow's
+// stance, the claws held out 6.7 m in front (Seraph's guard holds its fist about 3 m out): the
+// Wing Ward's 20 frames could not meet a slow shot that touches a hurt box reaching that far.
 
 fn seraph_standin(mv: Mv) -> bool {
     ser_find()
     return ser_std[mv]
 }
 
-const SER_OWN_MVS: [11]Mv = [Mv.atk_n, Mv.atk_f, Mv.atk_d, Mv.atk_air, Mv.sp_n, Mv.sp_f, Mv.sp_u, Mv.sp_d,
-                             Mv.grab, Mv.throw, Mv.super]
+const SER_OWN_MVS: [16]Mv = [Mv.atk_n, Mv.atk_f, Mv.atk_d, Mv.atk_air, Mv.sp_n, Mv.sp_f, Mv.sp_u, Mv.sp_d,
+                             Mv.grab, Mv.throw, Mv.super, Mv.idle, Mv.walk_f, Mv.walk_b, Mv.crouch, Mv.block]
+const SER_GUARD_REACH: fixed = 4.5  // a guard whose hurt boxes reach further in front is Shadow's
 
 private fn ser_find() {
     if ser_found { return }
@@ -203,6 +207,14 @@ private fn ser_placeholder(mv: Mv) -> bool {
     if anim_standin(m, mv) { return true }
     let t = seraph_tm(mv)
     let n = anim_len(m, mv)
+    var bx: Boxes
+    if is_neutral(mv) {
+        anim_boxes(m, mv, 0, &bx)
+        for k in 0..bx.n {
+            if bx.b[k].kind == BOX_HURT && bx.b[k].x1 > SER_GUARD_REACH { return true }
+        }
+        return false
+    }
     if abs(n - t.len) > 2 { return true }
     var ward = false
     var rel = -1
@@ -218,7 +230,6 @@ private fn ser_placeholder(mv: Mv) -> bool {
         return n == anim_len(Mech.Shadow, mv) && rel == find_anim_mark(Mech.Shadow, mv, MARK_RELEASE)
     }
     if t.a0 < 0 { return false }
-    var bx: Boxes
     var x1 = -99.0
     var y0 = 99.0
     for f in 0..n {
@@ -588,6 +599,9 @@ fn seraph_boxes(mv: Mv, f: s32, out: *Boxes) {
     let p = STATS[Mech.Seraph].push
     ser_box(out, BOX_HURT, 0, hx0, hy0, hx1, hy1)
     ser_box(out, BOX_PUSH, 0, -p, 0.0, p, py1)
+    // the guard: the right fist leading about 3 m out at chin height (lower crouching)
+    if mv == Mv.idle || mv == Mv.walk_f || mv == Mv.walk_b || mv == Mv.block { ser_box(out, BOX_HURT, 0, 0.0, 6.5, 3.4, 9.5) }
+    if mv == Mv.crouch { ser_box(out, BOX_HURT, 0, 0.0, 4.0, 3.0, 7.0) }
     if t.a0 >= 0 && f >= t.a0 && f <= t.a1 { ser_box(out, BOX_HIT, 0, t.hx0, t.hy0, t.hx1, t.hy1) }
     // the arm (or the leg) reaching out: hurtable from the first active frame until it comes back
     if t.reach > 0.0 && f >= t.a0 && f <= t.a1 + 10 {
