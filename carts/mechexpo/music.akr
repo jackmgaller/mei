@@ -15,6 +15,10 @@
 // music_fight() and music_menu() do nothing if their track is already playing, so the fight
 // runs on through the rounds of a match and the menu loop through the menus. music_stop() fades
 // out over a quarter of a second. music_tick() must be called once every frame, always.
+//
+// music_fanfare() (mx-ladder) plays the magazine cover's fanfare, "Contract Awarded" (5.6 s, a
+// stereo one-shot on channels 6 and 7), fading the loops out under it; the menu loop comes back
+// when it ends. music_menu() or music_fight() cut it short.
 
 import "mu_data.akr"
 
@@ -32,6 +36,7 @@ private var mu_lvl: [2]s32       // its fade level, 0..256
 private var mu_gain: s32 = 256   // the duck and the dip, 0..256
 private var mu_ducked: bool
 private var mu_dip: s32          // frames of dip left
+var mu_sting_t: s32 = -1         // frames since the fanfare started, -1 none
 
 // The console reverb, shared with sfx.akr: set once, left alone after (a change of preset
 // clears its memory).
@@ -75,8 +80,30 @@ private fn mu_start(k: s32) {
 }
 
 private fn mu_play(k: s32) {
+    mu_sting_stop()
     if mu_want == k && mu_on[k] { return }
     mu_start(k)
+}
+
+private fn mu_sting_stop() {
+    if mu_sting_t < 0 { return }
+    for s in 0..2 { stop(MU_STING[s * 6]) }
+    mu_sting_t = -1
+}
+
+// The cover's fanfare, from its start; the loops fade out (music_tick()) and the menu loop
+// starts again when it ends.
+fn music_fanfare() {
+    mu_reverb()
+    mu_want = -1
+    for s in 0..2 {
+        let e = s * 6
+        var flags = SND_ADPCM
+        if MU_STING[e + 5] != 0 { flags = flags | SND_REVERB }
+        play_sample(MU_STING[e], MU_BANK + MU_STING[e + 1], MU_STING[e + 2] as u32, 0, 1.0,
+                    MU_STING[e + 3], MU_STING[e + 4], flags as u32)
+    }
+    mu_sting_t = 0
 }
 
 // The menu loop. Does nothing if it is already playing (and not fading out).
@@ -97,6 +124,13 @@ fn music_dip(frames: s32) { mu_dip = max(mu_dip, frames) }
 
 // Once a frame: the fades, the duck and the dip.
 fn music_tick() {
+    if mu_sting_t >= 0 {
+        mu_sting_t += 1
+        if mu_sting_t >= MU_STING_FRAMES {
+            mu_sting_t = -1
+            mu_start(MU_MENU)
+        }
+    }
     var target = 256
     if mu_dip > 0 {
         target = MU_DIP_LEVEL

@@ -137,7 +137,8 @@ D draws the fighters (`anim_draw` with `fight_get()`'s state), the effects and t
 events and state, and calls E's sound effects for each event. C never draws or plays sound.
 
 **Audio (E) → game (D).** `music.akr`: `music_menu()`, `music_fight()`, `music_stop()`,
-`music_tick()` (once a frame), `music_duck(on: bool)` (pause). `sfx.akr`: one-shots
+`music_tick()` (once a frame), `music_duck(on: bool)` (pause), `music_fanfare()` (the
+arcade's cover, mx-ladder: channels 6 and 7). `sfx.akr`: one-shots
 `sfx_hit(power: s32)`, `sfx_block()`, `sfx_chip()`, `sfx_swing(m: Mech)`, `sfx_grab()`,
 `sfx_throw()`, `sfx_break()`, `sfx_land()`, `sfx_step()`, `sfx_meter_full()`,
 `sfx_super(m: Mech)`, `sfx_ko()`, `sfx_round()`, `sfx_menu_move()`, `sfx_menu_ok()`,
@@ -332,14 +333,32 @@ clear it holds becomes a NORMAL stamp, since the MVP's ladder was two fights at 
   RESULT and INCONCLUSIVE for draws.
 - **The results** name the test unit as such, show the next demonstration (the final
   withheld), and after a loss ask "REQUEST ANOTHER DEMONSTRATION?".
-- **The cover**, after the final's results: a magazine cover. The winner live in 3D in its win
-  pose on its maker's colour, cut by the bottom edge; the masthead (`MAG_NAME`, `MAG_NAME2` in
-  `menus.akr`; the font `FONT_MAST`); the headline by case (CONTRACT AWARDED: "MOMENTUM'S HERO
-  MECH / TAKES THE UAPC DEAL"; UPSET AT THE EXPO: "... BEATS THE ORIGINAL"; EVALUATION PASSED:
-  "... BEATS THE UAPC'S OWN TEST UNIT"); three cover lines (WHO IS BINARY MECHANICA? while the
-  Twins are locked; the client's own mechs after a test unit, else the echoes still in
-  development; a Heartland reactor special); the grade's APPROVED sticker; a barcode. Then the
-  unlock screen if the clear unlocked a mech, then the title.
+- **The cover**, after the final's results: a magazine cover (`cover.akr` says what is on it,
+  `menus.akr`'s `draw_cover()` draws it). The owner's notes (2026-10-13): a photograph, a
+  fanfare, and headlines that vary.
+  - **A photograph:** the winner in 3D, frozen in one held frame of its win move
+    (`COVER_POSE`: the end of the win, weapons up; Tank at frame 40, square to the camera), on
+    its maker's colour, cut at the knees; no idle motion and no turntable. Per mech: the turn
+    toward the camera, the camera's distance, the feet's height and the backdrop's shades
+    (lighter behind the dark Shadow).
+  - **The fanfare**, "Contract Awarded" (`music_fanfare()` in `music.akr`, made by
+    `tools/gen_mechexpo_audio.py`): 5.6 s at the menu's 128 bpm in E major. The expo's PA chime
+    and a polite electric-piano jingle, then a snare roll and a riser into big-beat drums,
+    supersaw brass stabs (E, E, E, C, D) and a hoover line, a held E major chord with the robot
+    choir, a crash and a sub boom, and a last chime. A stereo one-shot on channels 6 and 7 with
+    the reverb; the menu loop fades out under it and starts again when it ends (leaving the
+    cover cuts it short).
+  - **The words** are picked when the run is cleared (`cover_pick()`, before the save is
+    written) from the run's seed and unit: a headline from those for the final's case, the
+    maker's own among them (27 in all: 8 for a base mech's win, 7 for an echo's, 12 for a test
+    unit's), never the last clear's headline when another fits (kept in `save.diff`'s second
+    byte); then three cover lines: those about what is still locked first (who Binary Mechanica
+    are while the Twins are locked; the client's own mechs after a test unit, else the echoes
+    still in development), two variants each, then the trade press's own (18), without
+    repeats. Templates fill in the maker, the unit and the count of echoes. Scenario 126
+    measures every line against the layout (`COVER_W_*`).
+  - Then the masthead, the grade's APPROVED sticker and a barcode; then the unlock screen if
+    the clear unlocked a mech, then the title.
 - **The masthead** is "PROCUREMENT TODAY" for now; the other names pitched: "MECHA MONTHLY", "HEAVY
   METAL REVIEW". The owner picks.
 

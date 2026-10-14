@@ -29,7 +29,8 @@ grabs' lift and slam, the Reactor Vent's steam; Beam's Volt Orb, its full-charge
 against a wave, its discharges (the jab's zap, the Static Lance, the Arc Lance, the Thunder
 Pillar, the Raikō Overload), the reaction starting and the Shock Grip's crack; the Twins'
 coupling and uncoupling; the menu sounds, the brochure's (a page turned, a rubber stamp, the
-press pass, the catalogue's shutter) and the unlock fanfare. Loops, played from their start and
+press pass, the catalogue's shutter) and the unlock fanfare. The magazine cover's fanfare
+("Contract Awarded", mx-ladder), a stereo pair played on channels 6 and 7 (--preview: fanfare.wav). Loops, played from their start and
 stopped by the cart: Tank's treads, Beam's charge hum and the Shock Grip's buzz (rendered
 periodic: their filters run round the seam).
 
@@ -1571,6 +1572,122 @@ def sfx_unlock():
     return fade(x, 0.002, 0.3)
 
 
+# ================================================================== the cover's fanfare (mx-ladder)
+# "Contract Awarded": the magazine cover's sting, 128.05 bpm in E major, 5.6 s. It opens as the
+# expo's polite PA chime and a corporate electric-piano jingle, then turns out to be a banger:
+# a snare roll and a riser into big-beat drums and supersaw brass stabs (E, E, E, C, D), and a
+# held E major chord with the robot choir, a crash and a sub boom; a last PA chime to close. A
+# stereo pair (music.akr plays it on channels 6 and 7 while the menu loop is faded out).
+
+FANFARE_BEAT = MENU_BEAT / SR                 # seconds a beat (the menu's tempo)
+
+
+def fanfare():
+    """(left, right) at FS."""
+    rng = np.random.default_rng(2000)
+    kit = Kit(2001)
+    b = FANFARE_BEAT
+    s16 = b / 4
+    dur = 5.6
+    n = int(dur * FS)
+    mid = np.zeros(n)                # the beat: drums, sub (centre, dry)
+    L = np.zeros(n)
+    R = np.zeros(n)
+
+    def both(sig, start, g=1.0, spread=0.0):
+        """sig at start seconds into L and R, a little wider by a short delay."""
+        put(L, int(start * FS), sig, g)
+        put(R, int((start + spread) * FS), sig, g)
+
+    # the PA chime: "ding-dong", in the key
+    both(bell_smp(83, 0.8, 2.0, 1.4), 0.0, 0.45)
+    both(bell_smp(76, 1.0, 2.0, 1.4), 0.22, 0.45)
+    # bar 1 (from one beat in): the corporate jingle on the electric piano, a four-on-the-floor
+    # kick under it, closed hats; the last beat a snare roll and a riser
+    t1 = b
+    jingle = [(0, 64), (2, 68), (4, 71), (6, 76), (8, 75), (10, 71), (12, 73), (14, 75)]
+    for st, m in jingle:
+        x = epiano_smp(m, s16 * 1.8, 0.9)
+        put(L, int((t1 + st * s16) * FS), x, 0.32)
+        put(R, int((t1 + st * s16 + 0.004) * FS), x, 0.26)
+    for chord, st in (((52, 56, 59), 0), ((52, 57, 61), 8)):
+        for m in chord:
+            x = epiano_smp(m, s16 * 7, 0.6)
+            both(x, t1 + st * s16, 0.12, 0.006)
+    for k in range(4):
+        put(mid, int((t1 + k * b) * FS), kit.hit('B'), 0.8)
+    for k in range(12):
+        put(mid, int((t1 + (2 * k + 1) * s16 * 1.0) * FS), kit.hit('h'), 0.22)
+    for k in range(8):                           # the roll: sixteenths, then thirty-seconds
+        put(mid, int((t1 + 3 * b + k * s16 / 2) * FS), kit.hit('X'), 0.25 + 0.06 * k)
+    rt = tt(b * 1.5)
+    riser = tvf(noise(rng, len(rt)), 900 + 5000 * (rt / rt[-1]) ** 2, 1.5, 'bp') * (rt / rt[-1]) ** 1.5
+    both(riser, t1 + 2.5 * b, 0.22, 0.003)
+    # bar 2: the drop. Big-beat drums, the stabs: E . . E . . E . C . . D . . D .
+    t2 = t1 + 4 * b
+    both(cymbal_smp(rng, dec=0.8, dur=2.0), t2, 0.14, 0.011)
+    put(mid, int(t2 * FS), boom_smp(rng, 1.2), 0.75)
+    for st, d in ((0, 'B'), (6, 'B'), (8, 'X'), (10, 'B'), (24, 'X'), (16, 'B'), (22, 'B'), (28, 'X'),
+                  (30, 'X'), (31, 'X')):
+        put(mid, int((t2 + st * s16 / 2) * FS), kit.hit(d), 0.95 if d == 'B' else 0.8)
+    for k in range(16):
+        put(mid, int((t2 + k * s16) * FS), kit.hit('h'), 0.12 if k % 2 else 0.07)
+    E, C, D = (52, 64, 68, 71, 76), (48, 64, 67, 72, 76), (50, 62, 66, 69, 74)
+    for st, ch, ln in ((0, E, 2), (3, E, 2), (6, E, 2), (8, C, 3), (11, D, 2), (14, D, 2)):
+        x = stab_smp(ch, s16 * ln + 0.05, rng, 1.0)
+        put(L, int((t2 + st * s16) * FS), x, 0.9)
+        put(R, int((t2 + st * s16 + 0.009) * FS), x, 0.9)
+        put(mid, int((t2 + st * s16) * FS), sine(np.full(int(s16 * ln * FS), mtof(ch[0] - 12)))
+            * env_ar(int(s16 * ln * FS), 0.003, 0.03, int((s16 * ln - 0.03) * FS)), 0.35)
+    # the lead over the drop: a hoover-ish line answering the stabs
+    lead = [(2, 2, 83), (5, 1, 83), (7, 1, 83), (9, 2, 84), (12, 1, 86), (13, 3, 88)]
+    for st, ln, m in lead:
+        k = int(s16 * ln * FS)
+        v = sum(supersaw(m, k, rng)) / 5
+        v = sat(filt(v, 4200, 0.9) * env_ar(k, 0.004, 0.04, k - int(0.04 * FS)), 1.4)
+        put(L, int((t2 + st * s16) * FS), v, 0.2)
+        put(R, int((t2 + st * s16 + 0.013) * FS), v, 0.2)
+    # bar 3: the held E major chord, the choir, the crash, the boom; the sparkle; a last chime
+    t3 = t2 + 4 * b
+    m = n - int(t3 * FS)
+    tm = np.arange(m) / FS
+    held = np.zeros(m)
+    for nt in (52, 59, 64, 68, 71, 76):
+        for v in supersaw(nt, m, rng):
+            held += v
+    held /= math.sqrt(6 * 5)
+    held = tvf(held, 900 + 5500 * np.exp(-tm / 0.6), 1.0) * env_ar(m, 0.004, 0.9, int(1.0 * FS))
+    held = sat(held * 0.7, 1.3)
+    put(L, int(t3 * FS), chorus(held, 0.7, 2.0, 9.0, 0.0), 0.62)
+    put(R, int(t3 * FS), chorus(held, 0.7, 2.0, 9.0, 1.7), 0.62)
+    both(vox_smp([64, 68, 71], 1.3, 'o', rng, 'a'), t3, 0.24, 0.007)
+    both(cymbal_smp(rng, dec=0.9, dur=2.0), t3, 0.14, 0.013)
+    put(mid, int(t3 * FS), boom_smp(rng, 1.5), 0.85)
+    put(mid, int(t3 * FS), kit.hit('B'), 1.0)
+    put(mid, int(t3 * FS), kit.hit('X'), 0.8)
+    for k in range(10):
+        x = bell_smp(rng.choice([88, 92, 95, 100]), 0.3, 3.5, 1.0)
+        tk = t3 + 0.1 + k * 0.09
+        if k % 2:
+            put(L, int(tk * FS), x, 0.06)
+        else:
+            put(R, int(tk * FS), x, 0.06)
+    both(bell_smp(88, 0.9, 2.0, 1.4), t3 + 1.05, 0.3)
+    return fade(L + mid, 0.001, 0.25), fade(R + mid, 0.001, 0.25)
+
+
+def render_fanfare():
+    """The fanfare at SR as two int arrays (left, right) a whole number of ADPCM blocks long,
+    each stored loud, and the channel volume that brings the pair to MASTER_PEAK."""
+    left, right = fanfare()
+    lr = [down(hp_dc(c, 28.0), False) for c in (left, right)]
+    lr = [np.concatenate([c, np.zeros(-len(c) % BLK)]) for c in lr]
+    peak = max(np.abs(c).max() for c in lr)
+    g = STEM_PEAK / peak
+    vol = min(255, int(round(256 * MASTER_PEAK / STEM_PEAK)))
+    return [np.round(c * g * 32767).astype(np.int64) for c in lr], vol
+
+
 # ================================================================== the second round of effects
 # Beam, Tank and the Twins' own sounds, the supers' charge-ups by power source, weight (debris, a
 # knockdown's dust), the KO's smoulder, the Void Step and the brochure's menu sounds.
@@ -2454,6 +2571,8 @@ def build(preview, quick=False):
 
     print('rendering the sound effects...')
     sfx = render_sfx()
+    print('rendering the fanfare...')
+    fan, fan_vol = render_fanfare()
 
     stem_names = ('beat', 'airL', 'airR')
     if quick:      # unencoded previews only, nothing written to the cart
@@ -2468,6 +2587,7 @@ def build(preview, quick=False):
             if loop:
                 data = np.tile(data, 3)
             write_wav(os.path.join(preview, 'sfx_%s.wav' % name), [data * vol >> 8])
+        write_wav(os.path.join(preview, 'fanfare.wav'), [c * fan_vol >> 8 for c in fan])
         return
 
     print('encoding...')
@@ -2477,6 +2597,8 @@ def build(preview, quick=False):
             jobs.append((data, intro))
     for name, data, vol, rev, loop in sfx:
         jobs.append((data, 0 if loop else None))
+    for c in fan:
+        jobs.append((c, None))
     with ProcessPoolExecutor() as ex:
         enc = list(ex.map(_encode, jobs))
 
@@ -2493,6 +2615,15 @@ def build(preview, quick=False):
             stem_rows.append((chans[si], len(mbank), n, intro, vl, vr, 1 if si else 0, name, stem_names[si]))
             mbank += blob
             decoded.append((blob, mei_adpcm.decode(blob, n).astype(np.int64), data))
+    k_fan = len(jobs) - 2               # the fanfare's two blobs, after the sound effects'
+    sting_rows = []
+    fan_dec = []
+    for si, c in enumerate(fan):
+        blob = enc[k_fan + si]
+        vl, vr = (fan_vol, 0) if si == 0 else (0, fan_vol)
+        sting_rows.append((6 + si, len(mbank), len(c), vl, vr, 1))
+        mbank += blob
+        fan_dec.append(mei_adpcm.decode(blob, len(c)).astype(np.int64))
     sbank = bytearray()
     sfx_rows = []
     sfx_dec = {}
@@ -2533,6 +2664,14 @@ def build(preview, quick=False):
     for row in stem_rows:
         vals += list(row[:7])
     o.append(akr_array('MU_STEM', 's32', vals, 7))
+    o.append('\n// The cover\'s fanfare (mx-ladder), a stereo one-shot on channels 6 and 7: per side, channel,\n')
+    o.append('// byte offset in MU_BANK, samples, left volume, right volume, reverb send\n')
+    vals = []
+    for row in sting_rows:
+        vals += list(row)
+    o.append(akr_array('MU_STING', 's32', vals, 6))
+    o.append('const MU_STING_FRAMES = %d          // its length in frames\n'
+             % ((sting_rows[0][2] * 60 + SR - 1) // SR))
     o.append('\n// Sound effects: an index into SFX for each. The loops (%s) loop from their start.\n'
              % ', '.join(r[0] for r in sfx_rows if r[5]))
     for i, row in enumerate(sfx_rows):
@@ -2550,6 +2689,10 @@ def build(preview, quick=False):
 
     # ---- the report: sizes, levels, the loops' seams
     print('music.adp %d bytes, sfx.adp %d bytes' % (len(mbank), len(sbank)))
+    fl, fr = [d * fan_vol >> 8 for d in fan_dec]
+    print('  fanfare: %d samples (%.2f s), vol %d, peak %.1f dBFS, %d samples clipped'
+          % (len(fl), len(fl) / SR, fan_vol, db(max(np.abs(fl).max(), np.abs(fr).max()) / 32768),
+             int((np.abs(np.concatenate([fl, fr])) > 32767).sum())))
     for r, (blob, d, src) in zip(stem_rows, decoded):
         err = d - src
         snr = 10 * math.log10((src ** 2).mean() / max(1e-9, (err ** 2).mean()))
@@ -2618,6 +2761,7 @@ def build(preview, quick=False):
         for name, (d, v) in sfx_dec.items():
             write_wav(os.path.join(preview, 'sfx_%s.wav' % name), [d * v >> 8])
         write_wav(os.path.join(preview, 'fight_sfx.wav'), [VL, VR])
+        write_wav(os.path.join(preview, 'fanfare.wav'), [fl, fr])
         print('previews in', preview)
 
 

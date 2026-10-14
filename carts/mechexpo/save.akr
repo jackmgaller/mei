@@ -14,7 +14,8 @@ struct MxSave {
                              // bit 16 + slot once the arcade was cleared with that slot's mech
     clears: u32              // arcade clears, any mech
     medals: u32              // version 2: bit 3 * slot + difficulty (ladder.akr's medal_bit)
-    diff: u32                // version 2: the difficulty last picked (DIFF_*)
+    diff: u32                // version 2: bits 0-7 the difficulty last picked (DIFF_*), bits 8-15
+                             // the last cover's headline + 1 (cover.akr; 0: none yet)
 }
 
 const SAVE_MAGIC: u32 = 0x3058454D   // "MEX0"

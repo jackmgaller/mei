@@ -1383,11 +1383,12 @@ private fn reveal_line(s: *u8, y: s32, t: s32, col: u32) {
     txt_sh(FONT_HEAD, 160 - w / 2, y, &buf[0], col, C_INK, 1, ALIGN_LEFT)
 }
 
-// The ending: a magazine cover (mx-ladder). The winner live in its win pose on its maker's
-// colour, the masthead over it, the headline by case (a base mech's contract, an echo's upset,
-// the test unit beaten), teasers for what is still locked, the grade's stamp, the barcode.
+// The ending: a magazine cover (mx-ladder; cover.akr picks its words and holds its poses). The
+// winner frozen in one held frame of its win move on its maker's colour, the masthead over it,
+// the headline and three cover lines picked for the run, the grade's stamp, the barcode.
 const MAG_NAME = "PROCUREMENT"          // the masthead (the owner picks: README.md, "The arcade")
 const MAG_NAME2 = "TODAY"
+const COVER_TICKS: [3]u32 = [C_CYAN, C_TANGERINE, C_SILVER]   // the cover lines' colour ticks
 
 fn draw_cover() {
     let t = st_t
@@ -1395,9 +1396,10 @@ fn draw_cover() {
     let mk = mech_maker_of(me)
     print_clear()
     print_ramp(0, mk.colour)
-    print_grad(0, 0, 40, 30, 0, 12, 3)
-    // the unit in its win pose, its feet at the bottom edge as a cover photograph has it
-    menu_mech_at(me, Mv.win, 226, 300, 12.5, 1, 1.05)
+    print_grad(0, 0, 40, 30, 0, COVER_SKY[me][0], COVER_SKY[me][1])
+    // the unit, a photograph: one held frame of its win move (cover.akr's COVER_POSE), its feet
+    // below the bottom edge as a cover photograph has them
+    menu_mech_f(me, Mv.win, fixed(COVER_POSE[me]), 226, COVER_FEET[me], COVER_DIST[me], 1, COVER_YAW[me])
     // the masthead
     txt_sh(FONT_MAST, 6, 1, MAG_NAME, C_WHITE, C_INK, 2, ALIGN_LEFT)
     let tx = 10 + txt_w(FONT_MAST, MAG_NAME)
@@ -1406,50 +1408,25 @@ fn draw_cover() {
     rect_blend(0, 44, 320, 11, C_INK, BLEND_HALF)
     txt(FONT_MICRO, 6, 45, "THE DEFENCE TRADE WEEKLY", C_WHITE, ALIGN_LEFT)
     txt(FONT_MICRO, 314, 45, "ISSUE 41  //  OCTOBER 2000", C_WHITE, ALIGN_RIGHT)
-    // the headline
-    var h0 = "CONTRACT"
-    var h1 = "AWARDED"
-    var l1 = "TAKES THE UAPC DEAL"
-    if run.fin == FIN_ORIGINAL {
-        h0 = "UPSET AT"
-        h1 = "THE EXPO"
-        l1 = "BEATS THE ORIGINAL"
-    } else if run.fin == FIN_TEST {
-        h0 = "EVALUATION"
-        h1 = "PASSED"
-        l1 = "BEATS THE UAPC'S OWN TEST UNIT"
-    }
-    let l0 = sb()
-    str_append(l0, 64, mk.short)
-    str_append(l0, 64, "'S ")
-    str_append(l0, 64, mech_name(me))
+    // the headline (cover.akr's pick), on a panel as wide as its words
+    let hd = &COVER_HEADS[clamp(cover_head, 0, len(COVER_HEADS) - 1)]
+    let l0 = cover_l0(sb())
+    let l1 = cover_fill(sb2(), hd.l1)
+    let pw = max(max(txt_w(FONT_TITLE, hd.h0), txt_w(FONT_TITLE, hd.h1)), txt_w(FONT_LABEL, l1)) + 20
     let hy = 152
-    rect_blend(0, hy - 2, 180, 82, C_INK, BLEND_HALF)
+    rect_blend(0, hy - 2, pw, 82, C_INK, BLEND_HALF)
     rect_blend(0, hy - 2, 4, 82, C_YELLOW, BLEND_NONE)
-    txt_sh(FONT_TITLE, 10, hy, h0, C_YELLOW, C_INK, 2, ALIGN_LEFT)
-    txt_sh(FONT_TITLE, 10, hy + 24, h1, C_YELLOW, C_INK, 2, ALIGN_LEFT)
+    txt_sh(FONT_TITLE, 10, hy, hd.h0, C_YELLOW, C_INK, 2, ALIGN_LEFT)
+    txt_sh(FONT_TITLE, 10, hy + 24, hd.h1, C_YELLOW, C_INK, 2, ALIGN_LEFT)
     txt_sh(FONT_HEAD, 10, hy + 52, l0, C_WHITE, C_INK, 1, ALIGN_LEFT)
     txt_sh(FONT_LABEL, 10, hy + 67, l1, C_WHITE, C_INK, 1, ALIGN_LEFT)
-    // the cover lines: what is still locked, and the trade's own
+    // the cover lines
     var ty = 62
-    if !slot_unlocked(mech_slot(Mech.Twins)) {
-        ty = teaser(ty, "WHO IS BINARY MECHANICA?", "THE STARTUP NOBODY HAS MET", C_CYAN)
-    } else {
-        ty = teaser(ty, "BINARY MECHANICA", "TWO MECHS, ONE INVOICE", C_CYAN)
+    for i in 0..3 {
+        let c = cover_tease[i]
+        if c == null { continue }
+        ty = teaser(ty, c.a, cover_fill(sb2(), c.b), COVER_TICKS[i])
     }
-    if run.fin == FIN_TEST {
-        ty = teaser(ty, "THE CLIENT'S OWN MECHS", "WHY DOES THE UAPC BUILD THEM?", C_TANGERINE)
-    } else {
-        var n = 0
-        for s in ROSTER_COLS..ROSTER_N {
-            if !slot_has_mech(s) { n += 1 }
-        }
-        let b = sb2()
-        str_append_int(b, 64, n, 0, false)
-        str_append(b, 64, " RIVAL ANSWERS IN DEVELOPMENT")
-        ty = teaser(ty, "ECHOES: WHAT'S NEXT", b, C_TANGERINE)
-    }
-    ty = teaser(ty, "REACTOR SAFETY", "A HEARTLAND SPECIAL, P. 52", C_SILVER)
     // the sticker: the grade it was cleared on, stamped
     let d = &DIFFS[run.diff]
     let gx = 266
