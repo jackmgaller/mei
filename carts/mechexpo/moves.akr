@@ -15,7 +15,11 @@ import "gamma.akr"              // Gamma's data, and which of Beam's rules it pl
 // guard pose there: anim_standin()), and for all of them while STANDIN_ALL is set.
 const STANDIN_ALL = false
 
-fn use_standin(m: Mech, mv: Mv) -> bool { return STANDIN_ALL || anim_standin(m, mv) }
+// (and Gamma's moves whose animation is still Beam's placeholder: gamma.akr's gamma_standin, a
+// length compared with Beam's, no scan)
+fn use_standin(m: Mech, mv: Mv) -> bool {
+    return STANDIN_ALL || anim_standin(m, mv) || (m == Mech.Gamma && gamma_standin(mv))
+}
 
 // The marks the fight reads are anim.akr's MARK_*; the stand-in below sets them too.
 
@@ -62,9 +66,10 @@ const STATS: [len(Mech)]Stats = [
     // little slower than Shadow's (0.080 and 0.064 m a frame: 4.8 and 3.8 m/s), Momentum's kinetic meter
     Stats { health: 1000, walk_f: 0.080, walk_b: 0.064, pre: 4, jv: 0.688889, grav: 0.038272,
             jvx: 0.17, land: 5, land_air: 8, push: 1.4, power: Power.Kinetic },
-    // Gamma (MOVES.md, "Gamma"): Beam's numbers for now (phase 1), on Heartland's nuclear meter
-    Stats { health: 1000, walk_f: 0.062, walk_b: 0.058, pre: 5, jv: 0.6, grav: 0.03,
-            jvx: 0.14, land: 6, land_air: 9, push: 1.7, power: Power.Nuclear },
+    // Gamma (MOVES.md, "Gamma"): 1,050 health; the slowest walk on legs (0.058 and 0.050 m a
+    // frame); 6 frames' crouch, 40 in the air, 5.6 m high; Beam's push box; Heartland's nuclear meter
+    Stats { health: 1050, walk_f: 0.058, walk_b: 0.050, pre: 6, jv: 0.56, grav: 0.028,
+            jvx: 0.13, land: 7, land_air: 10, push: 1.7, power: Power.Nuclear },
 ]
 
 // ---- what a hit does
@@ -81,6 +86,8 @@ struct Hit {
     launch: fixed           // upward speed of a knockdown or an air hit
     nodebt: bool            // the antimatter debt's 25 % does not apply (Seraph's Judgement on a
                             // marked mech: the mark's 50 % does instead, seraph_judged)
+    daze: s32               // frames of daze in place of the hitstun (Gamma's Geiger Flare; 0 for
+                            // every other hit): fighter.akr's struck()
 }
 
 const HIT_NONE = Hit {}
@@ -153,7 +160,10 @@ const PARRY_FREEZE = 20
 // ---- the timing source
 
 fn mv_len(m: Mech, mv: Mv) -> s32 {
-    if use_standin(m, mv) { return tm(m, mv).len }
+    if use_standin(m, mv) {
+        if m == Mech.Gamma { return gamma_len(mv) }
+        return tm(m, mv).len
+    }
     return anim_len(m, mv)
 }
 
@@ -166,6 +176,7 @@ fn mv_root(m: Mech, mv: Mv, f: s32) -> vec2 {
     if !use_standin(m, mv) { return anim_root(m, mv, f) }
     if m == Mech.Shadow { return shadow_root(mv, f) }
     if m == Mech.Seraph { return seraph_root(mv, f) }
+    if m == Mech.Gamma { return gamma_root(mv, f) }
     let t = tm(m, mv)
     var r = vec2(0.0, 0.0)
     if f >= t.m0 && f <= t.m1 { r = vec2(t.dx, t.dy) }
@@ -175,6 +186,7 @@ fn mv_root(m: Mech, mv: Mv, f: s32) -> vec2 {
 
 fn mv_marks(m: Mech, mv: Mv, f: s32) -> u32 {
     if !use_standin(m, mv) { return anim_marks(m, mv, f) }
+    if m == Mech.Gamma { return gamma_marks(mv, f) }       // read a frame at a time: no Tm built
     let t = tm(m, mv)
     var k: u32 = 0
     if t.a0 >= 0 && t.c1 > 0 && f >= t.a0 && f <= t.c1 { k |= MARK_CANCEL }
@@ -208,6 +220,10 @@ fn mv_boxes(m: Mech, mv: Mv, f: s32, out: *Boxes) {
     }
     if m == Mech.Seraph {
         seraph_boxes(mv, f, out)
+        return
+    }
+    if m == Mech.Gamma {
+        gamma_boxes(mv, f, out)
         return
     }
     if m >= Mech.Twins && m <= Mech.TwinB {

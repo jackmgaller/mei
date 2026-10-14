@@ -62,6 +62,7 @@ const MARK_NOPUSH: u32 = 256   // no push box and no hurt: passes through (the V
 const MARK_HIDE: u32 = 512     // not drawn this frame (anim_draw draws nothing): the Void Step's gone frames
 const MARK_CHARGE: u32 = 1024  // the frame a held button holds (Beam's Volt Orb charges here while B is held)
 const MARK_WARD: u32 = 2048    // Seraph's Wing Ward: a shot touching it now is sent back (seraph.akr)
+const MARK_SHIELD: u32 = 4096  // Gamma's Lead Shielding: the brace, the next hit is absorbed (gamma.akr)
 
 const ANIM_MAX_BOXES = 16
 

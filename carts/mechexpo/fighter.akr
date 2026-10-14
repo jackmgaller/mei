@@ -66,6 +66,17 @@ struct Fx {
     l_age: s32                  // frames since L was pressed (the Twins switch forms on it)
     out: bool                   // rung out: falling past an open edge (the end of this file)
     out_t: s32                  // frames since
+    // Gamma (gamma.akr): the Atomic Ray, the Geiger Flare's daze, Lead Shielding
+    ray_t: s32                  // frames the ray has been on this move (the tick clock)
+    ray_n: s32                  // its ticks that touched a mech (hit, blocked or absorbed)
+    ray_last: s32               // ray_t of the last of them (a tick 6 frames after it is a later tick)
+    ray_combo: s32              // the combo count the ray's first tick found (its ticks are one hit)
+    ray_cut: bool               // parried: the ray is cut when the Parry's freeze ends
+    ray_ward: bool              // a Wing Ward held off one of its ticks (the Reflect posted once)
+    dazed: bool                 // in the daze (hit_high or hit_low), or dropping to it from the air
+    daze_spent: bool            // dazed since it was last actionable: not dazed again (to_neutral)
+    daze_drop: s32              // dazed in the air: the daze's frames, from the landing
+    shield_ray: bool            // Lead Shielding holds a ray: its ticks absorbed to the brace's end
 }
 
 // The bodies: 0 and 1 the two fighters, 2 and 3 their partners (the split Twins' twin B, of
@@ -200,6 +211,7 @@ fn set_mv(i: s32, mv: Mv) {
     x.contact = false
     x.riposte = false
     x.had_hit = false
+    x.dazed = false                 // any move or reaction after a daze ends it (struck() sets it)
 }
 
 fn to_neutral(i: s32) {
@@ -207,6 +219,7 @@ fn to_neutral(i: s32) {
     x.stun = 0
     x.combo = 0
     x.chain = 0
+    x.daze_spent = false            // actionable: a Geiger Flare may daze it again
     if x.down { set_mv(i, Mv.crouch) } else { set_mv(i, Mv.idle) }
 }
 
@@ -286,7 +299,7 @@ fn try_press(i: s32, mask: u32) -> bool {
         let mv = match x.dir[BI_B] { D_U => Mv.sp_u, D_D => Mv.sp_d, D_F => Mv.sp_f, else => Mv.sp_n }
         if (mask & mv_bit(mv)) != 0 {
             consume(i, BI_B)
-            if mv == Mv.sp_n && fires_shot(f.mech) && fight.shot[i].on { return false }
+            if mv == shot_move(f.mech) && fires_shot(f.mech) && fight.shot[i].on { return false }
             // the chemical prime: one reaction at a time
             if mv == Mv.sp_d && meter_power(f.mech) == Power.Chemical && f.react > 0 { return false }
             set_mv(i, mv)
@@ -385,6 +398,19 @@ private fn advance(i: s32) {
         }
         if x.air {
             air_step(i)
+            if !x.air && x.daze_drop > 0 {
+                // dazed in the air (Gamma's Geiger Flare): on its feet, no landing lag, the daze
+                let n = x.daze_drop
+                set_mv(i, Mv.hit_high)
+                x.daze_drop = 0
+                x.dazed = true
+                x.stun = n
+                x.stun_len = n
+                x.slide = 0.0
+                x.vx = 0.0
+                ev_add(Ev.Land, i & 1, f.x, 0.0, 0)
+                return
+            }
             if !x.air {
                 let lag = if_else(mv == Mv.atk_air, s.land_air, s.land)
                 set_mv(i, Mv.land)
@@ -409,6 +435,9 @@ private fn advance(i: s32) {
     if has_sneak(f.mech) && shadow_advance(i) { return }   // Shadow Sneak's travel (shadow.akr)
     // the Seraph Dive's glide and dive, Judgement's lock (seraph.akr)
     if (has_glide(f.mech) || has_judgement(f.mech)) && seraph_advance(i) { return }
+    // the Atomic Ray held, its heat and the vent; Lead Shielding holding a ray (gamma.akr), before
+    // the charge rule (which would hold the ray's charge frame for ORB_CHARGE_MAX)
+    if (has_ray(f.mech) || has_shielding(f.mech)) && gamma_ray_advance(i) { return }
     // a charge frame (Beam's Volt Orb) holds while B is held, up to ORB_CHARGE_MAX frames
     if (mv_marks(f.body, mv, x.t) & MARK_CHARGE) != 0 && (x.pad & B) != 0 && f.charge < ORB_CHARGE_MAX {
         f.charge += 1
@@ -420,8 +449,10 @@ private fn advance(i: s32) {
     move_root(i, fixed(f.facing) * r.x, r.y)
     x.t += 1
     if mv == Mv.knockdown && x.t >= mv_len(f.body, mv) { set_mv(i, Mv.getup); return }
-    if mv == Mv.sp_d && !x.riposte {
-        let rip = find_mark(f.body, Mv.sp_d, MARK_RIPOSTE)
+    // the Parry, the Wing Ward, Lead Shielding and the Atomic Ray (when it did not vent) end at their
+    // riposte frame unless something was caught (or the gun vented)
+    if (mv == Mv.sp_d || (mv == Mv.sp_n && has_ray(f.mech))) && !x.riposte {
+        let rip = rip_frame(f.body, mv)
         if rip >= 0 && x.t >= rip { end_move(i); return }
     }
     if f.mech == Mech.Tank && !x.riposte && tank_cmd_grab(mv) {
@@ -429,6 +460,12 @@ private fn advance(i: s32) {
         if rip >= 0 && x.t >= rip { end_move(i); return }
     }
     if x.t >= mv_len(f.body, mv) { end_move(i) }
+}
+
+// The move's riposte frame: Gamma's from gamma.akr (found once), the others' from the data.
+fn rip_frame(m: Mech, mv: Mv) -> s32 {
+    if m == Mech.Gamma { return gamma_rip(mv) }
+    return find_mark(m, mv, MARK_RIPOSTE)
 }
 
 fn if_else(c: bool, a: s32, b: s32) -> s32 {
@@ -594,6 +631,7 @@ fn throw_tick(i: s32) {
         fx[j].vy = h.launch
         if f.mech == Mech.Hero { fx[j].vx = ft * 0.30 } else if f.mech == Mech.Tank { fx[j].vx = ft * 0.34 } else { fx[j].vx = -ft * 0.08 }
         if has_shock_grip(f.mech) { fx[j].vx = ft * 0.24 }     // the Shock Grip throws it off, about 9 m
+        if has_point_blank(f.mech) { fx[j].vx = ft * GM_PB_VX } // Point Blank blasts it off, about 10 m
         if f.mech == Mech.Twins { fx[j].vx = ft * twins_toss_vx(f.body) }
         if has_phantom_grip(f.mech) { fx[j].vx = ft * GRIP_TOSS_VX }   // flung back where Shadow came from
         if has_over_throw(f.mech) { fx[j].vx = -ft * SER_ARC_TOSS_VX }  // Heaven's Arc: bounced on, behind Seraph
@@ -667,6 +705,7 @@ const R_HIT = 1
 const R_BLOCK = 2
 const R_PARRY = 3
 const R_GRAB = 4
+const R_WARD = 5            // Gamma's ray held off by a Wing Ward (gamma.akr): its heat, nothing else
 
 fn overlap(a: vec4, b: vec4) -> bool {
     return a.x < b.z && b.x < a.z && a.y < b.w && b.y < a.w
@@ -683,7 +722,10 @@ fn hittable(j: s32) -> bool {
 fn grabbable(j: s32) -> bool {
     let o = &fight.f[j]
     if !grounded(j) { return false }
-    if cur_marks(j) & MARK_ARMOUR != 0 { return true }      // grabs break super armour
+    // grabs break super armour, and Lead Shielding's brace
+    if cur_marks(j) & (MARK_ARMOUR | MARK_SHIELD) != 0 { return true }
+    // dazed (Gamma's Geiger Flare): it counts as standing
+    if fx[j].dazed && (o.mv == Mv.hit_high || o.mv == Mv.hit_low) { return true }
     if o.mv == Mv.block { return fx[j].stun == 0 }
     // a mech grabbing too: the first to catch wins, two at once break (collide())
     return o.mv == Mv.idle || o.mv == Mv.walk_f || o.mv == Mv.walk_b || o.mv == Mv.crouch
@@ -733,6 +775,7 @@ fn strike(i: s32, j: s32) -> s32 {
                 c_hit[i] = hb.hit as s32
                 c_pt[i] = vec2((max(w.x, u.x) + min(w.z, u.z)) / 2, (max(w.y, u.y) + min(w.w, u.w)) / 2)
                 if grabbing { return R_GRAB }
+                if gamma_ray_warded(i, j) { return R_WARD }
                 if parrying(j) && f.mv != Mv.super { return R_PARRY }
                 if fight.f[j].mv == Mv.block { return R_BLOCK }
                 return R_HIT
@@ -771,8 +814,12 @@ fn resolve(i: s32, j: s32, r: s32, h0: Hit, mv: Mv) {
     if has_eclipse(fight.f[i].mech) { h = shadow_hit_k(mv, c_hit[i], h0) }   // Total Eclipse's five hits
     if has_judgement(fight.f[i].mech) { h = seraph_judged(i, j, h, mv) }     // Judgement on a marked mech
     fx[i].hits |= (1 as u32) << (c_hit[i] as u32)
+    // Gamma's Atomic Ray: a tick after the first raises no hitstop and posts no event, scaled by the
+    // combo the first tick found (gamma.akr)
+    if mv == Mv.sp_n && has_ray(fight.f[i].mech) && r != R_WARD && r != R_GRAB { gamma_ray_touch(i, j) }
     match r {
         R_GRAB => catch(i, j)
+        R_WARD => gamma_warded(i, j, c_pt[i])
         R_PARRY => {
             fx[i].contact = true
             parry(j, i)
@@ -784,13 +831,21 @@ fn resolve(i: s32, j: s32, r: s32, h0: Hit, mv: Mv) {
         else => {
             if tank_armoured(j, mv) {
                 absorb(i, j, h, c_pt[i], false)  // super armour: no contact for the chain
+            } else if gamma_shielded(i, j, mv, false) {
+                gamma_shield_absorb(i, j, h, c_pt[i], false)  // Lead Shielding: one hit, or a ray
             } else {
                 fx[i].contact = true
                 struck(i, j, h, c_pt[i], false)
             }
         }
     }
+    tick_later = false
 }
+
+// The hit being resolved is a held ray's later tick (gamma.akr's gamma_ray_touch): struck(),
+// blocked() and absorb() raise no hitstop and post no event, and it is scaled by tick_combo.
+var tick_later: bool
+var tick_combo: s32
 
 private fn catch(i: s32, j: s32) {
     let f = &fight.f[i]
@@ -821,6 +876,7 @@ private fn parry(j: s32, i: s32) {
     let o = &fight.f[j]
     let rip = find_mark(o.body, Mv.sp_d, MARK_RIPOSTE)
     fx[i].pause = PARRY_FREEZE
+    if fight.f[i].mv == Mv.sp_n && has_ray(fight.f[i].mech) { fx[i].ray_cut = true }    // Gamma's ray: cut
     fx[j].riposte = true
     if rip >= 0 { fx[j].t = rip }
     fight.freeze = 6
@@ -839,7 +895,9 @@ fn struck(i: s32, j: s32, h: Hit, p: vec2, shot: bool) {
     let a = &fight.f[i]
     let d = &fight.f[j]
     let dx = &fx[j]
-    var dmg = combo_scale(h.dmg, dx.combo)
+    var combo = dx.combo
+    if tick_later { combo = tick_combo }        // a held ray's later tick: one hit (gamma.akr)
+    var dmg = combo_scale(h.dmg, combo)
     if !h.nodebt { dmg = meter_damage(d, dmg) }
     damage(j, dmg, true)
     meter_on_hit(&fight.f[i & 1], true, shot)
@@ -849,9 +907,34 @@ fn struck(i: s32, j: s32, h: Hit, p: vec2, shot: bool) {
     let crouching = d.mv == Mv.crouch || d.mv == Mv.atk_d || d.mv == Mv.hit_low
         || (d.mv == Mv.sp_d && d.mech == Mech.Doubleblade)
     let in_air = !grounded(j)
-    dx.combo += 1
+    // the Geiger Flare's daze (Gamma's): once until the mech has been actionable; any other hit
+    // ends a daze (set_mv) and a fall to one
+    let daze = h.daze > 0 && !dx.daze_spent && hp(j) > 0 && !h.kd
+    dx.daze_drop = 0
+    if !tick_later { dx.combo += 1 }
     dx.pause = 0
-    if h.kd || in_air || hp(j) <= 0 {
+    if daze {
+        dx.daze_spent = true
+        if in_air {
+            // the jump, the air attack or the special cut: it drops straight down, dazed on landing
+            set_mv(j, Mv.jump)
+            dx.t = mv_len(d.body, Mv.jump) - 1
+            dx.air = true
+            dx.vx = 0.0
+            dx.vy = 0.0
+            dx.air_used = true
+            dx.stun = 0
+            dx.daze_drop = h.daze
+        } else {
+            if crouching { set_mv(j, Mv.hit_low) } else { set_mv(j, Mv.hit_high) }
+            dx.stun = h.daze
+            dx.stun_len = h.daze
+        }
+        dx.dazed = true
+        dx.slide = 0.0
+        dx.slide_by = -1
+        ev_add(Ev.Daze, i & 1, d.x, d.y, if_else(in_air, 1, 0))
+    } else if h.kd || in_air || hp(j) <= 0 {
         set_mv(j, Mv.hit_air)
         dx.air = true
         dx.vy = max(h.launch, 0.3)
@@ -865,11 +948,15 @@ fn struck(i: s32, j: s32, h: Hit, p: vec2, shot: bool) {
         dx.slide = fixed(dir) * h.kb
         dx.slide_by = i
     }
-    fight.freeze = max(fight.freeze, h.stop)
-    fight.flash_side = -1
-    d.flash = h.stop
-    fight.shake = fixed(h.power + 1) * 0.15
-    ev_add(Ev.Hit, i & 1, p.x, p.y, h.power)
+    if tick_later {
+        d.flash = max(d.flash, GM_TICK_FLASH)   // shaken in place, no hitstop, no event
+    } else {
+        fight.freeze = max(fight.freeze, h.stop)
+        fight.flash_side = -1
+        d.flash = h.stop
+        fight.shake = fixed(h.power + 1) * 0.15
+        ev_add(Ev.Hit, i & 1, p.x, p.y, h.power)
+    }
     if hp(j) <= 0 { knock_out(j) }
 }
 
@@ -887,23 +974,33 @@ fn blocked(i: s32, j: s32, h: Hit, mv: Mv, p: vec2, shot: bool) {
     dx.slide = fixed(dir) * h.kb * 0.8
     dx.slide_by = i
     if shot { dx.slide_by = -1 }
-    fight.freeze = max(fight.freeze, BLOCK_STOP)
-    fight.flash_side = -1
-    fight.shake = 0.08
     d.flash = 0
-    ev_add(Ev.Block, i & 1, p.x, p.y, h.power)
+    if !tick_later {                            // a held ray's later tick: no hitstop, no events
+        fight.freeze = max(fight.freeze, BLOCK_STOP)
+        fight.flash_side = -1
+        fight.shake = 0.08
+        ev_add(Ev.Block, i & 1, p.x, p.y, h.power)
+    }
     if h.chip > 0 {
         damage(j, meter_damage(d, h.chip), mv == Mv.super)
-        ev_add(Ev.Chip, i & 1, p.x, p.y, h.power)
+        if !tick_later { ev_add(Ev.Chip, i & 1, p.x, p.y, h.power) }
         if hp(j) <= 0 { knock_out(j) }
     }
 }
 
-// ---- the shots: the Hero's wave, Beam's Volt Orb, Shadow's Hex Bolt and Seraph's Mark of
-// Judgement (one each at a time; a shot Seraph's Wing Ward sends back is Seraph's)
+// ---- the shots: the Hero's wave, Beam's Volt Orb, Shadow's Hex Bolt, Seraph's Mark of Judgement
+// and Gamma's Rod Shot (one each at a time; a shot Seraph's Wing Ward sends back is Seraph's)
 
-// Whether a mech's neutral special fires a shot.
-fn fires_shot(m: Mech) -> bool { return m == Mech.Hero || has_volt_orb(m) || has_hex_bolt(m) || has_mark(m) }
+// Whether a mech has a shot.
+fn fires_shot(m: Mech) -> bool {
+    return m == Mech.Hero || has_volt_orb(m) || has_hex_bolt(m) || has_mark(m) || has_rod(m)
+}
+
+// The move that fires it: the neutral special, but Gamma's forward one (its neutral is the ray).
+fn shot_move(m: Mech) -> Mv {
+    if has_rod(m) { return Mv.sp_f }
+    return Mv.sp_n
+}
 
 // Fires side i's shot (on its neutral special's release frame).
 private fn shot_fire(i: s32) {
@@ -916,6 +1013,11 @@ private fn shot_fire(i: s32) {
     s.hex = false
     s.mark = false
     s.refl = false
+    s.pierce = false
+    if has_rod(f.mech) {
+        gamma_rod_fire(i, s)                    // the Rod Shot (gamma.akr)
+        return
+    }
     if has_hex_bolt(f.mech) {
         shadow_bolt_fire(i, s)                  // the Hex Bolt (shadow.akr)
         return
@@ -924,7 +1026,7 @@ private fn shot_fire(i: s32) {
         seraph_bolt_fire(i, s)                  // the Mark of Judgement (seraph.akr)
         return
     }
-    if has_volt_orb(f.mech) {                   // the Volt Orb (Beam's; Gamma's until the Atomic Ray)
+    if has_volt_orb(f.mech) {                   // the Volt Orb (Beam's)
         let lvl = orb_level(f.charge)
         s.lvl = lvl
         s.str = lvl
@@ -950,6 +1052,7 @@ private fn shot_fire(i: s32) {
 
 // What a shot does when it lands.
 private fn shot_hit(s: *Shot) -> Hit {
+    if s.pierce { return rod_hit() }
     if s.mark { return mark_hit() }
     if s.hex { return hex_hit() }
     if s.lvl > 0 { return orb_hit(s.lvl) }
@@ -960,8 +1063,8 @@ fn shots_tick() {
     for i in 0..2 {
         let f = &fight.f[i]
         let s = &fight.shot[i]
-        // fired on the release frame of the neutral special
-        if f.mv == Mv.sp_n && fires_shot(f.mech) && !s.on && fx[i].pause == 0
+        // fired on the release frame of the move that fires it (shot_move)
+        if f.mv == shot_move(f.mech) && fires_shot(f.mech) && !s.on && fx[i].pause == 0
             && (cur_marks(i) & MARK_RELEASE) != 0 && fx[i].t > 0 {
             shot_fire(i)
             continue
@@ -972,10 +1075,11 @@ fn shots_tick() {
         let half = stage_now().half
         if s.t > s.life || s.x > half || s.x < -half { s.on = false }
     }
-    // two shots that meet: the weaker goes, both if they are as strong (two waves both go)
+    // two shots that meet: the weaker goes, both if they are as strong (two waves both go); the Rod
+    // Shot passes through every shot, and every shot through it
     let s0 = &fight.shot[0]
     let s1 = &fight.shot[1]
-    if s0.on && s1.on && abs(s0.x - s1.x) < s0.half + s1.half {
+    if s0.on && s1.on && !s0.pierce && !s1.pierce && abs(s0.x - s1.x) < s0.half + s1.half {
         var cy = 1.5
         if s0.lvl > 0 && s1.lvl > 0 { cy = (ORB_Y0 + ORB_Y1) / 2 }
         let cx = (s0.x + s1.x) / 2
@@ -983,6 +1087,7 @@ fn shots_tick() {
         if s1.str <= s0.str { s1.on = false }
         ev_add(Ev.Clash, 0, cx, cy, 1)
     }
+    gamma_ray_shots()                       // Gamma's Atomic Ray burns, or is cut by, a shot (gamma.akr)
     for i in 0..2 {
         if !fight.shot[i].on || fight.shot[i].t < 0 { continue }    // (t < 0: reflected this frame)
         let j = other(i)
@@ -1003,7 +1108,7 @@ private fn shot_try(i: s32, j: s32) -> bool {
         let u = world_box(j, hu)
         if overlap(w, u) {
             var p = vec2(s.x, 1.5)
-            if s.lvl > 0 || s.mark { p = vec2(s.x, (s.y0 + s.y1) / 2) }
+            if s.lvl > 0 || s.mark || s.pierce { p = vec2(s.x, (s.y0 + s.y1) / 2) }
             if seraph_warding(j) && sgn(s.vx) == -fight.f[j].facing {
                 seraph_reflect(i, j, p)         // the Wing Ward sends it back (seraph.akr)
                 return true
@@ -1019,10 +1124,14 @@ private fn shot_try(i: s32, j: s32) -> bool {
                 ev_add(Ev.Parry, j, p.x, p.y, 1)
             } else if fight.f[j].mv == Mv.block {
                 blocked(i, j, h, Mv.sp_n, p, true)
-            } else if tank_armoured(j, Mv.sp_n) {
+            } else if !s.pierce && tank_armoured(j, Mv.sp_n) {
                 absorb(i, j, h, p, true)
                 shadow_hexed(i, j, s)           // the Hex Bolt curses through armour
                 seraph_marked(i, j, s)          // and the Mark marks through it
+            } else if gamma_shielded(i, j, Mv.sp_n, s.pierce) {
+                gamma_shield_absorb(i, j, h, p, true)   // Lead Shielding takes one (not the rod)
+                shadow_hexed(i, j, s)
+                seraph_marked(i, j, s)
             } else {
                 struck(i, j, h, p, true)
                 shadow_hexed(i, j, s)
@@ -1166,11 +1275,15 @@ fn absorb(i: s32, j: s32, h: Hit, p: vec2, shot: bool) {
     let d = &fight.f[j]
     damage(j, meter_damage(d, h.dmg), true)
     meter_on_hit(&fight.f[i & 1], false, shot)
-    fight.freeze = max(fight.freeze, h.stop)
-    fight.flash_side = -1
-    d.flash = h.stop
-    fight.shake = fixed(h.power + 1) * 0.1
-    ev_add(Ev.Armour, i & 1, p.x, p.y, h.power)
+    if tick_later {
+        d.flash = max(d.flash, GM_TICK_FLASH)   // a held ray's later tick: no hitstop, no event
+    } else {
+        fight.freeze = max(fight.freeze, h.stop)
+        fight.flash_side = -1
+        d.flash = h.stop
+        fight.shake = fixed(h.power + 1) * 0.1
+        ev_add(Ev.Armour, i & 1, p.x, p.y, h.power)
+    }
     if hp(j) <= 0 { knock_out(j) }
 }
 

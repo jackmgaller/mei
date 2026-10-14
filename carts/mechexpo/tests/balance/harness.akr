@@ -60,7 +60,7 @@ const NAMES: [len(Mech)]*u8 = ["Hero", "Doubleblade", "Beam", "Tank", "Twins", "
 const EV_NAMES: [len(Ev)]*u8 = [
     "Hit", "Block", "Chip", "Whiff", "Grab", "Throw", "Break", "Land", "Step", "MeterFull",
     "Super", "Ko", "TimeUp", "Shot", "Parry", "Clash", "Swing", "Armour", "RingOut", "Curse", "Mine",
-    "Snare", "MineGone", "Mark", "Reflect", "Column",
+    "Snare", "MineGone", "Mark", "Reflect", "Column", "Vent", "Burn", "Daze",
 ]
 const MV_NAMES: [len(Mv)]*u8 = [
     "idle", "walk_f", "walk_b", "crouch", "jump", "land", "block", "hit_high", "hit_low",

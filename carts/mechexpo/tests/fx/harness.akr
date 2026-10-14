@@ -30,7 +30,7 @@ var started: bool
 const EVN: [len(Ev)]*u8 = [
     "Hit", "Block", "Chip", "Whiff", "Grab", "Throw", "Break", "Land", "Step", "MeterFull",
     "Super", "Ko", "TimeUp", "Shot", "Parry", "Clash", "Swing", "Armour", "RingOut", "Curse", "Mine",
-    "Snare", "MineGone", "Mark", "Reflect", "Column",
+    "Snare", "MineGone", "Mark", "Reflect", "Column", "Vent", "Burn", "Daze",
 ]
 
 fn test_init() {
