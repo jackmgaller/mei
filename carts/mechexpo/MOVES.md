@@ -2696,6 +2696,19 @@ light, its push is the point).
 - **Gamma** (the mirror): rays do not clash, so whoever rays first wins the exchange; Lead
   Shielding holds a ray and the rod pierces the shield: shield the ray, rod the shield.
 
+**Measured, CPU against CPU** (mx-gamma-fight; `tests/balance/run.sh 9 B`, level 2 against level
+2, 10 matches a pairing on the hangar, the sides swapped every match, Gamma played from its
+stand-ins): Gamma won all 60 matches against the six base mechs (10 of 10 against each; rounds
+20-3 against the Double-blade Hero, 20-4 against Shadow, 20-0 against Tank and the Twins), and 13
+of 14 against them and Seraph in scenario 230. The CPUs walk into the ray: at level 2 they react
+to a move 13 frames in, the ray's startup, so its dig-in is not blocked, and a mech in it is
+pushed back to its tip; the Rod Shot (75, at 0.60 m a frame) then lands or chips from beyond it.
+Tank, the slowest walker, never reached Gamma (no damage in 10 matches; its CPU's punish of a whiff
+is the Bulldozer from any distance, so the ray's end draws it from 22 m). Against Beam, Gamma
+dealt 21,845 in the 10 matches to Beam's 15,364 (3,780 of it from 13 Raikō Overloads). The numbers
+are the owner's to tune in play; the CPUs' answers to the ray are as [the CPU (Gamma)](#the-cpu-gamma)
+lists them.
+
 ### The CPU (Gamma)
 
 Gamma's own CPU replaces Beam's for it (`cpu.akr`): a `gamma_neutral` like `beam_neutral`, and
