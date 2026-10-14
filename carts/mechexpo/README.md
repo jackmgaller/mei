@@ -421,8 +421,11 @@ and what is Beam's for now: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-n
   0x2030A0, 0x2080FF, 0x80E0FF; 0xBBGGRR), anchored on the projector (`weapon_r`: the lens
   (0, 0.8, −4.4), the bore (0, 0.3, −4.86), three slots along the shroud at z −1.2, −2.35 and
   −3.3), the shield's face (`weapon_l`, (0.8, −0.1, 0)) and the hatch (torso, (0, 2.1, −1.5)).
-  The Atomic Ray is on while its hit box is out (sp_n's, found once in the data; while the data
-  has none, phase 1's placeholder, while `Fx.ray_t` counts up to the charge frame, 2.5 to 16 m):
+  The Atomic Ray is on while its hit box is out (sp_n's, found once in the data, so the effects
+  follow the ray's timing and reach as the data has them, the owner's retiming to an 18-frame
+  startup and 13 m too; while the data has none, phase 1's placeholder, while `Fx.ray_t` counts up
+  to the charge frame, 2.5 to 16 m); a braced Lead Shielding is sp_d's `shield` frames (4,096,
+  `MARK_SHIELD`; frames 4-28 while the data has no such mark):
   the warm-up (the lens brightening, the slots lighting from the fist outward), then the beam from
   the lens to the first hurt box it crosses (or its box's end, tapering over 1.4 m): a green halo
   2 m thick whose edge flickers and flares on each tick, a white-green core 0.6 m thick (two bands
@@ -481,7 +484,14 @@ and what is Beam's for now: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-n
   against the fight agent's and the animation agent's work in progress, 2026-10-14).
   The budget (249, budget.sh: the ray held at heat 88 against Seraph's Wing Ward on the container
   port, then against the split Twins there with Ground Zero every 300 frames; debug builds):
-  BUDGET_NUMBERS.
+  against Seraph 615,939 CPU and 594,112 GPU cycles at the peak, 2,101 triangles; against the
+  split Twins 651,756 and 1,141,459, 2,163 triangles; the effects (`prof_fx`, with fx.akr's and
+  Seraph's) at most 61,563 cycles, `gamma_fx_draw` itself at most 22,591 (Ground Zero's blast
+  coming out; about 19,000 to 21,000 a frame while the ray is held hot), within Shadow's (109:
+  about 76,000); no late frames. With the fight agent's rules and the animations together
+  (their work in progress laid over this branch, 2026-10-14): 602,059 and 589,623; 625,567 and
+  734,367; the effects at most 50,405 (Gamma's 19,769). Phase 1's moves with the effects stood
+  in (before the animations): the effects at most 75,452.
 - **The model:** 1,936 triangles (Beam's 1,794; concept C's 1,940; the pack's limit for it is
   1,950, `MECH_LIMITS`), 11.9 m to the top of the searchlight head in the rest pose (the
   roster's 119) and 13.6 m to the whip antenna's tip. The muzzle is Beam's, (0, 0.8, −4.4) in

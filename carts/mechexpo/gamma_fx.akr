@@ -50,8 +50,9 @@
 //   the HUD           the heat bar under Gamma's meter gauge (green, amber from 60, red and
 //                     flashing from 85, white while venting), HEAT flashing from 85, VENT
 //
-// The ray's frames come from its hit box in the data (sp_n's), or, while the data has none (phase
-// 1's placeholder Volt Orb), from Fx.ray_t up to the charge frame, the stand-in's 2.5 to 16 m.
+// The ray's frames and reach come from its hit box in the data (sp_n's: whatever its timing and
+// length), or, while the data has none (phase 1's placeholder Volt Orb), from Fx.ray_t up to the
+// charge frame, MOVES.md's first 2.5 to 16 m; the warm-up is the frames before its first box.
 
 const GMX_GLOW: u32 = 0x6EFF8C          // 0xBBGGRR: the reactor's green (the concept's #8cff6e)
 const GMX_CORE: u32 = 0xE0FFF0          // white-green: the ray's core
@@ -74,7 +75,7 @@ const GMX_SHIELD = vec4(0.8, -0.1, 0.0, 1.0)        // the shield's face (weapon
 const GMX_SHIELD_EDGE = vec4(0.8, 1.2, 0.0, 1.0)    // its top lip
 const GMX_HATCH = vec4(0.0, 2.1, -1.5, 1.0)         // the reactor hatch (torso; tank_fx.akr's)
 
-const GFX_RAY_X0: fixed = 2.5           // the stand-in ray's box from the root (phase 1's)
+const GFX_RAY_X0: fixed = 2.5           // the stand-in ray's box from the root (phase 1's only)
 const GFX_RAY_X1: fixed = 16.0
 const GFX_VENT_LEN = 50                 // the vent's frames
 const GFX_GZ_LEN = 20                   // the blast drawn: its 8 active frames and 12 fading
@@ -117,6 +118,8 @@ var gfx_sc_next: s32
 var gfx_found: bool
 var gfx_ray0: s32 = -1                  // sp_n's first frame with a hit box (-1: none: phase 1)
 var gfx_charge: s32 = -1                // sp_n's charge frame
+var gfx_sh_marked: bool                 // sp_d has `shield` frames in the data
+const GFX_MARK_SHIELD: u32 = 4096       // anim.akr's MARK_SHIELD (mx-gamma-fight's), Lead Shielding's brace
 
 // What was drawn, for the tests (scenarios 240-249): frames or bursts of each effect since the
 // fight started (GFXS_*), the HUD's gauge this frame by side, the stage's tint (0..256).
@@ -258,6 +261,7 @@ private fn gfx_find() {
         }
     }
     gfx_charge = find_mark(Mech.Gamma, Mv.sp_n, MARK_CHARGE)
+    gfx_sh_marked = find_mark(Mech.Gamma, Mv.sp_d, GFX_MARK_SHIELD) >= 0
 }
 
 // Whether side s's Atomic Ray is on this frame, and its box's x range (world, x0 < x1). The ray
@@ -276,12 +280,15 @@ fn gamma_ray(s: s32, out: *vec4) -> bool {
     return true
 }
 
-// Whether body j is braced behind a lead shield (a Gamma's Lead Shielding).
+// Whether body j is braced behind a lead shield (a Gamma's Lead Shielding): on sp_d's `shield`
+// frames, or, while the data has no such mark (phase 1), on frames 4-28 (the shield out).
 private fn gfx_braced(j: s32) -> bool {
     let o = &fight.f[j]
     if o.mech != Mech.Gamma || o.mv != Mv.sp_d { return false }
+    gfx_find()
+    if gfx_sh_marked { return (cur_marks(j) & GFX_MARK_SHIELD) != 0 }
     let t = fx[j].t
-    return t >= 4 && t <= 28                        // the shield out (mx-gamma-anim: 4-28)
+    return t >= 4 && t <= 28
 }
 
 // Whether body j would let a rod pierce its armour now (Tank's armour, a braced lead shield).
