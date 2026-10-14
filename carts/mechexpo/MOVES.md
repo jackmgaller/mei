@@ -2699,8 +2699,8 @@ light, its push is the point).
 **Measured, CPU against CPU** (mx-gamma-fight; `tests/balance/run.sh 9 B`, level 2 against level
 2, 10 matches a pairing on the hangar, the sides swapped every match, Gamma played from its
 stand-ins): Gamma won all 60 matches against the six base mechs (10 of 10 against each; rounds
-20-3 against the Double-blade Hero, 20-4 against Shadow, 20-0 against Tank and the Twins), and 13
-of 14 against them and Seraph in scenario 230. The CPUs walk into the ray: at level 2 they react
+20-3 against the Double-blade Hero, 20-4 against Shadow, 20-0 against Tank and the Twins), and all
+14 against them and Seraph in scenario 230. The CPUs walk into the ray: at level 2 they react
 to a move 13 frames in, the ray's startup, so its dig-in is not blocked, and a mech in it is
 pushed back to its tip; the Rod Shot (75, at 0.60 m a frame) then lands or chips from beyond it.
 Tank, the slowest walker, never reached Gamma (no damage in 10 matches; its CPU's punish of a whiff
@@ -2724,7 +2724,8 @@ after a dazing catch the CPU acts without dice; Lead Shielding is rolled at `lv.
 + the other's grabs seen, at most 6); Ground Zero as a reversal is rolled at `lv.punish` within
 8.5 m. The Hero and Beam no longer answer a rod coming with a shot of their own (it passes
 through: they block it). Measured in scenario 230 (level 2, both sides, against each base mech
-and Seraph, 14 matches): about 180 rays and 330 rods, 3 flares, 10 shields, 11 supers, no vents.
+and Seraph, 14 matches): 198 rays and 374 rods, 3 flares (3 dazes), 10 shields, 7 grabs, 10 supers,
+no vents; the others warded 9 of its ray's ticks.
 
 - **The Ray**: B when the other is within 15 m and walking in, jumping in, or recovering from a
   move, and the heat is under 60; it holds B (a `ray_want`, as Beam's `charge_want`) until the
