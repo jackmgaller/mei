@@ -49,6 +49,16 @@ struct Fx {
     combo: s32                  // hits taken in the current combo
     air_used: bool              // the air attack of this jump
     riposte: bool               // the Parry caught something
+    // Gamma's (gamma.akr; ray_t, dazed and daze_drop are at the end: dazed while in the daze on
+    // the ground, in hit_high or hit_low; daze_drop while dropping to it from the air): the Atomic
+    // Ray's ticks, the daze, Lead Shielding holding a ray
+    ray_n: s32                  // the ray's ticks that touched a mech (hit, blocked or absorbed)
+    ray_last: s32               // ray_t of the last of them (a tick 6 frames after it is a later tick)
+    ray_combo: s32              // the combo count the ray's first tick found (its ticks are one hit)
+    ray_cut: bool               // parried: the ray is cut when the Parry's freeze ends
+    ray_ward: bool              // a Wing Ward held off one of its ticks (the Reflect posted once)
+    daze_spent: bool            // dazed since it was last actionable: not dazed again (to_neutral)
+    shield_ray: bool            // Lead Shielding holds a ray: its ticks absorbed to the brace's end
     ko: bool                    // knocked out (lands in ko)
     break_t: s32                // the victim's break window left
     had_hit: bool               // the last frame had a hit box (swing and whiff events)
@@ -66,17 +76,9 @@ struct Fx {
     l_age: s32                  // frames since L was pressed (the Twins switch forms on it)
     out: bool                   // rung out: falling past an open edge (the end of this file)
     out_t: s32                  // frames since
-    // Gamma (gamma.akr): the Atomic Ray, the Geiger Flare's daze, Lead Shielding
-    ray_t: s32                  // frames the ray has been on this move (the tick clock)
-    ray_n: s32                  // its ticks that touched a mech (hit, blocked or absorbed)
-    ray_last: s32               // ray_t of the last of them (a tick 6 frames after it is a later tick)
-    ray_combo: s32              // the combo count the ray's first tick found (its ticks are one hit)
-    ray_cut: bool               // parried: the ray is cut when the Parry's freeze ends
-    ray_ward: bool              // a Wing Ward held off one of its ticks (the Reflect posted once)
-    dazed: bool                 // in the daze (hit_high or hit_low), or dropping to it from the air
-    daze_spent: bool            // dazed since it was last actionable: not dazed again (to_neutral)
-    daze_drop: s32              // dazed in the air: the daze's frames, from the landing
-    shield_ray: bool            // Lead Shielding holds a ray: its ticks absorbed to the brace's end
+    ray_t: s32                  // Gamma: frames the Atomic Ray has been on this move (the ticks' clock)
+    dazed: bool                 // in a Geiger Flare's daze (gamma.akr)
+    daze_drop: s32              // a daze waiting for the landing: its frames
 }
 
 // The bodies: 0 and 1 the two fighters, 2 and 3 their partners (the split Twins' twin B, of
@@ -929,8 +931,8 @@ fn struck(i: s32, j: s32, h: Hit, p: vec2, shot: bool) {
             if crouching { set_mv(j, Mv.hit_low) } else { set_mv(j, Mv.hit_high) }
             dx.stun = h.daze
             dx.stun_len = h.daze
+            dx.dazed = true
         }
-        dx.dazed = true
         dx.slide = 0.0
         dx.slide_by = -1
         ev_add(Ev.Daze, i & 1, d.x, d.y, if_else(in_air, 1, 0))

@@ -2208,7 +2208,9 @@ now](#phase-1-what-is-in-the-game-now-1)); phase 2 builds this section in three 
 Seraph's: the fight and the CPU, the animations, the effects and sound. Each
 part's list is at the end ([For the animators](#for-the-animators-gamma),
 [For the effects and sound](#for-the-effects-and-sound-gamma),
-[Engine work needed](#engine-work-needed-gamma)).
+[Engine work needed](#engine-work-needed-gamma)). The fight and the CPU are in (mx-gamma-fight:
+`gamma.akr`, the end of `cpu.akr`); where play showed this section's estimates to be off, the
+measured number is given beside it.
 
 Code name `Gamma` (`enum Mech`, appended after `Seraph`); shown as GAMMA, model HA-58.
 On Beam's rig: the Hero's part ids and joints, the guard of `models/beam/`, **`weapon_r` the ray
@@ -2252,8 +2254,9 @@ the landing compressing the knees.
 | `atk_d` Scorch Sweep | 12 | 5 | 25 | 42 | 90, knockdown | — / 16 | −14 / KD | x 1.5–8.0, y 0–2 |
 | `atk_air` Down Flash | 9 | 6 | to landing | 32 | 95 | 20 / 15 | by height | x 0.5–5.5, y −3–3 (from the root, in the air) |
 
-(Estimated from Beam's measured numbers: the same recovery after the active frames gives the same
-advantage. To measure with `tests/run.sh 17` once the animations land.) Beam's four normals with
+(Measured with `tests/run.sh 17` from the stand-in timings, mx-gamma-fight: as estimated from
+Beam's, the same recovery after the active frames giving the same advantage; the Scorch Sweep's
+knockdown is +40. To measure again once the animations land.) Beam's four normals with
 the arc taken out and the searchlight put in: each a frame slower where Beam's is quick, and a
 little heavier. The names were proposals, approved by the owner (2026-10-14).
 
@@ -2285,14 +2288,16 @@ little heavier. The names were proposals, approved by the owner (2026-10-14).
 
 | Move | Startup | Active | Recovery | Total | Damage | Chip | Hitstun / blockstun | On block / hit |
 |---|---|---|---|---|---|---|---|---|
-| `sp_n` Atomic Ray (tapped) | 13 | the ray, 12 | 16 | 41 | 10 a tick (every 6 frames) | 2 a tick | 10 / 9 a tick | about −12 at point blank; safe once pushed to the tip |
+| `sp_n` Atomic Ray (tapped) | 13 | the ray, 12 | 16 | 41 | 10 a tick (every 6 frames) | 2 a tick | 10 / 9 a tick | −13 / −12 at 6 m; safe once pushed to the tip |
 | `sp_n` Atomic Ray (held) | 13 | 12 + held, while the heat lasts | 16 | 41 + held | | | | |
 | `sp_n` vented | | | the vent, 50 | 41 + held + 50 | — | — | — | open: a free punish for anything that reaches |
-| `sp_f` Rod Shot | 14 (fired on 15) | the rod | 24 | 39 | 75 | 15 | 20 / 16 | about −9 / −5 at point blank; even from 10 m; plus from 16 m |
-| `sp_u` Geiger Flare | 7 | 6 | 28 | 41 | 70, **dazes** | 14 | daze 32 / 14 | about −20 / −1 on the ground; +8 to +19 in the air |
-| `sp_d` Lead Shielding | 5 | the brace, 24 | 18 (12 after an absorb) | 47 (59 with an absorb) | — | — | — | about +12 after absorbing a Tip Thrust |
+| `sp_f` Rod Shot | 14 (fired on 15) | the rod | 24 | 39 | 75 | 15 | 20 / 16 | −9 / −5 to 10 m; −4 / 0 from 13 m; +1 / +5 from 16 m |
+| `sp_u` Geiger Flare | 7 | 6 | 28 | 41 | 70, **dazes** | 14 | daze 32 / 14 | −20 / −2 on the ground; +15 caught 4.9 m up, about +29 at 6.8 m |
+| `sp_d` Lead Shielding | 5 | the brace, 24 | 18 (12 after an absorb) | 47 (59 with an absorb) | — | — | — | +13 after absorbing a Tip Thrust |
 
-(Estimated from the frame counts and the stuns, as Seraph's are. To measure.)
+(Measured, mx-gamma-fight: `tests/run.sh 17` against a standing Hero, the rod's case also from
+10, 13 and 16 m; the flare in the air and Lead Shielding by scenarios 225 to 227. A flare on a
+mech dazed since it last acted lands as an ordinary hit, hitstun 20.)
 
 **Against the defences** (the details are in each move's section):
 
@@ -2340,7 +2345,10 @@ back to its tip, and heats the gun; held too long, the gun **vents** and leaves 
   down) by the first tick, as by any hit in the air.
 - **The pushback**: each tick restarts the defender's slide, so a mech held in the ray is pushed
   about **1.4 m a tick hit, 1.1 m blocked** (14 and 11 m/s): from point blank to the tip (its root
-  about 17.6 m from Gamma's) in about 9 ticks (54 frames) hit, 11 (66 frames) blocked. Then it is
+  about 17.6 m from Gamma's) in about 9 ticks (54 frames) hit, 11 (66 frames) blocked. (Measured,
+  scenario 220: 1.38 and 1.07 m a tick; against the Hero, whose guard holds its sword about 4 m
+  in front, the ray touches the sword until its root is about 20 m out: 11 ticks from 6 m on a
+  hit, 14 blocked, the last tick's slide carrying it to about 22 m.) Then it is
   out of the box and free, and the ray burns on in front of it. At a wall or the separation limit
   the push passes back to Gamma (the shared rule): **a cornered mech is not pinned**; Gamma slides
   back off it, about a metre a tick, until it is out of reach. A blocked ray never rings out, nor
@@ -2369,7 +2377,8 @@ back to its tip, and heats the gun; held too long, the gun **vents** and leaves 
 
 - **Overheat**: the frame the heat reaches 100 while the ray is on, **the gun vents**: the ray goes
   out at once, the animation jumps to the vent (frame 42), the event `Vent`. So a ray from a cold
-  gun lasts at most **100 frames** (1.7 s, 17 ticks); from a warm one, less. A ray started with
+  gun lasts at most **100 frames** (1.7 s, 17 ticks: 99 frames of its box, the vent on the 100th);
+  from a warm one, less. A ray started with
   the heat at 88 or more vents inside its 12 frames: the gauge says so before B is pressed. Being
   hit out of the ray, or letting go, never vents: the heat only cools.
 - **The vent**: 50 frames in which Gamma is open (no block, no move) and the gun cools to 0.
@@ -2407,7 +2416,10 @@ So a strength-1 shot is spent against the ray but costs Gamma heat, Beam must ch
 - **The Parry** catches the tick that touches the Hero in its stance: Gamma freezes 20 frames
   (the Parry's freeze) and its ray is cut; the Hero's riposte (x 1.5–7.5) reaches Gamma only
   within about 9 m. From further out the Parry only stops the ray: the riposte's 24 frames end
-  about when Gamma's freeze and shut-off (36) do.
+  about when Gamma's freeze and shut-off (36) do. (Measured, scenario 223: frozen in the ray
+  stance, Gamma's projector arm is hurtable 5.5 m out, so the riposte, which steps in about 1 m,
+  reaches it from about 14 m: from 6 m it lands 11 frames after the Parry; from 17 m the Parry
+  only cuts the ray, the shut-off starting 27 frames after it, the freeze's 6 and the Parry's 20.)
 - **The Wing Ward** (decided here): **a held beam cannot be reflected like a ball.** A shot is a
   thing in the thrower's shot slot that the ward turns round and gives to Seraph; the ray is
   Gamma's own hit box, fixed to its gun, with nothing to turn round or give. Nor does it hit the
@@ -2503,7 +2515,10 @@ knockdown: **the daze** instead.
   Like hitstun: the mech cannot act, block, walk or jump; presses are kept in the buffer.
 - **Frame advantage**: on the ground, about −1 (a reset, not a combo: Gamma recovers as the daze
   ends). In the air, the drop adds its fall to the daze: about **+8** for a mech hit with its root
-  2 m up, **+16** at 6 m, more on the flare's later active frames. So a low catch leaves time for
+  2 m up, **+16** at 6 m, more on the flare's later active frames. (Measured, scenarios 225 and
+  226: −2 on the ground; a Hero's jump caught 4.9 m up and 4.6 m out, Gamma free 15 frames
+  before the daze ends; one caught at its top, 6.8 m up, about 29, the ray's first tick landing
+  15 frames before the daze would end.) So a low catch leaves time for
   the Lamp Jab or Point Blank; **a high catch leaves time for the Atomic Ray** (startup 13), which
   pushes the dazed mech back out to the tip: the anti-air that restores the zoner's distance.
 - **Blocked**: chip 14, blockstun 14, **no daze** (block stops every attack). About −20: very
@@ -2571,7 +2586,7 @@ ray point blank.
 | 1–10 | the left hand closes on the shoulder (the break window), the lens swung onto the chest | 3.4 m in front, lifted 0.1 m a frame (the Hero's and Beam's placement) |
 | 11–30 | the lens held to the chest, the searchlight blazing through the other's armour, the shroud glowing | held 3.0 m up from frame 30, shaking in the light |
 | 31–33 | the ray at full power, the projector bucking | |
-| 33 (`release`, 32 from 0) | the blast throws it off | **120 damage, knockdown**, flying about **10 m** (`vx` ft × 0.30, the Hero's throw's) |
+| 33 (`release`, 32 from 0) | the blast throws it off | **120 damage, knockdown**, flying about **10 m** (`vx` ft × 0.30, the Hero's throw's; measured: 10.9 m for the Hero, 12.1 m for Beam, which falls slower) |
 | 34–46 | recovery into the guard, the shroud steaming | |
 
 The longest of the throws after Tank's: it puts a rushing mech back out at the ray's middle,
@@ -2596,7 +2611,8 @@ it. Then:
   over), standing, crouching, on the ground or in the air up to 12 m (a jump-in is hit), within 8
   m of Gamma's root (the hurt box's edge: so a mech whose root is up to about 9.6 m away). Outside
   it, nothing: the Tip Thrust's tip (10 m) is just out of it. Short range is the point: the
-  zoner's answer to a mech that has got in.
+  zoner's answer to a mech that has got in. (Measured, scenario 229: the Hero, whose guard holds
+  its sword about 4 m in front, is hit with its root 11 m away and missed at 13 m.)
 - **Invulnerable from frame 1 to 45** (the flash, the startup and the first active frame): a
   reversal. After the freeze the other has 4 frames: nothing walks 8 m in 4, and a Void Step
   started then is caught on its sink frames; block on the flash, or be knocked down or getting up
@@ -2629,14 +2645,18 @@ from a Glare Lance that hits close (the lance's pushback can carry the other jus
 Lead Shielding can be cancelled into (a blocked Glare Lance into the brace). Scorch Sweep, Down
 Flash and the specials cancel into nothing.
 
-### Frame advantage (estimated)
+### Frame advantage (measured)
 
-Until measured (`tests/run.sh 17`, against a standing Hero, once the animations land): Lamp Jab
-−4 on block / +1 on hit, Glare Lance −7 / 0 (Beam's recoveries), Scorch Sweep about −14, the
-Atomic Ray tapped at point blank about −12 (held to the tip, out of reach), vented about −50, Rod
-Shot about −9 / −5 at point blank (about even from 10 m), Geiger Flare about −20 on block, −1 on a
-ground hit, +8 to +19 in the air, Lead Shielding about +12 after absorbing a Tip Thrust (47 frames
-whiffed), Ground Zero about −29.
+`tests/run.sh 17` (mx-gamma-fight), against a standing Hero, from the stand-in timings: Lamp Jab
+−4 on block / +1 on hit, Glare Lance −7 / 0, Scorch Sweep −14 / knockdown (+40), the Atomic Ray
+tapped at 6 m −13 / −12 (two ticks; held to the tip, out of reach), vented about −50 (scenario 221:
+the Hero's Charge Slash lands 22 frames into the vent), Rod Shot −9 / −5 to 10 m (the rod starts
+5 m out, inside the Hero's guard), −4 / 0 from 13 m and +1 / +5 from 16 m, Geiger Flare −20 on
+block and −2 on a ground hit, +15 caught 4.9 m up and about +29 at 6.8 m (scenarios 225 and 226),
+Lead Shielding +13 after absorbing a Tip Thrust (scenario 227; 47 frames whiffed), Ground Zero −30
+on block with the Hero 8 m off (a knockdown, +40, on a hit). To measure again once the animations
+land. (The estimates were −14 for the sweep, −12 for the ray, even from 10 m for the rod, −1 and +8
+to +19 for the flare, +12 for the shield and −29 for Ground Zero.)
 
 ### Balance intent
 
@@ -2680,7 +2700,18 @@ light, its push is the point).
 
 Gamma's own CPU replaces Beam's for it (`cpu.akr`): a `gamma_neutral` like `beam_neutral`, and
 lines in `cpu_think` where Beam has them. The CPU reads `Fighter.heat` (the other player sees it
-on the gun).
+on the gun). Built in mx-gamma-fight (its section at the end of `cpu.akr`: `gamma_neutral`,
+`gamma_ray_hold`, `gamma_chain`, `gamma_punish`, `gamma_answer`, and for the others `under_ray`
+and `vent_punish`) as this list has it, with these details: the ray is held through its first 12
+frames, then while its last tick touched the other within 7 frames (so a jump knocked down, a mech
+pushed out or a ward lets it go); it is started at a mech walking in or jumping in from 5.5 to 15
+m (`lv.poke` + 25 %), now and then at its own range, and as the punish of a whiff within 16 m;
+the Rod Shot also answers a wave on its way (`lv.aa`, when the wave is more than 24 frames off);
+after a dazing catch the CPU acts without dice; Lead Shielding is rolled at `lv.special` × 6 / (2
++ the other's grabs seen, at most 6); Ground Zero as a reversal is rolled at `lv.punish` within
+8.5 m. The Hero and Beam no longer answer a rod coming with a shot of their own (it passes
+through: they block it). Measured in scenario 230 (level 2, both sides, against each base mech
+and Seraph, 14 matches): about 180 rays and 330 rods, 3 flares, 10 shields, 11 supers, no vents.
 
 - **The Ray**: B when the other is within 15 m and walking in, jumping in, or recovering from a
   move, and the heat is under 60; it holds B (a `ray_want`, as Beam's `charge_want`) until the
@@ -2864,7 +2895,15 @@ Gamma's; x, y: the dazed mech; power 0 on the ground, 1 in the air). The absorb 
 
 ### Engine work needed (Gamma)
 
-What the current code cannot do yet, and where it plugs in. Phase 1 has Gamma play Beam's moves
+Done in mx-gamma-fight, as listed, with these differences: `fires_shot()` stays (whether a mech has
+a shot at all, as the CPUs ask) beside the new `shot_move()`; `gamma_ray_advance()` also ends Lead
+Shielding's held ray at the brace's last frame; a ray's later tick is told by
+`gamma_ray_touch()` (its last tick touched within 6 frames), which sets `fighter.akr`'s
+`tick_later` for `struck()`, `blocked()` and `absorb()` (an absorbed later tick posts no Armour and
+raises no hitstop either); `Fx.dazed` is set in the daze on the ground and `Fx.daze_drop` while
+the mech drops to it (not both), and `Fx.daze_spent` keeps a daze from being renewed until the
+mech has been actionable; the stand-ins are used for each of the eight moves whose animation still
+has Beam's length (no scan at `fight_init`). Phase 1 has Gamma play Beam's moves
 (the Volt Orb, the Arc Lance, the Thunder Pillar, the Reaction Prime, the Raikō Overload); the rule
 should be Seraph's: Beam's code asks predicates (in a `gamma.akr`, as `seraph.akr`'s for Shadow's),
 never Gamma's name, so each special moves to Gamma's own code by taking Gamma out of one
@@ -2978,16 +3017,27 @@ Prime and the reaction never apply to it (`meter_power` is Nuclear, so `try_pres
     not); Ground Zero (both sides, 8 m, invulnerable 1–45, 300 / chip 75, a ring-out within 5 m of
     an open edge, the heat to 0); Point Blank's 10 m; the nuclear meter on Gamma (damage, chip,
     absorbed hits; carried over). The budget scenarios are measured again with a Gamma in them.
+    (Built in mx-gamma-fight as scenarios 220-230 in `tests/harness.akr`, the fight alone, as
+    Seraph's 170-181 are, with 200 and 201 rewritten for Gamma's own numbers; the rod against the
+    split Twins and the meter's carrying over are the shared rules' tests.)
 
 ### Phase 1: what is in the game now
 
-Phase 1 (mx-gamma-rig) put Gamma in the game with Beam's moves as placeholders; until each part of
-phase 2 lands, this is what plays:
+Phase 2's fight and CPU (mx-gamma-fight) are in: Gamma plays its own moves as this section has
+them, its rules in `gamma.akr` and its CPU at the end of `cpu.akr`, and Beam's predicates
+(`has_volt_orb`, `has_shock_grip`, `has_arc_fx`) are Beam's alone. Until its own animations land,
+a move whose animation still has Beam's length (each of Gamma's eight own moves differs from
+Beam's in length; the air attack, the grab and the throw are Beam's timings in this section too)
+is played from `gamma.akr`'s stand-in data (this section's timings, boxes, marks and root motion;
+the drawing is still the placeholder's); the frames the rules need (the charge and vent frames,
+the brace's frames) are read once from whichever data plays. The rest of this list is phase 1's
+record, with what changed in phase 2 said:
 
 - **Real**: the model and rig (concept C refined, `models/gamma/`: the projector on Beam's mount,
   its muzzle Beam's (0, 0.8, −4.4) in `weapon_r`'s frame; the shield on `weapon_l`, stowed at 0,
   swung out at (0, 90, 0)), the roster row (GAMMA, HA-58, Heartland's emblem, stats `0x3253`,
-  Beam's since its numbers are Beam's; 11.9 m to the top of the searchlight; the owner's blurb
+  Beam's since its numbers were Beam's, `0x3254` since phase 2's fight: armour 4 for the 1,050
+  health; 11.9 m to the top of the searchlight; the owner's blurb
   "THE GUNNER:\nRAYS, LEAD", 61 and 50 px of the spec sheet's 76), and the **nuclear meter**: 3
   meter a point of damage taken, nothing for landing hits, carried over between rounds, the super
   at a full bar, the HUD's reactor gauge and the reactor hatch's glow brightening with it
@@ -3000,7 +3050,9 @@ phase 2 lands, this is what plays:
   the Reaction Prime's animation as a brace and starts no reaction (the meter is not chemical);
   the CPU plays it as Beam without the prime (`cpu_as_beam`); the sounds are the general ones (a
   swing for the orb, the kinetic charge-up for the super); the training move list is Beam's under
-  Gamma's meter.
+  Gamma's meter. (Phase 2's fight replaced the hits, the health, walk and jump, the specials, the
+  throw, the super, the CPU and the move list; the animations, the drawing and the sounds are the
+  other two parts'.)
 - **The arcade**: Beam's final is Gamma ("HEARTLAND ATOMIC CO. PRESENTS ITS COMPETING PRODUCT"),
   Gamma's final is Beam (defending its title); Gamma's grey copy is packed as every body's is.
 

@@ -46,7 +46,7 @@ struct Fighter {
     curse: s32              // frames left of Shadow's Siphon curse: its gains go to the other side (shadow.akr)
     siphoned: s32           // meter siphoned from it this round (the HUD's stream)
     mark: s32               // frames left of Seraph's mark: Judgement does 50 % more to it (seraph.akr)
-    heat: s32               // Gamma's gun, 0 (cold) .. 100 (vents): the Atomic Ray heats it (gamma.akr)
+    heat: s32               // Gamma's gun: 0 (cold) .. 100, when it vents (gamma.akr)
 }
 
 struct Shot {               // a projectile (the Hero's wave)
@@ -64,7 +64,7 @@ struct Shot {               // a projectile (the Hero's wave)
     hex: bool               // Shadow's Hex Bolt (shadow.akr): it curses on a hit
     mark: bool              // Seraph's Mark of Judgement (seraph.akr): it marks on a hit
     refl: bool              // sent back by Seraph's Wing Ward (drawn as light, whatever it was)
-    pierce: bool            // Gamma's Rod Shot (gamma.akr): through shots and armour, never a mech
+    pierce: bool            // Gamma's Rod Shot: passes through shots and armour (gamma.akr)
 }
 
 struct Fight {
@@ -110,10 +110,9 @@ enum Ev { Hit, Block, Chip, Whiff, Grab, Throw, Break, Land, Step, MeterFull, Su
                         // power: the shot's strength)
           Column,       // Judgement locked its column (side: Seraph's; x: where it falls)
           Vent,         // Gamma's gun overheated and vents (side: Gamma's; x: its root)
-          Burn,         // Gamma's Atomic Ray burnt up a shot (side: Gamma's; x, y: the shot; power:
-                        // its strength)
-          Daze }        // Gamma's Geiger Flare dazed the other (side: Gamma's; x, y: the dazed
-                        // mech's root; power 0 on the ground, 1 in the air: dazed on landing)
+          Burn,         // a shot burnt up in Gamma's ray (side: Gamma's; x, y: the shot; power: its strength)
+          Daze }        // a Geiger Flare dazed a mech (side: Gamma's; x, y: the dazed mech; power 0 on
+                        // the ground, 1 in the air)
 
 struct Event {
     kind: Ev

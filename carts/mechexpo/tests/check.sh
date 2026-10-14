@@ -14,11 +14,11 @@ mkdir -p "$O"
 POOL_DIR="$O"
 . "$HERE/pool.sh"
 pool_report() {
-    grep -E '^(OK|Seraph|the (fists|jab|lunging|throw|super)|blurb|stats|Shadow.s (final|Claw)|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|cover|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb|Judgement|orb level|ward [0-9]|Ascension|its back|6 m from|landing|Seraph.s CPU|  peak|mark_cast|the (bolt|mark|ward|Dive)|Judgement:|Gamma|every move|walked|Beam.s final)' "$O/$1.log"
+    grep -E '^(OK|Seraph|the (fists|jab|lunging|throw|super)|blurb|stats|Shadow.s (final|Claw)|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|cover|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb|Judgement|orb level|ward [0-9]|Ascension|its back|6 m from|landing|Seraph.s CPU|  peak|mark_cast|the (bolt|mark|ward|Dive)|Judgement:|Gamma|every move|walked|Beam.s final|on hit|after the jab|against the wall|held from cold|vented|cooling|started at|a (tapped|charged|full|Hex|Mark|mirror|Wing|second)|parried|Lead Shielding|one rod|caught|dazed|absorbed|Point Blank|[0-9]+ m |6 m in|5 m behind|whiffed|Ground Zero|atk_n)' "$O/$1.log"
 }
 run() {       # scenario frames: the scenarios through the whole game cost about 8 times a frame
     s="$1"; f="$2"; shift 2
-    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]|14[0-6]|150|16[3-7]|19[0-79]|20[3-7]) c=$((f * 8)) ;; 108|181) c=$((f * 40)) ;; *) c="$f" ;; esac
+    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]|14[0-6]|150|16[3-7]|19[0-79]|20[3-7]) c=$((f * 8)) ;; 108|181|230) c=$((f * 40)) ;; *) c="$f" ;; esac
     pool_add "s$s" "$c" "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@"
 }
 run 1 800
@@ -189,6 +189,21 @@ run 204 301
 run 205 301
 run 206 301
 run 207 301
+# Gamma's own moves (mx-gamma-fight): 220 the Atomic Ray's ticks, push, chip and scaling, 221 the
+# heat and the vent, 222 the ray against each shot, 223 against the Parry, the Wing Ward, Tank's
+# armour, Lead Shielding and the Void Step, 224 the Rod Shot, 225 the daze, 226 the ray after a
+# high catch, 227 Lead Shielding, 228 Point Blank, 229 Ground Zero, 230 its CPU against each mech
+run 220 600
+run 221 400
+run 222 550
+run 223 400
+run 224 500
+run 225 400
+run 226 200
+run 227 300
+run 228 300
+run 229 550
+run 230 2600
 # the arcade ladder (mx-ladder, tests/ladder/harness.akr, the whole game; VIEWs as listed there):
 # 116 EASY against a scripted masher, 117-119 a whole run on each difficulty (EASY with the Hero,
 # NORMAL with Shadow, HARD with Tank: the rivals drawn, a loss and a continue, the reveal, the
