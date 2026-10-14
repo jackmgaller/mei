@@ -26,14 +26,16 @@ const COVER_W_TEASE = 196           // a cover line (FONT_LABEL, then FONT_MICRO
 // camera, before its fist swings across the lens), how far it is turned toward the camera, the
 // camera's distance and where its feet are (below the bottom edge: the photograph is cut at the
 // knees). Seraph holds Shadow's win (its own is still to be animated), a little further off for
-// its halo, which stands 1.4 m above Shadow's hood.
-const COVER_POSE: [len(Mech)]s32 = [119, 119, 119, 40, 119, 119, 119, 119, 119]
-const COVER_YAW: [len(Mech)]fixed = [1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05]
-const COVER_DIST: [len(Mech)]fixed = [12.5, 12.5, 12.5, 13.5, 12.5, 12.5, 12.5, 12.5, 13.5]
-const COVER_FEET: [len(Mech)]s32 = [300, 300, 300, 272, 300, 300, 300, 300, 300]
+// its halo, which stands 1.4 m above Shadow's hood. Gamma (appended, mx-gamma-rig) holds Beam's
+// win, as Beam does, a little further off for the whip antenna and the projector's lamp.
+const COVER_POSE: [len(Mech)]s32 = [119, 119, 119, 40, 119, 119, 119, 119, 119, 119]
+const COVER_YAW: [len(Mech)]fixed = [1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05]
+const COVER_DIST: [len(Mech)]fixed = [12.5, 12.5, 12.5, 13.5, 12.5, 12.5, 12.5, 12.5, 13.5, 13.5]
+const COVER_FEET: [len(Mech)]s32 = [300, 300, 300, 272, 300, 300, 300, 300, 300, 300]
 // The backdrop's shades, top and bottom (print ramp shades: 1 lightest, 15 darkest): lighter
 // behind the dark Shadow.
-const COVER_SKY: [len(Mech)][2]s32 = [[12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [8, 1], [12, 3]]
+const COVER_SKY: [len(Mech)][2]s32 = [[12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [12, 3], [8, 1], [12, 3],
+    [12, 3]]
 
 const CO_ANY = -1
 

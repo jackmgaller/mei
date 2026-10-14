@@ -589,7 +589,7 @@ fn throw_tick(i: s32) {
         fx[j].air = true
         fx[j].vy = h.launch
         if f.mech == Mech.Hero { fx[j].vx = ft * 0.30 } else if f.mech == Mech.Tank { fx[j].vx = ft * 0.34 } else { fx[j].vx = -ft * 0.08 }
-        if f.mech == Mech.Beam { fx[j].vx = ft * 0.24 }        // the Shock Grip throws it off, about 9 m
+        if has_shock_grip(f.mech) { fx[j].vx = ft * 0.24 }     // the Shock Grip throws it off, about 9 m
         if f.mech == Mech.Twins { fx[j].vx = ft * twins_toss_vx(f.body) }
         if has_phantom_grip(f.mech) { fx[j].vx = ft * GRIP_TOSS_VX }   // flung back where Shadow came from
         fight.freeze = h.stop
@@ -892,7 +892,7 @@ fn blocked(i: s32, j: s32, h: Hit, mv: Mv, p: vec2, shot: bool) {
 // ---- the shots: the Hero's wave, Beam's Volt Orb and Shadow's Hex Bolt (one each at a time)
 
 // Whether a mech's neutral special fires a shot.
-fn fires_shot(m: Mech) -> bool { return m == Mech.Hero || m == Mech.Beam || has_hex_bolt(m) }
+fn fires_shot(m: Mech) -> bool { return m == Mech.Hero || has_volt_orb(m) || has_hex_bolt(m) }
 
 // Fires side i's shot (on its neutral special's release frame).
 private fn shot_fire(i: s32) {
@@ -907,7 +907,7 @@ private fn shot_fire(i: s32) {
         shadow_bolt_fire(i, s)                  // the Hex Bolt (shadow.akr)
         return
     }
-    if f.mech == Mech.Beam {
+    if has_volt_orb(f.mech) {                   // the Volt Orb (Beam's; Gamma's until the Atomic Ray)
         let lvl = orb_level(f.charge)
         s.lvl = lvl
         s.str = lvl

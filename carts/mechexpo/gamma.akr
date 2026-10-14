@@ -1,0 +1,66 @@
+// Mech Expo 2000: Gamma (mx-gamma-rig). Heartland Atomic Company's echo of Beam, HA-58, the
+// gunner (MOVES.md, "Decided by the owner (2026-10-14): Gamma, Heartland's ray gun"): Beam's frame
+// on the Hero's skeleton refitted from army surplus (models/gamma/make_gamma.py: a searchlight
+// turned ray projector on the right hand, a lead shield stowed on the left forearm), on
+// Heartland's nuclear meter.
+//
+// Phase 1 (this file as it is): Gamma is in the game, drawn and pickable, and plays Beam's moves
+// as placeholders: Beam's animations on Gamma's rig (anims/gamma/, each based on Beam's, the
+// shield held stowed), Beam's hits (gamma_hit), and Beam's rules for its specials. Its own: the
+// nuclear meter (moves.akr's STATS: it fills as Gamma takes damage, as Tank's does; meter.akr and
+// the HUD's gauge go by the power source, not the mech) and the reactor's glow on its chest
+// (tank_fx.akr's, for any nuclear mech). Health, walk and jump are Beam's for now.
+//
+// Each of Beam's mechanics asks one predicate below whether a mech has it. Beam's code reads the
+// predicate, never Gamma's name, so phase 2 can give Gamma one of its own specials by taking
+// Gamma out of that predicate and adding its own branch, without touching Beam's:
+//
+//   sp_n   has_volt_orb     the Volt Orb: the shot (fighter.akr's fires_shot and shot_fire), its
+//                           charge on the charge frame, the charge's glow and hum (beam_fx.akr);
+//                           Gamma's: the Atomic Ray (held while B is held, the gun heating)
+//   throw  has_shock_grip   the Shock Grip's throw-off (fighter.akr's throw) and its buzz
+//                           (beam_fx.akr); Gamma's own throw is still to be designed
+//   all    has_arc_fx       the discharges drawn over Beam's hit boxes (beam_fx.akr); Gamma's own
+//                           effects: the ray, the Rod Shot, the Geiger Flare, Ground Zero
+//   CPU    cpu_as_beam      (cpu.akr) the charge, the orb against a shot, the zoning neutral
+//
+// The Arc Lance (sp_f: the Rod Shot's slot), the Thunder Pillar (sp_u: the Geiger Flare's) and the
+// Raikō Overload (super: Ground Zero's) are data only, in the animations and gamma_hit. Beam's
+// Reaction Prime (sp_d: Lead Shielding's slot) is a chemical meter's (meter.akr, by the power
+// source): on Gamma it plays the prime's animation and starts no reaction. Lead Shielding will be a
+// branch in fighter.akr's hits (an absorbed hit, like Tank's armour, still feeding the reactor).
+
+import "moves.akr"
+
+fn has_volt_orb(m: Mech) -> bool { return m == Mech.Beam || m == Mech.Gamma }
+fn has_shock_grip(m: Mech) -> bool { return m == Mech.Beam || m == Mech.Gamma }
+fn has_arc_fx(m: Mech) -> bool { return m == Mech.Beam || m == Mech.Gamma }
+
+// ---- what Gamma's hits do: Beam's (phase 1)
+
+fn gamma_hit(mv: Mv) -> Hit { return beam_hit(mv) }
+
+// The stand-in timings and boxes, for a move with no animation (none: every move of the list has
+// one, based on Beam's, but the Twins' combine and split): Beam's.
+fn gamma_tm(mv: Mv) -> Tm { return beam_tm(mv) }
+
+// ---- the training move list: Beam's moves, the meter Heartland's
+
+const GAMMA_MOVES = MoveList { n: 15, e: [
+    MoveEntry { name: "Arc Jab", input: "A" },
+    MoveEntry { name: "Static Lance", input: "FWD + A" },
+    MoveEntry { name: "Ground Spark", input: "DOWN + A" },
+    MoveEntry { name: "Down Arc", input: "A in the air" },
+    MoveEntry { name: "Volt Orb", input: "B (hold to charge)" },
+    MoveEntry { name: "Arc Lance", input: "FWD + B" },
+    MoveEntry { name: "Thunder Pillar", input: "UP + B" },
+    MoveEntry { name: "Brace", input: "DOWN + B" },
+    MoveEntry { name: "Shock Grip", input: "Y" },
+    MoveEntry { name: "Break a grab", input: "Y when grabbed" },
+    MoveEntry { name: "Overload", input: "A + B, one bar" },
+    MoveEntry { name: "Block", input: "hold R" },
+    MoveEntry { name: "Jump", input: "X (+ FWD or BACK)" },
+    MoveEntry { name: "Chain", input: "A, FWD + A, B" },
+    MoveEntry { name: "Nuclear meter", input: "fills as Gamma takes damage" },
+    MoveEntry {}
+] }
