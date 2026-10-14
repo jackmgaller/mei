@@ -72,7 +72,7 @@
     {"from": 15, "to": 38, "by": [0, -6.0], "ease": "in"}
   ],
   "plant": {"foot_r": [[0, 1], [38, 42]], "foot_l": [[0, 2], [38, 42]]},
-  "marks": {"invuln": [[0, 7]], "step": [7, 38]},
+  "marks": {"invuln": [[0, 7]], "step": [38]},
   "allow": [["torso", "hand_r"], ["torso", "weapon_r"], ["pelvis", "hand_r"],
             ["pelvis", "weapon_r"], ["pelvis", "forearm_l"], ["torso", "forearm_r"],
             ["hand_r", "thigh_r"], ["weapon_r", "thigh_r"], ["pelvis", "forearm_r"],

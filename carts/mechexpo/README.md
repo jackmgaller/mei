@@ -252,14 +252,14 @@ own moves, effects and fight code are later phases. What is real and what is Sha
 [MOVES.md](MOVES.md#seraph-momentum-robotics-kinetic).
 
 - **Files:** `models/seraph/make_seraph.py` (the model and rig: the owner's concept A, round 4b,
-  from `concepts/angel_a/`, which stays as the record), `anims/seraph/` (each move Shadow's on
-  Seraph's rig, the weapon joints held at 0 with the kit's `"still"`; the jab and the lunge with
-  the fist's hit boxes), `seraph.akr` (its hits and stand-ins, Shadow's for now, its move list,
-  and the predicates `has_hex_bolt`, `has_sneak`, `has_rift_mine`, `has_phantom_grip`,
-  `has_eclipse` and `has_dive` that Shadow's rules ask instead of "is this Shadow", so each
-  special can be given to Seraph's own code without touching Shadow's). Its numbers are a row of
-  `STATS` (1,000 health, a walk of 0.080 m a frame forward and 0.064 back, the kinetic meter) and
-  its names a row of `ROSTER`.
+  from `concepts/angel_a/`, which stays as the record; its guard is Seraph's boxer's guard),
+  `anims/seraph/` (Seraph's own moves, the weapon joints held at 0 with the kit's `"still"`; the
+  throws' victims Shadow's to the slam, then face down), `seraph.akr` (its hits and stand-ins,
+  Shadow's for now, its move list, and the predicates `has_hex_bolt`, `has_sneak`, `has_rift_mine`,
+  `has_phantom_grip`, `has_eclipse` and `has_dive` that Shadow's rules ask instead of "is this
+  Shadow", so each special can be given to Seraph's own code without touching Shadow's). Its numbers
+  are a row of `STATS` (1,000 health, a walk of 0.080 m a frame forward and 0.064 back, the kinetic
+  meter) and its names a row of `ROSTER`.
 - **Where phase 2 branches for `Mech.Seraph`:** the six predicates in `seraph.akr` (the Hex Bolt
   and the Siphon in `fighter.akr`'s `fires_shot` and `shot_fire` and `shadow.akr`; Shadow Sneak in
   `fighter.akr`'s advance and `shadow_fx.akr`; the Rift Mine in `shadow_tick`; Phantom Grip in
