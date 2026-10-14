@@ -1,8 +1,26 @@
 {
   "format": "mei-anim",
   "version": 1,
-  "note": "Gamma's grab_break: a placeholder (phase 1), Beam's (../beam/grab_break.anim.json) on Gamma's rig, its keys, timing, boxes and marks as they are (the projector is on Beam's mount and reaches as far as the Arc Cannon); the shield (weapon_l) held stowed (\"still\"). To be replaced by its own move (MOVES.md, \"Gamma\").",
-  "base": "../beam/grab_break.anim.json",
-  "rig": "../../models/gamma/gamma.rig.json",
-  "still": ["weapon_l"]
+  "note": "Grab break (both mechs; the fight slides each back about 3 m): Beam's shove on Gamma's rig. The left palm and the projector's receiver shove out hard at chest height on frames 0-3, the body recoiling back onto the back foot as it slides, the projector swinging up with the shove; then it settles back into the guard by 19. The shield stowed.",
+  "base": "_body.anim.json",
+  "length": 20,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "offset": [0.2, -0.75],
+     "pose": {"pelvis": [-4, -2, 0], "torso": [-10, 0, 0], "head": [8, 0, 0],
+              "upper_arm_r": [30, 0, -14], "forearm_r": [70, 0, 8], "hand_r": [0, 0, 0],
+              "upper_arm_l": [70, 0, 16], "forearm_l": [40, 0, -10], "hand_l": [-20, 0, 0],
+              "pauldron_r": [10, 0, -7], "pauldron_l": [23, 0, 8]},
+     "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}},
+    {"at": 3, "ease": "ease", "offset": [-0.2, -0.85],
+     "pose": {"pelvis": [4, -2, 0], "torso": [6, 0, 0], "head": [-4, 0, 0],
+              "upper_arm_r": [60, 0, -12], "forearm_r": [40, 0, 8], "hand_r": [10, 0, 0],
+              "upper_arm_l": [92, 0, 12], "forearm_l": [8, 0, -10], "hand_l": [-30, 0, 0],
+              "pauldron_r": [20, 0, -6], "pauldron_l": [30, 0, 6]}},
+    {"at": 9, "ease": "ease", "offset": [-0.4, -0.95],
+     "pose": {"pelvis": [6, -6, 0], "torso": [6, -8, 0], "head": [-2, 10, 0],
+              "upper_arm_r": [12, 0, -12], "forearm_r": [80, 0, 8], "hand_r": [4, 0, 0],
+              "upper_arm_l": [40, 0, 16], "forearm_l": [80, 0, -20], "hand_l": [-10, 0, 0],
+              "pauldron_r": [4, 0, -6], "pauldron_l": [13, 0, 8]}},
+    {"at": 19, "from": "guard", "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}}
+  ]
 }
