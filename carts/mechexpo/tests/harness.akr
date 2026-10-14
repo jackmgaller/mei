@@ -41,8 +41,8 @@
 // 100-108 Shadow's (mx-shadow-fight): the Hex Bolt and the Siphon, the curse's time, the Rift
 //     Mine, Shadow Sneak, Eclipse Rise, Phantom Grip, Total Eclipse, throws with Tank and the
 //     Twins, the CPU; listed with their code at the end (109 is in tests/shadow/harness.akr)
-// 150-151 Seraph's (mx-seraph, phase 1: Shadow's moves on Seraph's body): against Shadow and
-//     against the Hero; listed with their code at the end (152-157 are in tests/seraph/harness.akr)
+// 160-161 Seraph's (mx-seraph, phase 1: Shadow's moves on Seraph's body): against Shadow and
+//     against the Hero; listed with their code at the end (162-168 are in tests/seraph/harness.akr)
 // 40-49 Tank's (mx-tank): armour, its grabs and throws, the nuclear meter, its super, the CPU
 //     and the budget; listed with their code at the end of this file
 // 60-67 the Twins' (mx-twins-fight): combining and splitting, the partner, hits and throws on and
@@ -3404,20 +3404,20 @@ private fn sh_check_stats() {
     ok("Shadow's statistics")
 }
 
-// ---- Seraph's scenarios, 150-151 (mx-seraph; MOVES.md, "Seraph"): phase 1, Shadow's moves on
-// Seraph's body, with its own numbers; 152-157 need the whole game (tests/seraph/harness.akr)
+// ---- Seraph's scenarios, 160-161 (mx-seraph; MOVES.md, "Seraph"): phase 1, Shadow's moves on
+// Seraph's body, with its own numbers; 162-168 need the whole game (tests/seraph/harness.akr)
 //
-// 150 against Shadow: idle (1,000 health, the kinetic meter, 22 parts a frame, the walk slower than
+// 160 against Shadow: idle (1,000 health, the kinetic meter, 22 parts a frame, the walk slower than
 //     Shadow's); the jab lands at 4 m (50 damage, the kinetic meter's 125) and misses at 6 m, where
 //     Shadow's Claw Jab still reaches Seraph; the lunging straight lands at 9 m and misses just
 //     past the fist's reach (where the talons would still reach by 2.5 m); Phantom Grip
 //     (Shadow's throw, for now) swaps the sides; the super from a full bar:
 //     Total Eclipse's five hits (for now), the bar spent, no debt (kinetic)
-// 151 the same against the Hero
+// 161 the same against the Hero
 
-const SR_FOE: Mech = match SCENARIO { 151 => Mech.Hero, else => Mech.Shadow }
+const SR_FOE: Mech = match SCENARIO { 161 => Mech.Hero, else => Mech.Shadow }
 
-private fn sr_scenario() -> bool { return SCENARIO == 150 || SCENARIO == 151 }
+private fn sr_scenario() -> bool { return SCENARIO == 160 || SCENARIO == 161 }
 
 private fn sr_restart() { sh_restart(Mech.Seraph, SR_FOE, -4.0, 4.0) }
 

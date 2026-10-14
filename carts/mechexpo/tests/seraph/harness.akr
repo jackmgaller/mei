@@ -1,28 +1,29 @@
 // Mech Expo 2000's Seraph scenarios that need the whole game (mx-seraph): the real game
 // (game.akr: the stages, the camera, the mechs drawn by anim.akr, the effects, the HUD and the
 // menus) driven through its test hooks, as tests/shadow/harness.akr does. tests/run.sh builds
-// scenarios 152-157 from this file and ../../game.akr; tests/check.sh runs 153-157 and
-// tests/budget.sh 152. 150 and 151 (the fight alone) are in ../harness.akr; the arcade's final
-// for Shadow (Seraph's reveal and the VS card) is ladder scenario 124, VIEWs 4 and 5.
+// scenarios 162-168 from this file and ../../game.akr; tests/check.sh runs 163-167 and
+// tests/budget.sh 162 and 168. 160 and 161 (the fight alone) are in ../harness.akr; the arcade's
+// final for Shadow (Seraph's reveal and the VS card) is ladder scenario 124, VIEWs 4 and 5.
 //
-// 152 the budget with Seraph: CPU against CPU (level 2) through the real game, Seraph against the
+// 162 the budget with Seraph: CPU against CPU (level 2) through the real game, Seraph against the
 //     split Twins on the rooftop (four bodies' worth: three on screen, and the city) for 900
 //     frames, then against Shadow in the hangar for 900. As 109 does for Shadow, the scenario
 //     keeps Seraph's Rift Mine (armed) and Hex Bolt out (Shadow's, which Seraph plays for now),
 //     the other cursed, and every 300 frames a full bar for its super (Total Eclipse's
 //     afterimages and the dark). Prints the peak CPU, GPU and triangles of each half
-// 153 the character select (Versus): Seraph unlocked, 1P's cursor on its card (the echo slot under
+// 168 the same kept out, against the split Twins on the container port, for 900 frames
+// 163 the character select (Versus): Seraph unlocked, 1P's cursor on its card (the echo slot under
 //     Shadow), 2P's on Shadow: Seraph's catalogue page and spec sheet. Checks the roster row and
 //     what follows from it: the names (mech_name, fighter_short), the model number, the maker and
 //     its kinetic meter icon, the stats, the blurb's two lines within 76 px, the height, the move
 //     list
-// 154-157 Seraph mid-fight, CPU against CPU for 300 frames (the pictures): 154 against Shadow in
-//     the hangar, 155 against the Hero in the hangar, 156 against Shadow on the rooftop, 157
+// 164-167 Seraph mid-fight, CPU against CPU for 300 frames (the pictures): 164 against Shadow in
+//     the hangar, 165 against the Hero in the hangar, 166 against Shadow on the rooftop, 167
 //     against the Hero on the rooftop. Each within the budgets
 
 var fr: s32
 var started: bool
-var peak_cpu: [2]s32               // 152: [0] against the split Twins, [1] against Shadow
+var peak_cpu: [2]s32               // 162: [0] against the split Twins, [1] against Shadow
 var peak_gpu: [2]s32
 var peak_tris: [2]s32
 var peak_fight: s32
@@ -31,20 +32,21 @@ var peak_fx: s32
 var late: s32
 var supers: s32
 
-const SR_FOE = match SCENARIO { 155 => Mech.Hero, 157 => Mech.Hero, else => Mech.Shadow }
-const SR_ROOF = SCENARIO == 156 || SCENARIO == 157
+const SR_FOE = match SCENARIO { 165 => Mech.Hero, 167 => Mech.Hero, else => Mech.Shadow }
+const SR_ROOF = SCENARIO == 166 || SCENARIO == 167
+const SR_BUDGET = SCENARIO == 162 || SCENARIO == 168
 
 fn test_init() {
     match SCENARIO {
-        152 => {
+        162, 168 => {
             game = Game.Versus
             p_cpu = false
             p_mech[0] = Mech.Seraph
             p_mech[1] = Mech.Twins
-            stage_sel = ST_ROOFTOP
+            if SCENARIO == 168 { stage_sel = ST_PORT } else { stage_sel = ST_ROOFTOP }
             enter_fight()
         }
-        153 => {
+        163 => {
             check_roster()
             save.unlocked |= ROSTER[mech_slot(Mech.Seraph)].bit
             game = Game.Versus
@@ -64,25 +66,25 @@ fn test_init() {
 fn input_stick(n: s32) -> vec2 { return vec2(0.0, 0.0) }
 
 fn input_pad(n: s32) -> u32 {
-    if SCENARIO == 153 { return 0 }
+    if SCENARIO == 163 { return 0 }
     if st != St.Fight { return 0 }
     let p = cpu_pad(n, 2)
-    if SCENARIO == 152 && n == 1 && fr < 900 { return p & ~L }     // the Twins stay split: three bodies
-    if SCENARIO == 152 && n == 0 && fr % 300 >= 2 && fr % 300 < 40 && fight.f[0].super_ok && actionable(0) {
+    if SR_BUDGET && n == 1 && fr < 900 { return p & ~L }     // the Twins stay split: three bodies
+    if SR_BUDGET && n == 0 && fr % 300 >= 2 && fr % 300 < 40 && fight.f[0].super_ok && actionable(0) {
         return A | B
     }
     return p
 }
 
 fn test_hook() {
-    if SCENARIO == 153 {
+    if SCENARIO == 163 {
         hook_select()
         return
     }
     if st != St.Fight { return }
     let f = fight_get()
     var k = 0
-    if SCENARIO == 152 && fr >= 900 { k = 1 }
+    if SCENARIO == 162 && fr >= 900 { k = 1 }
     if started && fr > 3 && fr != 900 && fr != 901 {
         peak_cpu[k] = max(peak_cpu[k], cpu_used())
         peak_gpu[k] = max(peak_gpu[k], gpu_used())
@@ -94,7 +96,7 @@ fn test_hook() {
     }
     started = true
     fr += 1
-    if SCENARIO != 152 {
+    if !SR_BUDGET {
         // the pictures: both kept on their feet, so the fight goes on
         fight.f[0].health = max(fight.f[0].health, 300)
         fight.f[1].health = max(fight.f[1].health, 300)
@@ -106,15 +108,16 @@ fn test_hook() {
     for e in 0..ev.n {
         if ev.e[e].kind == Ev.Super && ev.e[e].side == 0 { supers += 1 }
     }
-    if fr == 900 {
+    if SCENARIO == 168 && fr == 900 { report_budget() }
+    if SCENARIO == 162 && fr == 900 {
         p_mech[1] = Mech.Shadow
         stage_sel = ST_HANGAR
         enter_fight()
     }
-    if fr == 1800 { report_budget() }
+    if SCENARIO == 162 && fr == 1800 { report_budget() }
 }
 
-// 152's worst case kept on screen: an armed mine behind Seraph, its bolt out, the other cursed,
+// 162's and 168's worst case kept on screen: an armed mine behind Seraph, its bolt out, the other cursed,
 // a full bar now and then (Seraph's meter is kinetic: the super needs the bar).
 private fn keep_busy(f: *Fight) {
     let s = &f.f[0]
@@ -133,8 +136,11 @@ private fn keep_busy(f: *Fight) {
 }
 
 private fn report_budget() {
-    for k in 0..2 {
-        if k == 0 { print("Seraph against the split Twins on the rooftop: ") }
+    var n = 2
+    if SCENARIO == 168 { n = 1 }
+    for k in 0..n {
+        if SCENARIO == 168 { print("Seraph against the split Twins on the container port: ") }
+        else if k == 0 { print("Seraph against the split Twins on the rooftop: ") }
         else { print("Seraph against Shadow in the hangar: ") }
         print("peak cpu ")
         print_int(peak_cpu[k])
@@ -147,7 +153,7 @@ private fn report_budget() {
         assert(peak_gpu[k] <= GPU_BUDGET, "over the GPU budget")
         assert(peak_tris[k] < 4000, "over 4,000 triangles")
     }
-    assert(supers >= 2, "Seraph's super was not measured")
+    assert(supers >= n, "Seraph's super was not measured")
     print("supers ")
     print_int(supers)
     print(", late frames ")
@@ -182,7 +188,7 @@ private fn report_fight() {
     println("OK Seraph mid-fight")
 }
 
-// 153: the select, both cursors placed, then the shot.
+// 163: the select, both cursors placed, then the shot.
 private fn hook_select() {
     fr += 1
     if st != St.Select { return }

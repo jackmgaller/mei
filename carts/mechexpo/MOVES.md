@@ -91,8 +91,9 @@ mech lands facing the wrong way and turns on landing).
 
 A stage (`stages.akr`, [README.md](README.md#stages)) has a half-width and two edges, each a
 **wall** or **open**. The demo hangar has walls at x = ±36; the rooftop showcase has the
-stairwell's housing (a wall) at x = −26 and an open edge at x = +26. The rules at an open edge
-(`fighter.akr`, the ring-out block at its end):
+stairwell's housing (a wall) at x = −26 and an open edge at x = +26; the container port has its
+open edge at x = −30 (the quay over the water, behind 1P at the start) and a wall of stacked
+containers at x = +30. The rules at an open edge (`fighter.akr`, the ring-out block at its end):
 
 - **The lip.** A mech stops at an open edge as at a wall, its push box against it (x = 26 − 1.5
   for the Double-blade Hero): walking, jumping, a move's root motion, a blocked hit's pushback
@@ -1415,7 +1416,7 @@ ring 0.9 m).
 | Lunging straight (`atk_f`) hit box | x 2.6–6.8, y 6.7–8.3: the fist and forearm (2.6 m shorter) | x 3.0–9.4, y 5.5–8.5 |
 
 The jab's and the lunge's boxes follow the fist, so nothing hits with the air in front of it
-(measured with `mei_anim.py pose`; scenario 150 checks them against Shadow's). The jab keeps
+(measured with `mei_anim.py pose`; scenario 160 checks them against Shadow's). The jab keeps
 Shadow's arm keys, which hold the fist at face height: it passes over a crouching mech (8 m),
 where the talons hooked down to reach one. The roster row: SERAPH, MR-02, Momentum's emblem,
 stats `0x2323` (power 2, speed 3, reach 2, armour 3), 13.5 m to the top of the halo, the blurb
@@ -1588,6 +1589,28 @@ the floor where Shadow goes under it, shots sent back, a mark instead of a curse
 - To do with the move set: the fist reaches about 3 m less than Shadow's talons (Lunging Claw's
   and Claw Jab's hit boxes, or the arm keys); Shadow's weapon-joint keys are zeroed; new
   animations for the idle, intro, win, `atk_d`, the four specials and the super.
+
+## Decided by the owner (2026-10-14): Gamma, Heartland's ray gun
+
+Planned, not designed in numbers yet: Heartland Atomic Company's echo of Beam, in the echo slot
+under Beam (unlocked by clearing the arcade with Beam), on Beam's skeleton (the Hero's). Named
+**GAMMA** (card GAMMA); model number open (HA-58 proposed, after Tank's HA-57). Nuclear meter (Heartland's: fills as it takes damage).
+
+- **Look:** Beam's frame reworked by Heartland, in Heartland's faded forest green and primer grey,
+  its Arc Cannon replaced by a nuclear ray projector. The look is open: three concept directions
+  are being drawn (an atomic-age ray gun, a walking reactor plant, military surplus).
+- **How it plays:** a slow, heavy zoner that gets stronger when the plan fails: every hit that
+  gets through fills its reactor.
+- **`sp_n` the Atomic Ray** (the Volt Orb's slot): a held ray, on while B is held: a beam, not a
+  ball, that pushes the other mech back. The gun heats while it runs; held too long, it vents
+  and leaves the mech open.
+- **`sp_f` Rod Shot** (the Arc Lance's slot): a fast spike fired from the barrel that pierces.
+- **`sp_u` Geiger Flare** (the Thunder Pillar's slot): the anti-air: a burst of light upward that
+  stuns briefly on hit.
+- **`sp_d` Lead Shielding** (the Reaction Prime's slot): it braces behind a shield; the next hit
+  is absorbed (like Tank's armour), and its damage still feeds the reactor.
+- **Super, Ground Zero:** a blast all round it at short range: the zoner's answer to a mech that
+  has got in.
 
 ## Balance patch (2026-10-13)
 

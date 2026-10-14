@@ -5,8 +5,8 @@
 # 6 and 7 the chains, 8 the kinetic super, 9 the antimatter super and its debt, 10 CPU against
 # CPU twice (the same match), 11 the separation limit and the walls, 12 the Parry and the
 # anti-air, 13 the ladder's levels, 18 the Vault Throw, 19 the air attack, 15 training. The
-# budget scenarios (14, 39, 49, 54, 69, 98, 99, 109, 152) are tests/budget.sh's. MEIC and RUN as in
-# tools/cart_scenario.sh.
+# budget scenarios (14, 39, 49, 54, 69, 98, 99, 109, 147-149, 162, 168) are tests/budget.sh's.
+# MEIC and RUN as in tools/cart_scenario.sh.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 O="$HERE/out/check"
@@ -18,7 +18,7 @@ pool_report() {
 }
 run() {       # scenario frames: the scenarios through the whole game cost about 8 times a frame
     s="$1"; f="$2"; shift 2
-    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]|15[3-7]) c=$((f * 8)) ;; 108) c=$((f * 40)) ;; *) c="$f" ;; esac
+    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]|14[0-6]|150|16[3-7]) c=$((f * 8)) ;; 108) c=$((f * 40)) ;; *) c="$f" ;; esac
     pool_add "s$s" "$c" "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@"
 }
 run 1 800
@@ -91,6 +91,17 @@ run 112 45
 run 113 45
 run 114 65
 run 115 120
+# 140-146, 150: the container port (tests/stages/harness.akr): the fight's start, fully out, near
+# the container wall, near the quay edge, a throw off the quay (a ring-out), the wall stopping a
+# knockdown, a throw and a walk, the stage select to the port, the camera drifting
+run 140 45
+run 141 45
+run 142 45
+run 143 65
+run 144 80
+run 145 470
+run 146 171
+run 150 112
 run 50 330
 run 51 210
 run 52 210
@@ -123,17 +134,18 @@ run 106 900
 run 107 1600
 run 108 2500
 run 110 900
-# Seraph (mx-seraph, phase 1: Shadow's moves on its body): 150 against Shadow, 151 against the
+# Seraph (mx-seraph, phase 1: Shadow's moves on its body): 160 against Shadow, 161 against the
 # Hero (its numbers, the fists' reach, a throw, the kinetic super); through the whole game
-# (tests/seraph/harness.akr): 153 the select with its card and spec sheet, 154-157 mid-fight
-# against Shadow and the Hero in the hangar and on the rooftop (152, the budget, is budget.sh's)
-run 150 1500
-run 151 1500
-run 153 61
-run 154 301
-run 155 301
-run 156 301
-run 157 301
+# (tests/seraph/harness.akr): 163 the select with its card and spec sheet, 164-167 mid-fight
+# against Shadow and the Hero in the hangar and on the rooftop (162 and 168, the budget, are
+# budget.sh's)
+run 160 1500
+run 161 1500
+run 163 61
+run 164 301
+run 165 301
+run 166 301
+run 167 301
 # the arcade ladder (mx-ladder, tests/ladder/harness.akr, the whole game; VIEWs as listed there):
 # 116 EASY against a scripted masher, 117-119 a whole run on each difficulty (EASY with the Hero,
 # NORMAL with Shadow, HARD with Tank: the rivals drawn, a loss and a continue, the reveal, the

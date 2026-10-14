@@ -1,0 +1,1486 @@
+{
+  "format": "mei-asset-pack",
+  "version": 1,
+  "name": "stage_port_props",
+  "assets": [
+    {
+      "name": "stage_port_wall",
+      "mesh": "stage_port_wall.bin",
+      "levels": [],
+      "vertices": 67,
+      "triangles": 48,
+      "textures": [
+        {
+          "material": "sides_0",
+          "tile": "ab148791e39b0106",
+          "source": {
+            "image": "art/wall_sides_0.png",
+            "sha256": "c71b3f6d505d924cb502c8d98446c179594b827e127a642c8541727a174bb5be"
+          },
+          "width": 64,
+          "height": 48,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#6b4229",
+            "#846339",
+            "#a57b4a",
+            "#421810",
+            "#6b1010",
+            "#8c1818",
+            "#b52121",
+            "#e7b57b",
+            "#dead7b",
+            "#f77b52",
+            "#de1010",
+            "#ef734a",
+            "#181821",
+            "#212929",
+            "#293139"
+          ],
+          "slot": 16,
+          "x": 72,
+          "y": 72,
+          "gutter": 1,
+          "window": null,
+          "palette": 256,
+          "first_colour": 4096,
+          "indices": {
+            "#6b4229": 1,
+            "#846339": 2,
+            "#a57b4a": 3,
+            "#421810": 4,
+            "#6b1010": 5,
+            "#8c1818": 6,
+            "#b52121": 7,
+            "#e7b57b": 8,
+            "#dead7b": 9,
+            "#f77b52": 10,
+            "#de1010": 11,
+            "#ef734a": 12,
+            "#181821": 13,
+            "#212929": 14,
+            "#293139": 15
+          },
+          "vram_bytes": 1617,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              2
+            ]
+          ]
+        },
+        {
+          "material": "ends_0",
+          "tile": "054d67c08cb58393",
+          "source": {
+            "image": "art/wall_ends_0.png",
+            "sha256": "4a42b00660cd75b838c0a4c097cc107476a3e39632073b918617b34e7c32a544"
+          },
+          "width": 16,
+          "height": 48,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#634a29",
+            "#5a4229",
+            "#946b42",
+            "#94734a",
+            "#4a3921",
+            "#4a1010",
+            "#ce9c63",
+            "#6b1010",
+            "#5a1010",
+            "#a52118",
+            "#e7b57b",
+            "#182121",
+            "#101818",
+            "#293131"
+          ],
+          "slot": 16,
+          "x": 216,
+          "y": 72,
+          "gutter": 1,
+          "window": null,
+          "palette": 257,
+          "first_colour": 4112,
+          "indices": {
+            "#634a29": 1,
+            "#5a4229": 2,
+            "#946b42": 3,
+            "#94734a": 4,
+            "#4a3921": 5,
+            "#4a1010": 6,
+            "#ce9c63": 7,
+            "#6b1010": 8,
+            "#5a1010": 9,
+            "#a52118": 10,
+            "#e7b57b": 11,
+            "#182121": 12,
+            "#101818": 13,
+            "#293131": 14
+          },
+          "vram_bytes": 441,
+          "night": "per_colour",
+          "faces": [
+            [
+              4,
+              6
+            ]
+          ]
+        },
+        {
+          "material": "ends_1",
+          "tile": "c7f999e397bf6896",
+          "source": {
+            "image": "art/wall_ends_1.png",
+            "sha256": "6cfc7f951ef3e763f3dbd61f23e870ecfaa9bf4edd97c4a18c7436b372c1260a"
+          },
+          "width": 16,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#182110",
+            "#293918",
+            "#94734a",
+            "#102110",
+            "#dead7b",
+            "#ce9c63",
+            "#101808",
+            "#4a4229",
+            "#4a3929",
+            "#7b6342",
+            "#423121",
+            "#181821",
+            "#393121"
+          ],
+          "slot": 16,
+          "x": 216,
+          "y": 128,
+          "gutter": 1,
+          "window": null,
+          "palette": 258,
+          "first_colour": 4128,
+          "indices": {
+            "#182110": 1,
+            "#293918": 2,
+            "#94734a": 3,
+            "#102110": 4,
+            "#dead7b": 5,
+            "#ce9c63": 6,
+            "#101808": 7,
+            "#4a4229": 8,
+            "#4a3929": 9,
+            "#7b6342": 10,
+            "#423121": 11,
+            "#181821": 12,
+            "#393121": 13
+          },
+          "vram_bytes": 297,
+          "night": "per_colour",
+          "faces": [
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        {
+          "material": "sides_2",
+          "tile": "48e3877a943c2314",
+          "source": {
+            "image": "art/wall_sides_2.png",
+            "sha256": "3075dd8457019a3c4e245c8f74c3ab83986a782bffbaa1024100a46fe1298fec"
+          },
+          "width": 64,
+          "height": 64,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#183121",
+            "#214231",
+            "#295239",
+            "#e7b57b",
+            "#100808",
+            "#181010",
+            "#6b3121",
+            "#522918",
+            "#c68c73",
+            "#421010",
+            "#181810",
+            "#a55221",
+            "#844218",
+            "#5a1810",
+            "#6b2118"
+          ],
+          "slot": 16,
+          "x": 0,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 259,
+          "first_colour": 4144,
+          "indices": {
+            "#183121": 1,
+            "#214231": 2,
+            "#295239": 3,
+            "#e7b57b": 4,
+            "#100808": 5,
+            "#181010": 6,
+            "#6b3121": 7,
+            "#522918": 8,
+            "#c68c73": 9,
+            "#421010": 10,
+            "#181810": 11,
+            "#a55221": 12,
+            "#844218": 13,
+            "#5a1810": 14,
+            "#6b2118": 15
+          },
+          "vram_bytes": 2145,
+          "night": "per_colour",
+          "faces": [
+            [
+              10,
+              12
+            ]
+          ]
+        },
+        {
+          "material": "ends_2",
+          "tile": "e7bdaf1b5346dedb",
+          "source": {
+            "image": "art/wall_ends_2.png",
+            "sha256": "a3d9c8a6ba7922767ebfd68a12a3ec8a226a902735407538f41e72692701938a"
+          },
+          "width": 16,
+          "height": 64,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#102918",
+            "#294a39",
+            "#94734a",
+            "#e7ad7b",
+            "#ce9c63",
+            "#100808",
+            "#181010",
+            "#a5636b",
+            "#632118",
+            "#522910",
+            "#944a21",
+            "#421010",
+            "#391008"
+          ],
+          "slot": 16,
+          "x": 216,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 260,
+          "first_colour": 4160,
+          "indices": {
+            "#102918": 1,
+            "#294a39": 2,
+            "#94734a": 3,
+            "#e7ad7b": 4,
+            "#ce9c63": 5,
+            "#100808": 6,
+            "#181010": 7,
+            "#a5636b": 8,
+            "#632118": 9,
+            "#522910": 10,
+            "#944a21": 11,
+            "#421010": 12,
+            "#391008": 13
+          },
+          "vram_bytes": 585,
+          "night": "per_colour",
+          "faces": [
+            [
+              12,
+              14
+            ]
+          ]
+        },
+        {
+          "material": "ends_3",
+          "tile": "62872de2c324d9ea",
+          "source": {
+            "image": "art/wall_ends_3.png",
+            "sha256": "47ef36313c04d36bb81e06decebcfc67cb47204a4d5ecd238af93e73416ff85a"
+          },
+          "width": 16,
+          "height": 64,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#734a10",
+            "#bd7b21",
+            "#94734a",
+            "#5a4221",
+            "#181818",
+            "#ce9c63",
+            "#4a3118",
+            "#634a29",
+            "#946b42",
+            "#293918",
+            "#182118",
+            "#293131",
+            "#dead7b",
+            "#101810",
+            "#182110"
+          ],
+          "slot": 16,
+          "x": 0,
+          "y": 72,
+          "gutter": 1,
+          "window": null,
+          "palette": 261,
+          "first_colour": 4176,
+          "indices": {
+            "#734a10": 1,
+            "#bd7b21": 2,
+            "#94734a": 3,
+            "#5a4221": 4,
+            "#181818": 5,
+            "#ce9c63": 6,
+            "#4a3118": 7,
+            "#634a29": 8,
+            "#946b42": 9,
+            "#293918": 10,
+            "#182118": 11,
+            "#293131": 12,
+            "#dead7b": 13,
+            "#101810": 14,
+            "#182110": 15
+          },
+          "vram_bytes": 585,
+          "night": "per_colour",
+          "faces": [
+            [
+              14,
+              16
+            ]
+          ]
+        },
+        {
+          "material": "ends_4",
+          "tile": "c716460f83690ac1",
+          "source": {
+            "image": "art/wall_ends_4.png",
+            "sha256": "1ac77008488855aa683f163525450245e80d1b4a505e44412ddd55b7b00b38cb"
+          },
+          "width": 16,
+          "height": 48,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#4a4229",
+            "#4a3921",
+            "#7b6342",
+            "#94734a",
+            "#423121",
+            "#291010",
+            "#ce9c63",
+            "#392918",
+            "#421010",
+            "#391008",
+            "#632118",
+            "#e7ad73",
+            "#634a29",
+            "#5a4229",
+            "#946b42"
+          ],
+          "slot": 16,
+          "x": 144,
+          "y": 128,
+          "gutter": 1,
+          "window": null,
+          "palette": 262,
+          "first_colour": 4192,
+          "indices": {
+            "#4a4229": 1,
+            "#4a3921": 2,
+            "#7b6342": 3,
+            "#94734a": 4,
+            "#423121": 5,
+            "#291010": 6,
+            "#ce9c63": 7,
+            "#392918": 8,
+            "#421010": 9,
+            "#391008": 10,
+            "#632118": 11,
+            "#e7ad73": 12,
+            "#634a29": 13,
+            "#5a4229": 14,
+            "#946b42": 15
+          },
+          "vram_bytes": 441,
+          "night": "per_colour",
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        {
+          "material": "ends_5",
+          "tile": "1a06da6ca781bb39",
+          "source": {
+            "image": "art/wall_ends_5.png",
+            "sha256": "26124bba1eb010580069f4f067a748eba7813e4005c03bdc2bdc7d300379d08d"
+          },
+          "width": 16,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#183121",
+            "#182921",
+            "#294a39",
+            "#94734a",
+            "#102918",
+            "#deb57b",
+            "#ce9c63",
+            "#102118",
+            "#633110",
+            "#5a2910",
+            "#944a21",
+            "#522910",
+            "#e7b573",
+            "#4a2110"
+          ],
+          "slot": 16,
+          "x": 0,
+          "y": 144,
+          "gutter": 1,
+          "window": null,
+          "palette": 263,
+          "first_colour": 4208,
+          "indices": {
+            "#183121": 1,
+            "#182921": 2,
+            "#294a39": 3,
+            "#94734a": 4,
+            "#102918": 5,
+            "#deb57b": 6,
+            "#ce9c63": 7,
+            "#102118": 8,
+            "#633110": 9,
+            "#5a2910": 10,
+            "#944a21": 11,
+            "#522910": 12,
+            "#e7b573": 13,
+            "#4a2110": 14
+          },
+          "vram_bytes": 297,
+          "night": "per_colour",
+          "faces": [
+            [
+              22,
+              24
+            ]
+          ]
+        },
+        {
+          "material": "sides_6",
+          "tile": "36417529d97b0dfe",
+          "source": {
+            "image": "art/wall_sides_6.png",
+            "sha256": "7a38553f0943fd63e8c9d3b4f48c069c73a359f5bef0ce1fb8b18f9d826b3bb3"
+          },
+          "width": 64,
+          "height": 48,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#292910",
+            "#292918",
+            "#393918",
+            "#4a4a21",
+            "#d6a56b",
+            "#947342",
+            "#424221",
+            "#182110",
+            "#213118",
+            "#294221",
+            "#dead7b",
+            "#181818",
+            "#212929",
+            "#293139"
+          ],
+          "slot": 16,
+          "x": 144,
+          "y": 72,
+          "gutter": 1,
+          "window": null,
+          "palette": 264,
+          "first_colour": 4224,
+          "indices": {
+            "#292910": 1,
+            "#292918": 2,
+            "#393918": 3,
+            "#4a4a21": 4,
+            "#d6a56b": 5,
+            "#947342": 6,
+            "#424221": 7,
+            "#182110": 8,
+            "#213118": 9,
+            "#294221": 10,
+            "#dead7b": 11,
+            "#181818": 12,
+            "#212929": 13,
+            "#293139": 14
+          },
+          "vram_bytes": 1617,
+          "night": "per_colour",
+          "faces": [
+            [
+              24,
+              26
+            ]
+          ]
+        },
+        {
+          "material": "ends_6",
+          "tile": "8eb7004c7042de4a",
+          "source": {
+            "image": "art/wall_ends_6.png",
+            "sha256": "d854b6ced33cfe385ba807c4524d490d55682b7223c4e78f649f84a613f319e6"
+          },
+          "width": 16,
+          "height": 48,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#292910",
+            "#424221",
+            "#94734a",
+            "#212110",
+            "#dead73",
+            "#ce9c63",
+            "#182110",
+            "#293918",
+            "#101808",
+            "#182121",
+            "#181818",
+            "#293131",
+            "#101818"
+          ],
+          "slot": 16,
+          "x": 168,
+          "y": 128,
+          "gutter": 1,
+          "window": null,
+          "palette": 265,
+          "first_colour": 4240,
+          "indices": {
+            "#292910": 1,
+            "#424221": 2,
+            "#94734a": 3,
+            "#212110": 4,
+            "#dead73": 5,
+            "#ce9c63": 6,
+            "#182110": 7,
+            "#293918": 8,
+            "#101808": 9,
+            "#182121": 10,
+            "#181818": 11,
+            "#293131": 12,
+            "#101818": 13
+          },
+          "vram_bytes": 441,
+          "night": "per_colour",
+          "faces": [
+            [
+              28,
+              30
+            ]
+          ]
+        },
+        {
+          "material": "sides_7",
+          "tile": "107067b67ac60c7d",
+          "source": {
+            "image": "art/wall_sides_7.png",
+            "sha256": "068def84a67af9742a767b96a6bd6f11c30f9fae762caab804177f190d810cd5"
+          },
+          "width": 64,
+          "height": 64,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#846339",
+            "#9c7b5a",
+            "#bd9c73",
+            "#5a4a29",
+            "#dead7b",
+            "#214231",
+            "#21634a",
+            "#184a31",
+            "#212921",
+            "#185239",
+            "#a57b4a",
+            "#425a39",
+            "#421010",
+            "#5a1810",
+            "#6b2118"
+          ],
+          "slot": 16,
+          "x": 72,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 266,
+          "first_colour": 4256,
+          "indices": {
+            "#846339": 1,
+            "#9c7b5a": 2,
+            "#bd9c73": 3,
+            "#5a4a29": 4,
+            "#dead7b": 5,
+            "#214231": 6,
+            "#21634a": 7,
+            "#184a31": 8,
+            "#212921": 9,
+            "#185239": 10,
+            "#a57b4a": 11,
+            "#425a39": 12,
+            "#421010": 13,
+            "#5a1810": 14,
+            "#6b2118": 15
+          },
+          "vram_bytes": 2145,
+          "night": "per_colour",
+          "faces": [
+            [
+              30,
+              32
+            ]
+          ]
+        },
+        {
+          "material": "ends_7",
+          "tile": "b4e2e58b0ebaa544",
+          "source": {
+            "image": "art/wall_ends_7.png",
+            "sha256": "1cccf282e215be6039c6642fff7450ce51ae47e52ef199eb216a0bc50b8ce9bc"
+          },
+          "width": 16,
+          "height": 64,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#6b5a42",
+            "#ad8c63",
+            "#94734a",
+            "#5a4a31",
+            "#21634a",
+            "#ce9c63",
+            "#421010",
+            "#632118",
+            "#311008",
+            "#dead7b",
+            "#523921",
+            "#946b42",
+            "#291810",
+            "#183121",
+            "#294a39"
+          ],
+          "slot": 16,
+          "x": 24,
+          "y": 72,
+          "gutter": 1,
+          "window": null,
+          "palette": 267,
+          "first_colour": 4272,
+          "indices": {
+            "#6b5a42": 1,
+            "#ad8c63": 2,
+            "#94734a": 3,
+            "#5a4a31": 4,
+            "#21634a": 5,
+            "#ce9c63": 6,
+            "#421010": 7,
+            "#632118": 8,
+            "#311008": 9,
+            "#dead7b": 10,
+            "#523921": 11,
+            "#946b42": 12,
+            "#291810": 13,
+            "#183121": 14,
+            "#294a39": 15
+          },
+          "vram_bytes": 585,
+          "night": "per_colour",
+          "faces": [
+            [
+              32,
+              34
+            ]
+          ]
+        },
+        {
+          "material": "ends_8",
+          "tile": "52dfe1bf0fe6c944",
+          "source": {
+            "image": "art/wall_ends_8.png",
+            "sha256": "0ab9826359ab3a9f8e60c38eab84f0427feaccd2bdebf5038a10c6683f72c002"
+          },
+          "width": 16,
+          "height": 32,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#633110",
+            "#5a2910",
+            "#944a21",
+            "#94734a",
+            "#522910",
+            "#e7b573",
+            "#ce9c63",
+            "#4a2110",
+            "#4a4229",
+            "#4a3929",
+            "#7b6342",
+            "#423121",
+            "#181821",
+            "#393121"
+          ],
+          "slot": 16,
+          "x": 24,
+          "y": 144,
+          "gutter": 1,
+          "window": null,
+          "palette": 268,
+          "first_colour": 4288,
+          "indices": {
+            "#633110": 1,
+            "#5a2910": 2,
+            "#944a21": 3,
+            "#94734a": 4,
+            "#522910": 5,
+            "#e7b573": 6,
+            "#ce9c63": 7,
+            "#4a2110": 8,
+            "#4a4229": 9,
+            "#4a3929": 10,
+            "#7b6342": 11,
+            "#423121": 12,
+            "#181821": 13,
+            "#393121": 14
+          },
+          "vram_bytes": 297,
+          "night": "per_colour",
+          "faces": [
+            [
+              36,
+              38
+            ]
+          ]
+        },
+        {
+          "material": "sides_9",
+          "tile": "270c65359fb9e580",
+          "source": {
+            "image": "art/wall_sides_9.png",
+            "sha256": "288935ff3807d83f1cf0b9bfa3d69a8e539b2f7d223b4e8bbe5232121652b37b"
+          },
+          "width": 64,
+          "height": 48,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#182118",
+            "#213118",
+            "#182110",
+            "#294221",
+            "#dead7b",
+            "#182121",
+            "#212929",
+            "#293139",
+            "#101818",
+            "#391008",
+            "#4a1810",
+            "#5a1810",
+            "#6b2118",
+            "#e7ad73"
+          ],
+          "slot": 16,
+          "x": 72,
+          "y": 128,
+          "gutter": 1,
+          "window": null,
+          "palette": 269,
+          "first_colour": 4304,
+          "indices": {
+            "#182118": 1,
+            "#213118": 2,
+            "#182110": 3,
+            "#294221": 4,
+            "#dead7b": 5,
+            "#182121": 6,
+            "#212929": 7,
+            "#293139": 8,
+            "#101818": 9,
+            "#391008": 10,
+            "#4a1810": 11,
+            "#5a1810": 12,
+            "#6b2118": 13,
+            "#e7ad73": 14
+          },
+          "vram_bytes": 1617,
+          "night": "per_colour",
+          "faces": [
+            [
+              38,
+              40
+            ]
+          ]
+        },
+        {
+          "material": "ends_9",
+          "tile": "895fcfd08d439f42",
+          "source": {
+            "image": "art/wall_ends_9.png",
+            "sha256": "a449a486cb2cf72cc42a7068743f4b6caa7f3d485d383d524cac9365ae42d6c3"
+          },
+          "width": 16,
+          "height": 48,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#182110",
+            "#293918",
+            "#94734a",
+            "#102110",
+            "#dead7b",
+            "#ce9c63",
+            "#182121",
+            "#293131",
+            "#101818",
+            "#421010",
+            "#391008",
+            "#632118",
+            "#311008"
+          ],
+          "slot": 16,
+          "x": 192,
+          "y": 128,
+          "gutter": 1,
+          "window": null,
+          "palette": 270,
+          "first_colour": 4320,
+          "indices": {
+            "#182110": 1,
+            "#293918": 2,
+            "#94734a": 3,
+            "#102110": 4,
+            "#dead7b": 5,
+            "#ce9c63": 6,
+            "#182121": 7,
+            "#293131": 8,
+            "#101818": 9,
+            "#421010": 10,
+            "#391008": 11,
+            "#632118": 12,
+            "#311008": 13
+          },
+          "vram_bytes": 441,
+          "night": "per_colour",
+          "faces": [
+            [
+              42,
+              44
+            ]
+          ]
+        },
+        {
+          "material": "sides_10",
+          "tile": "02bae8ef0deb23a0",
+          "source": {
+            "image": "art/wall_sides_10.png",
+            "sha256": "4bb08c6267ba2c4b7a29357ed1e4386e7bc5abb6da142f46c0c2fd91fbbd6c40"
+          },
+          "width": 64,
+          "height": 64,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#5a3118",
+            "#844218",
+            "#a55221",
+            "#e7b57b",
+            "#182921",
+            "#183121",
+            "#214231",
+            "#295239",
+            "#4a3929",
+            "#6b5a39",
+            "#846b4a",
+            "#292118",
+            "#5a4229",
+            "#846339",
+            "#a57b4a"
+          ],
+          "slot": 16,
+          "x": 144,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 271,
+          "first_colour": 4336,
+          "indices": {
+            "#5a3118": 1,
+            "#844218": 2,
+            "#a55221": 3,
+            "#e7b57b": 4,
+            "#182921": 5,
+            "#183121": 6,
+            "#214231": 7,
+            "#295239": 8,
+            "#4a3929": 9,
+            "#6b5a39": 10,
+            "#846b4a": 11,
+            "#292118": 12,
+            "#5a4229": 13,
+            "#846339": 14,
+            "#a57b4a": 15
+          },
+          "vram_bytes": 2145,
+          "night": "per_colour",
+          "faces": [
+            [
+              44,
+              46
+            ]
+          ]
+        },
+        {
+          "material": "ends_10",
+          "tile": "c65b0a1c698cd7d9",
+          "source": {
+            "image": "art/wall_ends_10.png",
+            "sha256": "76746e3b3b849f627d76609a2bdc039e66a1f2672117d9f1d4b53f52e4963535"
+          },
+          "width": 16,
+          "height": 64,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#522910",
+            "#944a21",
+            "#94734a",
+            "#e7b57b",
+            "#ce9c63",
+            "#392918",
+            "#182921",
+            "#294a39",
+            "#102918",
+            "#4a3929",
+            "#7b6342",
+            "#634a29",
+            "#946b42"
+          ],
+          "slot": 16,
+          "x": 48,
+          "y": 72,
+          "gutter": 1,
+          "window": null,
+          "palette": 272,
+          "first_colour": 4352,
+          "indices": {
+            "#522910": 1,
+            "#944a21": 2,
+            "#94734a": 3,
+            "#e7b57b": 4,
+            "#ce9c63": 5,
+            "#392918": 6,
+            "#182921": 7,
+            "#294a39": 8,
+            "#102918": 9,
+            "#4a3929": 10,
+            "#7b6342": 11,
+            "#634a29": 12,
+            "#946b42": 13
+          },
+          "vram_bytes": 585,
+          "night": "per_colour",
+          "faces": [
+            [
+              46,
+              48
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "ends_0": {
+          "color": "#2c3638",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              4,
+              6
+            ]
+          ]
+        },
+        "ends_1": {
+          "color": "#846c4d",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        "ends_10": {
+          "color": "#a3784a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              46,
+              48
+            ]
+          ]
+        },
+        "ends_2": {
+          "color": "#6f261c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              12,
+              14
+            ]
+          ]
+        },
+        "ends_3": {
+          "color": "#2f4122",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              14,
+              16
+            ]
+          ]
+        },
+        "ends_4": {
+          "color": "#a3784a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              18,
+              20
+            ]
+          ]
+        },
+        "ends_5": {
+          "color": "#a15024",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              22,
+              24
+            ]
+          ]
+        },
+        "ends_6": {
+          "color": "#2c3638",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              28,
+              30
+            ]
+          ]
+        },
+        "ends_7": {
+          "color": "#2f563d",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              32,
+              34
+            ]
+          ]
+        },
+        "ends_8": {
+          "color": "#846c4d",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              36,
+              38
+            ]
+          ]
+        },
+        "ends_9": {
+          "color": "#6f261c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              42,
+              44
+            ]
+          ]
+        },
+        "roof_0": {
+          "color": "#725433",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              2,
+              4
+            ]
+          ]
+        },
+        "roof_1": {
+          "color": "#212d18",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              6,
+              8
+            ]
+          ]
+        },
+        "roof_4": {
+          "color": "#5d4b36",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              16,
+              18
+            ]
+          ]
+        },
+        "roof_5": {
+          "color": "#213c2b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              20,
+              22
+            ]
+          ]
+        },
+        "roof_6": {
+          "color": "#35351b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              26,
+              28
+            ]
+          ]
+        },
+        "roof_8": {
+          "color": "#713819",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              34,
+              36
+            ]
+          ]
+        },
+        "roof_9": {
+          "color": "#212d18",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              40,
+              42
+            ]
+          ]
+        },
+        "sides_0": {
+          "color": "#2c3638",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              0,
+              2
+            ]
+          ]
+        },
+        "sides_10": {
+          "color": "#a3784a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              44,
+              46
+            ]
+          ]
+        },
+        "sides_2": {
+          "color": "#6f261c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              10,
+              12
+            ]
+          ]
+        },
+        "sides_6": {
+          "color": "#2c3638",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              24,
+              26
+            ]
+          ]
+        },
+        "sides_7": {
+          "color": "#2f563d",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              30,
+              32
+            ]
+          ]
+        },
+        "sides_9": {
+          "color": "#6f261c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              38,
+              40
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "stage_port_kerb",
+      "mesh": "stage_port_kerb.bin",
+      "levels": [],
+      "vertices": 38,
+      "triangles": 40,
+      "materials": {
+        "cap": {
+          "color": "#bd7929",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              18,
+              20
+            ],
+            [
+              36,
+              38
+            ]
+          ]
+        },
+        "coping": {
+          "color": "#7a5b3c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              0,
+              2
+            ]
+          ]
+        },
+        "iron": {
+          "color": "#36281c",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 32,
+          "faces": [
+            [
+              4,
+              18
+            ],
+            [
+              20,
+              36
+            ],
+            [
+              38,
+              40
+            ]
+          ]
+        },
+        "paint": {
+          "color": "#d2872e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              2,
+              4
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    }
+  ],
+  "textures": {
+    "slots": [
+      16
+    ],
+    "palettes": {
+      "file": "stage_port_props.tpal",
+      "runs": [
+        {
+          "bits": 4,
+          "first_colour": 4096,
+          "colours": 272,
+          "offset": 0
+        }
+      ]
+    },
+    "tiles": 17,
+    "vram_bytes": 16281,
+    "vram_bytes_allocated": 21408,
+    "palettes_4bit": [
+      256,
+      257,
+      258,
+      259,
+      260,
+      261,
+      262,
+      263,
+      264,
+      265,
+      266,
+      267,
+      268,
+      269,
+      270,
+      271,
+      272
+    ],
+    "palettes_8bit": []
+  }
+}

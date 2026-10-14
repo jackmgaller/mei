@@ -1,0 +1,1963 @@
+{
+  "format": "mei-asset-pack",
+  "version": 1,
+  "name": "stage_port_harbour",
+  "assets": [
+    {
+      "name": "stage_port_water",
+      "mesh": "stage_port_water.bin",
+      "levels": [],
+      "vertices": 27,
+      "triangles": 22,
+      "textures": [
+        {
+          "material": "water",
+          "tile": "6691bd51ba0512a1",
+          "source": {
+            "image": "art/ripples.png",
+            "sha256": "7eaa6d06fbc84e84c38eab0289888a1b2a07a040763285308ddc38fd79e0ff7e"
+          },
+          "width": 32,
+          "height": 32,
+          "bits": 4,
+          "projection": "planar",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#000808",
+            "#101018",
+            "#522910"
+          ],
+          "slot": 17,
+          "x": 120,
+          "y": 32,
+          "gutter": 0,
+          "window": 9083,
+          "palette": 293,
+          "first_colour": 4688,
+          "indices": {
+            "#000808": 1,
+            "#101018": 2,
+            "#522910": 3
+          },
+          "vram_bytes": 512,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              16
+            ]
+          ]
+        },
+        {
+          "material": "streak",
+          "tile": "1ebce42d2667e084",
+          "source": {
+            "image": "art/streak.png",
+            "sha256": "b3102d3343bd36d7be3d5ffa2c5ab55752659186ab1f85977cc3e257370dc7d0"
+          },
+          "width": 8,
+          "height": 32,
+          "bits": 4,
+          "projection": "planar",
+          "repeat": true,
+          "cutout": true,
+          "colours": [
+            "#de7b29"
+          ],
+          "slot": 17,
+          "x": 248,
+          "y": 0,
+          "gutter": 0,
+          "window": 1017,
+          "palette": 293,
+          "first_colour": 4688,
+          "indices": {
+            "#de7b29": 4
+          },
+          "vram_bytes": 128,
+          "night": "per_colour",
+          "faces": [
+            [
+              16,
+              22
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        9083,
+        1017
+      ],
+      "materials": {
+        "streak": {
+          "color": "#f0b860",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              16,
+              22
+            ]
+          ],
+          "blend": "add"
+        },
+        "water": {
+          "color": "#06080d",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              0,
+              16
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "stage_port_apron",
+      "mesh": "stage_port_apron.bin",
+      "levels": [],
+      "vertices": 36,
+      "triangles": 32,
+      "palette": {
+        "palettes": [
+          288
+        ],
+        "entries": [
+          {
+            "colour": 4609,
+            "class": "emissive",
+            "color": "#6b5034",
+            "materials": [
+              "coping"
+            ]
+          },
+          {
+            "colour": 4610,
+            "class": "emissive",
+            "color": "#ac6e26",
+            "materials": [
+              "edge"
+            ]
+          },
+          {
+            "colour": 4611,
+            "class": "emissive",
+            "color": "#866746",
+            "materials": [
+              "rail"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "asphalt",
+          "tile": "634bfd982b99c809",
+          "source": {
+            "image": "art/asphalt.png",
+            "sha256": "57094b80463449dd6984e9a0ffc6510f19b6931308e8d674ac377a6aa1850bf3"
+          },
+          "width": 32,
+          "height": 32,
+          "bits": 4,
+          "projection": "planar",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#181810",
+            "#392921",
+            "#292118",
+            "#423929",
+            "#212118"
+          ],
+          "slot": 17,
+          "x": 152,
+          "y": 32,
+          "gutter": 0,
+          "window": 9115,
+          "palette": 293,
+          "first_colour": 4688,
+          "indices": {
+            "#181810": 5,
+            "#392921": 6,
+            "#292118": 7,
+            "#423929": 8,
+            "#212118": 9
+          },
+          "vram_bytes": 512,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              2
+            ],
+            [
+              12,
+              32
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        9115
+      ],
+      "materials": {
+        "asphalt": {
+          "color": "#3a2f24",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              0,
+              2
+            ],
+            [
+              12,
+              32
+            ]
+          ]
+        },
+        "coping": {
+          "color": "#6b5034",
+          "class": "emissive",
+          "palette_colour": 4609,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              4,
+              6
+            ],
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        "edge": {
+          "color": "#ac6e26",
+          "class": "emissive",
+          "palette_colour": 4610,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              6,
+              8
+            ],
+            [
+              10,
+              12
+            ]
+          ]
+        },
+        "rail": {
+          "color": "#866746",
+          "class": "emissive",
+          "palette_colour": 4611,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              2,
+              4
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "stage_port_crane_a",
+      "mesh": "stage_port_crane_a.bin",
+      "levels": [],
+      "vertices": 209,
+      "triangles": 142,
+      "palette": {
+        "palettes": [
+          289
+        ],
+        "entries": [
+          {
+            "colour": 4625,
+            "class": "emissive",
+            "color": "#e69b49",
+            "materials": [
+              "glass"
+            ]
+          },
+          {
+            "colour": 4626,
+            "class": "emissive",
+            "color": "#ffa042",
+            "materials": [
+              "lamp"
+            ]
+          },
+          {
+            "colour": 4627,
+            "class": "emissive",
+            "color": "#ff3a2a",
+            "materials": [
+              "red"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "halo",
+          "tile": "866fb5c6fe94ead8",
+          "source": {
+            "image": "art/halo.png",
+            "sha256": "c0d3faaaa9af2b2a207ff58bbf1a1bce44c9759236bfe80ccf3bb56e3ab5fe93"
+          },
+          "width": 16,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": true,
+          "colours": [
+            "#000000",
+            "#080000",
+            "#080800",
+            "#181008",
+            "#211808",
+            "#312108",
+            "#422910",
+            "#312110",
+            "#5a3918",
+            "#634218",
+            "#7b5221",
+            "#8c5a29",
+            "#9c6331",
+            "#b57339",
+            "#de9442"
+          ],
+          "slot": 17,
+          "x": 168,
+          "y": 64,
+          "gutter": 1,
+          "window": null,
+          "palette": 294,
+          "first_colour": 4704,
+          "indices": {
+            "#000000": 1,
+            "#080000": 2,
+            "#080800": 3,
+            "#181008": 4,
+            "#211808": 5,
+            "#312108": 6,
+            "#422910": 7,
+            "#312110": 8,
+            "#5a3918": 9,
+            "#634218": 10,
+            "#7b5221": 11,
+            "#8c5a29": 12,
+            "#9c6331": 13,
+            "#b57339": 14,
+            "#de9442": 15
+          },
+          "vram_bytes": 153,
+          "night": "per_colour",
+          "faces": [
+            [
+              108,
+              110
+            ],
+            [
+              114,
+              116
+            ]
+          ]
+        },
+        {
+          "material": "hanging",
+          "tile": "8ee515b043f114d7",
+          "source": {
+            "image": "art/hanging.png",
+            "sha256": "dd249b5e24ee58cce30009129b91caaaea6dcaafb85f0dc95b1e13b780c3901a"
+          },
+          "width": 32,
+          "height": 8,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#633110",
+            "#7b3918",
+            "#733918",
+            "#944a21",
+            "#a55a31",
+            "#ad6339",
+            "#bd7b4a",
+            "#b57b4a",
+            "#d6945a",
+            "#844218"
+          ],
+          "slot": 17,
+          "x": 192,
+          "y": 64,
+          "gutter": 1,
+          "window": null,
+          "palette": 295,
+          "first_colour": 4720,
+          "indices": {
+            "#633110": 1,
+            "#7b3918": 2,
+            "#733918": 3,
+            "#944a21": 4,
+            "#a55a31": 5,
+            "#ad6339": 6,
+            "#bd7b4a": 7,
+            "#b57b4a": 8,
+            "#d6945a": 9,
+            "#844218": 10
+          },
+          "vram_bytes": 153,
+          "night": "per_colour",
+          "faces": [
+            [
+              134,
+              136
+            ]
+          ]
+        }
+      ],
+      "windows": [],
+      "materials": {
+        "dark": {
+          "color": "#201913",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              6,
+              10
+            ],
+            [
+              22,
+              26
+            ],
+            [
+              126,
+              134
+            ],
+            [
+              136,
+              142
+            ]
+          ]
+        },
+        "glass": {
+          "color": "#e69b49",
+          "class": "emissive",
+          "palette_colour": 4625,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              120,
+              122
+            ]
+          ]
+        },
+        "halo": {
+          "color": "#ffaa50",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              108,
+              110
+            ],
+            [
+              114,
+              116
+            ]
+          ],
+          "blend": "add"
+        },
+        "hanging": {
+          "color": "#a15024",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              134,
+              136
+            ]
+          ]
+        },
+        "lamp": {
+          "color": "#ffa042",
+          "class": "emissive",
+          "palette_colour": 4626,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              60,
+              68
+            ],
+            [
+              104,
+              108
+            ],
+            [
+              110,
+              114
+            ]
+          ]
+        },
+        "red": {
+          "color": "#ff3a2a",
+          "class": "emissive",
+          "palette_colour": 4627,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              92,
+              98
+            ]
+          ]
+        },
+        "steel": {
+          "color": "#6aa2bc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 68,
+          "faces": [
+            [
+              0,
+              6
+            ],
+            [
+              10,
+              22
+            ],
+            [
+              26,
+              52
+            ],
+            [
+              54,
+              56
+            ],
+            [
+              74,
+              78
+            ],
+            [
+              84,
+              88
+            ],
+            [
+              98,
+              104
+            ],
+            [
+              116,
+              120
+            ],
+            [
+              122,
+              126
+            ]
+          ]
+        },
+        "trim": {
+          "color": "#6aa2bc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 22,
+          "faces": [
+            [
+              52,
+              54
+            ],
+            [
+              56,
+              60
+            ],
+            [
+              68,
+              74
+            ],
+            [
+              78,
+              84
+            ],
+            [
+              88,
+              92
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "stage_port_crane_b",
+      "mesh": "stage_port_crane_b.bin",
+      "levels": [],
+      "vertices": 118,
+      "triangles": 86,
+      "palette": {
+        "palettes": [
+          290
+        ],
+        "entries": [
+          {
+            "colour": 4641,
+            "class": "emissive",
+            "color": "#ff3a2a",
+            "materials": [
+              "red"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "trim",
+          "tile": "8c0c8fabf6bee9a1",
+          "source": {
+            "pattern": "stripes",
+            "params": {
+              "count": 2,
+              "axis": "v"
+            }
+          },
+          "width": 16,
+          "height": 16,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#ad2110",
+            "#bd8c5a"
+          ],
+          "slot": 17,
+          "x": 0,
+          "y": 8,
+          "gutter": 0,
+          "window": 2562,
+          "palette": 293,
+          "first_colour": 4688,
+          "indices": {
+            "#ad2110": 10,
+            "#bd8c5a": 11
+          },
+          "vram_bytes": 128,
+          "night": "per_colour",
+          "faces": [
+            [
+              44,
+              46
+            ],
+            [
+              48,
+              66
+            ],
+            [
+              68,
+              74
+            ],
+            [
+              76,
+              80
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        2562
+      ],
+      "materials": {
+        "red": {
+          "color": "#ff3a2a",
+          "class": "emissive",
+          "palette_colour": 4641,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              80,
+              86
+            ]
+          ]
+        },
+        "steel": {
+          "color": "#d8d4cc",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 50,
+          "faces": [
+            [
+              0,
+              44
+            ],
+            [
+              46,
+              48
+            ],
+            [
+              66,
+              68
+            ],
+            [
+              74,
+              76
+            ]
+          ]
+        },
+        "trim": {
+          "color": "#af2214",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 30,
+          "faces": [
+            [
+              44,
+              46
+            ],
+            [
+              48,
+              66
+            ],
+            [
+              68,
+              74
+            ],
+            [
+              76,
+              80
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "stage_port_ship",
+      "mesh": "stage_port_ship.bin",
+      "levels": [],
+      "vertices": 106,
+      "triangles": 86,
+      "palette": {
+        "palettes": [
+          291
+        ],
+        "entries": [
+          {
+            "colour": 4657,
+            "class": "emissive",
+            "color": "#654f37",
+            "materials": [
+              "funnel_s",
+              "mast"
+            ]
+          },
+          {
+            "colour": 4658,
+            "class": "emissive",
+            "color": "#ff3a2a",
+            "materials": [
+              "red"
+            ]
+          },
+          {
+            "colour": 4659,
+            "class": "emissive",
+            "color": "#191e1f",
+            "materials": [
+              "transom"
+            ]
+          },
+          {
+            "colour": 4660,
+            "class": "emissive",
+            "color": "#fff4e0",
+            "materials": [
+              "white"
+            ]
+          },
+          {
+            "colour": 4661,
+            "class": "emissive",
+            "color": "#7e6244",
+            "materials": [
+              "wing"
+            ]
+          },
+          {
+            "colour": 4662,
+            "class": "emissive",
+            "color": "#5b4731",
+            "materials": [
+              "wing_under"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "hull_stern",
+          "tile": "0a9921281b619ef9",
+          "source": {
+            "image": "art/hull_stern.png",
+            "sha256": "062dbf9e169936621c4240fdf2c9a483fb2aa68314f2e199a91f80cb81507658"
+          },
+          "width": 128,
+          "height": 18,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#c69c6b",
+            "#efb573",
+            "#181821",
+            "#212129",
+            "#182121",
+            "#631810"
+          ],
+          "slot": 17,
+          "x": 0,
+          "y": 120,
+          "gutter": 1,
+          "window": null,
+          "palette": 296,
+          "first_colour": 4736,
+          "indices": {
+            "#c69c6b": 1,
+            "#efb573": 2,
+            "#181821": 3,
+            "#212129": 4,
+            "#182121": 5,
+            "#631810": 6
+          },
+          "vram_bytes": 1235,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              2
+            ]
+          ]
+        },
+        {
+          "material": "hull_name",
+          "tile": "fe3b9d4991c5c10a",
+          "source": {
+            "image": "art/hull_name.png",
+            "sha256": "05251fb46e262f87c27cf33af71a4f2406d335390ae88f281e8cb6972de6dafd"
+          },
+          "width": 160,
+          "height": 18,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#c69c6b",
+            "#efb573",
+            "#181821",
+            "#212129",
+            "#182121",
+            "#d6a573",
+            "#631810"
+          ],
+          "slot": 17,
+          "x": 0,
+          "y": 72,
+          "gutter": 1,
+          "window": null,
+          "palette": 296,
+          "first_colour": 4736,
+          "indices": {
+            "#c69c6b": 1,
+            "#efb573": 2,
+            "#181821": 3,
+            "#212129": 4,
+            "#182121": 5,
+            "#631810": 6,
+            "#d6a573": 7
+          },
+          "vram_bytes": 1539,
+          "night": "per_colour",
+          "faces": [
+            [
+              4,
+              6
+            ]
+          ]
+        },
+        {
+          "material": "hull_bow",
+          "tile": "fd8d4a5c8e175416",
+          "source": {
+            "image": "art/hull_bow.png",
+            "sha256": "6750322acb84de2767247a011f3b3abbe776106e06727f2b53e0628049301962"
+          },
+          "width": 160,
+          "height": 18,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#c69c6b",
+            "#efb573",
+            "#181821",
+            "#212129",
+            "#182121",
+            "#631810"
+          ],
+          "slot": 17,
+          "x": 0,
+          "y": 96,
+          "gutter": 1,
+          "window": null,
+          "palette": 296,
+          "first_colour": 4736,
+          "indices": {
+            "#c69c6b": 1,
+            "#efb573": 2,
+            "#181821": 3,
+            "#212129": 4,
+            "#182121": 5,
+            "#631810": 6
+          },
+          "vram_bytes": 1539,
+          "night": "per_colour",
+          "faces": [
+            [
+              6,
+              8
+            ]
+          ]
+        },
+        {
+          "material": "house_f",
+          "tile": "681d917fba27f8ef",
+          "source": {
+            "image": "art/house_front.png",
+            "sha256": "a4765fb03af14a04a53a33d7154afc2124ed3d096547c062a1c9648aa29cfbc9"
+          },
+          "width": 32,
+          "height": 64,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#6b5239",
+            "#a57b4a",
+            "#ffad52",
+            "#211818"
+          ],
+          "slot": 17,
+          "x": 80,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 293,
+          "first_colour": 4688,
+          "indices": {
+            "#6b5239": 12,
+            "#a57b4a": 13,
+            "#ffad52": 14,
+            "#211818": 15
+          },
+          "vram_bytes": 1105,
+          "night": "per_colour",
+          "faces": [
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        {
+          "material": "house_s",
+          "tile": "84a2745b56bb4661",
+          "source": {
+            "image": "art/house_side.png",
+            "sha256": "369e71381383a154f85976b3b425f9851e0d676bbbe5e1713e4ff67a93097b9d"
+          },
+          "width": 56,
+          "height": 64,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#6b5239",
+            "#a57b4a",
+            "#ffad52",
+            "#211818"
+          ],
+          "slot": 17,
+          "x": 16,
+          "y": 0,
+          "gutter": 1,
+          "window": null,
+          "palette": 293,
+          "first_colour": 4688,
+          "indices": {
+            "#6b5239": 12,
+            "#a57b4a": 13,
+            "#ffad52": 14,
+            "#211818": 15
+          },
+          "vram_bytes": 1885,
+          "night": "per_colour",
+          "faces": [
+            [
+              10,
+              14
+            ]
+          ]
+        },
+        {
+          "material": "funnel",
+          "tile": "802d96c42c40d6fa",
+          "source": {
+            "image": "art/funnel.png",
+            "sha256": "4cfbc651486f118eb6e2d5412ec0630a7536449360b3634b25467ba2c86825fb"
+          },
+          "width": 16,
+          "height": 24,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": false,
+          "colours": [
+            "#100808",
+            "#ad7b52",
+            "#213131",
+            "#e7b57b"
+          ],
+          "slot": 17,
+          "x": 216,
+          "y": 32,
+          "gutter": 1,
+          "window": null,
+          "palette": 295,
+          "first_colour": 4720,
+          "indices": {
+            "#100808": 11,
+            "#ad7b52": 12,
+            "#213131": 13,
+            "#e7b57b": 14
+          },
+          "vram_bytes": 225,
+          "night": "per_colour",
+          "faces": [
+            [
+              22,
+              24
+            ]
+          ]
+        },
+        {
+          "material": "cargo",
+          "tile": "6cbefc613886dc2a",
+          "source": {
+            "image": "art/cargo_sides.png",
+            "sha256": "34d82cc4917f2a53d22e7732d7a6b6c230309d33ba6766ffff37e1d54c1ed4cc"
+          },
+          "width": 64,
+          "height": 32,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#5a4229",
+            "#735231",
+            "#523118",
+            "#101010",
+            "#182129",
+            "#212929",
+            "#946b42",
+            "#8c5a39",
+            "#293131",
+            "#5a5242",
+            "#84735a",
+            "#846b52",
+            "#bd8c5a",
+            "#733918",
+            "#8c4a21"
+          ],
+          "slot": 17,
+          "x": 120,
+          "y": 0,
+          "gutter": 0,
+          "window": 892,
+          "palette": 297,
+          "first_colour": 4752,
+          "indices": {
+            "#5a4229": 1,
+            "#735231": 2,
+            "#523118": 3,
+            "#101010": 4,
+            "#182129": 5,
+            "#212929": 6,
+            "#946b42": 7,
+            "#8c5a39": 8,
+            "#293131": 9,
+            "#5a5242": 10,
+            "#84735a": 11,
+            "#846b52": 12,
+            "#bd8c5a": 13,
+            "#733918": 14,
+            "#8c4a21": 15
+          },
+          "vram_bytes": 1024,
+          "night": "per_colour",
+          "faces": [
+            [
+              54,
+              56
+            ],
+            [
+              58,
+              60
+            ],
+            [
+              62,
+              64
+            ],
+            [
+              66,
+              68
+            ],
+            [
+              70,
+              72
+            ],
+            [
+              74,
+              76
+            ],
+            [
+              78,
+              80
+            ],
+            [
+              82,
+              84
+            ]
+          ]
+        },
+        {
+          "material": "cargo_end",
+          "tile": "24e27540dad897cb",
+          "source": {
+            "image": "art/cargo_ends.png",
+            "sha256": "756f4e5e8ebe56ef3ed4f4bbd8b70e4e1af4ba8ec191b43365677a19b271bf92"
+          },
+          "width": 32,
+          "height": 32,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#293129",
+            "#634a31",
+            "#292118",
+            "#394231",
+            "#a57b52",
+            "#94734a",
+            "#846b4a",
+            "#5a4a39",
+            "#6b5a42",
+            "#735a31",
+            "#9c7342",
+            "#633921",
+            "#8c5a39",
+            "#734a29",
+            "#6b5231"
+          ],
+          "slot": 17,
+          "x": 184,
+          "y": 32,
+          "gutter": 0,
+          "window": 9147,
+          "palette": 298,
+          "first_colour": 4768,
+          "indices": {
+            "#293129": 1,
+            "#634a31": 2,
+            "#292118": 3,
+            "#394231": 4,
+            "#a57b52": 5,
+            "#94734a": 6,
+            "#846b4a": 7,
+            "#5a4a39": 8,
+            "#6b5a42": 9,
+            "#735a31": 10,
+            "#9c7342": 11,
+            "#633921": 12,
+            "#8c5a39": 13,
+            "#734a29": 14,
+            "#6b5231": 15
+          },
+          "vram_bytes": 512,
+          "night": "per_colour",
+          "faces": [
+            [
+              56,
+              58
+            ],
+            [
+              60,
+              62
+            ],
+            [
+              64,
+              66
+            ],
+            [
+              68,
+              70
+            ],
+            [
+              72,
+              74
+            ],
+            [
+              76,
+              78
+            ],
+            [
+              80,
+              82
+            ],
+            [
+              84,
+              86
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        892,
+        9147
+      ],
+      "materials": {
+        "cargo": {
+          "color": "#232b2d",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              54,
+              56
+            ],
+            [
+              58,
+              60
+            ],
+            [
+              62,
+              64
+            ],
+            [
+              66,
+              68
+            ],
+            [
+              70,
+              72
+            ],
+            [
+              74,
+              76
+            ],
+            [
+              78,
+              80
+            ],
+            [
+              82,
+              84
+            ]
+          ]
+        },
+        "cargo_end": {
+          "color": "#1a2021",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 16,
+          "faces": [
+            [
+              56,
+              58
+            ],
+            [
+              60,
+              62
+            ],
+            [
+              64,
+              66
+            ],
+            [
+              68,
+              70
+            ],
+            [
+              72,
+              74
+            ],
+            [
+              76,
+              78
+            ],
+            [
+              80,
+              82
+            ],
+            [
+              84,
+              86
+            ]
+          ]
+        },
+        "funnel": {
+          "color": "#8e6f4c",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              22,
+              24
+            ]
+          ]
+        },
+        "funnel_s": {
+          "color": "#654f37",
+          "class": "emissive",
+          "palette_colour": 4657,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              24,
+              28
+            ]
+          ]
+        },
+        "house_f": {
+          "color": "#9e7b55",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              8,
+              10
+            ]
+          ]
+        },
+        "house_s": {
+          "color": "#7a5f41",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              10,
+              14
+            ]
+          ]
+        },
+        "hull_bow": {
+          "color": "#23292a",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              6,
+              8
+            ]
+          ]
+        },
+        "hull_name": {
+          "color": "#23292a",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              4,
+              6
+            ]
+          ]
+        },
+        "hull_stern": {
+          "color": "#23292a",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              0,
+              2
+            ]
+          ]
+        },
+        "mast": {
+          "color": "#654f37",
+          "class": "emissive",
+          "palette_colour": 4657,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              28,
+              34
+            ]
+          ]
+        },
+        "red": {
+          "color": "#ff3a2a",
+          "class": "emissive",
+          "palette_colour": 4658,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              34,
+              44
+            ]
+          ]
+        },
+        "transom": {
+          "color": "#191e1f",
+          "class": "emissive",
+          "palette_colour": 4659,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              2,
+              4
+            ]
+          ]
+        },
+        "white": {
+          "color": "#fff4e0",
+          "class": "emissive",
+          "palette_colour": 4660,
+          "tag": null,
+          "triangles": 10,
+          "faces": [
+            [
+              44,
+              54
+            ]
+          ]
+        },
+        "wing": {
+          "color": "#7e6244",
+          "class": "emissive",
+          "palette_colour": 4661,
+          "tag": null,
+          "triangles": 6,
+          "faces": [
+            [
+              14,
+              16
+            ],
+            [
+              18,
+              22
+            ]
+          ]
+        },
+        "wing_under": {
+          "color": "#5b4731",
+          "class": "emissive",
+          "palette_colour": 4662,
+          "tag": null,
+          "triangles": 2,
+          "faces": [
+            [
+              16,
+              18
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    },
+    {
+      "name": "stage_port_yard",
+      "mesh": "stage_port_yard.bin",
+      "levels": [],
+      "vertices": 64,
+      "triangles": 48,
+      "palette": {
+        "palettes": [
+          292
+        ],
+        "entries": [
+          {
+            "colour": 4673,
+            "class": "emissive",
+            "color": "#ffa042",
+            "materials": [
+              "lamp"
+            ]
+          }
+        ]
+      },
+      "textures": [
+        {
+          "material": "stack",
+          "tile": "d566cdb6a7d293a6",
+          "source": {
+            "image": "art/yard_sides.png",
+            "sha256": "02638d4977648e18af3a7bbfbcd36659a7defcf864dced17b7878b0b8c177417"
+          },
+          "width": 64,
+          "height": 32,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#5a4a29",
+            "#6b5231",
+            "#845a39",
+            "#735231",
+            "#4a3929",
+            "#101008",
+            "#946b42",
+            "#313921",
+            "#6b6342",
+            "#213921",
+            "#394a31",
+            "#94734a",
+            "#bd8c5a",
+            "#733918",
+            "#944a21"
+          ],
+          "slot": 17,
+          "x": 184,
+          "y": 0,
+          "gutter": 0,
+          "window": 956,
+          "palette": 299,
+          "first_colour": 4784,
+          "indices": {
+            "#5a4a29": 1,
+            "#6b5231": 2,
+            "#845a39": 3,
+            "#735231": 4,
+            "#4a3929": 5,
+            "#101008": 6,
+            "#946b42": 7,
+            "#313921": 8,
+            "#6b6342": 9,
+            "#213921": 10,
+            "#394a31": 11,
+            "#94734a": 12,
+            "#bd8c5a": 13,
+            "#733918": 14,
+            "#944a21": 15
+          },
+          "vram_bytes": 1024,
+          "night": "per_colour",
+          "faces": [
+            [
+              0,
+              2
+            ],
+            [
+              4,
+              6
+            ],
+            [
+              8,
+              10
+            ],
+            [
+              12,
+              14
+            ]
+          ]
+        },
+        {
+          "material": "stack_end",
+          "tile": "24e27540dad897cb",
+          "source": {
+            "image": "art/cargo_ends.png",
+            "sha256": "756f4e5e8ebe56ef3ed4f4bbd8b70e4e1af4ba8ec191b43365677a19b271bf92"
+          },
+          "width": 32,
+          "height": 32,
+          "bits": 4,
+          "projection": "box",
+          "repeat": true,
+          "cutout": false,
+          "colours": [
+            "#293129",
+            "#634a31",
+            "#292118",
+            "#394231",
+            "#a57b52",
+            "#94734a",
+            "#846b4a",
+            "#5a4a39",
+            "#6b5a42",
+            "#735a31",
+            "#9c7342",
+            "#633921",
+            "#8c5a39",
+            "#734a29",
+            "#6b5231"
+          ],
+          "slot": 17,
+          "x": 184,
+          "y": 32,
+          "gutter": 0,
+          "window": 9147,
+          "palette": 298,
+          "first_colour": 4768,
+          "indices": {
+            "#293129": 1,
+            "#634a31": 2,
+            "#292118": 3,
+            "#394231": 4,
+            "#a57b52": 5,
+            "#94734a": 6,
+            "#846b4a": 7,
+            "#5a4a39": 8,
+            "#6b5a42": 9,
+            "#735a31": 10,
+            "#9c7342": 11,
+            "#633921": 12,
+            "#8c5a39": 13,
+            "#734a29": 14,
+            "#6b5231": 15
+          },
+          "vram_bytes": 512,
+          "night": "per_colour",
+          "faces": [
+            [
+              2,
+              4
+            ],
+            [
+              6,
+              8
+            ],
+            [
+              10,
+              12
+            ],
+            [
+              14,
+              16
+            ]
+          ]
+        },
+        {
+          "material": "halo",
+          "tile": "866fb5c6fe94ead8",
+          "source": {
+            "image": "art/halo.png",
+            "sha256": "c0d3faaaa9af2b2a207ff58bbf1a1bce44c9759236bfe80ccf3bb56e3ab5fe93"
+          },
+          "width": 16,
+          "height": 16,
+          "bits": 4,
+          "projection": "fit",
+          "repeat": false,
+          "cutout": true,
+          "colours": [
+            "#000000",
+            "#080000",
+            "#080800",
+            "#181008",
+            "#211808",
+            "#312108",
+            "#422910",
+            "#312110",
+            "#5a3918",
+            "#634218",
+            "#7b5221",
+            "#8c5a29",
+            "#9c6331",
+            "#b57339",
+            "#de9442"
+          ],
+          "slot": 17,
+          "x": 168,
+          "y": 64,
+          "gutter": 1,
+          "window": null,
+          "palette": 294,
+          "first_colour": 4704,
+          "indices": {
+            "#000000": 1,
+            "#080000": 2,
+            "#080800": 3,
+            "#181008": 4,
+            "#211808": 5,
+            "#312108": 6,
+            "#422910": 7,
+            "#312110": 8,
+            "#5a3918": 9,
+            "#634218": 10,
+            "#7b5221": 11,
+            "#8c5a29": 12,
+            "#9c6331": 13,
+            "#b57339": 14,
+            "#de9442": 15
+          },
+          "vram_bytes": 153,
+          "night": "per_colour",
+          "faces": [
+            [
+              30,
+              32
+            ],
+            [
+              46,
+              48
+            ]
+          ]
+        }
+      ],
+      "windows": [
+        956,
+        9147
+      ],
+      "materials": {
+        "halo": {
+          "color": "#ffaa50",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              30,
+              32
+            ],
+            [
+              46,
+              48
+            ]
+          ],
+          "blend": "add"
+        },
+        "head": {
+          "color": "#372b1e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              24,
+              30
+            ],
+            [
+              40,
+              46
+            ]
+          ]
+        },
+        "lamp": {
+          "color": "#ffa042",
+          "class": "emissive",
+          "palette_colour": 4673,
+          "tag": null,
+          "triangles": 4,
+          "faces": [
+            [
+              22,
+              24
+            ],
+            [
+              38,
+              40
+            ]
+          ]
+        },
+        "pole": {
+          "color": "#503f2b",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 12,
+          "faces": [
+            [
+              16,
+              22
+            ],
+            [
+              32,
+              38
+            ]
+          ]
+        },
+        "stack": {
+          "color": "#212d18",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              0,
+              2
+            ],
+            [
+              4,
+              6
+            ],
+            [
+              8,
+              10
+            ],
+            [
+              12,
+              14
+            ]
+          ]
+        },
+        "stack_end": {
+          "color": "#1a2412",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 8,
+          "faces": [
+            [
+              2,
+              4
+            ],
+            [
+              6,
+              8
+            ],
+            [
+              10,
+              12
+            ],
+            [
+              14,
+              16
+            ]
+          ]
+        }
+      },
+      "tags": {}
+    }
+  ],
+  "textures": {
+    "slots": [
+      17
+    ],
+    "palettes": {
+      "file": "stage_port_harbour.tpal",
+      "runs": [
+        {
+          "bits": 4,
+          "first_colour": 4688,
+          "colours": 112,
+          "offset": 0
+        }
+      ]
+    },
+    "tiles": 15,
+    "vram_bytes": 11674,
+    "vram_bytes_allocated": 14240,
+    "palettes_4bit": [
+      293,
+      294,
+      295,
+      296,
+      297,
+      298,
+      299
+    ],
+    "palettes_8bit": []
+  },
+  "swatch": {
+    "file": "stage_port_harbour.swatch",
+    "slot": 17,
+    "row": 0,
+    "texels": 16
+  },
+  "palette": {
+    "file": "stage_port_harbour.pal",
+    "runs": [
+      {
+        "first_colour": 4608,
+        "colours": 16
+      },
+      {
+        "first_colour": 4624,
+        "colours": 16
+      },
+      {
+        "first_colour": 4640,
+        "colours": 16
+      },
+      {
+        "first_colour": 4656,
+        "colours": 16
+      },
+      {
+        "first_colour": 4672,
+        "colours": 16
+      }
+    ]
+  }
+}

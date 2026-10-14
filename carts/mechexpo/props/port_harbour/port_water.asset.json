@@ -1,0 +1,169 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "stage_port_water",
+ "budget": {
+  "vertices": 2000,
+  "triangles": 40
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.62
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "water": {
+   "color": "#06080d",
+   "class": "emissive",
+   "texture": {
+    "image": "art/ripples.png",
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     32.0,
+     32.0
+    ]
+   }
+  },
+  "streak": {
+   "color": "#f0b860",
+   "class": "emissive",
+   "texture": {
+    "image": "art/streak.png",
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     1.6,
+     12.0
+    ]
+   },
+   "blend": "add"
+  }
+ },
+ "nodes": [
+  {
+   "id": "water_near",
+   "op": "box",
+   "size": [
+    376.0,
+    1.0,
+    12.0
+   ],
+   "material": "water",
+   "transform": {
+    "translate": [
+     -212.0,
+     -4.0,
+     -12.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "water",
+   "op": "box",
+   "size": [
+    376.0,
+    1.0,
+    166.0
+   ],
+   "material": "water",
+   "transform": {
+    "translate": [
+     -212.0,
+     -4.0,
+     77.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "streak_0",
+   "op": "box",
+   "size": [
+    1.6,
+    0.1,
+    72.0
+   ],
+   "material": "streak",
+   "transform": {
+    "translate": [
+     -22.5,
+     -3.45,
+     94.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "streak_1",
+   "op": "box",
+   "size": [
+    1.6,
+    0.1,
+    86.0
+   ],
+   "material": "streak",
+   "transform": {
+    "translate": [
+     -31.0,
+     -3.45,
+     97.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "streak_2",
+   "op": "box",
+   "size": [
+    1.6,
+    0.1,
+    68.0
+   ],
+   "material": "streak",
+   "transform": {
+    "translate": [
+     -60.0,
+     -3.45,
+     124.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  }
+ ]
+}

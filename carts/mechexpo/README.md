@@ -273,16 +273,17 @@ own moves, effects and fight code are later phases. What is real and what is Sha
   Packed after the other mechs (`LATE` in the generator), with its grey copy: 83,896 bytes of
   meshes, as much again grey, 2,556 bytes of texture tiles (Momentum's mark on each pauldron,
   the MR-02 plate on each thigh, the hazard stripes on each shin), four more 4-bit palettes.
-- **Tests:** scenarios 150 (against Shadow) and 151 (against the Hero) in `tests/harness.akr`:
+- **Tests:** scenarios 160 (against Shadow) and 161 (against the Hero) in `tests/harness.akr`:
   1,000 health, the kinetic meter, 22 parts a frame, the walk, the jab landing at 4 m and missing
   at 6 m where Shadow's Claw Jab reaches, the lunge landing at 9 m and missing just past the
   fist's reach, the throw's side swap, the super's five hits from a full bar without debt;
-  152-157 through the whole game in `tests/seraph/harness.akr`: 152 the budget (budget.sh), 153 the
-  select with Seraph's card and spec sheet (and the roster row's checks), 154-157 mid-fight against
-  Shadow and the Hero in the hangar and on the rooftop; ladder scenario 118 (Shadow's NORMAL run:
-  the final is Seraph, the clear unlocks it) and 124 VIEWs 4 and 5 (Seraph's reveal, the VS card).
-- **The budget** (scenario 152, CPU against CPU, a debug build, Shadow's mine and bolt kept out,
-  the other cursed, a full bar every 300 frames): @BUDGET@
+  162-168 through the whole game in `tests/seraph/harness.akr`: 162 and 168 the budget
+  (budget.sh), 163 the select with Seraph's card and spec sheet (and the roster row's checks),
+  164-167 mid-fight against Shadow and the Hero in the hangar and on the rooftop; ladder scenario
+  118 (Shadow's NORMAL run: the final is Seraph, the clear unlocks it) and 124 VIEWs 4 and 5
+  (Seraph's reveal, the VS card).
+- **The budget** (scenarios 162 and 168, CPU against CPU, debug builds, Shadow's mine and bolt
+  kept out, the other cursed, a full bar every 300 frames): @BUDGET@
 
 ## The arcade ladder
 
@@ -450,7 +451,7 @@ of timed events. Then new stages are content, not engine work"). `stages.akr` ho
 | `tilt` | the floor's slope across x; 0 (every stage is flat for now; the carrier's deck later) |
 | `art: StageArt` | the plane chip's set: BG1's atlas, map, palettes, width, the art row on the floor line (`hall_line`) at depth `hall_z`, the parallax bands; BG2's atlas, map, palettes, texels a metre, the texel of world 0, what shows outside its map (`floor_out`), how far its rows go; the backdrop's four colours and their rows; `PLN_PRIO`; the camera's far plane (`clip_far`, 300 m); the layers a super's darkening reaches (`dark`) |
 | `nprops`, `props` | up to 6 polygon props: a mesh at (x, 0, z) turned by yaw, drawn while the view comes within `near` m of x |
-| `ncity`, `city` | up to 8 meshes of a city in polygons, in the world's coordinates, drawn at the origin every frame into the PL layer (the rooftop's; the hangar has none): the stage's priorities put PL behind BG2, and everything drawn after the city (the props, the mechs, the effects) is PH, in front of the deck (`stage_props()`, `stage_props_end()`) |
+| `ncity`, `city` | up to 8 meshes of a city in polygons, in the world's coordinates, drawn at the origin every frame into the PL layer (the rooftop's city, the port's harbour; the hangar has none): the stage's priorities put PL behind BG2, and everything drawn after the city (the props, the mechs, the effects) is PH, in front of the deck (`stage_props()`, `stage_props_end()`) |
 | `music` | the fight's track: 0, the fight track (`music_fight()`) |
 | `nevents`, `events` | up to 4 timed events, none yet: `StEv.Fall` (a falling building across x0..x1 at frame `at` of a round, for `len` frames, with `power`, leaving rubble) and `StEv.Tilt` (the deck tilting to `amount` radians over `len` frames). Nothing runs them yet |
 
@@ -459,24 +460,36 @@ of timed events. Then new stages are content, not engine work"). `stages.akr` ho
 | `ST_HANGAR`, the demo hangar | walls at ±36 | `stage_art.akr` (`tools/gen_mechexpo_stage.py`) | the hangar's walls, two banner towers (B's) |
 | `ST_ROOFTOP`, the rooftop showcase | a wall (the stairwell's housing) at −26, open at +26 | `roof_art.akr` (`tools/gen_mechexpo_rooftop.py`): the far shore, the moon and the sea on BG1 behind the [city in polygons](#the-rooftops-city) (PL) behind the roof deck on BG2, the deck transparent past its edges | the housing, the far parapet with three floodlight masts, the open edge's kerb (`props/rooftop/`, packed by the same generator into `roof_props.akr`), two banner towers; the city (`props/rooftop_city/`, packed into `roof_city3d.akr`) |
 
+| `ST_PORT`, the container port | open at −30 (the quay's edge over the water), a wall (stacked containers) at +30 | `port_art.akr` (`tools/gen_mechexpo_port.py`): the far harbour and the Bay Bridge on BG1 behind the [harbour in polygons](#the-container-port) (PL) behind the apron's asphalt on BG2, the apron transparent past the open edge and past the landside crane rail | the container wall, the quay's coping and bollards (`props/port/`, packed by the same generator into `port_props.akr`); the harbour: the water, the apron past the rail, two gantry cranes, the container ship, the yard (`props/port_harbour/`, packed into `port_harbour.akr`) |
+
 - **The fight's stage** is `fight.stage`, set by `fight_init()` from `fight_stage(id)` (called
   before it; the hangar until then), so a fight's stage is part of its state and replays. The
   fight, the camera, the stage's drawing and the CPU read it through `stage_now()`.
   `FIGHT_MAX_SEP` (36 m) stays a rule of every stage.
 - **Choosing:** Versus and Training pick the stage on the stage select after the character
   select (`stage_select.akr`, drawn by `draw_stage_select()` in `menus.akr`); with one stage it
-  is skipped. The arcade takes its stages from `LADDER_STAGES`: the hangar for the company
+  is skipped. A card is a third of the page with three stages (96 px): on a card narrower than
+  120 px the venue and the blurb wrap to the sheet (`wrap_text()`), the edges go without their
+  EDGES label and the RING-OUTS tag sits 6 px lower; two cards are drawn as before. The arcade takes its stages from `LADDER_STAGES`: the hangar for the company
   fights, the rooftop for the final ([The arcade ladder](#the-arcade-ladder)). The title's attract view is the hangar.
 - **Loading:** `stage_show()` loads the current stage's art (BG1 into ATLAS_1 and palettes
   244–249, BG2 into ATLAS_0 and 240–243) whenever the planes go on, so only one stage's art is
   in VRAM; the rooftop's props' pack (slot 13, palettes 200–203) and its city's (slot 14, palettes
-  204–211) are loaded once at boot.
+  204–211) are loaded once at boot, the port's props' (slot 16, palettes 256–272) and harbour's
+  (slot 17, palettes 288–300) the first time the port is shown (`stage_load()`): loaded at boot,
+  their 40 KB took the boot a tick longer, and scenario 69, which counts its frames from the
+  first, came out one short.
 - **Adding a stage:** its art (a generator writing `art/stage_*` and an `.akr` of constants), its
   props, and a row in `STAGES` (with `STAGES_N`). The rooftop's generator is the example.
 - **Tests:** scenarios 90–99 and 112–115 in `tests/stages/harness.akr` (the whole game): the
   hangar, the ring-outs, the lip, the closed side, the Twins, the CPU, the stage select, the
   budget, and four views of the rooftop's city (112 the fight's start, 113 the camera fully out,
-  114 the open edge, 115 a ring-out; `tests/run.sh N FRAMES OUT` writes `OUT.png`).
+  114 the open edge, 115 a ring-out; `tests/run.sh N FRAMES OUT` writes `OUT.png`). The port's,
+  140–150 in the same file: 140 the fight's start, 141 the camera fully out, 142 by the container
+  wall, 143 by the quay's edge, 144 a throw off the quay (the ring-out at −x, the loser 12 frames
+  into its fall), 145 the wall stopping a knockdown, a throw and a walk, 146 the stage select to
+  the port (every word of the cards fits the narrow sheet), 147–149 the budget, 150 the camera
+  drifting (with `SEQ` for its frames).
 - **The budget on the rooftop** (scenarios 98 and 99, CPU against CPU through the real game, a
   release build, with the city): the Hero against the Double-blade Hero 620,732 CPU cycles and
   780,013 GPU cycles at the peak, 2,197 triangles (577,457 and 642,509 with a mech within 8 m of
@@ -487,6 +500,17 @@ of timed events. Then new stages are content, not engine work"). `stages.akr` ho
   edge (114); Osaka's cost 104,000 and 111,000, 105,000 and 145,000. Shadow against the split
   Twins (scenario 109's run, put on the rooftop for the measurement): 695,678 and 892,367, 2,339
   triangles, the worst fight measured there (729,468 and 932,847 with Osaka's); no late frames.
+- **The budget on the port** (scenarios 147–149, CPU against CPU through the real game, a release
+  build; 1P backs up to the quay edge for its first 400 frames): the Hero against the
+  Double-blade Hero 582,554 CPU cycles and 708,418 GPU cycles at the peak, 2,024 triangles
+  (536,217 and 610,847 with a mech within 8 m of the open edge); the split Twins against Tank
+  571,292 and 958,336, 1,992 triangles; Shadow against the split Twins, with its mine, bolt, curse
+  and Total Eclipse kept going (as scenario 109), 661,944 and 875,703, 2,152 triangles, the worst
+  fight measured there. No late frames. Without the props and the harbour they are 496,785 and
+  602,902 (1,743 triangles), 492,200 and 843,131 (1,646), 574,932 and 767,444 (1,850). With the
+  mechs idle (scenarios 140–143, the mean of 14 frames) the harbour alone costs 68,000–72,000 CPU
+  and 90,000–111,000 GPU cycles a frame and 258–284 drawn triangles; the props add 5,000–12,000
+  CPU cycles (and 41,000 GPU cycles with the container wall filling the right of the view, 142).
 
 ### The rooftop's city
 
@@ -563,6 +587,72 @@ deck, the sea at −48.
   camera's far plane on the rooftop is 400 m (`ROOF_CLIP_FAR`; the hangar keeps 300): the Bay
   Bridge's far side, 364 m back, is the farthest polygon.
 
+### The container port
+
+Honmoku pier, berth D-5, Port of Yokohama, late on 2000-10-12: where the exhibitors' mechs came
+ashore, the same city as the rooftop some hours later. `tools/gen_mechexpo_port.py` paints the
+plane art (`port_art.akr`, `art/stage_port_sky.*`, `art/stage_port_deck.*`) and packs the
+polygons: the props (`props/port/make_port.py`, packed into `port_props.akr`) and the harbour
+(`props/port_harbour/make_harbour.py`, packed into `port_harbour.akr`). Every recipe passes
+`verify`, and running the generator twice writes the same files. Positions are in metres: x
+across the fight plane, z behind it, y up from the apron.
+
+- **Layout.** The open quay edge is at x = −30 and the container wall at +30 (`PORT_HALF`): the
+  rooftop's sides flipped, so on the port 1P starts with its back to the drop. The half-width
+  puts 21 m between each start mark (x = ∓9) and its side, where the rooftop's open edge is 17 m
+  from 2P's: from the start it takes two throws (about 10 m each) and a knockdown to ring a mech
+  out, not two throws. Past the edge the apron drops 3.5 m to the water (`WATER_Y`).
+- **The look.** Sodium floodlights over worn asphalt, against the rooftop's cool blue hour. Every
+  colour of the props, the harbour and the apron is graded for high-pressure sodium light
+  (`sodium()`: multiplied by the lamp's colour, greyed a fifth), but for the near crane's light
+  blue, which is kept. The backdrop's sky is darker than the rooftop's (`#04050a` at the top), with
+  a brown sodium haze at the horizon. No events: the falling containers (`StEv.Fall`) are not
+  made.
+- **BG2, the apron** (765 tiles, palettes 240–243): asphalt in a ramp of ten warm tones, lit in
+  pools under the cranes' and the masts' lights and darker toward the water (a light level per
+  tile, a texel grain and a Bayer dither between two tones, so tiles repeat); the slabs' seams
+  every 6 m with a twist-lock socket at each crossing; yellow lane lines along x at z = −7 (double)
+  and 7, a dashed white line and arrows nearer; the berth's D-5 and HONMOKU PIER on the asphalt
+  behind the fight; the quay's pale coping along the open edge with its yellow line; and at
+  z = 20 the cranes' landside rail, where BG2 ends: past it, and past the open edge, BG2 is
+  transparent and the harbour's polygons show.
+- **BG1, the far harbour** (662 tiles, palettes 244–249), its row 184 on the water 330 m back: the
+  Bay Bridge's near tower (two white legs, 104 rows tall from the water) with its fans of lit
+  stays and its deck 34 rows up, running behind the ship; the far shore's low band of warehouses
+  and lights, Daikoku's cranes with red lights, the far city's towers with Landmark Tower's red
+  light; below the line the far water with the bridge's and the shore's broken reflections. The
+  bridge sits at the left, where it shows over the open water past the quay's corner.
+- **Layers** as the rooftop's (`PORT_PRIO`, `0x41220033`): BG1 0, PL 1 (the harbour), BG2 2 (the
+  apron), BG0 3, PH 4 (the props, the mechs, the effects). The water runs 6 m under the apron at
+  the open edge, so a mech falling past the lip sinks into it (the depth test hides it below the
+  water) and is not drawn over the quay; the apron hides what is under it. A super's darkening
+  reaches PL (`PORT_DARK`, `0x2E`).
+
+| Mesh | Triangles | What |
+|---|---|---|
+| `port_wall` (prop, PH) | 48 | the container wall at x = 30: eleven rows of 40-ft containers (12.19 × 2.44 × 2.59 m) from z = −8 to 19.8, two to four high (5.2–10.4 m), long axis along x; the arena sees their doors and, at a slant, the long sides of the front row and of every container above the row in front of it. A box a row, each face in a texture of the row's stacked containers (16 × 16 texels a door, 64 × 16 a side: six invented shipping lines, KUROSHIO, TRIDENT, HOKUSEI, AMBERLINE, NORDVIK and MERIDIAN, plain leasing boxes, and crates of the five makers with their emblems: Momentum Robotics, Umbral Research, Raikō, Heartland and Binary Mechanica) |
+| `port_kerb` (prop, PH) | 40 | the quay's coping along the open edge (0.45 m wide, 0.3 m high, z −12 to 20, its top painted yellow) and two mooring bollards on it |
+| `port_water` | 22 | the water past the open edge (x −400 to −24, z −18 to 160), black with ripples catching the light (a 32 × 32 tile, 32 m), and three additive reflections under the ship's and the cranes' lights; in two pieces, so that only the near one is ever clipped at the eye |
+| `port_apron` | 32 | the apron past the landside rail (x −30 to 90, z 19.5 to 52) in a 16 m asphalt tile, the waterside rail at z = 48, the berth's coping at z = 52 and the open edge's; the yard's ground behind the container wall (x 60 to 300) |
+| `port_crane_a` | 142 | gantry crane A in Honmoku's light blue, working the ship: legs at x = 11 and 29 on the rails at z = 20.6 and 48, bogies, the portal 44 m up, sill girders, the boom 49 m up from z = 4 over the ship to z = 104 with four floodlights under it, the apex at 78 m with red aircraft lights, its stays, the machinery house, two floodlights under the portal with their glow, the trolley and its lit cab, and a container on the spreader 16 m up; lit from below |
+| `port_crane_b` | 86 | gantry crane B, white with a red and white boom and apex (legs at x = 49 and 67), idle with its boom raised 75°; no bogies, house, floodlights or trolley (it is seen least) |
+| `port_ship` | 86 | the container ship moored at the berth (x −20 to 270, z 54 to 86, her main deck 10 m above the apron): her navy hull in three stretches (KUROSHIO along the middle), the transom, an eleven-storey accommodation block at the stern (x −18 to −2, to 42 m) with its lit windows and bridge, the bridge wings, the funnel with the line's wave, a mast with its lights, and her deck cargo in eight blocks of two or three bays, four to seven high (to 28 m) |
+| `port_yard` | 48 | the yard's stacks behind the container wall (three to five high) and two floodlight masts 30 m tall (in the yard by the wall, and at the quay's far corner) with their glow |
+
+- **The views.** The fight's start (scenario 140) has the bridge and the far shore over the open
+  water behind 1P, the ship's lit accommodation block between the mechs, its cargo and crane A's
+  legs behind 2P; the widest view (141) the cranes' portals and floodlights overhead; the wall
+  (142) the containers' doors; the edge (143) the quay's coping over the black water.
+- **What is not drawn.** The camera's eye is 6.5 m up and its x runs −27.5 to 18.5: tops above the
+  eye, faces toward +z and the far sides of things are left open. Nothing reaches nearer than
+  z = −18, and what does reach behind the eye is small: a big face crossing the near plane cost
+  about 15,000 CPU cycles a frame (the coping, when it ran to z = −40).
+- **VRAM.** The props' pack in texture slot 16 (22,656 bytes of 32,768: the wall's 17 textures)
+  and 4-bit palettes 256–272; the harbour's in slot 17 (17,792 bytes) and palettes 288–300. Both
+  are in VRAM's second megabyte and the second palette bank, which the cart did not use, and both
+  are loaded once, the first time the port is shown. The plane art uses the hangar's
+  atlases, maps and palettes. The camera's far plane on the port is 420 m (`PORT_CLIP_FAR`).
+
 ## Rendering, VRAM and budgets
 
 - **Depth buffer and perspective texturing**; every recipe has
@@ -570,7 +660,8 @@ deck, the sea at −48.
 - **Layers** (the plane chip, [docs/PLANES.md](../../docs/PLANES.md)): the backdrop gradient,
   BG1 for the parallax (crowds, booths, banners), BG2 for the floor, polygons for the mechs, the
   effects and the props, BG0 for the HUD. The plane chip, its line channels and priorities are D's.
-- **Texture slots:** B's pack uses 0–7, D 8–14; slot 15 is the standard library's font. B's
+- **Texture slots:** B's pack uses 0–7, D 8–14 (and 16–17, the port's); slot 15 is the
+  standard library's font. B's
   8-bit palettes come down from 14 as the pack assigns them; D uses 4-bit palettes 240–254.
   Tell the director if either side needs more. **In `art/`, D's files start with `stage_` or
   `ui_`**; everything else there is B's pack, which `gen_mechexpo_assets.py` rewrites.
@@ -601,6 +692,11 @@ deck, the sea at −48.
   maps and palettes (one stage is loaded at a time, by `stage_show()`). Priorities on the
   rooftop: BG1 (the horizon) 0, PL (the city in polygons) 1, BG2 (the deck) 2, BG0 3, PH (the
   mechs, the props, the effects and the interface list) 4.
+- **The container port (mx-port):** texture slot 16 and 4-bit palettes 256–272 for its props'
+  pack (`port_props.akr`), texture slot 17 and palettes 288–300 for its harbour
+  (`port_harbour.akr`, [above](#the-container-port)), both loaded once by `stage_load()` the first
+  time the port is shown: slots 16–31 and the second palette bank (256–511) were unused.
+  Priorities as the rooftop's.
 - **The roster** (`roster.akr`): the makers and the select's ten slots; a mech's names, maker,
   booth, power source, stats, blurb and unlock rule are its row. Adding a mech is filling in its
   slot's `mech` field (the file's first comment says how). `save.unlocked` keeps bit 0 for the
