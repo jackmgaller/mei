@@ -1392,59 +1392,723 @@ Shadow rises out of it into the stance.
 
 ## Seraph (Momentum Robotics, kinetic)
 
-Momentum's echo of Shadow, the paladin: SERAPH, model MR-02, in the echo slot under Shadow
-(unlocked by clearing the arcade with Shadow). The design is the owner's
-([Decided by the owner (2026-10-14)](#decided-by-the-owner-2026-10-14-seraph-momentums-angel));
-**phase 1 (mx-seraph) puts the mech in the game with Shadow's moves as placeholders**. Its own
-moves, effects and fight code come in later phases.
+Momentum Robotics' echo of Shadow, the paladin: SERAPH, model MR-02, in the echo slot under Shadow
+(unlocked by clearing the arcade with Shadow). Where Shadow is the trickster, Seraph is Momentum's
+honest boxer with an angel's wings: it goes **over** the floor where Shadow goes under it, sends
+shots **back** where Shadow steals meter, and **marks** where Shadow curses. It taxes an approach
+with a slow bolt of light, the **Mark of Judgement**, which marks the other mech for six seconds;
+it answers the other's shots with the **Wing Ward**, which sends them back as light; it crosses
+the stage over waves and mines with the **Seraph Dive**; and it cashes the mark in with its super,
+**Judgement**, a column of light that falls wherever the other mech stands. Block still stops
+every attack from either side. In exchange its fists are short (about 2.5 m less than Shadow's
+talons), its specials are slow and readable, and nothing it has is invulnerable for long. Its
+stance is a boxer's: upright, the right fist leading at chin height, the left by the jaw, elbows
+in, the wings folded behind like a cloak, the halo resting on the helm.
+
+The design is the owner's
+([Decided by the owner (2026-10-14)](#decided-by-the-owner-2026-10-14-seraph-momentums-angel)); the
+numbers below are this section's, to tune in play. Phase 1 (mx-seraph) has the mech in the game
+with Shadow's moves as placeholders ([Phase 1](#phase-1-what-is-in-the-game-now)); phase 2 builds
+this section in three parts at once: the fight and the CPU, the animations, the effects and sound.
+Each part's list is at the end ([For the animators](#for-the-animators-seraph),
+[For the effects and sound](#for-the-effects-and-sound-seraph),
+[Engine work needed](#engine-work-needed-seraph)).
 
 Code name `Seraph` (`enum Mech`, index 8, appended after `Shadow`). The model is
 `models/seraph/make_seraph.py` (concept A, round 4b, 1,892 triangles): Shadow's skeleton and joint
-offsets, the knuckle guards as the weapon parts, and three joints appended to the shared skeleton:
-`wing_l`, `wing_r` (the torso's, folded at 0) and `halo` (the head's: turning it x 0..60 lifts the
-ring 0.9 m).
+offsets, the gauntlet fists with gold knuckle guards as the weapon parts, and three joints appended
+to the shared skeleton: `wing_l`, `wing_r` (the torso's, folded at 0, spread at x −122, y 50,
+z −24, the right wing mirrored) and `halo` (the head's: turning it x 0..60 lifts the ring 0.9 m).
+Power source: Momentum's kinetic meter, the Hero's (+125 a landed hit, +120 a shot that lands, +60
+a blocked hit; the super needs a full bar; no debt).
 
-**Real so far:**
+### Movement and stats
 
-| | Seraph | Shadow |
+| | Seraph |
+|---|---|
+| Health | 1,000 (the Hero's; Shadow has 900) |
+| Walk forward | 0.080 m a frame (4.8 m/s): a little slower than Shadow's 0.085 |
+| Walk back | 0.064 m a frame (3.8 m/s) |
+| Walk cycle | 44 frames, two steps (3.5 m forward) |
+| Jump | 4 frames' crouch, then 36 in the air, 6.2 m high at the top (`jump` is 40 frames): Shadow's |
+| Diagonal jump | 0.17 m a frame across (6.1 m) |
+| Landing | 5 frames (8 after an air attack) |
+| Push box | 1.4 m either side of the root, 11.5 m tall (7.5 crouching): Shadow's |
+| Hurt box | follows the parts (`anims/seraph/_body.anim.json`, Shadow's boxes on Seraph's parts): about 1.6 m either side, 12.5 m tall standing, 8 crouching. The wings and the halo have no hurt boxes |
+| Height | 13.55 m to the top of the halo (the roster's 135) |
+
+These are the numbers in the game now (`moves.akr`'s `STATS` row). The walk is a boxer's: upright,
+a short gliding step with the weight on the balls of the feet, the guard held steady, a light
+`step` mark on each plant; the folded wings settle a few degrees on each plant. The jump is
+Shadow's timing with the wings half opening at the top (to steady it) and folding on landing.
+
+### Attacks (A)
+
+| Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | On block / hit | Hit box |
+|---|---|---|---|---|---|---|---|---|
+| `atk_n` Jab | 3 | 2 | 12 | 17 | 50 | 15 / 11 | −3 / +1 | x 1.7–3.2, y 6.6–7.8 |
+| `atk_f` Lunging Straight | 12 | 4 | 20 | 36 | 105 | 25 / 18 | −6 / +1 | x 2.6–6.8, y 6.7–8.3 |
+| `atk_d` Reaping Kick | 10 | 4 | 22 | 36 | 85, knockdown | — / 16 | about −10 / KD | x 1.4–6.2, y 0–1.8 |
+| `atk_air` Double-fist Dive | 7 | to landing | landing 8 | 26 | 85 | 19 / 14 | by height | x 0.5–3.6, y −1.0–2.4 (from the root, in the air) |
+
+(The on-block and on-hit columns of the jab and the lunge are Shadow's, measured with the same
+timing; the Reaping Kick's is estimated from the Fade Sweep's. All four want measuring with
+`tests/run.sh 17` once the animations land.)
+
+- **Jab** (`atk_n`): the game's fastest button with the Claw Jab (startup 3), and the chain's
+  start. Shadow's timing and the reach phase 1 measured (the fist to 3.2 m), but **lower**: the
+  right fist snaps straight out at chest height, not face height, so the box is **y 6.6–7.8**
+  and it hits a crouching mech (8 m tall) and either split twin (7.4 m). Frames 1–3 the right
+  shoulder rolls in and the fist leaves the chin; 4–5 the arm is straight, the fist level at about
+  7.2 m (its front 3.2 m out); 6–17 it snaps back to the chin. The torso turns 10° into it, the
+  wings stay folded. Cancel window frames 4–11. The arm is hurtable out to 2.5 m from the first
+  active frame until 10 frames after the last. It passes over the Antimatter Slide (4.6 m) and
+  the Twins' Low Roll (3.0 m).
+- **Lunging Straight** (`atk_f`): the footsie tool, a lead-hand straight with the whole body
+  behind it. Shadow's timing and its glide (2.0 m over frames 3–11, the rear foot driving), the
+  reach phase 1 measured (x 2.6–6.8, y 6.7–8.3): the right arm and fist in one straight line at
+  about 7.5 m on frames 13–16, the left fist kept at the jaw, the torso turned 30° into it, the
+  folded wings swinging back with the lunge. Recovery: the fist drawn back to the chin and the
+  weight back over the rear foot (frames 17–36). Cancel window frames 13–22. The arm is hurtable
+  out to 4.5 m until 10 frames after the last active frame. About 2.6 m shorter than the Lunging
+  Claw: Seraph has to walk closer to poke, which is what the Dive is for.
+- **Reaping Kick** (`atk_d`, new; the Fade Sweep does not carry over): from a crouch, a low
+  sweeping kick with the right leg along the floor in a wide arc in front, the hands down for
+  balance, knocking down. Frames 1–10: the body drops (the pelvis down about 3 m), the left knee
+  bends deep, the right leg is chambered back; 11–14: the right leg sweeps through at full length,
+  the foot a hand's width off the floor (the box follows the right shin and foot); 15–36: the leg
+  comes back under and Seraph rises into the guard, the wings flaring 10° for balance as it
+  rises. The leg is hurtable to 4 m out from the first active frame until 10 frames after the
+  last. No dissolve: the recovery's hurt box is an ordinary crouching one (8 m), so anything
+  punishes it. For catching a mech that walks back or sits still; the answer to a Low Roll; and,
+  a hit box at the floor, it clears a Rift Mine it touches.
+- **Double-fist Dive** (`atk_air`): in the air, both fists clasped together over the head and
+  driven down and forward as Seraph pitches into a dive, the wings swept back. Shadow's timing and
+  **its dive** (the fall steepens on the first active frame: at least 0.30 m a frame down, 0.04
+  m a frame more forward: `has_dive` stays true for Seraph). The box follows the clasped fists:
+  about x 0.5–3.6, y −1.0–2.4 from the root (the talons' box less about 1.5 m forward and 1.6 m
+  down; the animator measures and keeps the fists in it). Out until landing; once a jump.
+
+### Specials (B)
+
+| Move | Startup | Active | Recovery | Total | Damage | Chip | Hitstun / blockstun | On block / hit |
+|---|---|---|---|---|---|---|---|---|
+| `sp_n` Mark of Judgement | 16 (fired on 17) | the bolt | 24 | 41 | 45, marks | 9 | 18 / 14 | about −11 / −7 at 6 m; safe far |
+| `sp_f` Seraph Dive | 28 (tapped) to 52 (held) | 4 | 22 | 54 to 78 | 110, knockdown | 22 | — / 16 | about −10 / KD |
+| `sp_u` Ascension | 7 | 8 | 28 | 43 | 120, knockdown | 24 | — / 14 | about −22 / KD |
+| `sp_d` Wing Ward | 4 | the ward, 20 | 16 | 40 (12 after a reflect) | — | — | — | — |
+
+(The on-block column is estimated from the moves with the same recovery: the Hex Bolt's −11 / −7,
+the Sneak's −10, the Rising Arc's and Eclipse Rise's −22. To measure.)
+
+**Against the defences** (the details are in each move's section):
+
+| Seraph's move | The Parry | Wing Ward (a mirror Seraph) | The Void Step | Tank's armour |
+|---|---|---|---|---|
+| Mark of Judgement | caught: the bolt vanishes, no mark; the riposte if Seraph is in reach | sent back as the warder's Mark: it marks the first thrower | passes through | absorbs the 45; **the mark lands** |
+| Seraph Dive | parried: Seraph frozen 20 frames in the air, the riposte knocks it down | not caught (a strike) | passes through | absorbs the 110; Seraph lands in front of Tank with 22 frames to recover |
+| Ascension | parried | not caught | passes through | absorbs; Seraph falls above Tank for 28 frames |
+| Wing Ward | not an attack | not an attack | | |
+| Heaven's Arc (Y) | misses: a parrying Hero is in a move (and grabs are never parried) | misses: a warding Seraph is in a move | misses: gone | catches: grabs break armour |
+| Judgement | not parried (no super is) | not caught (not a shot) | escapes, started on the first frame after the flash | never absorbs a super |
+
+The normals are ordinary strikes: parried, absorbed, passed through, not caught by a ward.
+
+#### Mark of Judgement (`sp_n`) and the mark
+
+Frames 1–16: Seraph draws the right fist back to the shoulder, the left guard forward; light
+gathers in the knuckle guard and the halo lifts a little (x 0 to 20, 0.3 m). **Frame 17 (the
+`release` mark, 16 from 0)**: the right fist punches straight forward at belly height and the
+bolt leaves it. Frames 18–41: 24 frames back to the guard, the halo settling.
+
+- **The bolt**: a slow lance of white-gold light, at mid height: it starts **3.5 m** in front
+  and flies at **0.16 m a frame** (9.6 m/s: a little quicker than the Hex Bolt's 0.14, slower than
+  the wave's 0.22), a box **1.6 m wide (x ± 0.8), from y 5.0 to 7.4**, for **180 frames** (29 m),
+  and vanishes at a wall or an open edge. So it hits a standing or crouching mech (8 m) and
+  either split twin (7.4 m), and passes over the Antimatter Slide (4.6 m), the Twins' Low Roll
+  (3.0 m), Shadow Sneak's travelling shadow (1 m) and the Hero's wave.
+- **One shot at a time**: B while Seraph's shot is out does nothing (every shot's rule). A shot
+  Seraph reflected (the Wing Ward, below) is Seraph's shot too, so no bolt until it is gone.
+- **Against the other shots** (they meet when their boxes overlap in x): the bolt is
+  **strength 1**, as the Hex Bolt. The wave (2) and a charged (2) or full (3) Volt Orb dissolve
+  it and carry on; a tapped orb (1), a Hex Bolt (1) or another Mark bolt and the bolt both go. It
+  does not win a projectile war; it does not need to.
+- **On hit**: 45 damage, hitstun 18, no knockdown, and **the mark**. Kinetic meter +120 (a shot).
+  On block: chip 9, blockstun 14, +60 meter, **no mark** (block stops every attack).
+- **The mark**: for **360 frames (6 s)** of play (not the hitstop, the super's freeze or the time
+  between rounds), the other mech is marked. **Judgement does 50 % more to a marked mech**
+  (below); the mark does nothing else: no damage of its own, no meter, nothing on Seraph's other
+  moves. A second bolt that lands **refreshes** the mark to 360; marks never stack, and a mark
+  ends with the round. The mark is on the fighter (`Fighter.mark`), so the Twins carry it through
+  switching forms, whichever twin was hit. It is not spent by Judgement: it runs its time.
+- **The Parry catches the bolt** as it catches the wave: the bolt vanishes, no mark, the Hero
+  ripostes if Seraph is in reach. **The Void Step** passes through it. **Tank's armour absorbs the
+  hit, not the mark**: an absorbed bolt still marks (as the Hex Bolt still curses: the mark is in
+  the touch). **Wing Ward** (a mirror match): the bolt is sent back as the warding Seraph's own
+  Mark and marks its first thrower ([Wing Ward against each shot](#wing-ward-against-each-shot)).
+- **How the mark shows**, the Siphon's presentation in light gold instead of violet
+  (`seraph_fx.akr`, [For the effects and sound](#for-the-effects-and-sound-seraph)). **On the
+  marked mech**: a light-gold sigil glows at its chest, pulsing once a second (a ring with a
+  cross, Momentum's chevron at the top); a thin gold ring turns slowly 1.5 m above its head (the
+  halo's echo); gold motes rise straight up off it (nothing is taken, so they do not drift to
+  Seraph, as the Siphon's motes do); in the mark's last second (60 frames) the sigil and the ring
+  flicker. **On the HUD**, the marked mech's side: the label **MARKED** in light gold where the
+  Siphon writes SIPHON (13 px above its meter gauge, aligned outward), a thin gold bar under the
+  gauge shrinking with the mark's time (the Siphon's bar), the label flickering in the last
+  second; a light-gold shine sweeping across the marked mech's **health bar** toward the screen's
+  centre every 30 frames (where the Siphon marches chains over the meter: the mark is about
+  damage, so it lives on the health bar); and while Seraph's super is ready and the other is
+  marked, Seraph's SUPER label pulses gold. A new mark (not a refresh) flashes the health bar
+  gold for 8 frames.
+
+#### Seraph Dive (`sp_f`)
+
+A hop, a glide on spread wings, then a diving straight. **Holding B glides farther.** In the air
+from the hop to the touchdown: it passes over anything on the floor, and **anything that hits it
+in the air stops it** (an air hit: `hit_air`, knocked down).
+
+| Frames (tapped) | | Root and boxes |
 |---|---|---|
-| Health | 1,000 (the Hero's) | 900 |
-| Walk forward | 0.080 m a frame (4.8 m/s) | 0.085 |
-| Walk back | 0.064 m a frame (3.8 m/s) | 0.068 |
-| Meter | kinetic (Momentum's): +125 a landed hit, +60 blocked; the super needs a full bar, no debt | antimatter |
-| Jab (`atk_n`) hit box | x 1.7–3.2, y 8.6–9.8: the fist (2.4 m shorter) | x 1.6–5.6, y 6.5–9.5 |
-| Lunging straight (`atk_f`) hit box | x 2.6–6.8, y 6.7–8.3: the fist and forearm (2.6 m shorter) | x 3.0–9.4, y 5.5–8.5 |
+| 1–6 | **the crouch**: the knees bend deep, the fists drop to the hips, the wings lift off the back (wing x 0 to −30) | on the floor; crouching hurt and push boxes (8 m and 7.5 m tall). Vulnerable: a hit here is a ground hit |
+| 7–14 | **the hop**: Seraph springs up and forward, the wings snapping open to spread by frame 12 | root motion **2.0 m forward and 4.0 m up** (0.25 and 0.5 m a frame). In the air from frame 7 |
+| 15–26 | **the glide**: the body laid forward 60°, the legs trailing back level with the root, the arms forward, the wings spread with a slow flutter | **the fight moves the root**: 0.40 m a frame forward and 0.02 m a frame down (no root motion in the animation). **Frame 26 is the charge frame** (the `charge` mark): while B is held the move holds there, up to **24 frames**, still gliding. Push box x ± 1.4, y 0–7 from the root; the hurt boxes follow the parts and none goes below the root |
+| 27–28 | **the dive**: the wings sweep back half-folded, the body pitches down, the right fist cocked by the head | the fight brings the root down to the floor evenly over frames 27–32 (whatever its height) and 0.30 m a frame forward |
+| 29–32 | **active**: the diving straight, the right arm driving down and forward, the fist leading | hit box x 2.0–5.5, y 1.0–4.5 from the root |
+| 33 | **touchdown** (`step`), on the right knee and the left foot | on the floor |
+| 33–54 | recovery (22): Seraph rises from the knee, the wings folding by 48 | standing boxes |
 
-The jab's and the lunge's boxes follow the fist, so nothing hits with the air in front of it
-(measured with `mei_anim.py pose`; scenario 160 checks them against Shadow's). The jab keeps
-Shadow's arm keys, which hold the fist at face height: it passes over a crouching mech (8 m),
-where the talons hooked down to reach one. The roster row: SERAPH, MR-02, Momentum's emblem,
-stats `0x2323` (power 2, speed 3, reach 2, armour 3), 13.5 m to the top of the halo, the blurb
-"PALADIN: WARD,\nJUDGEMENT" (the owner's "THE PALADIN:\nWARDS, JUDGEMENT" is 91 px on its second
-line, the spec sheet's 76 px; asked).
+- **Distance**: tapped, the root travels **8.6 m** (2.0 the hop, 4.8 the glide, 1.8 the dive) and
+  the fist reaches 5.5 m past it, about 14 m from where Seraph stood; held the whole 24 frames,
+  **18.2 m** (the fist about 24 m out). Held less, anything between: 0.40 m a frame held. The
+  glide sinks 0.24 m tapped and 0.72 m held, so the root is between 3.3 and 3.8 m up when the dive
+  starts.
+- **The glide stops at the other mech**: when Seraph's push box (y 0–7 above the root) touches
+  the other's push box, overlapping in height, the glide ends there and the dive starts at once
+  (the animation jumps to frame 27); the dive's forward motion stops at it too. So Seraph never
+  glides through or over a standing, crouching or jumping mech: it dives onto it. A push box
+  lower than the root passes under: **Shadow Sneak's shadow (1 m), the Twins' Low Roll (3.0 m)**.
+  A wall, the separation limit or an open edge's lip also ends the glide (the dive starts there):
+  Seraph is never carried off the stage by its own Dive.
+- **Over the floor**: from frame 13 (the root above 3 m) to frame 28, nothing at floor height
+  touches it: **the Hero's wave** (y 0–3) passes under, **a Rift Mine** is not set off (Seraph is
+  not on the ground), **Shadow Sneak's shadow** passes under (it has no hit box; the eruption
+  after it is a strike like any other; Shadow's shadow stops short of a gliding Seraph, as at
+  any mech, until Seraph has passed over it, since `sneak_step` does not look at height). Low
+  attacks, sweeps and slides (their boxes under 2.5 m) pass under it; the Bulldozer's ram (y 0–5)
+  and the Reactor Vent (y 0–9.5) reach it. A wave that arrives during frames 7–12, while the hop
+  is still under 3 m, hits its legs: the hop must start at least 13 frames before the wave
+  arrives. **Landing on an armed Rift Mine** (frame 33 onward) sets it off as any landing does.
+- **What stops it**: every shot above the floor (a Volt Orb at y 4.8–6.6, a Hex Bolt at 4.5–7.5, a
+  Mark bolt) and every strike that reaches it: a Tip Thrust, an Arc Lance, a Static Lance, an
+  anti-air. A hit from frame 7 on is an air hit: Seraph is knocked down out of the sky. On frames
+  1–6 a hit is an ordinary hit. It cannot be grabbed anywhere in the move.
+- **Against the Parry**: the straight is parried like any strike: Seraph freezes in the air for
+  20 frames (the Parry's freeze), and the Hero's riposte (x 1.5–7.5, y 4–10) takes it out of the
+  air. **The Void Step** passes through it. **Tank's armour** absorbs it (Tank takes 110, no
+  knockdown) and Seraph lands in front of Tank with 22 frames of recovery: punished.
+- The strike: 110 damage, knockdown, chip 22, blockstun 16, about −10 on block (a jab punishes).
+- What it is for: crossing the stage over the Hero's wave and Shadow's mines, and a punish from
+  far (a whiffed Charge Slash, a blocked Bulldozer, a Reaction Prime). Read, it is very
+  punishable: the hop and the glide are plain to see for 15 frames or more, and any shot or
+  anti-air takes it.
 
-**Placeholders (Shadow's, until Seraph's own):**
+#### Ascension (`sp_u`)
 
-- Every animation is Shadow's on Seraph's rig (`anims/seraph/`, each `"base":
-  "../shadow/MOVE.anim.json"`), the weapon joints held at 0 (`"still"`: Shadow opens its claws
-  there), the wings folded and the halo down. Where Seraph's bigger body passes into itself or the
-  floor on Shadow's keys, the files `allow` it (`allow`, `floor_allow`): lying down (knockdown,
-  KO, get-up) the folded wings go 2.1 m into the floor.
-- Every hit's numbers (`seraph_hit` in `seraph.akr` returns `shadow_hit`), every other move's
-  boxes (the claws' boxes in the Fade Sweep, Diving Claw, Shadow Sneak, Eclipse Rise and Total
-  Eclipse keep the talons' reach), the timings and the chains.
-- The specials and the super do Shadow's things: the Hex Bolt and its Siphon (`sp_n`), Shadow
-  Sneak (`sp_f`), Eclipse Rise (`sp_u`), the Rift Mine (`sp_d`), Phantom Grip (the throw), Total
-  Eclipse with the stage going dark (the super), the Diving Claw's dive (`atk_air`). Each of
-  Shadow's rules asks one predicate in `seraph.akr` (`has_hex_bolt`, `has_sneak`,
-  `has_rift_mine`, `has_phantom_grip`, `has_eclipse`, `has_dive`), so a later phase takes Seraph
-  out of one and gives it its own without touching Shadow's.
-- The CPU plays Seraph as Shadow (`cpu.akr`'s `cpu_as_shadow`), but punishes with the general
-  rule (its own jab's and lunge's reach). The fists leave no trails (`fx.akr`); the bolt's sound
-  is Shadow's (`sfx.akr`); the training move list is Shadow's under fist names (`SERAPH_MOVES`).
-- The arcade: Shadow's final is now Seraph ("MOMENTUM ROBOTICS PRESENTS ITS COMPETING PRODUCT"),
-  not the UAPC's grey test unit; Seraph's final is Shadow (defending its title). Seraph's grey
-  copy is packed as every body's is.
+The anti-air: a rising uppercut, the wings flaring. Frames 1–7: Seraph drops into a crouch and
+steps in **1.2 m** (root motion over frames 2–7, 0.2 m a frame), the right fist dropping to the
+hip, the wings lifting; **invulnerable on frames 1–8** (the startup and the first active frame).
+Frames 8–15, active: it springs straight up and drives the right fist up from the hip to straight
+overhead, the box following the fist (**x 0.5–4.0, y 3.0–14.0** from the root), the root rising
+**6.0 m** (0.75 m a frame); the wings flare to spread on frames 12–15 and beat once at the top
+(down-stroke on 14), the halo lifting to x 30. Frames 16–43, recovery (28): it falls back, the
+root coming down 6.0 m over frames 16–38 (accelerating), the wings folding as it falls, and
+lands on 39 (`step`), the knees taking it through 43.
+
+- **Reach**: about 5.2 m in front of where Seraph stood (the step and the fist) and 20 m up at the
+  top of the rise: it takes a jump-in that lands on Seraph or just in front of it, not one that
+  lands 7 m out (Eclipse Rise reaches that). Invulnerable 8 frames: between the Rising Arc's 7 and
+  Eclipse Rise's 9, one frame slower to hit than the Rising Arc (startup 7).
+- 120 damage, knockdown, chip 24. Very punishable on block or a miss (about −22).
+- The Parry catches it; Tank's armour absorbs it (and Seraph is in the air above Tank, falling,
+  for 28 frames); the Void Step passes through it.
+
+#### Wing Ward (`sp_d`)
+
+The folded wings swing forward round the body as a shield of light. Shots that touch it are sent
+back as light and become Seraph's; **strikes are not caught** (the Hero's Parry does that): a
+strike that reaches Seraph during the ward hits it as it would during any special.
+
+| Frames | |
+|---|---|
+| 1–4 | **the wrap**: the arms cross in front of the face, the head bows behind them, the wings swing round the sides to the front (about x −20, y 120, z 0 on the left; the right's y and z negated) |
+| 5–24 | **the ward** (the new `ward` mark, 20 frames): the wings wrapped in front from the knees to the shoulders, holding; the light flickering on the plates |
+| 25–40 | recovery (16): the wings swing back and fold, the arms come down into the guard. **The move ends here (frame 40) unless a shot was reflected** (as the Parry ends at its riposte frame) |
+| 41–52 | **the fling** (12 frames, `riposte` on 41), only after a reflect: the wings snap open to spread and are folded again by 52, the fists back in the guard |
+
+- **What it catches**: a shot of the other side that touches any of Seraph's hurt boxes on a
+  `ward` frame, **travelling toward Seraph's front** (its direction opposite Seraph's facing). The
+  light wraps the whole body in the drawing, so the wave along the floor, which touches only the
+  shins, is caught too. A shot from behind (after a side swap) hits as usual.
+- **A reflect**: the shot is turned round and becomes Seraph's (below); Seraph's animation jumps to
+  the fling (frame 41): **actionable 12 frames after the reflect**. A shot reflected this frame is
+  not moved or tried against a mech until the next frame.
+- **No room for it**: if Seraph's own shot is still out (a Mark bolt, or a shot reflected
+  earlier), the ward takes the shot without sending it back: it vanishes in a burst of light, no
+  damage, and Seraph still jumps to the fling. (Two opposing shots meet before they pass, so this
+  is rare: a bolt fired after the other's shot had passed it.)
+- **Strikes, throws and supers**: a strike (a normal, a special's hit box, an air attack, the
+  Arc Lance, the Raikō Overload's beam, any super) hits a warding Seraph in the ordinary way; it is
+  in a move, so it is knocked out of it. A grab misses it (a mech in its own move is not
+  grabbable: strikes beat grabs), but the 16 frames of recovery are long enough to walk in and
+  grab after a ward that caught nothing.
+- **Meter**: a reflect itself gives nothing; the reflected shot gives Seraph a shot's meter (+120
+  kinetic) when it lands, a blocked hit's (+60) when it is blocked.
+- Whiffed, it is a 40-frame commitment with nothing to show: a read of the other's shot, not a
+  panic button.
+
+#### Wing Ward against each shot
+
+A reflected shot keeps its kind, its box (size and height) and its strength, and changes these:
+
+- **Owner**: Seraph's side. It moves from the thrower's shot slot to Seraph's (`fight.shot[s]`),
+  so the thrower may fire again at once (its move permitting), and Seraph may not until it is gone.
+- **Direction and speed**: reversed, **×1.25** (at most 0.45 m a frame). A shot reflected again
+  (a mirror match) is turned and sped up again, up to the same cap.
+- **Life**: starts again: the full life of its kind (the wave 150 frames, an orb 130, a bolt 180).
+- **Damage**: its own hit (the table below), scaled in a combo like any hit; its meter is Seraph's.
+- **Drawn as light** (`Shot.refl`): white-gold, whatever it was.
+- **A bolt becomes a Mark**: a reflected Hex Bolt **neither curses nor stays a hex**: it becomes a
+  Mark of Judgement (the Mark's hit, 45 and chip 9, and the mark) with the Hex Bolt's box. A
+  reflected Mark bolt stays a Mark, now the reflector's: it marks its first thrower. The wave and
+  the orbs are force, not hexes: a reflected wave or orb marks nothing.
+
+| Shot (thrower) | Strength | Comes back at | Box | On hit | Notes |
+|---|---|---|---|---|---|
+| Kinetic Wave (the Hero) | 2 | 0.275 m a frame | x ± 0.8, y 0–3 | 80, chip 16, hitstun 20 | a low wave of light along the floor: the Hero blocks it, Parries it, jumps it, or fires a new wave into it (2 against 2: both go) |
+| Volt Orb, tapped (Beam) | 1 | 0.30 | x ± 0.7, y 4.8–6.6 | 70, chip 14 | Beam's next tap trades with it, a charged orb beats it |
+| Volt Orb, charged | 2 | 0.375 | x ± 0.9, y 4.8–6.6 | 90, chip 18 | |
+| Volt Orb, full | 3 | 0.45 | x ± 1.1, y 4.8–6.6 | 120, chip 24, knockdown | the strongest thing Seraph can send: only another full orb stops it |
+| Hex Bolt (Shadow) | 1 | 0.175 | x ± 0.8, y 4.5–7.5 | 45, chip 9, **marks Shadow** | no curse: the hex is lost in the light |
+| Mark of Judgement (a Seraph) | 1 | 0.20, then 0.25, 0.3125 ... to 0.45 | x ± 0.8, y 5.0–7.4 | 45, chip 9, **marks its first thrower** | the mirror match's rally: each ward sends it back quicker |
+
+The Twins, Tank and the Double-blade Hero have no shots: against them the Wing Ward catches
+nothing. The Parry, the Void Step and Tank's armour treat a reflected shot as any shot of its kind
+(caught, passed through, absorbed).
+
+### Grab and throw (Y): Heaven's Arc
+
+`grab`: startup 5, active 2 (the catch box x 1.0–3.6, y 2–10: both fists, the Hero's reach), 7
+frames; a miss plays `grab_whiff` (22). Breakable as every Y grab (Y within 10 frames). On a
+catch, `throw` (40 frames) on Seraph and **`thrown_vault`** (40, the Vault Throw's victim move,
+over the head) on the other: Seraph grabs, beats its wings, carries the other over its head and
+slams it down on the far side. **The sides swap**: Phantom Grip's swap, over instead of under.
+
+| Frames | Seraph | The other (the fight places its root, from Seraph's root: + in front) |
+|---|---|---|
+| 1–8 | both fists close on the other's shoulders (the break window: 1–10), the wings lift | 3.0 m in front, lifted to 1.0 m |
+| 9–16 | **two wing beats** (down-strokes on 10 and 15): Seraph rises **2.0 m** (root motion, 0.25 m a frame) and heaves the other up in front of it | from 3.0 to 2.0 m in front, lifted from 1.0 to 6.0 m above Seraph's root |
+| 17–24 | **over the top**: Seraph's back arches, the arms swing the other over its head, the wings spread | from 2.0 m in front to 3.0 m behind, over the top: 9.0 m above Seraph's root on 20–21, 6.0 m on 24 |
+| 25–29 | **the slam**: Seraph drops back to the floor (root motion 2.0 m down over 25–28), driving the other down behind it | from (−3.0, 6.0) to (−3.5, 0): on the floor 3.5 m behind on 29 |
+| 29 (`release`, 28 from 0) | | **120 damage, knockdown**; the other bounces on about 1.3 m (−0.08 m a frame back, launch 0.30): it lands about 5 m behind Seraph |
+| 30–40 | recovery: Seraph straightens and folds the wings, still facing the way it faced; it turns on returning to neutral (the Vault Throw's way) | |
+
+- **With Seraph's back to a wall** there is no room behind it: Seraph's wing beats carry it
+  forward instead. The fight moves Seraph's root forward by however much the other's spot behind
+  it (3.5 m) is past the wall's limit (the stage's half-width less the other's push box), at most
+  5 m, evenly over frames 9–24, so the other lands at the wall and **the sides still swap**: the
+  corner escape. Phantom Grip's wall case mirrored (there the other is moved; here Seraph moves).
+- **With the other's back to a wall** (Seraph cornering it), the throw takes it out of the corner
+  and leaves Seraph in it: the swap is the point of the throw, not damage. Cornering, Seraph should
+  chain instead.
+- **With Seraph's back to an open edge**, the lip counts as a wall for the carry (the other is
+  held over the deck and Seraph moves forward as at a wall); the release then carries the other
+  its last 1.3 m over the lip: **within about 5 m of an open edge, Heaven's Arc rings the other
+  out**, as the Vault Throw does from there.
+- Thrown mechs are not hittable, and neither is Seraph during the throw (every throw's rule).
+  120 damage: the Vault Throw's; less than the Hero's 140 and Tank's 150, more than the Grip's 110.
+
+### Super (A + B): Judgement
+
+**The flash** (frames 1–40: the world freezes, Seraph alone moves): it plants, raises the right
+fist straight overhead, the wings spread wide (to the spread pose by frame 24) and the **halo
+lifts on its joint** (x 0 to 60 over frames 8–30, 0.9 m), flaring white-gold (the flare is the
+effect's); the stage brightens toward white-gold. Then:
+
+| Frames | |
+|---|---|
+| 41 | **the lock**: the fight takes the other mech's root x as the column's centre (the leader's, twin A, for the split Twins), and a ring of light opens on the floor there (the event `Column`). The column does **not** track: it falls where the lock was |
+| 41–48 | startup (8): Seraph brings the raised fist down and forward, pointing at the target, the arm level by 48; the light gathers above the target |
+| 49–58 | **active (10)**: the column slams down: a hit box **x lock ± 2.5 m, y 0–20 m** in the world, wherever Seraph stands |
+| 59–92 | recovery (34): the arm comes down, the wings fold (by 80), the halo settles back on the helm (x 60 to 0 over 59–80), the stage's light fades with the column |
+
+- **Invulnerable from frame 1 to 49** (the flash, the startup and the column's first frame).
+- **Can it be walked out of?** No. The column falls 8 frames after the freeze; to leave it a mech
+  must move more than 3.7 m (the column's half-width, 2.5 m, and at least 1.2 m of its own hurt
+  box), and the quickest walk (the split Twins', 0.10 m a frame) covers 0.8 m in that time.
+  Nothing jumps out either: the column reaches 20 m up.
+  **Block it** on the flash (chip), or be invulnerable or gone through frames 49–58: the Void
+  Step started on the first frame after the flash is gone on 47–58 and escapes; the Rising Arc
+  (invulnerable 7), Eclipse Rise (9) and Ascension (8) are not invulnerable long enough; Shadow
+  Sneak's shadow is hittable at the floor and is caught. A mech knocked down or getting up through
+  frames 49–58 is not hittable and is missed. Anything mid-move anywhere on the stage is hit.
+- **Damage**: **280**, knockdown, the super's hitstop (20), launch 0.60; scaled in a combo like any
+  hit; then **×1.5 against a marked mech: 420** (182 and 273 as a chain's third hit). The bonus
+  multiplies with the antimatter debt's 25 %: 525 against a marked Double-blade Hero in debt.
+- **Chip**: 70 through a block (which can finish a round), **not raised by the mark**: the mark
+  rewards landing it, and blocking is the answer. Blockstun 20; about −23 on block, at whatever
+  distance the column fell. From far, little can punish that (the Momentum Drive, the Raikō
+  Overload, Antimatter Rend, a held Sneak or Dive); up close, anything.
+- Not parried (no super is: the owner's rule), never absorbed by Tank's armour (no super is), not
+  caught by a mirror's Wing Ward (it is not a shot). It hits one twin of the split Twins (the
+  leader if both are in the column).
+- One bar, as every kinetic super (no debt). What it is for: the punish for anything left unsafe
+  anywhere on the stage, and the reason to land the bolt first.
+
+### Chains
+
+The shared chain: Jab, then Lunging Straight, then a special or the super. **The Mark of Judgement
+combos from a Lunging Straight** up close (the bolt starts 3.5 m out and touches at once): the
+chain's payoff is the mark. Ascension combos from a Jab close up. **Judgement combos from the
+Jab or the Lunging Straight**: the column falls 8 frames after the freeze, inside their hitstun
+(scaled: 182 from the chain's third hit, 273 marked). The Seraph Dive never combos (too slow). The
+Wing Ward can be cancelled into (after a blocked Lunging Straight, against a mech that answers with
+a shot).
+
+### Frame advantage (estimated)
+
+Until measured (`tests/run.sh 17`, against a standing Hero, once the animations land): Jab −3 on
+block / +1 on hit, Lunging Straight −6 / +1 (both Shadow's, the same timing), Reaping Kick about
+−10, Mark of Judgement about −11 / −7 at 6 m (safe from further out), Seraph Dive about −10,
+Ascension about −22, Judgement about −23.
+
+### Balance intent
+
+An honest answer character. Where Shadow sets traps, Seraph answers what the other does: a shot
+comes back (the Ward), a wave or a mine is flown over (the Dive), a jump-in meets the Ascension,
+and a whiff anywhere on the stage meets Judgement. Its weaknesses are as plain: short fists (it
+must get in to poke, and the Hero's Tip Thrust and Beam's Arc Jab outreach it), slow specials that
+any shot or anti-air takes, a ward that does nothing against strikes or against mechs without
+shots, and a super that is a full kinetic bar (about ten landed hits). The mark is its plan: land
+the slow bolt, then threaten 420 for six seconds; the other must respect the flash and block.
+Health 1,000, between Shadow's 900 and Tank's 1,150; its hits are Shadow's weight, its specials a
+little heavier.
+
+- **The Hero**: the Kinetic Wave feeds the Ward (it comes back at 0.275 m a frame) and the Dive
+  flies over it, so the Hero's zoning is weak here; the Hero wins up close at the tip of its sword,
+  and its Parry catches the Dive, the Ascension and the bolt. Even, slightly Seraph's at range.
+- **The Double-blade Hero**: rushdown against short fists. The Void Step passes the bolt and is the
+  one way out of Judgement; the Antimatter Slide passes under the Jab, the Lunging Straight and the
+  bolt (the Reaping Kick and the Ascension, its box from 3 m up, catch it). A marked Double-blade in
+  debt takes 525 from Judgement: its debt is twice as dangerous here. Close to even; watch the
+  debt stacking.
+- **Beam**: every orb is reflectable, a full orb comes back at 0.45 m a frame and knocks Beam
+  down, so Beam must charge less and use the Arc Lance (a strike: not reflected, and it stops the
+  Dive). Judgement punishes the Reaction Prime's 30 exposed frames from anywhere. Slightly
+  Seraph's; the matchup Momentum's angel was made for.
+- **Tank**: nothing to reflect; the armour eats the Jab, the Lunging Straight, the Dive and the
+  Ascension, and the Atomic Clinch outranges the fists. Seraph wins from far (the bolt, which marks
+  through armour, the Dive punishing a Bulldozer), Tank up close. Judgement on a marked Tank (420)
+  also fills most of the reactor (3 a point). Even.
+- **The Twins**: no shots, so the Ward is dead weight; the split twins' pressure and the partner's
+  late copy beat slow specials, and the Low Roll goes under the bolt, the Jab and the Lunging
+  Straight (the Reaping Kick answers it). The mark stays on through switching. Slightly the Twins'.
+- **Shadow**: the mirror of the design. The bolts trade (1 against 1); a warded Hex Bolt marks
+  Shadow; the Dive flies over the Rift Mine and the Sneak's shadow; but the Siphon takes all of
+  Seraph's kinetic meter while it lasts, delaying Judgement, and Eclipse Rise (9 frames
+  invulnerable, 7 m reach) takes the Dive. Even: the target is 50 %.
+- **Seraph** (the mirror): the bolt rally, each Ward sending it back quicker; whoever wards last
+  marks the other.
+
+### The CPU (Seraph)
+
+Seraph's own CPU replaces `cpu_as_shadow` for it (`cpu.akr`): a `seraph_neutral` like
+`shadow_neutral`, and lines in `cpu_think` where Shadow has them:
+
+- **Neutral, far** (outside the other's forward attack plus 2 m): the Mark bolt when the other is
+  not marked (or the mark has under 2 s left) and has no shot out; against a mech with a stronger
+  shot, only while it is down or busy. Against the Hero and Beam at range, wait for their shot and
+  **ward it** (down + B when the shot will touch in 5 to 20 frames: the ward's 4 frames of
+  startup, then its 20) at its `lv.special` rate, else block it.
+- **A wave on its way**: the Dive over it when it is 13 to 24 frames out (the hop clears 3 m on
+  frame 12) at `lv.aa`, else ward or block. An orb or a bolt: ward, block or go under
+  (none of Seraph's moves go under).
+- **The Dive held**: B held while the distance to the other is more than about 7 m (the dive's
+  1.8 m and the fist's 5.5 m): the glide stops at the other anyway.
+- **Chain ender**: the Mark bolt if the other is not marked; Judgement if marked and the meter is
+  full (`super_wise`); else the Ascension from a Jab up close, or nothing on block.
+- **Anti-air**: up + B against a jump coming within about 9 m.
+- **Judgement**: on a whiff or an unsafe move anywhere on the stage (not only within 12 m, the
+  general punish's range), preferring a marked mech; on Beam's Reaction Prime; never on a mech
+  knocked down or getting up through the column's frames.
+- **Throws**: the general rule, and Heaven's Arc whenever its back is within 6 m of a wall (the
+  corner escape) or of an open edge with the other in reach (the ring-out).
+- **Against Seraph** (the other CPUs): block on Judgement's flash at any distance (the general
+  "an attack starting in range" test uses the forward attack's reach, which a column ignores), and
+  more so when marked; fire shots less often at a Seraph standing within ward reach of them
+  (the Hero's far wave, Beam's orbs, Shadow's bolt; `shadow_neutral`'s `open_ok` and `beaten`
+  treat the Mark bolt as strength 1, as the Hex Bolt).
+
+### Reactions and the rest (Seraph)
+
+As the shared list below, with Seraph's lengths: `idle` 60, `walk_f`, `walk_b` 44, `crouch` 8,
+`jump` 40, `land` 8, `block` 4, `hit_high` and `hit_low` 20, `hit_air` 30, `knockdown` 32, `getup`
+20, `ko` 90, `win` 120, `intro` 90, `grab` 7, `grab_whiff` 22, `grab_break` 20, `throw` 40, `thrown`
+44, `thrown_vault` 40, `thrown_slam` 56. What differs from the other mechs is how it falls:
+**Seraph lands face down**, its wings folded on its back, never flat on its back on its wings
+([For the animators](#for-the-animators-seraph)).
+
+### For the animators (Seraph)
+
+Everything in `anims/seraph/` becomes Seraph's own; until a move is done it stays Shadow's
+placeholder. Frame numbers here count from 1 as the tables do; the files count from 0.
+
+- **The rig** (`models/seraph/seraph.rig.json`): Shadow's skeleton and offsets, the fists the
+  weapon parts (keep `weapon_r` and `weapon_l` at 0: `"still"`; a fist does not open), plus
+  **`wing_l`, `wing_r`** (the torso's: folded at 0; spread at x −122, y 50, z −24 on the left, the
+  right's y and z negated; range x −130..10, y −10..65, z −35..10, mirrored) and **`halo`**
+  (the head's: x 0..60 lifts the ring 0.9 m straight up; 60 is the rig's `halo.raised`). The wings
+  are a pair of flat plates in the wing's own Y-Z plane, hanging behind the back to the calves when
+  folded, 2.6 m deep behind the wing pack: anything that lays the back on the floor puts them 2 m
+  into it. The wings and the halo have no hurt boxes. **The ward's pose is past the listed y
+  range**: the plates point back (+Z) at 0, and only a turn about y of about 120° brings them round
+  the sides to the front (−Z). The ranges are the model's notes (`make_seraph.py`'s `RANGES`, in
+  the rig's `role` and `range` text), not limits the kit checks; widen the wing's to y −10..130
+  there when the ward is made, and check the plates against the arms and thighs with `verify`'s
+  `parts` check.
+- **The guard** (new): the boxer's guard of the intro paragraph: upright, the right fist leading
+  at chin height about 3 m out, the left at the jaw, the elbows in, the knees soft, the wings
+  folded, the halo down. It is the rig's `poses.guard`, written by `make_seraph.py` (the model's
+  generator: change it there and regenerate); every move starts and ends in it.
+- **Wings and halo, in every move**: folded (0) and down (0) unless a move below says otherwise.
+  The wings settle and lift a few degrees with the body (x 0 to −5) rather than hang dead: on the
+  walk's plants, the idle's breath, a hit. "Spread" means the rig's spread pose; "half open" about
+  x −60, y 25, z −12 on the left.
+- **Marks** (from 0): `cancel` on `atk_n` 3–10 and `atk_f` 12–21; `invuln` on `sp_u` 0–7 and
+  `super` 0–48; `flash` on `super` 0–39; `release` on `sp_n` 16 (the bolt) and `throw` 28 (the
+  slam); `charge` on `sp_f` 25 (the glide's hold); **`ward` (new) on `sp_d` 4–23**; `riposte` on
+  `sp_d` 40 (the fling); `step` on the walks' plants, `sp_f` 32 (touchdown), `sp_u` 38 (landing).
+  No `hide` and no `nopush` anywhere: Seraph never vanishes.
+- **Root motion**: `atk_f` 2.0 m over frames 3–11 (Shadow's); `sp_f` 2.0 m forward and 4.0 m up
+  over 7–14 (the hop), **none after it** (the fight moves the root through the glide and the
+  dive); `sp_u` 1.2 m forward over 2–7, 6.0 m up over 8–15, 6.0 m down over 16–38 (ease in);
+  `throw` 2.0 m up over 9–16 and 2.0 m down over 25–28; none in `sp_n`, `sp_d` and `super`.
+- **Boxes**: the hit boxes in the tables, following the right fist (the knuckle guard: its front
+  is the point (0, 0.14, 0) in `weapon_r`'s frame, the rig's `fist.front`), the right foot and
+  shin (`atk_d`), both fists (`atk_air`, `throw`'s grab). `sp_f`: crouching boxes on 1–6; on the
+  glide frames the hurt boxes follow the parts with **nothing below the root** (the legs trail
+  back level with it) and the push box x ± 1.4, y 0–7. `super`: a placeholder hit box `hit` 0,
+  x 0–5, y 0–20, on frames 49–58: the fight moves it to the lock.
+
+| Move | Length | Must show | Wings and halo |
+|---|---|---|---|
+| `idle` | 60, loop | the boxer's guard breathing: the chest rising, the fists drifting an inch, the weight shifting between the feet | the wings lift x −4 on the in-breath; the halo bobs x 0..4 |
+| `walk_f`, `walk_b` | 44, loops | a short gliding boxer's step, the guard steady; `step` on 0 and 22 | settle x −3 on each plant |
+| `crouch` | 8 | the knees bend, the guard kept up | folded |
+| `jump` | 40 | Shadow's timing: crouch 4, launch, tuck at the top, extend for landing | half open at the top (frames 14–26), folded by 38 |
+| `land` | 8 | the knees take it | folded, a settle |
+| `block` | 4 | both forearms up in front of the face and chest, elbows in | the wings swing a third of the way round (y 40 on the left) |
+| `hit_high`, `hit_low` | 20 | the torso snaps back, the head follows, back to the guard | the wings jolt open (x −12) and settle |
+| `atk_n` | 17 | the Jab above; the fist at about 7.2 m on 4–5, its front 3.2 m out | folded |
+| `atk_f` | 36 | the Lunging Straight above | swing back with the lunge (x −15), settle in the recovery |
+| `atk_d` | 36 | the Reaping Kick above | flare 10° as it rises (24–32) |
+| `atk_air` | 26 | the Double-fist Dive: fists clasped overhead on 1–7, driven down and forward by 8, held until landing | swept back (x −40) from 8 |
+| `sp_n` | 41 | the Mark of Judgement above; the right fist's front at about x 3.5, y 6.2 on frame 17 (the bolt's start) | folded; halo x 0 to 20 on 1–16, back to 0 by 30 |
+| `sp_f` | 54 (+ the hold on 26) | the Seraph Dive's table; the glide pose on 15–26. While B is held the fight holds frame 26 itself (the pose stands still, the effects stream off it), so 26 must be the best glide pose | lift x −30 by 6; spread by 12; a flutter of x ± 3 on 15–25, spread on 26; half folded on 27–28; folded by 48 |
+| `sp_u` | 43 | Ascension above | lift on 1–7; spread on 12–15, one beat (down-stroke on 14); fold over 16–36; halo x 30 at the top, 0 by 30 |
+| `sp_d` | 52 (40 when nothing is reflected) | Wing Ward's table; frame 40 must be the guard (the move ends there) and so must 52 | wrap to about (−20, 120, 0) by 4, held 5–24, folded by 40; on 41–44 snap to spread, folded by 52; halo down |
+| `grab` | 7 | both fists reaching, the catch box above | folded |
+| `grab_whiff` | 22 | the fists closing on nothing, a stumble | a flick open and closed |
+| `throw` | 40 | Heaven's Arc's table; the fists stay on the other's shoulders where the fight places it | lift on 1–8; beats on 10 and 15 (x −122 up, −40 on the down-stroke); spread on 17–24; swept down on 25–29; folded by 40 |
+| `grab_break` | 20 | both arms shove | open half and fold |
+| `thrown`, `thrown_vault`, `thrown_slam` | 44, 40, 56 | follow the thrower's hands as every mech's; **end face down** (hit_air's last frame follows them) | folded, clear of the floor |
+| `hit_air` | 30, the last frame held | thrown up and back, then **turning over** (about 150° forward, through frames 12–24) so the held last frame is face down, arms forward | half open as it tumbles, folded on the back by 24 |
+| `knockdown` | 32 | lands **face down** on the forearms and knees, a bounce on 4–8, still | folded on its back, clear of the floor (no `floor_allow`) |
+| `getup` | 20 | pushes up on both fists to a kneel and stands into the guard | half open on 6–14 as a counterweight, folded by 20 |
+| `ko` | 90 | falls forward onto its face and stays down, the head turned to the camera | the wings droop half open across its back (x −70, y 40, z −10 on the left); the halo stays on the helm (the effect dims it) |
+| `super` | 92 | Judgement's tables: the fist overhead on the flash, pointing at the target on 41–48 (the arm level), held through the column, down in the recovery | spread by 24, held to 58, folded by 80; halo x 0 to 60 over 8–30, held to 58, back to 0 over 59–80 |
+| `win` | 120 | Judgement's pose for the cover: the right fist raised overhead, the left at the chest, then a slow bow of the head | spread by 30 and held; halo up (60) by 40 |
+| `intro` | 90 | descends into the booth's spot from above on spread wings (the pelvis `offset` up 8 m on frame 0, down to the guard's by 30; the root stays on the floor), lands on one knee, rises into the guard | spread on 0–30, folded over 40–70; halo up, then down |
+
+- **Lying down.** The knockdown, the KO, the get-up and the end of `hit_air` and the throws'
+  victim moves put Seraph **face down** (its back up), so the folded wings stand up off its back
+  instead of 2 m into the floor; `verify`'s `floor` check must pass with **no `floor_allow`** for
+  the wings. `hit_air`'s last frame is also where a thrown Seraph lands (the throws' release jumps
+  the victim there), so `thrown`, `thrown_vault` and `thrown_slam` end in it. The shared table's
+  "flat on its back" does not apply to Seraph.
+- **The cover** (`cover.akr`'s `COVER_POSE[Seraph]`, now 119 of Shadow's win): the frame of the
+  new `win` where the fist is up, the wings spread and the halo raised (about 60).
+- **The Lunging Straight and the Jab** keep the reach phase 1 measured; only the Jab's height
+  changes (its fist's box from y 8.6–9.8 to 6.6–7.8). Keep `design` boxes in the files so
+  `verify` checks them.
+
+### For the effects and sound (Seraph)
+
+Light gold and white-gold, Momentum's angel: `SRX_GOLD` 0x80E0FF (0xBBGGRR: light gold), `SRX_CORE`
+0xDCF8FF (white-gold), `SRX_WHITE` 0xFFFFFF; additive sprites on fx.akr's effect slot and its
+particles, as `shadow_fx.akr`'s. A new file `seraph_fx.akr`, called with a line each from
+`game.akr`, `fx.akr` and `hud.akr` as Shadow's is. The budget: Seraph's effects within Shadow's
+(about 76,000 cycles in `prof_fx` with fx.akr's at the worst frame; scenarios 162 and 168 re-run).
+
+**Anchors** (part frames, from `anim_part()`): the right fist's front, (0, 0.14, 0) in `weapon_r`'s
+frame (`weapon_l` for the left); the core, (0, 2.25, −1.08) in the torso's frame (the red gem on
+the sternum); the halo's centre, (0, −0.45, −0.78) in the halo's frame (the rig's `halo.centre`);
+each wing's tip, about (−0.7, −5.6, 2.4) in `wing_l`'s frame and (0.7, −5.6, 2.4) in `wing_r`'s
+(the long flight plate's point: check it on the preview).
+
+| Effect | When (frames from 1) | Anchor | What |
+|---|---|---|---|
+| Fist trails | the active frames of `atk_n`, `atk_f`, `atk_air`, `sp_f` (29–32), `sp_u` (8–15) | the fist's front, a short segment back along the forearm (the points 0.14 and −0.9 on the knuckle guard's +Y) | a short white trail edged gold, in place of fx.akr's no-trail branch for Seraph (`fx_update`) |
+| The bolt's gathering | `sp_n` 1–16 | the right fist's front | gold motes drawn in to the fist, a glow growing to 1.5 m |
+| The Mark bolt | while out | the shot (x, the middle of y0–y1) | a white-gold core, a gold glow 2.4 m across, a four-point glint turning slowly, gold motes falling off behind it; released with a flash at the fist |
+| The mark | while `Fighter.mark` > 0 | the marked mech's core (its torso) and 1.5 m above its head | the gold sigil at the chest pulsing once a second; the ring over the head turning; motes rising; both flickering in the last 60 frames. A new mark: a gold ring bursting out from the chest; a refresh: the same, half the size |
+| The HUD's mark | while marked | the marked mech's meter and health bar | MARKED, the time bar, the health bar's shine, Seraph's gold SUPER pulse ([the mark](#mark-of-judgement-sp_n-and-the-mark)) |
+| The hop and the beats | `sp_f` 7, `throw` 10 and 15, `sp_u` 14 | the floor under the root | a downdraft: a ring of dust pushed out along the floor, 6 m wide |
+| The glide | `sp_f` 15 to the dive | each wing's tip | white streaks off the tips and the trailing edges, a few motes a frame |
+| The dive and touchdown | `sp_f` 27–33 | the fist; the floor at 33 | a white streak along the dive; a dust ring on landing |
+| Ascension's flare | `sp_u` 12–16 | the wing tips, the fist | a burst of light at each wing tip on the beat (14), a vertical arc of light along the fist's path |
+| The ward | `sp_d` 5–24 | in front of the body: x +1.5, y 6 from the root | a tall curved sheen of light over the wrapped wings, 11 m high, flickering, fading over 4 frames at the end |
+| A reflect | the `Reflect` event | the contact point | a white flash 4 m across, a gold ring, and the shot turned to light (below) |
+| A reflected shot | while `Shot.refl` | the shot | drawn as light at its own size and height: a low wave of light (the wave), a gold ball (an orb, its level's size), the Mark bolt (a bolt). Drawn before fx.akr's wave and `beam_fx_orb` branches (`sh.refl` first) |
+| Heaven's Arc's slam | `throw` 29 | the other's root | a heavy dust ring and debris, as the throws' |
+| Judgement's flash | `super` 1–40 | the halo's centre; the core | the halo's flare: a gold ring growing from the halo to 4 m and a white glow, pulsing; the core lit white; the stage brightened to white-gold (a positive colour offset through `layer_offset`, as Total Eclipse's dark: `seraph_fx_offset`) from frame 1 to the column's last active frame (58), fading over 59–70 |
+| Judgement's lock | `super` 41–48 (the `Column` event) | the floor at the lock | a gold ring opening to 5 m wide on the floor, a rain of motes falling into it from the top of the screen |
+| The column | `super` 49–58, fading over 59–70 | the lock, x ± 2.5, from the floor to the top of the view | a white-gold beam slamming down in 2 frames, a bright core 2 m wide, the edges flickering; dust thrown out at its foot; the camera's shake on the hit as a super's |
+| Knocked down | `knockdown`, `ko` | the halo | the halo's glow dims (the halo part is emissive: dim it to a third while Seraph lies) |
+
+**Sounds** (`sfx.akr`; new samples by `tools/gen_mechexpo_audio.py`; the priorities in `sfx.akr`'s
+header). Until each is made, a stand-in from the existing ones (named):
+
+| Sound | When | Priority | Stand-in |
+|---|---|---|---|
+| `SFX_MARK_CAST`: a bright chime over a rush of air | the bolt's release (`Shot` event: `sfx_shot(Seraph, ...)`) | 6 | `SFX_BEAM_ORB` pitched up 1.4 |
+| `SFX_MARK_HIT`: a single struck bell, a long tail | the `Mark` event (a new mark; a refresh quieter) | 6 | `SFX_METER_FULL` pitched 0.8 |
+| `SFX_WARD`: plates sweeping round, a soft metallic shimmer | `sp_d`'s first frame (the Swing event has no hit box: poll the move) | 4 | `SFX_VOID_IN` pitched 1.3 |
+| `SFX_REFLECT`: a ringing clang and a rising shimmer | the `Reflect` event | 7 | `SFX_BREAK` pitched 1.2 |
+| `SFX_WING_BEAT`: a heavy whump of air | `sp_f` 7, `sp_u` 14, `throw` 10 and 15 | 4 | `SFX_LAND` pitched 0.7 |
+| `SFX_GLIDE`: wind over the plates (a loop, `sfx_hold`) | every glide frame (`sp_f` 15 to the dive), the slot of Seraph's side | 3 | `SFX_BEAM_HUM` pitched 0.6, quiet |
+| `SFX_DIVE`: a descending whistle | `sp_f` 27 | 4 | `SFX_SWING_HERO` pitched 0.8 |
+| Fists | the Swing event (`sfx_attack(Seraph, mv)`): the jab, the straight, the kick, the dive's straight, the Ascension | 4 | the combined Twins' fists |
+| The super | `sfx_super(Seraph)`: the kinetic charge-up, with a rising choir-like pad for the halo | 9 | the kinetic charge-up alone (as now) |
+| `SFX_COLUMN`: a roar falling from high to low, ending in an impact | the column's Swing (`super` 49); its lock (`Column` event) a thin rising tone | 9 | `SFX_SUPER` |
+| Steps | the walks | 2 | `sfx_step_of`: lighter than the Hero's (pitch 1.1) |
+
+The events (appended to `enum Ev`, so the others keep their numbers): `Mark` (side: Seraph's; x, y:
+the marked mech; power 1 a new mark, 0 a refresh), `Reflect` (side: the warding side; x, y: the
+contact; power: the shot's strength), `Column` (side: Seraph's; x: the lock). `game.akr`'s
+`sound_event()` and `fx_event()` take them.
+
+### Engine work needed (Seraph)
+
+What the current code cannot do yet, and where it plugs in. The rule of phase 1 holds: Shadow's
+code asks `seraph.akr`'s predicates, never Seraph's name, so each special moves to Seraph's own
+code by taking Seraph out of one predicate (`seraph.akr`):
+
+| Predicate (phase 1: Shadow and Seraph) | Phase 2 | Seraph's own, in its place |
+|---|---|---|
+| `has_hex_bolt` | Shadow only | `has_mark`: the Mark bolt and the mark |
+| `has_sneak` | Shadow only | `has_glide`: the Seraph Dive's glide and dive |
+| `has_rift_mine` | Shadow only | `has_ward`: the Wing Ward and the reflect |
+| `has_phantom_grip` | Shadow only | `has_over_throw`: Heaven's Arc |
+| `has_eclipse` | Shadow only | `has_judgement`: the lock, the column, the marked bonus |
+| `has_dive` | **Shadow and Seraph** (unchanged) | the Double-fist Dive keeps the Diving Claw's steepened fall |
+
+(`has_shadow_kit` stays true for Seraph through `has_dive`, so `shadow_tick` still runs the dive.)
+
+1. **State** (`fight.akr`): `Fighter.mark: s32` (frames left of the mark, as `curse`);
+   `Shot.mark: bool` (a Mark bolt: it marks on a hit) and `Shot.refl: bool` (reflected: drawn as
+   light); `enum Ev` gains `Mark`, `Reflect`, `Column` at its end. `start_round()` calls a
+   `seraph_round()` (no marks) beside `shadow_round()`; `fight_tick()` calls `seraph_tick(live)`
+   after `shadow_tick()` (the mark's count down on live frames, outside the freezes, as the
+   curse's; the glide's loop for the sound is polled, not ticked).
+2. **The Mark bolt** (`fighter.akr`): `fires_shot()` asks `has_mark`; `shot_fire()` calls
+   `seraph_bolt_fire(i, s)` (the constants of [the bolt](#mark-of-judgement-sp_n-and-the-mark));
+   `shot_hit()` returns `mark_hit()` for `s.mark`; `shot_try()` calls `seraph_marked(i, j, s)`
+   beside `shadow_hexed()` after a hit and after an absorb (`fight.f[j & 1].mark = 360`, the
+   `Mark` event). A cursed Seraph's +120 goes to Shadow as any kinetic gain (`meter_add`).
+3. **A reflected shot changes owner** (`fighter.akr`'s `shot_try()`, before the Parry's test): a
+   shot touching body j that is `seraph_warding(j)` (`has_ward`, `sp_d`, the `ward` mark on its
+   frame, not yet reflected) and coming at its front calls `seraph_reflect(i, j, s)`: if
+   `fight.shot[j & 1]` is free, copy the shot into it, reverse and scale `vx` (×1.25, at most
+   0.45), reset `t` and `life`, set `refl`, turn a `hex` into a `mark` (clear `hex`); free the
+   thrower's slot; jump Seraph to the `riposte` frame (`fx[j].riposte = true`, as the Parry does);
+   the `Reflect` event. If Seraph's slot is taken, the shot is only removed. A shot reflected this
+   frame is skipped by the rest of `shots_tick()` until the next frame (a flag or `t = -1`).
+   `advance()` already ends any `sp_d` at its `riposte` frame when nothing was caught, so the ward's
+   40 frames need no code.
+4. **The `ward` mark**: `MARK_WARD: u32 = 2048` in `anim.akr`, `'ward': 2048` in
+   `tools/animkit/move.py`'s `MARKS`, a row in `docs/ANIMKIT.md`'s marks table (the Animation Kit's
+   owner). `parrying()` is not used: the ward must not parry strikes.
+5. **A held glide with gravity** (`fighter.akr`'s `advance()`, beside the Sneak's line and before
+   the charge-frame rule, which would otherwise hold it for `ORB_CHARGE_MAX`): `has_glide(f.mech)
+   && seraph_advance(i)`. On the glide's frames (from the frame after the hop's root motion ends to
+   the `charge` frame, found in the data once as `shadow_init` finds the Sneak's) it moves the root
+   0.40 m forward and 0.02 m down a frame, holds the charge frame while B is held up to 24 frames
+   (`f.charge`), and ends the glide early (jump to the dive's first frame) when Seraph's push box
+   meets the other's overlapping in height, or at a wall, the separation limit or a lip. On the
+   dive's frames it brings the root down by the height left at the dive's start over its 6 frames
+   and 0.30 m forward a frame, stopping at the other's push box. Seraph stays out of `fx.air`
+   (`grounded()` is false because its root is above the floor), so a hit is an air hit
+   (`struck()`), a mine does not snare it (`snare_try()`), and `bound()` does not push it. The
+   existing `move_root()` x clamp at the other mech applies only to the hop (it ignores height).
+6. **Heaven's Arc** (`fighter.akr`): `catch()` gives the victim `thrown_vault` for Seraph as for
+   the Double-blade Hero; `throw_tick()` calls `seraph_hold(i, j, t)` (`has_over_throw`) for the
+   table's placement and the wall case (Seraph's root moved forward over frames 9–24 by the
+   shortfall, at most 5 m; the lip counts as a wall); the release takes `vx = −ft × 0.08` (the
+   default branch; say so explicitly beside Phantom Grip's line).
+7. **A column that targets a position** (`fighter.akr`): Seraph's super records the lock
+   (`judge_x[side]`, the leader's root x) on its frame 40 from 0, the first after the flash (in
+   `seraph_tick` or `advance`, with the `Column` event); `load_boxes()` calls
+   `seraph_column_box(i)` after `mv_boxes()` to move the super's hit box to the lock in
+   fight-local metres (centre `(judge_x − f.x) × facing`, ± 2.5, y 0–20). One hit index, so it hits
+   once; the Parry and the armour already skip supers.
+8. **The marked bonus** (`fighter.akr`'s `resolve()`, beside the Total Eclipse line): for
+   `has_judgement` and `mv == super`, `h.dmg = h.dmg × 3 / 2` when `fight.f[j & 1].mark > 0`; the
+   chip is left alone. `struck()` scales it for the combo, `meter_damage()` for debt, after.
+9. **Seraph's tables** (`seraph.akr`): its own `seraph_hit()` (the numbers of this section:
+   jab 50, straight 105, kick 85 knockdown, air 85, bolt 45 / chip 9, Dive 110 / 22, Ascension
+   120 / 24, throw 120, super 280 / 70), its own stand-ins (`seraph_tm`, `seraph_root`,
+   `seraph_marks`, `seraph_boxes`: this section's timings, so the fight plays before the
+   animations land), and `SERAPH_MOVES` (Jab, Lunging Straight, Reaping Kick, Double-fist Dive,
+   Mark of Judgement "B (marks: Judgement +50 %)", Seraph Dive "FWD + B (hold: farther)", Ascension,
+   Wing Ward "DOWN + B (sends shots back)", Heaven's Arc "Y (swaps sides)", Judgement "A + B, full
+   meter").
+10. **The CPU** (`cpu.akr`): [The CPU (Seraph)](#the-cpu-seraph); `cpu_as_shadow()` becomes
+    Shadow's alone.
+11. **Drawing and sound**: `seraph_fx.akr` (new); `fx.akr`'s `fx_update` (the trails' branch) and
+    the shots' drawing (`sh.refl` and `sh.mark` before `sh.hex` and `sh.lvl`); `hud.akr`'s
+    `hud_draw` (a `seraph_mark_hud(f, s)` line after `shadow_siphon_hud`); `game.akr` (the draw and
+    offset lines, `sound_event()` for the three events); `sfx.akr`'s `sfx_shot` (Seraph's own
+    branch), `sfx_super`, `sfx_attack`; `cover.akr`'s `COVER_POSE`.
+12. **Tests** (`tests/harness.akr`, the next free scenario numbers): the mark (applied by a hit and
+    through armour, not by a block or a Parry, refreshed, 360 frames, gone at the round's end);
+    Judgement's ×1.5 and its lock (5 m wide, not tracking, escaped by the Void Step, chip not
+    raised); the ward against the wave, the three orbs, a Hex Bolt (marks, does not curse) and a
+    Mark (the rally's speeds); a strike through the ward; the Dive over a wave and an armed mine,
+    stopped by an orb, its held distance; Ascension's invulnerability; Heaven's Arc's swap and its
+    wall and lip cases. Scenarios 160 and 161 (the phase 1 checks: five hits of the super, the
+    Grip's swap) change with them; the budget (162, 168) is measured again.
+
+### Phase 1: what is in the game now
+
+Phase 1 (mx-seraph) put Seraph in the game with Shadow's moves as placeholders; until each part of
+phase 2 lands, this is what plays:
+
+- **Real**: the model and rig, the roster row (SERAPH, MR-02, Momentum's emblem, stats `0x2323`:
+  power 2, speed 3, reach 2, armour 3; 13.5 m to the top of the halo; the blurb "PALADIN:
+  WARD,\nJUDGEMENT", the owner's "THE PALADIN:\nWARDS, JUDGEMENT" being 91 px on its second line
+  where the spec sheet has 76: asked), the `STATS` row (1,000 health, the walk, the kinetic
+  meter), and the fists' boxes in the jab (x 1.7–3.2, y 8.6–9.8: at face height, so it passes
+  over a crouching mech until re-keyed) and the lunge (x 2.6–6.8, y 6.7–8.3), measured with
+  `mei_anim.py pose` and checked by scenario 160 against Shadow's.
+- **Placeholders**: every animation is Shadow's on Seraph's rig (`anims/seraph/`, each `"base":
+  "../shadow/MOVE.anim.json"`, the weapon joints `"still"`, the wings folded, the halo down; lying
+  down the folded wings go 2.1 m into the floor, allowed by `floor_allow`); every hit's numbers
+  (`seraph_hit` returns `shadow_hit`); the specials and the super are Shadow's (the six
+  predicates, all true for Seraph); the CPU plays it as Shadow (`cpu_as_shadow`, with the general
+  punish); the fists leave no trails; the bolt's sound is Shadow's; the training move list is
+  Shadow's under fist names.
+- **The arcade**: Shadow's final is Seraph ("MOMENTUM ROBOTICS PRESENTS ITS COMPETING PRODUCT"),
+  Seraph's final is Shadow (defending its title); Seraph's grey copy is packed as every body's is.
 
 ## Reactions and the rest of the list
 
@@ -1703,3 +2367,12 @@ health of the Double-blade Hero and Shadow (the owner's decisions).
   step from its company fights (level 1); both want the owner's own play.
 - The test unit's grey is one ramp for every body; a UAPC marking on it (a roundel on the
   shoulder) would need a texture in the grey parts.
+- Seraph's numbers (this file's Seraph section, 2026-10-14) want human play: the mark's ×1.5 on
+  Judgement (and that it multiplies with the antimatter debt: 525 on a marked Double-blade Hero in
+  debt; the alternative is adding the two bonuses, 490), the column's 8 frames from the lock and
+  its 5 m width, a reflected shot's ×1.25, the Wing Ward's 20 frames, the Dive's 28 frames of
+  startup and its 24-frame hold. Two of this section's choices are interpretations of the owner's
+  decisions: the mark does not raise Judgement's chip, and a reflected Hex Bolt marks rather than
+  curses. The throw's name, Heaven's Arc, and the normals' (Jab, Lunging Straight, Reaping Kick,
+  Double-fist Dive) are proposals. Seraph falls face down (its wings on its back) where every
+  other mech falls on its back.
