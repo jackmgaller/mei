@@ -40,8 +40,10 @@ PALETTE8 = 14               # 8-bit palettes from 14 down
 FOREIGN = ('stage_', 'ui_', 'fx_')  # art/stage_* and art/ui_* are D's, art/fx_* the effects'
 
 MECH_LIMIT = 1800           # README: a mech about 1,600-1,800 triangles
-MECH_LIMITS = {'seraph': 1900}  # the approved model (concept A, round 4b): its wings and halo are
+MECH_LIMITS = {'seraph': 1900,  # the approved model (concept A, round 4b): its wings and halo are
                                 # three parts more than the others have
+               'gamma': 1950}   # concept C, refined (mx-gamma-rig): the ray projector's lamp and
+                                # the lead shield, two weapon parts where Beam has one
 PROP_LIMIT = {'wall': 300, 'banner': 260}
 
 # The UAPC's test units (the arcade's final for a mech with no echo yet, mx-ladder): each of these
@@ -51,7 +53,7 @@ PROP_LIMIT = {'wall': 300, 'banner': 260}
 # Hero have each other as their finals and need none. Shadow and Seraph have each other too since
 # Seraph joined, but keep theirs: the owner's rule is a grey for every body (the scenarios use
 # Shadow's).
-GREY_BODIES = ('shadow', 'beam', 'tank', 'twins', 'twin_a', 'twin_b', 'seraph')
+GREY_BODIES = ('shadow', 'beam', 'tank', 'twins', 'twin_a', 'twin_b', 'seraph', 'gamma')
 GREY_DARK = (0x26, 0x29, 0x2f)      # a neutral colour of luminance 0 (gunmetal)
 GREY_LIGHT = (0xe4, 0xe7, 0xeb)     # and of luminance 1 (white primer)
 GREY_PAINT = ((0x86, 0x8d, 0x97), (0xc2, 0xc8, 0xcf))   # a maker's colour: the UAPC's paint, by luminance
@@ -122,7 +124,7 @@ def rig_of(folder):
 
 # Model folders packed after the others, in this order (each new mech appended), so that adding a
 # mech leaves the meshes and textures packed before it as they were.
-LATE = ('seraph',)
+LATE = ('seraph', 'gamma')
 
 
 def recipes():

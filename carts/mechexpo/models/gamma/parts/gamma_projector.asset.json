@@ -111,14 +111,14 @@
    "size": [
     1.0,
     0.92,
-    1.7
+    1.45
    ],
    "material": "hull",
    "transform": {
     "translate": [
      0,
      0.8,
-     0.0
+     -0.125
     ]
    },
    "faces": {

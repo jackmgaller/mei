@@ -320,7 +320,7 @@ def projector(side=None):
     behind its wire guard, and the Rod Shot's tube."""
     y = MUZZLE[1]
     z0 = MUZZLE[2]
-    body = box('receiver', [1.0, 0.92, 1.7], 'hull', [0, y, 0.0],
+    body = box('receiver', [1.0, 0.92, 1.45], 'hull', [0, y, -0.125],
                faces={'top': 'worn', 'front': 'hull2', 'back': 'hull2'})
     fin = cyl_z('fin', 0.66, 0.14, 6, 'frame', [0, y, SHROUD[0]-0.15])
     shroud = cyl_z('shroud', 0.42, SHROUD[0]-SHROUD[1]+0.15, 8, 'vents',      # its root in
@@ -345,6 +345,8 @@ def projector(side=None):
 
 
 SHIELD_OUT = [0, 90, 0]      # weapon_l's key that swings the shield out in front of the fist
+SHIELD_DZ = -0.6             # the plate slid 0.6 m toward the fist from concept C's, so stowed it
+                             # clears the pauldron when the elbow folds (Beam's keys bend it far)
 
 
 def shield(side=None):
@@ -357,17 +359,17 @@ def shield(side=None):
     out), so it has depth seen edge-on."""
     outline = [(-0.8, -1.25), (1.95, -1.25), (1.95, 0.9), (1.65, 1.2), (-0.5, 1.2),
                (-0.8, 0.9)]
-    plate = plate_x('plate', outline, 0.2, 'plate', [0.7, 0, 0],
+    plate = plate_x('plate', outline, 0.2, 'plate', [0.7, 0, SHIELD_DZ],
                     faces={'side': 'frame'},
                     decals=[{'id': 'mark', 'face': 'front', 'material': 'trefoil',
                              'size': [1.2, 1.2], 'at': [0.6, -0.15]},
                             {'id': 'slit', 'face': 'front', 'material': 'dark',
                              'size': [0.9, 0.12], 'at': [0.45, 0.84]}])
     lip = plate_x('lip', [(-0.5, 0.0), (1.65, 0.0), (1.65, 0.4), (-0.5, 0.4)], 0.16, 'plate',
-                  [0.7, 1.16, 0], [0, 0, 50], faces={'side': 'frame'})
+                  [0.7, 1.16, SHIELD_DZ], [0, 0, 50], faces={'side': 'frame'})
     # the wings: the plate's two side edges bent back 40 degrees (toward -X: inward, behind it)
     wings = [plate_x(f'wing_{k}', [(-0.32, -1.2), (0.32, -1.2), (0.32, 0.9), (-0.32, 0.9)], 0.16,
-                     'hull2', [0.5, 0, z], [0, sgn*40, 0], faces={'side': 'frame'})
+                     'hull2', [0.5, 0, z+SHIELD_DZ], [0, sgn*40, 0], faces={'side': 'frame'})
              for k, (z, sgn) in enumerate(((2.2, -1), (-1.05, 1)))]
     bracket = box('bracket', [0.3, 0.6, 0.5], 'frame', [0.53, 0, 0.18])
     return [plate, lip, *wings, bracket]

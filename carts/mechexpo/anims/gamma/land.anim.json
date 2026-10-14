@@ -1,0 +1,9 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Gamma's land: a placeholder (phase 1), Beam's (../beam/land.anim.json) on Gamma's rig, its keys, timing, boxes and marks as they are (the projector is on Beam's mount and reaches as far as the Arc Cannon); the shield (weapon_l) held stowed (\"still\"). To be replaced by its own move (MOVES.md, \"Gamma\"). On Beam's keys Gamma's bigger kit meets itself or the floor here (the stowed shield, the lamp, the racked cans, the whip antenna): \"allow\" and \"floor_allow\" say so until it is re-keyed.",
+  "base": "../beam/land.anim.json",
+  "rig": "../../models/gamma/gamma.rig.json",
+  "still": ["weapon_l"],
+  "allow": [["pauldron_l", "weapon_l"]]
+}
