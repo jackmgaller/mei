@@ -514,6 +514,7 @@ const GSX_VENT = 3                      // the gun vents (the Vent event)
 const GSX_BURN = 4                      // a shot burnt up in the ray (the Burn event)
 const GSX_SHIELD = 5                    // Lead Shielding swung out, clanging into place
 const GSX_LEAD = 6                      // a blow absorbed on the lead shield (the Armour event)
+const GSX_RAP = 7                       // the win: the drum rapped on the shield's lip
 
 fn sfx_gamma(k: s32) {
     let p = sx_take_pan()
@@ -524,4 +525,5 @@ fn sfx_gamma(k: s32) {
     else if k == GSX_BURN { sx_play(SFX_BURN, 4, 2, true, 1.0, 256, p) }
     else if k == GSX_SHIELD { sx_play(SFX_SHIELD, 5, 1, false, 1.0, 256, p) }
     else if k == GSX_LEAD { sx_play(SFX_LEAD, 6, 2, true, 1.0, 256, p) }
+    else if k == GSX_RAP { sx_play(SFX_LEAD, 4, 1, false, 1.35, 170, p) }
 }

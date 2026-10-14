@@ -442,14 +442,16 @@ and what is Beam's for now: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-n
   on an armour frame or a braced shield. The lamp on the normals (a flash at the lens for the
   Lamp Jab and the Down Flash, a white cone from the lens over the Glare Lance's box to 10 m, the
   Scorch Sweep's spot at its box's far end on the floor and a scorched streak behind it for 12
-  frames). The Geiger Flare: a fan of white light 10 m long, 30° each side of the barrel, from
-  the lens while its box is out, green flecks in it; the daze on every dazed body (a split
+  frames). The Geiger Flare, while its box is out: a fan of white light 10 m long, 30° each side
+  of the barrel, from the cone's foot (its box's bottom middle, over the head: the lens itself
+  is above the view at fight range), a green glow over it, the lens's glare, green flecks; the daze on every dazed body (a split
   Twins' partner too): two trefoils and three green spots circling the head, a green glow on the
   chest flickering at random like a count, Geiger static over it, green ticks crackling off; on
   the drop (`Fx.daze_drop`) a green streak above the falling body; the Daze event's star and
   ring. Lead Shielding: a clank and sparks at the shield's top edge on sp_d's fifth frame; on an
   absorb (the Armour event on a braced Gamma) a dull white dent-flash on the plate for 8 frames,
-  a star and grey sparks, with `tank_fx.akr`'s ring. Point Blank: the lamp blazing on the
+  a star and grey sparks, with `tank_fx.akr`'s ring; the win's two raps of the drum on its lip
+  (frames 79 and 91, mx-gamma-anim's), a clank each. Point Blank: the lamp blazing on the
   other's chest from the throw's sixth frame, light streaming out of its back; the blast (the
   Throw event) a white flash, a flare and a green ring. Ground Zero: the hatch flaring white-green
   through the flash (a glow and a trefoil swelling), the stage tinted toward green-white
@@ -466,14 +468,17 @@ and what is Beam's for now: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-n
   warning (a loop: Geiger clicks and a beep, slot 2 or 3, from 85), the vent's steam, a burn's
   sizzle, the rod's crack, the flare, the daze's ringing and count (a loop, slot 4 or 5), the
   shield swung out and a blow on lead, Point Blank's blast (and its lamp's hum: the ray's loop at
-  1.25), the normals' lamp, Ground Zero's klaxon and its blast, and Gamma's own step; 202,960
+  1.25), the normals' lamp, Ground Zero's klaxon and its blast, Gamma's own step, and the win's
+  raps (the lead blow, higher and quieter); 202,960
   bytes in `sfx.adp`. VRAM: no new texture slot or palette (the particle sheet's dome, trefoil,
   spike, jet and static, below). Tests: scenarios 240-249 in `tests/gamma_fx/harness.akr` (240
   the ray to its vent and the gauge every frame, 241 a guard, a burn and two cuts, 242 the Wing
   Ward, 243 and 244 the rod through a wave and through armour, 245 Lead Shielding, 246 the flare
   and both dazes, 247 the normals, the steps and Point Blank, 248 Ground Zero, 249 the budget),
-  each checking what it drew and which sounds it heard; where the data has none of Gamma's own
-  moves yet, they stand in for the fight's part (MOVES.md's rules) and post its events.
+  each checking what it drew and which sounds it heard. Without Gamma's own rules in the fight
+  (`has_volt_orb(Mech.Gamma)`: phase 1's), they stand in for the fight's part (MOVES.md's
+  rules) and post its events; with them they only press the buttons. Both ways pass (checked
+  against the fight agent's and the animation agent's work in progress, 2026-10-14).
   The budget (249, budget.sh: the ray held at heat 88 against Seraph's Wing Ward on the container
   port, then against the split Twins there with Ground Zero every 300 frames; debug builds):
   BUDGET_NUMBERS.

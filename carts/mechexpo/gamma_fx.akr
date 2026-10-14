@@ -37,7 +37,8 @@
 //                     counter's count with static over it, green ticks crackling off the body; in
 //                     the air (Fx.daze_drop) a green streak along the drop
 //   Lead Shielding    a spark at the shield's edge as it clangs into place; on an absorb a dull
-//                     white dent-flash on the plate and grey sparks (tank_fx.akr's ring too)
+//                     white dent-flash on the plate and grey sparks (tank_fx.akr's ring too);
+//                     the win's two raps of the drum on its lip, a clank each
 //   Point Blank       the lamp blazing white through the other's chest, light streaming out of
 //                     its back; the blast: a white flash and a green ring
 //   Ground Zero       the hatch flaring white-green through the flash, the stage tinted toward
@@ -78,6 +79,8 @@ const GFX_RAY_X1: fixed = 16.0
 const GFX_VENT_LEN = 50                 // the vent's frames
 const GFX_GZ_LEN = 20                   // the blast drawn: its 8 active frames and 12 fading
 const GFX_SCORCH = 12                   // the Scorch Sweep's streak: points kept
+const GFX_RAP0 = 79                     // win: the drum raps the shield's lip (mx-gamma-anim)
+const GFX_RAP1 = 91
 
 var gfx_on: bool                        // a Gamma in this fight (gamma_fx_draw sets it)
 var gfx_tick: s32                       // the fight's tick last seen (events and spawns once a tick)
@@ -278,7 +281,7 @@ private fn gfx_braced(j: s32) -> bool {
     let o = &fight.f[j]
     if o.mech != Mech.Gamma || o.mv != Mv.sp_d { return false }
     let t = fx[j].t
-    return t >= 4 && t <= 30
+    return t >= 4 && t <= 28                        // the shield out (mx-gamma-anim: 4-28)
 }
 
 // Whether body j would let a rod pierce its armour now (Tank's armour, a braced lead shield).
@@ -660,7 +663,12 @@ private fn gfx_moves(f: *Fight, s: s32, tick: bool) {
         let ax = (gfx_wm[s] * GMX_AXIS) as vec3
         var k = 1.0
         if gfx_hot[s] > 2 { k = max(1.0 - fixed(gfx_hot[s] - 2) / 6, 0.35) }
-        gfx_fan(lp, ax, k)
+        // the fan from the cone's foot (its box's bottom middle, over the head, so the light shows
+        // when the lens is above the view), and the lens's own glare
+        let foot = vec3((hb.x + hb.z) / 2, hb.y, -0.8)
+        gfx_fan(foot, ax, k)
+        gfx_glow(vec3(foot.x, hb.y + 4.0, -0.8), 9.0, 0.8, col_scale(GMX_HALO, k * 0.5))
+        gfx_glow(vec3(lp.x, lp.y, -1.0), 3.0 + k * 2.0, 1.0, col_scale(GMX_WHITE, k))
         if live {
             for j in 0..2 {
                 let a = 2.0 + gfx_f() * 10.0
@@ -688,6 +696,15 @@ private fn gfx_moves(f: *Fight, s: s32, tick: bool) {
         let p = gfx_pt_of(fi, root, Part.weapon_l, GMX_SHIELD)
         let k = 1.0 - fixed(gfx_lead_t[s]) / 8
         gfx_glow(vec3(p.x, p.y, -1.1), 3.2, 0.8, col_scale(0xD0D8D0, k))
+    }
+    // the win: the projector's drum raps the shield's top lip on frames 79 and 91 (mx-gamma-anim)
+    if fi.mv == Mv.win && tick && (gfx_at(s, fi, Mv.win, GFX_RAP0) || gfx_at(s, fi, Mv.win, GFX_RAP1)) {
+        let p = gfx_pt_of(fi, root, Part.weapon_l, GMX_SHIELD_EDGE)
+        fx_burst_at(Pre.Clank, p.x, p.y, GMX_WHITE, 0x808880)
+        fx_c0 = 0xFFFFF0
+        fx_c1 = 0x406080
+        fx_spray(Pre.Spark, 4, p.x, p.y, 8, 6, 0.18)
+        gfx_seen[GFXS_CLANG] += 1
     }
     // Point Blank: the lamp blazing through the other's chest
     if fi.mv == Mv.throw && t >= 5 && is_thrown(f.f[vic[s]].mv) {
@@ -972,8 +989,8 @@ private fn gfx_cone(lp: vec3, hb: vec4, dir: fixed, k: fixed) {
     tri_grad(m.x, m.y, b.x, b.y, c.x, c.y, e, 0, 0, BLEND_ADD)
 }
 
-// The Geiger Flare's fan: white light from the lens along ax, 30 degrees each side, 10 m long,
-// k its brightness.
+// The Geiger Flare's fan: white light from lp along ax, 30 degrees each side, 10 m long, k its
+// brightness.
 private fn gfx_fan(lp: vec3, ax: vec3, k: fixed) {
     let len = 10.0
     let c = 0.866                                    // cos 30, sin 30: the fan's edges
@@ -991,7 +1008,6 @@ private fn gfx_fan(lp: vec3, ax: vec3, k: fixed) {
     tri_grad(a.x, a.y, b.x, b.y, m.x, m.y, w, 0, g, BLEND_ADD)
     tri_grad(a.x, a.y, m.x, m.y, d.x, d.y, w, g, 0, BLEND_ADD)
     tri_grad(m.x, m.y, b.x, b.y, d.x, d.y, g, 0, 0, BLEND_ADD)
-    gfx_glow(vec3(lp.x, lp.y, -1.0), 3.0 + k * 2.0, 1.0, col_scale(GMX_WHITE, k))
 }
 
 // The daze on body i: trefoils and spots swimming round the head, the chest's flickering glow and
@@ -1297,6 +1313,12 @@ fn gamma_sfx(f: *Fight) {
         if fi.mv == Mv.sp_d && fx[s].t >= 4 && (gsx_pmv[s] != Mv.sp_d || gsx_pt[s] < 4) {
             sfx_pan(fi.x)
             sfx_gamma(GSX_SHIELD)
+        }
+        // the win's two raps on the shield's lip
+        if fi.mv == Mv.win && ((fx[s].t >= GFX_RAP0 && (gsx_pmv[s] != Mv.win || gsx_pt[s] < GFX_RAP0))
+                               || (fx[s].t >= GFX_RAP1 && gsx_pmv[s] == Mv.win && gsx_pt[s] < GFX_RAP1)) {
+            sfx_pan(fi.x)
+            sfx_gamma(GSX_RAP)
         }
         // Point Blank: the lamp's hum on the other's chest
         if fi.mv == Mv.throw && fx[s].t >= 5 && fx[s].t < 30 && is_thrown(f.f[vic[s]].mv) && !frozen {

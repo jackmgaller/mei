@@ -43,7 +43,7 @@ const GX_FOE = match SCENARIO {
 }
 
 var fr: s32
-var gx_real: bool                       // Gamma's own moves are in the data (sp_n's ray box)
+var gx_real: bool                       // Gamma's own rules are in the fight (gamma.akr's, not phase 1's)
 var gx_charge: s32                      // phase 1: sp_n's charge frame (Beam's Volt Orb's)
 var peak_cpu: [2]s32                    // 249: [0] against Seraph, [1] against the split Twins
 var peak_gpu: [2]s32
@@ -73,21 +73,8 @@ fn sfx_heard(id: s32, ch: s32) {
     if id >= 0 && id < SFX_COUNT { heard[id] += 1 }
 }
 
-// Whether Gamma's sp_n has a hit box in the data: its own Atomic Ray (else phase 1's Volt Orb).
-private fn gx_has_ray() -> bool {
-    var b: Boxes
-    let n = mv_len(Mech.Gamma, Mv.sp_n)
-    for k in 0..n {
-        mv_boxes(Mech.Gamma, Mv.sp_n, k, &b)
-        for q in 0..b.n {
-            if b.b[q].kind == BOX_HIT { return true }
-        }
-    }
-    return false
-}
-
 fn test_init() {
-    gx_real = gx_has_ray()
+    gx_real = !has_volt_orb(Mech.Gamma)                 // the fight agent's gamma.akr: the Volt Orb is Beam's alone
     gx_charge = find_mark(Mech.Gamma, Mv.sp_n, MARK_CHARGE)
     game = Game.Versus
     p_cpu = false
@@ -511,15 +498,19 @@ private fn gx_check_pierce(f: *Fight) {
 // 245: Lead Shielding against a mirror's ray.
 private fn gx_check_shield(f: *Fight) {
     let a = &f.f[0]
-    if !gx_real && a.mv == Mv.sp_d && fx[0].t == 12 && fxe[Ev.Armour] == 0 {
+    if !gx_real && a.mv == Mv.sp_d && fx[0].t >= 12 && fx[0].t <= 20 && fr > 20 && fxe[Ev.Armour] == 0 {
         gx_post(Ev.Armour, 1, a.x + fixed(a.facing) * 3.0, 7.0, 0)     // the first tick absorbed
     }
     if !gx_real && a.mv == Mv.sp_d && fx[0].t >= 20 && fx[0].t < 28 { fx[0].t = 20 }  // held braced
+    if !gx_real && fr > 16 && fr <= 60 && a.mv != Mv.sp_d {
+        // phase 1: the placeholder's ray box hits (once) as a Volt Orb would: braced again
+        set_mv(0, Mv.sp_d)
+        fx[0].t = 14
+        a.y = 0.0
+        fx[0].air = false
+    }
     if fr > 60 && !gx_real && a.mv == Mv.sp_d { set_mv(0, Mv.idle) }
     if fr == 140 {
-        assert_eq(gfx_seen[GFXS_CLANG], 1, "the shield's clang into place")
-        assert(gfx_seen[GFXS_LEADRAY] >= 4, "the ray splashing off the shield")
-        assert(gfx_seen[GFXS_DENT] >= 1, "the absorb's dent-flash")
         print("Lead Shielding: the clang ")
         print_int(gfx_seen[GFXS_CLANG])
         print(", the ray on the shield ")
@@ -527,6 +518,9 @@ private fn gx_check_shield(f: *Fight) {
         print(" frames, absorbs ")
         print_int(gfx_seen[GFXS_DENT])
         println("")
+        assert(gfx_seen[GFXS_CLANG] >= 1, "the shield's clang into place")
+        assert(gfx_seen[GFXS_LEADRAY] >= 4, "the ray splashing off the shield")
+        assert(gfx_seen[GFXS_DENT] >= 1, "the absorb's dent-flash")
         let ids: [2]s32 = [SFX_SHIELD, SFX_LEAD]
         gx_heard_list(&ids[0], 2)
         gx_report()
