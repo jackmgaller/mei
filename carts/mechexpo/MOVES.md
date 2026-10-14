@@ -1753,7 +1753,8 @@ effect's); the stage brightens toward white-gold. Then:
   frames 49–58 is not hittable and is missed. Anything mid-move anywhere on the stage is hit.
 - **Damage**: **280**, knockdown, the super's hitstop (20), launch 0.60; scaled in a combo like any
   hit; then **×1.5 against a marked mech: 420** (182 and 273 as a chain's third hit). The bonus
-  multiplies with the antimatter debt's 25 %: 525 against a marked Double-blade Hero in debt.
+  does not stack with the antimatter debt's 25 % (the owner, 2026-10-14): a marked mech in debt
+  takes the larger of the two, ×1.5, so 420 at most.
 - **Chip**: 70 through a block (which can finish a round), **not raised by the mark**: the mark
   rewards landing it, and blocking is the answer. Blockstun 20; about −23 on block, at whatever
   distance the column fell. From far, little can punish that (the Momentum Drive, the Raikō
@@ -1799,8 +1800,7 @@ little heavier.
 - **The Double-blade Hero**: rushdown against short fists. The Void Step passes the bolt and is the
   one way out of Judgement; the Antimatter Slide passes under the Jab, the Lunging Straight and the
   bolt (the Reaping Kick and the Ascension, its box from 3 m up, catch it). A marked Double-blade in
-  debt takes 525 from Judgement: its debt is twice as dangerous here. Close to even; watch the
-  debt stacking.
+  debt takes 420 from Judgement, as any marked mech (the bonuses do not stack). Close to even.
 - **Beam**: every orb is reflectable, a full orb comes back at 0.45 m a frame and knocks Beam
   down, so Beam must charge less and use the Arc Lance (a strike: not reflected, and it stops the
   Dive). Judgement punishes the Reaction Prime's 30 exposed frames from anywhere. Slightly
@@ -2372,8 +2372,7 @@ health of the Double-blade Hero and Shadow (the owner's decisions).
 - The test unit's grey is one ramp for every body; a UAPC marking on it (a roundel on the
   shoulder) would need a texture in the grey parts.
 - Seraph's numbers (this file's Seraph section, 2026-10-14) want human play: the mark's ×1.5 on
-  Judgement (and that it multiplies with the antimatter debt: 525 on a marked Double-blade Hero in
-  debt; the alternative is adding the two bonuses, 490), the column's 8 frames from the lock and
+  Judgement (it does not stack with the antimatter debt: the larger applies), the column's 8 frames from the lock and
   its 5 m width, a reflected shot's ×1.25, the Wing Ward's 20 frames, the Dive's 28 frames of
   startup and its 24-frame hold. Two of this section's choices are interpretations of the owner's
   decisions: the mark does not raise Judgement's chip, and a reflected Hex Bolt marks rather than
