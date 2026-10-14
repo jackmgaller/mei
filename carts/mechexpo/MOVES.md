@@ -1532,16 +1532,15 @@ instead of a curse.
   and Claw Jab's hit boxes, or the arm keys); Shadow's weapon-joint keys are zeroed; new
   animations for the idle, intro, win, `atk_d`, the four specials and the super.
 
-## Decided by the owner (2026-10-14): Atomic Beam, Heartland's ray gun
+## Decided by the owner (2026-10-14): Gamma, Heartland's ray gun
 
 Planned, not designed in numbers yet: Heartland Atomic Company's echo of Beam, in the echo slot
-under Beam (unlocked by clearing the arcade with Beam), on Beam's skeleton (the Hero's). Working
-name **ATOMIC BEAM** (card ATOM BEAM; the owner had no preference); model number open (HA-58
-proposed, after Tank's HA-57). Nuclear meter (Heartland's: fills as it takes damage).
+under Beam (unlocked by clearing the arcade with Beam), on Beam's skeleton (the Hero's). Named
+**GAMMA** (card GAMMA); model number open (HA-58 proposed, after Tank's HA-57). Nuclear meter (Heartland's: fills as it takes damage).
 
-- **Look:** Beam's frame reworked by Heartland: faded forest green and primer grey, patched and
-  salvaged. Raikō's Arc Cannon becomes a 1950s atomic ray gun: a big glowing green tube, cooling
-  fins, a small radar dish; a Geiger counter ticks when it fires.
+- **Look:** Beam's frame reworked by Heartland, in Heartland's faded forest green and primer grey,
+  its Arc Cannon replaced by a nuclear ray projector. The look is open: three concept directions
+  are being drawn (an atomic-age ray gun, a walking reactor plant, military surplus).
 - **How it plays:** a slow, heavy zoner that gets stronger when the plan fails: every hit that
   gets through fills its reactor.
 - **`sp_n` the Atomic Ray** (the Volt Orb's slot): a held ray, on while B is held: a beam, not a
