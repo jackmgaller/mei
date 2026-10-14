@@ -269,8 +269,9 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/mechexpo/models/expo_banner/make_expo_banner.py` | `expo_banner.asset.json`, `art/banner_expo.png`, `art/banner_2000.png`, `cameras.json` |
 | `carts/mechexpo/props/rooftop/make_rooftop.py` | The rooftop's props: `roof_stairwell.asset.json`, `roof_parapet.asset.json`, `roof_kerb.asset.json`, `art/stair_door.png`, `art/stair_sign.png`, `cameras.json` (`gen_mechexpo_rooftop.py` runs it) |
 | `carts/mechexpo/props/rooftop_city/make_city.py` | The rooftop's city in polygons: `city_near`, `city_mid`, `city_umeda`, `city_lattice`, `city_hep` and `city_street` (`.asset.json`), the textures `art/city_*.png` (the windows by rank, kind and side; the wheel; the street) and `cameras.json` (`gen_mechexpo_rooftop.py` runs it) |
+| `carts/mechexpo/concepts/angel_a/make_angel_a3.py` | A look study, outside `models/` so the model pack leaves it out: Momentum's angel (concept A, fists) on Shadow's skeleton, `angel_a3_{idle,attack,judgement,rest}.asset.json`, the idle in each paint scheme tried (`angel_a3_paint_*.asset.json`), `cameras.json`, `asset-preview.json` (it imports `make_shadow.py` and `make_hero.py`); `render_angel_a3.py` beside it renders them with Shadow and the Hero and draws the sheets (Pillow) |
 
-The last twenty are run by their path from the repository root, not as `tools/NAME.py`; the
+The last twenty-one are run by their path from the repository root, not as `tools/NAME.py`; the
 garden's two audio generators share `carts/garden/audio/garden_dsp.py`, and Mech Expo's models
 `carts/mechexpo/models/hero/mxpaint.py`, which write nothing.
 
