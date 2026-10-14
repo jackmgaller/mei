@@ -1,0 +1,9 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Seraph's Phantom Grip: a placeholder (phase 1), Shadow's (../shadow/throw.anim.json) on Seraph's rig, its keys as they are but the weapon joints held at 0 (\"still\": Shadow's claw keys would twist the knuckle guards). The wings stay folded and the halo down (no keys). To be replaced by the throw over the top (MOVES.md, \"Seraph\"). On Seraph's body: its parts that go into the floor on Shadow's keys are listed in \"floor_allow\" (until it is re-keyed).",
+  "base": "../shadow/throw.anim.json",
+  "rig": "../../models/seraph/seraph.rig.json",
+  "still": ["weapon_r", "weapon_l"],
+  "floor_allow": {"forearm_r": 0.15, "forearm_l": 0.15}
+}

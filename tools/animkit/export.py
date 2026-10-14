@@ -7,6 +7,10 @@ with no file gets a stand-in: the mech's _body.anim.json (else its rig's guard p
 move of the list can be drawn and has boxes from the start. A mech in the list whose rig is not
 there yet (a mech added to anim.akr's Mech before its model) gets the first mech's stand-in and
 meshes, so the runtime's tables have a row for every Mech.
+
+A frame holds a PartXf for each of the mech's parts up to the last one its rig has (part_count:
+the shared skeleton's 19 for every mech but Seraph, whose wings and halo make 22), and AK_NPART
+says how many, so a joint appended to PARTS leaves every other mech's data as it was.
 """
 from pathlib import Path
 import struct
@@ -15,7 +19,7 @@ from .move import Move, KINDS
 from .rig import AnimError, PARTS, load_rig
 
 # anim.akr's enums, in order
-MECHS = ['hero', 'doubleblade', 'beam', 'tank', 'twins', 'twin_a', 'twin_b', 'shadow']
+MECHS = ['hero', 'doubleblade', 'beam', 'tank', 'twins', 'twin_a', 'twin_b', 'shadow', 'seraph']
 MOVES = ['idle', 'walk_f', 'walk_b', 'crouch', 'jump', 'land', 'block', 'hit_high', 'hit_low', 'hit_air',
          'knockdown', 'getup', 'ko', 'win', 'intro', 'atk_n', 'atk_f', 'atk_d', 'atk_air', 'sp_n', 'sp_f', 'sp_u',
          'sp_d', 'grab', 'grab_whiff', 'throw', 'thrown', 'grab_break', 'super', 'thrown_vault',
@@ -42,9 +46,15 @@ def fixed(v):
     return n
 
 
-def frame_bytes(mats):
+def part_count(rig):
+    """The parts a frame of this rig's mech holds: PARTS up to the last one the rig has a joint
+    for (19, the shared skeleton, for a rig without the appended joints)."""
+    return max(PARTS.index(j) for j in rig.joints if j in PARTS)+1
+
+
+def frame_bytes(mats, n=len(PARTS)):
     out = bytearray()
-    for pid in PARTS:
+    for pid in PARTS[:n]:
         m = mats.get(pid)
         if m is None:           # a joint the rig lacks entirely: the pelvis's frame
             m = mats['pelvis']
@@ -57,9 +67,10 @@ def bake(move):
     """The move's sections: (frames, box_first, boxes, marks, root) bytes, and a summary."""
     frames, first, boxes, root = bytearray(), [], bytearray(), bytearray()
     count = 0
+    n = part_count(move.rig)
     for f in range(move.length):
         mats = move.matrices(f)
-        frames += frame_bytes(mats)
+        frames += frame_bytes(mats, n)
         first.append(count)
         for name, kind, hit, part, x0, y0, x1, y1 in move.boxes_at(f, mats):
             boxes += struct.pack('<4B4i', KINDS[kind], hit, PARTS.index(part), 0, *(fixed(v) for v in (x0, y0, x1, y1)))
@@ -122,6 +133,7 @@ def export(anims, cart, out, meshes=True, pack='assets.akr', override=None):
 
     body_cache, baked = {}, {}
     rigged = [m for m in MECHS if rig_path(cart, m).is_file()]
+    counts = {m: part_count(load_rig(rig_path(cart, m if m in rigged else MECHS[0]))) for m in MECHS}
     for mech in MECHS:
         if mech not in rigged:
             warnings.append(f'{mech}: no rig yet ({rig_path(cart, mech)}); its moves and meshes are '
@@ -141,6 +153,9 @@ def export(anims, cart, out, meshes=True, pack='assets.akr', override=None):
                     flags |= FLAG_LOOP
             for w in move.warnings:
                 warnings.append(f'{mech}/{mv} {w["path"]}: {w["message"]}')
+            if part_count(move.rig) != counts[mech]:
+                raise AnimError('/export', f'{mech}/{mv}: its rig {move.rig.name} has {part_count(move.rig)} parts a '
+                                           f'frame, the mech {counts[mech]}: give the move the mech\'s rig ("rig").')
             if move.loop:
                 flags |= FLAG_LOOP
             if move.air:
@@ -180,6 +195,8 @@ def export(anims, cart, out, meshes=True, pack='assets.akr', override=None):
     for k in range(0, len(names), len(PARTS)):
         lines.append('    ' + ', '.join(names[k:k+len(PARTS)]) + ',')
     lines += [']', '']
+    lines += ['// the parts a frame of each mech holds (its PartXf records a frame), in Mech order',
+              f'const AK_NPART: [{len(MECHS)}]s32 = [{", ".join(str(counts[m]) for m in MECHS)}]', '']
     (out/'anim_data.akr').write_text('\n'.join(lines))
     return {'ok': True, 'output': str(out), 'files': [str(out/'anim_data.akr'), str(bin_path)],
             'bytes': len(blob), 'moves': report, 'warnings': warnings}

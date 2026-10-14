@@ -1,0 +1,29 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Seraph's Total Eclipse: a placeholder (phase 1), Shadow's (../shadow/super.anim.json) on Seraph's rig, its keys as they are but the weapon joints held at 0 (\"still\": Shadow's claw keys would twist the knuckle guards). The wings stay folded and the halo down (no keys). To be replaced by Judgement (MOVES.md, \"Seraph\"). Its hit boxes on the claws keep Shadow's reach for now: they follow the fists with the talons' extent (Shadow's claw's bounds). On Seraph's body: Seraph's bigger parts on Shadow's keys pass into each other: \"allow\" lists the pairs (until it is re-keyed).",
+  "base": "../shadow/super.anim.json",
+  "rig": "../../models/seraph/seraph.rig.json",
+  "still": ["weapon_r", "weapon_l"],
+  "keys": [
+    {"at": 44,
+     "boxes": {"slash": {"kind": "hit", "part": "weapon_r", "hit": 0,
+                         "min": [-0.25, -0.7067, -2.2052], "max": [0.25, 2.8394, 1.0522]}}},
+    {"at": 49,
+     "boxes": {"slash": {"kind": "hit", "part": "weapon_l", "hit": 1,
+                         "min": [-0.25, -0.7067, -2.2052], "max": [0.25, 2.8394, 1.0522]}}},
+    {"at": 54,
+     "boxes": {"slash": {"kind": "hit", "part": "weapon_r", "hit": 2,
+                         "min": [-0.25, -0.7067, -2.2052], "max": [0.25, 2.8394, 1.0522]}}},
+    {"at": 59,
+     "boxes": {"slash": {"kind": "hit", "part": "weapon_l", "hit": 3,
+                         "min": [-0.25, -0.7067, -2.2052], "max": [0.25, 2.8394, 1.0522]}}},
+    {"at": 65,
+     "boxes": {"rake_r": {"kind": "hit", "part": "weapon_r", "hit": 4,
+                          "min": [-0.25, -0.7067, -2.2052], "max": [0.25, 2.8394, 1.0522]},
+               "rake_l": {"kind": "hit", "part": "weapon_l", "hit": 4,
+                          "min": [-0.25, -0.7067, -2.2052], "max": [0.25, 2.8394, 1.0522]}}}
+  ],
+  "allow": [["pauldron_r", "forearm_r"], ["pauldron_l", "forearm_l"], ["pauldron_r", "hand_r"],
+            ["head", "wing_l"]]
+}

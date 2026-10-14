@@ -1,0 +1,8 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Seraph's body: Shadow's hurt and push boxes (../shadow/_body.anim.json) on Seraph's rig (a box that follows a part takes Seraph's part: the fists' knuckle guards are small), and the stand-in for a move with no file (the guard, held). The wings and the halo have no hurt boxes, as Shadow's cape plates have none.",
+  "base": "../shadow/_body.anim.json",
+  "rig": "../../models/seraph/seraph.rig.json",
+  "still": ["weapon_r", "weapon_l"]
+}

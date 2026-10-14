@@ -1,0 +1,77 @@
+// Mech Expo 2000: Seraph (mx-seraph). Momentum Robotics' echo of Shadow, MR-02, the paladin
+// (MOVES.md, "Seraph"): Shadow's skeleton with an angel's body, two wings and a halo
+// (models/seraph/make_seraph.py), on Momentum's kinetic meter.
+//
+// Phase 1 (this file as it is): Seraph is in the game, drawn and pickable, and plays Shadow's
+// moves as placeholders: Shadow's animations on Seraph's rig (anims/seraph/, each based on
+// Shadow's, the fists closed), Shadow's hits (seraph_hit), and Shadow's rules for its specials
+// and super. Its own numbers: 1,000 health, a walk a little slower than Shadow's, the kinetic
+// meter (moves.akr's STATS), and fists that reach about 2.5 m less than the talons (the jab's and
+// the lunge's hit boxes, in its animations).
+//
+// Each of Shadow's mechanics asks one predicate below whether a mech has it. Shadow's code reads
+// the predicate, never Seraph's name, so phase 2 can give Seraph one of its own specials by
+// taking Seraph out of that predicate and adding its own branch, without touching Shadow's:
+//
+//   sp_n   has_hex_bolt      the Hex Bolt (a shot, Shot.hex) and its Siphon curse; Seraph's:
+//                            the Mark of Judgement
+//   sp_f   has_sneak         Shadow Sneak's travel (shadow_advance) and its shadow and
+//                            afterimages (shadow_fx.akr); Seraph's: the Seraph Dive
+//   sp_d   has_rift_mine     the Rift Mine and its snare; Seraph's: the Wing Ward
+//   throw  has_phantom_grip  Phantom Grip's slide under and side swap; Seraph's: over the top
+//   super  has_eclipse       Total Eclipse's five hits by box index, its afterimages and the
+//                            stage going dark; Seraph's: Judgement
+//   atk_air has_dive         the Diving Claw's steepened fall
+//
+// Eclipse Rise (sp_u) has no rules of its own (its data is all in the animation); Seraph's
+// Ascension will be its own animation. The CPU plays Seraph as Shadow (cpu.akr, cpu_as_shadow),
+// the effects draw no trails for its fists (fx.akr) and the Hex Bolt's sound is Shadow's
+// (sfx.akr's sfx_shot): each says so where it does.
+
+import "moves.akr"
+import "fight.akr"
+
+fn has_hex_bolt(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
+fn has_sneak(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
+fn has_rift_mine(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
+fn has_phantom_grip(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
+fn has_eclipse(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
+fn has_dive(m: Mech) -> bool { return m == Mech.Shadow || m == Mech.Seraph }
+
+// Any of Shadow's mechanics: shadow.akr's rules and shadow_fx.akr's drawing run in the fight.
+fn has_shadow_kit(m: Mech) -> bool {
+    return has_hex_bolt(m) || has_sneak(m) || has_rift_mine(m) || has_phantom_grip(m) || has_eclipse(m)
+        || has_dive(m)
+}
+
+// ---- what Seraph's hits do: Shadow's (phase 1)
+
+fn seraph_hit(mv: Mv) -> Hit { return shadow_hit(mv) }
+
+// The stand-in timings, boxes, marks and root motion, for a move with no animation (none: every
+// move of the list has one, based on Shadow's, but the Twins' combine and split): Shadow's.
+fn seraph_tm(mv: Mv) -> Tm { return shadow_tm(mv) }
+fn seraph_root(mv: Mv, f: s32) -> vec2 { return shadow_root(mv, f) }
+fn seraph_marks(mv: Mv, f: s32) -> u32 { return shadow_marks(mv, f) }
+fn seraph_boxes(mv: Mv, f: s32, out: *Boxes) { shadow_boxes(mv, f, out) }
+
+// ---- the training move list: Shadow's moves under the names they have on a fist
+
+const SERAPH_MOVES = MoveList { n: 15, e: [
+    MoveEntry { name: "Jab", input: "A" },
+    MoveEntry { name: "Lunging Straight", input: "FWD + A" },
+    MoveEntry { name: "Fade Sweep", input: "DOWN + A" },
+    MoveEntry { name: "Diving Strike", input: "A in the air" },
+    MoveEntry { name: "Hex Bolt", input: "B (curses: Siphon)" },
+    MoveEntry { name: "Shadow Sneak", input: "FWD + B (hold: farther)" },
+    MoveEntry { name: "Eclipse Rise", input: "UP + B" },
+    MoveEntry { name: "Rift Mine", input: "DOWN + B" },
+    MoveEntry { name: "Phantom Grip", input: "Y (swaps sides)" },
+    MoveEntry { name: "Break a grab", input: "Y when grabbed" },
+    MoveEntry { name: "Total Eclipse", input: "A + B, full meter" },
+    MoveEntry { name: "Block", input: "hold R" },
+    MoveEntry { name: "Jump", input: "X (+ FWD or BACK)" },
+    MoveEntry { name: "Chain", input: "A, FWD + A, B" },
+    MoveEntry { name: "Kinetic meter", input: "fills by landing hits" },
+    MoveEntry {}
+] }

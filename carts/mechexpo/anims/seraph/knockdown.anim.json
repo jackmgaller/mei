@@ -1,0 +1,9 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Seraph's knockdown: a placeholder (phase 1), Shadow's (../shadow/knockdown.anim.json) on Seraph's rig, its keys as they are but the weapon joints held at 0 (\"still\": Shadow's claw keys would twist the knuckle guards). The wings stay folded and the halo down (no keys). On Seraph's body: its parts that go into the floor on Shadow's keys are listed in \"floor_allow\" (until it is re-keyed).",
+  "base": "../shadow/knockdown.anim.json",
+  "rig": "../../models/seraph/seraph.rig.json",
+  "still": ["weapon_r", "weapon_l"],
+  "floor_allow": {"wing_l": 2.15, "wing_r": 2.15}
+}

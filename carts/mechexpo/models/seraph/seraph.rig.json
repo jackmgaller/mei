@@ -1,0 +1,1052 @@
+{
+ "format": "mei-rig",
+ "version": 1,
+ "name": "seraph",
+ "units": "metres; Y up; the mech faces -Z, +X is its left",
+ "rotation": "degrees, applied X then Y then Z, in the parent joint frame (the Asset Kit's order). Not mirrored between sides: on a hanging limb +X swings it forward; +Z swings a left limb out (+X) and a right limb in, so a mirrored pose negates Y and Z",
+ "root": "pelvis",
+ "root_note": "the root (fight origin) is on the floor under the pelvis; pelvis.offset is the rest-pose hip-axle height, a pose lowers it by its 'drop'",
+ "body": "Momentum Robotics' Seraph (MR-02): Shadow's skeleton and joint offsets, an armoured paladin's body on it (helm, breastplate, gauntlet fists with gold knuckle guards as the weapon parts), two folded wings on joints of their own (wing_l, wing_r) and a halo on its own joint (halo, the head's child)",
+ "height": 13.55,
+ "parts": [
+  {
+   "id": "pelvis",
+   "parent": null,
+   "offset": [
+    0,
+    6.5,
+    0
+   ],
+   "recipe": "parts/seraph_pelvis.asset.json",
+   "asset": "ASSET_SERAPH_PELVIS",
+   "triangles": 120,
+   "vertices": 74,
+   "bounds": {
+    "min": [
+     -1.6448,
+     -1.05,
+     -0.7613
+    ],
+    "max": [
+     1.6448,
+     0.5,
+     0.8028
+    ]
+   },
+   "role": "the gunmetal hips, the red codpiece, the faulds and side skirts",
+   "range": "x -20..20, y -40..40, z -10..10"
+  },
+  {
+   "id": "torso",
+   "parent": "pelvis",
+   "offset": [
+    0,
+    0.75,
+    0
+   ],
+   "recipe": "parts/seraph_torso.asset.json",
+   "asset": "ASSET_SERAPH_TORSO",
+   "triangles": 172,
+   "vertices": 104,
+   "bounds": {
+    "min": [
+     -1.46,
+     -0.32,
+     -1.18
+    ],
+    "max": [
+     1.46,
+     3.62,
+     1.4336
+    ]
+   },
+   "role": "the broad breastplate on the narrow waist, the red core, the chrome collar and the wing pack (the wings are parts of their own)",
+   "range": "x -45..30, y -60..60, z -20..20"
+  },
+  {
+   "id": "head",
+   "parent": "torso",
+   "offset": [
+    0.0,
+    3.3,
+    -0.12
+   ],
+   "recipe": "parts/seraph_head.asset.json",
+   "asset": "ASSET_SERAPH_HEAD",
+   "triangles": 192,
+   "vertices": 112,
+   "bounds": {
+    "min": [
+     -0.46,
+     -0.1,
+     -0.8
+    ],
+    "max": [
+     0.46,
+     2.02,
+     1.3
+    ]
+   },
+   "role": "the helm on its long neck: the visor slit, the gold crest and temple wings (the halo is a part of its own)",
+   "range": "x -30..35, y -60..60, z -15..15"
+  },
+  {
+   "id": "pauldron_r",
+   "parent": "torso",
+   "offset": [
+    -1.7,
+    2.85,
+    0.1
+   ],
+   "recipe": "parts/seraph_pauldron_r.asset.json",
+   "asset": "ASSET_SERAPH_PAULDRON_R",
+   "triangles": 88,
+   "vertices": 48,
+   "bounds": {
+    "min": [
+     -1.2,
+     -0.78,
+     -0.86
+    ],
+    "max": [
+     0.28,
+     0.72,
+     0.86
+    ]
+   },
+   "role": "the two-tier shoulder shell, Momentum's mark outside; follows the upper arm part way",
+   "range": "about 0.35 of the upper arm's x and 0.5 of its z"
+  },
+  {
+   "id": "upper_arm_r",
+   "parent": "torso",
+   "offset": [
+    -1.7,
+    2.85,
+    0.1
+   ],
+   "recipe": "parts/seraph_upper_arm_r.asset.json",
+   "asset": "ASSET_SERAPH_UPPER_ARM_R",
+   "triangles": 42,
+   "vertices": 28,
+   "bounds": {
+    "min": [
+     -0.33,
+     -2.35,
+     -0.3118
+    ],
+    "max": [
+     0.33,
+     0.36,
+     0.3118
+    ]
+   },
+   "role": "the gunmetal upper arm",
+   "range": "x -70..190, y -45..45, z: out -110..in 25 (sign by side)"
+  },
+  {
+   "id": "forearm_r",
+   "parent": "upper_arm_r",
+   "offset": [
+    0,
+    -2.55,
+    0
+   ],
+   "recipe": "parts/seraph_forearm_r.asset.json",
+   "asset": "ASSET_SERAPH_FOREARM_R",
+   "triangles": 92,
+   "vertices": 52,
+   "bounds": {
+    "min": [
+     -0.48,
+     -2.5,
+     -0.51
+    ],
+    "max": [
+     0.48,
+     0.4,
+     0.62
+    ]
+   },
+   "role": "the bracer, the red cuff and the elbow guard",
+   "range": "x 0..150 (forward only: the elbow), y -40..40"
+  },
+  {
+   "id": "hand_r",
+   "parent": "forearm_r",
+   "offset": [
+    0,
+    -2.45,
+    0
+   ],
+   "recipe": "parts/seraph_hand_r.asset.json",
+   "asset": "ASSET_SERAPH_HAND_R",
+   "triangles": 80,
+   "vertices": 48,
+   "bounds": {
+    "min": [
+     -0.42,
+     -1.24,
+     -0.71
+    ],
+    "max": [
+     0.42,
+     0.24,
+     0.56
+    ]
+   },
+   "role": "the gauntlet fist (wrist to knuckles 1.2 m, Shadow's hand); the knuckle guard mounts at its knuckles",
+   "range": "x -80..80, y -90..90 (twist the claw to face the camera), z -40..40"
+  },
+  {
+   "id": "weapon_r",
+   "parent": "hand_r",
+   "offset": [
+    0,
+    -1.2,
+    0
+   ],
+   "rotate": [
+    180,
+    0,
+    0
+   ],
+   "recipe": "parts/seraph_knuckle.asset.json",
+   "asset": "ASSET_SERAPH_KNUCKLE",
+   "triangles": 44,
+   "vertices": 24,
+   "bounds": {
+    "min": [
+     -0.46,
+     -0.3,
+     -0.62
+    ],
+    "max": [
+     0.46,
+     0.14,
+     0.62
+    ]
+   },
+   "role": "the knuckle guard: a gold band round the fist's end; its +Y runs out of the knuckles (the weapon joint: keep it at 0, the fist does not open)",
+   "range": "x, y and z 0"
+  },
+  {
+   "id": "pauldron_l",
+   "parent": "torso",
+   "offset": [
+    1.7,
+    2.85,
+    0.1
+   ],
+   "recipe": "parts/seraph_pauldron_l.asset.json",
+   "asset": "ASSET_SERAPH_PAULDRON_L",
+   "triangles": 88,
+   "vertices": 48,
+   "bounds": {
+    "min": [
+     -0.28,
+     -0.78,
+     -0.86
+    ],
+    "max": [
+     1.2,
+     0.72,
+     0.86
+    ]
+   },
+   "role": "the two-tier shoulder shell, Momentum's mark outside; follows the upper arm part way",
+   "range": "about 0.35 of the upper arm's x and 0.5 of its z"
+  },
+  {
+   "id": "upper_arm_l",
+   "parent": "torso",
+   "offset": [
+    1.7,
+    2.85,
+    0.1
+   ],
+   "recipe": "parts/seraph_upper_arm_l.asset.json",
+   "asset": "ASSET_SERAPH_UPPER_ARM_L",
+   "triangles": 42,
+   "vertices": 28,
+   "bounds": {
+    "min": [
+     -0.33,
+     -2.35,
+     -0.3118
+    ],
+    "max": [
+     0.33,
+     0.36,
+     0.3118
+    ]
+   },
+   "role": "the gunmetal upper arm",
+   "range": "x -70..190, y -45..45, z: out -110..in 25 (sign by side)"
+  },
+  {
+   "id": "forearm_l",
+   "parent": "upper_arm_l",
+   "offset": [
+    0,
+    -2.55,
+    0
+   ],
+   "recipe": "parts/seraph_forearm_l.asset.json",
+   "asset": "ASSET_SERAPH_FOREARM_L",
+   "triangles": 92,
+   "vertices": 52,
+   "bounds": {
+    "min": [
+     -0.48,
+     -2.5,
+     -0.51
+    ],
+    "max": [
+     0.48,
+     0.4,
+     0.62
+    ]
+   },
+   "role": "the bracer, the red cuff and the elbow guard",
+   "range": "x 0..150 (forward only: the elbow), y -40..40"
+  },
+  {
+   "id": "hand_l",
+   "parent": "forearm_l",
+   "offset": [
+    0,
+    -2.45,
+    0
+   ],
+   "recipe": "parts/seraph_hand_l.asset.json",
+   "asset": "ASSET_SERAPH_HAND_L",
+   "triangles": 80,
+   "vertices": 48,
+   "bounds": {
+    "min": [
+     -0.42,
+     -1.24,
+     -0.71
+    ],
+    "max": [
+     0.42,
+     0.24,
+     0.56
+    ]
+   },
+   "role": "the gauntlet fist (wrist to knuckles 1.2 m, Shadow's hand); the knuckle guard mounts at its knuckles",
+   "range": "x -80..80, y -90..90 (twist the claw to face the camera), z -40..40"
+  },
+  {
+   "id": "weapon_l",
+   "parent": "hand_l",
+   "offset": [
+    0,
+    -1.2,
+    0
+   ],
+   "rotate": [
+    180,
+    0,
+    0
+   ],
+   "recipe": "parts/seraph_knuckle.asset.json",
+   "asset": "ASSET_SERAPH_KNUCKLE",
+   "triangles": 44,
+   "vertices": 24,
+   "bounds": {
+    "min": [
+     -0.46,
+     -0.3,
+     -0.62
+    ],
+    "max": [
+     0.46,
+     0.14,
+     0.62
+    ]
+   },
+   "role": "the knuckle guard: a gold band round the fist's end; its +Y runs out of the knuckles (the weapon joint: keep it at 0, the fist does not open)",
+   "range": "x, y and z 0"
+  },
+  {
+   "id": "thigh_r",
+   "parent": "pelvis",
+   "offset": [
+    -0.8,
+    0,
+    0
+   ],
+   "recipe": "parts/seraph_thigh_r.asset.json",
+   "asset": "ASSET_SERAPH_THIGH_R",
+   "triangles": 80,
+   "vertices": 44,
+   "bounds": {
+    "min": [
+     -0.5,
+     -2.6,
+     -0.6
+    ],
+    "max": [
+     0.5,
+     0.4,
+     0.52
+    ]
+   },
+   "role": "the long thin thigh, the serial plate",
+   "range": "x -60..110, z -40..30"
+  },
+  {
+   "id": "shin_r",
+   "parent": "thigh_r",
+   "offset": [
+    0,
+    -2.85,
+    0
+   ],
+   "recipe": "parts/seraph_shin_r.asset.json",
+   "asset": "ASSET_SERAPH_SHIN_R",
+   "triangles": 84,
+   "vertices": 48,
+   "bounds": {
+    "min": [
+     -0.46,
+     -3.08,
+     -0.72
+    ],
+    "max": [
+     0.46,
+     0.72,
+     0.7
+    ]
+   },
+   "role": "the long shin, the spiked knee, the hazard skirt round the ankle",
+   "range": "x -150..0 (back only: the knee)"
+  },
+  {
+   "id": "foot_r",
+   "parent": "shin_r",
+   "offset": [
+    0,
+    -2.85,
+    0
+   ],
+   "recipe": "parts/seraph_foot_r.asset.json",
+   "asset": "ASSET_SERAPH_FOOT_R",
+   "triangles": 44,
+   "vertices": 26,
+   "bounds": {
+    "min": [
+     -0.44,
+     -0.8,
+     -2.0
+    ],
+    "max": [
+     0.44,
+     0.34,
+     0.68
+    ]
+   },
+   "role": "the pointed foot, a heel talon",
+   "range": "x -45..45, z -15..15"
+  },
+  {
+   "id": "thigh_l",
+   "parent": "pelvis",
+   "offset": [
+    0.8,
+    0,
+    0
+   ],
+   "recipe": "parts/seraph_thigh_l.asset.json",
+   "asset": "ASSET_SERAPH_THIGH_L",
+   "triangles": 80,
+   "vertices": 44,
+   "bounds": {
+    "min": [
+     -0.5,
+     -2.6,
+     -0.6
+    ],
+    "max": [
+     0.5,
+     0.4,
+     0.52
+    ]
+   },
+   "role": "the long thin thigh, the serial plate",
+   "range": "x -60..110, z -40..30"
+  },
+  {
+   "id": "shin_l",
+   "parent": "thigh_l",
+   "offset": [
+    0,
+    -2.85,
+    0
+   ],
+   "recipe": "parts/seraph_shin_l.asset.json",
+   "asset": "ASSET_SERAPH_SHIN_L",
+   "triangles": 84,
+   "vertices": 48,
+   "bounds": {
+    "min": [
+     -0.46,
+     -3.08,
+     -0.72
+    ],
+    "max": [
+     0.46,
+     0.72,
+     0.7
+    ]
+   },
+   "role": "the long shin, the spiked knee, the hazard skirt round the ankle",
+   "range": "x -150..0 (back only: the knee)"
+  },
+  {
+   "id": "foot_l",
+   "parent": "shin_l",
+   "offset": [
+    0,
+    -2.85,
+    0
+   ],
+   "recipe": "parts/seraph_foot_l.asset.json",
+   "asset": "ASSET_SERAPH_FOOT_L",
+   "triangles": 44,
+   "vertices": 26,
+   "bounds": {
+    "min": [
+     -0.44,
+     -0.8,
+     -2.0
+    ],
+    "max": [
+     0.44,
+     0.34,
+     0.68
+    ]
+   },
+   "role": "the pointed foot, a heel talon",
+   "range": "x -45..45, z -15..15"
+  },
+  {
+   "id": "wing_l",
+   "parent": "torso",
+   "offset": [
+    0.82,
+    2.72,
+    0.95
+   ],
+   "recipe": "parts/seraph_wing_l.asset.json",
+   "asset": "ASSET_SERAPH_WING_L",
+   "triangles": 120,
+   "vertices": 66,
+   "bounds": {
+    "min": [
+     -1.2942,
+     -5.5818,
+     -0.3
+    ],
+    "max": [
+     0.3587,
+     1.8573,
+     2.608
+    ]
+   },
+   "role": "the wing: the red upper wing plate and two chrome flight plates, folded at 0; its frame is the torso's",
+   "range": "left x -130..10, y -10..65, z -35..10 (the right mirrored: y and z negated); spread is x -122, y 50, z -24"
+  },
+  {
+   "id": "wing_r",
+   "parent": "torso",
+   "offset": [
+    -0.82,
+    2.72,
+    0.95
+   ],
+   "recipe": "parts/seraph_wing_r.asset.json",
+   "asset": "ASSET_SERAPH_WING_R",
+   "triangles": 120,
+   "vertices": 66,
+   "bounds": {
+    "min": [
+     -0.3587,
+     -5.5818,
+     -0.3
+    ],
+    "max": [
+     1.2942,
+     1.8573,
+     2.608
+    ]
+   },
+   "role": "the wing: the red upper wing plate and two chrome flight plates, folded at 0; its frame is the torso's",
+   "range": "left x -130..10, y -10..65, z -35..10 (the right mirrored: y and z negated); spread is x -122, y 50, z -24"
+  },
+  {
+   "id": "halo",
+   "parent": "head",
+   "offset": [
+    0,
+    3.03,
+    1.12
+   ],
+   "recipe": "parts/seraph_halo.asset.json",
+   "asset": "ASSET_SERAPH_HALO",
+   "triangles": 60,
+   "vertices": 30,
+   "bounds": {
+    "min": [
+     -0.82,
+     -0.8832,
+     -1.4304
+    ],
+    "max": [
+     0.82,
+     -0.0297,
+     -0.0796
+    ]
+   },
+   "role": "the gold halo, hung from a pivot 0.45 m above and 0.78 m behind it: turning it about x lifts it (60: 0.9 m straight up, tilted 30 degrees forward)",
+   "range": "x 0..60"
+  }
+ ],
+ "mounts": [
+  {
+   "id": "weapon_r",
+   "parent": "hand_r",
+   "offset": [
+    0,
+    -1.2,
+    0
+   ],
+   "rotate": [
+    180,
+    0,
+    0
+   ],
+   "part": "weapon_r",
+   "note": "the knuckles (Shadow's claw mount); the knuckle guard's +Y runs out of them (the hand's -Y)"
+  },
+  {
+   "id": "weapon_l",
+   "parent": "hand_l",
+   "offset": [
+    0,
+    -1.2,
+    0
+   ],
+   "rotate": [
+    180,
+    0,
+    0
+   ],
+   "part": "weapon_l",
+   "note": "the knuckles (Shadow's claw mount); the knuckle guard's +Y runs out of them (the hand's -Y)"
+  }
+ ],
+ "fist": {
+  "note": "The knuckle guards are weapon_r and weapon_l (one mesh) on Shadow's claw mounts: keep the weapon joints at 0 (a fist does not open). The fist's front is the knuckle guard's +Y end, about 0.14 m past the mount, 1.34 m from the wrist",
+  "front": [
+   0.0,
+   0.14,
+   0.0
+  ]
+ },
+ "wings": {
+  "note": "wing_l and wing_r are folded at rotation 0. Spread is the left wing at WING_SPREAD, the right mirrored (y and z negated)",
+  "spread_l": [
+   -122,
+   50,
+   -24
+  ],
+  "spread_r": [
+   -122,
+   -50,
+   24
+  ]
+ },
+ "halo": {
+  "note": "the halo joint's pivot is 0.45 m above and 0.78 m behind the ring; 'raised' lifts the ring 0.9 m straight up; 'centre' is the ring's centre in the halo joint's frame (for the flare)",
+  "raised": [
+   60,
+   0,
+   0
+  ],
+  "centre": [
+   0,
+   -0.45,
+   -0.78
+  ]
+ },
+ "poses": {
+  "guard": {
+   "drop": 1.07,
+   "rotate": {
+    "pelvis": [
+     0,
+     -8,
+     0
+    ],
+    "torso": [
+     -14,
+     -8,
+     0
+    ],
+    "head": [
+     16,
+     8,
+     0
+    ],
+    "thigh_r": [
+     34,
+     0,
+     -11
+    ],
+    "thigh_l": [
+     -12,
+     0,
+     12
+    ],
+    "upper_arm_r": [
+     64,
+     0,
+     -26
+    ],
+    "forearm_r": [
+     34,
+     0,
+     12
+    ],
+    "hand_r": [
+     -24,
+     0,
+     0
+    ],
+    "weapon_r": [
+     0,
+     0,
+     0
+    ],
+    "upper_arm_l": [
+     36,
+     0,
+     30
+    ],
+    "forearm_l": [
+     44,
+     0,
+     -10
+    ],
+    "hand_l": [
+     -10,
+     0,
+     0
+    ],
+    "weapon_l": [
+     0,
+     0,
+     0
+    ],
+    "pauldron_r": [
+     22.4,
+     0,
+     -13.0
+    ],
+    "pauldron_l": [
+     12.6,
+     0,
+     15.0
+    ],
+    "shin_r": [
+     -69.74,
+     0,
+     0
+    ],
+    "foot_r": [
+     35.74,
+     0,
+     11
+    ],
+    "shin_l": [
+     -36.06,
+     0,
+     0
+    ],
+    "foot_l": [
+     48.06,
+     0,
+     -12
+    ]
+   },
+   "note": "Shadow's guard with the fists closed (the weapon joints at 0), so Shadow's moves play as made; Seraph's own idle is still to be animated"
+  },
+  "sink": {
+   "drop": 5.2,
+   "rotate": {
+    "pelvis": [
+     -78,
+     0,
+     0
+    ],
+    "torso": [
+     -9,
+     0,
+     0
+    ],
+    "head": [
+     20,
+     0,
+     0
+    ],
+    "thigh_r": [
+     94,
+     87,
+     0
+    ],
+    "shin_r": [
+     -137,
+     0,
+     0
+    ],
+    "foot_r": [
+     0,
+     0,
+     0
+    ],
+    "thigh_l": [
+     94,
+     -87,
+     0
+    ],
+    "shin_l": [
+     -137,
+     0,
+     0
+    ],
+    "foot_l": [
+     0,
+     0,
+     0
+    ],
+    "upper_arm_r": [
+     13,
+     0,
+     -19
+    ],
+    "forearm_r": [
+     150,
+     0,
+     0
+    ],
+    "hand_r": [
+     80,
+     71,
+     0
+    ],
+    "weapon_r": [
+     0,
+     0,
+     0
+    ],
+    "upper_arm_l": [
+     13,
+     0,
+     19
+    ],
+    "forearm_l": [
+     150,
+     0,
+     0
+    ],
+    "hand_l": [
+     80,
+     -71,
+     0
+    ],
+    "weapon_l": [
+     0,
+     0,
+     0
+    ],
+    "pauldron_r": [
+     3.5,
+     0,
+     -9
+    ],
+    "pauldron_l": [
+     3.5,
+     0,
+     9
+    ]
+   },
+   "note": "Shadow's sink (its moves use it), the fists closed"
+  },
+  "spread": {
+   "drop": 1.07,
+   "rotate": {
+    "pelvis": [
+     0,
+     -8,
+     0
+    ],
+    "torso": [
+     -14,
+     -8,
+     0
+    ],
+    "head": [
+     16,
+     8,
+     0
+    ],
+    "thigh_r": [
+     34,
+     0,
+     -11
+    ],
+    "thigh_l": [
+     -12,
+     0,
+     12
+    ],
+    "upper_arm_r": [
+     64,
+     0,
+     -26
+    ],
+    "forearm_r": [
+     34,
+     0,
+     12
+    ],
+    "hand_r": [
+     -24,
+     0,
+     0
+    ],
+    "weapon_r": [
+     0,
+     0,
+     0
+    ],
+    "upper_arm_l": [
+     36,
+     0,
+     30
+    ],
+    "forearm_l": [
+     44,
+     0,
+     -10
+    ],
+    "hand_l": [
+     -10,
+     0,
+     0
+    ],
+    "weapon_l": [
+     0,
+     0,
+     0
+    ],
+    "pauldron_r": [
+     22.4,
+     0,
+     -13.0
+    ],
+    "pauldron_l": [
+     12.6,
+     0,
+     15.0
+    ],
+    "shin_r": [
+     -69.74,
+     0,
+     0
+    ],
+    "foot_r": [
+     35.74,
+     0,
+     11
+    ],
+    "shin_l": [
+     -36.06,
+     0,
+     0
+    ],
+    "foot_l": [
+     48.06,
+     0,
+     -12
+    ],
+    "wing_l": [
+     -122,
+     50,
+     -24
+    ],
+    "wing_r": [
+     -122,
+     -50,
+     24
+    ]
+   },
+   "note": "the guard with both wings spread"
+  }
+ },
+ "allow": [
+  [
+   "forearm_r",
+   "weapon_r"
+  ],
+  [
+   "forearm_l",
+   "weapon_l"
+  ],
+  [
+   "torso/waist",
+   "thigh_r/thigh"
+  ],
+  [
+   "torso/waist",
+   "thigh_r/hip_drum"
+  ],
+  [
+   "torso/chest",
+   "thigh_r/thigh"
+  ],
+  [
+   "torso/chest",
+   "thigh_r/hip_drum"
+  ],
+  [
+   "torso/waist",
+   "thigh_l/thigh"
+  ],
+  [
+   "torso/waist",
+   "thigh_l/hip_drum"
+  ],
+  [
+   "torso/chest",
+   "thigh_l/thigh"
+  ],
+  [
+   "torso/chest",
+   "thigh_l/hip_drum"
+  ],
+  [
+   "torso",
+   "wing_l"
+  ],
+  [
+   "torso",
+   "wing_r"
+  ]
+ ],
+ "allow_note": "pairs of parts every move may pass into each other (a move's \"allow\" adds more), or part/piece pairs: Shadow's, and each wing's hinge drum set into the wing pack",
+ "triangles": 1892
+}

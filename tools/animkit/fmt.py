@@ -8,7 +8,7 @@ from .rig import AnimError
 
 WIDTH = 100
 TOP_ORDER = ['format', 'version', 'note', 'name', 'base', 'rig', 'retime', 'length', 'loop', 'air', 'travel',
-             'phases', 'design', 'boxes', 'keys', 'motion', 'plant', 'marks', 'allow']
+             'still', 'phases', 'design', 'boxes', 'keys', 'motion', 'plant', 'marks', 'allow', 'floor_allow']
 KEY_ORDER = ['at', 'remove', 'from', 'relative', 'ease', 'reach_ease', 'offset', 'floor', 'pose', 'aim', 'reach',
              'boxes', 'note']
 

@@ -1,0 +1,8 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Seraph's landing: a placeholder (phase 1), Shadow's (../shadow/land.anim.json) on Seraph's rig, its keys as they are but the weapon joints held at 0 (\"still\": Shadow's claw keys would twist the knuckle guards). The wings stay folded and the halo down (no keys).",
+  "base": "../shadow/land.anim.json",
+  "rig": "../../models/seraph/seraph.rig.json",
+  "still": ["weapon_r", "weapon_l"]
+}

@@ -14,11 +14,15 @@ from kitcore import jsonio
 from kitcore.errors import KitError
 
 # The runtime's part numbering (anim.akr's enum Part): the same for every mech of the cart, so a
-# move's data is laid out alike. A rig may lack some (the Hero has no left weapon): those still
-# get a joint (from the rig's mounts) but no mesh.
-PARTS = ['pelvis', 'torso', 'head', 'pauldron_r', 'upper_arm_r', 'forearm_r', 'hand_r', 'weapon_r',
-         'pauldron_l', 'upper_arm_l', 'forearm_l', 'hand_l', 'weapon_l', 'thigh_r', 'shin_r', 'foot_r',
-         'thigh_l', 'shin_l', 'foot_l']
+# move's data is laid out alike. SKELETON is every rig's: a rig may lack a part of it (the Hero
+# has no left weapon), which still gets a joint (from the rig's mounts) but no mesh. The parts
+# after it are joints only some rigs have, appended so the others keep their numbers: Seraph's
+# wings and halo. A mech's frames hold its parts up to the last one its rig has (export's
+# part_count), so a mech without them keeps its exported data as it was.
+SKELETON = ['pelvis', 'torso', 'head', 'pauldron_r', 'upper_arm_r', 'forearm_r', 'hand_r', 'weapon_r',
+            'pauldron_l', 'upper_arm_l', 'forearm_l', 'hand_l', 'weapon_l', 'thigh_r', 'shin_r', 'foot_r',
+            'thigh_l', 'shin_l', 'foot_l']
+PARTS = SKELETON + ['wing_l', 'wing_r', 'halo']
 
 
 class AnimError(KitError):
@@ -72,7 +76,8 @@ def vec(value, n, path):
 
 
 class Rig:
-    """A loaded rig: joints by id (every id of PARTS, from parts and mounts), in parent-first order."""
+    """A loaded rig: joints by id (every id of SKELETON, and those of PARTS it has, from parts and
+    mounts), in parent-first order."""
 
     def __init__(self, data, path):
         self.path = Path(path)

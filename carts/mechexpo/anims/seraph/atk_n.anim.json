@@ -1,0 +1,17 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Seraph's jab: Shadow's Claw Jab (../shadow/atk_n.anim.json) on Seraph's rig, the weapon joints held at 0 (\"still\"), timing and keys unchanged (startup 3, active 2, recovery 12). The claw's hit box is replaced by the fist's: it follows the right fist (the knuckle guard and the knuckles, 0.9 m back from the mount to 0.2 m past it), so it ends where the fist ends and nothing hits with the air in front of it. Measured: x 1.7-3.2, y 8.6-9.8 (Shadow's claw: x 1.6-5.6, y 6.5-9.5): 2.4 m shorter, and higher, since the talons hooked down from the knuckles and a fist does not; the arm keys are Shadow's until Seraph's own jab is animated (it passes over a crouching mech's 8 m).",
+  "base": "../shadow/atk_n.anim.json",
+  "rig": "../../models/seraph/seraph.rig.json",
+  "still": ["weapon_r", "weapon_l"],
+  "design": {"hit": [1.7, 8.6, 3.2, 9.8], "tolerance": 0.5,
+             "note": "MOVES.md, Seraph: Shadow's Claw Jab with the fist's reach, x 1.7-3.2, y 8.6-9.8"},
+  "keys": [
+    {"at": 3,
+     "boxes": {"claw": null,
+               "fist": {"kind": "hit", "part": "weapon_r", "min": [-0.3, -0.9, -0.4],
+                        "max": [0.3, 0.2, 0.6]}}},
+    {"at": 5, "boxes": {"fist": null}}
+  ]
+}

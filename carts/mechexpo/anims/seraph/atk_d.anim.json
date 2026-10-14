@@ -1,0 +1,12 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Seraph's Fade Sweep: a placeholder (phase 1), Shadow's (../shadow/atk_d.anim.json) on Seraph's rig, its keys as they are but the weapon joints held at 0 (\"still\": Shadow's claw keys would twist the knuckle guards). The wings stay folded and the halo down (no keys). To be replaced by a sweeping low kick that knocks down (MOVES.md, \"Seraph\"). On Seraph's body: \"design\" is what the claws' boxes span with the fists held straight; its parts that go into the floor on Shadow's keys are listed in \"floor_allow\"; Seraph's bigger parts on Shadow's keys pass into each other: \"allow\" lists the pairs (until it is re-keyed).",
+  "base": "../shadow/atk_d.anim.json",
+  "rig": "../../models/seraph/seraph.rig.json",
+  "still": ["weapon_r", "weapon_l"],
+  "design": {"hit": [1.6, 0.0, 7.3, 2.4], "tolerance": 0.5,
+             "note": "Shadow's claws' boxes on Seraph's rig, the fists held straight (the weapon joints at 0), span this"},
+  "allow": [["head", "wing_l"]],
+  "floor_allow": {"shin_l": 0.1, "forearm_r": 0.15, "forearm_l": 0.15}
+}

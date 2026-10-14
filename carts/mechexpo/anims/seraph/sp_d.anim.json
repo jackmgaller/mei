@@ -1,0 +1,9 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Seraph's Rift Mine: a placeholder (phase 1), Shadow's (../shadow/sp_d.anim.json) on Seraph's rig, its keys as they are but the weapon joints held at 0 (\"still\": Shadow's claw keys would twist the knuckle guards). The wings stay folded and the halo down (no keys). To be replaced by the Wing Ward (MOVES.md, \"Seraph\"). On Seraph's body: Seraph's bigger parts on Shadow's keys pass into each other: \"allow\" lists the pairs (until it is re-keyed).",
+  "base": "../shadow/sp_d.anim.json",
+  "rig": "../../models/seraph/seraph.rig.json",
+  "still": ["weapon_r", "weapon_l"],
+  "allow": [["head", "wing_l"]]
+}

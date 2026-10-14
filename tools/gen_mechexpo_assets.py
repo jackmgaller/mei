@@ -40,14 +40,18 @@ PALETTE8 = 14               # 8-bit palettes from 14 down
 FOREIGN = ('stage_', 'ui_', 'fx_')  # art/stage_* and art/ui_* are D's, art/fx_* the effects'
 
 MECH_LIMIT = 1800           # README: a mech about 1,600-1,800 triangles
+MECH_LIMITS = {'seraph': 1900}  # the approved model (concept A, round 4b): its wings and halo are
+                                # three parts more than the others have
 PROP_LIMIT = {'wall': 300, 'banner': 260}
 
 # The UAPC's test units (the arcade's final for a mech with no echo yet, mx-ladder): each of these
 # bodies' parts again, the same geometry in the UAPC's plain grey (grey_recipe() below), packed
 # after everything else as GREY_<PART> (ASSET_GREY_SHADOW_TORSO ...). assets.akr lists them in
 # GREY_FROM / GREY_TO, which anim.akr turns into a grey mesh table. The Hero and the Double-blade
-# Hero have each other as their finals and need none.
-GREY_BODIES = ('shadow', 'beam', 'tank', 'twins', 'twin_a', 'twin_b')
+# Hero have each other as their finals and need none. Shadow and Seraph have each other too since
+# Seraph joined, but keep theirs: the owner's rule is a grey for every body (the scenarios use
+# Shadow's).
+GREY_BODIES = ('shadow', 'beam', 'tank', 'twins', 'twin_a', 'twin_b', 'seraph')
 GREY_DARK = (0x26, 0x29, 0x2f)      # a neutral colour of luminance 0 (gunmetal)
 GREY_LIGHT = (0xe4, 0xe7, 0xeb)     # and of luminance 1 (white primer)
 GREY_PAINT = ((0x86, 0x8d, 0x97), (0xc2, 0xc8, 0xcf))   # a maker's colour: the UAPC's paint, by luminance
@@ -116,10 +120,17 @@ def rig_of(folder):
     return json.loads(p.read_text()) if p.exists() else None
 
 
+# Model folders packed after the others, in this order (each new mech appended), so that adding a
+# mech leaves the meshes and textures packed before it as they were.
+LATE = ('seraph',)
+
+
 def recipes():
     """[(model, path)] of every recipe to pack, and {model: rig}."""
     out, rigs = [], {}
-    for folder in sorted((CART/'models').glob('*')):
+    folders = sorted((CART/'models').glob('*'), key=lambda f: (f.name in LATE, LATE.index(f.name) if f.name in LATE else 0,
+                                                               f.name))
+    for folder in folders:
         if not folder.is_dir():
             continue
         rig = rig_of(folder)
@@ -346,10 +357,11 @@ def main():
             for mech, rig in rigs.items():
                 total = sum(by_name[p['asset'][6:].lower()]['triangles'] for p in rig['parts']
                             if p['asset'][6:].lower() in by_name)
-                flag = 'OVER   ' if total > MECH_LIMIT else '       '
-                if total > MECH_LIMIT:
-                    warnings.append(f'{mech}: {total} triangles drawn, over {MECH_LIMIT}')
-                print(f'{flag}{mech+" (drawn, all parts)":28} {total:5}  ({MECH_LIMIT})')
+                limit = MECH_LIMITS.get(mech, MECH_LIMIT)
+                flag = 'OVER   ' if total > limit else '       '
+                if total > limit:
+                    warnings.append(f'{mech}: {total} triangles drawn, over {limit}')
+                print(f'{flag}{mech+" (drawn, all parts)":28} {total:5}  ({limit})')
             for a in manifest['assets']:
                 kind = next((k for k in PROP_LIMIT if k in a['name']), None)
                 if kind and not any(a['name'].startswith(m+'_') or a['name'].startswith('grey_'+m+'_') for m in rigs) \
