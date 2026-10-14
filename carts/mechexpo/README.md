@@ -272,9 +272,9 @@ effects and sounds are phase 2's other two parts. What is real and what is still
   (appended). Its numbers are a row of `STATS` (1,000 health, a walk of 0.080 m a frame forward
   and 0.064 back, the kinetic meter) and its names a row of `ROSTER`.
 - **Its placeholders:** until a move's own animation lands, the fight plays it from
-  `seraph.akr`'s stand-in data (`seraph_standin`, which tells a placeholder of Shadow's from the
-  data: [MOVES.md](MOVES.md#phase-1-what-is-in-the-game-now)); the drawing is the
-  placeholder's. Still to come from phase 2's other parts: the animations (`anims/seraph/`), the
+  `seraph.akr`'s stand-in data (`ser_std`, filled by `seraph_init()` when a Seraph fights, tells
+  a placeholder of Shadow's from the data: [MOVES.md](MOVES.md#phase-1-what-is-in-the-game-now);
+  `moves.akr`'s `use_standin` reads it); the drawing is the placeholder's. Still to come from phase 2's other parts: the animations (`anims/seraph/`), the
   fists' trails in `fx.akr`, the bolt, the mark, the ward, the reflect and the column drawn
   (`seraph_fx.akr`) and heard (`sfx.akr`), and `COVER_POSE` in `cover.akr` (it holds frame 119
   of Shadow's win until Seraph's own win is animated).
@@ -295,14 +295,16 @@ effects and sounds are phase 2's other two parts. What is real and what is still
   164-167 mid-fight against Shadow and the Hero in the hangar and on the rooftop; ladder scenario
   118 (Shadow's NORMAL run: the final is Seraph, the clear unlocks it) and 124 VIEWs 4 and 5
   (Seraph's reveal, the VS card).
-- **The budget** (scenarios 162 and 168, CPU against CPU, debug builds, Shadow's mine and bolt
-  kept out, the other cursed, a full bar every 300 frames): against the split Twins on the
-  rooftop 707,271 CPU cycles and 796,571 GPU cycles at the peak, 2,325 triangles, the worst CPU
-  of any fight measured; against Shadow in the hangar 579,210 and 763,551, 1,835 triangles; against
-  the split Twins on the container port (168) 666,804 and 999,683, 2,152 triangles, the worst GPU;
-  the mechs' drawing at most 422,207 cycles, the effects' 75,959; no late frames. Mid-fight
-  (164-167, CPU against CPU without the extras): 500,937 to 616,904 CPU and 496,137 to 619,453
-  GPU cycles.
+- **The budget** (scenarios 162 and 168, CPU against CPU, debug builds, Seraph's Mark bolt kept
+  out, the other marked, a full bar every 300 frames for Judgement; mx-seraph-fight, before
+  `seraph_fx.akr`): against the split Twins on the rooftop 712,455 CPU cycles and 935,109 GPU
+  cycles at the peak, 2,300 triangles, the worst CPU of any fight measured; against Shadow in the
+  hangar 567,762 and 774,901, 1,866 triangles; against the split Twins on the container port (168)
+  666,525 and 962,451, 2,149 triangles, the worst GPU; the fight at most 69,655 cycles, the
+  mechs' drawing 417,682, the effects' 74,880; no late frames. (Phase 1, with Shadow's mine, bolt
+  and Total Eclipse kept out: 707,271 and 796,571; 579,210 and 763,551; 666,804 and 999,683.)
+  Mid-fight (164-167, CPU against CPU without the extras): 504,681 to 629,409 CPU and 378,106 to
+  604,592 GPU cycles.
 
 ## The arcade ladder
 
