@@ -819,8 +819,9 @@ across the fight plane, z behind it, y up from the apron.
   Seraph, 0–47 before Gamma); its 8-bit palettes would come down from 14. The pack's textures take
   texture slots 0 and 1: 29,824 bytes in slot 0 and 8,320 in slot 1 (38,144 loaded; 36,096
   before Gamma; 56,018 bytes of tiles before de-duplication, 47,608 before Gamma); the pack's ROM
-  in `art/` is 1,360,272 bytes (1,181,648 before Gamma, 1,008,480 before Seraph). Gamma's
-  animations take the exported `anims/anim_data.bin` from 9,997,820 to 11,142,876 bytes.
+  in `art/` is 1,360,272 bytes (1,181,648 before Gamma, 1,008,480 before Seraph). The exported
+  `anims/anim_data.bin` is 11,164,188 bytes: 9,997,820 with Seraph's placeholders, 10,019,132 with
+  Seraph's own animations, and Gamma's after them (every other mech's bytes unchanged).
 - **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
   (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. Seraph's sprites
   (mx-seraph-fx: a four-point glint in four turns, the mark's sigil, a feather) are on the same
