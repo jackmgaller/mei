@@ -97,6 +97,7 @@ fn hud_draw(f: *Fight, training: bool, who0: *u8, who1: *u8) {
         draw_health(f, s)
         draw_meter(f, s)
         shadow_siphon_hud(f, s)         // Shadow's curse on this meter (shadow_fx.akr)
+        seraph_mark_hud(f, s)           // Seraph's mark on this side (seraph_fx.akr)
         draw_pips(f, s)
     }
     draw_name(f, 0, who0)
@@ -187,7 +188,7 @@ private fn draw_kinetic(fi: *Fighter, s: s32, x0: s32, w: s32, l: s32, y: s32, h
             lx = x0 - 4
             al = ALIGN_RIGHT
         }
-        txt(FONT_LABEL, lx, y - 13, "SUPER", C_YELLOW, al)
+        txt(FONT_LABEL, lx, y - 13, "SUPER", seraph_super_col(s, C_YELLOW), al)
     }
 }
 

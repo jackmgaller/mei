@@ -1,0 +1,826 @@
+// Mech Expo 2000: Seraph's effects, its HUD mark and its polled sounds (mx-seraph-fx; MOVES.md,
+// "For the effects and sound (Seraph)"). fx.akr is mx-fx's; Seraph's own drawing is here, called
+// with a line each from game.akr (seraph_fx_draw, seraph_fx_offset, seraph_sfx), fx.akr
+// (seraph_fx_shot, seraph_trail) and hud.akr (seraph_mark_hud, seraph_super_col). Additive
+// sprites on the interface list (fx.akr's effect sprites, slot 10, and its particles, slot 11:
+// the glint, the sigil and the feather are Seraph's), light gold and white-gold: Momentum's
+// angel. Driven by the fight's events (Mark, Reflect, Column) and state (Fighter.mark, Shot.mark,
+// Shot.refl, Seraph's move and frame); nothing here changes the fight.
+//
+//   the Mark bolt     a white-gold core in a gold glow 2.4 m across, a soft halo, a four-point
+//                     glint turning slowly, gold motes falling off behind it; the light gathers
+//                     at the fist on sp_n's first 16 frames and flashes there as it leaves
+//   the mark          on the marked mech (a split Twins' partner too): a gold sigil at its chest
+//                     pulsing once a second, a thin gold ring turning 1.5 m over its head, motes
+//                     rising; flickering in the last second; a ring bursting from the chest when
+//                     it lands (half the size for a refresh)
+//   the HUD           the marked side's gauge hatched in gold, MARKED over it, the mark's time
+//                     under it, a shine sweeping its health bar toward the centre every 30
+//                     frames and a gold flash of the bar on a new mark; Seraph's SUPER pulsing
+//                     gold while its super is ready and the other is marked
+//   a reflect         a white flash 4 m across and a gold ring at the contact; the reflected
+//                     shot drawn as light at its own size and height (a wave of light, a gold
+//                     ball, the Mark bolt)
+//   the Wing Ward     a tall curved sheen of light over the wrapped wings, flickering, a bright
+//                     band running up and down it; fading over 4 frames
+//   the Seraph Dive   a downdraft on the hop; through the glide white streaks and feathers off
+//                     the wing tips (and their trails: fx.akr's, from seraph_trail); a streak
+//                     along the dive; a dust ring at the touchdown
+//   Ascension         light along the fist's path, a burst at each wing tip on the beat
+//   Heaven's Arc      a downdraft and feathers on each of the two wing beats
+//   Judgement         the halo's flare in the flash (rings growing from it to 4 m, a white
+//                     glow, the core lit), the stage brightened to white-gold (seraph_fx_offset);
+//                     at the lock a gold ring opening to 5 m on the floor, motes raining into it;
+//                     then the white-gold column slamming down in 2 frames, a core 2 m wide,
+//                     flickering edges, dust at its foot, a ring on the floor and a flash
+
+const SRX_GOLD: u32 = 0x80E0FF          // 0xBBGGRR: light gold
+const SRX_CORE: u32 = 0xDCF8FF          // white-gold
+const SRX_WHITE: u32 = 0xFFFFFF
+const SRX_DEEP: u32 = 0x2070A0          // deep gold: the glows' rims, a mote's end
+
+// anchors in the parts' frames (MOVES.md, "For the effects and sound (Seraph)")
+const SRX_FIST = vec4(0.0, 0.14, 0.0, 1.0)          // the knuckle guard's front (weapon_r)
+const SRX_FIST_BACK = vec4(0.0, -0.9, 0.0, 1.0)     // ... back along the forearm
+const SRX_CORE_PT = vec4(0.0, 2.25, -1.08, 1.0)     // the gem on the sternum (torso)
+const SRX_HALO = vec4(0.0, -0.45, -0.78, 1.0)       // the halo's centre (halo)
+const SRX_TIP_L = vec4(-0.7, -5.6, 2.4, 1.0)        // the long flight plate's point (wing_l)
+const SRX_TIP_R = vec4(0.7, -5.6, 2.4, 1.0)         // (wing_r)
+
+// Seraph's frames, from 0 (MOVES.md's tables count from 1)
+const SRX_BOLT_REL = 16                 // sp_n: the bolt leaves the fist
+const SRX_HOP = 6                       // sp_f: the hop
+const SRX_GLIDE0 = 14                   // sp_f: the glide (seraph_gliding() says when it is on)
+const SRX_DIVE0 = 26                    // sp_f: the dive
+const SRX_TOUCH = 32                    // sp_f: the touchdown
+const SRX_ASC_BEAT = 13                 // sp_u: the wings' beat at the top
+const SRX_BEAT0 = 9                     // throw: Heaven's Arc's wing beats
+const SRX_BEAT1 = 14
+const SRX_FLING = 40                    // sp_d: the fling after a reflect
+const SRX_LOCK = 40                     // super: the lock (the Column event)
+const SRX_COL0 = 48                     // super: the column's active frames
+const SRX_COL1 = 57
+const SRX_FADE = 69                     // super: the column and the stage's light gone
+
+var srx_on: bool                        // a Seraph in this fight (seraph_fx_draw sets it)
+var srx_tick: s32                       // the fight's tick last seen (events and spawns once a tick)
+var srx_frame: s32
+var srx_rng: u32 = 0x5E2A9B11
+var srx_pmv: [2]Mv                      // Seraph's move and frame last tick (frame crossings)
+var srx_pf: [2]s32
+var srx_lock: [2]fixed                  // Judgement's lock (the Column event's x)
+var srx_locked: [2]bool
+var srx_col_t: [2]s32                   // ticks since the column came down (its slam, through hitstop)
+var srx_ward: [2]fixed                  // the ward's sheen, 0..1
+var srx_hud_new: [2]s32                 // frames of the health bar's gold flash (a new mark)
+var srx_spmv: [2]Mv                     // seraph_sfx's own move and frame last tick
+var srx_spf: [2]s32
+
+// What was drawn, for the tests (scenarios 190-199): frames or bursts of each effect since the
+// fight started (SRXS_*), the HUD's mark this frame by side, the bodies marked this frame, the
+// stage's brightening (0..256).
+const SRXS_GATHER = 0                   // frames of the bolt's gathering
+const SRXS_RELEASE = 1                  // its flash at the fist
+const SRXS_BOLT = 2                     // frames of a Mark bolt drawn
+const SRXS_REFL = 3                     // frames of a reflected wave or orb drawn
+const SRXS_MARKED = 4                   // Mark events' bursts
+const SRXS_REFLECT = 5                  // Reflect events' bursts
+const SRXS_WARD = 6                     // frames of the ward's sheen
+const SRXS_DRAFT = 7                    // downdrafts (the hop, the beats, the touchdown)
+const SRXS_GLIDE = 8                    // glide frames' streaks
+const SRXS_DIVE = 9                     // the dive's streaks
+const SRXS_ASCEND = 10                  // Ascension's wing-tip bursts
+const SRXS_FLARE = 11                   // frames of the halo's flare in Judgement's flash
+const SRXS_LOCK = 12                    // frames of the lock's ring
+const SRXS_COLUMN = 13                  // frames of the column
+const SRXS_SLAM = 14                    // the column's slam
+const SRXS_N = 15
+var srx_seen: [SRXS_N]s32
+var srx_hud_bar: [2]s32                 // the mark's time bar drawn (pixels; -1 none)
+var srx_hud_label: [2]bool              // MARKED drawn
+var srx_marks_drawn: s32                // bodies whose mark was drawn this frame
+var srx_bright: s32                     // the stage's brightening applied this frame (0..256)
+
+// ---- small helpers
+
+private fn srx_u() -> u32 {
+    var s = srx_rng
+    s ^= s << 13
+    s ^= s >> 17
+    s ^= s << 5
+    srx_rng = s
+    return s
+}
+private fn srx_sf() -> fixed { return from_bits((srx_u() >> 15) as s32) - 1.0 }    // -1 .. 1
+
+private fn srx_glow(p: vec3, size: fixed, w_k: fixed, col: u32) {
+    let q = project_point(p)
+    if q.z < 0 { return }
+    let d = fx_px(p, size)
+    if d <= 0 { return }
+    fx_sprite(&FX_GLOW[0], q.x, q.y, (fixed(d) * w_k) as s32, d, col, BLEND_ADD)
+}
+
+// A particle sprite (slot 11: the glint, the sigil, the rings) at p, size metres across, its
+// height h_k of that.
+private fn srx_psp(r: *s32, p: vec3, size: fixed, h_k: fixed, col: u32) {
+    let q = project_point(p)
+    if q.z < 0 { return }
+    let d = fx_px(p, size)
+    if d <= 0 { return }
+    fx_psprite(r, q.x, q.y, d, max((fixed(d) * h_k) as s32, 1), col, BLEND_ADD)
+}
+
+// Sprite r of the effects' sheet (slot 10) at p, lying flat on the floor: size metres across, its
+// height h_k of that.
+private fn srx_flat(r: *s32, p: vec3, size: fixed, h_k: fixed, col: u32) {
+    let q = project_point(p)
+    if q.z < 0 { return }
+    let d = fx_px(p, size)
+    if d <= 0 { return }
+    fx_sprite(r, q.x, q.y, d, max((fixed(d) * h_k) as s32, 1), col, BLEND_ADD)
+}
+
+// A faint upright shaft of light at x, half wide, from y0 to y1: col in the middle, nothing at
+// its edges.
+private fn srx_shaft(x: fixed, half: fixed, y0: fixed, y1: fixed, col: u32) {
+    let a = project_point(vec3(x - half, y1, -0.6))
+    let b = project_point(vec3(x, y1, -0.6))
+    let c = project_point(vec3(x + half, y1, -0.6))
+    let d = project_point(vec3(x - half, y0, -0.6))
+    let e = project_point(vec3(x, y0, -0.6))
+    let g = project_point(vec3(x + half, y0, -0.6))
+    if a.z < 0 || c.z < 0 || d.z < 0 || g.z < 0 { return }
+    tri_grad(a.x, a.y, b.x, b.y, d.x, d.y, 0, col, 0, BLEND_ADD)
+    tri_grad(b.x, b.y, e.x, e.y, d.x, d.y, col, col, 0, BLEND_ADD)
+    tri_grad(b.x, b.y, c.x, c.y, e.x, e.y, col, 0, col, BLEND_ADD)
+    tri_grad(c.x, c.y, g.x, g.y, e.x, e.y, 0, 0, col, BLEND_ADD)
+}
+
+// A point in part's frame of fighter fi this frame.
+private fn srx_pt(fi: *Fighter, root: mat4, part: Part, lp: vec4) -> vec3 {
+    return (anim_part(fi.body, fi.mv, fi.frame, root, part) * lp) as vec3
+}
+
+// Wing w's tip (0 the left, 1 the right).
+private fn srx_tip(fi: *Fighter, root: mat4, w: s32) -> vec3 {
+    if w == 0 { return srx_pt(fi, root, Part.wing_l, SRX_TIP_L) }
+    return srx_pt(fi, root, Part.wing_r, SRX_TIP_R)
+}
+
+private fn srx_mote(x: fixed, y: fixed, vx: fixed, vy: fixed, life: s32) {
+    fx_c0 = SRX_CORE
+    fx_c1 = SRX_DEEP
+    let p = fx_spawn(Pre.Mote, x, y, vx, vy)
+    p.dt = 1.0 / life
+    fx_c0 = 0
+    fx_c1 = 0
+}
+
+private fn srx_feathers(n: s32, x: fixed, y: fixed, w: fixed) {
+    for k in 0..n {
+        let p = fx_spawn(Pre.Feather, x + srx_sf() * w, y + srx_sf(), srx_sf() / 12, 0.04 + srx_sf() / 40)
+        if srx_u() & 1 != 0 { p.flags |= PF_FLIP }
+    }
+}
+
+// A wing beat's downdraft at x: a ring of dust pushed out along the floor, 6 m wide.
+private fn srx_downdraft(x: fixed) {
+    srx_seen[SRXS_DRAFT] += 1
+    let r = fx_burst_at(Pre.Floor, x, 0.05, 0x7088A0, 0x101820)
+    r.s0 = 1.5
+    r.s1 = 7.0
+    r.dt = 1.0 / 14
+    for k in 0..2 {
+        var side = 1.0
+        if k == 1 { side = -1.0 }
+        let p = fx_spawn(Pre.Dust, x + side * 1.2, 0.4, side * 0.22, 0.01)
+        p.s1 = 6.0
+        let q = fx_spawn(Pre.Puff, x + side * 2.4, 0.3, side * 0.16, 0.02)
+        q.s1 = 3.5
+    }
+}
+
+// Whether fighter s (Seraph) reached frame k of move mv this tick.
+private fn srx_at(s: s32, fi: *Fighter, mv: Mv, k: s32) -> bool {
+    if fi.mv != mv || (fi.frame as s32) < k { return false }
+    return srx_pmv[s] != mv || srx_pf[s] < k
+}
+
+// ---- the shots (fx.akr's shot loop hands each shot here first): the Mark bolt and reflected
+// shots, drawn as light. Returns whether it drew it.
+
+fn seraph_fx_shot(sh: *Shot) -> bool {
+    if !sh.mark && !sh.refl { return false }
+    if sh.mark {
+        srx_bolt(sh)
+        srx_seen[SRXS_BOLT] += 1
+        return true
+    }
+    srx_seen[SRXS_REFL] += 1
+    if sh.lvl > 0 {
+        // a reflected Volt Orb: a gold ball at its level's size, a ring when charged
+        let p = vec3(sh.x, (sh.y0 + sh.y1) / 2, -0.5)
+        let q = project_point(p)
+        if q.z < 0 { return true }
+        let px = fx_px(p, 1.0)
+        let d = (fixed(px) * sh.half * 2) as s32
+        let flick = ((sh.t * 7) % 4) as s32
+        fx_sprite(&FX_GLOW[0], q.x, q.y, d * 2, d * 2, col_scale(SRX_GOLD, 0.6), BLEND_ADD)
+        fx_sprite(&FX_GLOW[0], q.x, q.y, d + flick, d + flick, SRX_CORE, BLEND_ADD)
+        fx_sprite(&FX_SPARK[0], q.x, q.y, d / 2 + flick, d / 2 + flick, SRX_WHITE, BLEND_ADD)
+        if sh.lvl >= 2 {
+            let rr = d + (sh.t % 12) * px / 6
+            fx_sprite(&FX_RING[0], q.x, q.y, rr, rr, col_scale(SRX_GOLD, 0.6), BLEND_ADD)
+        }
+        return true
+    }
+    // a reflected wave: a low wave of light along the floor, white-gold
+    let p = vec3(sh.x, sh.y + 3.0, -0.5)
+    let q = project_point(p)
+    if q.z < 0 { return true }
+    let px = fx_px(p, 1.0)
+    var w = px * 8
+    if sh.vx < 0.0 { w = -w }
+    let flick = ((sh.t >> 1) & 1) as s32
+    fx_sprite(&FX_GLOW[0], q.x, q.y, px * 10, px * 7, 0x184060, BLEND_ADD)
+    fx_sprite(&FX_WAVE[0], q.x, q.y, w, px * (6 + flick), 0xA0F0FF, BLEND_ADD)
+    fx_sprite(&FX_STREAK[0], q.x - w / 2, q.y + px * 2, w, px, 0x60C0E0, BLEND_ADD)
+    return true
+}
+
+// The Mark bolt (a reflected one too): a white-gold core, a gold glow 2.4 m across and a soft
+// halo, a four-point glint turning slowly; brighter when reflected.
+private fn srx_bolt(sh: *Shot) {
+    let p = vec3(sh.x, (sh.y0 + sh.y1) / 2, -0.5)
+    let q = project_point(p)
+    if q.z < 0 { return }
+    let px = fx_px(p, 1.0)
+    let pulse = (frame_wave(sh.t, 24) + 1.0) / 4                   // 0 .. 0.5
+    let d = (fixed(px) * 2.4) as s32
+    fx_sprite(&FX_GLOW[0], q.x, q.y, d * 2, d * 2, col_scale(SRX_DEEP, 0.8 + pulse / 2), BLEND_ADD)   // the halo
+    fx_sprite(&FX_GLOW[0], q.x, q.y, d, d, SRX_GOLD, BLEND_ADD)
+    let c = d * 2 / 3 + ((sh.t >> 1) & 1) as s32
+    fx_sprite(&FX_GLOW[0], q.x, q.y, c, c, SRX_CORE, BLEND_ADD)
+    fx_sprite(&FX_SPARK[0], q.x, q.y, c / 2, c / 2, SRX_WHITE, BLEND_ADD)
+    var gc = SRX_CORE
+    if sh.refl { gc = SRX_WHITE }
+    let g = (fixed(px) * (4.4 + pulse * 2)) as s32
+    fx_psprite(&FXP_GLINTS[((sh.t / 6) & 3) * 4], q.x, q.y, g, g, gc, BLEND_ADD)
+}
+
+// ---- the trails (fx.akr's fx_update asks for side fi's trail k: 0 the right fist or the left
+// wing, 1 the right wing): the base and the tip, and whether it is sweeping.
+
+fn seraph_trail(fi: *Fighter, root: mat4, k: s32, a: *vec3, b: *vec3) -> bool {
+    let fr = fi.frame as s32
+    if fi.mv == Mv.sp_f && fr >= SRX_GLIDE0 - 1 && fr <= SRX_TOUCH - 1 {
+        // the glide and the dive: a ribbon 0.8 m tall off each wing tip, upright so it faces the
+        // camera whichever way the plate turns (the spread wings reach across the view's depth)
+        let tp = srx_tip(fi, root, k)
+        a[0] = vec3(tp.x, tp.y - 0.8, tp.z)
+        b[0] = tp
+        return true
+    }
+    // the fists: the right's short trail on the active frames (and a little before); the points
+    // only when it sweeps (a trail that is not sweeping only shrinks)
+    if k != 0 { return false }
+    var on = false
+    match fi.mv {
+        atk_n => on = fr >= 1 && fr <= 5
+        atk_f => on = fr >= 9 && fr <= 16
+        atk_air => on = fr >= 6
+        sp_f => on = fr >= SRX_DIVE0 && fr <= SRX_TOUCH
+        sp_u => on = fr >= 6 && fr <= 15
+        else => {}
+    }
+    if on {
+        a[0] = srx_pt(fi, root, Part.weapon_r, SRX_FIST_BACK)
+        b[0] = srx_pt(fi, root, Part.weapon_r, SRX_FIST)
+    }
+    return on
+}
+
+// ---- once a frame in a fight (after the mechs, with fx.akr's effects)
+
+var srx_cycles: s32                     // CPU cycles of the last seraph_fx_draw (the tests read it)
+
+fn seraph_fx_draw(f: *Fight) {
+    let c0 = cycle_count()
+    srx_draw(f)
+    srx_cycles = cycle_count() - c0
+}
+
+private fn srx_draw(f: *Fight) {
+    srx_on = f.f[0].mech == Mech.Seraph || f.f[1].mech == Mech.Seraph
+    srx_marks_drawn = 0
+    if !srx_on { return }
+    srx_frame += 1
+    let tick = f.ticks != srx_tick
+    if tick {
+        srx_tick = f.ticks
+        let ev = fight_events()
+        for k in 0..ev.n { srx_event(&ev.e[k], f) }
+    }
+    // the light's motes: behind the Mark bolt, off a reflected shot
+    for s in 0..2 {
+        let sh = &f.shot[s]
+        if !tick || !sh.on || (!sh.mark && !sh.refl) || sh.t % 3 != 0 { continue }
+        let back = -fixed(sgn(sh.vx))
+        let y = (sh.y0 + sh.y1) / 2
+        if sh.mark {
+            srx_mote(sh.x + back * 0.9, y + srx_sf() * 0.6, back * 0.03, -0.03, 18)
+        } else if sh.lvl > 0 {
+            srx_mote(sh.x + back * sh.half, y + srx_sf() * sh.half, back * 0.04, srx_sf() / 50, 14)
+        } else {
+            srx_mote(sh.x + back * 1.2, sh.y + 0.5 + (srx_sf() + 1.0) * 1.4, back * 0.04, 0.04, 16)
+        }
+    }
+    // the mark, on every marked body (a split Twins' partner too)
+    for i in 0..4 {
+        if i >= 2 && !twins_on(i - 2) { continue }
+        let m = f.f[i & 1].mark
+        if m > 0 { srx_mark_draw(f, i, m, tick) }
+    }
+    for s in 0..2 {
+        let fi = &f.f[s]
+        if fi.mech != Mech.Seraph {
+            srx_ward[s] = 0.0
+            continue
+        }
+        srx_moves(f, s, tick)
+        if tick {
+            srx_pmv[s] = fi.mv
+            srx_pf[s] = fi.frame as s32
+        }
+    }
+}
+
+// The events: the mark landing, a reflect, the column's lock.
+private fn srx_event(e: *Event, f: *Fight) {
+    let side = clamp(e.side, 0, 1)
+    match e.kind {
+        Mark => {
+            var big = 1.0
+            if e.power == 0 { big = 0.5 }
+            let r = fx_burst_at(Pre.Ring, e.x, e.y, SRX_CORE, SRX_DEEP)
+            r.s0 = 2.0 * big
+            r.s1 = 9.0 * big
+            r.dt = 1.0 / 16
+            let g = fx_burst_at(Pre.Glow, e.x, e.y, SRX_GOLD, SRX_DEEP)
+            g.s1 = 6.0 * big
+            if e.power != 0 {
+                let st = fx_burst_at(Pre.Star, e.x, e.y, SRX_WHITE, SRX_GOLD)
+                st.s0 = 7.0
+                srx_hud_new[1 - side] = 8
+            }
+            for k in 0..(3 + 3 * e.power) { srx_mote(e.x + srx_sf() * 1.5, e.y + srx_sf(), srx_sf() / 20, 0.06, 24) }
+            srx_seen[SRXS_MARKED] += 1
+        }
+        Reflect => {
+            let g = fx_burst_at(Pre.Glow, e.x, e.y, SRX_WHITE, SRX_GOLD)
+            g.s0 = 4.0
+            g.s1 = 5.0
+            g.dt = 1.0 / 8
+            let r = fx_burst_at(Pre.Ring, e.x, e.y, SRX_GOLD, SRX_DEEP)
+            r.s0 = 1.5
+            r.s1 = 7.0
+            let st = fx_burst_at(Pre.Star, e.x, e.y, SRX_WHITE, SRX_GOLD)
+            st.s0 = 6.0 + fixed(clamp(e.power, 1, 3))
+            fx_c0 = SRX_WHITE
+            fx_c1 = SRX_GOLD
+            fx_spray(Pre.ShieldSpark, 10, e.x, e.y, 8, 16, 0.3)
+            srx_seen[SRXS_REFLECT] += 1
+        }
+        Column => {
+            srx_lock[side] = e.x
+            srx_locked[side] = true
+        }
+        else => {}
+    }
+}
+
+// Seraph's own moves, side s.
+private fn srx_moves(f: *Fight, s: s32, tick: bool) {
+    let fi = &f.f[s]
+    let root = anim_place(vec2(fi.x, fi.y), fi.facing)
+    let fr = fi.frame as s32
+    let dir = fixed(fi.facing)
+    let live = tick && f.freeze <= 0                // the streams pause in hitstop
+    // Mark of Judgement: the light gathering at the fist, a flash as the bolt leaves it
+    if fi.mv == Mv.sp_n && fr <= SRX_BOLT_REL {
+        let p = srx_pt(fi, root, Part.weapon_r, SRX_FIST)
+        let fp = vec3(p.x, p.y, -1.3)
+        let k = fixed(min(fr + 1, SRX_BOLT_REL)) / SRX_BOLT_REL
+        srx_glow(fp, 0.4 + k * 1.1, 1.0, col_scale(SRX_GOLD, 0.4 + k * 0.6))
+        srx_glow(fp, 0.2 + k * 0.5, 1.0, SRX_CORE)
+        srx_seen[SRXS_GATHER] += 1
+        if live && fr < SRX_BOLT_REL && fr % 2 == 0 {
+            let dv = fx_dir[(srx_u() >> 8) & 31]
+            srx_mote(p.x + dv.x * 2.6, p.y + dv.y * 2.6, -dv.x * 0.26, -dv.y * 0.26, 10)
+        }
+        if tick && srx_at(s, fi, Mv.sp_n, SRX_BOLT_REL) {
+            let fl = fx_burst_at(Pre.Flare, p.x, p.y, SRX_WHITE, SRX_GOLD)
+            fl.s0 = 6.0
+            fl.s1 = 3.0
+            let g = fx_burst_at(Pre.Glow, p.x, p.y, SRX_GOLD, SRX_DEEP)
+            g.s0 = 2.0
+            g.s1 = 4.5
+            srx_seen[SRXS_RELEASE] += 1
+        }
+    }
+    // the Seraph Dive: the hop's downdraft, the glide's streaks and feathers (and a glow at each
+    // wing tip), the dive, the touchdown
+    if seraph_gliding(s) {
+        for w in 0..2 {
+            let tp = srx_tip(fi, root, w)
+            srx_glow(vec3(tp.x, tp.y, tp.z - 0.6), 2.6, 1.4, col_scale(SRX_GOLD, 0.85))
+            srx_glow(vec3(tp.x, tp.y, tp.z - 0.7), 1.0, 1.0, SRX_CORE)
+        }
+    }
+    if fi.mv == Mv.sp_f && tick {
+        if srx_at(s, fi, Mv.sp_f, SRX_HOP) { srx_downdraft(fi.x) }
+        if seraph_gliding(s) && live {
+            for w in 0..2 {
+                let tp = srx_tip(fi, root, w)
+                fx_c0 = SRX_WHITE
+                fx_c1 = SRX_GOLD
+                let st = fx_spawn(Pre.ShieldSpark, tp.x, tp.y, -dir * (0.12 + srx_sf() / 25), srx_sf() / 60)
+                st.z = tp.z
+                fx_c0 = 0
+                fx_c1 = 0
+                if (f.ticks + w) % 4 == 0 { srx_mote(tp.x, tp.y, -dir * 0.06, -0.02, 16) }
+            }
+            if f.ticks % 6 == 0 { srx_feathers(1, fi.x - dir * 2.0, fi.y + 4.5, 1.5) }
+            srx_seen[SRXS_GLIDE] += 1
+        }
+        if fr >= SRX_DIVE0 && fr < SRX_TOUCH && live {
+            let p = srx_pt(fi, root, Part.weapon_r, SRX_FIST)
+            fx_c0 = SRX_WHITE
+            fx_c1 = SRX_GOLD
+            fx_spawn(Pre.ShieldSpark, p.x, p.y, dir * 0.24, -0.34)
+            fx_c0 = 0
+            fx_c1 = 0
+            srx_seen[SRXS_DIVE] += 1
+        }
+        if srx_at(s, fi, Mv.sp_f, SRX_TOUCH) {
+            srx_downdraft(fi.x)
+            let r = fx_burst_at(Pre.Floor, fi.x, 0.05, SRX_GOLD, SRX_DEEP)
+            r.s1 = 9.0
+        }
+    }
+    // Ascension: light along the fist's path, a burst at each wing tip on the beat
+    if fi.mv == Mv.sp_u {
+        if live && fr >= 7 && fr <= 15 {
+            let p = srx_pt(fi, root, Part.weapon_r, SRX_FIST)
+            srx_mote(p.x + srx_sf() * 0.4, p.y - 0.5, srx_sf() / 40, 0.12, 14)
+        }
+        if fr >= 11 && fr <= 16 {
+            let k = 1.0 - fixed(abs(fr - SRX_ASC_BEAT)) / 4
+            for w in 0..2 {
+                let tp = srx_tip(fi, root, w)
+                srx_glow(vec3(tp.x, tp.y, -1.2), 2.0 + k * 1.5, 1.0, col_scale(SRX_GOLD, k))
+            }
+        }
+        if tick && srx_at(s, fi, Mv.sp_u, SRX_ASC_BEAT) {
+            for w in 0..2 {
+                let tp = srx_tip(fi, root, w)
+                let st = fx_burst_at(Pre.Star, tp.x, tp.y, SRX_WHITE, SRX_GOLD)
+                st.s0 = 6.0
+                srx_feathers(2, tp.x, tp.y, 1.0)
+            }
+            srx_downdraft(fi.x)
+            srx_seen[SRXS_ASCEND] += 1
+        }
+    }
+    // Heaven's Arc: the two wing beats
+    if fi.mv == Mv.throw && tick && (srx_at(s, fi, Mv.throw, SRX_BEAT0) || srx_at(s, fi, Mv.throw, SRX_BEAT1)) {
+        srx_downdraft(fi.x)
+        for w in 0..2 {
+            let tp = srx_tip(fi, root, w)
+            let g = fx_burst_at(Pre.Glow, tp.x, tp.y, SRX_GOLD, SRX_DEEP)
+            g.s1 = 4.0
+            srx_feathers(2, tp.x, tp.y, 1.2)
+        }
+    }
+    // the Wing Ward: the sheen while it is up, fading over 4 frames; feathers on the fling
+    let warding = seraph_warding(s)
+    if tick {
+        if warding {
+            srx_ward[s] = min(srx_ward[s] + 0.5, 1.0)
+        } else {
+            srx_ward[s] = max(srx_ward[s] - 0.25, 0.0)
+        }
+        if srx_at(s, fi, Mv.sp_d, SRX_FLING) { srx_feathers(4, fi.x, fi.y + 7.0, 2.5) }
+    }
+    if srx_ward[s] > 0.0 { srx_ward_draw(fi, srx_ward[s]) }
+    // Judgement
+    if fi.mv == Mv.super {
+        srx_judgement(f, s, root, tick)
+    } else {
+        srx_locked[s] = false
+    }
+}
+
+// The Wing Ward's sheen in front of fi, k its strength (0..1): a tall curved sheet of light, 11 m
+// high, at x +1.5, y 6 from the root, its glows flickering, a bright band running up and down it.
+private fn srx_ward_draw(fi: *Fighter, k: fixed) {
+    srx_seen[SRXS_WARD] += 1
+    let dir = fixed(fi.facing)
+    let cx = fi.x + dir * 1.5
+    let cy = fi.y + 6.0
+    srx_glow(vec3(cx - dir * 0.4, cy, -1.3), 12.0, 0.45, col_scale(SRX_GOLD, k * 0.55))
+    for j in 0..7 {
+        let u = fixed(j - 3) / 3                                    // -1 .. 1, bottom to top
+        let fl = fixed((srx_frame * 3 + j * 5) % 7) / 20            // 0 .. 0.3
+        srx_glow(vec3(cx - dir * 1.0 * u * u, cy + u * 5.0, -1.5), 2.8, 0.75, col_scale(SRX_GOLD, k * (0.8 + fl)))
+    }
+    let ph = frame_wave(srx_frame, 40)
+    let bp = vec3(cx - dir * 1.0 * ph * ph, cy + ph * 4.5, -1.6)
+    srx_glow(bp, 3.2, 0.8, col_scale(SRX_CORE, k))
+    srx_psp(&FXP_GLINTS[((srx_frame / 5) & 3) * 4], bp, 2.4, 1.0, col_scale(SRX_WHITE, k))
+}
+
+// Judgement, side s: the halo's flare, the lock's ring and rain, the column.
+private fn srx_judgement(f: *Fight, s: s32, root: mat4, tick: bool) {
+    let fi = &f.f[s]
+    let fr = fi.frame as s32
+    // the halo, raised: lit through the column, flaring in the flash
+    if fr <= SRX_COL1 {
+        let h = srx_pt(fi, root, Part.halo, SRX_HALO)
+        let hp = vec3(h.x, h.y, -1.6)
+        let pulse = (frame_wave(srx_frame, 16) + 1.0) / 2
+        let flash = f.flash_side == s && f.freeze > 0
+        if flash {
+            srx_glow(hp, 3.0 + pulse * 1.2, 1.0, col_scale(SRX_CORE, 0.65 + pulse * 0.35))
+            for j in 0..2 {
+                let a = fixed((fr + j * 7) % 14) / 14
+                srx_psp(&FXP_RING[0], hp, 1.2 + a * 2.8, 1.0, col_scale(SRX_GOLD, 1.0 - a))
+            }
+            srx_psp(&FXP_GLINTS[((fr / 4) & 3) * 4], hp, 4.0 + pulse, 1.0, SRX_WHITE)
+            let c = srx_pt(fi, root, Part.torso, SRX_CORE_PT)
+            srx_glow(vec3(c.x, c.y, -1.6), 1.6 + pulse / 2, 1.0, SRX_WHITE)
+            srx_seen[SRXS_FLARE] += 1
+        } else {
+            srx_glow(hp, 2.2, 1.0, col_scale(SRX_GOLD, 0.6 + pulse * 0.2))
+        }
+    }
+    // the lock: the other's root x when the Column event did not come (it always should)
+    if tick && srx_at(s, fi, Mv.super, SRX_LOCK) && !srx_locked[s] {
+        srx_lock[s] = f.f[1 - s].x
+        srx_locked[s] = true
+    }
+    if fr < SRX_COL0 { srx_col_t[s] = 0 }
+    if !srx_locked[s] || fr < SRX_LOCK { return }
+    let x = srx_lock[s]
+    if fr < SRX_COL0 {
+        // the warning: a gold ring opening to 5 m on the floor, light gathering above, motes falling in
+        let t = fixed(min(fr - SRX_LOCK + 1, 6)) / 6
+        let pulse = (frame_wave(srx_frame, 8) + 1.0) / 4
+        let fp = vec3(x, 0.05, -0.3)
+        srx_flat(&FX_GLOW[0], fp, 6.5 * t, 0.3, col_scale(SRX_GOLD, 0.45 + pulse / 2))
+        srx_flat(&FX_RING[0], fp, 5.0 * t, 0.3, col_scale(SRX_GOLD, 0.8 + pulse))
+        srx_psp(&FXP_RING[0], fp, 3.2 * t, 0.25, col_scale(SRX_CORE, 0.5 + pulse))
+        srx_shaft(x, 0.3 + t * 0.6, 9.0, 40.0, col_scale(0x1C5070, t))       // the light gathering above
+        if tick {
+            for k in 0..2 { srx_mote(x + srx_sf() * 2.4, 20.0 + srx_sf() * 2.0, 0.0, -1.0, 20) }
+        }
+        srx_seen[SRXS_LOCK] += 1
+        return
+    }
+    if fr > SRX_FADE { return }
+    srx_column(x, fr, srx_col_t[s])
+    if tick { srx_col_t[s] += 1 }
+    srx_seen[SRXS_COLUMN] += 1
+    if tick && srx_at(s, fi, Mv.super, SRX_COL0) {
+        // the slam: a flash, a ring on the floor, dust and grit thrown out at the foot
+        fx_flash_start(4)
+        let r = fx_burst_at(Pre.Floor, x, 0.05, SRX_WHITE, SRX_GOLD)
+        r.s0 = 4.0
+        r.s1 = 18.0
+        r.dt = 1.0 / 20
+        let r2 = fx_burst_at(Pre.Ring, x, 3.0, SRX_CORE, SRX_DEEP)
+        r2.s1 = 12.0
+        fx_spray(Pre.Dust, 4, x, 0.5, 1, 1, 0.3)
+        fx_spray(Pre.Dust, 4, x, 0.5, 15, 1, 0.3)
+        fx_spray(Pre.Pebble, 6, x, 0.5, 8, 6, 0.42)
+        srx_seen[SRXS_SLAM] += 1
+    }
+    if tick && f.freeze <= 0 && fr <= SRX_COL1 && fr % 3 == 0 {
+        var side = 1.0
+        if (fr / 3) & 1 != 0 { side = -1.0 }
+        let p = fx_spawn(Pre.Dust, x + side * 2.6, 0.4, side * 0.18, 0.02)
+        p.s1 = 7.0
+        srx_mote(x + srx_sf() * 2.0, 1.0, srx_sf() / 10, 0.25, 14)
+    }
+}
+
+// The column at x on Judgement's frame fr: a white-gold beam from the floor to above the view,
+// x +- 2.5 m (its edges flickering), a core 2 m wide; slamming down on its first frame (t: ticks
+// since it came, so the hit's hitstop holds it on the floor) and fading over the last twelve.
+private fn srx_column(x: fixed, fr: s32, t: s32) {
+    var k = 1.0
+    var foot = 0.0
+    if t == 0 { foot = 14.0 }
+    if fr > SRX_COL1 { k = fixed(SRX_FADE + 1 - fr) / (SRX_FADE - SRX_COL1 + 1) }
+    let top = 40.0
+    let fl = fixed((srx_frame * 5) % 4) / 10                    // 0 .. 0.3 m
+    let edge = col_scale(0x0C2840, k)                         // colours drawn (added), not tints
+    let gold = col_scale(0x2484B8, k)
+    let core = col_scale(0xB0E8FF, k)
+    // the beam across: seven edges (each projected once, at the top and the foot), six bands
+    // between them from nothing at the rims through gold to white in the middle
+    let dx: [7]fixed = [-3.1 - fl, -2.3, -1.0, 0.0, 1.0, 2.3, 3.1 + fl]
+    let cs: [7]u32 = [0, edge, gold, core, gold, edge, 0]
+    var up: [7]ivec4
+    var dn: [7]ivec4
+    for j in 0..7 {
+        up[j] = project_point(vec3(x + dx[j], top, -0.6))
+        dn[j] = project_point(vec3(x + dx[j], foot, -0.6))
+        if up[j].z < 0 || dn[j].z < 0 { return }
+    }
+    for j in 0..6 {
+        let a = up[j]
+        let b = up[j + 1]
+        let c = dn[j]
+        let d = dn[j + 1]
+        tri_grad(a.x, a.y, b.x, b.y, c.x, c.y, cs[j], cs[j + 1], cs[j], BLEND_ADD)
+        tri_grad(b.x, b.y, d.x, d.y, c.x, c.y, cs[j + 1], cs[j + 1], cs[j], BLEND_ADD)
+    }
+    // the core's hot middle, 0.8 m: between the projected edges at -1, 0 and +1
+    let hot = col_scale(0x406070, k)
+    let l = up[2].x + (up[3].x - up[2].x) * 3 / 5
+    let r = up[3].x + (up[4].x - up[3].x) * 2 / 5
+    let lb = dn[2].x + (dn[3].x - dn[2].x) * 3 / 5
+    let rb = dn[3].x + (dn[4].x - dn[3].x) * 2 / 5
+    tri_grad(l, up[3].y, r, up[3].y, lb, dn[3].y, hot, hot, hot, BLEND_ADD)
+    tri_grad(r, up[3].y, rb, dn[3].y, lb, dn[3].y, hot, hot, hot, BLEND_ADD)
+    srx_glow(vec3(x, foot + 0.6, -1.0), 8.0, 1.2, col_scale(SRX_GOLD, k * 0.7))
+    srx_psp(&FXP_RING[0], vec3(x, 0.05, -0.4), 7.0 + fl * 4, 0.2, col_scale(SRX_GOLD, k))
+}
+
+// The mark on body i (m its frames left): the sigil at the chest pulsing once a second, the ring
+// turning over the head, motes rising straight up; flickering in the last 60 frames.
+private fn srx_mark_draw(f: *Fight, i: s32, m: s32, tick: bool) {
+    let fi = &f.f[i]
+    let root = anim_place(vec2(fi.x, fi.y), fi.facing)
+    let tor = (anim_part(fi.body, fi.mv, fi.frame, root, Part.torso) * vec4(0.0, 1.5, 0.0, 1.0)) as vec3
+    if tick && f.ticks % 9 == i {
+        srx_mote(tor.x + srx_sf() * 1.4, tor.y - 1.5 + srx_sf(), 0.0, 0.07, 30)
+    }
+    if m <= 60 && (srx_frame >> 2) & 1 != 0 { return }
+    srx_marks_drawn += 1
+    let pulse = (frame_wave(srx_frame + i * 13, 60) + 1.0) / 2
+    let pt = vec3(tor.x, tor.y, -1.5)
+    srx_glow(pt, 3.6 + pulse * 1.2, 0.85, col_scale(SRX_DEEP, 0.6 + pulse * 0.4))
+    srx_psp(&FXP_SIGIL[0], vec3(pt.x, pt.y, -1.6), 2.6 + pulse * 0.4, 1.0, col_scale(SRX_GOLD, 0.55 + pulse * 0.5))
+    // the ring over the head, two lights running round it as it turns
+    let hd = (anim_part(fi.body, fi.mv, fi.frame, root, Part.head) * vec4(0.0, 0.0, 0.0, 1.0)) as vec3
+    let rp = vec3(hd.x, hd.y + 1.8, -1.2)
+    srx_psp(&FXP_RING[0], rp, 2.6, 0.26, SRX_GOLD)
+    let q = project_point(rp)
+    if q.z < 0 { return }
+    let r = fx_px(rp, 1.25)
+    let a = frame_angle(srx_frame, 0.05)
+    for j in 0..2 {
+        var c = cos(a)
+        var sn = sin(a)
+        if j == 1 {
+            c = -c
+            sn = -sn
+        }
+        let gx = q.x + (fixed(r) * c) as s32
+        let gy = q.y + (fixed(r) * sn / 4) as s32
+        var col = col_scale(SRX_CORE, 0.5)
+        if sn > 0.0 { col = SRX_CORE }                      // the near side, brighter
+        let d = max(fx_px(rp, 0.7), 2)
+        fx_sprite(&FX_GLOW[0], gx, gy, d, d, col, BLEND_ADD)
+    }
+}
+
+// ---- the colour offset: the stage brightened toward white-gold from Judgement's flash to the
+// column's last active frame, fading with it (after fx_offset)
+
+fn seraph_fx_offset(f: *Fight) {
+    srx_bright = 0
+    if !srx_on { return }
+    if fx_flash > 0 { return }
+    for s in 0..2 {
+        let fi = &f.f[s]
+        if fi.mech != Mech.Seraph || fi.mv != Mv.super { continue }
+        let fr = fi.frame as s32
+        if fr > SRX_FADE { continue }
+        var k = 256
+        if fr > SRX_COL1 { k = 256 * (SRX_FADE + 1 - fr) / (SRX_FADE - SRX_COL1 + 1) }
+        layer_offset(stage_now().art.dark, 9 * k >> 8, 7 * k >> 8, 2 * k >> 8)     // BG1, BG2 and the backdrop
+        srx_bright = k
+        return
+    }
+}
+
+// ---- the HUD (hud.akr's hud_draw calls it after each side's meter and the Siphon)
+
+fn seraph_mark_hud(f: *Fight, s: s32) {
+    srx_hud_bar[s] = -1
+    srx_hud_label[s] = false
+    if !(f.f[0].mech == Mech.Seraph || f.f[1].mech == Mech.Seraph) { return }
+    let fi = &f.f[s]
+    // a new mark: the health bar flashes gold
+    if srx_hud_new[s] > 0 {
+        srx_hud_new[s] -= 1
+        let l = HUD_BAR_W - HUD_SLANT
+        let hp = clamp(fi.health, 0, max(fi.health_max, 1)) * l / max(fi.health_max, 1)
+        span_quad(s, bar_x(s), HUD_BAR_W, HUD_BAR_Y, HUD_BAR_H, l - hp, l,
+                  col_scale(SRX_CORE, fixed(srx_hud_new[s] + 2) / 10), col_scale(SRX_GOLD, fixed(srx_hud_new[s] + 2) / 10), BLEND_ADD)
+    }
+    if fi.mark <= 0 { return }
+    let x0 = meter_x(s)
+    let w = HUD_METER_W
+    let l = w - HUD_SLANT
+    let y = HUD_METER_Y
+    let h = HUD_METER_H
+    // the gauge hatched in gold
+    var o = 1
+    while o + 1 < l {
+        span_quad(s, x0, w, y, h, o, o + 1, col_scale(SRX_GOLD, 0.5), col_scale(SRX_DEEP, 0.6), BLEND_ADD)
+        o += 4
+    }
+    // the mark's time under the gauge
+    let tl = clamp(fi.mark, 0, SER_MARK_FRAMES) * l / SER_MARK_FRAMES
+    span_quad(s, x0, w, y + h + 2, 2, 0, tl, SRX_GOLD, SRX_GOLD, BLEND_NONE)
+    srx_hud_bar[s] = tl
+    if fi.mark > 60 || (hud_tick >> 2) & 1 == 0 {
+        srx_hud_label[s] = true
+        var lx = x0
+        var al = ALIGN_LEFT
+        if s == 1 {
+            lx = x0 + w
+            al = ALIGN_RIGHT
+        }
+        txt(FONT_LABEL, lx, y - 13, "MARKED", SRX_GOLD, al)
+    }
+    // the health bar's shine, sweeping toward the screen's centre every 30 frames
+    // (over the health that is left: a gold band with a white core, drawn solid so it shows on
+    // the bar's pale yellow)
+    let bl = HUD_BAR_W - HUD_SLANT
+    let lo = bl - clamp(fi.health, 0, max(fi.health_max, 1)) * bl / max(fi.health_max, 1)
+    let ph = hud_tick % 30
+    if ph < 16 {
+        let sx = lo + ph * (bl - lo + 12) / 16 - 12
+        span_quad(s, bar_x(s), HUD_BAR_W, HUD_BAR_Y, HUD_BAR_H, max(sx, lo), min(sx + 6, bl), 0x60D8FF, 0x1878E0, BLEND_NONE)
+        span_quad(s, bar_x(s), HUD_BAR_W, HUD_BAR_Y, HUD_BAR_H, max(sx + 2, lo), min(sx + 4, bl), SRX_WHITE, SRX_CORE, BLEND_NONE)
+    }
+}
+
+// The colour of side s's SUPER label: gold, pulsing, while Seraph's super is ready and the other
+// is marked; else col.
+fn seraph_super_col(s: s32, col: u32) -> u32 {
+    let f = fight_get()
+    if f.f[s].mech != Mech.Seraph || f.f[1 - s].mark <= 0 { return col }
+    return clerp(SRX_GOLD, SRX_WHITE, (frame_wave(hud_tick, 20) + 1.0) / 2)
+}
+
+// ---- the sounds that follow Seraph's state (game.akr's sound_poll, once a fight frame): the
+// bolt's hum while it is out, the ward's sweep, the wing beats, the glide's wind, the dive's
+// whistle and its touchdown.
+
+fn seraph_sfx(f: *Fight) {
+    if !(f.f[0].mech == Mech.Seraph || f.f[1].mech == Mech.Seraph) { return }
+    for s in 0..2 {
+        let sh = &f.shot[s]
+        if sh.on && sh.mark {
+            // the hum rises with the bolt's speed (a reflected one comes back quicker)
+            sfx_hold(2 + s, SFX_MARK_HUM, 3, sh.x, 0.84 + abs(sh.vx), 220)
+        }
+        let fi = &f.f[s]
+        if fi.mech != Mech.Seraph { continue }
+        let fr = fi.frame as s32
+        if srx_snd_at(s, fi, Mv.sp_d, 0) {
+            sfx_pan(fi.x)
+            sfx_ward()
+        }
+        if srx_snd_at(s, fi, Mv.sp_f, SRX_HOP) || srx_snd_at(s, fi, Mv.sp_u, SRX_ASC_BEAT)
+           || srx_snd_at(s, fi, Mv.throw, SRX_BEAT0) || srx_snd_at(s, fi, Mv.throw, SRX_BEAT1) {
+            sfx_pan(fi.x)
+            sfx_wing_beat()
+        }
+        if seraph_gliding(s) {
+            sfx_hold(s, SFX_GLIDE, 3, fi.x, 1.0, 230)
+        }
+        if srx_snd_at(s, fi, Mv.sp_f, SRX_DIVE0) {
+            sfx_pan(fi.x)
+            sfx_dive(false)
+        }
+        if srx_snd_at(s, fi, Mv.sp_f, SRX_TOUCH) {
+            sfx_pan(fi.x)
+            sfx_dive(true)
+        }
+        srx_spmv[s] = fi.mv
+        srx_spf[s] = fr
+    }
+}
+
+private fn srx_snd_at(s: s32, fi: *Fighter, mv: Mv, k: s32) -> bool {
+    if fi.mv != mv || (fi.frame as s32) < k { return false }
+    return srx_spmv[s] != mv || srx_spf[s] < k
+}

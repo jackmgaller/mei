@@ -33,8 +33,11 @@
 //              source) for the rest of the super's freeze
 // Screen shake is the camera's (camera.akr), from fight.shake.
 //
-// For the other mechs' files: fx_spray(), fx_spawn() and fx_burst_at() are public, and a
-// power source's charge-up is a row of FX_POWERS (fx_power_index() maps Power to the row).
+// For the other mechs' files: fx_spray(), fx_spawn(), fx_burst_at() and fx_psprite() (a sprite
+// of the particle sheet) are public, and a power source's charge-up is a row of FX_POWERS
+// (fx_power_index() maps Power to the row). Seraph's light (seraph_fx.akr) hooks in twice: its
+// shots (the Mark bolt, a reflected shot) are drawn by seraph_fx_shot() before the others, and
+// its trails (the fists', the wing tips' through the Seraph Dive) come from seraph_trail().
 
 import "fx_art.akr"
 
@@ -46,7 +49,7 @@ const FX_Z: fixed = -1.2                   // particles' depth: a little in fron
 private const PXK: fixed = 207.8           // screen pixels a metre at view depth 1 (120 x 1.732)
 
 // How a particle is drawn.
-enum Pk: u8 { Dot, Glow, Streak, Shard, Smoke, Dust, Flare, Ring, Floor, Hex, Star, Chevron, Speed, Bubble, Bolt, Burst }
+enum Pk: u8 { Dot, Glow, Streak, Shard, Smoke, Dust, Flare, Ring, Floor, Hex, Star, Chevron, Speed, Bubble, Bolt, Burst, Feather }
 
 const PF_FLOOR: u8 = 1        // bounces and skids on the floor
 const PF_FLICKER: u8 = 2      // blinks
@@ -94,7 +97,8 @@ struct FxPre {
 
 enum Pre {
     Spark, Ember, Shard, Flare, Glow, Ring, Smoke, Dust, Puff, Pebble, Floor, Shield, ShieldSpark,
-    Chip, Clank, Mote, Void, VoidMote, Steam, Arc, Bubble, Chevron, Speed, Star, Implode, Scrape, Burst
+    Chip, Clank, Mote, Void, VoidMote, Steam, Arc, Bubble, Chevron, Speed, Star, Implode, Scrape, Burst,
+    Feather
 }
 
 // 0xBBGGRR. Sprite colours are tints (0x80 a channel: as drawn; up to 0xFF: twice as bright).
@@ -180,6 +184,9 @@ const PRES: [len(Pre)]FxPre = [
     // Burst: the hit's starburst, white-hot into orange
     FxPre { kind: Pk.Burst, blend: BLEND_ADD, life: 6, s0: 4.0, s1: 5.0, drag: 1.0,
             c0: 0xE0FFFF, c1: 0x0860E0 },
+    // Feather: a feather of light shed by Seraph's wings, drifting down (seraph_fx.akr)
+    FxPre { kind: Pk.Feather, blend: BLEND_ADD, flags: PF_FLICKER, life: 30, life_rnd: 16, speed_rnd: 0.6,
+            s0: 1.6, s1: 1.1, grav: 0.003, drag: 0.92, c0: 0xDCF8FF, c1: 0x2070A0 },
 ]
 
 // ---- power sources: the super's charge-up and the full meter's glow, one row each
@@ -676,17 +683,22 @@ fn is_swing(mv: Mv) -> bool {
 private fn fx_trail_tip(m: Mech) -> u32 {
     if m == Mech.Doubleblade { return 0xFFB8F0 }    // violet-white
     if m == Mech.Shadow { return 0xFFA0C8 }         // the claws: a bluer violet-white
+    if m == Mech.Seraph { return 0xE8FCFF }         // the fists and the wings: white-gold
     return 0xFFF4D0                                  // white into cyan
 }
 private fn fx_trail_mid(m: Mech) -> u32 {
     if m == Mech.Doubleblade { return 0x900C60 }
     if m == Mech.Shadow { return 0xA01048 }
+    if m == Mech.Seraph { return 0x2078C0 }         // gold
     return 0xC06010
 }
 
 private fn trail_sample(t: *Trail, m: mat4, b0: fixed, b1: fixed, on: bool, mech: Mech) {
-    let base = (m * vec4(0.0, b0, 0.0, 1.0)) as vec3
-    let tip = (m * vec4(0.0, b1, 0.0, 1.0)) as vec3
+    trail_push(t, (m * vec4(0.0, b0, 0.0, 1.0)) as vec3, (m * vec4(0.0, b1, 0.0, 1.0)) as vec3, on, mech)
+}
+
+// A trail's sample from two points in the world: base (the hilt's side) and tip (the edge).
+private fn trail_push(t: *Trail, base: vec3, tip: vec3, on: bool, mech: Mech) {
     if !on {
         t.idle += 1
         if t.idle > 2 && t.n > 0 { t.n -= 1 }          // the strip shrinks from its tail
@@ -881,9 +893,16 @@ fn fx_update(f: *Fight) {
         let sd = &fx_side[s]
         let root = anim_place(vec2(fi.x, fi.y), fi.facing)
         let on = is_swing(fi.mv)
-        if fi.mech == Mech.Beam || fi.mech == Mech.Tank || fi.mech == Mech.Twins || fi.mech == Mech.Seraph {
-            // no blades: Beam's discharges are beam_fx.akr's, Tank's, the Twins' and Seraph's fists
-            // leave no trail (Seraph's own effects come with its moves: mx-seraph's phase 2)
+        if fi.mech == Mech.Seraph {
+            // the fists' short white trails, the wing tips' through the Seraph Dive (seraph_fx.akr)
+            var a: vec3
+            var b: vec3
+            let on0 = seraph_trail(fi, root, 0, &a, &b)
+            trail_push(&fx_trails[s * 2], a, b, on0, fi.mech)
+            let on1 = seraph_trail(fi, root, 1, &a, &b)
+            trail_push(&fx_trails[s * 2 + 1], a, b, on1, fi.mech)
+        } else if fi.mech == Mech.Beam || fi.mech == Mech.Tank || fi.mech == Mech.Twins {
+            // no blades: Beam's discharges are beam_fx.akr's; Tank's and the Twins' fists leave no trail
             fx_trails[s * 2].n = 0
             fx_trails[s * 2 + 1].n = 0
         } else if fi.mech == Mech.Shadow {
@@ -943,8 +962,9 @@ fn fx_update(f: *Fight) {
         }
         // the wave
         let sh = &f.shot[s]
-        if sh.on && !sh.hex { fx_wave(sh) }        // (Shadow's Hex Bolt: shadow_fx.akr)
-        if sd.shot_on && !sh.on && !sh.hex { fx_wave_end(sd.shot_x, sd.shot_y) }
+        let wave = !sh.hex && !sh.mark && !sh.refl          // (the Hex Bolt: shadow_fx.akr; Seraph's light: seraph_fx.akr)
+        if sh.on && wave { fx_wave(sh) }
+        if sd.shot_on && !sh.on && wave { fx_wave_end(sd.shot_x, sd.shot_y) }
         sd.shot_on = sh.on
         sd.shot_x = sh.x
         sd.shot_y = sh.y
@@ -1100,6 +1120,12 @@ private fn fx_spr(r: *s32, x: s32, y: s32, w: s32, h: s32, c: u32, mode: s32, fl
     __ui_tail = q
 }
 
+// A particle sprite (slot 11's rectangle r) centred on (x, y), w x h pixels, tinted c: for the
+// other mechs' files (seraph_fx.akr).
+fn fx_psprite(r: *s32, x: s32, y: s32, w: s32, h: s32, c: u32, mode: s32) {
+    fx_spr(r, x, y, w, h, c, mode, false)
+}
+
 private fn fx_draw_pt(p: *Pt, n: s32) {
     let v = vec4(p.x, p.y, p.z, 1.0)
     let w = dot(fx_rw, v)
@@ -1147,6 +1173,7 @@ private fn fx_draw_pt(p: *Pt, n: s32) {
         Speed => fx_spr(&FXP_SPEED[0], sx, sy, d, d / 4, c, mode, flip)
         Bubble => fx_spr(&FXP_BUBBLE[0], sx, sy, d, d, c, mode, false)
         Burst => fx_spr(&FXP_BURST[0], sx, sy, d, d, c, mode, flip)
+        Feather => fx_spr(&FXP_FEATHER[0], sx, sy, d, d / 3, c, mode, flip)
         Bolt => {
             if (p.rot & 1) != 0 {
                 fx_spr(&FXP_BOLT1[0], sx, sy, d, d / 2, c, mode, flip)
@@ -1199,6 +1226,7 @@ fn fx_draw_sprites(f: *Fight) {
     for s in 0..2 {
         let sh = &f.shot[s]
         if !sh.on { continue }
+        if seraph_fx_shot(sh) { continue }                  // the Mark bolt, a reflected shot (seraph_fx.akr)
         if sh.hex { shadow_fx_bolt(sh); continue }          // Shadow's Hex Bolt (shadow_fx.akr)
         if sh.lvl > 0 { beam_fx_orb(sh); continue }        // Beam's Volt Orb (beam_fx.akr)
         let p = vec3(sh.x, sh.y + 3.0, -0.5)

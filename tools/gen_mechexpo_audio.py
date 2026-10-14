@@ -32,7 +32,11 @@ coupling and uncoupling; the menu sounds, the brochure's (a page turned, a rubbe
 press pass, the catalogue's shutter) and the unlock fanfare. The magazine cover's fanfare
 ("Contract Awarded", mx-ladder), a stereo pair played on channels 6 and 7 (--preview: fanfare.wav). Loops, played from their start and
 stopped by the cart: Tank's treads, Beam's charge hum and the Shock Grip's buzz (rendered
-periodic: their filters run round the seam).
+periodic: their filters run round the seam). Seraph's (mx-seraph-fx), after the loops so every
+earlier sound keeps its index and bytes: the Mark bolt's cast, its hum (a loop) and the mark
+landing (a struck bell), the Wing Ward's sweep and the reflect, a wing beat, the glide's wind (a
+loop), the dive's whistle and touchdown, Ascension's rush, Judgement's choir, the column's lock
+and its impact.
 
 The reverb is the console's: preset 3 (hall) with its decay shortened a little, the demo hangar.
 
@@ -2411,6 +2415,232 @@ def sfx_shutter():
     return fade(x, 0.0004, 0.03)
 
 
+# ================================================================== Seraph (mx-seraph-fx)
+# Momentum's angel: light and air. Bells and choir over wind and wing beats; rendered after the
+# loops (SERAPH below), so every earlier sound keeps its index and its bytes in sfx.adp.
+
+def sfx_mark_cast():
+    """The Mark of Judgement leaves the fist: a bright chime over a rush of air, the punch's
+    thump under it, a shimmer trailing off."""
+    rng = np.random.default_rng(5000)
+    dur = 1.1
+    t = tt(dur)
+    n = len(t)
+    x = at(n, 0.0, bell_smp(88, 1.0, 2.0, 1.6), 0.45)
+    x += at(n, 0.012, bell_smp(95, 0.9, 3.0, 1.2), 0.3)
+    x += at(n, 0.024, bell_smp(100, 0.6, 2.0, 0.8), 0.16)
+    wh, _ = whoosh(rng, dur, 0.07, 0.05, 900, 5200)
+    x += 0.55 * filt(wh, 500, 0.7, 'hp')
+    sh = sum(np.sin(2 * math.pi * fr * t + rng.uniform(0, 6)) for fr in (2637.0, 3136.0, 3951.1)) / 3
+    x += 0.14 * sh * np.exp(-t / 0.3) * (0.5 + 0.5 * np.sin(2 * math.pi * 19 * t)) * np.clip(t / 0.03, 0, 1)
+    x += 0.45 * thump(t, 220, 90, 0.01, 0.05)
+    return fade(x, 0.0005, 0.2)
+
+
+def loop_mark_hum(n):
+    """The Mark bolt in flight (a loop of n samples): a soft hum of light, its partials beating
+    slowly, air rushing round it. The cart raises its pitch with the bolt's speed."""
+    rng = np.random.default_rng(5100)
+    t = np.arange(n) / FS
+    x = np.zeros(n)
+    for f, a, beat in ((392.0, 1.0, 2.0), (587.3, 0.55, 4.0), (784.0, 0.4, 6.0), (1174.7, 0.18, 2.0)):
+        x += a * (sine(np.full(n, loop_hz(f, n))) + sine(np.full(n, loop_hz(f + beat, n)))) / 2
+    x *= 0.8 + 0.2 * np.sin(2 * math.pi * loop_hz(4.0, n) * t)
+    air = mid3(filt(filt(tile3(noise(rng, n)), 2600, 1.0, 'bp'), 800, 0.7, 'hp'))
+    air *= 0.7 + 0.3 * np.sin(2 * math.pi * loop_hz(6.0, n) * t)
+    return 0.5 * x + 0.4 * air
+
+
+def sfx_mark_hit():
+    """The mark landing: a single struck bell (a church bell's partials, the low ones ringing
+    longest) over the blow's thump, a long tail."""
+    rng = np.random.default_rng(5200)
+    dur = 2.4
+    t = tt(dur)
+    n = len(t)
+    f0 = 659.3
+    x = np.zeros(n)
+    for r, a, tau in ((0.5, 0.5, 1.4), (1.0, 1.0, 0.9), (1.19, 0.55, 0.6), (1.5, 0.45, 0.5), (2.0, 0.5, 0.4),
+                      (2.51, 0.25, 0.25), (2.99, 0.2, 0.2), (4.16, 0.12, 0.12)):
+        x += a * np.sin(2 * math.pi * f0 * r * t + rng.uniform(0, 6)) * np.exp(-t / tau)
+    x *= np.clip(t / 0.001, 0, 1) * 0.5
+    x += 0.6 * filt(noise(rng, n), 4000, 0.8, 'bp') * np.exp(-t / 0.006)
+    x += 0.5 * thump(t, 160, 70, 0.015, 0.08)
+    return fade(x, 0.0004, 0.4)
+
+
+def sfx_ward():
+    """The Wing Ward: the plates sweeping round the body, a soft metallic shimmer as they close."""
+    rng = np.random.default_rng(5300)
+    dur = 0.8
+    t = tt(dur)
+    n = len(t)
+    wh, _ = whoosh(rng, dur, 0.1, 0.06, 500, 3200)
+    x = 0.7 * filt(wh, 250, 0.7, 'hp')
+    for when, f in ((0.05, 1180.0), (0.12, 1420.0)):
+        x += at(n, when, clang_smp(rng, f, 0.5, 0.12, 0.5), 0.12)
+    sh = sum(np.sin(2 * math.pi * fr * t + rng.uniform(0, 6)) for fr in (1568.0, 2093.0, 2637.0, 3136.0)) / 4
+    env = np.clip((t - 0.06) / 0.1, 0, 1) * np.exp(-np.clip(t - 0.16, 0, None) / 0.22)
+    x += 0.3 * sh * env * (0.6 + 0.4 * np.sin(2 * math.pi * 23 * t))
+    return fade(x, 0.002, 0.15)
+
+
+def sfx_reflect():
+    """A shot sent back by the ward: a ringing clang, the shot's light swallowed and thrown back
+    as a rising shimmer."""
+    rng = np.random.default_rng(5400)
+    dur = 1.2
+    t = tt(dur)
+    n = len(t)
+    x = 0.8 * clang_smp(rng, 880.0, dur, 0.3, 1.2)
+    x += at(n, 0.0, bell_smp(93, 1.0, 3.5, 2.0), 0.3)
+    x += 0.8 * filt(noise(rng, n), 2500, 0.7, 'hp') * np.exp(-t / 0.008)
+    x += 0.6 * thump(t, 200, 80, 0.01, 0.06)
+    k = np.clip((t - 0.04) / 0.35, 0, 1)
+    f = 900 * 4.5 ** k
+    sw = sine(f) + 0.4 * sine(f * 1.5)
+    x += 0.22 * sw * np.clip((t - 0.04) / 0.04, 0, 1) * np.exp(-np.clip(t - 0.3, 0, None) / 0.15) * (0.6 + 0.4 * np.sin(2 * math.pi * 31 * t))
+    return fade(sat(x, 1.2), 0.0004, 0.2)
+
+
+def sfx_wing_beat():
+    """A wing beat: a heavy whump of air pushed down, the plates' edges fluttering."""
+    rng = np.random.default_rng(5500)
+    dur = 0.55
+    t = tt(dur)
+    n = len(t)
+    env = np.clip(t / 0.035, 0, 1) ** 1.5 * np.exp(-np.clip(t - 0.035, 0, None) / 0.11)
+    x = 2.2 * filt(noise(rng, n), 360, 0.8) * env
+    x += 0.8 * thump(t, 95, 42, 0.04, 0.12)
+    x += 0.35 * filt(noise(rng, n), 1600, 1.4, 'bp') * env * (0.55 + 0.45 * np.sin(2 * math.pi * 34 * t))
+    return fade(sat(x, 1.3), 0.002, 0.08)
+
+
+def loop_glide(n):
+    """The Seraph Dive's glide (a loop of n samples): wind over the spread plates, a gust
+    rising and falling once a loop, a faint whistle off the trailing edges."""
+    rng = np.random.default_rng(5600)
+    t = np.arange(n) / FS
+    gust = np.sin(2 * math.pi * loop_hz(1.0 / (n / FS), n) * t)
+    fc = 1000 + 450 * gust
+    x = 0.9 * mid3(tvf(tile3(noise(rng, n)), tile3(fc), 1.3, 'bp', 32))
+    x += 1.6 * mid3(filt(tile3(noise(rng, n)), 220, 0.7)) * (0.8 + 0.2 * gust)
+    fw = loop_hz(1240.0, n)
+    vib = 1 + 0.006 * np.sin(2 * math.pi * loop_hz(5.0, n) * t)
+    x += 0.07 * np.sin(2 * math.pi * np.cumsum(np.full(n, fw) * vib) / FS) * (0.6 + 0.4 * gust)
+    return x * (0.85 + 0.15 * gust)
+
+
+def sfx_dive():
+    """The Seraph Dive's dive: a descending whistle, the air tearing past the fist."""
+    rng = np.random.default_rng(5700)
+    dur = 0.5
+    t = tt(dur)
+    n = len(t)
+    k = np.clip(t / 0.36, 0, 1)
+    f = 2400 * (700 / 2400) ** k
+    x = 0.35 * (sine(f) + 0.3 * sine(f * 2.01))
+    x += 0.6 * tvf(noise(rng, n), f * 1.4, 2.0, 'bp', 32)
+    env = np.clip(t / 0.03, 0, 1) * np.clip((0.42 - t) / 0.08, 0, 1)
+    return fade(x * env, 0.001, 0.05)
+
+
+def sfx_dive_land():
+    """The Seraph Dive's touchdown: the knee and the fist into the floor, a crunch, the grit
+    blown out, a bright ring of the gold knuckles."""
+    rng = np.random.default_rng(5800)
+    dur = 0.9
+    t = tt(dur)
+    n = len(t)
+    x = 1.1 * thump(t, 130, 44, 0.025, 0.14)
+    x += 0.5 * crunch(rng, t, 1800, 0.05)
+    wh, _ = whoosh(rng, dur, 0.05, 0.07, 1200, 400)
+    x += 0.4 * wh
+    x += at(n, 0.0, clang_smp(rng, 1320.0, 0.6, 0.15, 0.8), 0.12)
+    x += debris(rng, n, 0.08, 0.5, 4, 1200, 3200, 0.14)
+    return fade(sat(x, 1.5), 0.0005, 0.12)
+
+
+def sfx_ascend():
+    """Ascension: a rising rush of air as the uppercut springs up, a shimmer at the top."""
+    rng = np.random.default_rng(5900)
+    dur = 0.8
+    t = tt(dur)
+    n = len(t)
+    k = np.clip(t / 0.22, 0, 1)
+    fc = 400 * 12 ** k
+    env = np.clip(t / 0.02, 0, 1) * np.exp(-np.clip(t - 0.2, 0, None) / 0.1)
+    x = 0.9 * tvf(noise(rng, n), fc, 1.6, 'bp', 32) * env
+    f = 300 * 4 ** k
+    x += 0.25 * (sine(f) + 0.4 * saw(f * 1.5)) * env
+    sh = sum(np.sin(2 * math.pi * fr * t + rng.uniform(0, 6)) for fr in (1976.0, 2637.0, 3322.0)) / 3
+    x += 0.2 * sh * np.clip((t - 0.15) / 0.05, 0, 1) * np.exp(-np.clip(t - 0.2, 0, None) / 0.2)
+    return fade(x, 0.001, 0.15)
+
+
+def sfx_choir():
+    """Judgement's flash: a choir of light swelling as the halo rises (to C_LEAD, where the
+    super's burst lands), opening from 'o' to 'a' on an E major chord, held as the column falls,
+    then let go; bells glittering over it."""
+    rng = np.random.default_rng(6000)
+    c = C_LEAD
+    dur = 1.8
+    t = tt(dur)
+    n = len(t)
+    v = vox_smp([64, 68, 71, 76], dur, 'o', rng, 'a')
+    v += 0.6 * vox_smp([52, 59, 80], dur, 'o', rng, 'a')
+    pad = np.zeros(n)
+    for m in (64, 71, 76, 80):
+        f = float(mtof(m)) * (1 + 0.003 * np.sin(2 * math.pi * 5.0 * t + rng.uniform(0, 6)))
+        pad += sine(f)
+    env = np.clip(t / c, 0, 1) ** 1.8 * np.exp(-np.clip(t - 1.15, 0, None) / 0.22)
+    x = (0.5 * v + 0.12 * pad) * env
+    for _ in range(9):
+        x += at(n, rng.uniform(0.3, 1.0), bell_smp(rng.choice([88, 92, 95, 100]), 0.5, 3.5, 1.0), 0.06)
+    return fade(x, 0.002, 0.25)
+
+
+def sfx_column_lock():
+    """Judgement's lock: a thin tone rising as the ring opens on the floor, a high glint."""
+    rng = np.random.default_rng(6100)
+    dur = 0.55
+    t = tt(dur)
+    n = len(t)
+    k = np.clip(t / 0.14, 0, 1)
+    f = 1500 * 2 ** k
+    x = (sine(f) + 0.25 * sine(f * 2.0)) * np.clip(t / 0.01, 0, 1) * np.exp(-np.clip(t - 0.14, 0, None) / 0.15)
+    x *= 0.75 + 0.25 * np.sin(2 * math.pi * 27 * t)
+    x = 0.5 * x + at(n, 0.13, bell_smp(103, 0.4, 3.5, 1.2), 0.18)
+    x += 0.1 * filt(noise(rng, n), 6000, 0.7, 'hp') * np.exp(-t / 0.1)
+    return fade(x, 0.001, 0.08)
+
+
+def sfx_column():
+    """Judgement's column: a roar falling from high to low as the light slams down, a heavy
+    impact, then the column's roar and the floor's rumble dying away under a choir's chord."""
+    rng = np.random.default_rng(6200)
+    dur = 2.2
+    t = tt(dur)
+    n = len(t)
+    c = 0.06                                    # the impact, this far in
+    k = np.clip(t / c, 0, 1)
+    pre = tvf(noise(rng, n), 7000 * (500 / 7000) ** k, 1.2, 'bp', 32) * np.clip(t / 0.01, 0, 1) * np.clip((c + 0.02 - t) / 0.02, 0, 1)
+    x = 0.8 * pre
+    x += at(n, c, boom_smp(rng, 1.8), 1.0)
+    x += at(n, c, thump(tt(0.8), 150, 34, 0.03, 0.3), 0.9)
+    x += at(n, c, crunch(rng, tt(0.6), 1400, 0.12, 3.5), 0.5)
+    x += at(n, c, cymbal_smp(rng, dec=0.7, dur=1.8), 0.25)
+    m = n - int(c * FS)
+    tm = np.arange(m) / FS
+    roar = tvf(noise(rng, m), 1800 * np.exp(-tm / 0.4) + 260, 0.9, 'lp', 32)
+    roar *= np.exp(-tm / 0.45) * np.clip(tm / 0.005, 0, 1)
+    x += at(n, c, roar, 1.0)
+    x += at(n, c, filt(noise(rng, m), 90, 0.7) * np.exp(-tm / 0.7), 3.0)
+    x += at(n, c + 0.02, vox_smp([52, 64, 68, 71], 1.0, 'a', rng, 'o'), 0.22)
+    x += at(n, c, sparks(rng, 1.2, 220, 0.3), 0.08)
+    return fade(sat(x, 1.6), 0.0004, 0.3)
+
+
 # per sound: name, render, its peak in the game (dB of full scale; the music peaks at -8),
 # reverb send
 ONE_SHOTS = [
@@ -2478,6 +2708,24 @@ LOOPS = [
     ('beam_grip', loop_beam_grip, 0.4, -12, 1),
 ]
 
+# Seraph's (mx-seraph-fx), after the loops so the sounds before keep their indices and bytes:
+# name, render, seconds for a loop (None: a one-shot), peak in the game, reverb send
+SERAPH = [
+    ('mark_cast', sfx_mark_cast, None, -10, 1),
+    ('mark_hum', loop_mark_hum, 0.5, -19, 1),
+    ('mark_hit', sfx_mark_hit, None, -10, 1),
+    ('ward', sfx_ward, None, -13, 1),
+    ('reflect', sfx_reflect, None, -9, 1),
+    ('wing_beat', sfx_wing_beat, None, -11, 1),
+    ('glide', loop_glide, 0.6, -18, 1),
+    ('dive', sfx_dive, None, -13, 1),
+    ('dive_land', sfx_dive_land, None, -9, 1),
+    ('ascend', sfx_ascend, None, -12, 1),
+    ('choir', sfx_choir, None, -10, 1),
+    ('column_lock', sfx_column_lock, None, -14, 1),
+    ('column', sfx_column, None, -5.5, 1),
+]
+
 
 # ================================================================== output
 
@@ -2543,6 +2791,14 @@ def render_sfx():
         n = int(round(secs * SR / BLK)) * BLK
         x = down(mid3(hp_dc(tile3(fn(n * OS)), 28.0)), True)
         out.append((name, x, level, rev, True))
+    for name, fn, secs, level, rev in SERAPH:
+        if secs is None:
+            x = down(hp_dc(fn(), 28.0), False)
+            x = np.concatenate([x, np.zeros(-len(x) % BLK)])
+        else:
+            n = int(round(secs * SR / BLK)) * BLK
+            x = down(mid3(hp_dc(tile3(fn(n * OS)), 28.0)), True)
+        out.append((name, x, level, rev, secs is not None))
     sfx = []
     for name, x, level, rev, loop in out:
         x = x / np.abs(x).max() * STEM_PEAK

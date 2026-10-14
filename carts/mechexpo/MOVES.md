@@ -2176,7 +2176,8 @@ sink). The rest of this list is phase 1's record, with what changed in phase 2 s
   predicates, all true for Seraph); the CPU plays it as Shadow (`cpu_as_shadow`, with the general
   punish); the fists leave no trails; the bolt's sound is Shadow's; the training move list is
   Shadow's under fist names. (Phase 2's fight replaced the hits, the specials, the super, the CPU
-  and the move list; the animations, the trails and the sounds are the other two parts'.)
+  and the move list; the animations, the trails and the sounds are the other two parts': the
+  trails, the effects and the sounds are in, `seraph_fx.akr` and `sfx.akr`, mx-seraph-fx.)
 - **The arcade**: Shadow's final is Seraph ("MOMENTUM ROBOTICS PRESENTS ITS COMPETING PRODUCT"),
   Seraph's final is Shadow (defending its title); Seraph's grey copy is packed as every body's is.
 

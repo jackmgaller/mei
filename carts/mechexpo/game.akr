@@ -37,6 +37,7 @@ import "tank_fx.akr"        // mx-tank: Tank's reactor glow, armour sparks and H
 import "twins_fx.akr"       // mx-twins-fight: the Twins' partner, the swap's flash, the fusion meter
 import "stage_select.akr"   // mx-stages: the stage select (stages.akr: the stages)
 import "shadow_fx.akr"      // mx-shadow-fight: Shadow's bolt, mines, curse, afterimages, the siphon
+import "seraph_fx.akr"      // mx-seraph-fx: Seraph's bolt, mark, ward, glide, column, its HUD mark and sounds
 import "ladder.akr"         // mx-ladder: the arcade's run, its difficulties and the test unit
 import "cover.akr"          // mx-ladder: the magazine cover's pose and words
 
@@ -573,6 +574,18 @@ fn sound_event(e: *Event, f: *Fight) {
             sfx_pan(e.x)
             sfx_armour(e.power)
         }
+        Mark => {
+            sfx_pan(e.x)
+            sfx_mark(e.power > 0)
+        }
+        Reflect => {
+            sfx_pan(e.x)
+            sfx_reflect()
+        }
+        Column => {
+            sfx_pan(e.x)
+            sfx_column_lock()
+        }
         Curse, Mine, Snare, MineGone => {
             sfx_pan(e.x)
             match e.kind {
@@ -605,6 +618,7 @@ fn sound_poll(f: *Fight) {
     beam_sfx(f)
     tank_sfx(f)
     twins_sfx(f)
+    seraph_sfx(f)
     for s in 0..2 {
         let fi = &f.f[s]
         let hidden = (anim_marks(fi.body, fi.mv, fi.frame as s32) & MARK_HIDE) != 0
@@ -835,8 +849,10 @@ fn draw_hangar(fighting: bool) {
         tank_fx_draw(f)
         twins_fx_draw(f)
         shadow_fx_draw(f)
+        seraph_fx_draw(f)
         fx_offset()
         shadow_fx_offset(f)             // Total Eclipse keeps the stage dark
+        seraph_fx_offset(f)             // Judgement brightens it to white-gold
         prof_fx = cycle_count() - c1
         if show_boxes && game == Game.Training {
             for s in 0..2 {

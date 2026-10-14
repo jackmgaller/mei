@@ -159,16 +159,21 @@ strikes), `sfx_shot(m, lvl)` (the wave, or Beam's orb by level), `sfx_clash(orb:
 fizzling against a wave), `sfx_armour(power)` (Tank's armour), `sfx_tank_lift()` (a command
 grab caught), `sfx_throw_by(m, mv)` (Tank's slam, Beam's Shock Grip crack, else the throw),
 `sfx_knockdown()` (a Land of power 2), `sfx_step_of(m)`; `sfx_super(m)` plays the power
-source's charge-up with the burst, and a heavy or crushing `sfx_hit` scatters debris. By state,
+source's charge-up with the burst, and a heavy or crushing `sfx_hit` scatters debris. Seraph's
+(mx-seraph-fx): `sfx_mark(fresh: bool)` (the Mark event; a refresh quieter), `sfx_reflect()`
+(the Reflect event), `sfx_column_lock()` (the Column event), and from its state (`seraph_fx.akr`'s
+`seraph_sfx()`) `sfx_ward()`, `sfx_wing_beat()`, `sfx_dive(land: bool)` and the loops
+`SFX_GLIDE` and `SFX_MARK_HUM`; its branches of `sfx_attack` (the column's impact, Ascension's
+rush, the fists), `sfx_shot` (the bolt's cast) and `sfx_super` (the choir). By state,
 once a fight frame from `game.akr`'s `sound_poll()` (the mechs' parts in `beam_fx.akr`'s
 `beam_sfx()`, `tank_fx.akr`'s `tank_sfx()` and `twins_fx.akr`'s `twins_sfx()`):
 `sfx_couple(on: bool)`, `sfx_react()`, `sfx_charge_full()`, `sfx_void(back: bool)`,
 `sfx_smoulder()`. For the brochure: `sfx_page()` (from `menus_page()`), `sfx_stamp()`,
 `sfx_pass()`, `sfx_shutter()` (`menus.akr`'s `menus_sfx()` times the stamps to their drawing).
 
-**Loops** (Tank's treads, Beam's charge hum, which the Twins' Fusion Focus borrows lower, and the
-Shock Grip's buzz): `sfx_hold(slot, id, pri, x, pitch, gain)` every frame a loop should sound, a
-slot a side; `sfx_tick()` (once a frame, always, after the game's update) fades out over four
+**Loops** (Tank's treads, Beam's charge hum, which the Twins' Fusion Focus borrows lower, the
+Shock Grip's buzz, Seraph's glide and its Mark bolt's hum): `sfx_hold(slot, id, pri, x, pitch,
+gain)` every frame a loop should sound, a slot a side (0, 1) and a side's bolt (2, 3); `sfx_tick()` (once a frame, always, after the game's update) fades out over four
 frames and stops every loop not held that frame, so loops stop by themselves on the pause, on
 the menus, when the move ends and at a KO (`sfx_ko()` stops them at once).
 `sfx_stop_fight()` (in `leave_fight()`) stops every fight sound still playing. The voices'
@@ -249,8 +254,9 @@ Seraph (Momentum Robotics, kinetic; `Mech.Seraph`, roster slot 6 under Shadow, S
 Momentum's echo of Shadow, the paladin, unlocked by clearing the arcade with Shadow. Phase 1
 (mx-seraph) put the mech in the game, drawn and pickable, with Shadow's moves as placeholders;
 phase 2's fight and CPU (mx-seraph-fight) gave it its own moves: the Mark of Judgement and the
-mark, the Seraph Dive, Ascension, the Wing Ward, Heaven's Arc and Judgement. Its animations,
-effects and sounds are phase 2's other two parts. What is real and what is still Shadow's:
+mark, the Seraph Dive, Ascension, the Wing Ward, Heaven's Arc and Judgement; its animations
+(mx-seraph-anim) and its effects and sounds (mx-seraph-fx, below) are phase 2's other two parts.
+What is real and what is still Shadow's:
 [MOVES.md](MOVES.md#phase-1-what-is-in-the-game-now).
 
 - **Files:** `models/seraph/make_seraph.py` (the model and rig: the owner's concept A, round 4b,
@@ -274,10 +280,52 @@ effects and sounds are phase 2's other two parts. What is real and what is still
 - **Its placeholders:** until a move's own animation lands, the fight plays it from
   `seraph.akr`'s stand-in data (`ser_std`, filled by `seraph_init()` when a Seraph fights, tells
   a placeholder of Shadow's from the data: [MOVES.md](MOVES.md#phase-1-what-is-in-the-game-now);
-  `moves.akr`'s `use_standin` reads it); the drawing is the placeholder's. Still to come from phase 2's other parts: the animations (`anims/seraph/`), the
-  fists' trails in `fx.akr`, the bolt, the mark, the ward, the reflect and the column drawn
-  (`seraph_fx.akr`) and heard (`sfx.akr`), and `COVER_POSE` in `cover.akr` (it holds frame 119
-  of Shadow's win until Seraph's own win is animated).
+  `moves.akr`'s `use_standin` reads it); the drawing is the placeholder's. Still to come:
+  `COVER_POSE` in `cover.akr` (it holds frame 119 of Shadow's win), and the halo's glow dimmed
+  while Seraph lies (MOVES.md's effects table: the halo is an emissive part, so it needs a dimmed
+  palette or mesh in the drawing, not a sprite).
+- **Effects and sounds (mx-seraph-fx):** `seraph_fx.akr`, from the fight's events (`Mark`,
+  `Reflect`, `Column`) and state (`Fighter.mark`, `Shot.mark`, `Shot.refl`, Seraph's move and
+  frame, `seraph_warding`, `seraph_gliding`), called with a line each from `game.akr`
+  (`seraph_fx_draw` after Shadow's, `seraph_fx_offset` after `fx_offset`, `seraph_sfx` in
+  `sound_poll`, three lines of `sound_event`), `fx.akr` (`seraph_fx_shot` before the Hex Bolt and
+  the orb; `seraph_trail` for the trails) and `hud.akr` (`seraph_mark_hud` after the Siphon,
+  `seraph_super_col` for the SUPER label). Light gold and white-gold (`SRX_GOLD` 0x80E0FF,
+  `SRX_CORE` 0xDCF8FF): the Mark bolt (gathering at the fist on `sp_n`'s first 16 frames, a flash
+  as it leaves; a white-gold core in a gold glow 2.4 m across, a soft halo, a four-point glint
+  turning, motes); the mark on every marked body (a split Twins' partner too: a sigil at the
+  chest pulsing once a second, a ring turning over the head, motes rising, flickering in the
+  last 60 frames; a ring bursting from the chest when it lands, half the size for a refresh);
+  the HUD's mark on the marked side (the gauge hatched in gold, MARKED where the Siphon writes
+  SIPHON, the time bar under the gauge, a shine sweeping the health bar toward the centre every
+  30 frames, the bar flashing gold for 8 frames on a new mark) and Seraph's SUPER pulsing gold
+  while the other is marked; the Wing Ward's sheen (a curved sheet of glows 11 m tall in front,
+  a bright band running up and down it, fading over 4 frames); a reflect (a white glow 4 m
+  across, a gold ring, a star, sparks) and the reflected shot drawn as light (a wave of light, a
+  gold ball at the orb's size, the Mark bolt for a bolt); the fists' short white trails edged
+  gold on the active frames; the Dive's downdraft on the hop, glows, streaks, feathers and
+  ribbons off the wing tips through the glide, a streak along the dive and a downdraft at the
+  touchdown; Ascension's light along the fist and a burst at each wing tip on the beat; Heaven's
+  Arc's downdraft and feathers on each wing beat; Judgement's halo flare in the flash (rings
+  growing to 4 m, a white glow, the core lit), the stage brightened to white-gold through
+  `layer_offset` from the flash to the column's last active frame (fading over 12), the lock's
+  gold ring opening to 5 m on the floor with a shaft of light over it and motes raining in, then
+  the column (bands of additive Gouraud quads from the floor past the top of the view, ±2.5 m, a
+  white core, flickering edges, held on the floor through its hit's hitstop) with dust, a floor
+  ring and a flash. Sounds (`tools/gen_mechexpo_audio.py`, `SERAPH` after the loops so every
+  earlier sound keeps its index and bytes): the bolt's cast and its hum (a loop in slots 2 and
+  3, a side's bolt, rising with its speed), the mark landing (a struck bell; a refresh quieter),
+  the ward's sweep, the reflect, a wing beat (the hop, Ascension's beat, Heaven's Arc's two), the
+  glide's wind (a loop), the dive's whistle and touchdown, Ascension's rush, Judgement's choir
+  (with the kinetic charge-up), the column's lock and its impact; 175,200 bytes in `sfx.adp`.
+  VRAM: no new texture slot or palette (the particle sheet's glint, sigil and feather, below).
+  The budget with the effects (debug builds, budget.sh): 162 against the split Twins on the
+  rooftop 709,651 CPU and 1,030,911 GPU cycles at the peak, against Shadow in the hangar 581,483
+  and 969,225; 168 on the container port 657,430 and 1,019,057; 198 (Judgement and a reflect
+  against the split Twins on the container port, both marked) 671,195 and 1,103,457; the
+  effects (`prof_fx`, with fx.akr's) at most 79,722 cycles (Shadow's 109: 78,971), the most of
+  it fx.akr's pool of 80 particles (`seraph_fx_draw` itself about 7,000 at that frame, up to
+  about 22,000 with the column over two marked twins); no late frames.
 - **The model:** 1,892 triangles (Shadow's 1,800 and the Hero's 1,776; the pack's limit for it
   is 1,900, `MECH_LIMITS`), 13.55 m to the top of the halo in the rest pose (the roster's 135).
   Packed after the other mechs (`LATE` in the generator), with its grey copy: 83,896 bytes of
@@ -292,9 +340,12 @@ effects and sounds are phase 2's other two parts. What is real and what is still
   Dive, Ascension, Heaven's Arc (and off the rooftop's edge), the column, the CPU;
   162-168 through the whole game in `tests/seraph/harness.akr`: 162 and 168 the budget
   (budget.sh), 163 the select with Seraph's card and spec sheet (and the roster row's checks),
-  164-167 mid-fight against Shadow and the Hero in the hangar and on the rooftop; ladder scenario
-  118 (Shadow's NORMAL run: the final is Seraph, the clear unlocks it) and 124 VIEWs 4 and 5
-  (Seraph's reveal, the VS card).
+  164-167 mid-fight against Shadow and the Hero in the hangar and on the rooftop; 190-199 its
+  effects, HUD mark and sounds (`tests/seraph/harness.akr`: 190 the bolt and the mark, 191 the
+  mark's HUD on the split Twins, 192-194 the ward sending back the wave, a full orb and a Hex
+  Bolt, 195 the Dive, 196 Ascension and Heaven's Arc, 197 Judgement, 198 the budget, 199 every
+  sound heard); ladder scenario 118 (Shadow's NORMAL run: the final is Seraph, the clear unlocks
+  it) and 124 VIEWs 4 and 5 (Seraph's reveal, the VS card).
 - **The budget** (scenarios 162 and 168, CPU against CPU, debug builds, Seraph's Mark bolt kept
   out, the other marked, a full bar every 300 frames for Judgement; mx-seraph-fight, before
   `seraph_fx.akr`): against the split Twins on the rooftop 712,455 CPU cycles and 935,109 GPU
@@ -700,7 +751,9 @@ across the fight plane, z behind it, y up from the apron.
   in slot 0 and, since Seraph, 5,248 in slot 1 (47,608 bytes of tiles before de-duplication); the
   pack's ROM in `art/` is 1,181,648 bytes (1,008,480 before Seraph).
 - **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
-  (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. A pool of 80 particles,
+  (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. Seraph's sprites
+  (mx-seraph-fx: a four-point glint in four turns, the mark's sigil, a feather) are on the same
+  sheet after the others, which keep their rectangles: rows 0–154, 19,840 bytes (14,592 before). A pool of 80 particles,
   at most 52 spawned a frame; at their busiest (scenarios 50–54) about 75,000 CPU cycles a frame
   in a release build.
 - **The menus (mx-menus):** texture slot 12 (`ui_menu.tex`: the small fonts FONT_MICRO and
