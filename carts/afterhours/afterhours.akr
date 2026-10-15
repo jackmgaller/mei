@@ -1,0 +1,18 @@
+// After Hours: Gate 1, a greybox room that plays (DESIGN.md, "Gate 1 plan").
+//
+// D-pad or stick: walk (silent). R held: run (loud: the ring shows how far it carries).
+// A: hide, in a hiding place (move or A again to come out). B: use the tool. L: switch tool.
+// START: restart the room. At the exit, A plays the room again.
+//
+// This file is the cart's entry point; the game is in dr_game.akr so that the tests can import
+// it with scripted input (tests/). NOTES_A.md has the runtime's rules and numbers.
+cart "After Hours", "MEI-AFTERHOURS"
+
+// Input sources (the test harness replaces these with tapes).
+fn input_pad(_f: s32) -> u32 { return PAD1 }
+fn input_stick(_f: s32) -> vec2 { return stick() }
+fn test_init() {}
+fn test_hook(_f: s32) {}
+
+import "dr_game.akr"
+import "dr_world.akr"          // the room: B's World Kit world (worlds.txt)

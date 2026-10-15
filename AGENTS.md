@@ -45,7 +45,7 @@ committed files). `make test-carts` runs `carts/weather/tests/check.sh`,
 (about 90 scenarios, run side by side, `JOBS` at a time: the CPU count unless set, through
 `carts/mechexpo/tests/pool.sh`), Mech Expo's long budget runs `carts/mechexpo/tests/budget.sh`,
 the Animation Kit's `carts/mechexpo/tests/anim/check.sh` and `test-world-carts`, which builds World Viewer, the
-movement garden and Dorobo (and so their worlds) first and runs the three carts' `tests/check.sh`. A cart's scenarios are Akari files built by `tools/cart_scenario.sh` from
+movement garden and After Hours (and so their worlds) first and runs the three carts' `tests/check.sh`. A cart's scenarios are Akari files built by `tools/cart_scenario.sh` from
 the cart's `tests/harness.akr` and its game; `carts/*/tests/run.sh SCENARIO FRAMES OUT` runs one
 and writes `OUT.png`. Scenarios are debug builds (`meic --trap-fmul`: bounds and stack checks,
 and `fixed` products that overflow, which otherwise wrap silently); a failed check prints

@@ -1,0 +1,257 @@
+// The frame loop: the run of rooms, the room clock, the attempt, the caught freeze and the
+// restart, the exit into the next room, the run's end. The entry point (afterhours.akr) supplies the
+// input hooks; the test harness replaces them.
+//
+// A run is the rooms the loader gives, in order (room_load_n(0), (1), ...). Going through a
+// room's exit loads the next one with its clock at 0; a restart stays in the room; after the
+// last room the run's end shows each room's time and restarts and the run's total (DESIGN.md,
+// "Level 1"). The run's total counts every attempt.
+//
+// One tick a frame. A tick runs, in order: the trains (at the clock), the thief (his input),
+// the tools, the guards (routes, hearing), the fans, the test. The frame then draws that state,
+// so the fans drawn are the fans the thief was tested against.
+import "depth.akr"
+import "dr_mesh.akr"
+import "dr_room.akr"
+import "dr_sight.akr"
+import "dr_train.akr"
+import "dr_watch.akr"
+import "dr_thief.akr"
+import "dr_tape.akr"
+import "dr_standin.akr"
+import "dr_view.akr"
+
+const FREEZE = 20              // ticks the game stops when the thief is seen
+
+enum Phase: u8 { Play, Caught, Clear }     // Clear: the run is over (its end is shown)
+
+const MAX_RUN = 8              // rooms in a run
+
+enum Why: u8 { None, Seen, Touched, Doors }
+
+var phase: Phase
+var clock: s32                 // the room clock: ticks since the door (this attempt)
+var freeze: s32
+var restarts: s32              // in this room
+var total: s32                 // ticks over every attempt of the run (the rank's time)
+var run_room: s32              // the room of the run being played (0 first)
+var room_time: [MAX_RUN]s32    // each cleared room: the clearing attempt's ticks
+var room_restarts: [MAX_RUN]s32
+var room_spent: [MAX_RUN]s32   // each room: ticks over all its attempts
+var room_entered: s32          // `total` when this room was entered
+var next_room: bool            // the thief went through the exit this tick
+var standin_run: s32           // (the tests) a run of this many stand-in rooms instead of the loader's
+var catcher: s32               // the watcher who caught him (-1: a train's doors)
+var why: Why
+var caught_at: s32             // the clock of the catch
+var caught_n: s32              // catches so far (the tests)
+var cleared_n: s32
+var frame_n: s32               // update() calls
+var raw_prev: u32              // the pad of the frame before (START, and A on the clear line)
+var tick_prev: u32             // the pad of the tick before (this attempt's presses)
+var tick_cycles: s32           // cycles the last tick took
+var room_cycles: s32           // cycles the last update() took
+var test_no_catch: bool        // (the tests) cones, guards and doors catch nobody
+
+fn init() {
+    render_depth(true)
+    render_perspective(true)
+    view_init()
+    run_start()
+    test_init()
+}
+
+// Room k of the run: B's world when it is in (dr_world.akr replaces this), else one stand-in
+// room. False when the run has no room k.
+weak fn room_load_n(k: s32) -> bool {
+    if k > 0 { return false }
+    standin_load()
+    return true
+}
+
+// Opens another level for the next run (dr_world.akr replaces it; -1: the next level). False:
+// there are no levels, the run plays again.
+weak fn level_switch(_n: s32) -> bool { return false }
+
+// How many rooms the run has (dr_world.akr replaces it).
+weak fn room_count() -> s32 { return 1 }
+
+// Loads room k of the run (false: there is none); its best attempt becomes the ghost.
+fn load_room(k: s32) -> bool {
+    if k >= MAX_RUN { return false }
+    var ok = false
+    if standin_run > 0 {
+        ok = k < standin_run
+        if ok { standin_load() }
+        run_length = standin_run
+    } else {
+        ok = room_load_n(k)
+        run_length = room_count()
+    }
+    if !ok { return false }
+    run_room = k
+    best = &bests[k]
+    view_init_room()
+    return true
+}
+
+// Whether the run has rooms after this one (the HUD shows the room's number then). Asks the
+// loader without loading: true for the stand-in run's rooms; a world's run counts its rooms.
+var run_length: s32 = 1
+fn room_load_more() -> bool { return run_room + 1 < run_length }
+
+// The run from its first room.
+fn run_start() {
+    assert(load_room(0), "the run has no first room")
+    total = 0
+    for k in 0..MAX_RUN {
+        room_time[k] = 0
+        room_restarts[k] = 0
+        room_spent[k] = 0
+    }
+    enter_room()
+}
+
+fn enter_room() {
+    restarts = 0
+    room_entered = total
+    restart_attempt()
+}
+
+fn restart_attempt() {
+    phase = Phase.Play
+    clock = 0
+    freeze = 0
+    catcher = -1
+    why = Why.None
+    tick_prev = 0
+    thief_reset()
+    guards_reset()
+    trains_update(0)
+    guards_sight()
+    nnoise = 0
+    tape_begin(&tape_now)
+    view_restart()
+}
+
+fn quantize(v: fixed) -> s32 { return clamp((v * 127) as s32, -127, 127) }
+
+fn update() {
+    let c0 = cycle_count()
+    let pad = input_pad(frame_n)
+    let st = input_stick(frame_n)
+    let press_raw = pad & ~raw_prev
+    raw_prev = pad
+    test_hook(frame_n)
+    match phase {
+        Play => {
+            if press_raw & START != 0 {
+                tape_now.caught = false
+                tape_end()
+                restarts += 1
+                restart_attempt()
+            } else {
+                var inp = Input { pad: pad & ~START, sx: quantize(st.x), sy: quantize(st.y) }
+                inp.press = inp.pad & ~tick_prev
+                tick_prev = inp.pad
+                tick(&inp)
+                if next_room {
+                    next_room = false
+                    if load_room(run_room + 1) { enter_room() } else { phase = Phase.Clear }
+                }
+            }
+        }
+        Caught => {
+            freeze -= 1
+            if freeze <= 0 {
+                restarts += 1
+                restart_attempt()
+            }
+        }
+        Clear => {
+            if press_raw & A != 0 {
+                if standin_run == 0 && level_switch(-1) {
+                    for k in 0..MAX_RUN { bests[k].have = false }
+                }
+                run_start()
+            }
+        }
+    }
+    frame_n += 1
+    view_update()
+    room_cycles = cycle_count() - c0
+}
+
+fn tick(inp: *Input) {
+    let c0 = cycle_count()
+    nnoise = 0
+    trains_update(clock)
+    thief_update(inp, clock)
+    tools_update(clock)
+    for i in 0..room.nwatch { guard_update(i, clock) }
+    let s0 = cycle_count()
+    sight_rays_tested = 0
+    guards_sight()
+    sight_cycles = cycle_count() - s0
+    tape_record(&tape_now, inp, thief.x, thief.z)
+    let d = sqrt(dist2(thief.x, thief.z, room.exit.cx, room.exit.cz))
+    tape_now.near = min(tape_now.near, d)
+    total += 1
+    // seen (a fan covers his centre), touched, or shut in a train
+    var who = -1
+    var w = Why.None
+    for i in 0..room.nwatch {
+        let g = &guards[i]
+        g.caught = false
+        if w != Why.None { continue }
+        if !thief.hidden && fan_covers(&g.fan, thief.x, thief.z) {
+            who = i
+            w = Why.Seen
+        } else if room.watch[i].kind != WKind.Camera {
+            let r = THIEF_R + GUARD_R
+            if !thief.hidden && dist2(thief.x, thief.z, g.x, g.z) < r * r {
+                who = i
+                w = Why.Touched
+            }
+        }
+    }
+    if w == Why.None && thief.car >= 0 && trains[thief.car / 16].closing { w = Why.Doors }
+    if test_no_catch { w = Why.None }
+    if w != Why.None {
+        if who >= 0 { guards[who].caught = true }
+        caught(who, w)
+    } else if in_exit() {
+        cleared_n += 1
+        tape_now.cleared = true
+        tape_end()
+        room_time[run_room] = tape_now.ticks
+        room_restarts[run_room] = restarts
+        next_room = true
+    }
+    room_spent[run_room] = total - room_entered
+    clock += 1
+    tick_cycles = cycle_count() - c0
+}
+
+// The run's restarts so far (the rooms cleared, and this one).
+fn run_restarts() -> s32 {
+    var n = 0
+    for k in 0..run_room { n += room_restarts[k] }
+    if phase == Phase.Clear { return n + room_restarts[run_room] }
+    return n + restarts
+}
+
+fn caught(who: s32, w: Why) {
+    phase = Phase.Caught
+    freeze = FREEZE
+    catcher = who
+    why = w
+    caught_at = clock
+    caught_n += 1
+    tape_now.caught = true
+    tape_end()
+}
+
+fn draw() {
+    view_draw()
+}

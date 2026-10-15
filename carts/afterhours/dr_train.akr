@@ -1,0 +1,265 @@
+// Trains on their timetables (the train type in afterhours.game.mochi). A train is a function of the
+// room's clock alone: where its head is along its path, whether its doors are open. From that
+// come its cars' rectangles, whose outline cuts the cones (dyn_segs; open doors are gaps), its shell
+// (the sides, with gaps at the doors while they are open, and the two ends), which is drawn
+// (dr_view.akr). The track (the band along the path, the train's width) is solid to the thief,
+// except the inside of an open train: there the shell stops him, and he walks in at its doors
+// (dyn_boxes holds this tick's solid pieces).
+
+const MAX_CARS = 6
+const SHELL = 0.12         // a carriage side's thickness, inside its rectangle
+const TRAIN_BELOW = 1.0    // drawn from the path's height less this ...
+const TRAIN_ABOVE = 3.1    // ... to this above it
+
+enum TPhase: u8 { Off, Arriving, Stopped, Leaving }
+
+// A car's rectangle in plan: centre, unit direction of travel, length and width.
+struct Car {
+    cx: fixed
+    cz: fixed
+    ux: fixed
+    uz: fixed
+    len: fixed
+    w: fixed
+    whole: bool        // all of it is on the path (not clipped at the tunnels)
+}
+
+struct TrainState {
+    phase: TPhase
+    head: fixed        // the head's length along the path
+    ncars: s32
+    cars: [MAX_CARS]Car
+    open: bool         // stopped with its doors open
+    closing: bool      // the doors close this tick
+}
+
+var trains: [MAX_TRAINS]TrainState
+
+// The shells of this tick (every train's, drawn), and the solid boxes: each track, less the stretch
+// an open train stands on, and that train's shell.
+const MAX_SHELL = 64
+var shells: [MAX_TRAINS * MAX_SHELL]Box2
+var nshell: [MAX_TRAINS]s32
+const MAX_DYN_BOXES = MAX_TRAINS * (MAX_SHELL + 2 * MAX_PATH)
+var dyn_boxes: [MAX_DYN_BOXES]Box2
+var ndyn_boxes: s32
+
+fn train_len(d: *TrainDef) -> fixed { return d.car_len * d.cars }
+
+// The head's position and phase at clock t.
+fn train_at(d: *TrainDef, t: s32, st: *TrainState) {
+    let k = floordiv(t - d.offset, d.period)
+    let tau = t - d.offset - k * d.period
+    let L = d.path.len
+    st.closing = false
+    st.open = false
+    if tau < d.arrive {
+        let u = fixed(tau) / d.arrive
+        let v = 1.0 - u
+        st.phase = TPhase.Arriving
+        st.head = d.stop - d.stop * v * v
+    } else if tau < d.arrive + d.dwell {
+        st.phase = TPhase.Stopped
+        st.head = d.stop
+        st.open = true
+        st.closing = tau == d.arrive + d.dwell - 1
+    } else if tau < d.arrive + d.dwell + d.leave {
+        let u = fixed(tau - d.arrive - d.dwell) / d.leave
+        st.phase = TPhase.Leaving
+        st.head = d.stop + (L + train_len(d) - d.stop) * u * u
+    } else {
+        st.phase = TPhase.Off
+        st.head = 0.0
+    }
+}
+
+// The cars' rectangles from the head's position (the parts on the path only).
+fn train_cars(d: *TrainDef, st: *TrainState) {
+    st.ncars = 0
+    if st.phase == TPhase.Off { return }
+    let L = d.path.len
+    for c in 0..d.cars {
+        let front = min(st.head - d.car_len * c, L)
+        let back = max(st.head - d.car_len * (c + 1), 0.0)
+        if front <= back + 0.01 { continue }
+        let mid = (front + back) / 2
+        let p = path_at(&d.path, mid)
+        let k = path_seg(&d.path, mid)
+        st.cars[st.ncars] = Car { cx: p.x, cz: p.y, ux: d.path.ux[k], uz: d.path.uz[k], len: front - back,
+                                  w: d.width, whole: front - back >= d.car_len - 0.01 }
+        st.ncars += 1
+    }
+}
+
+// A corner of a car: sl along it (-1 back .. 1 front), sw across (-1 right .. 1 left).
+fn car_corner(c: *Car, sl: fixed, sw: fixed) -> vec2 {
+    let l = c.len / 2 * sl
+    let w = c.w / 2 * sw
+    return vec2(c.cx + c.ux * l - c.uz * w, c.cz + c.uz * l + c.ux * w)
+}
+
+// A box in a car's frame: along a0..a1 and across b0..b1 (metres from its centre; across is
+// positive to the left of the way it travels).
+fn car_box(c: *Car, a0: fixed, a1: fixed, b0: fixed, b1: fixed) -> Box2 {
+    let ma = (a0 + a1) / 2
+    let mb = (b0 + b1) / 2
+    // local x along u, local z along the left (-uz, ux): box2's c = ux, s = -uz
+    return Box2 { cx: c.cx + c.ux * ma - c.uz * mb, cz: c.cz + c.uz * ma + c.ux * mb,
+                  hx: (a1 - a0) / 2, hz: (b1 - b0) / 2, c: c.ux, s: -c.uz, h: 0.0,
+                  blocks: false, solid: true }
+}
+
+fn shell_box(t: s32, b: Box2) {
+    if nshell[t] >= MAX_SHELL { return }
+    shells[t * MAX_SHELL + nshell[t]] = b
+    nshell[t] += 1
+}
+
+// The along-position of door k's middle in a car of length len (from its centre).
+fn door_mid(d: *TrainDef, len: fixed, k: s32) -> fixed {
+    return len / 2 - (len * (2 * (d.doors - 1 - k) + 1)) / (2 * d.doors)
+}
+
+// Whether the train's doors on that side (left: of the way it travels) open.
+fn side_doors(d: *TrainDef, left: bool) -> bool {
+    if d.doors <= 0 { return false }
+    if left { return d.left }
+    return d.right
+}
+
+// The shell of a train: its sides (with gaps at the doors while they are open) and its two ends.
+fn train_shell(t: s32, d: *TrainDef, st: *TrainState) {
+    nshell[t] = 0
+    let hw = d.width / 2
+    for i in 0..st.ncars {
+        let c = &st.cars[i]
+        let hl = c.len / 2
+        for side in 0..2 {
+            let left = side == 1
+            let b0 = if_f(left, hw - SHELL, -hw)
+            let b1 = if_f(left, hw, -hw + SHELL)
+            if !st.open || !side_doors(d, left) || !c.whole {
+                shell_box(t, car_box(c, -hl, hl, b0, b1))
+                continue
+            }
+            var from = -hl
+            for k in 0..d.doors {
+                let mid = door_mid(d, c.len, k)
+                let g0 = mid - d.door_w / 2
+                if g0 > from { shell_box(t, car_box(c, from, g0, b0, b1)) }
+                from = mid + d.door_w / 2
+            }
+            if hl > from { shell_box(t, car_box(c, from, hl, b0, b1)) }
+        }
+    }
+    if st.ncars > 0 {
+        let h = &st.cars[0]
+        if h.whole { shell_box(t, car_box(h, h.len / 2 - SHELL, h.len / 2, -hw, hw)) }
+        let e = &st.cars[st.ncars - 1]
+        if e.whole { shell_box(t, car_box(e, -e.len / 2, -e.len / 2 + SHELL, -hw, hw)) }
+    }
+}
+
+fn dyn_box(b: Box2) {
+    if ndyn_boxes >= MAX_DYN_BOXES { return }
+    dyn_boxes[ndyn_boxes] = b
+    ndyn_boxes += 1
+}
+
+// The track of train d from length s0 to s1 along its path (solid), one box per path segment.
+fn band_piece(d: *TrainDef, s0: fixed, s1: fixed) {
+    let p = &d.path
+    for k in 0..p.n - 1 {
+        let a = max(s0, p.s[k])
+        let b = min(s1, p.s[k + 1])
+        if b <= a { continue }
+        let c = path_at(p, (a + b) / 2)
+        dyn_box(Box2 { cx: c.x, cz: c.y, hx: (b - a) / 2, hz: d.width / 2, c: p.ux[k], s: -p.uz[k],
+                       h: 0.0, blocks: false, solid: true })
+    }
+}
+
+fn if_f(c: bool, a: fixed, b: fixed) -> fixed {
+    if c { return a }
+    return b
+}
+
+// A point in a car's frame: a along it, b across (to the left of the way it travels).
+fn car_point(c: *Car, a: fixed, b: fixed) -> vec2 {
+    return vec2(c.cx + c.ux * a - c.uz * b, c.cz + c.uz * a + c.ux * b)
+}
+
+fn car_seg(c: *Car, a0: fixed, b0: fixed, a1: fixed, b1: fixed) {
+    let p = car_point(c, a0, b0)
+    let q = car_point(c, a1, b1)
+    dyn_seg(p.x, p.y, q.x, q.y)
+}
+
+// The lines a train cuts the cones with: its outline (each car's two sides and the train's two
+// ends), with gaps at the doors while they are open (DESIGN.md, 2026-10-15: a cone reaches into
+// a car only through an open door). The carriages are one space inside: no lines between them.
+fn train_sight(d: *TrainDef, st: *TrainState) {
+    let hw = d.width / 2
+    for i in 0..st.ncars {
+        let c = &st.cars[i]
+        let hl = c.len / 2
+        for side in 0..2 {
+            let b = if_f(side == 1, hw, -hw)
+            if !st.open || !side_doors(d, side == 1) || !c.whole {
+                car_seg(c, -hl, b, hl, b)
+                continue
+            }
+            var from = -hl
+            for k in 0..d.doors {
+                let mid = door_mid(d, c.len, k)
+                let g0 = mid - d.door_w / 2
+                if g0 > from { car_seg(c, from, b, g0, b) }
+                from = mid + d.door_w / 2
+            }
+            if hl > from { car_seg(c, from, b, hl, b) }
+        }
+    }
+    if st.ncars > 0 {
+        let h = &st.cars[0]
+        car_seg(h, h.len / 2, -hw, h.len / 2, hw)
+        let e = &st.cars[st.ncars - 1]
+        car_seg(e, -e.len / 2, -hw, -e.len / 2, hw)
+    }
+}
+
+// Every train at clock t: positions, the lines that cut the cones, the shells.
+fn trains_update(t: s32) {
+    ndyn = 0
+    ndyn_boxes = 0
+    for i in 0..room.ntrains {
+        let d = &room.trains[i]
+        let st = &trains[i]
+        train_at(d, t, st)
+        train_cars(d, st)
+        train_sight(d, st)
+        train_shell(i, d, st)
+        if st.open && st.ncars > 0 {
+            band_piece(d, -1.0, st.head - train_len(d))
+            band_piece(d, st.head, d.path.len + 1.0)
+            for k in 0..nshell[i] { dyn_box(shells[i * MAX_SHELL + k]) }
+        } else {
+            band_piece(d, -1.0, d.path.len + 1.0)
+        }
+    }
+}
+
+// The car of an open or closed train the point is inside, as train * 16 + car, or -1.
+fn train_inside(x: fixed, z: fixed) -> s32 {
+    for i in 0..room.ntrains {
+        let st = &trains[i]
+        for k in 0..st.ncars {
+            let c = &st.cars[k]
+            let dx = x - c.cx
+            let dz = z - c.cz
+            let a = dx * c.ux + dz * c.uz
+            let b = -dx * c.uz + dz * c.ux
+            if abs(a) <= c.len / 2 && abs(b) <= c.w / 2 { return i * 16 + k }
+        }
+    }
+    return -1
+}

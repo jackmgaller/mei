@@ -1,0 +1,6 @@
+# The worlds After Hours runs on (docs/WORLDKIT.md, "Using a world in a cart").
+# Level 1: five rooms from the last train up to the aquarium on the roof
+# (carts/afterhours/levels/level1/make_level1.py assembles it from the rooms' files).
+carts/afterhours/levels/level1/level1.world.json
+# Gate 1's hard platform, kept for a later level (rooms/platform/make_platform.py).
+carts/afterhours/rooms/platform/platform.world.json

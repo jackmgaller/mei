@@ -1134,7 +1134,7 @@ Rays are tested against a bounding volume hierarchy of the faces, in Python.
 
 **Costs, measured.** One white light 1 above a 4 × 4 grey floor (range 3, defaults): 26
 triangles added (36 in all), in 3 ms. The `tank_nook` example (below: three lights, two
-with shadows) and the aquarium room of `carts/dorobo` relit with 12 lights, five of them with
+with shadows) and the aquarium room of `carts/afterhours` relit with 12 lights, five of them with
 soft shadows (484 triangles unlit), with `max_added` lifted to see where refinement stops:
 
 | Asset | `tolerance` | Shadows | Triangles added | Shadow rays | Build (compile) |
@@ -2192,7 +2192,7 @@ The project owner's decisions about the kit (2026-10-03), besides those describe
   palette's tint separate surfaces. If a real street looks flat, the fallback is a variation of
   a few percent by facing, baked in the asset's own frame. Baking a sun direction per placement
   and lighting at draw time were both rejected.
-- **Point lights** (2026-10-15, for the lit rooms of `carts/dorobo`, whose aquarium sketch had to
+- **Point lights** (2026-10-15, for the lit rooms of `carts/afterhours`, whose aquarium sketch had to
   paint every pool of light into its floor's texture): baked into vertex colours like the rest,
   in the asset's own frame ([Point lights](#point-lights)). Settled in the building:
   - *Large faces* are refined by the error of the colour the GPU would draw, worst and largest
