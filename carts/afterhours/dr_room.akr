@@ -11,6 +11,9 @@ const MAX_SPOTS = 8
 const MAX_FRAGILE = 8
 const MAX_PATH = 8         // points of a train's path
 const MAX_BANDS = 16       // the tracks' boxes (a box per path segment)
+const MAX_DOORS = 6        // a room's doors (stage 2: ways out, staff doors)
+const MAX_CARDS = 4        // keycards lying in a room
+const CARDS = 4            // the cards' colours: 1 red, 2 blue, 3 green, 4 yellow (0: none)
 
 // An oriented box in plan: centre, half extents along its own x and z, its yaw's cos and sin,
 // and its height (for drawing).
@@ -124,6 +127,14 @@ struct Room {
     frag_z: [MAX_FRAGILE]fixed
     frag_r: [MAX_FRAGILE]fixed
     frag_noise: [MAX_FRAGILE]fixed
+    has_exit: bool     // `exit` leads on (level 1, the platform); a room of doors has none
+    ndoors: s32
+    doors: [MAX_DOORS]Door
+    ncards: s32
+    card_x: [MAX_CARDS]fixed
+    card_z: [MAX_CARDS]fixed
+    card_col: [MAX_CARDS]s32
+    card_key: [MAX_CARDS]s32       // the card's number in the stage (taken: the run's)
     // derived by room_finish()
     nseg: s32
     segs: [MAX_SEGS]Seg
@@ -133,6 +144,26 @@ struct Room {
 }
 
 var room: Room
+
+// A door (stage 2; DESIGN.md "Next"): a doorway out of the room to a door of another room or the
+// stage's end, or a staff door inside it. A door with a card is shut (a wall across its box that
+// stops the thief and the guards and cuts cones) until the thief holding that card walks into
+// it; then it is open for the rest of the run, as is the door on its other side. Going through
+// an open door that leads somewhere (the thief's centre in its box) leaves the room.
+struct Door {
+    box: Box2
+    card: s32          // 0: none (always open), 1-4 the colour
+    to_room: s32       // the run's room it leads to (-1: none)
+    to_door: s32       // ... and the door of that room he comes in by
+    end: bool          // going through it ends the stage
+    way_in: bool       // a way in: he comes in at (sx, sz) facing sh
+    sx: fixed
+    sz: fixed
+    sh: fixed
+    key: s32           // the door's number in the stage (its open state is the run's)
+    to_key: s32        // the door on its other side (-1: none), opened with it
+    wall: s32          // its wall while shut (room.walls), -1 none
+}
 var room_is_world: bool    // the room is B's World Kit world (dr_world.akr), drawn by it
 
 const DEG: fixed = 0.0174533
@@ -188,6 +219,44 @@ fn room_fragile(x: fixed, z: fixed, r: fixed, noise: fixed) {
     room.nfrag += 1
 }
 
+// A door (its box, its card, where it leads); returns its index. Its way in, if any, is set
+// with door_in().
+fn room_door(b: Box2, card: s32, to_room: s32, to_door: s32, end: bool, key: s32, to_key: s32) -> s32 {
+    assert(room.ndoors < MAX_DOORS, "too many doors")
+    let d = &room.doors[room.ndoors]
+    d.box = b
+    d.box.blocks = true
+    d.box.solid = true
+    d.card = card
+    d.to_room = to_room
+    d.to_door = to_door
+    d.end = end
+    d.way_in = false
+    d.key = key
+    d.to_key = to_key
+    d.wall = -1
+    room.ndoors += 1
+    return room.ndoors - 1
+}
+
+fn door_in(k: s32, x: fixed, z: fixed, head: fixed) {
+    let d = &room.doors[k]
+    d.way_in = true
+    d.sx = x
+    d.sz = z
+    d.sh = head
+}
+
+fn room_card(x: fixed, z: fixed, col: s32, key: s32) {
+    assert(room.ncards < MAX_CARDS, "too many keycards")
+    let k = room.ncards
+    room.card_x[k] = x
+    room.card_z[k] = z
+    room.card_col[k] = col
+    room.card_key[k] = key
+    room.ncards += 1
+}
+
 // A path's lengths and directions from its points (x, z already set, n of them).
 fn path_finish(p: *Path) {
     var s: fixed = 0.0
@@ -225,12 +294,7 @@ fn path_seg(p: *Path, s: fixed) -> s32 {
 
 // The derived tables: the blocking walls' sides, the paths and the tracks, the loudest ear.
 fn room_finish() {
-    room.nseg = 0
-    for i in 0..room.nwalls {
-        let b = &room.walls[i]
-        if !b.blocks { continue }
-        box_segs(b)
-    }
+    room_segs()
     room.nbands = 0
     for t in 0..room.ntrains {
         let tr = &room.trains[t]
@@ -247,6 +311,16 @@ fn room_finish() {
     room.hear_max = 0.0
     for i in 0..room.nwatch {
         if room.watch[i].kind != WKind.Camera { room.hear_max = max(room.hear_max, room.watch[i].hear) }
+    }
+}
+
+// The blocking walls' sides (again when a staff door opens).
+fn room_segs() {
+    room.nseg = 0
+    for i in 0..room.nwalls {
+        let b = &room.walls[i]
+        if !b.blocks { continue }
+        box_segs(b)
     }
 }
 

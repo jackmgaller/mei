@@ -30,9 +30,13 @@ replays are unaffected. Every call is safe at any time, in any order, any number
 | `au_alert(dx)` | A guard hears a noise and sets off toward it | A |
 | `au_knock(dx)` | A fragile thing is knocked over | A |
 | `au_bell(dx)` | The pocket bell beeps | A |
+| `au_card(dx)` | (Stage 2) a keycard picked up | A |
+| `au_unlock(dx)` | A staff door unlocked by its card (dx: the door's) | A |
 
 The ambiences, for `au_room`: `AMB_NONE`, `AMB_PLATFORM` (Gate 1's platform and level 1's
-first room), `AMB_GATES`, `AMB_PASSAGE`, `AMB_LOBBY`, `AMB_AQUARIUM`. *Proposal to A and B:* the
+first room), `AMB_GATES`, `AMB_PASSAGE`, `AMB_LOBBY`, `AMB_AQUARIUM` (0-5), and stage 2's
+`AMB_CINEMA`, `AMB_BOOTH` (the projection booth), `AMB_CORRIDOR` (the staff corridor),
+`AMB_SHOPFLOOR`, `AMB_FOODHALL` (6-10). *Proposal to A and B:* the
 room type gets a field `sound: none | platform | gates | passage | lobby | aquarium = none` in
 `afterhours.game.mochi`, set by each room's world recipe, and A passes it; until then A can map
 level 1's rooms by their order (platform, gates, passage, lobby, aquarium) and Gate 1's platform
@@ -117,16 +121,23 @@ pull-back; the next room's door (`au_room` from `enter_room()`) lands at its end
 - **knock**: cans and boxes clattering down.
 - **bell**: the pocket bell: a pager's beeps, three and three.
 - **retry**: a short tape rewind (START).
+- **card**: a keycard picked up: the plastic's snap and a small two-note pip.
+- **unlock**: a card reader's beep, the magnetic lock letting go with a clunk, the door easing.
 - **amb_platform**: ventilation, the tunnels' low wind, the tubes' hum. **amb_gates**: quieter
   room tone, the machines' standby tones. **amb_passage**: the tubes' 100 Hz buzz, one tube
   ticking now and then, long tunnel air. **amb_lobby**: the air handling and the city's rumble.
   **amb_aquarium**: the pumps' hum, the filters' bubbles, trickling water.
+- Stage 2: **amb_cinema**: dead soft air, the projector clattering behind the wall.
+  **amb_booth**: the projector itself at 24 frames a second, its motor, the lamp's fan.
+  **amb_corridor**: the tubes, a duct's rush, a vending machine's compressor. **amb_shopfloor**:
+  a large quiet, the air handling far off. **amb_foodhall**: the cold cases' two compressors
+  beating, their fans.
 
 ## Costs
 
-- **ROM**: 4.08 MB of the cart's 5.26 MB: the track 3.26 MB (three stems of 86 s at ADPCM's
-  12.6 KB a second; the stems are 79 % of it), the sounds and loops 0.83 MB (five 9 s ambiences
-  0.57 MB). A shorter track is the lever: 16 bars would save 1.6 MB.
+- **ROM**: 4.66 MB of the cart's 5.88 MB: the track 3.26 MB (three stems of 86 s at ADPCM's
+  12.6 KB a second), the sounds and loops 1.41 MB (ten 9 s ambiences 1.13 MB). The levers: a
+  16-bar track would save 1.6 MB; 6 s ambiences 0.38 MB.
 - **Channels**: at most 16 (3 track, 2 ambience while crossing, 2 trains, 9 one-shots); in play
   usually 6-8. The console's mixing cost is fixed per channel playing (DECISIONS.md: 16 ADPCM
   channels with the reverb are about 0.1 ms of host time a frame).

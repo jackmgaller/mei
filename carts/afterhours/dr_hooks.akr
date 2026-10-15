@@ -42,7 +42,8 @@ weak fn fe_owns_transition() -> bool { return false }
 enum Ev: u8 {
     StageStart,    // a stage's first room is about to be played: a = the stage (level)
     RoomEnter,     // the thief is in control in a room, its clock at 0: a = its index in the run
-    RoomExit,      // the thief went through a room's exit: a = the room left
+    RoomExit,      // the thief went through a room's exit or a door: a = the room left (where
+                   // to: exit_to_room, exit_to_door; room_load_more() says whether a room)
     RoomReady,     // (transition) the next room is loaded, at its clock 0, not running: a = it
     StageClear,    // the stage's last room is cleared: a = the stage
     Caught,        // a = why (Why: 1 seen, 2 touched, 3 the doors)
@@ -58,6 +59,8 @@ enum Ev: u8 {
     DoorsOpen,     // it has stopped and its doors open: a = the train
     DoorsClose,    // its doors close and it pulls away: a = the train
     TrainGone,     // its tail has left the room: a = the train
+    CardTake,      // (stage 2) a keycard picked up: a = its colour (1 red, 2 blue, 3 green, 4 yellow)
+    Unlock,        // a staff door opened: a = its colour
 }
 
 weak fn fe_event(_e: Ev, _a: s32) {}
@@ -69,7 +72,9 @@ fn event(e: Ev, a: s32) { fe_event(e, a) }
 
 weak fn au_tick() {}
 weak fn au_music(_on: bool) {}
-weak fn au_room(_amb: s32) {}      // 0 none, 1 platform, 2 gates, 3 passage, 4 lobby, 5 aquarium
+weak fn au_room(_amb: s32) {}      // 0 none, 1 platform, 2 gates, 3 passage, 4 lobby, 5 aquarium;
+                                   // stage 2 (level2): 6 cinema, 7 projection booth, 8 staff
+                                   // corridor, 9 shop floor, 10 food hall
 weak fn au_restart() {}
 weak fn au_retry() {}
 weak fn au_caught() {}
@@ -81,3 +86,5 @@ weak fn au_clear() {}
 weak fn au_alert(_dx: fixed) {}
 weak fn au_knock(_dx: fixed) {}
 weak fn au_bell(_dx: fixed) {}
+weak fn au_card(_dx: fixed) {}     // (stage 2) a keycard picked up, dx from the camera
+weak fn au_unlock(_dx: fixed) {}   // a staff door opened

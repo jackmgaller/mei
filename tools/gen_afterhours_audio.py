@@ -17,11 +17,12 @@ Sound effects, one-shots: footsteps (a soft sole walking, a heel strike running)
 sting, hiding in and out, a train's horn from the tunnel, its brakes, its doors opening, the
 door chime before they close, the doors closing, the staff door opening (the exit) and shutting
 behind him (a room's entry), the transition's air, the menu's move, ok, back and deny, a stage
-cleared, a guard's alert, a fragile thing knocked over, the pocket bell's beeps and the retry's
-rewind. Loops, played from their start and stopped by the cart: a train running (its pitch is
-the cart's: the speed) and a stopped train idling, and the five rooms' ambiences (the platform's
-hum, the ticket gates' standby, the passage's tubes, the lobby's air handling, the aquarium's
-pumps), each rendered periodic (their filters run round the seam).
+cleared, a guard's alert, a fragile thing knocked over, the pocket bell's beeps, the retry's
+rewind, a keycard picked up and a staff door unlocked. Loops, played from their start and stopped by the cart: a train running (its pitch is
+the cart's: the speed) and a stopped train idling, and the rooms' ambiences (level 1's: the
+platform's hum, the ticket gates' standby, the passage's tubes, the lobby's air handling, the
+aquarium's pumps; stage 2's: the cinema, the projection booth, the staff corridor, the shop floor,
+the food hall), each rendered periodic (their filters run round the seam).
 
 The reverb is the console's: preset 3 (hall), its decay set per room by dr_audio.akr.
 
@@ -847,6 +848,32 @@ def sfx_retry():
     return edges(x * np.sin(math.pi * t / 0.28) ** 0.5, 0.002, 0.03)
 
 
+def sfx_card():
+    """A keycard picked up: the plastic's snap and a small confirming pip, a fourth up."""
+    rng = np.random.default_rng(25)
+    n = int(0.4 * FS)
+    t = np.arange(n) / FS
+    snap = burst(rng, n, 2400, 1.0, 0.006) * 0.8 + burst(rng, n, 5200, 1.2, 0.002) * 0.4
+    pip = np.zeros(n)
+    for i, f in enumerate((1568.0, 2093.0)):
+        tp = tt(0.06)
+        put(pip, int((0.07 + i * 0.075) * FS), edges(np.sin(2 * math.pi * f * tp) * np.exp(-tp / 0.04), 0.002, 0.01))
+    return edges(snap + 0.45 * pip, 0.0003, 0.04)
+
+
+def sfx_unlock():
+    """A staff door unlocked by its card: the reader's beep, the magnetic lock letting go."""
+    rng = np.random.default_rng(26)
+    n = int(0.7 * FS)
+    t = np.arange(n) / FS
+    tb = tt(0.12)
+    beep = edges(filt(np.sign(np.sin(2 * math.pi * 1760 * tb)), 4000, 0.7, 'lp'), 0.002, 0.01) * 0.35
+    clunk = (np.sin(2 * math.pi * 180 * t) + 0.5 * np.sin(2 * math.pi * 510 * t)) * np.exp(-t / 0.05) * np.clip(t / 0.001, 0, 1)
+    x = at(n, 0.0, beep) + at(n, 0.16, clunk, 0.9) + at(n, 0.16, burst(rng, n, 3000, 0.9, 0.004), 0.5)
+    x += at(n, 0.3, burst(rng, n, 1500, 0.8, 0.02), 0.25)          # the door eased off its seal
+    return edges(x, 0.0005, 0.06)
+
+
 # ---- loops: n samples at FS, periodic
 
 def loop_train_run(n):
@@ -945,6 +972,62 @@ def amb_aquarium(n):
     return pump + water + bubbles + low
 
 
+def amb_cinema(n):
+    """The auditorium: dead, soft air, the projector clattering behind the wall."""
+    rng = np.random.default_rng(46)
+    air = cfilt(cfilt(noise(rng, n), 300, 0.6, 'lp'), 40, 0.7, 'hp') * 0.35
+    gate = np.zeros(n)
+    k = max(1, round(n / FS * 24))
+    for i in range(k):
+        tn = tt(0.02)
+        put_circ(gate, int(i * n / k), burst(rng, len(tn), 900, 1.0, 0.004) + thud(tn, 220, 140, 0.004, 0.006) * 0.5,
+                 0.5 * rng.uniform(0.8, 1.0))
+    gate = cfilt(gate, 500, 0.7, 'lp') * 0.5
+    return air + gate + hum(n, 100, (1.0, 0.3)) * 0.008
+
+
+def amb_booth(n):
+    """The projection booth: the projector's intermittent at 24 frames a second, its motor, the
+    lamp house's fan."""
+    rng = np.random.default_rng(47)
+    gate = np.zeros(n)
+    k = max(1, round(n / FS * 24))
+    for i in range(k):
+        tn = tt(0.025)
+        c = burst(rng, len(tn), 1800, 1.2, 0.003) + thud(tn, 320, 200, 0.003, 0.006) * 0.6
+        put_circ(gate, int(i * n / k), c, rng.uniform(0.75, 1.0))
+    fan = cfilt(cfilt(noise(rng, n), 1500, 0.5, 'lp'), 120, 0.7, 'hp') * 0.25
+    motor = hum(n, 50, (0.6, 1.0, 0.4, 0.3, 0.15), 0.5) * 0.06
+    return gate * 0.6 + fan + motor
+
+
+def amb_corridor(n):
+    """The staff corridor: the tubes, a duct's rush, a vending machine's compressor."""
+    rng = np.random.default_rng(48)
+    duct = cfilt(cfilt(noise(rng, n), 700, 0.5, 'lp'), 70, 0.7, 'hp') * 0.3 * slow(n, 1, 0.25)
+    tubes = cfilt(hum(n, 100, (1.0, 0.6, 0.4, 0.25, 0.15), 1.0), 1500, 0.7, 'lp') * 0.025
+    comp = hum(n, 49, (1.0, 0.5, 0.2)) * 0.04 * slow(n, 4, 0.2)
+    return duct + tubes + comp
+
+
+def amb_shopfloor(n):
+    """The shop floor after closing: a large quiet, the air handling far off."""
+    rng = np.random.default_rng(49)
+    air = cfilt(cfilt(noise(rng, n), 450, 0.5, 'lp'), 45, 0.7, 'hp') * 0.3 * slow(n, 2, 0.3, 2.0)
+    low = cfilt(noise(rng, n), 90, 0.7, 'lp') * 0.5
+    return air + low + hum(n, 100, (1.0, 0.3)) * 0.006
+
+
+def amb_foodhall(n):
+    """The food hall: the cold cases' compressors (two, beating) and their fans."""
+    rng = np.random.default_rng(50)
+    comp = hum(n, 50, (0.5, 1.0, 0.5, 0.25), 0.4) * 0.05 + hum(n, 50.6, (0.4, 0.8, 0.3)) * 0.035
+    fans = cfilt(cfilt(noise(rng, n), 1200, 0.6, 'lp'), 150, 0.7, 'hp') * 0.22
+    t = np.arange(n) / FS
+    buzz = 0.006 * np.sin(2 * math.pi * loop_hz(1250, n) * t) * slow(n, 3, 0.5)
+    return comp + fans + buzz
+
+
 # name, render, peak level in the game (dBFS), reverb send
 ONE_SHOTS = [
     ('step_walk', sfx_step_walk, -22, 1),
@@ -969,6 +1052,9 @@ ONE_SHOTS = [
     ('knock', sfx_knock, -12, 1),
     ('bell', sfx_bell, -15, 1),
     ('retry', sfx_retry, -20, 0),
+    # stage 2
+    ('card', sfx_card, -15, 1),
+    ('unlock', sfx_unlock, -14, 1),
 ]
 
 # the loops (started with their loop at 0, stopped by the cart): name, render (n samples at FS,
@@ -981,6 +1067,11 @@ LOOPS = [
     ('amb_passage', amb_passage, 9.0, -24, 0),
     ('amb_lobby', amb_lobby, 9.0, -25, 0),
     ('amb_aquarium', amb_aquarium, 9.0, -24, 0),
+    ('amb_cinema', amb_cinema, 9.0, -26, 0),
+    ('amb_booth', amb_booth, 9.0, -22, 0),
+    ('amb_corridor', amb_corridor, 9.0, -25, 0),
+    ('amb_shopfloor', amb_shopfloor, 9.0, -28, 0),
+    ('amb_foodhall', amb_foodhall, 9.0, -25, 0),
 ]
 
 # the rooms' ambiences (dr_audio.akr's AMB_*): name, its loop, the reverb's decay there (x n / 256)
@@ -991,6 +1082,11 @@ ROOMS = [
     ('passage', 'amb_passage', 235),
     ('lobby', 'amb_lobby', 200),
     ('aquarium', 'amb_aquarium', 150),
+    ('cinema', 'amb_cinema', 140),
+    ('booth', 'amb_booth', 120),
+    ('corridor', 'amb_corridor', 175),
+    ('shopfloor', 'amb_shopfloor', 205),
+    ('foodhall', 'amb_foodhall', 180),
 ]
 
 

@@ -1,0 +1,37 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "shopfloor",
+ "placements": [
+  {
+   "id": "sf_floor",
+   "asset": "sf_floor",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "sf_floor_col"
+  },
+  {
+   "id": "sf_escalators",
+   "asset": "sf_escalators",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "sf_counters",
+   "asset": "sf_counters",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

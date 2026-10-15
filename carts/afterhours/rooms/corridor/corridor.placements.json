@@ -1,0 +1,27 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "corridor",
+ "placements": [
+  {
+   "id": "sc_room",
+   "asset": "sc_room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "sc_room_col"
+  },
+  {
+   "id": "sc_glass",
+   "asset": "sc_glass",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

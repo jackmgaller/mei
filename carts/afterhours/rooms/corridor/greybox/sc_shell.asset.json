@@ -1,0 +1,510 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "sc_shell",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 900
+ },
+ "lighting": {
+  "direction": [
+   -0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "materials": {
+  "cut": {
+   "color": "#a8b2c4"
+  },
+  "desk": {
+   "color": "#7a6a5a"
+  },
+  "door_light": {
+   "color": "#7cf0a0",
+   "class": "emissive"
+  },
+  "floor_dark": {
+   "color": "#6c7078"
+  },
+  "glass": {
+   "color": "#6cb4d4"
+  },
+  "pillar": {
+   "color": "#b4bac4"
+  },
+  "tile": {
+   "color": "#9aa0a6"
+  },
+  "wall": {
+   "color": "#4c5462"
+  },
+  "wall_light": {
+   "color": "#6c7484"
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    25.5,
+    0.4,
+    7.5
+   ],
+   "material": "floor_dark",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.2,
+     0.0
+    ]
+   },
+   "faces": {
+    "top": "tile",
+    "back": "cut"
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    25.5,
+    1.0,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.0,
+     0.5,
+     -3.625
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "back_0",
+   "op": "box",
+   "size": [
+    6.15,
+    2.42,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -9.675,
+     1.19,
+     3.625
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "back_1",
+   "op": "box",
+   "size": [
+    18.15,
+    2.42,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     3.675,
+     1.19,
+     3.625
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "back_lintel_0",
+   "op": "box",
+   "size": [
+    1.2,
+    0.29,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -6.0,
+     2.245,
+     3.625
+    ]
+   },
+   "open": [
+    "left",
+    "right"
+   ],
+   "faces": {
+    "bottom": "door_light"
+   }
+  },
+  {
+   "id": "end_w_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    0.9
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -12.625,
+     1.19,
+     -3.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_w_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    4.9
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -12.625,
+     1.19,
+     1.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_w_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -12.625,
+     2.245,
+     -2.0
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_light"
+   }
+  },
+  {
+   "id": "end_e_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    4.9
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     12.625,
+     1.19,
+     -1.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    0.9
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     12.625,
+     1.19,
+     3.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     12.625,
+     2.245,
+     2.0
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_light"
+   }
+  },
+  {
+   "id": "cages",
+   "op": "box",
+   "size": [
+    4.0,
+    1.02,
+    1.8
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     -7.0,
+     0.49,
+     -0.1
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "office_w",
+   "op": "box",
+   "size": [
+    0.15,
+    1.02,
+    3.7
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     -0.925,
+     0.49,
+     -1.65
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "office_e",
+   "op": "box",
+   "size": [
+    0.15,
+    1.02,
+    3.7
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     3.925,
+     0.49,
+     -1.65
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "office_window",
+   "op": "box",
+   "size": [
+    3.35,
+    1.02,
+    0.15
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     0.825,
+     0.49,
+     0.125
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ],
+   "faces": {
+    "top": "glass"
+   }
+  },
+  {
+   "id": "office_n",
+   "op": "box",
+   "size": [
+    1.35,
+    1.02,
+    0.15
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     3.175,
+     0.49,
+     0.125
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "office_desk",
+   "op": "box",
+   "size": [
+    4.0,
+    0.77,
+    0.7
+   ],
+   "material": "desk",
+   "transform": {
+    "translate": [
+     1.5,
+     0.365,
+     -3.15
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "desk"
+   }
+  },
+  {
+   "id": "column",
+   "op": "box",
+   "size": [
+    0.7,
+    1.02,
+    0.7
+   ],
+   "material": "pillar",
+   "transform": {
+    "translate": [
+     1.5,
+     0.49,
+     2.2
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "pallets",
+   "op": "box",
+   "size": [
+    3.5,
+    0.92,
+    0.9
+   ],
+   "material": "desk",
+   "transform": {
+    "translate": [
+     7.75,
+     0.44,
+     3.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "desk"
+   }
+  }
+ ],
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

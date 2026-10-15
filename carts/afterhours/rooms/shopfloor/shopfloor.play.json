@@ -1,0 +1,491 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "shopfloor",
+ "entities": [
+  {
+   "id": "sf_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "name": "the_shop_floor",
+    "entry": "sf_spawn_corridor",
+    "size": [
+     24.5,
+     2.4,
+     10.0
+    ]
+   }
+  },
+  {
+   "id": "sf_spawn_corridor",
+   "type": "spawn",
+   "position": [
+    -11.125,
+    0,
+    2.2
+   ],
+   "params": {
+    "yaw": 90
+   }
+  },
+  {
+   "id": "sf_door_corridor",
+   "type": "door",
+   "position": [
+    -12.125,
+    0,
+    2.2
+   ],
+   "yaw": 90,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "sf_spawn_corridor",
+    "to": "sc_door_shop"
+   }
+  },
+  {
+   "id": "sf_spawn_lift",
+   "type": "spawn",
+   "position": [
+    9.1,
+    0,
+    3.875
+   ],
+   "params": {
+    "yaw": 180
+   }
+  },
+  {
+   "id": "sf_door_lift",
+   "type": "door",
+   "position": [
+    9.1,
+    0,
+    4.875
+   ],
+   "yaw": 180,
+   "params": {
+    "size": [
+     1.4,
+     2.2,
+     0.4
+    ],
+    "spawn": "sf_spawn_lift",
+    "to": "fh_door_lift",
+    "card": "red"
+   }
+  },
+  {
+   "id": "sf_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -4.875
+   ],
+   "params": {
+    "size": [
+     24.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "sf_wall_back_0",
+   "type": "wall",
+   "position": [
+    -1.925,
+    0,
+    4.875
+   ],
+   "params": {
+    "size": [
+     20.65,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "sf_wall_back_1",
+   "type": "wall",
+   "position": [
+    11.025,
+    0,
+    4.875
+   ],
+   "params": {
+    "size": [
+     2.45,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "sf_wall_end_w_0",
+   "type": "wall",
+   "position": [
+    -12.125,
+    0,
+    -1.575
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     6.35
+    ]
+   }
+  },
+  {
+   "id": "sf_wall_end_w_1",
+   "type": "wall",
+   "position": [
+    -12.125,
+    0,
+    3.775
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     1.95
+    ]
+   }
+  },
+  {
+   "id": "sf_wall_end_e_0",
+   "type": "wall",
+   "position": [
+    12.125,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     9.5
+    ]
+   }
+  },
+  {
+   "id": "sf_wall_well",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    0.1
+   ],
+   "params": {
+    "size": [
+     4.0,
+     1.0,
+     2.6
+    ]
+   }
+  },
+  {
+   "id": "sf_wall_counter_0",
+   "type": "wall",
+   "position": [
+    -7.5,
+    0,
+    -2.25
+   ],
+   "params": {
+    "size": [
+     3.0,
+     0.95,
+     0.7
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "sf_wall_counter_1",
+   "type": "wall",
+   "position": [
+    -7.5,
+    0,
+    1.35
+   ],
+   "params": {
+    "size": [
+     3.0,
+     0.95,
+     0.7
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "sf_wall_counter_2",
+   "type": "wall",
+   "position": [
+    6.7,
+    0,
+    -2.25
+   ],
+   "params": {
+    "size": [
+     3.4,
+     0.95,
+     0.7
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "sf_wall_counter_3",
+   "type": "wall",
+   "position": [
+    6.7,
+    0,
+    1.35
+   ],
+   "params": {
+    "size": [
+     3.4,
+     0.95,
+     0.7
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "sf_wall_mannequin_0",
+   "type": "wall",
+   "position": [
+    -5.2,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     0.6,
+     1.8,
+     0.6
+    ]
+   }
+  },
+  {
+   "id": "sf_wall_mannequin_1",
+   "type": "wall",
+   "position": [
+    5.0,
+    0,
+    4.0
+   ],
+   "params": {
+    "size": [
+     0.6,
+     1.8,
+     0.6
+    ]
+   }
+  },
+  {
+   "id": "sf_wall_mannequin_2",
+   "type": "wall",
+   "position": [
+    10.0,
+    0,
+    -0.5
+   ],
+   "params": {
+    "size": [
+     0.6,
+     1.8,
+     0.6
+    ]
+   }
+  },
+  {
+   "id": "sf_wall_watch_counter",
+   "type": "wall",
+   "position": [
+    9.8,
+    0,
+    -4.525
+   ],
+   "params": {
+    "size": [
+     2.4,
+     0.95,
+     0.45
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "sf_card_blue",
+   "type": "keycard",
+   "position": [
+    9.6,
+    0,
+    -3.9
+   ],
+   "params": {
+    "colour": "blue"
+   }
+  },
+  {
+   "id": "sf_wp_night_nw",
+   "type": "waypoint",
+   "position": [
+    -3.6,
+    0,
+    3.4
+   ],
+   "params": {
+    "next": "sf_wp_night_ne",
+    "wait": 0,
+    "look": 90
+   }
+  },
+  {
+   "id": "sf_wp_night_ne",
+   "type": "waypoint",
+   "position": [
+    10.6,
+    0,
+    3.4
+   ],
+   "params": {
+    "next": "sf_wp_night_se",
+    "wait": 30,
+    "look": 180
+   }
+  },
+  {
+   "id": "sf_wp_night_se",
+   "type": "waypoint",
+   "position": [
+    10.6,
+    0,
+    -3.3
+   ],
+   "params": {
+    "next": "sf_wp_night_sw",
+    "wait": 90,
+    "look": 270
+   }
+  },
+  {
+   "id": "sf_wp_night_sw",
+   "type": "waypoint",
+   "position": [
+    -3.6,
+    0,
+    -3.3
+   ],
+   "params": {
+    "next": "sf_wp_night_nw",
+    "wait": 0,
+    "look": 0
+   }
+  },
+  {
+   "id": "sf_guard_night",
+   "type": "guard",
+   "position": [
+    -3.6,
+    0,
+    0.0
+   ],
+   "yaw": 0.0,
+   "params": {
+    "kind": "patrol",
+    "route": "sf_wp_night_nw",
+    "speed": 1.1,
+    "sight": 5.0,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 220
+   }
+  },
+  {
+   "id": "sf_camera_lift",
+   "type": "guard",
+   "position": [
+    11.5,
+    2.3,
+    4.6
+   ],
+   "params": {
+    "kind": "camera",
+    "look_a": 200,
+    "look_b": 260,
+    "hold": 90,
+    "turn": 120,
+    "phase": 0,
+    "sight": 9.0,
+    "fov": 40
+   }
+  },
+  {
+   "id": "sf_wall_knits",
+   "type": "wall",
+   "position": [
+    3.25,
+    0,
+    -0.2
+   ],
+   "params": {
+    "size": [
+     1.3,
+     0.72,
+     1.1
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "sf_wall_shelves_w",
+   "type": "wall",
+   "position": [
+    -8.4,
+    0,
+    4.59
+   ],
+   "params": {
+    "size": [
+     5.4,
+     1.6,
+     0.32
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "sf_wall_shelves_e",
+   "type": "wall",
+   "position": [
+    -3.75,
+    0,
+    4.59
+   ],
+   "params": {
+    "size": [
+     1.5,
+     1.6,
+     0.32
+    ],
+    "blocks": false
+   }
+  }
+ ],
+ "paths": {}
+}

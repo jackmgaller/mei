@@ -1,0 +1,323 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "booth",
+ "entities": [
+  {
+   "id": "pb_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "name": "the_projection_booth",
+    "entry": "pb_spawn_corridor",
+    "size": [
+     12.5,
+     2.4,
+     6.5
+    ]
+   }
+  },
+  {
+   "id": "pb_spawn_corridor",
+   "type": "spawn",
+   "position": [
+    5.125,
+    0,
+    -1.8
+   ],
+   "params": {
+    "yaw": 270
+   }
+  },
+  {
+   "id": "pb_door_corridor",
+   "type": "door",
+   "position": [
+    6.125,
+    0,
+    -1.8
+   ],
+   "yaw": 270,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "pb_spawn_corridor",
+    "to": "sc_door_booth"
+   }
+  },
+  {
+   "id": "pb_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -3.125
+   ],
+   "params": {
+    "size": [
+     12.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "pb_wall_back_0",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    3.125
+   ],
+   "params": {
+    "size": [
+     12.5,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "pb_wall_end_w_0",
+   "type": "wall",
+   "position": [
+    -6.125,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     6.0
+    ]
+   }
+  },
+  {
+   "id": "pb_wall_end_e_0",
+   "type": "wall",
+   "position": [
+    6.125,
+    0,
+    -2.7
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.6
+    ]
+   }
+  },
+  {
+   "id": "pb_wall_end_e_1",
+   "type": "wall",
+   "position": [
+    6.125,
+    0,
+    0.9
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     4.2
+    ]
+   }
+  },
+  {
+   "id": "pb_wall_projector_0",
+   "type": "wall",
+   "position": [
+    -3.5,
+    0,
+    0.3
+   ],
+   "params": {
+    "size": [
+     0.8,
+     1.6,
+     1.4
+    ]
+   }
+  },
+  {
+   "id": "pb_wall_projector_1",
+   "type": "wall",
+   "position": [
+    0.5,
+    0,
+    0.3
+   ],
+   "params": {
+    "size": [
+     0.8,
+     1.6,
+     1.4
+    ]
+   }
+  },
+  {
+   "id": "pb_wall_bench",
+   "type": "wall",
+   "position": [
+    -3.7,
+    0,
+    2.7
+   ],
+   "params": {
+    "size": [
+     3.8,
+     0.9,
+     0.6
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "pb_wall_racks",
+   "type": "wall",
+   "position": [
+    3.3,
+    0,
+    2.55
+   ],
+   "params": {
+    "size": [
+     2.6,
+     2.0,
+     0.9
+    ]
+   }
+  },
+  {
+   "id": "pb_card_red",
+   "type": "keycard",
+   "position": [
+    -5.0,
+    0,
+    1.9
+   ],
+   "params": {
+    "colour": "red"
+   }
+  },
+  {
+   "id": "pb_wp_proj_a",
+   "type": "waypoint",
+   "position": [
+    -1.8,
+    0,
+    -1.4
+   ],
+   "params": {
+    "next": "pb_wp_proj_b",
+    "wait": 120,
+    "look": 55
+   }
+  },
+  {
+   "id": "pb_wp_proj_b",
+   "type": "waypoint",
+   "position": [
+    -5.0,
+    0,
+    -1.4
+   ],
+   "params": {
+    "next": "pb_wp_proj_c",
+    "wait": 0,
+    "look": 0
+   }
+  },
+  {
+   "id": "pb_wp_proj_c",
+   "type": "waypoint",
+   "position": [
+    -5.0,
+    0,
+    1.6
+   ],
+   "params": {
+    "next": "pb_wp_proj_d",
+    "wait": 0,
+    "look": 90
+   }
+  },
+  {
+   "id": "pb_wp_proj_d",
+   "type": "waypoint",
+   "position": [
+    -1.8,
+    0,
+    1.6
+   ],
+   "params": {
+    "next": "pb_wp_proj_a",
+    "wait": 0,
+    "look": 180
+   }
+  },
+  {
+   "id": "pb_guard_projectionist",
+   "type": "guard",
+   "position": [
+    -1.8,
+    0,
+    -1.4
+   ],
+   "yaw": 0.0,
+   "params": {
+    "kind": "patrol",
+    "route": "pb_wp_proj_a",
+    "speed": 1.0,
+    "sight": 5.0,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 220
+   }
+  },
+  {
+   "id": "pb_wall_lens_0",
+   "type": "wall",
+   "position": [
+    -3.985,
+    0,
+    0.05
+   ],
+   "params": {
+    "size": [
+     0.17,
+     0.93,
+     0.14
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "pb_wall_lens_1",
+   "type": "wall",
+   "position": [
+    0.015,
+    0,
+    0.05
+   ],
+   "params": {
+    "size": [
+     0.17,
+     0.93,
+     0.14
+    ],
+    "blocks": false
+   }
+  }
+ ],
+ "paths": {}
+}

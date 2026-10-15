@@ -1,0 +1,27 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "booth",
+ "placements": [
+  {
+   "id": "pb_room",
+   "asset": "pb_room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "pb_room_col"
+  },
+  {
+   "id": "pb_beams",
+   "asset": "pb_beams",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

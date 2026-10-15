@@ -2,10 +2,11 @@
 # The front end's scenarios (tests/front/harness.akr; agent E): stage 1 through the title, the
 # select, four transitions and the end with the save (60, a release build: it measures the
 # budgets), the select's lit rooms and locked silhouette (61), the save's round trip on one card
-# across two boots (62, 63), skipping a transition (64), and stage 2 (one room, the platform)
-# through the select, its end and its save (65). A scenario passes when it ends with its DONE
-# line; stops at the first failure. MEIC, RUN and WORLDS as for tests/run.sh. tests/check.sh
-# runs this at its end.
+# across two boots (62, 63), skipping a transition (64), the platform stage (one room, the last)
+# through the select, its end and its save (65), and stage 2's rooms of doors with B's eight
+# legs: seven transitions, back into lower rooms too (66, a release build). A scenario passes
+# when it ends with its DONE line; stops at the first failure. MEIC, RUN and WORLDS as for
+# tests/run.sh. tests/check.sh runs this at its end.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # the logs and cards go into ../out/front-BUILD (BUILD: the folder MEIC is in), as check.sh does
@@ -29,4 +30,6 @@ run 62 50 --card1 "$C62"
 run 63 5 --card1 "$C62"
 run 64 1200 --card1 "$(card 64)"
 run 65 3000 --card1 "$(card 65)"
+TRAP=0 run 66 12500 --card1 "$(card 66)"
+grep -h '^BUDGET\|^TRANSITION' "$O/s66.log"
 echo "all $n front end scenarios passed"

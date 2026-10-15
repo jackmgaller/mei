@@ -1,0 +1,17 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "corridor",
+ "placements": [
+  {
+   "id": "sc_shell",
+   "asset": "sc_shell",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "sc_shell_col"
+  }
+ ]
+}

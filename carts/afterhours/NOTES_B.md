@@ -1,7 +1,104 @@
-# Gate 1: agent B's notes (the complex)
+# Agent B's notes (the complex; the level lead)
 
 What B has landed, what B asks of A, and B's decisions. A's side is in `NOTES_A.md`. Newest
 first in each section.
+
+## Stage 2: keycards and backtracking (2026-10-15, in the worktree `afterhours-next`)
+
+**Dressed (phase 2)**: `make_level2.py` takes the cinema, the booth and the corridor from their
+`dressed/` folders and the shop floor and the food hall from their own folders
+(`rooms/shopfloor`, `rooms/foodhall`). `level2` builds clean: 5 cells, 1,282,228 bytes, 0
+warnings, World Checker 0 hard failures and 0 over thresholds in 57 views (peaks 1,385 triangles,
+CPU 314,412, GPU 363,081 cycles). Cells: cinema 717, booth 334, corridor 639, shop floor 1,556,
+food hall 1,327 triangles.
+
+- **Stand-ins**: a cap takes whole placements, and three dressed rooms draw their shell and most
+  of the room as one recipe (cinema 715, shop floor 830, food hall 1,183). At the old 700 cap the
+  cinema's stand-in was its beam alone (2 triangles), the food hall's its cases (144) and the shop
+  floor's its escalators (498). The caps are now 720, 1,600 and 1,400 for those three (the
+  `standin_triangles` threshold 1,600), so every stand-in is its whole room. E's scenario 66 (the
+  transitions through stage 2) stays in budget: worst CPU 604,534, GPU 448,577. If the select or
+  the transition grows heavy, the builders could split their shell from their props, so that a
+  smaller cap still keeps the shell.
+- **The wall map gained what the dressing stands in play** (in each `make_*.py`'s `DRESSED`, not in
+  `ROOM`, which the dress scripts read):
+  - the cinema's curtains at the screen's ends (they block, as the screen does) and the speakers
+    behind it;
+  - the booth's lenses (solid, cones pass);
+  - the shop floor's table of knits and bag shelves (solid, cones pass);
+  - the food hall's back counters and the cleaner's parked cart (solid, cones pass).
+
+  None of these is on a route. The eight legs replay on the model with the same ticks and margins
+  (0.41 m corridor, 0.44 m shop floor).
+- **Gift boxes**: A draws them at the three `fragile` entities (a pink box with a gold ribbon).
+- **Checks** (`build-ah-B`): `tests/check.sh` passes all 32 of A's scenarios and E's 7. In
+  scenario 63, the eight legs clear in 10,216 ticks as before. The debug build's worst frame of the
+  run is CPU 641,370, on the shop floor (272k in greybox), and GPU 418,247.
+
+**State**: the stage is in greybox and clears end to end in the cart. Five rooms of a department
+store (cinema, projection booth, staff corridor, shop floor, food hall) joined by doors as a
+graph, a blue and a red card, eight legs. `level2` is in `worlds.txt` (between level1 and the
+platform) and builds clean in `build-ah-B`: 5 cells, 110,920 bytes, 0 warnings, World Checker 0
+hard failures and 0 over thresholds in 69 views; cells 98-160 triangles. The route, the graph,
+the rules and the World Kit layout are in `levels/level2/ROUTE.md`; each room's floor plan for
+its builder is its `PLAN.md` (`rooms/cinema/`, `rooms/booth/`, `rooms/corridor/`,
+`rooms/shopfloor/`, `rooms/foodhall/`). The room builders can start.
+
+| Leg | Room, in → out | Tape (`tests/tapes/level2_solution.akr`) | Model / cart ticks |
+|---|---|---|---|
+| 0 | cinema: the screen → corridor | `SOLUTION_S2_LEG_0` | 1,280 / 1,281 |
+| 1 | corridor: cinema → stair | `_1` | 1,237 / 1,238 |
+| 2 | shop floor: stair → stair, the blue card | `_2` | 1,752 / 1,753 |
+| 3 | corridor: stair → blue door | `_3` | 924 / 926 |
+| 4 | booth: door → door, the red card | `_4` | 1,380 / 1,383 |
+| 5 | corridor: blue door → stair | `_5` | 1,235 / 1,229 |
+| 6 | shop floor: stair → red door (the lift) | `_6` | 1,401 / 1,402 |
+| 7 | food hall: lift → the way out | `_7` | 1,002 / 1,004 |
+
+A's scenario 63 plays them in order with the cards and doors carried: 10,216 ticks (2 min 50 s),
+never caught. `tests/check.sh` (`build-ah-B`): all 31 After Hours scenarios and E's 6 pass.
+Nearest margins on the model: 0.41 m (the corridor's office guard, legs 1, 3, 5), 0.44 m (the
+shop floor's camera); the rest 0.75 m or more. Legs 3-5 drift a few ticks between the model and
+the cart (A's numbers above), so recheck in the cart after any change.
+
+**Decided with A** (NOTES_A.md has the runtime's side):
+
+- Schema v4 (`afterhours.game.mochi`): `room.name` (a World Kit name, `the_cinema`, shown THE
+  CINEMA; required, so level 1's and the platform's rooms have one too), `room.exit` optional,
+  `door { size, spawn, to, end, card }`, `keycard { colour }`. `next` only orders rooms in a
+  stage of doors. A room with no doors works as before.
+- The rules: ROUTE.md, "The rules". One change from A's proposal: a card or a door is the run's
+  only when he leaves the room; caught or START puts the room back as it was when he came in. The
+  card rooms are dead ends, so keeping a card taken in a caught attempt would make getting caught
+  a free way out.
+- My model follows A's tick order (`rules_model.py`'s `keys_update`: cards strictly within 0.5 m
+  after the move, shut doors opening strictly within 0.38 m of his centre, open from that tick,
+  passable from the next; the exit, then doors in entity order).
+- A draws the staff doors' leaves (in the card's colour, shut or open) and the cards; the
+  builders leave the doorways open and framed.
+- Stage order: level1, level2, platform (A's `dr_levels.akr`; E's `STAGES_3`, "AFTER CLOSING").
+
+**How the stage sits in the World Kit**: as level 1: one world, a room a 32 m cell side by side
+in x at its floor's height, a region each, kit-made stand-ins. The cells' x order is the
+building's section (cinema 8F, booth 9F over it, corridor 8F, shop floor 7F, food hall B1), so
+every door joins rooms at most two cells apart and the pull-back between them holds both. E's
+section reads the doors for its route lines and `room.name` for the captions (done, in
+`dr_section.akr`).
+
+**Tools**: none, as for level 1. Stage 2's new ideas are the cards and going back; a tool would
+compete with them. The food hall's gift boxes (fragile, a noise) are the only new hazard.
+
+**How it was built**: `levels/s2room.py` turns a short room description (walls with doorways,
+props by kind, doors, cards, watchers) into the greybox recipes, the placements and the play
+file, so the wall map and the drawn room come from the same numbers. `levels/level2/solutions.py`
+plays the eight legs on the model with the run's state carried and writes the tapes with
+`S2_LEGS`, `S2_LEG_ROOM` and `S2_LEG_DOOR`.
+
+**Commands** (ROUTE.md, "Commands"), and the cart's check of the stage:
+
+```sh
+MEIC=build-ah-B/meic RUN=build-ah-B/mei-headless WORLDS=build-ah-B/cart-worlds/afterhours carts/afterhours/tests/run.sh 63 12000 /tmp/s2run
+```
 
 ## Level 1 (2026-10-15, B is the level lead)
 

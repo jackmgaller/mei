@@ -12,6 +12,7 @@ import "../dr_world.akr"       // B's room (the cart's own; the rules' scenarios
 import "../dr_audio.akr"       // F's sounds, so the scenarios run the cart's audio calls too
 import "tapes/platform_solution.akr"   // B's solution tapes: Gate 1's platform
 import "tapes/level1_solution.akr"     // and level 1's, a room each
+import "tapes/level2_solution.akr"     // and stage 2's, a leg (a visit to a room) each
 
 const L1_TAPES: [5]*Span = [SOLUTION_L1_ARRIVAL, SOLUTION_L1_GATES, SOLUTION_L1_PASSAGE,
                             SOLUTION_L1_LOBBY, SOLUTION_L1_AQUARIUM]
@@ -49,7 +50,15 @@ fn fe_event(e: Ev, a: s32) {
         always(mode == Mode.Play && clock == 0 && phase == Phase.Play, "in control at the room's clock 0", fixed(clock))
         always(thief.x == room.spawn_x && thief.z == room.spawn_z, "at the room's door", thief.x)
     }
-    if e == Ev.RoomExit { fe_frames = 0 }
+    if e == Ev.RoomExit {
+        fe_frames = 0
+        if s2_exits <= S2_LEGS {
+            s2_exit_door[s2_exits] = exit_door
+            s2_exit_room[s2_exits] = run_room
+            s2_exit_ticks[s2_exits] = tape_now.ticks
+            s2_exits += 1
+        }
+    }
 }
 
 fn fe_owns_transition() -> bool { return test_fe }
@@ -147,15 +156,28 @@ fn test_init() {
         48 => { name = "the state flow: level 1 through four transitions run by a front end, its end, the stage again"; test_run = true; test_fe = true; ev_n = 0; for e in Ev { ev_count[e] = 0 }; flow_n = 0; stage_start(0) }
         49 => { name = "events: footsteps, the trains, catches"; platform_run(); test_no_catch = true; ev_n = 0; for e in Ev { ev_count[e] = 0 }; play(&TAPE_SHOT_TRAIN[0], len(TAPE_SHOT_TRAIN)) }
         40 => { name = "B's platform: a tour"; platform_run(); test_no_catch = true; play(&TAPE_TOUR[0], len(TAPE_TOUR)) }
+        60 => { name = "stage 2's rules: a keycard, a staff door, re-entry by either door, the run's state across rooms"; graph_run() }
+        61 => { name = "stage 2's rules: caught or START, back at the door he came in by, the room as it was"; graph_run() }
+        62 => { name = "stage 2's rules through a front end's transitions: any door to any door"; test_fe = true; graph_run() }
+        63 => { name = "stage 2 (level2) as one run: B's eight legs in order, the cards and doors carried"; s2_run() }
+        64 => { name = "stage 2 (level2) through a front end's transitions: seven, door to door, back and on"; test_fe = true; s2_run() }
         else => {}
     }
 }
 
 fn test_hook(_f: s32) {}
 
+// The stand-in rooms of doors (dr_standin.akr) as the run.
+fn graph_run() {
+    standin_graph = true
+    ev_n = 0
+    for e in Ev { ev_count[e] = 0 }
+    run_start()
+}
+
 // Gate 1's platform (the second level) as the run.
 fn platform_run() {
-    assert(level_switch(1), "the platform did not open")
+    assert(level_switch(PLATFORM_LEVEL), "the platform did not open")
     run_start()
 }
 
@@ -321,6 +343,9 @@ fn scenario(f: s32) {
         47 => s_framing(f)
         50, 51, 52, 53, 54, 55 => { if clock >= 100 { done() } }
         56 => s_hidden_shot(f)
+        60, 62 => s_doors(f)
+        61 => s_doors_caught(f)
+        63, 64 => s_s2_run(f)
         else => {}
     }
 }
@@ -396,6 +421,7 @@ fn s_into_cone(f: s32) {
         expect(catcher >= 0 && drawn_cover(catcher), "the catching cone covers him", fixed(catcher))
         expect(drawn_is_fan(catcher), "the catching cone is drawn as the fan tested", 0.0)
         expect(guards[catcher].caught, "the catching cone is the one highlighted", 0.0)
+        n0 = spans_ticks(&tape_now.spans[0], tape_now.nspans)
         if SCENARIO == 22 && SHOT != 0 { done_at = f + 4 }
     }
     if t0 >= 0 && phase == Phase.Play && t1 < 0 {
@@ -407,7 +433,7 @@ fn s_into_cone(f: s32) {
         expect(restarts == 1, "one restart counted", fixed(restarts))
         expect(ev_count[Ev.Caught] == 1 && ev_count[Ev.Restart] == 1, "a Caught event, then a Restart", fixed(ev_count[Ev.Restart]))
         expect(best.have && best.ticks == caught_at + 1, "the attempt's tape is kept as the best", fixed(best.ticks))
-        expect(spans_ticks(&best.spans[0], best.nspans) == best.ticks, "its spans cover every tick", 0.0)
+        expect(n0 == best.ticks, "its spans cover every tick", fixed(n0))
         done()
     }
     if done_at >= 0 && f >= done_at { done() }
@@ -910,7 +936,7 @@ fn s_framing(f: s32) {
         frame_check("a level 1 room's front edge")
     }
     if f == 6 {
-        assert(level_switch(1), "the platform did not open")
+        assert(level_switch(PLATFORM_LEVEL), "the platform did not open")
         assert(load_room(0), "no platform")
         frame_check("the platform's front edge")
         done()
@@ -995,6 +1021,299 @@ fn s_events(f: s32) {
                 seen_n += 1
             }
             expect(ok && seen_n >= 4, "a train's events in order: in, doors open, doors close, gone", fixed(seen_n))
+        }
+        done()
+    }
+}
+
+// ---- stage 2's rules on the stand-in rooms of doors (dr_standin.akr): the hall (0; its door 0
+// at the right to the store, door 1 the BLUE staff door in its back wall to the vault), the store
+// (1; door 0 at the left back to the hall, the blue card at (2, 1.5), a posted guard by the front
+// wall), the vault (2; door 0 back to the hall's blue door, door 1 the end).
+
+var sg_seen: s32               // the visit the scenario last saw
+var sg_step: s32
+var sg_t: s32
+
+// The stick toward (x, z); true when he is there.
+fn steer(x: fixed, z: fixed) -> bool {
+    let dx = x - thief.x
+    let dz = z - thief.z
+    let d = sqrt(dx * dx + dz * dz)
+    if d < 0.05 { return true }
+    stick_v = vec2(dx / d, dz / d)
+    return false
+}
+
+// The middle ray of a fan from (2, 2) looking +z, through the hall's blue doorway.
+fn through_blue() -> fixed {
+    var fan: Fan
+    fan_cast(&fan, 2.0, 2.0, 0.0, 20.0 * DEG, 5.0)
+    return fan.pz[8]
+}
+
+fn blue_wall_on() -> bool { return room.walls[room.doors[1].wall].solid && room.walls[room.doors[1].wall].blocks }
+
+// He came into room k by door d (-1: its way in), at (x, z), the clock at 0.
+fn came_in(k: s32, d: s32, x: fixed, z: fixed) {
+    expect(run_room == k && entry_door == d, "into the room by the door its way out leads to", fixed(run_room * 10 + d))
+    expect(clock == 0 && phase == Phase.Play, "its clock at 0", fixed(clock))
+    expect(abs(thief.x - x) < 0.001 && abs(thief.z - z) < 0.001, "at that door's spawn", thief.x)
+    expect(best == ghost_for(k, d), "the ghost of this room by this door", 0.0)
+}
+
+// 60 (62 with transitions): hall (shut blue door) -> store (the card) -> hall by its right door
+// (opens the blue door) -> vault -> hall by the blue door (still open) -> vault -> the end.
+fn s_doors(f: s32) {
+    if f == 0 { return }
+    if visits != sg_seen && mode == Mode.Play {
+        sg_seen = visits
+        sg_step = 0
+        match visits {
+            1 => expect(run_room == 0 && entry_door == -1 && best == ghost_for(0, -1), "the stage starts in the hall at its way in", fixed(run_room))
+            2 => {
+                came_in(1, 0, -7.0, 0.0)
+                expect(!best.have, "a room entered by a new door has no ghost yet", 0.0)
+            }
+            3 => {
+                came_in(0, 0, 7.0, 0.0)
+                expect(!best.have, "the hall by its right door: a ghost of its own", 0.0)
+                expect(ghost_for(0, -1).have, "the hall by its way in kept its own", 0.0)
+                expect(held == 4 && run_held == 4, "the blue card is the run's: he left the store with it", fixed(held as s32))
+                expect(!door_open(&room.doors[1]) && blue_wall_on(), "the blue door is still shut", 0.0)
+                expect(abs(through_blue() - 2.8) < 0.002, "shut, it cuts a cone", through_blue())
+            }
+            4 => came_in(2, 0, -7.0, 0.0)
+            5 => {
+                came_in(0, 1, 2.0, 2.0)
+                expect(door_open(&room.doors[1]) && !blue_wall_on(), "the blue door stays open for the run", 0.0)
+                expect(through_blue() > 6.99, "open, a cone goes through it", through_blue())
+            }
+            6 => came_in(2, 0, -7.0, 0.0)
+            else => expect(false, "a visit too many", fixed(visits))
+        }
+    }
+    if mode != Mode.Play && mode != Mode.End { return }
+    if phase == Phase.Clear || mode == Mode.End {
+        if t0 < 0 {
+            t0 = f
+            var sum = 0
+            var spent = 0
+            for k in 0..3 {
+                sum += room_time[k]
+                spent += room_spent[k]
+            }
+            expect(visits == 6 && run_cleared == 7, "six visits to three rooms, each left", fixed(visits))
+            expect(sum == total && spent == total && run_restarts() == 0, "the rooms' times (every visit) make the run's total", fixed(total))
+            expect(ev_count[Ev.CardTake] == 1 && ev_count[Ev.Unlock] == 1, "one card taken, one door opened", fixed(ev_count[Ev.Unlock]))
+            if SCENARIO == 62 {
+                expect(fe_trans == 5 && fe_hold_clock_ok, "five transitions, each room held at its clock 0", fixed(fe_trans))
+                expect(mode == Mode.End, "the end door ends the stage", 0.0)
+            }
+            done()
+        }
+        return
+    }
+    if phase != Phase.Play { return }
+    match visits {
+        1 => {
+            if sg_step == 0 {
+                if steer(2.0, 2.0) {
+                    sg_step = 1
+                    sg_t = clock
+                }
+            } else if sg_step == 1 {
+                stick_v = vec2(0.0, 1.0)
+                if clock - sg_t == 30 {
+                    expect(!door_open(&room.doors[1]) && abs(thief.z - 2.5) < 0.01, "the shut blue door stops him", thief.z)
+                    expect(held == 0 && room_load_more(), "no card held; the hall has ways on", fixed(held as s32))
+                    sg_step = 2
+                }
+            } else {
+                let _ = steer(8.5, 0.0)
+            }
+        }
+        2 => {
+            if sg_step == 0 {
+                let _ = steer(2.0, 1.5)
+                if cards_n == 1 {
+                    expect(held == 4 && card_taken(0) && ev_count[Ev.CardTake] == 1, "the blue card is picked up", fixed(held as s32))
+                    expect(run_held == 0, "not the run's until he leaves", fixed(run_held as s32))
+                    sg_step = 1
+                }
+            } else {
+                let _ = steer(-8.5, 0.0)
+            }
+        }
+        3 => {
+            if sg_step == 0 {
+                if steer(2.0, 2.0) { sg_step = 1 }
+            } else {
+                stick_v = vec2(0.0, 1.0)
+                if sg_step == 1 && opened_n == 1 {
+                    sg_step = 2
+                    expect(door_open(&room.doors[1]) && !blue_wall_on() && ev_count[Ev.Unlock] == 1, "holding blue, he opens the blue door by walking into it", 0.0)
+                    expect(thief.z > 2.8 - THIEF_R - DOOR_REACH - 0.05 && thief.z <= 2.5, "it opens as he reaches it", thief.z)
+                    expect(through_blue() > 6.99, "open, a cone goes through it", through_blue())
+                }
+            }
+        }
+        4 => { let _ = steer(-8.5, 0.0) }
+        5 => { let _ = steer(2.0, 3.5) }
+        6 => { let _ = steer(8.5, 0.0) }
+        else => {}
+    }
+}
+
+// 61: hall -> store: the card, then caught: back at the store's door, the card lying there again;
+// the card again, out -> the hall by its right door: the blue door opened, then START: the hall
+// as he came in (the door shut, the card still his) -> opened again -> vault -> the end.
+fn s_doors_caught(f: s32) {
+    if f == 0 { return }
+    if visits != sg_seen {
+        sg_seen = visits
+        sg_step = 0
+        if visits == 2 { came_in(1, 0, -7.0, 0.0) }
+        if visits == 3 { came_in(0, 0, 7.0, 0.0) }
+    }
+    if phase == Phase.Clear {
+        expect(visits == 4 && run_restarts() == 2 && room_restarts[0] == 1 && room_restarts[1] == 1, "two restarts, one in each room", fixed(run_restarts()))
+        expect(ev_count[Ev.CardTake] == 2 && ev_count[Ev.Unlock] == 2, "the card taken twice, the door opened twice", fixed(ev_count[Ev.CardTake]))
+        done()
+        return
+    }
+    if visits == 1 {
+        let _ = steer(8.5, 0.0)
+    } else if visits == 2 {
+        if sg_step == 0 {
+            let _ = steer(2.0, 1.5)
+            if cards_n == 1 { sg_step = 1 }
+        } else if sg_step == 1 {
+            let _ = steer(3.5, -2.0)
+            if phase == Phase.Caught {
+                expect(why == Why.Seen && held == 4, "seen, holding the card", fixed(why as s32))
+                sg_step = 2
+            }
+        } else if sg_step == 2 {
+            if phase == Phase.Play {
+                expect(clock == 0 && restarts == 1, "the room again, its clock at 0", fixed(clock))
+                expect(abs(thief.x - (-7.0)) < 0.001 && abs(thief.z) < 0.001, "at the door he came in by", thief.x)
+                expect(held == 0 && !card_taken(0), "the card lies there again", fixed(held as s32))
+                expect(best.have && best == ghost_for(1, 0), "the caught attempt is the store's ghost by its door", 0.0)
+                sg_step = 3
+            }
+        } else if sg_step == 3 {
+            let _ = steer(2.0, 1.5)
+            if cards_n == 2 { sg_step = 4 }
+        } else {
+            let _ = steer(-8.5, 0.0)
+        }
+    } else if visits == 3 {
+        if sg_step == 0 {
+            if steer(2.0, 2.0) { sg_step = 1 }
+        } else if sg_step == 1 {
+            stick_v = vec2(0.0, 1.0)
+            if opened_n == 1 {
+                press(START)
+                sg_step = 2
+            }
+        } else if sg_step == 2 {
+            if clock == 0 {
+                expect(restarts == 1 && abs(thief.x - 7.0) < 0.001, "START: back at the door he came in by", thief.x)
+                expect(!door_open(&room.doors[1]) && blue_wall_on(), "the door he opened is shut again", 0.0)
+                expect(held == 4, "the card is still his (the run's since the store)", fixed(held as s32))
+                expect(best.have && best == ghost_for(0, 0) && best != ghost_for(0, -1), "the hall by this door keeps its own ghost", 0.0)
+                sg_step = 3
+            }
+        } else if sg_step == 3 {
+            if steer(2.0, 2.0) { sg_step = 4 }
+        } else {
+            stick_v = vec2(0.0, 1.0)
+        }
+    } else if visits == 4 {
+        let _ = steer(8.5, 0.0)
+    }
+}
+
+// ---- 63: stage 2 (B's level2) as one run: the eight legs' tapes in order, the state carried
+
+const S2_TAPES: [S2_LEGS]*Span = [SOLUTION_S2_LEG_0, SOLUTION_S2_LEG_1, SOLUTION_S2_LEG_2, SOLUTION_S2_LEG_3,
+                                  SOLUTION_S2_LEG_4, SOLUTION_S2_LEG_5, SOLUTION_S2_LEG_6, SOLUTION_S2_LEG_7]
+const S2_LENS: [S2_LEGS]s32 = [len(SOLUTION_S2_LEG_0), len(SOLUTION_S2_LEG_1), len(SOLUTION_S2_LEG_2),
+                               len(SOLUTION_S2_LEG_3), len(SOLUTION_S2_LEG_4), len(SOLUTION_S2_LEG_5),
+                               len(SOLUTION_S2_LEG_6), len(SOLUTION_S2_LEG_7)]
+var s2_leg: s32 = -1
+var s2_exits: s32              // RoomExit events seen
+var s2_exit_door: [S2_LEGS + 1]s32
+var s2_exit_room: [S2_LEGS + 1]s32
+var s2_exit_ticks: [S2_LEGS + 1]s32
+
+fn s2_run() {
+    assert(level_switch(STAGE2), "level2 did not open")
+    ghosts_clear()
+    ev_n = 0
+    for e in Ev { ev_count[e] = 0 }
+    run_start()
+}
+
+fn s_s2_run(f: s32) {
+    if visits - 1 != s2_leg && mode == Mode.Play && phase == Phase.Play {
+        s2_leg = visits - 1
+        expect(s2_leg < S2_LEGS, "no more legs than B's", fixed(s2_leg))
+        if s2_leg > 0 {
+            let k = s2_leg - 1
+            expect(s2_exit_room[k] == S2_LEG_ROOM[k] as s32 && s2_exit_door[k] == S2_LEG_DOOR[k] as s32,
+                   "the leg left its room by its door", fixed(s2_exit_door[k]))
+            print("LEG ")
+            print_int(k + 1)
+            print(" room ")
+            print_int(s2_exit_room[k])
+            print(" door ")
+            print_int(s2_exit_door[k])
+            print(" ticks ")
+            print_int(s2_exit_ticks[k])
+            print("\n")
+        }
+        expect(run_room == S2_LEG_ROOM[s2_leg] as s32 && clock <= 1, "the leg starts in its room at its clock 0", fixed(run_room))
+        play(S2_TAPES[s2_leg], S2_LENS[s2_leg])
+    }
+    always(caught_n == 0, "never caught", fixed(caught_n))
+    if f > 1 {
+        if cpu_used() > worst_cpu {
+            worst_cpu = cpu_used()
+            worst_tick = run_room
+        }
+        worst_gpu = max(worst_gpu, gpu_used())
+        worst_sight = max(worst_sight, sight_cycles)
+    }
+    if phase == Phase.Clear {
+        let k = S2_LEGS - 1
+        expect(s2_leg == k && s2_exit_door[k] == S2_LEG_DOOR[k] as s32, "the last leg leaves by the end door", fixed(s2_leg))
+        var sum = 0
+        for r in 0..MAX_RUN { sum += room_time[r] }
+        expect(sum == total && run_restarts() == 0, "the rooms' times make the run's total", fixed(total))
+        expect(run_held != 0, "cards held at the end", fixed(run_held as s32))
+        print("LEG 8 room ")
+        print_int(s2_exit_room[k])
+        print(" door ")
+        print_int(s2_exit_door[k])
+        print(" ticks ")
+        print_int(s2_exit_ticks[k])
+        print("\nRUN2 ")
+        print_int(total)
+        print(" ticks; worst frame: cpu ")
+        print_int(worst_cpu)
+        print(" (room ")
+        print_int(worst_tick + 1)
+        print(") gpu ")
+        print_int(worst_gpu)
+        print("; sight worst ")
+        print_int(worst_sight)
+        print("\n")
+        expect(worst_cpu < 1000000 && worst_gpu < 2000000, "every frame within the budgets", fixed(worst_cpu / 1000))
+        if SCENARIO == 64 {
+            expect(fe_trans == S2_LEGS - 1 && fe_hold_clock_ok, "seven transitions, each room held at its clock 0", fixed(fe_trans))
+            expect(mode == Mode.End, "the end door ends the stage", 0.0)
         }
         done()
     }

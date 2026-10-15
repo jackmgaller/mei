@@ -205,6 +205,7 @@
       6.5
      ],
      "params": {
+      "name": "the_platform",
       "entry": "spawn",
       "exit": "staff_door",
       "first": true,

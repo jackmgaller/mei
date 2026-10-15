@@ -1,0 +1,477 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "corridor",
+ "entities": [
+  {
+   "id": "sc_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "name": "the_staff_corridor",
+    "entry": "sc_spawn_cinema",
+    "size": [
+     25.5,
+     2.4,
+     7.5
+    ]
+   }
+  },
+  {
+   "id": "sc_spawn_cinema",
+   "type": "spawn",
+   "position": [
+    -11.625,
+    0,
+    -2.0
+   ],
+   "params": {
+    "yaw": 90
+   }
+  },
+  {
+   "id": "sc_door_cinema",
+   "type": "door",
+   "position": [
+    -12.625,
+    0,
+    -2.0
+   ],
+   "yaw": 90,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "sc_spawn_cinema",
+    "to": "cn_door_corridor"
+   }
+  },
+  {
+   "id": "sc_spawn_booth",
+   "type": "spawn",
+   "position": [
+    -6.0,
+    0,
+    2.625
+   ],
+   "params": {
+    "yaw": 180
+   }
+  },
+  {
+   "id": "sc_door_booth",
+   "type": "door",
+   "position": [
+    -6.0,
+    0,
+    3.625
+   ],
+   "yaw": 180,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "sc_spawn_booth",
+    "to": "pb_door_corridor",
+    "card": "blue"
+   }
+  },
+  {
+   "id": "sc_spawn_shop",
+   "type": "spawn",
+   "position": [
+    11.625,
+    0,
+    2.0
+   ],
+   "params": {
+    "yaw": 270
+   }
+  },
+  {
+   "id": "sc_door_shop",
+   "type": "door",
+   "position": [
+    12.625,
+    0,
+    2.0
+   ],
+   "yaw": 270,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "sc_spawn_shop",
+    "to": "sf_door_corridor"
+   }
+  },
+  {
+   "id": "sc_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -3.625
+   ],
+   "params": {
+    "size": [
+     25.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "sc_wall_back_0",
+   "type": "wall",
+   "position": [
+    -9.675,
+    0,
+    3.625
+   ],
+   "params": {
+    "size": [
+     6.15,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "sc_wall_back_1",
+   "type": "wall",
+   "position": [
+    3.675,
+    0,
+    3.625
+   ],
+   "params": {
+    "size": [
+     18.15,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "sc_wall_end_w_0",
+   "type": "wall",
+   "position": [
+    -12.625,
+    0,
+    -3.05
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.9
+    ]
+   }
+  },
+  {
+   "id": "sc_wall_end_w_1",
+   "type": "wall",
+   "position": [
+    -12.625,
+    0,
+    1.05
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     4.9
+    ]
+   }
+  },
+  {
+   "id": "sc_wall_end_e_0",
+   "type": "wall",
+   "position": [
+    12.625,
+    0,
+    -1.05
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     4.9
+    ]
+   }
+  },
+  {
+   "id": "sc_wall_end_e_1",
+   "type": "wall",
+   "position": [
+    12.625,
+    0,
+    3.05
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.9
+    ]
+   }
+  },
+  {
+   "id": "sc_wall_cages",
+   "type": "wall",
+   "position": [
+    -7.0,
+    0,
+    -0.1
+   ],
+   "params": {
+    "size": [
+     4.0,
+     1.8,
+     1.8
+    ]
+   }
+  },
+  {
+   "id": "sc_wall_office_w",
+   "type": "wall",
+   "position": [
+    -0.925,
+    0,
+    -1.65
+   ],
+   "params": {
+    "size": [
+     0.15,
+     2.4,
+     3.7
+    ]
+   }
+  },
+  {
+   "id": "sc_wall_office_e",
+   "type": "wall",
+   "position": [
+    3.925,
+    0,
+    -1.65
+   ],
+   "params": {
+    "size": [
+     0.15,
+     2.4,
+     3.7
+    ]
+   }
+  },
+  {
+   "id": "sc_wall_office_window",
+   "type": "wall",
+   "position": [
+    0.825,
+    0,
+    0.125
+   ],
+   "params": {
+    "size": [
+     3.35,
+     1.0,
+     0.15
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "sc_wall_office_n",
+   "type": "wall",
+   "position": [
+    3.175,
+    0,
+    0.125
+   ],
+   "params": {
+    "size": [
+     1.35,
+     2.4,
+     0.15
+    ]
+   }
+  },
+  {
+   "id": "sc_wall_office_desk",
+   "type": "wall",
+   "position": [
+    1.5,
+    0,
+    -3.15
+   ],
+   "params": {
+    "size": [
+     4.0,
+     0.75,
+     0.7
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "sc_wall_column",
+   "type": "wall",
+   "position": [
+    1.5,
+    0,
+    2.2
+   ],
+   "params": {
+    "size": [
+     0.7,
+     2.4,
+     0.7
+    ]
+   }
+  },
+  {
+   "id": "sc_wall_pallets",
+   "type": "wall",
+   "position": [
+    7.75,
+    0,
+    3.05
+   ],
+   "params": {
+    "size": [
+     3.5,
+     0.9,
+     0.9
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "sc_guard_office",
+   "type": "guard",
+   "position": [
+    1.5,
+    0.0,
+    -1.6
+   ],
+   "params": {
+    "kind": "posted",
+    "look_a": -40,
+    "look_b": 40,
+    "hold": 90,
+    "turn": 150,
+    "phase": 0,
+    "sight": 6.0,
+    "fov": 60,
+    "hear": 6
+   }
+  },
+  {
+   "id": "sc_wp_porter_se",
+   "type": "waypoint",
+   "position": [
+    -3.2,
+    0,
+    -2.4
+   ],
+   "params": {
+    "next": "sc_wp_porter_ne",
+    "wait": 0,
+    "look": 0
+   }
+  },
+  {
+   "id": "sc_wp_porter_ne",
+   "type": "waypoint",
+   "position": [
+    -3.2,
+    0,
+    2.3
+   ],
+   "params": {
+    "next": "sc_wp_porter_nw",
+    "wait": 0,
+    "look": 270
+   }
+  },
+  {
+   "id": "sc_wp_porter_nw",
+   "type": "waypoint",
+   "position": [
+    -10.2,
+    0,
+    2.3
+   ],
+   "params": {
+    "next": "sc_wp_porter_sw",
+    "wait": 0,
+    "look": 180
+   }
+  },
+  {
+   "id": "sc_wp_porter_sw",
+   "type": "waypoint",
+   "position": [
+    -10.2,
+    0,
+    -2.4
+   ],
+   "params": {
+    "next": "sc_wp_porter_se",
+    "wait": 0,
+    "look": 90
+   }
+  },
+  {
+   "id": "sc_guard_porter",
+   "type": "guard",
+   "position": [
+    -7.0,
+    0,
+    -2.4
+   ],
+   "yaw": 90.0,
+   "params": {
+    "kind": "patrol",
+    "route": "sc_wp_porter_se",
+    "speed": 1.1,
+    "sight": 4.5,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 220
+   }
+  },
+  {
+   "id": "sc_camera_stair",
+   "type": "guard",
+   "position": [
+    12.3,
+    2.3,
+    -3.3
+   ],
+   "params": {
+    "kind": "camera",
+    "look_a": 280,
+    "look_b": 328,
+    "hold": 90,
+    "turn": 150,
+    "phase": 360,
+    "sight": 8.0,
+    "fov": 40
+   }
+  }
+ ],
+ "paths": {}
+}

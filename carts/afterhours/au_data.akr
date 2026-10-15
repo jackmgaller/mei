@@ -17,7 +17,7 @@ const MU_STEM: [21]s32 = [0, 0, 1899744, 57568, 72, 72, 0,
     2, 2171136, 1899744, 57568, 0, 47, 1]
 const MU_BEAT_SAMPLES = 14392       // a beat (for anyone who wants the tempo)
 
-// The sounds: an index into SFX for each. The loops (train_run, train_idle, amb_platform, amb_gates, amb_passage, amb_lobby, amb_aquarium) start with a lead-in.
+// The sounds: an index into SFX for each. The loops (train_run, train_idle, amb_platform, amb_gates, amb_passage, amb_lobby, amb_aquarium, amb_cinema, amb_booth, amb_corridor, amb_shopfloor, amb_foodhall) start with a lead-in.
 const SFX_STEP_WALK = 0
 const SFX_STEP_RUN = 1
 const SFX_CAUGHT = 2
@@ -40,16 +40,23 @@ const SFX_ALERT = 18
 const SFX_KNOCK = 19
 const SFX_BELL = 20
 const SFX_RETRY = 21
-const SFX_TRAIN_RUN = 22
-const SFX_TRAIN_IDLE = 23
-const SFX_AMB_PLATFORM = 24
-const SFX_AMB_GATES = 25
-const SFX_AMB_PASSAGE = 26
-const SFX_AMB_LOBBY = 27
-const SFX_AMB_AQUARIUM = 28
-const SFX_COUNT = 29
+const SFX_CARD = 22
+const SFX_UNLOCK = 23
+const SFX_TRAIN_RUN = 24
+const SFX_TRAIN_IDLE = 25
+const SFX_AMB_PLATFORM = 26
+const SFX_AMB_GATES = 27
+const SFX_AMB_PASSAGE = 28
+const SFX_AMB_LOBBY = 29
+const SFX_AMB_AQUARIUM = 30
+const SFX_AMB_CINEMA = 31
+const SFX_AMB_BOOTH = 32
+const SFX_AMB_CORRIDOR = 33
+const SFX_AMB_SHOPFLOOR = 34
+const SFX_AMB_FOODHALL = 35
+const SFX_COUNT = 36
 // per sound: byte offset in AU_SFX, samples, volume, reverb send, loop start (-1: a one-shot)
-const SFX: [145]s32 = [0, 2660, 30, 1, -1,
+const SFX: [180]s32 = [0, 2660, 30, 1, -1,
     1520, 3976, 66, 1, -1,
     3792, 20972, 148, 1, -1,
     15776, 9268, 47, 1, -1,
@@ -71,19 +78,27 @@ const SFX: [145]s32 = [0, 2660, 30, 1, -1,
     189360, 19852, 94, 1, -1,
     200704, 19852, 66, 1, -1,
     212048, 6188, 37, 0, -1,
-    215584, 44156, 94, 1, 56,
-    240816, 33124, 17, 1, 56,
-    259744, 198520, 24, 0, 56,
-    373184, 198520, 17, 0, 56,
-    486624, 198520, 24, 0, 56,
-    600064, 198520, 21, 0, 56,
-    713504, 198520, 24, 0, 56]
+    215584, 8820, 66, 1, -1,
+    220624, 15456, 74, 1, -1,
+    229456, 44156, 94, 1, 56,
+    254688, 33124, 17, 1, 56,
+    273616, 198520, 24, 0, 56,
+    387056, 198520, 17, 0, 56,
+    500496, 198520, 24, 0, 56,
+    613936, 198520, 21, 0, 56,
+    727376, 198520, 24, 0, 56,
+    840816, 198520, 19, 0, 56,
+    954256, 198520, 30, 0, 56,
+    1067696, 198520, 21, 0, 56,
+    1181136, 198520, 15, 0, 56,
+    1294576, 198520, 21, 0, 56]
 // their names (for the tests' logs)
-const SFX_NAMES: [29]*u8 = ["step_walk", "step_run", "caught", "hide_in", "hide_out", "train_horn",
+const SFX_NAMES: [36]*u8 = ["step_walk", "step_run", "caught", "hide_in", "hide_out", "train_horn",
     "train_brake", "doors_open", "door_chime", "doors_close", "door_open", "door_shut",
     "transition", "menu_move", "menu_ok", "menu_back", "menu_deny", "clear",
-    "alert", "knock", "bell", "retry", "train_run", "train_idle",
-    "amb_platform", "amb_gates", "amb_passage", "amb_lobby", "amb_aquarium"]
+    "alert", "knock", "bell", "retry", "card", "unlock",
+    "train_run", "train_idle", "amb_platform", "amb_gates", "amb_passage", "amb_lobby",
+    "amb_aquarium", "amb_cinema", "amb_booth", "amb_corridor", "amb_shopfloor", "amb_foodhall"]
 
 // The rooms' ambiences, for au_room(): their loop (SFX_*, -1 none) and the reverb's decay there
 const AMB_NONE = 0
@@ -92,6 +107,13 @@ const AMB_GATES = 2
 const AMB_PASSAGE = 3
 const AMB_LOBBY = 4
 const AMB_AQUARIUM = 5
-const AMB_COUNT = 6
-const AMB_LOOP: [6]s32 = [-1, 24, 25, 26, 27, 28]
-const AMB_DECAY: [6]s32 = [150, 215, 170, 235, 200, 150]
+const AMB_CINEMA = 6
+const AMB_BOOTH = 7
+const AMB_CORRIDOR = 8
+const AMB_SHOPFLOOR = 9
+const AMB_FOODHALL = 10
+const AMB_COUNT = 11
+const AMB_LOOP: [11]s32 = [-1, 26, 27, 28, 29, 30,
+    31, 32, 33, 34, 35]
+const AMB_DECAY: [11]s32 = [150, 215, 170, 235, 200, 150,
+    140, 120, 175, 205, 180]

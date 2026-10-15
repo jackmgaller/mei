@@ -76,6 +76,13 @@ fn save_room(s: s32, k: s32, ticks: s32) -> bool {
     return best
 }
 
+// Room k of stage s left by a way out (a stage of doors): its bit only.
+fn save_room_cleared(s: s32, k: s32) {
+    if s < 0 || s >= SAVE_STAGES || k < 0 || k >= SAVE_ROOMS { return }
+    save.stages[s].rooms |= (1 as u32) << k as u32
+    save_dirty = true
+}
+
 // Stage s ended: cleared, its totals, the next stage unlocked. Bit 0 of the result: a new best
 // total; bit 1: fewer restarts; bit 2: the next stage was unlocked by it.
 fn save_stage(s: s32, total_ticks: s32, restarts_n: s32, stages: s32) -> s32 {

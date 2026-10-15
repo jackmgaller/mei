@@ -24,17 +24,28 @@ probe {
   floor_max_degrees = 40
 }
 
-worlds level1, platform
+worlds level1, level2, platform
 
 // A room. The entity's position is the centre of the room's floor (its y is the floor's height)
 // and `size` its extent (x, y, z), which the camera's pan keeps on the screen and which holds the
-// room's entities. `entry` is the spawn the thief starts and restarts at, `exit` the exit box that
-// clears the room; the thief then goes on to `next`, whose clock starts at 0 (none: the level is
-// over). The level starts at the room marked `first`. `toys` and `bells` are the tools the thief
-// has in the room.
+// room's entities. `name` is what the transition, the stage select and the stage's end call it,
+// as a World Kit name (lower case, words joined by _): shown in capitals with spaces, so
+// `the_last_train` reads THE LAST TRAIN.
+// `toys` and `bells` are the tools the thief has in the room.
+//
+// Rooms join in one of two ways:
+// - In a line (level 1, the platform): `entry` is the spawn the thief starts and restarts at,
+//   `exit` the exit box that clears the room; the thief then goes on to `next`, whose clock
+//   starts at 0 (none: the stage is over). The stage starts at the room marked `first`.
+// - By doors (stage 2): the `door` entities in a room say where each way out leads, and the
+//   stage starts at the `first` room's `entry`. `next` then only orders the rooms (the section,
+//   left to right; the stage select, the end, the save and the tapes number rooms by it), and
+//   `exit` is none. `entry` in a room other than the first is unused (the scripts name one of
+//   its doors' spawns).
 type room {
+  name:  name
   entry: ref
-  exit:  ref
+  exit:  ref?
   size:  vec3
   next:  ref?
   first: bool = false
@@ -42,7 +53,8 @@ type room {
   bells: u8 = 0
 }
 
-// Where the thief starts and restarts: the foot of the stair, the room's door.
+// Where the thief starts and restarts: the foot of the stair, the room's door. In a stage of
+// doors, each door he can come in by has one (the door's `spawn`).
 type spawn {
   yaw: fixed = 0
 }
@@ -145,4 +157,30 @@ type wall {
   size:   vec3
   blocks: bool = true
   solid:  bool = true
+}
+
+// A doorway (stage 2): a box `size` (x across the opening, z through it, turned by the yaw) in a
+// gap of the room's wall map. The thief goes through it when his centre is inside the box, as
+// through an exit: into the room of the door `to`, at that door's `spawn`, with that room's
+// clock at 0; or, when `end`, out of the stage. He comes in by this door at `spawn` (none: it is
+// not a way in), which stands clear of the box, and a caught thief starts again there.
+//
+// A staff door has a `card` colour. Shut, it is a wall across its box that blocks cones and
+// stops the thief and the guards; the thief holding a card of its colour opens it by walking
+// into it, and it stays open for the run (its `to` too). A door with no card is always open.
+// The thief's cards and the doors he has opened become the run's when he leaves the room: caught,
+// or START, he is back at the spawn he came in by and the room is as it was when he came in.
+// A door with neither `to` nor `end` is a staff door inside a room: open, it is only a gap.
+type door {
+  size:  vec3 = [1.2, 2.2, 0.4]
+  spawn: ref?
+  to:    ref?
+  end:   bool = false
+  card:  none | red | blue | green | yellow = none
+}
+
+// A keycard on the floor (stage 2): picked up when the thief's centre comes within 0.5 m of it,
+// shown on the HUD, and kept (not used up): it opens every staff door of its colour.
+type keycard {
+  colour: red | blue | green | yellow
 }

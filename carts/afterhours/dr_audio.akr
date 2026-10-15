@@ -223,7 +223,7 @@ private fn au_attempt_sound(id: s32) -> bool {
     return id == SFX_STEP_WALK || id == SFX_STEP_RUN || id == SFX_HIDE_IN || id == SFX_HIDE_OUT ||
            id == SFX_TRAIN_HORN || id == SFX_TRAIN_BRAKE || id == SFX_DOORS_OPEN ||
            id == SFX_DOOR_CHIME || id == SFX_DOORS_CLOSE || id == SFX_ALERT || id == SFX_KNOCK ||
-           id == SFX_BELL
+           id == SFX_BELL || id == SFX_CARD || id == SFX_UNLOCK
 }
 
 // Every attempt's start (a catch's, START's, a room's entry): stops the attempt's sounds and
@@ -292,6 +292,12 @@ fn au_knock(dx: fixed) { au_fx_play(SFX_KNOCK, 5, 1, au_vary(), 256, au_pan(dx))
 
 // The pocket bell beeps.
 fn au_bell(dx: fixed) { au_fx_play(SFX_BELL, 6, 2, 1.0, 256, au_pan(dx)) }
+
+// (Stage 2) A keycard picked up.
+fn au_card(dx: fixed) { au_fx_play(SFX_CARD, 6, 1, 1.0, 256, au_pan(dx)) }
+
+// A staff door unlocked by its card (dx: the door's).
+fn au_unlock(dx: fixed) { au_fx_play(SFX_UNLOCK, 6, 1, 1.0, 256, au_pan(dx)) }
 
 // ---- the trains
 

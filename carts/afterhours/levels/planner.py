@@ -77,7 +77,7 @@ def play(steps, sim, frames=(), limit=7200):
         if why:
             result = ('caught', why, sim.clock - 1)
         elif cleared:
-            result = ('cleared', sim.clock - 1)
+            result = ('cleared', sim.clock - 1) if sim.left_by is None else ('cleared', sim.clock - 1, sim.left_by)
         return result
 
     for st in steps:
@@ -166,7 +166,19 @@ def draw(sim, path):
         d.polygon([at(*p) for p in b.corners()], fill=col)
     for s in sim.spots:
         d.polygon([at(*p) for p in s.corners()], outline=(80, 120, 220))
-    d.polygon([at(*p) for p in sim.exit.corners()], outline=(80, 220, 120))
+    if sim.exit is not None:
+        d.polygon([at(*p) for p in sim.exit.corners()], outline=(80, 220, 120))
+    CARD = {'red': (230, 50, 50), 'blue': (60, 110, 255), 'green': (60, 200, 90), 'yellow': (240, 210, 40)}
+    for dr in sim.doors:
+        col = CARD.get(dr['card'], (80, 220, 120))
+        if sim.door_shut(dr):
+            d.polygon([at(*p) for p in dr['box'].corners()], fill=col)
+        else:
+            d.polygon([at(*p) for p in dr['box'].corners()], outline=col)
+    for c in sim.cards_here:
+        if c['id'] not in sim.taken:
+            x, y = at(c['x'], c['z'])
+            d.rectangle([x - 6, y - 4, x + 6, y + 4], fill=CARD[c['colour']])
     for tr, st in zip(sim.trains, sim.tstate):
         for c in st['cars']:
             b = tr.car_box(c, -c['len'] / 2, c['len'] / 2, -tr.width / 2, tr.width / 2)

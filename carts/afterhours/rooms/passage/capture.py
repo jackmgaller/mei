@@ -51,7 +51,39 @@ SCENES = {
     'passage': {'thief': ((4.6, -2.3), 80), 'looks': {'r3_camera': 235}, 'assets': ['r3_passage', 'r3_showcase']},
     'lobby': {'thief': ((2.2, -1.1), 0), 'looks': {'r4_guard_west': 10, 'r4_guard_back': 260},
               'at': {'r4_guard_west': (-3.2, 2.2), 'r4_guard_back': (-2.4, 2.6)}, 'assets': ['r4_lobby', 'r4_escalator', 'r4_front']},
+    # stage 2 (carts/afterhours/levels/level2): the thief where a leg's solution waits
+    'shopfloor': {'thief': ((7.0, -3.7), 90), 'looks': {'sf_camera_lift': 260, 'sf_guard_night': 90},
+                  'at': {'sf_guard_night': (2.6, 3.4)}, 'assets': ['sf_floor', 'sf_escalators', 'sf_counters']},
+    'foodhall': {'thief': ((-3.0, -3.0), 90), 'looks': {'fh_camera_middle': 180, 'fh_guard_melon': 300, 'fh_guard_cleaner': 270},
+                 'at': {'fh_guard_cleaner': (2.0, 2.9)}, 'assets': ['fh_hall', 'fh_cases']},
 }
+
+
+def game_props(play):
+    """Stand-ins for what agent A draws from the play file: the fragile stacks, the keycards and
+    the shut staff doors' leaves (their places only, in plain colours)."""
+    nodes, mats = [], {'stack': {'color': '#e8c8d0'}, 'card_blue': {'color': '#3080ff', 'class': 'emissive'},
+                       'card_red': {'color': '#ff3030', 'class': 'emissive'}, 'leaf_red': {'color': '#b02828'},
+                       'leaf_blue': {'color': '#2850b0'}}
+    for e in play['entities']:
+        x, _, z = e['position']
+        p = e.get('params', {})
+        if e['type'] == 'fragile':
+            nodes.append({'id': e['id'], 'op': 'cylinder', 'radius': 0.32, 'height': 0.55, 'segments': 6, 'material': 'stack',
+                          'transform': {'translate': [x, 0.275, z]}})
+        elif e['type'] == 'keycard':
+            nodes.append({'id': e['id'], 'op': 'box', 'size': [0.3, 0.04, 0.2], 'material': 'card_' + p['colour'],
+                          'transform': {'translate': [x, 0.03, z]}})
+        elif e['type'] == 'door' and p.get('card'):
+            sx, sy, sz = p['size']
+            yaw = e.get('yaw', 0)
+            size = [sx, 2.1, 0.08] if yaw in (0, 180) else [0.08, 2.1, sx]
+            nodes.append({'id': e['id'], 'op': 'box', 'size': size, 'material': 'leaf_' + p['card'],
+                          'transform': {'translate': [x, 1.05, z]}})
+    if not nodes:
+        return None
+    return {'format': 'mei-asset', 'version': 1, 'name': 'game_props', 'budget': {'vertices': 512, 'triangles': 400},
+            'materials': mats, 'nodes': nodes, 'lighting': {'ambient': 0.6}, 'verification': {'required': False}}
 
 
 def run(args, **kw):
@@ -246,6 +278,10 @@ def main():
         (src / f'{cname}.asset.json').write_text(json.dumps(cone_recipe(cname, pos, look, p['sight'], p['fov'], segs)))
         watchers.append((e, pos, look, cname))
     packed = names + ['standin_thief', 'standin_guard'] + [w[3] for w in watchers]
+    gp = game_props(play)
+    if gp:
+        (src / 'game_props.asset.json').write_text(json.dumps(gp))
+        packed.append('game_props')
     run(kit + ['pack'] + [src / f'{n}.asset.json' for n in packed] +
         ['-o', out / 'pack', '--name', 'room', '--slots', '0-14', '--palette', '0', '--palette8', '14'])
     pack_json = json.loads((out / 'pack' / 'room.pack.json').read_text())
@@ -258,6 +294,8 @@ def main():
     (tx, tzz), theading = scene['thief']
     room_draws = [(f'ASSET_{p["asset"].upper()}', tuple(p['position']), math.radians(p.get('yaw', 0))) for p in placements]
     full = list(room_draws) + [('ASSET_STANDIN_THIEF', (tx, 0, tzz), yaw_facing(theading))]
+    if gp:
+        full.append(('ASSET_GAME_PROPS', (0, 0, 0), 0.0))
     for e, (gx, gz), look, cname in watchers:
         if e['params'].get('kind') != 'camera':
             full.append(('ASSET_STANDIN_GUARD', (gx, 0, gz), yaw_facing(look)))

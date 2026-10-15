@@ -253,6 +253,8 @@ def light_shade(P, normal, L, boxes=()):
         k = L.get('intensity', 1.0) * ndl * fall
         if use:
             k = k * ~ray_blocked(P, S, use)
+        if 'zmin' in L:               # a light that reaches only beyond a plane (out through a window)
+            k = k * (P[:, 2] > L['zmin'])
         total += k
     total /= len(samples)
     return total[:, None] * hex_rgb(L.get('color', '#ffffff'))[None, :] / 255

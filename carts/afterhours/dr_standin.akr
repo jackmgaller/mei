@@ -20,6 +20,7 @@ fn standin_load() {
     room.spawn_z = 1.6
     room.spawn_head = HALF_PI
     room.exit = box2(14.45, -1.8, 0.8, 2.0, 1.2, 0.0, false, false)
+    room.has_exit = true
     room.toys = 2
     room.bells = 1
     // walls: back, front (cut at 1 m), the platform's two ends
@@ -146,5 +147,98 @@ fn mb_obox(b: *MB, w: *Box2, y0: fixed, y1: fixed, col: u32) {
     for k in first..b.nv {
         let v = b.v[k]
         b.v[k] = vec4(w.cx + v.x * w.c + v.z * w.s, v.y, w.cz - v.x * w.s + v.z * w.c, 1.0)
+    }
+}
+
+// ---- stand-in rooms of doors (the tests of stage 2's rules, until B's level2 is in)
+//
+// Three rooms 16 m by 6, each walled round with gaps for its doors:
+// - 0, the hall: the way in at the left; door 0 at the right to the store (1); door 1 in the back
+//   wall, a BLUE staff door, to the vault (2).
+// - 1, the store: door 0 at the left back to the hall; the blue card in the middle; a posted
+//   guard by the front wall looking left along it.
+// - 2, the vault: door 0 at the left back to the hall's blue door; door 1 at the right, the end.
+// The route: hall -> store (the card) -> hall (by its right door) -> the blue door -> vault -> end.
+// The doors' numbers in the "stage": hall 0, 1; store 2; vault 3, 4; the card 5.
+
+const STANDIN_GRAPH_ROOMS = 3
+const SG_X: fixed = 8.0
+const SG_Z: fixed = 3.0
+
+fn standin_graph_load(k: s32) {
+    room_clear()
+    room.cx = 0.0
+    room.cz = 0.0
+    room.sx = 16.0
+    room.sz = 6.0
+    // the way in (the hall's; the others' is unused, put where no door is to tell them apart)
+    room.spawn_x = -7.0
+    room.spawn_z = 0.0
+    room.spawn_head = HALF_PI
+    if k != 0 {
+        room.spawn_x = 0.0
+        room.spawn_z = -1.0
+    }
+    // the front and the back walls (the back cut for the hall's blue door at x 1.4..2.6)
+    room_wall(box2(0.0, -SG_Z - 0.15, 16.6, 1.0, 0.3, 0.0, true, true))
+    if k == 0 {
+        room_wall(box2(-3.3, SG_Z + 0.15, 9.4, 2.6, 0.3, 0.0, true, true))
+        room_wall(box2(5.3, SG_Z + 0.15, 5.4, 2.6, 0.3, 0.0, true, true))
+    } else {
+        room_wall(box2(0.0, SG_Z + 0.15, 16.6, 2.6, 0.3, 0.0, true, true))
+    }
+    // the ends, cut at z -0.6..0.6 where a door is
+    let left_door = k != 0
+    let right_door = true
+    sg_end(-SG_X - 0.15, left_door)
+    sg_end(SG_X + 0.15, right_door)
+    if k == 0 {
+        room.name = "stand-in hall"
+        let d0 = room_door(box2(SG_X, 0.0, 1.2, 2.2, 0.4, HALF_PI, true, true), 0, 1, 0, false, 0, 2)
+        door_in(d0, SG_X - 1.0, 0.0, -HALF_PI)
+        let d1 = room_door(box2(2.0, SG_Z, 1.2, 2.2, 0.4, 0.0, true, true), 2, 2, 0, false, 1, 3)
+        door_in(d1, 2.0, SG_Z - 1.0, PI)
+    } else if k == 1 {
+        room.name = "stand-in store"
+        let d0 = room_door(box2(-SG_X, 0.0, 1.2, 2.2, 0.4, HALF_PI, true, true), 0, 0, 0, false, 2, 0)
+        door_in(d0, -SG_X + 1.0, 0.0, HALF_PI)
+        room_card(2.0, 1.5, 2, 5)
+        // posted by the front wall, looking left along it, now and then toward the middle
+        room_watch(WatchDef { kind: WKind.Posted, x: 6.5, z: -2.2, route: -1, sight: 5.0, half: 25.0 * DEG,
+                              speed: 0.02, look_a: 270.0 * DEG, look_b: 300.0 * DEG, hold: 120, turn: 60,
+                              hear: 4.0 })
+    } else {
+        room.name = "stand-in vault"
+        let d0 = room_door(box2(-SG_X, 0.0, 1.2, 2.2, 0.4, HALF_PI, true, true), 0, 0, 1, false, 3, 1)
+        door_in(d0, -SG_X + 1.0, 0.0, HALF_PI)
+        let _ = room_door(box2(SG_X, 0.0, 1.2, 2.2, 0.4, HALF_PI, true, true), 0, -1, -1, true, 4, -1)
+    }
+    room_finish()
+}
+
+// An end wall at x, cut for a door at z -0.6..0.6 when `door`.
+fn sg_end(x: fixed, door: bool) {
+    if door {
+        room_wall(box2(x, -1.8, 0.3, 2.6, 2.4, 0.0, true, true))
+        room_wall(box2(x, 1.8, 0.3, 2.6, 2.4, 0.0, true, true))
+    } else {
+        room_wall(box2(x, 0.0, 0.3, 2.6, 6.0, 0.0, true, true))
+    }
+}
+
+// A stand-in room of doors' mesh: its floor and its walls (not the doors': dr_view.akr draws them).
+fn standin_graph_mesh(b: *MB) {
+    mb_box(b, -SG_X, -0.2, -SG_Z, SG_X, 0.0, SG_Z, rgb(92, 96, 104))
+    for i in 0..room.nwalls {
+        var door = false
+        for d in 0..room.ndoors {
+            if room.doors[d].wall == i { door = true }
+        }
+        if !door { mb_obox(b, &room.walls[i], 0.0, room.walls[i].h, rgb(150, 146, 136)) }
+    }
+    // each way out's mat
+    for d in 0..room.ndoors {
+        let r = &room.doors[d]
+        if r.to_room >= 0 || r.end { mb_obox(b, &r.box, 0.0, 0.015, rgb(60, 200, 110)) }
     }
 }

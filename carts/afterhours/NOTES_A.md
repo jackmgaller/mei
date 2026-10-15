@@ -3,14 +3,77 @@
 What the runtime does, what it reads from the room, the tape format, my answers to B and the
 decisions Gate 1 makes. Kept current. B's side is in `NOTES_B.md`.
 
+## Stage 2: keycards, rooms of doors, re-entry (2026-10-15, agreed with B)
+
+The schema is B's (`afterhours.game.mochi`: `door`, `keycard`, `room.exit` optional,
+`room.name`); the runtime is `dr_keys.akr` (new), with `dr_room.akr` (`Door`, the cards),
+`dr_world.akr` (reading them), `dr_game.akr` (the graph, re-entry) and `dr_view.akr` (drawing).
+Level 1 and the platform play exactly as before: 4,786 ticks for level 1's run, every tape and
+E's suite pass.
+
+**The rules as built:**
+
+- **Keycard:** picked up when the thief's centre comes within 0.5 m (`CARD_R`). Kept, not used
+  up; held colours (`held`, bit c: 1 red, 2 blue, 3 green, 4 yellow) show top right on the HUD.
+  Drawn by A: a slab in its colour, turning a hand's breadth off the floor, a ring in its colour
+  opening every 1.5 s. `Ev.CardTake` (a = colour), `au_card(dx)`.
+- **Staff door** (`door` with a `card`): shut, it is a wall across its box (solid and blocking:
+  it stops the thief and the guards and cuts cones). The thief holding its colour opens it by
+  walking into it (his circle within 0.08 m of the box, `DOOR_REACH`); it opens, and so does
+  the door on its other side (`to`). Drawn by A: a leaf in its card's colour with a white
+  stripe, as tall as the box (1 m in the room's front metre, like the cut front wall), swung 90
+  degrees into the room over 15 ticks when open. Builders leave the doorway open and framed.
+  `Ev.Unlock` (a = colour), `au_unlock(dx)`.
+- **The run's state is committed when he leaves a room** (B's rule 4): caught or START, he is
+  back at the spawn he came in by, clock 0, and the room is as it was when he came in (a card
+  picked up in the attempt lies there again, a door opened is shut again). A card picked up
+  opens doors at once, in the same attempt. A stage restart (`stage_start`, `run_start`) clears
+  everything.
+- **Rooms of doors:** a door with `to` leads to the room holding that door; he comes in at its
+  `spawn`, the room's clock at 0, whichever way and however often. `end` ends the stage. A
+  door with neither is a staff door inside a room (open: a gap). A door is armed only once he
+  has been out of its box. `next` only numbers the rooms (rooms off the chain follow in entity
+  order); a room's doors are numbered in entity order (B's `S2_LEG_DOOR` counts the same way).
+- **Ghosts** are per room and door he came in by (`ghost_for(k, d)`, 16 slots; a slot is the
+  best attempt's track, 28.8 KB, not its input: the 8 x 53 KB tapes before took about as much).
+- **Times:** `room_time`, `room_restarts`, `room_spent` sum every visit; the run's end lists
+  every room visited.
+- **For E:** at `Ev.RoomExit`, `exit_to_room` (-1: the end), `exit_to_door`, `exit_door`
+  (`EXIT_LINE` for a level 1 exit) are set, and in a transition `trans_to`, `trans_door`;
+  `room_door_spawn(k, d)` gives the world spawn of room k by door d before it loads;
+  `run_cleared` / `run_visited` are the rooms left / entered (bit k).
+- **For F:** `au_room()` 6-10 are stage 2's rooms in `next` order (cinema, projection booth,
+  staff corridor, shop floor, food hall).
+
+**Checks** (`tests/check.sh`), on A's stand-in rooms of doors (`dr_standin.akr`: a hall with a
+blue staff door, a store with the blue card and a posted guard, a vault with the end):
+
+| Scenario | What it checks |
+|---|---|
+| 60 | The shut door stops him and cuts a cone; the card picked up (held, not the run's until he leaves); re-entry into the hall by its other door at clock 0, with a ghost of its own; the blue door opened by walking into it, a cone through it; into the hall by the blue door, still open; the rooms' times over six visits make the total |
+| 61 | Caught holding the card: back at the store's door, the card lying there again, the caught attempt the store-by-this-door's ghost; START after opening the door: the door shut again, the card (committed) still held |
+| 62 | 60 through a front end's transitions: five transitions door to door, each room held at its clock 0, the end door to Mode.End |
+
+| 63 | B's level2 (`tests/tapes/level2_solution.akr`): the eight legs in order, the state carried, never caught; each leg starts in `S2_LEG_ROOM[i]` at clock 0 and leaves by `S2_LEG_DOOR[i]`; the rooms' times make the total; every frame within the budgets |
+| 64 | 63 through a front end's transitions: seven, door to door, back into lower rooms and on, each room held at its clock 0, the end door to Mode.End |
+
+**The levels** (`dr_levels.akr`): `LEVELS` 3: level1 (0), level2 (1, `STAGE2`), platform (2,
+`PLATFORM_LEVEL`), B's order; E's stage table follows `LEVELS`.
+
+**Measured, level2 as one run** (scenario 63): 10,216 ticks (B's model: 10,219). Legs, cart
+ticks: 1281, 1238, 1753, 926, 1383, 1229, 1402, 1004. Worst frame CPU 272,308 (debug) / 221,910
+(`TRAP=0`), GPU 279,284; sight worst 59,968 (debug) / 35,302.
+With B's dressed rooms (later the same day): the same ticks; worst frame CPU 641,370 (debug, the
+shop floor), GPU 418,247. Stage 2's fragile things draw as gift boxes (`mb_gift`).
+
 ## Hooks for E and F (2026-10-15, in the worktree `afterhours-next`)
 
 All in `dr_hooks.akr` (mine) as weak defaults that E's and F's files replace, called from
 `dr_game.akr`, `dr_thief.akr`, `dr_train.akr`, `dr_watch.akr`. Without E's files the cart and
 every scenario behave as before. `afterhours.akr` imports F's `dr_audio.akr` and E's
 `dr_front.akr` (the cart opens on E's title); A's harness imports `dr_audio.akr` (not E's: its
-own front-end stand-in replaces the same hooks). `tests/check.sh`: 27 scenarios pass (48 and 49
-new), then E's `tests/front/check.sh` (5). Its logs go to `tests/out/check-BUILD` (BUILD the
+own front-end stand-in replaces the same hooks). `tests/check.sh`: 32 scenarios pass (48 and 49
+for the hooks, 60-64 for stage 2), then E's `tests/front/check.sh` (7). Its logs go to `tests/out/check-BUILD` (BUILD the
 folder `MEIC` is in), so agents checking at once from their own build directories do not
 overwrite each other's.
 
@@ -173,6 +236,7 @@ WORLDS=$(B)/cart-worlds/afterhours` after building `$(B)/carts/afterhours.mei` (
 |---|---|
 | `afterhours.akr` | The entry point: the cart line, the pad as the input, the game, B's world |
 | `dr_game.akr` | The frame loop: the clock, a tick's order, the catch, the freeze, the restart, the exit |
+| `dr_keys.akr` | Stage 2: the keycards, the staff doors, the ways out of a room of doors, the run's state (committed on leaving) |
 | `dr_room.akr` | The room in RAM (walls, waypoints, watchers, trains, spots, fragile things) and plan geometry |
 | `dr_sight.akr` | The fans: 17 rays cut by wall sides and train sides; the circle-against-fan test |
 | `dr_watch.akr` | Patrol guards, posted guards, cameras; hearing |

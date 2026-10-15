@@ -1,7 +1,8 @@
 #!/bin/sh
 # The front end's captures (agent E), into tests/front/shots/: the title, the stage select (new,
-# part cleared, cleared, stage 2 locked as a silhouette, stage 2 open), two transitions as strips
-# of every 6th frame (room 1 to 2, and the lobby up to the aquarium), and the stage's end. Each
+# part cleared, cleared, stage 2 locked as a silhouette, stage 2 open), three transitions as
+# strips of every 6th frame (room 1 to 2; the lobby up to the aquarium; in stage 2, back from the
+# shop floor into the staff corridor), and the stages' ends. Each
 # is a run of a scenario from tests/front/harness.akr stopped at its frame. Needs Pillow for the
 # strips. MEIC, RUN and WORLDS as for tests/front/run.sh.
 set -e
@@ -39,4 +40,7 @@ shot select_stage2_open 60 5292
 shot select_cleared 60 5302
 shot select_part_cleared 61 41
 shot select_locked 61 81
+shot select_stage2 66 49
+strip transition_stage2_back 66 4523 4619
+shot end_stage2 66 10960
 echo "captures in $SH"

@@ -1,0 +1,934 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "pb_room",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 1600
+ },
+ "materials": {
+  "cut": {
+   "color": "#76849e",
+   "class": "emissive"
+  },
+  "section": {
+   "color": "#4a5468",
+   "texture": {
+    "image": "art/pb_section.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_0_0": {
+   "color": "#5a6460",
+   "texture": {
+    "image": "art/pb_floor_0_0.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "back_0": {
+   "color": "#8a8a82",
+   "texture": {
+    "image": "art/pb_back_0.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "wall_in": {
+   "color": "#7a8078"
+  },
+  "end": {
+   "color": "#9a9a90"
+  },
+  "reveal": {
+   "color": "#8a8a80"
+  },
+  "lintel": {
+   "color": "#7a7a72"
+  },
+  "door_glow": {
+   "color": "#e0e8f0",
+   "class": "emissive"
+  },
+  "threshold": {
+   "color": "#7e8288",
+   "class": "emissive"
+  },
+  "beyond_wall": {
+   "color": "#3a4048",
+   "class": "emissive"
+  },
+  "beyond": {
+   "color": "#8a8e94",
+   "class": "emissive"
+  },
+  "riser": {
+   "color": "#4a5058",
+   "class": "emissive"
+  },
+  "pedestal": {
+   "color": "#5a6470"
+  },
+  "machine": {
+   "color": "#7a8494"
+  },
+  "proj_top": {
+   "color": "#6a6060",
+   "texture": {
+    "image": "art/pb_proj_top.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "lens": {
+   "color": "#2a2c30"
+  },
+  "glass_lens": {
+   "color": "#c0d0ff",
+   "class": "emissive"
+  },
+  "bench": {
+   "color": "#8a7a66"
+  },
+  "bench_top": {
+   "color": "#8a8070",
+   "texture": {
+    "image": "art/pb_bench_top.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "rewind": {
+   "color": "#6a6e76"
+  },
+  "reel": {
+   "color": "#8a8a90",
+   "texture": {
+    "image": "art/pb_reel.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "reel_edge": {
+   "color": "#9aa0a8"
+  },
+  "racks": {
+   "color": "#5a5e64"
+  },
+  "racks_front": {
+   "color": "#7a7c80",
+   "texture": {
+    "image": "art/pb_racks.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "racks_top": {
+   "color": "#4a4e54"
+  },
+  "port": {
+   "color": "#a0b4e8",
+   "texture": {
+    "image": "art/pb_port.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "show": {
+   "color": "#ff3a30",
+   "class": "emissive"
+  },
+  "frame": {
+   "color": "#4a4a50"
+  }
+ },
+ "nodes": [
+  {
+   "id": "floor_0_0",
+   "op": "box",
+   "size": [
+    12.0,
+    0.05,
+    6.0
+   ],
+   "material": "floor_0_0",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.025,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "mesh",
+   "material": "cut",
+   "vertices": [
+    [
+     -6.25,
+     1.0,
+     -3.25
+    ],
+    [
+     6.25,
+     1.0,
+     -3.25
+    ],
+    [
+     6.25,
+     -0.4,
+     -3.25
+    ],
+    [
+     -6.25,
+     -0.4,
+     -3.25
+    ],
+    [
+     -6.25,
+     -0.4,
+     -3.0
+    ],
+    [
+     6.25,
+     -0.4,
+     -3.0
+    ],
+    [
+     6.25,
+     1.0,
+     -3.0
+    ],
+    [
+     -6.25,
+     1.0,
+     -3.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     2,
+     1,
+     6,
+     5
+    ],
+    [
+     1,
+     0,
+     7,
+     6
+    ],
+    [
+     0,
+     3,
+     4,
+     7
+    ]
+   ],
+   "face_materials": [
+    "section",
+    "wall_in",
+    "cut",
+    "cut",
+    "cut"
+   ]
+  },
+  {
+   "id": "back_0_wall",
+   "op": "box",
+   "size": [
+    12.5,
+    2.42,
+    0.25
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     0.0,
+     1.19,
+     3.125
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "back_0",
+    "top": "cut",
+    "front": "cut",
+    "left": "cut",
+    "right": "cut"
+   }
+  },
+  {
+   "id": "end_w_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    6.0
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -6.125,
+     1.0,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "left": "cut",
+    "right": "end"
+   }
+  },
+  {
+   "id": "end_e_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    0.6
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     6.125,
+     1.0,
+     -2.7
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut",
+    "right": "cut",
+    "left": "end",
+    "front": "reveal"
+   }
+  },
+  {
+   "id": "end_e_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    4.2
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     6.125,
+     1.0,
+     0.9
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "right": "cut",
+    "left": "end",
+    "back": "reveal"
+   }
+  },
+  {
+   "id": "end_e_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     6.125,
+     2.245,
+     -1.8
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_glow",
+    "top": "cut",
+    "right": "cut",
+    "left": "lintel"
+   }
+  },
+  {
+   "id": "end_e_sill_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.38,
+    1.2
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     6.125,
+     -0.21,
+     -1.8
+    ]
+   },
+   "open": [
+    "top",
+    "front",
+    "back",
+    "left"
+   ]
+  },
+  {
+   "id": "beyond_corridor",
+   "op": "mesh",
+   "material": "threshold",
+   "vertices": [
+    [
+     6.0,
+     0.0,
+     -1.2
+    ],
+    [
+     7.65,
+     0.0,
+     -1.2
+    ],
+    [
+     7.65,
+     0.0,
+     -2.4
+    ],
+    [
+     6.0,
+     0.0,
+     -2.4
+    ],
+    [
+     6.25,
+     -0.4,
+     -2.4
+    ],
+    [
+     7.65,
+     -0.4,
+     -2.4
+    ],
+    [
+     7.65,
+     2.4,
+     -2.4
+    ],
+    [
+     6.25,
+     2.4,
+     -2.4
+    ],
+    [
+     6.25,
+     2.4,
+     -1.2
+    ],
+    [
+     7.65,
+     2.4,
+     -1.2
+    ],
+    [
+     7.65,
+     -0.4,
+     -1.2
+    ],
+    [
+     6.25,
+     -0.4,
+     -1.2
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     8,
+     9,
+     10,
+     11
+    ]
+   ],
+   "face_materials": [
+    "threshold",
+    "beyond_wall",
+    "beyond_wall"
+   ]
+  },
+  {
+   "id": "proj_0_base",
+   "op": "box",
+   "size": [
+    0.64,
+    0.57,
+    1.1
+   ],
+   "material": "pedestal",
+   "transform": {
+    "translate": [
+     -3.5,
+     0.265,
+     0.3
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "proj_0_body",
+   "op": "box",
+   "size": [
+    0.8,
+    0.46,
+    1.4
+   ],
+   "material": "machine",
+   "transform": {
+    "translate": [
+     -3.5,
+     0.77,
+     0.3
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "proj_top"
+   }
+  },
+  {
+   "id": "proj_0_lens",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 0.18,
+   "segments": 6,
+   "material": "lens",
+   "faces": {
+    "top": "glass_lens"
+   },
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     -3.98,
+     0.86,
+     0.05
+    ]
+   }
+  },
+  {
+   "id": "proj_1_base",
+   "op": "box",
+   "size": [
+    0.64,
+    0.57,
+    1.1
+   ],
+   "material": "pedestal",
+   "transform": {
+    "translate": [
+     0.5,
+     0.265,
+     0.3
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "proj_1_body",
+   "op": "box",
+   "size": [
+    0.8,
+    0.46,
+    1.4
+   ],
+   "material": "machine",
+   "transform": {
+    "translate": [
+     0.5,
+     0.77,
+     0.3
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "proj_top"
+   }
+  },
+  {
+   "id": "proj_1_lens",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 0.18,
+   "segments": 6,
+   "material": "lens",
+   "faces": {
+    "top": "glass_lens"
+   },
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     0.02,
+     0.86,
+     0.05
+    ]
+   }
+  },
+  {
+   "id": "bench",
+   "op": "box",
+   "size": [
+    3.8,
+    0.92,
+    0.6
+   ],
+   "material": "bench",
+   "transform": {
+    "translate": [
+     -3.7,
+     0.44,
+     2.7
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "bench_top"
+   }
+  },
+  {
+   "id": "rewind_0",
+   "op": "box",
+   "size": [
+    0.06,
+    0.33,
+    0.08
+   ],
+   "material": "rewind",
+   "transform": {
+    "translate": [
+     -4.4,
+     1.055,
+     2.7
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "reel_0",
+   "op": "cylinder",
+   "radius": 0.27,
+   "height": 0.05,
+   "segments": 10,
+   "material": "reel_edge",
+   "faces": {
+    "top": "reel",
+    "bottom": "reel"
+   },
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -4.4,
+     1.2,
+     2.62
+    ]
+   }
+  },
+  {
+   "id": "rewind_1",
+   "op": "box",
+   "size": [
+    0.06,
+    0.33,
+    0.08
+   ],
+   "material": "rewind",
+   "transform": {
+    "translate": [
+     -2.6,
+     1.055,
+     2.7
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "reel_1",
+   "op": "cylinder",
+   "radius": 0.27,
+   "height": 0.05,
+   "segments": 10,
+   "material": "reel_edge",
+   "faces": {
+    "top": "reel",
+    "bottom": "reel"
+   },
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -2.6,
+     1.2,
+     2.62
+    ]
+   }
+  },
+  {
+   "id": "racks",
+   "op": "box",
+   "size": [
+    2.6,
+    2.02,
+    0.9
+   ],
+   "material": "racks",
+   "transform": {
+    "translate": [
+     3.3,
+     0.99,
+     2.55
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "back": "racks_front",
+    "top": "racks_top"
+   }
+  },
+  {
+   "id": "port_0",
+   "op": "box",
+   "size": [
+    0.05,
+    0.35,
+    0.36
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     -5.995,
+     1.125,
+     0.1
+    ]
+   },
+   "open": [
+    "left"
+   ],
+   "faces": {
+    "right": "port"
+   }
+  },
+  {
+   "id": "port_1",
+   "op": "box",
+   "size": [
+    0.05,
+    0.35,
+    0.36
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     -5.995,
+     1.125,
+     0.95
+    ]
+   },
+   "open": [
+    "left"
+   ],
+   "faces": {
+    "right": "port"
+   }
+  },
+  {
+   "id": "show_light",
+   "op": "box",
+   "size": [
+    0.3,
+    0.17,
+    0.08
+   ],
+   "material": "show",
+   "transform": {
+    "translate": [
+     5.2,
+     2.135,
+     2.98
+    ]
+   },
+   "open": [
+    "front"
+   ]
+  }
+ ],
+ "lighting": {
+  "direction": [
+   -0.25,
+   0.7,
+   -0.65
+  ],
+  "ambient": 0.1,
+  "diffuse": 0.18,
+  "lights": [
+   {
+    "id": "lamp_0",
+    "at": [
+     -3.35,
+     1.15,
+     0.3
+    ],
+    "color": "#ffa048",
+    "intensity": 1.7,
+    "range": 3.2
+   },
+   {
+    "id": "lamp_1",
+    "at": [
+     0.65,
+     1.15,
+     0.3
+    ],
+    "color": "#ffa048",
+    "intensity": 1.7,
+    "range": 3.2
+   },
+   {
+    "id": "bench",
+    "at": [
+     -3.7,
+     1.9,
+     2.55
+    ],
+    "color": "#ffdcaa",
+    "intensity": 1.8,
+    "range": 3.0
+   },
+   {
+    "id": "tube",
+    "at": [
+     1.5,
+     2.5,
+     -1.3
+    ],
+    "color": "#dce8f0",
+    "intensity": 1.3,
+    "range": 4.8
+   },
+   {
+    "id": "tube_w",
+    "at": [
+     -3.5,
+     2.5,
+     -1.6
+    ],
+    "color": "#dce8f0",
+    "intensity": 0.9,
+    "range": 4.4
+   },
+   {
+    "id": "door",
+    "at": [
+     6.95,
+     1.4,
+     -1.8
+    ],
+    "color": "#e4eef8",
+    "intensity": 1.6,
+    "range": 2.8
+   }
+  ],
+  "refine": {
+   "tolerance": 22,
+   "max_added": 220
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

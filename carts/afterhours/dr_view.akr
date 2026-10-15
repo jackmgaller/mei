@@ -41,9 +41,12 @@ var buf_ring: [2048]u32
 var buf_toy: [512]u32
 var buf_bell: [512]u32
 var buf_stack: [512]u32
+var buf_gift: [768]u32
 var buf_fallen: [512]u32
 var buf_spot: [512]u32
 var buf_cones: [MAX_WATCH * 300]u32
+var buf_leaf: [CARDS * 256]u32
+var buf_card: [CARDS * 256]u32
 var mb_room: MB
 var mb_thief: MB
 var mb_ghost: MB
@@ -56,9 +59,12 @@ var mb_ring: MB
 var mb_toy: MB
 var mb_bell: MB
 var mb_stack: MB
+var mb_gift: MB                    // stage 2's fragile things: a stack of gift boxes, ribboned
 var mb_fallen: MB
 var mb_spot: MB
 var mb_cones: [MAX_WATCH]MB
+var mb_leaf: [CARDS]MB             // a staff door's leaf in its card's colour (a unit box)
+var mb_card: [CARDS]MB             // a keycard
 
 const COL_THIEF = 0x2080FF         // rgb(255, 128, 32): the thief's colour, used by nothing else
 const COL_GUARD = 0x8C4A2A         // rgb(42, 74, 140)
@@ -96,18 +102,44 @@ fn view_init() {
     mb_init(&mb_stack, &buf_stack[0], len(buf_stack), 32)
     mb_box(&mb_stack, -0.3, 0.0, -0.3, 0.3, 0.3, 0.3, rgb(214, 70, 160))
     mb_box(&mb_stack, -0.2, 0.3, -0.2, 0.2, 0.6, 0.2, rgb(214, 90, 170))
+    mb_init(&mb_gift, &buf_gift[0], len(buf_gift), 48)
+    mb_box(&mb_gift, -0.32, 0.0, -0.32, 0.32, 0.28, 0.32, rgb(214, 60, 120))
+    mb_box(&mb_gift, -0.06, 0.0, -0.33, 0.06, 0.29, 0.33, rgb(250, 214, 90))      // the ribbons
+    mb_box(&mb_gift, -0.33, 0.0, -0.06, 0.33, 0.29, 0.06, rgb(250, 214, 90))
+    mb_box(&mb_gift, -0.2, 0.28, -0.2, 0.2, 0.52, 0.2, rgb(240, 240, 236))
+    mb_box(&mb_gift, -0.21, 0.28, -0.04, 0.21, 0.53, 0.04, rgb(214, 60, 120))
+    mb_box(&mb_gift, -0.08, 0.52, -0.08, 0.08, 0.6, 0.08, rgb(250, 214, 90))       // the bow
     mb_init(&mb_fallen, &buf_fallen[0], len(buf_fallen), 32)
     mb_box(&mb_fallen, -0.45, 0.0, -0.2, 0.15, 0.25, 0.35, rgb(160, 60, 120))
     mb_box(&mb_fallen, 0.2, 0.0, -0.45, 0.55, 0.2, -0.1, rgb(160, 70, 130))
     mb_init(&mb_spot, &buf_spot[0], len(buf_spot), 32)
     mb_box_ex(&mb_spot, -0.5, 0.0, -0.5, 0.5, 1.0, 0.5, rgb(40, 80, 60), FACE_SEMI, BLEND_ADD, true)
     for i in 0..MAX_WATCH { mb_init(&mb_cones[i], &buf_cones[i * 300], 300, 20) }
+    for c in 0..CARDS {
+        let col = card_rgb(c + 1)
+        mb_init(&mb_leaf[c], &buf_leaf[c * 256], 256, 16)
+        mb_box(&mb_leaf[c], -0.5, 0.0, -0.5, 0.5, 1.0, 0.5, col_scale(col, 0.8))
+        mb_box(&mb_leaf[c], -0.5, 0.45, -0.6, 0.5, 0.55, 0.6, rgb(235, 235, 235))   // the stripe
+        mb_init(&mb_card[c], &buf_card[c * 256], 256, 16)
+        mb_box(&mb_card[c], -0.21, 0.0, -0.14, 0.21, 0.04, 0.14, col)
+        mb_box(&mb_card[c], -0.16, 0.04, 0.03, 0.0, 0.05, 0.1, rgb(240, 240, 240))
+    }
+}
+
+// A card's colour (1 red, 2 blue, 3 green, 4 yellow).
+fn card_rgb(c: s32) -> u32 {
+    if c == 1 { return rgb(232, 52, 52) }
+    if c == 2 { return rgb(56, 120, 255) }
+    if c == 3 { return rgb(60, 205, 96) }
+    return rgb(245, 210, 60)
 }
 
 // The stand-in room's mesh, when the room is the stand-in, and the framing.
 fn view_init_room() {
     mb_init(&mb_room, &buf_room[0], len(buf_room), 4096)
-    if !room_is_world { standin_mesh(&mb_room) }
+    if !room_is_world {
+        if room.ndoors > 0 { standin_graph_mesh(&mb_room) } else { standin_mesh(&mb_room) }
+    }
     frame_room()
 }
 
@@ -211,11 +243,45 @@ fn view_draw_room() {
         for i in 0..room.nspots { draw_box(mb_spot.m, &room.spots[i], room.spots[i].h) }
     }
     draw_trains()
+    draw_doors()
     draw_things()
     draw_people()
     draw_cones()
     draw_rings()
     draw_marks()
+}
+
+// The staff doors' leaves (shut across the doorway, or swung open into the room), as tall as
+// the box but cut like the front wall in the room's front metre.
+fn draw_doors() {
+    for i in 0..room.ndoors {
+        let d = &room.doors[i]
+        if d.card == 0 { continue }
+        let m = mb_leaf[clamp(d.card - 1, 0, CARDS - 1)].m
+        var h = d.box.h
+        if d.box.cz < room.cz - room.sz / 2 + 1.0 { h = min(h, 1.0) }
+        if !door_open(d) {
+            draw_box(m, &d.box, h)
+        } else {
+            // swung about its hinge (its own -x end) into the room's side, through the time it opens
+            let b = &d.box
+            var side = 1.0
+            if (room.cx - b.cx) * b.s + (room.cz - b.cz) * b.c < 0.0 { side = -1.0 }
+            var u = 1.0
+            if door_t[i] >= 0 { u = clamp(fixed(clock - door_t[i]) / 15, 0.0, 1.0) }
+            let a = u * HALF_PI
+            // the leaf's centre in the door's frame, turned by a about the hinge
+            let lx = -b.hx + cos(a) * b.hx
+            let lz = side * sin(a) * b.hx
+            let ca = cos(a)
+            let sa = sin(a) * side
+            // the leaf's own axes: along it (ca, sa) in the door's frame
+            var leaf = Box2 { cx: b.cx + lx * b.c + lz * b.s, cz: b.cz - lx * b.s + lz * b.c,
+                              hx: b.hx, hz: b.hz, c: b.c * ca + b.s * sa, s: b.s * ca - b.c * sa,
+                              h: h, blocks: false, solid: false }
+            draw_box(m, &leaf, h)
+        }
+    }
 }
 
 // A point y above the room's floor, in the frame drawn.
@@ -275,9 +341,22 @@ fn draw_box_y(m: *Mesh, b: *Box2, y0: fixed, y1: fixed) {
 }
 
 fn draw_things() {
+    // the keycards not taken, turning slowly a hand's breadth off the floor
+    for i in 0..room.ncards {
+        if card_taken(i) { continue }
+        let bob = 0.06 + sin(fixed(clock % 120) * (PI / 60)) * 0.03
+        mesh_at(mb_card[clamp(room.card_col[i] - 1, 0, CARDS - 1)].m, at(room.card_x[i], bob, room.card_z[i]),
+                fixed(clock % 240) * (PI / 120))
+    }
     for i in 0..room.nfrag {
         let p = at(room.frag_x[i], 0.0, room.frag_z[i])
-        if fragile_down[i] { mesh_at(mb_fallen.m, p, 0.6) } else { mesh_at(mb_stack.m, p, 0.0) }
+        if fragile_down[i] {
+            mesh_at(mb_fallen.m, p, 0.6)
+        } else if room_is_world && stage_has_doors() {
+            mesh_at(mb_gift.m, p, 0.0)
+        } else {
+            mesh_at(mb_stack.m, p, 0.0)
+        }
     }
     for i in 0..MAX_TOYS {
         let y = &toys[i]
@@ -371,6 +450,12 @@ fn draw_rings() {
     } else if ht < 12 && phase == Phase.Play {
         ring_at(thief.x, thief.z, 0.5 + fixed(ht) * 0.07, col_scale(rgb(150, 190, 230), 1.0 - fixed(ht) / 12))
     }
+    // a keycard lying there glints: a ring in its colour opening every 1.5 s
+    for i in 0..room.ncards {
+        if card_taken(i) { continue }
+        let p = clock % 90
+        if p < 30 { ring_at(room.card_x[i], room.card_z[i], 0.25 + fixed(p) * 0.02, col_scale(card_rgb(room.card_col[i]), 1.0 - fixed(p) / 30)) }
+    }
     if thief.running && room.hear_max > 0.0 {
         ring_at(thief.x, thief.z, room.hear_max, rgb(110, 90, 70))
     }
@@ -433,8 +518,11 @@ var hud_buf: [96]u8
 fn draw_hud() {
     let b = &hud_buf[0]
     if phase == Phase.Clear {
-        // the run's end: a line a room, then the run's total
-        let n = run_room + 1
+        // the run's end: a line a room (each room he was in), then the run's total
+        var n = run_room + 1
+        for k in 0..MAX_RUN {
+            if run_visited & ((1 as u32) << k as u32) != 0 { n = max(n, k + 1) }
+        }
         let y0 = 120 - (n + 1) * 6
         rect_blend(40, y0 - 6, 240, (n + 1) * 12 + 12, rgb(10, 12, 24), BLEND_HALF)
         for k in 0..n {
@@ -454,7 +542,7 @@ fn draw_hud() {
         return
     }
     str_copy(b, 96, "")
-    if run_room > 0 || room_load_more() {
+    if run_length > 1 {
         str_append(b, 96, "ROOM ")
         str_append_int(b, 96, run_room + 1, 0, false)
         str_append(b, 96, "  ")
@@ -477,6 +565,15 @@ fn draw_hud() {
         x = font_text(x, 228, b, if_c(thief.tool == Tool.Bell, rgb(130, 255, 160), rgb(110, 120, 120))) + 10
     }
     if thief.hidden { let _ = font_text(x + 6, 228, "HIDDEN", rgb(140, 200, 255)) }
+    // the keycards held, top right
+    var cx = 308
+    for c in 1..CARDS + 1 {
+        if held & ((1 as u32) << c as u32) == 0 { continue }
+        rect(cx - 1, 4, 12, 9, rgb(0, 0, 0))
+        rect(cx, 5, 10, 7, card_rgb(c))
+        rect(cx + 1, 9, 4, 1, rgb(240, 240, 240))
+        cx -= 14
+    }
     font_shadow_off()
 }
 

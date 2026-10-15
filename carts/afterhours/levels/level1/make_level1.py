@@ -30,6 +30,11 @@ from greybox import write_json, r  # noqa: E402
 CELL = 32
 CAM_DIST, CAM_PITCH = 28.166, 60      # the game's camera (dr_view.akr), for the World Checker's views
 
+# Each room's name, as the transition, the stage select and the stage's end show it.
+# (A World Kit name: lower case and underscores; shown in capitals with spaces, "THE LAST TRAIN".)
+NAMES = {'arrival': 'the_last_train', 'gates': 'the_ticket_gates', 'passage': 'the_passage',
+         'lobby': 'the_lobby', 'aquarium': 'the_aquarium'}
+
 # The route, in order: (room, floor height, its play file, its placements, its asset folders).
 # The asset folders are the dressed rooms' (each room's NOTES.md); the greybox recipes stay in
 # each room's greybox/ folder, unused, with the greybox's placements beside them.
@@ -69,6 +74,7 @@ def main():
             e['position'] = moved(e['position'], o)
             ents.append(e)
         room = next(e for e in ents if e['type'] == 'room')
+        room['params'] = dict({'name': NAMES[name]}, **room['params'])
         room_ids.append(room['id'])
         for pid, p in play.get('paths', {}).items():
             paths[pid] = dict(p, points=[moved(q, o) for q in p['points']])

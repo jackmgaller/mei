@@ -214,6 +214,7 @@
       15.625
      ],
      "params": {
+      "name": "the_last_train",
       "entry": "r1_spawn",
       "exit": "r1_exit",
       "size": [
@@ -519,6 +520,7 @@
       16.0
      ],
      "params": {
+      "name": "the_ticket_gates",
       "entry": "r2_spawn",
       "exit": "r2_exit",
       "size": [
@@ -1030,6 +1032,7 @@
       16.0
      ],
      "params": {
+      "name": "the_passage",
       "entry": "r3_spawn",
       "exit": "r3_exit",
       "size": [
@@ -1330,6 +1333,7 @@
       16.0
      ],
      "params": {
+      "name": "the_lobby",
       "entry": "r4_spawn",
       "exit": "r4_exit",
       "size": [
@@ -1679,6 +1683,7 @@
       16.85
      ],
      "params": {
+      "name": "the_aquarium",
       "entry": "r5_spawn",
       "exit": "r5_exit",
       "size": [

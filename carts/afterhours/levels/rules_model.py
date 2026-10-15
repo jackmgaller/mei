@@ -9,6 +9,13 @@ Rules as of the level 1 changes (DESIGN.md, Decided, 2026-10-15), set by RULES b
   centre  caught only when a cone covers the thief's centre (Gate 1: any part of his footprint)
   doors   a stopped train's cars block cones except through their open doors' gaps (Gate 1: the
           whole car blocked)
+
+Stage 2's doors and keycards (afterhours.game.mochi, `door` and `keycard`; NOTES_B.md): a room
+is entered by a door (Sim's `door`: the door he comes in by, at its spawn), holding the run's
+cards (`held`) with the run's doors opened (`opened`). A card is picked up within 0.5 m of his
+centre; a shut staff door is a wall (solid, blocking) until he walks into it holding its colour;
+he goes through a door with `to` or `end` when his centre is in its box. Sim.left_by is the door
+he left by.
 """
 import json
 import math
@@ -159,8 +166,12 @@ class Train:
         return length / 2 - (length * (2 * (self.doors - 1 - k) + 1)) / (2 * self.doors)
 
 
+CARD_R = 0.5
+DOOR_REACH = 0.38      # THIEF_R + 0.08: a shut door opens before he touches it
+
+
 class Sim:
-    def __init__(self, play=None, world=None, room=None, override=None):
+    def __init__(self, play=None, world=None, room=None, override=None, door=None, held=(), opened=()):
         """play: a room's play file (dict or path); or world: a world recipe (path), with room the
         id of the room entity whose box selects the entities (default: every entity of the first
         cell)."""
@@ -206,9 +217,25 @@ class Sim:
                 self.segs += segs_of(b.corners())
         room = next(e for e in ents.values() if e['type'] == 'room')
         sp = ents[room['params']['entry']]
+        if door is not None:
+            sp = ents[ents[door]['params']['spawn']]
+        self.came_by = door
         self.spawn = (sp['position'][0], sp['position'][2], sp['params'].get('yaw', 0) * DEG)
-        ex = ents[room['params']['exit']]
-        self.exit = Box(ex['position'][0], ex['position'][2], ex['params']['size'][0], ex['params']['size'][2])
+        ex = ents.get(room['params'].get('exit'))
+        self.exit = None if ex is None else Box(ex['position'][0], ex['position'][2], ex['params']['size'][0], ex['params']['size'][2])
+        # stage 2: the doors (in entity order, A's door index) and the keycards
+        self.doors = []
+        for e in ents.values():
+            if e['type'] != 'door':
+                continue
+            p = e['params']
+            sz = p.get('size', [1.2, 2.2, 0.4])
+            self.doors.append(dict(id=e['id'], card=p.get('card', 'none'), to=p.get('to'), end=p.get('end', False),
+                                   box=Box(e['position'][0], e['position'][2], sz[0], sz[2], yaw=e.get('yaw', 0) * DEG)))
+        self.cards = [dict(id=e['id'], colour=e['params']['colour'], x=e['position'][0], z=e['position'][2])
+                      for e in ents.values() if e['type'] == 'keycard']
+        self.run_held, self.run_opened = set(held), set(opened)
+        self.base_segs = self.segs
         self.ntoys = room['params'].get('toys', 0)
         self.nbells = room['params'].get('bells', 0)
         self.spots = [Box(e['position'][0], e['position'][2], e['params']['size'][0], e['params']['size'][2])
@@ -240,8 +267,25 @@ class Sim:
             self.watch.append(d)
         self.reset()
 
+    # ---- stage 2's doors
+    def door_shut(self, d):
+        return d['card'] != 'none' and d['id'] not in self.opened
+
+    def doors_update(self):
+        """The shut doors into the wall map (solid and blocking)."""
+        self.shut = [d['box'] for d in self.doors if self.door_shut(d)]
+        self.segs = list(self.base_segs)
+        for b in self.shut:
+            self.segs += segs_of(b.corners())
+
     # ---- state
     def reset(self):
+        self.held = set(self.run_held)        # the room as it was when he came in
+        self.opened = set(self.run_opened)
+        self.cards_here = [c for c in self.cards if c['colour'] not in self.run_held]
+        self.taken = set()
+        self.left_by = None
+        self.doors_update()
         x, z, h = self.spawn
         self.th = dict(x=x, z=z, head=h, hidden=False, toys=self.ntoys, bells=self.nbells, tool='toy' if self.ntoys else 'bell',
                        car=None)
@@ -336,6 +380,25 @@ class Sim:
                     e = cars[-1]
                     if e['whole']: self.dyn_boxes.append(tr.car_box(e, -e['len'] / 2, -e['len'] / 2 + SHELL, -hw, hw))
 
+    def keys_update(self):
+        """A's keys_update(), after the thief's move: cards (strictly within CARD_R of his centre),
+        then shut doors of a colour he holds that his centre comes strictly within DOOR_REACH of:
+        open from this tick (cones too), passable from the next."""
+        th = self.th
+        for c in self.cards_here:
+            if c['id'] not in self.taken and (th['x'] - c['x']) ** 2 + (th['z'] - c['z']) ** 2 < CARD_R * CARD_R:
+                self.taken.add(c['id'])
+                self.held.add(c['colour'])
+        opened = False
+        for d in self.doors:
+            if self.door_shut(d) and d['card'] in self.held and d['box'].push(th['x'], th['z'], DOOR_REACH)[2]:
+                self.opened.add(d['id'])
+                if d['to']:
+                    self.opened.add(d['to'])
+                opened = True
+        if opened:
+            self.doors_update()
+
     def door_passage(self, x, z):
         for tr, st in zip(self.trains, self.tstate):
             if not st['open']: continue
@@ -369,6 +432,9 @@ class Sim:
                 if b.solid and not (b.edge and through):
                     x, z, h = b.push(x, z, r)
                     hit |= h
+            for b in self.shut:
+                x, z, h = b.push(x, z, r)
+                hit |= h
             for b in self.dyn_boxes:
                 x, z, h = b.push(x, z, r)
                 hit |= h
@@ -396,7 +462,13 @@ class Sim:
                 why = ('touched', d['id']); break
         if why is None and th['car'] is not None and self.tstate[th['car']]['closing']:
             why = ('doors', th['car'])
-        cleared = why is None and self.exit.contains(th['x'], th['z'])
+        cleared = why is None and self.exit is not None and self.exit.contains(th['x'], th['z'])
+        if why is None and not cleared:
+            for d in self.doors:
+                if (d['to'] or d['end']) and not self.door_shut(d) and d['box'].contains(th['x'], th['z']):
+                    cleared = True
+                    self.left_by = d['id']
+                    break
         self.clock += 1
         return why, cleared
 
@@ -431,6 +503,7 @@ class Sim:
             th['head'] = heading_to(mx, mz)
             th['x'], th['z'] = self.solid_push(th['x'] + mx * step, th['z'] + mz * step, THIEF_R)
         th['car'] = self.train_inside(th['x'], th['z'])
+        self.keys_update()
         if running: self.noises.append((th['x'], th['z'], 0.0, None))
         for i, (fx, fz, fr, fn) in enumerate(self.frag):
             if self.frag_down[i]: continue

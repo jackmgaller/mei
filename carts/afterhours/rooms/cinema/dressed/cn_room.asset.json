@@ -1,0 +1,2405 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "cn_room",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 2000
+ },
+ "materials": {
+  "cut": {
+   "color": "#76849e",
+   "class": "emissive"
+  },
+  "section": {
+   "color": "#4a5468",
+   "texture": {
+    "image": "art/cn_section.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_0_0": {
+   "color": "#6a2a30",
+   "texture": {
+    "image": "art/cn_floor_0_0.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_0_1": {
+   "color": "#6a2a30",
+   "texture": {
+    "image": "art/cn_floor_0_1.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_1_0": {
+   "color": "#6a2a30",
+   "texture": {
+    "image": "art/cn_floor_1_0.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_1_1": {
+   "color": "#6a2a30",
+   "texture": {
+    "image": "art/cn_floor_1_1.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "back_0": {
+   "color": "#4a3036",
+   "texture": {
+    "image": "art/cn_back_0.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "back_1": {
+   "color": "#4a3036",
+   "texture": {
+    "image": "art/cn_back_1.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "wall_in": {
+   "color": "#6a5a64"
+  },
+  "end": {
+   "color": "#7a6470"
+  },
+  "reveal": {
+   "color": "#8a7a84"
+  },
+  "lintel": {
+   "color": "#5a4a54"
+  },
+  "door_glow": {
+   "color": "#d8e8f0",
+   "class": "emissive"
+  },
+  "threshold": {
+   "color": "#7a8a9a",
+   "class": "emissive"
+  },
+  "beyond_wall": {
+   "color": "#4a5a70",
+   "class": "emissive"
+  },
+  "beyond": {
+   "color": "#6a7a8a",
+   "class": "emissive"
+  },
+  "riser": {
+   "color": "#3a4450",
+   "class": "emissive"
+  },
+  "velvet": {
+   "color": "#a83c4c"
+  },
+  "velvet_dark": {
+   "color": "#8a3040"
+  },
+  "back_top": {
+   "color": "#b03848",
+   "texture": {
+    "image": "art/cn_back_top.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "seat_top": {
+   "color": "#963040",
+   "texture": {
+    "image": "art/cn_seat_top.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "screen_top": {
+   "color": "#8a96b0",
+   "texture": {
+    "image": "art/cn_screen_top.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "screen_face": {
+   "color": "#c8d4ff",
+   "texture": {
+    "image": "art/cn_screen_face.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "masking": {
+   "color": "#202026"
+  },
+  "curtain": {
+   "color": "#a8303e"
+  },
+  "curtain_top": {
+   "color": "#7a5060",
+   "texture": {
+    "image": "art/cn_curtain_top.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "speaker": {
+   "color": "#3a3c44"
+  },
+  "frame": {
+   "color": "#4a4a50"
+  },
+  "exit": {
+   "color": "#30a860",
+   "texture": {
+    "image": "art/cn_exit.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "sconce": {
+   "color": "#ffc488",
+   "class": "emissive"
+  },
+  "brass": {
+   "color": "#b09060"
+  },
+  "port": {
+   "color": "#e8ecff",
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "floor_0_0",
+   "op": "box",
+   "size": [
+    11.0,
+    0.05,
+    4.5
+   ],
+   "material": "floor_0_0",
+   "transform": {
+    "translate": [
+     -5.5,
+     -0.025,
+     -2.25
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "floor_0_1",
+   "op": "box",
+   "size": [
+    11.0,
+    0.05,
+    4.5
+   ],
+   "material": "floor_0_1",
+   "transform": {
+    "translate": [
+     -5.5,
+     -0.025,
+     2.25
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "floor_1_0",
+   "op": "box",
+   "size": [
+    11.0,
+    0.05,
+    4.5
+   ],
+   "material": "floor_1_0",
+   "transform": {
+    "translate": [
+     5.5,
+     -0.025,
+     -2.25
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "floor_1_1",
+   "op": "box",
+   "size": [
+    11.0,
+    0.05,
+    4.5
+   ],
+   "material": "floor_1_1",
+   "transform": {
+    "translate": [
+     5.5,
+     -0.025,
+     2.25
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "mesh",
+   "material": "cut",
+   "vertices": [
+    [
+     -11.25,
+     1.0,
+     -4.75
+    ],
+    [
+     11.25,
+     1.0,
+     -4.75
+    ],
+    [
+     11.25,
+     -0.4,
+     -4.75
+    ],
+    [
+     -11.25,
+     -0.4,
+     -4.75
+    ],
+    [
+     -11.25,
+     -0.4,
+     -4.5
+    ],
+    [
+     11.25,
+     -0.4,
+     -4.5
+    ],
+    [
+     11.25,
+     1.0,
+     -4.5
+    ],
+    [
+     -11.25,
+     1.0,
+     -4.5
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     2,
+     1,
+     6,
+     5
+    ],
+    [
+     1,
+     0,
+     7,
+     6
+    ],
+    [
+     0,
+     3,
+     4,
+     7
+    ]
+   ],
+   "face_materials": [
+    "section",
+    "wall_in",
+    "cut",
+    "cut",
+    "cut"
+   ]
+  },
+  {
+   "id": "back_0_wall",
+   "op": "box",
+   "size": [
+    11.25,
+    2.42,
+    0.25
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -5.625,
+     1.19,
+     4.625
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "back": "back_0",
+    "top": "cut",
+    "front": "cut",
+    "left": "cut"
+   }
+  },
+  {
+   "id": "back_1_wall",
+   "op": "box",
+   "size": [
+    11.25,
+    2.42,
+    0.25
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     5.625,
+     1.19,
+     4.625
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "back": "back_1",
+    "top": "cut",
+    "front": "cut",
+    "right": "cut"
+   }
+  },
+  {
+   "id": "end_w_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    3.9
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -11.125,
+     1.0,
+     -2.55
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut",
+    "left": "cut",
+    "right": "end",
+    "front": "reveal"
+   }
+  },
+  {
+   "id": "end_w_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    3.9
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -11.125,
+     1.0,
+     2.55
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "left": "cut",
+    "right": "end",
+    "back": "reveal"
+   }
+  },
+  {
+   "id": "end_w_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -11.125,
+     2.245,
+     0.0
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_glow",
+    "top": "cut",
+    "left": "cut",
+    "right": "lintel"
+   }
+  },
+  {
+   "id": "end_w_sill_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.38,
+    1.2
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     -11.125,
+     -0.21,
+     0.0
+    ]
+   },
+   "open": [
+    "top",
+    "front",
+    "back",
+    "right"
+   ]
+  },
+  {
+   "id": "end_e_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    7.1
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     11.125,
+     1.0,
+     -0.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut",
+    "right": "cut",
+    "left": "end",
+    "front": "reveal"
+   }
+  },
+  {
+   "id": "end_e_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    0.7
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     11.125,
+     1.0,
+     4.15
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "right": "cut",
+    "left": "end",
+    "back": "reveal"
+   }
+  },
+  {
+   "id": "end_e_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     11.125,
+     2.245,
+     3.2
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_glow",
+    "top": "cut",
+    "right": "cut",
+    "left": "lintel"
+   }
+  },
+  {
+   "id": "end_e_sill_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.38,
+    1.2
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     11.125,
+     -0.21,
+     3.2
+    ]
+   },
+   "open": [
+    "top",
+    "front",
+    "back",
+    "left"
+   ]
+  },
+  {
+   "id": "beyond_screen",
+   "op": "mesh",
+   "material": "threshold",
+   "vertices": [
+    [
+     -12.65,
+     0.0,
+     0.6
+    ],
+    [
+     -11.0,
+     0.0,
+     0.6
+    ],
+    [
+     -11.0,
+     0.0,
+     -0.6
+    ],
+    [
+     -12.65,
+     0.0,
+     -0.6
+    ],
+    [
+     -12.65,
+     -0.4,
+     -0.6
+    ],
+    [
+     -11.25,
+     -0.4,
+     -0.6
+    ],
+    [
+     -11.25,
+     2.4,
+     -0.6
+    ],
+    [
+     -12.65,
+     2.4,
+     -0.6
+    ],
+    [
+     -12.65,
+     2.4,
+     0.6
+    ],
+    [
+     -11.25,
+     2.4,
+     0.6
+    ],
+    [
+     -11.25,
+     -0.4,
+     0.6
+    ],
+    [
+     -12.65,
+     -0.4,
+     0.6
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     8,
+     9,
+     10,
+     11
+    ]
+   ],
+   "face_materials": [
+    "threshold",
+    "beyond_wall",
+    "beyond_wall"
+   ]
+  },
+  {
+   "id": "beyond_corridor",
+   "op": "mesh",
+   "material": "threshold",
+   "vertices": [
+    [
+     11.0,
+     0.0,
+     3.8
+    ],
+    [
+     12.65,
+     0.0,
+     3.8
+    ],
+    [
+     12.65,
+     0.0,
+     2.6
+    ],
+    [
+     11.0,
+     0.0,
+     2.6
+    ],
+    [
+     11.25,
+     -0.4,
+     2.6
+    ],
+    [
+     12.65,
+     -0.4,
+     2.6
+    ],
+    [
+     12.65,
+     2.4,
+     2.6
+    ],
+    [
+     11.25,
+     2.4,
+     2.6
+    ],
+    [
+     11.25,
+     2.4,
+     3.8
+    ],
+    [
+     12.65,
+     2.4,
+     3.8
+    ],
+    [
+     12.65,
+     -0.4,
+     3.8
+    ],
+    [
+     11.25,
+     -0.4,
+     3.8
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     8,
+     9,
+     10,
+     11
+    ]
+   ],
+   "face_materials": [
+    "threshold",
+    "beyond_wall",
+    "beyond_wall"
+   ]
+  },
+  {
+   "id": "screen",
+   "op": "box",
+   "size": [
+    0.3,
+    1.02,
+    6.0
+   ],
+   "material": "masking",
+   "transform": {
+    "translate": [
+     -9.15,
+     0.49,
+     0.2
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "screen_top",
+    "right": "screen_face"
+   }
+  },
+  {
+   "id": "curtain_0",
+   "op": "box",
+   "size": [
+    0.56,
+    1.02,
+    0.4
+   ],
+   "material": "curtain",
+   "transform": {
+    "translate": [
+     -9.14,
+     0.49,
+     -3.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "curtain_top"
+   }
+  },
+  {
+   "id": "curtain_1",
+   "op": "box",
+   "size": [
+    0.56,
+    1.02,
+    0.4
+   ],
+   "material": "curtain",
+   "transform": {
+    "translate": [
+     -9.14,
+     0.49,
+     3.4
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "curtain_top"
+   }
+  },
+  {
+   "id": "speaker_0",
+   "op": "box",
+   "size": [
+    0.32,
+    1.02,
+    1.2
+   ],
+   "material": "speaker",
+   "transform": {
+    "translate": [
+     -9.46,
+     0.49,
+     -1.8
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "speaker_1",
+   "op": "box",
+   "size": [
+    0.32,
+    1.02,
+    1.2
+   ],
+   "material": "speaker",
+   "transform": {
+    "translate": [
+     -9.46,
+     0.49,
+     2.2
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "row_0_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     -6.25,
+     0.44,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_0_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -6.59,
+     0.38,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_1_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     -6.25,
+     0.44,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_1_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -6.59,
+     0.38,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_2_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     -5.4,
+     0.44,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_2_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -5.74,
+     0.38,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_3_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     -5.4,
+     0.44,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_3_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -5.74,
+     0.38,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_4_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     -4.55,
+     0.44,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_4_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -4.89,
+     0.38,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_5_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     -4.55,
+     0.44,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_5_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -4.89,
+     0.38,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_6_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     -3.7,
+     0.44,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_6_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -4.04,
+     0.38,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_7_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     -3.7,
+     0.44,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_7_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -4.04,
+     0.38,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_8_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     -1.45,
+     0.44,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_8_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -1.79,
+     0.38,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_9_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     -1.45,
+     0.44,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_9_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -1.79,
+     0.38,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_10_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     -0.6,
+     0.44,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_10_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -0.94,
+     0.38,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_11_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     -0.6,
+     0.44,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_11_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -0.94,
+     0.38,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_12_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     0.25,
+     0.44,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_12_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -0.09,
+     0.38,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_13_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     0.25,
+     0.44,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_13_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     -0.09,
+     0.38,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_14_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     1.1,
+     0.44,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_14_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     0.76,
+     0.38,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_15_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     1.1,
+     0.44,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_15_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     0.76,
+     0.38,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_16_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     3.35,
+     0.44,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_16_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     3.01,
+     0.38,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_17_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     3.35,
+     0.44,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_17_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     3.01,
+     0.38,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_18_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     4.2,
+     0.44,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_18_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     3.86,
+     0.38,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_19_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     4.2,
+     0.44,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_19_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     3.86,
+     0.38,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_20_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     5.05,
+     0.44,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_20_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     4.71,
+     0.38,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_21_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     5.05,
+     0.44,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_21_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     4.71,
+     0.38,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_22_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     5.9,
+     0.44,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_22_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     5.56,
+     0.38,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "row_23_back",
+   "op": "box",
+   "size": [
+    0.12,
+    0.92,
+    2.3
+   ],
+   "material": "velvet",
+   "transform": {
+    "translate": [
+     5.9,
+     0.44,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "back_top"
+   }
+  },
+  {
+   "id": "row_23_seat",
+   "op": "box",
+   "size": [
+    0.58,
+    0.16,
+    2.24
+   ],
+   "material": "velvet_dark",
+   "transform": {
+    "translate": [
+     5.56,
+     0.38,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "seat_top"
+   }
+  },
+  {
+   "id": "sconce_0",
+   "op": "box",
+   "size": [
+    0.24,
+    0.16,
+    0.12
+   ],
+   "material": "brass",
+   "transform": {
+    "translate": [
+     -6.5,
+     1.58,
+     4.46
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "top": "sconce",
+    "back": "sconce"
+   }
+  },
+  {
+   "id": "sconce_1",
+   "op": "box",
+   "size": [
+    0.24,
+    0.16,
+    0.12
+   ],
+   "material": "brass",
+   "transform": {
+    "translate": [
+     -2.0,
+     1.58,
+     4.46
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "top": "sconce",
+    "back": "sconce"
+   }
+  },
+  {
+   "id": "sconce_2",
+   "op": "box",
+   "size": [
+    0.24,
+    0.16,
+    0.12
+   ],
+   "material": "brass",
+   "transform": {
+    "translate": [
+     3.0,
+     1.58,
+     4.46
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "top": "sconce",
+    "back": "sconce"
+   }
+  },
+  {
+   "id": "sconce_3",
+   "op": "box",
+   "size": [
+    0.24,
+    0.16,
+    0.12
+   ],
+   "material": "brass",
+   "transform": {
+    "translate": [
+     7.8,
+     1.58,
+     4.46
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "top": "sconce",
+    "back": "sconce"
+   }
+  },
+  {
+   "id": "exit_0",
+   "op": "box",
+   "size": [
+    0.5,
+    0.26,
+    0.08
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     -10.25,
+     2.11,
+     4.48
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "exit"
+   }
+  },
+  {
+   "id": "exit_1",
+   "op": "box",
+   "size": [
+    0.5,
+    0.26,
+    0.08
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     10.3,
+     2.11,
+     4.48
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "exit"
+   }
+  },
+  {
+   "id": "port",
+   "op": "box",
+   "size": [
+    0.06,
+    0.24,
+    0.6
+   ],
+   "material": "port",
+   "transform": {
+    "translate": [
+     10.99,
+     2.27,
+     0.0
+    ]
+   },
+   "open": [
+    "right"
+   ]
+  }
+ ],
+ "lighting": {
+  "direction": [
+   -0.25,
+   0.7,
+   -0.65
+  ],
+  "ambient": 0.07,
+  "diffuse": 0.18,
+  "lights": [
+   {
+    "id": "screen",
+    "at": [
+     -8.7,
+     1.5,
+     0.2
+    ],
+    "color": "#b4c2ff",
+    "intensity": 2.6,
+    "range": 9.5
+   },
+   {
+    "id": "screen_near",
+    "at": [
+     -8.8,
+     0.9,
+     0.2
+    ],
+    "color": "#c4ceff",
+    "intensity": 1.2,
+    "range": 3.4
+   },
+   {
+    "id": "door_e",
+    "at": [
+     11.95,
+     1.6,
+     3.2
+    ],
+    "color": "#e0f0f0",
+    "intensity": 2.2,
+    "range": 3.4
+   },
+   {
+    "id": "door_w",
+    "at": [
+     -11.95,
+     1.4,
+     0.0
+    ],
+    "color": "#5aa4ff",
+    "intensity": 1.8,
+    "range": 2.8
+   },
+   {
+    "id": "house_0",
+    "at": [
+     -8.0,
+     2.6,
+     -3.6
+    ],
+    "color": "#ffd6a0",
+    "intensity": 0.9,
+    "range": 3.8
+   },
+   {
+    "id": "house_1",
+    "at": [
+     -8.0,
+     2.6,
+     3.7
+    ],
+    "color": "#ffd6a0",
+    "intensity": 0.9,
+    "range": 3.8
+   },
+   {
+    "id": "house_2",
+    "at": [
+     7.6,
+     2.6,
+     -3.6
+    ],
+    "color": "#ffd6a0",
+    "intensity": 0.9,
+    "range": 3.8
+   },
+   {
+    "id": "house_3",
+    "at": [
+     7.6,
+     2.6,
+     3.7
+    ],
+    "color": "#ffd6a0",
+    "intensity": 0.9,
+    "range": 3.8
+   },
+   {
+    "id": "house_4",
+    "at": [
+     -1.0,
+     2.6,
+     3.9
+    ],
+    "color": "#ffd6a0",
+    "intensity": 0.9,
+    "range": 3.8
+   },
+   {
+    "id": "house_5",
+    "at": [
+     4.0,
+     2.6,
+     3.9
+    ],
+    "color": "#ffd6a0",
+    "intensity": 0.9,
+    "range": 3.8
+   },
+   {
+    "id": "sconce_0",
+    "at": [
+     -6.5,
+     1.7,
+     4.3
+    ],
+    "color": "#ffae6a",
+    "intensity": 0.9,
+    "range": 2.7
+   },
+   {
+    "id": "sconce_1",
+    "at": [
+     -2.0,
+     1.7,
+     4.3
+    ],
+    "color": "#ffae6a",
+    "intensity": 0.9,
+    "range": 2.7
+   },
+   {
+    "id": "sconce_2",
+    "at": [
+     3.0,
+     1.7,
+     4.3
+    ],
+    "color": "#ffae6a",
+    "intensity": 0.9,
+    "range": 2.7
+   },
+   {
+    "id": "sconce_3",
+    "at": [
+     7.8,
+     1.7,
+     4.3
+    ],
+    "color": "#ffae6a",
+    "intensity": 0.9,
+    "range": 2.7
+   }
+  ],
+  "refine": {
+   "tolerance": 22,
+   "max_added": 260
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

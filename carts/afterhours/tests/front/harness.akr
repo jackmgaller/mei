@@ -14,17 +14,29 @@
 //     cannot be played. A blank card gives a fresh save.
 // 62, 63: the save round trip: 62 writes a known save; 63, booted on the same card, reads it.
 // 64: skipping a transition with A: control at once, the clock at 0, the next room's state right.
-// 65: stage 2 (Gate 1's platform, one room, its world a single region with no stand-ins: the model
+// 66: stage 2 (level2: rooms of doors and keycards) from the select with B's eight legs: seven
+//     transitions, each into the room the way out leads to (2 -> 3 -> 2 -> 1 -> 2 -> 3 -> 4 in
+//     B's numbering from 0: back into lower rooms too), each handing over at clock 0 at the door
+//     he comes in by; the end, the save; every frame within the budgets (release build).
+// 65: the platform stage (Gate 1's platform, the last stage; one room, its world a single region with no stand-ins: the model
 //     draws its placements), unlocked by the save, played with B's tape; its end and its save.
 import "../../dr_game.akr"
 import "../../dr_world.akr"
 import "../tapes/level1_solution.akr"
 import "../tapes/platform_solution.akr"
+import "../tapes/level2_solution.akr"
 
 const L1_TAPES: [5]*Span = [SOLUTION_L1_ARRIVAL, SOLUTION_L1_GATES, SOLUTION_L1_PASSAGE,
                             SOLUTION_L1_LOBBY, SOLUTION_L1_AQUARIUM]
 const L1_LENS: [5]s32 = [len(SOLUTION_L1_ARRIVAL), len(SOLUTION_L1_GATES), len(SOLUTION_L1_PASSAGE),
                          len(SOLUTION_L1_LOBBY), len(SOLUTION_L1_AQUARIUM)]
+const S2_TAPES: [8]*Span = [SOLUTION_S2_LEG_0, SOLUTION_S2_LEG_1, SOLUTION_S2_LEG_2, SOLUTION_S2_LEG_3,
+                            SOLUTION_S2_LEG_4, SOLUTION_S2_LEG_5, SOLUTION_S2_LEG_6, SOLUTION_S2_LEG_7]
+const S2_LENS: [8]s32 = [len(SOLUTION_S2_LEG_0), len(SOLUTION_S2_LEG_1), len(SOLUTION_S2_LEG_2),
+                         len(SOLUTION_S2_LEG_3), len(SOLUTION_S2_LEG_4), len(SOLUTION_S2_LEG_5),
+                         len(SOLUTION_S2_LEG_6), len(SOLUTION_S2_LEG_7)]
+var leg: s32                   // stage 2: the leg being played (one a room visit)
+var legs_ok: bool = true       // each leg played in the room B's tapes say
 const CPU_BUDGET_C = 1000000
 const GPU_BUDGET_C = 2000000
 
@@ -57,7 +69,8 @@ fn test_init() {
         62 => { name = "the save round trip: writing" }
         63 => { name = "the save round trip: reading it back at boot" }
         64 => { name = "skipping a transition" }
-        65 => { name = "stage 2 (the platform, one room): unlocked by the save, played, its end, its save" }
+        65 => { name = "the platform stage (one room): unlocked by the save, played, its end, its save" }
+        66 => { name = "stage 2, rooms of doors: seven transitions door to door, back into lower rooms and on" }
         else => {}
     }
 }
@@ -84,7 +97,12 @@ fn input_pad(f: s32) -> u32 {
         pad_v = s.pad as u32
         stick_v = vec2(fixed(s.sx as s32) / 127, fixed(s.sy as s32) / 127)
     }
-    if mode == Mode.Play && phase == Phase.Play && stage_of() == 1 {
+    if mode == Mode.Play && phase == Phase.Play && stage_of() == STAGE2 && leg < S2_LEGS {
+        let s = span_at(S2_TAPES[leg], S2_LENS[leg], clock)
+        pad_v = s.pad as u32
+        stick_v = vec2(fixed(s.sx as s32) / 127, fixed(s.sy as s32) / 127)
+    }
+    if mode == Mode.Play && phase == Phase.Play && stage_of() == PLATFORM_STAGE {
         let s = span_at(&SOLUTION_PLATFORM[0], len(SOLUTION_PLATFORM), clock)
         pad_v = s.pad as u32
         stick_v = vec2(fixed(s.sx as s32) / 127, fixed(s.sy as s32) / 127)
@@ -178,6 +196,10 @@ fn watch(f: s32) {
         println("")
         if !(clock == 0 && phase == Phase.Play && thief.x == room.spawn_x && thief.z == room.spawn_z) { handover_ok = false }
         if !tr_clock_ok { handover_ok = false }
+        if stage_of() == STAGE2 {
+            leg += 1
+            if leg >= S2_LEGS || run_room != S2_LEG_ROOM[leg] as s32 { legs_ok = false }
+        }
     }
     if caught_n > 0 {
         expect(false, "the tapes are never caught", fixed(caught_at))
@@ -193,6 +215,7 @@ fn scenario(f: s32) {
         63 => s_save_read(f)
         64 => s_skip(f)
         65 => s_stage2(f)
+        66 => s_doors(f)
         else => {}
     }
 }
@@ -241,6 +264,7 @@ fn s_stage(f: s32) {
         expect(st.best_total == total && st.best_restarts == 0, "its best total and restarts", fixed(st.best_total))
         for r in 0..5 { always(st.room_best[r] == room_time[r], "each room's best time", fixed(r)) }
         expect(stage_unlocked(1), "stage 2 unlocked", 0.0)
+        expect(streq(room_name(0, 0), "THE LAST TRAIN") && streq(room_name(0, 4), "THE AQUARIUM"), "the rooms' names from the world", 0.0)
         press_at(f + 60, A)
     }
     if t0 >= 0 && f == t0 + 40 {
@@ -365,28 +389,69 @@ fn s_skip(f: s32) {
 
 fn s_stage2(f: s32) {
     if f == 1 {
-        let _ = save_stage(0, 5000, 2, STAGE_N)       // stage 1 cleared: stage 2 open
+        // the stages before the platform cleared: it is open (the last stage: 2 today, 3 once
+        // level 2 is in dr_levels.akr)
+        for i in 0..PLATFORM_STAGE { let _ = save_stage(i, 5000, 2, STAGE_N) }
         press_at(20, START)
-        press_at(40, DOWN)
+        for i in 0..PLATFORM_STAGE { press_at(30 + i * 4, DOWN) }
         press_at(70, A)
     }
     if f == 60 {
-        expect(mode == Mode.Select && sel == 1 && shown == 1 && sec_n == 1, "stage 2 hovered: its one room's model", fixed(sec_n))
+        expect(mode == Mode.Select && sel == PLATFORM_STAGE && shown == PLATFORM_STAGE && sec_n == 1, "the platform hovered: its one room's model", fixed(sec_n))
         expect(sec_dimmed && GPU_FOG & 0xFFFFFF == SEC_NIGHT, "open, not a silhouette; not cleared: dimmed by the fog", 0.0)
     }
-    if f == 100 { expect(mode == Mode.Play && stage_of() == 1 && run_room == 0, "A: the platform, in play", 0.0) }
+    if f == 100 { expect(mode == Mode.Play && stage_of() == PLATFORM_STAGE && run_room == 0, "A: the platform, in play", 0.0) }
     if mode == Mode.End && t0 < 0 {
         t0 = f
         expect(trans_n == 0 && run_length == 1, "one room, no transition", fixed(trans_n))
-        let st = &save.stages[1]
-        expect(stage_cleared(1) && st.rooms == 1 && st.best_total == total && st.room_best[0] == room_time[0], "the save: stage 2 cleared, its time", fixed(total))
+        let st = &save.stages[PLATFORM_STAGE]
+        expect(stage_cleared(PLATFORM_STAGE) && st.rooms == 1 && st.best_total == total && st.room_best[0] == room_time[0], "the save: stage 2 cleared, its time", fixed(total))
         press_at(f + 40, A)
     }
     if t0 >= 0 && f == t0 + 50 {
-        expect(mode == Mode.Select && sel == 1 && room_lit(0) && !sec_dimmed && GPU_FOG & 0x1000000 == 0, "back at the select, stage 2 hovered, its room lit", fixed(sel))
+        expect(mode == Mode.Select && sel == PLATFORM_STAGE && room_lit(0) && !sec_dimmed && GPU_FOG & 0x1000000 == 0, "back at the select, stage 2 hovered, its room lit", fixed(sel))
         budget_ok(Mode.Select, "the select's worst frame within the budgets")
         budget_ok(Mode.End, "the end's worst frame within the budgets")
         done()
     }
     if f > 3000 { expect(false, "the stage did not end", fixed(clock)) }
+}
+
+// ---- 66
+
+fn s_doors(f: s32) {
+    if f == 1 {
+        let _ = save_stage(0, 5000, 2, STAGE_N)       // stage 1 cleared: stage 2 open
+        press_at(20, START)
+        press_at(30, DOWN)
+        press_at(60, A)
+    }
+    if f == 50 {
+        expect(mode == Mode.Select && sel == STAGE2 && shown == STAGE2 && sec_n == 5, "stage 2 hovered: its five rooms' model", fixed(sec_n))
+        var doors = 0
+        for k in 0..sec_n { doors += sec[k].ndoors }
+        expect(doors >= 8 && !sec[0].line, "rooms of doors, read with their doors", fixed(doors))
+    }
+    if f == 90 { expect(mode == Mode.Play && stage_of() == STAGE2 && run_room == S2_LEG_ROOM[0] as s32, "A: stage 2's first room, in play", 0.0) }
+    if mode == Mode.End && t0 < 0 {
+        t0 = f
+        print("END frame ")
+        print_int(f)
+        println("")
+        expect(trans_n == 7 && trans_len == TR_N, "seven transitions, 90 frames each", fixed(trans_n))
+        expect(legs_ok && leg == S2_LEGS - 1, "each into the room the way out leads to, lower ones too", fixed(leg))
+        expect(handover_ok, "each hands over at the room's clock 0, the thief at the door he came in by", 0.0)
+        let st = &save.stages[STAGE2]
+        expect(stage_cleared(STAGE2) && st.rooms == 0x1F && st.best_total == total, "the save: stage 2 cleared, its five rooms, its total", fixed(total))
+        expect(stage_unlocked(PLATFORM_STAGE), "the platform stage unlocked", 0.0)
+    }
+    if t0 >= 0 && f == t0 + 40 {
+        expect(dropped == 0, "no frame dropped", fixed(dropped))
+        budget_ok(Mode.Transition, "the transitions' worst frame within the budgets")
+        budget_ok(Mode.Select, "the select's worst frame within the budgets")
+        budget_ok(Mode.End, "the end's worst frame within the budgets")
+        print_worst("play", Mode.Play)
+        done()
+    }
+    if f > 12500 { expect(false, "the stage did not end", fixed(leg)) }
 }

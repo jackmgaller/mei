@@ -327,7 +327,7 @@ def world():
 
     ents = []
     ents.append({'id': 'room', 'type': 'room', 'position': [r((xo0 + xo1) / 2), 0, r((zo0 + zc + WALL_T) / 2)],
-                 'params': {'entry': 'spawn', 'exit': 'staff_door', 'first': True, 'toys': TOYS, 'bells': BELLS,
+                 'params': {'name': 'the_platform', 'entry': 'spawn', 'exit': 'staff_door', 'first': True, 'toys': TOYS, 'bells': BELLS,
                             'size': [r(xo1 - xo0), H, r(zc + WALL_T - zo0)]}})
     ents.append({'id': 'spawn', 'type': 'spawn', 'position': [SPAWN[0], 0, SPAWN[1]], 'params': {'yaw': SPAWN[2]}})
     ents.append({'id': 'staff_door', 'type': 'exit',

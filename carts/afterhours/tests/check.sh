@@ -6,7 +6,10 @@
 # thief and back at the door, the same tape twice gives the same room on every tick, the trains'
 # cone blocking lines up with where they are drawn, hearing, the tools, hiding, a train's doors,
 # sight's walls, fragile things, the exit and the ghost; on B's platform, the catch, the same
-# tape twice and the trains again (12, 13, 16), and the worst frame's budget (31). A scenario
+# tape twice and the trains again (12, 13, 16), the worst frame's budget (31); stage 2's rules on A's
+# stand-in rooms of doors: keycards, staff doors, re-entry, the run's state, caught at the entry
+# door, and the same through a front end's transitions (60-62); B's level2 tapes, leg by leg, as
+# one run (63) and through a front end's transitions (64). A scenario
 # passes when it ends with its DONE line; stops at the first failure. MEIC, RUN and WORLDS are
 # as for tests/run.sh (make test-carts passes the build directory's).
 #
@@ -62,7 +65,13 @@ run 13 3100
 run 16 2402
 run 17 700
 run 31 2001
+run 60 3000
+run 61 3600
+run 62 3600
+run 63 10600
+run 64 11400
 grep -h '^BUDGET' "$O"/s31.log
+grep -h '^RUN2' "$O"/s63.log
 echo "all $n After Hours scenarios passed"
 # E's front end has its own harness (it replaces the hooks this harness replaces too)
 if [ -x "$HERE/front/check.sh" ]; then "$HERE/front/check.sh" || exit 1; fi

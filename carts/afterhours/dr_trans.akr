@@ -33,6 +33,8 @@ var tr_est: vec3               // where the next room's will be, from the sectio
 var tr_dpk: fixed              // the farthest distance
 var tr_origin: vec3            // what the transition's frames are drawn around
 var tr_lit: u32                // the rooms lit (cleared on this run)
+var tr_out: vec3               // where he left the room (world, on its floor)
+var tr_in: vec3                // where he comes into the next (its door's spawn)
 var tr_skipped: bool
 // measured, for the checks
 var tr_frames: s32             // frames of the last transition, from the exit to control
@@ -43,18 +45,25 @@ fn smooth(a: fixed, b: fixed, x: fixed) -> fixed {
     return t * t * (3.0 - 2.0 * t)
 }
 
-// The thief went through room `from`'s exit and the stage has a next room (Ev.RoomExit).
+// The thief went through a way out of room `from` and it leads to another room (Ev.RoomExit):
+// A's exit_to_room (from + 1 in a stage of rooms in a line; any room, lower ones too, in a stage
+// of doors), entered by its door exit_to_door.
 fn trans_begin(from: s32) {
     tr_t = 0
     tr_from = from
-    tr_to = from + 1
+    tr_to = exit_to_room
+    if tr_to < 0 { tr_to = from + 1 }
     tr_ready = false
     tr_skipped = false
     tr_tex = 0
     tr_clock_ok = true
     section_read()
-    let a = &sec[min(from, sec_n - 1)]
-    let b = &sec[min(from + 1, sec_n - 1)]
+    tr_from = min(tr_from, sec_n - 1)
+    tr_to = min(tr_to, sec_n - 1)
+    let a = &sec[tr_from]
+    let b = &sec[tr_to]
+    tr_out = vec3(thief.x, room.floor, thief.z)
+    tr_in = room_door_spawn(tr_to, exit_to_door)
     tr_region = b.region
     tr_ntex = 0
     if tr_region >= 0 { tr_ntex = wp_region(tr_region).texture_count as s32 }
@@ -64,7 +73,7 @@ fn trans_begin(from: s32) {
     var ex = b.c.x
     let lo = b.c.x - b.sx / 2 + HALF_VIEW
     let hi = b.c.x + b.sx / 2 - HALF_VIEW
-    if lo <= hi { ex = clamp(b.spawn.x, lo, hi) }
+    if lo <= hi { ex = clamp(tr_in.x, lo, hi) }
     let zoff = (cam_tz_lo + cam_tz_hi) / 2 - room.cz
     tr_est = vec3(ex, b.c.y + CAM_TARGET_Y, b.c.z + zoff)
     // far enough back to hold both rooms, across and up
@@ -73,9 +82,8 @@ fn trans_begin(from: s32) {
     tr_dpk = clamp(max(w / (TR_TAN_PEAK * 8 / 3), h / (TR_TAN_PEAK * 2)), 50.0, 140.0)
     tr_origin = vec3(fixed(((a.c.x + b.c.x) / 2) as s32), fixed(((a.c.y + b.c.y) / 2) as s32),
                      fixed(((a.c.z + b.c.z) / 2) as s32))
-    // the rooms cleared on this run are lit, the ones ahead dark
-    tr_lit = 0
-    for k in 0..from + 1 { tr_lit = tr_lit | ((1 as u32) << k as u32) }
+    // the rooms left by a way out on this run are lit (A's run_cleared), the others dark
+    tr_lit = run_cleared | ((1 as u32) << tr_from as u32)
     section_lights(tr_lit)
     au_transition()
 }
@@ -156,8 +164,8 @@ fn trans_draw() {
     // the way through the building, from the exit to the next door
     let p = smooth(0.12, 0.62, u)
     if p > 0.0 {
-        let a = sec_screen(tr_from, sec[tr_from].exit)
-        let b = sec_screen(tr_to, sec[tr_to].spawn)
+        let a = sec_screen(tr_from, tr_out)
+        let b = sec_screen(tr_to, tr_in)
         if a.z >= 0 && b.z >= 0 {
             let e = ivec4(a.x + (fixed(b.x - a.x) * p) as s32, a.y + (fixed(b.y - a.y) * p) as s32, 1, 0)
             sec_dots(a, e, SEC_ROUTE)

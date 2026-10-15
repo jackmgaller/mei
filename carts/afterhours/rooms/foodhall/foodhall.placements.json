@@ -1,0 +1,27 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "foodhall",
+ "placements": [
+  {
+   "id": "fh_hall",
+   "asset": "fh_hall",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "fh_hall_col"
+  },
+  {
+   "id": "fh_cases",
+   "asset": "fh_cases",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

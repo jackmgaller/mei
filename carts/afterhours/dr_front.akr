@@ -69,7 +69,14 @@ fn fe_draw() -> bool {
 
 fn fe_event(e: Ev, a: s32) {
     if e == Ev.RoomExit {
-        let _ = save_room(stage_of(), a, room_time[a])
+        // a room left by a way out: cleared. In a stage of rooms in a line its time is its
+        // clearing attempt's; in a stage of doors room_time sums every visit, so its best is
+        // saved at the stage's end (end_begin())
+        if exit_door == EXIT_LINE || exit_door < 0 {
+            let _ = save_room(stage_of(), a, room_time[a])
+        } else {
+            save_room_cleared(stage_of(), a)
+        }
         if room_load_more() && fe_owns_transition() { trans_begin(a) }
     } else if e == Ev.StageClear {
         end_begin()

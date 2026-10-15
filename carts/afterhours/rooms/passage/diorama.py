@@ -296,3 +296,49 @@ def pictogram_canvas(w, h, bg):
     d = ImageDraw.Draw(img)
     d.fontmode = '1'
     return img, d
+
+
+# ---- painted surfaces cut into pieces (stage 2's rooms: floors with holes, walls with doorways)
+
+def rects_minus(rect, holes):
+    """The rectangle (a0, b0, a1, b1) less the holes, as rectangles: a grid on every edge, the cells
+    outside every hole, merged along a into strips."""
+    a0, b0, a1, b1 = rect
+    xs = sorted({a0, a1} | {v for h in holes for v in (h[0], h[2]) if a0 < v < a1})
+    zs = sorted({b0, b1} | {v for h in holes for v in (h[1], h[3]) if b0 < v < b1})
+    out = []
+    for za, zb in zip(zs, zs[1:]):
+        run = None
+        for xa, xb in zip(xs, xs[1:]):
+            cx, cz = (xa + xb) / 2, (za + zb) / 2
+            inside = any(h[0] < cx < h[2] and h[1] < cz < h[3] for h in holes)
+            if inside:
+                if run:
+                    out.append((run[0], za, run[1], zb))
+                run = None
+            else:
+                run = (run[0], xb) if run else (xa, xb)
+        if run:
+            out.append((run[0], za, run[1], zb))
+    return out
+
+
+def painted_floor(mesh, splits_x, splits_z, holes, name, y=0.0):
+    """Floor quads, one painted texture per cell of the splits (material name.format(j, i), j the
+    row from the front, i the column from the left), less the holes, mapped by hand onto their
+    cell's texture (u along x, v from the back edge)."""
+    for j, (za, zb) in enumerate(zip(splits_z, splits_z[1:])):
+        for i, (xa, xb) in enumerate(zip(splits_x, splits_x[1:])):
+            uv = (lambda xa, xb, za, zb: lambda p: ((p[0] - xa) / (xb - xa), (zb - p[2]) / (zb - za)))(xa, xb, za, zb)
+            for (x0, z0, x1, z1) in rects_minus((xa, za, xb, zb), holes):
+                mesh.quad(x0, y, z0, x1, y, z1, (0, 1, 0), name.format(j, i), uv)
+
+
+def painted_wall_z(mesh, splits_x, x0, x1, y0, y1, z, name, height, facing=(0, 0, -1)):
+    """A rectangle of a wall facing -z (at z), mapped by hand onto the painted textures that cover
+    the wall from y 0 to `height` between the splits (material name.format(k))."""
+    for k, (a, b) in enumerate(zip(splits_x, splits_x[1:])):
+        lo, hi = max(x0, a), min(x1, b)
+        if hi - lo > 1e-6:
+            uv = (lambda a, b: lambda p: ((p[0] - a) / (b - a), (height - p[1]) / height))(a, b)
+            mesh.quad(lo, y0, z, hi, y1, z, facing, name.format(k), uv)

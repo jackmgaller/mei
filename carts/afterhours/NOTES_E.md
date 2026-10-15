@@ -10,7 +10,7 @@ end and the save. Kept current. A's side is in `NOTES_A.md` ("Hooks for E and F"
   goes to the stage select; A plays the hovered stage; each room's exit pulls back into the next
   room; the last exit shows the stage's end; A goes back to the select, the next stage unlocked.
   Progress is saved to the memory card.
-- **Checks**: `tests/front/check.sh`, 6 scenarios (60-65), about 25 s; `tests/check.sh` runs it
+- **Checks**: `tests/front/check.sh`, 7 scenarios (60-66), about 40 s; `tests/check.sh` runs it
   at its end. All pass, with A's 27.
 - **Captures**: `tests/front/shots/` (`tests/front/shots.sh` makes them, about 40 s).
 
@@ -59,16 +59,37 @@ is in control at the next room's clock 0:
 
 | Frames | Worst CPU | Worst GPU |
 |---|---|---|
-| The transitions (4) | 528,592 (53%: the aquarium's ready frame, frame 50: A's entity read and region entry, with 4 stand-ins and the aquarium drawn) | 439,880 (22%) |
+| The transitions (4) | 544,235 (54%: the aquarium's ready frame, frame 50: A's entity read and region entry, with 4 stand-ins and the aquarium drawn) | 439,880 (22%) |
 | A skipped transition (scenario 64; the ready frame with every texture copied) | 252,103 | 305,860 |
-| The title | 263,706 | 348,632 |
-| The select (the frame a hovered stage's world is opened: about 100,000 of it) | 376,864 | 459,489 |
-| The end | 297,142 | 365,835 |
+| The title | 270,426 | 348,632 |
+| The select (the frame a hovered stage's world is opened: about 100,000 of it) | 389,488 | 459,489 |
+| The end | 299,960 | 366,107 |
 | Play (A's, for comparison) | 375,129 | 459,690 |
 
 No frame dropped. The stage takes 4,786 ticks with or without the transitions (they do not
 tick). Before, the door into the aquarium cost 395,774 CPU on its own frame; now its textures
 are copied over frames 30-33, one a frame (up to 32 KB, about 56,000 cycles, each).
+
+## Stages of doors (A's runtime for stage 2, 2026-10-15)
+
+For A's rooms of doors (NOTES_A.md) and B's `level2`, stage 2 in the select. Scenario 66 plays
+it from the select with B's eight legs: seven transitions (rooms 2 -> 3 -> 2 -> 1 -> 2 -> 3 ->
+4, numbered from 0: back into lower rooms too), each handing over at clock 0 at the door he
+comes in by; the worst transition frame 243,251 CPU, 267,196 GPU (greybox rooms).
+
+- **The transition goes where the way out leads**: `exit_to_room` (any room, a lower one too),
+  entered by `exit_to_door`; the camera aims at `room_door_spawn(to, door)` and the route is
+  dotted from where he left (his position at the exit) to that door.
+- **Lights**: A's `run_cleared` (every room left by a way out this run) are lit.
+- **The section** reads rooms with no exit box (`exit` is `ref?`), the rooms off the `next`
+  chain (in entity order, as A's `level_rooms()`), and each room's doors with where they lead; in
+  the model a room of doors shows its doors, each dotted to the room it leads to.
+- **Names** come from each room's `name` in the world (`the_last_train` shows as THE LAST
+  TRAIN); `ROOM_NAMES` only when a world gives none.
+- **The save**: in a stage of doors `room_time` sums every visit, so a room's bit is saved as he
+  leaves it and its best (that sum) at the stage's end.
+- **The stage table** follows `LEVELS` (3 now): stage 1 level 1, stage 2 `level2` ("AFTER
+  CLOSING", my placeholder name), stage 3 the platform (`PLATFORM_STAGE`, scenario 65).
 
 ## The section model
 
@@ -112,10 +133,9 @@ numbers and small lines are the stdlib's pixel font.
 - **The stage's end** (Mode.End): STAGE CLEAR, the model with the whole route, each room's time
   and restarts, the total, "NEW BEST TIME" on a replay that beat it, and the stage it opened. A
   goes to the select with the opened stage hovered.
-- **The stages** are A's levels in order (`STAGES` in `dr_menu.akr`, `level` equal to the index):
-  stage 1 "PLATFORM TO ROOF" (level 1), stage 2 "THE WAY HOME" (Gate 1's platform). When stage 2
-  of DESIGN.md (keycards) gets its world, it is a row in `STAGES` and its rooms' names in
-  `ROOM_NAMES`, once A adds the level to `dr_levels.akr`.
+- **The stages** are A's levels in order (`stage_def()` in `dr_menu.akr`, the level equal to the
+  index): stage 1 "PLATFORM TO ROOF" (level 1), stage 2 "AFTER CLOSING" (`level2`, keycards and
+  doors), stage 3 "THE WAY HOME" (Gate 1's platform). A new stage is a row there.
 
 ## The save
 
@@ -138,26 +158,26 @@ Their own harness, since `tests/harness.akr` replaces the same hooks for A's sce
 | 61 | A blank card gives a fresh save; with rooms 1 and 3 of stage 1 cleared their palettes are the world's and the others' dimmed; stage 2, locked, is drawn as a silhouette (the fog on) and A does not play it |
 | 62, 63 | The round trip across two boots on one card: 62 writes a known save, 63 boots and reads it |
 | 64 | Skipping with A after 20 frames: control at once, room 2 at clock 0, its region loaded, then it runs; the frame within the budgets |
-| 65 | Stage 2 (one room, no stand-ins): unlocked by the save, dimmed before it is cleared, played with B's tape, its end, its save, the select with its room lit |
+| 66 | Stage 2 (`level2`, rooms of doors) from the select with B's eight legs (release build): seven transitions into the rooms the ways out lead to, lower ones too; each hands over at clock 0 at the door he comes in by; the end, the save (its five rooms, its total), the platform stage unlocked; every frame within the budgets |
+| 65 | The platform stage (the last; one room, no stand-ins): unlocked by the save, dimmed before it is cleared, played with B's tape, its end, its save, the select with its room lit |
 
 ## For the owner
 
-- **Look at**: `tests/front/shots/transition_1_to_2.png` and `transition_4_to_5.png` (every 6th
-  frame), `title.png`, `select_*.png`, `end.png`.
+- **Look at**: `tests/front/shots/transition_1_to_2.png`, `transition_4_to_5.png` and
+  `transition_stage2_back.png` (every 6th frame), `title.png`, `select_*.png`, `end.png`,
+  `end_stage2.png`.
 - **The pop at frame 30**: the room left changes from its placements to its kit-made stand-in
   (the stand-ins draw far colours, the mean of each texture), by then about a third of its size.
   It has to: from frame 30 the next room's textures replace its own. Moving it later lengthens
   the transition or crowds the texture copies.
 - **The model turns 26 degrees either side**, not a whole turn (above). A whole turn is a
   one-line change (`menu_yaw()`).
-- **Names are mine**: "PLATFORM TO ROOF", "THE WAY HOME", "TOKYO 1998", the rooms' names (from
-  ROUTE.md). A name field on the room type would let each world carry its own (B).
+- **Names are mine**: "PLATFORM TO ROOF", "AFTER CLOSING", "THE WAY HOME", "TOKYO 1998". The
+  rooms' names are the worlds' (B's).
 - **The title** has the stage track and no ambience; F's notes say how to make it silent.
 
 ## Requests
 
-- To B: a `title: name` field on the `room` type, so the select and the transition read rooms'
-  names from the world instead of `ROOM_NAMES`. Optional.
 - To A (later): a pause menu can show the map with `section_view()`; the stage's world is open
   while it plays, so it needs only `section_read()` once and a screen box.
 
