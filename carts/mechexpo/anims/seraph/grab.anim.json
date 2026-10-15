@@ -1,0 +1,28 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Heaven's Arc, the grab (MOVES.md, Seraph): both fists reach out together to close on the other's shoulders, the body pitched in over the front foot, the wings still folded. Startup 5, active 2 (the catch box x 1.0-3.6, y 2-10, a fixed rectangle as every grab's: the Hero's reach), no recovery: a miss goes on into grab_whiff, a catch into throw. The arms are long: from frame 5 the fists reach past the box, high, to come down on the shoulders.",
+  "base": "_body.anim.json",
+  "length": 7,
+  "phases": {"startup": 5, "active": 2, "recovery": 0},
+  "design": {"hit": [1.0, 2.0, 3.6, 10.0], "tolerance": 0.2,
+             "note": "MOVES.md, Seraph, Heaven's Arc: the catch box x 1.0-3.6, y 2-10"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in"},
+    {"at": 2, "ease": "ease", "offset": [-0.2, -1.3],
+     "pose": {"pelvis": [-2, -4, 0], "torso": [-10, -4, 0], "head": [12, 4, 0],
+              "upper_arm_r": [50, 0, 10], "forearm_r": [110, 0, 0], "hand_r": [-10, 0, 0],
+              "upper_arm_l": [44, 0, -10], "forearm_l": [116, 0, 0], "hand_l": [-10, 0, 0],
+              "pauldron_r": [17, 0, 5], "pauldron_l": [15, 0, -5]}},
+    {"at": 5, "ease": "out", "offset": [0.1, -1.35],
+     "pose": {"pelvis": [-4, 0, 0], "torso": [-16, 0, 0], "head": [18, 0, 0],
+              "upper_arm_r": [86, 0, 10], "forearm_r": [80, 0, 0], "hand_r": [-40, 0, 0],
+              "upper_arm_l": [90, 0, -10], "forearm_l": [76, 0, 0], "hand_l": [-40, 0, 0],
+              "pauldron_r": [30, 0, 5], "pauldron_l": [31, 0, -5]},
+     "boxes": {"grab": {"kind": "hit", "rect": [1.0, 2.0, 3.6, 10.0]}}},
+    {"at": 6, "offset": [0.15, -1.38],
+     "pose": {"upper_arm_r": [84, 0, 10], "forearm_r": [86, 0, 0], "upper_arm_l": [88, 0, -10],
+              "forearm_l": [82, 0, 0]}}
+  ],
+  "plant": {"foot_r": [[0, 6]], "foot_l": [[0, 6]]}
+}

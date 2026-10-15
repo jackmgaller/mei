@@ -1,0 +1,33 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Seraph thrown by Tank's Atomic Clinch or Chain Reaction (their slam sections, 56 frames; the fight places the root, the victim facing Tank, and the slam is on 33, Tank's release): Shadow's (../shadow/thrown_slam.anim.json) on Seraph's rig to frame 28, hauled up and held overhead in Tank's fists, the weapon joints held at 0 (\"still\"), the wings folded. On the slam Seraph is turned over (28-33: the pelvis from 82 to -90 degrees) and driven down face down, so frame 33 and the rest are hit_air's last frame, which the release jumps the victim to (MOVES.md, Seraph: it ends face down, the folded wings up off its back). Airborne: no floor check.",
+  "base": "../shadow/thrown_slam.anim.json",
+  "rig": "../../models/seraph/seraph.rig.json",
+  "still": ["weapon_r", "weapon_l"],
+  "keys": [
+    {"at": 31, "remove": true},
+    {"at": 33, "remove": true},
+    {"at": 37, "remove": true},
+    {"at": 41, "remove": true},
+    {"at": 48, "remove": true},
+    {"at": 55, "remove": true},
+    {"at": 31, "ease": "in", "offset": [0.56, -3.0], "pose": {"pelvis": [0, 0, 0]}},
+    {"at": 33, "from": "guard", "ease": "out", "offset": [0.0, -4.4],
+     "pose": {"pelvis": [-90, 0, 0], "torso": [10, 0, 0], "head": [40, 0, 0],
+              "upper_arm_r": [160, 0, 18], "forearm_r": [20, 0, 0], "hand_r": [0, 0, 0],
+              "upper_arm_l": [156, 0, -18], "forearm_l": [24, 0, 0], "hand_l": [0, 0, 0],
+              "thigh_r": [16, 0, -6], "shin_r": [-30, 0, 0], "foot_r": [-20, 0, 0],
+              "thigh_l": [8, 0, 6], "shin_l": [-20, 0, 0], "foot_l": [-20, 0, 0],
+              "pauldron_r": [56, 0, 9], "pauldron_l": [54.6, 0, -9], "wing_l": [-6, 0, 0],
+              "wing_r": [-6, 0, 0]}},
+    {"at": 55, "from": "guard", "offset": [0.0, -4.4],
+     "pose": {"pelvis": [-90, 0, 0], "torso": [10, 0, 0], "head": [40, 0, 0],
+              "upper_arm_r": [160, 0, 18], "forearm_r": [20, 0, 0], "hand_r": [0, 0, 0],
+              "upper_arm_l": [156, 0, -18], "forearm_l": [24, 0, 0], "hand_l": [0, 0, 0],
+              "thigh_r": [16, 0, -6], "shin_r": [-30, 0, 0], "foot_r": [-20, 0, 0],
+              "thigh_l": [8, 0, 6], "shin_l": [-20, 0, 0], "foot_l": [-20, 0, 0],
+              "pauldron_r": [56, 0, 9], "pauldron_l": [54.6, 0, -9], "wing_l": [-6, 0, 0],
+              "wing_r": [-6, 0, 0]}}
+  ]
+}

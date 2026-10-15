@@ -97,6 +97,8 @@ fn hud_draw(f: *Fight, training: bool, who0: *u8, who1: *u8) {
         draw_health(f, s)
         draw_meter(f, s)
         shadow_siphon_hud(f, s)         // Shadow's curse on this meter (shadow_fx.akr)
+        seraph_mark_hud(f, s)           // Seraph's mark on this side (seraph_fx.akr)
+        gamma_heat_hud(f, s)            // Gamma's gun's heat (gamma_fx.akr)
         draw_pips(f, s)
     }
     draw_name(f, 0, who0)
@@ -152,8 +154,8 @@ private fn draw_meter(f: *Fight, s: s32) {
         draw_chemical(fi, s, x0, w, l, y, h)
         return
     }
-    if fi.mech == Mech.Tank {
-        // nuclear (tank_fx.akr)
+    if meter_power(fi.mech) == Power.Nuclear {
+        // nuclear: Tank, Gamma (tank_fx.akr)
         tank_meter_hud(fi, s, x0, w, l, y, h)
     } else if mech_kinetic(fi.mech) {
         draw_kinetic(fi, s, x0, w, l, y, h)
@@ -187,7 +189,7 @@ private fn draw_kinetic(fi: *Fighter, s: s32, x0: s32, w: s32, l: s32, y: s32, h
             lx = x0 - 4
             al = ALIGN_RIGHT
         }
-        txt(FONT_LABEL, lx, y - 13, "SUPER", C_YELLOW, al)
+        txt(FONT_LABEL, lx, y - 13, "SUPER", seraph_super_col(s, C_YELLOW), al)
     }
 }
 

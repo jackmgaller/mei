@@ -16,8 +16,10 @@ import "anim_data.akr"
 // Beam: Raikō's zoner, Tank: Heartland's grappler (appended). Twins: Binary Mechanica's combined
 // form and the mech the player picks; TwinA and TwinB: the split form's two bodies, for the
 // animations and the drawing only (never in the roster, never a fighter's mech; MOVES.md, "The Twins").
-// Shadow: Umbral Research's trickster (appended; MOVES.md, "Shadow")
-enum Mech { Hero, Doubleblade, Beam, Tank, Twins, TwinA, TwinB, Shadow }
+// Shadow: Umbral Research's trickster (appended; MOVES.md, "Shadow"). Seraph: Momentum's echo of
+// Shadow, on Shadow's skeleton with wings and a halo (appended; MOVES.md, "Seraph"). Gamma:
+// Heartland's echo of Beam, on Beam's skeleton (the Hero's) (appended; MOVES.md, "Gamma")
+enum Mech { Hero, Doubleblade, Beam, Tank, Twins, TwinA, TwinB, Shadow, Seraph, Gamma }
 
 // The move list (README.md, "Interfaces"): the same names for both mechs.
 enum Mv {
@@ -30,12 +32,16 @@ enum Mv {
     split              // the Twins: combined into split (L)
 }
 
-// The rigs' parts (models/NAME/NAME.rig.json), one numbering for both mechs. A mech without a
+// The rigs' parts (models/NAME/NAME.rig.json), one numbering for every mech. A mech without a
 // part (the Hero's weapon_l) draws nothing there; anim_part() still gives the joint's matrix
-// (the empty hand's mount).
+// (the empty hand's mount). wing_l, wing_r and halo (appended: the others keep their numbers) are
+// Seraph's alone: a mech's frames hold its parts up to the last one its rig has (AK_NPART), so
+// the others' data has none of them; anim_part() gives such a mech's torso for a wing and its
+// head for the halo.
 enum Part {
     pelvis, torso, head, pauldron_r, upper_arm_r, forearm_r, hand_r, weapon_r, pauldron_l,
-    upper_arm_l, forearm_l, hand_l, weapon_l, thigh_r, shin_r, foot_r, thigh_l, shin_l, foot_l
+    upper_arm_l, forearm_l, hand_l, weapon_l, thigh_r, shin_r, foot_r, thigh_l, shin_l, foot_l,
+    wing_l, wing_r, halo
 }
 
 // Box kinds.
@@ -55,6 +61,8 @@ const MARK_PARRY: u32 = 128    // the Parry's stance frames
 const MARK_NOPUSH: u32 = 256   // no push box and no hurt: passes through (the Void Step)
 const MARK_HIDE: u32 = 512     // not drawn this frame (anim_draw draws nothing): the Void Step's gone frames
 const MARK_CHARGE: u32 = 1024  // the frame a held button holds (Beam's Volt Orb charges here while B is held)
+const MARK_WARD: u32 = 2048    // Seraph's Wing Ward: a shot touching it now is sent back (seraph.akr)
+const MARK_SHIELD: u32 = 4096  // Gamma's Lead Shielding: the brace, the next hit is absorbed (gamma.akr)
 
 const ANIM_MAX_BOXES = 16
 
@@ -88,7 +96,7 @@ const ANIM_LOOP = 1            // AnimMove.flags: frame f means f mod len
 const ANIM_AIR = 2             // an airborne move (the kit's floor check skips it)
 const ANIM_STANDIN = 4         // no file yet: the mech's _body.anim.json stands in
 
-// A move: its length, and where its sections start in AK_BLOB (bytes): len * len(Part) PartXf,
+// A move: its length, and where its sections start in AK_BLOB (bytes): len * AK_NPART[m] PartXf,
 // len + 1 u16 (each frame's first box; the last is the count), the Box records, len u32 marks,
 // len (dx, dy) raw fixed root motions.
 struct AnimMove {
@@ -144,8 +152,9 @@ private fn frame_of(a: *AnimMove, f: s32) -> s32 {
     return clamp(f, 0, a.len - 1)
 }
 
-private fn xf_of(a: *AnimMove, fr: s32, p: s32) -> *PartXf {
-    return ((AK_BLOB as u32 + a.frames) as *PartXf) + (fr * len(Part) + p)
+// Part p's record in frame fr of a move of a mech whose frames hold np parts (AK_NPART).
+private fn xf_of(a: *AnimMove, fr: s32, p: s32, np: s32) -> *PartXf {
+    return ((AK_BLOB as u32 + a.frames) as *PartXf) + (fr * np + p)
 }
 
 private fn xf_mat(x: *PartXf) -> mat4 {
@@ -218,10 +227,10 @@ fn anim_place(pos: vec2, facing: s32) -> mat4 {
 }
 
 // A part's matrix relative to the root at frame f (fractional: between two frames).
-private fn pose_part(a: *AnimMove, f: fixed, p: s32) -> mat4 {
+private fn pose_part(a: *AnimMove, f: fixed, p: s32, np: s32) -> mat4 {
     let fi = f as s32
     let t = f - fixed(fi)
-    return xf_lerp(xf_of(a, frame_of(a, fi), p), xf_of(a, frame_of(a, fi + 1), p), t)
+    return xf_lerp(xf_of(a, frame_of(a, fi), p, np), xf_of(a, frame_of(a, fi + 1), p, np), t)
 }
 
 // Poses the mech at frame f (fractional: between frames, for hitstop and blends) and draws
@@ -235,14 +244,15 @@ fn anim_draw(m: Mech, mv: Mv, f: fixed, root: mat4) {
         anim_cpu = cycle_count() - c0
         return
     }
-    let x0 = xf_of(a, frame_of(a, fi), 0)
-    let x1 = xf_of(a, frame_of(a, fi + 1), 0)
+    let np = AK_NPART[m]
+    let x0 = xf_of(a, frame_of(a, fi), 0, np)
+    let x1 = xf_of(a, frame_of(a, fi + 1), 0, np)
     var meshes = &AK_MESH[(m as s32) * len(Part)]
     if anim_grey {
         grey_build(m)
         meshes = &ak_grey[(m as s32) * len(Part)]
     }
-    for p in 0..len(Part) {
+    for p in 0..np {
         let mesh = meshes[p]
         if mesh != null { mesh_xf(mesh, root * xf_lerp(x0 + p, x1 + p, t)) }
     }
@@ -250,9 +260,16 @@ fn anim_draw(m: Mech, mv: Mv, f: fixed, root: mat4) {
 }
 
 // A part's matrix at frame f (its joint's frame, as anim_draw() poses it): sword trails,
-// sparks. The weapon's +Y runs along the blade.
+// sparks. The weapon's +Y runs along the blade. A mech without the part's joint (a wing or the
+// halo on any mech but Seraph) gives the joint it would hang from: the torso, the head.
 fn anim_part(m: Mech, mv: Mv, f: fixed, root: mat4, part: Part) -> mat4 {
-    return root * pose_part(mv_of(m, mv), f, part as s32)
+    let np = AK_NPART[m]
+    var p = part as s32
+    if p >= np {
+        p = Part.torso as s32
+        if part == Part.halo { p = Part.head as s32 }
+    }
+    return root * pose_part(mv_of(m, mv), f, p, np)
 }
 
 // ---- seeing the boxes (training mode, the kit's previews)

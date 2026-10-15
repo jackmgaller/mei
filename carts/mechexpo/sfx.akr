@@ -22,9 +22,12 @@
 // panned to stage x (metres, -36..36; the far side drops to 40 %), then the pan goes back to
 // the centre.
 //
-// Loops (Tank's treads, Beam's charge hum, the Shock Grip's buzz): sfx_hold(slot, id, x,
-// pitch, gain) every frame the loop should sound (a slot a side, 0 or 1; id SFX_TREAD,
-// SFX_BEAM_HUM or SFX_BEAM_GRIP; x its stage position; gain 0..256); sfx_tick(), once a frame
+// Loops (Tank's treads, Beam's charge hum, the Shock Grip's buzz, Seraph's glide and its Mark
+// bolt's hum, Gamma's ray, its heat warning and the daze's count): sfx_hold(slot, id, x, pitch,
+// gain) every frame the loop should sound (a slot a side, 0 or 1; 2 or 3 for a side's bolt or
+// Gamma's heat warning; 4 or 5 for the daze a side's Gamma caused; id SFX_TREAD, SFX_BEAM_HUM,
+// SFX_BEAM_GRIP, SFX_GLIDE, SFX_MARK_HUM, SFX_RAY, SFX_HEAT or SFX_DAZE; x its stage position;
+// gain 0..256); sfx_tick(), once a frame
 // after the game's update, fades out (over four frames) and stops every loop that was not held
 // that frame. So a loop stops by itself when the fight stops asking for it: on the pause (the
 // fight is not polled), on the menus, at a KO. sfx_stop_fight() stops the fight's sounds at
@@ -34,11 +37,17 @@
 // Raikō Overload's beam, a crushing hit, Tank's slam, the round, the unlock; 8 a throw, the
 // Shock Grip's crack, a heavy hit; 7 a medium hit, the Twins' coupling, a break; 6 a light hit,
 // a block, an armour clank, the grab and Tank's lift, the Reactor Vent, the Volt Orb and its
-// fizzle, the Arc Lance, the Thunder Pillar, a knockdown; 5 the meter full, the charge ping
-// and hum, the reaction, the Static Lance, the Shock Grip's buzz, the stamp, the press pass,
-// OK; 4 swings, zaps, landings, the Void Step, back; 3 chip, debris, the tread loop, the page,
-// the shutter, a menu move; 2 a step, the smoulder. A hit or a KO is never lost to a step, a
-// swing or a loop.
+// fizzle, the Arc Lance, the Thunder Pillar, a knockdown, the Mark bolt's cast and the mark
+// landing; 5 the meter full, the charge ping and hum, the reaction, the Static Lance, the Shock
+// Grip's buzz, Ascension, the dive's touchdown, the stamp, the press pass, OK; 4 swings, zaps,
+// landings, the Void Step, back, the Wing Ward, a wing beat, the dive's whistle; 3 chip, debris,
+// the tread loop, the glide, the bolt's hum, the page, the shutter, a menu move; 2 a step, the
+// smoulder. Seraph's (mx-seraph-fx): 9 Judgement's choir, the column's lock and its impact; 7
+// a reflect. Gamma's (mx-gamma-fx): 9 Ground Zero's blast and its klaxon; 8 Point Blank's blast;
+// 7 the vent; 6 the ray coming on and cut, the Rod Shot, the Geiger Flare, a blow on the lead
+// shield; 5 the ray's hum and the heat warning (loops), the shield swung out; 4 the ray let go, a
+// shot burnt, the lamp, the daze's count (a loop); 2 its step. A hit or a KO is never lost to a
+// step, a swing or a loop.
 
 import "anim.akr"
 import "music.akr"
@@ -48,7 +57,7 @@ const SFX_CH_FIRST = 10
 const SFX_CH_LAST = 15
 const SFX_STAGE_HALF: fixed = 36.0     // the walls: full pan
 const SUPER_BURST_FRAMES = 37           // the super's burst lands this long after sfx_super (its sample's lead)
-const SFX_LOOP_SLOTS = 2                // a loop a side
+const SFX_LOOP_SLOTS = 6                // a loop a side (0, 1), a side's Mark bolt's hum or Gamma's heat (2, 3), the daze (4, 5)
 private const SX_LOOP_FADE = 64         // of 256 a frame: a loop not held fades out over four frames
 
 private var sx_ready: bool
@@ -174,6 +183,30 @@ fn sfx_attack(m: Mech, mv: Mv) {
         TwinB => sx_play(SFX_SWING_TWIN, 4, 2, true, 0.92, 240, p)
         Doubleblade => sx_play(SFX_SWING_DBLADE, 4, 2, true, 1.0, 256, p)
         Shadow => sx_play(SFX_SWING_DBLADE, 4, 2, true, 0.82, 230, p)     // the claws: the blades' hiss, lower
+        Gamma => {
+            // the lamp's snap for the jab, the lance and the Down Flash, a sizzle for the sweep, the
+            // flare, Ground Zero's blast; the ray, the rod and the shield sound from gamma_sfx and
+            // the Shot event
+            match mv {
+                atk_n, atk_air => sx_play(SFX_LAMP, 4, 2, true, 1.0, 256, p)
+                atk_f => sx_play(SFX_LAMP, 5, 2, true, 0.86, 256, p)
+                atk_d => sx_play(SFX_BURN, 4, 2, true, 0.8, 256, p)
+                sp_u => sx_play(SFX_FLARE, 6, 1, false, 1.0, 256, p)
+                super => sx_play(SFX_GROUND_ZERO, 9, 1, false, 1.0, 256, p)
+                sp_n, sp_f, sp_d => {}
+                else => sx_play(SFX_LAMP, 4, 2, true, 1.0, 256, p)
+            }
+        }
+        Seraph => {
+            match mv {
+                super => sx_play(SFX_COLUMN, 9, 1, false, 1.0, 256, p)      // Judgement's column lands
+                sp_u => {
+                    sx_play(SFX_ASCEND, 5, 1, false, 1.0, 256, p)
+                    sx_play(SFX_SWING_FIST, 4, 2, true, 1.05, 200, p)
+                }
+                else => sx_play(SFX_SWING_FIST, 4, 2, true, 1.1, 220, p)  // the fists: the combined Twins', lighter
+            }
+        }
         else => sx_play(SFX_SWING_HERO, 4, 2, true, 1.0, 256, p)
     }
 }
@@ -182,6 +215,14 @@ fn sfx_attack(m: Mech, mv: Mv) {
 fn sfx_shot(m: Mech, lvl: s32) {
     if m == Mech.Shadow {
         sx_play(SFX_VOID_IN, 6, 1, false, 0.72, 240, sx_take_pan())     // the Hex Bolt (a stand-in)
+        return
+    }
+    if m == Mech.Seraph {
+        sx_play(SFX_MARK_CAST, 6, 1, false, 1.0, 256, sx_take_pan())    // the Mark of Judgement
+        return
+    }
+    if m == Mech.Gamma {
+        sx_play(SFX_ROD, 6, 1, false, 1.0, 256, sx_take_pan())          // the Rod Shot's crack
         return
     }
     if m != Mech.Beam {
@@ -212,6 +253,8 @@ fn sfx_throw_by(m: Mech, mv: Mv) {
         sx_play(SFX_DEBRIS, 3, 1, false, 0.9, 256, p)
     } else if m == Mech.Beam {
         sx_one(SFX_BEAM_SHOCK, 8, 1, false)
+    } else if m == Mech.Gamma {
+        sx_one(SFX_POINT_BLANK, 8, 1, false)      // Point Blank's blast
     } else {
         sfx_throw()
     }
@@ -230,6 +273,12 @@ fn sfx_step_of(m: Mech) {
         gain = 170
     } else if m == Mech.Beam {
         pitch = 0.9
+    } else if m == Mech.Seraph {
+        pitch = 1.1                     // the boxer's light step
+        gain = 220
+    } else if m == Mech.Gamma {
+        sx_play(SFX_GAMMA_STEP, 2, 2, true, 1.0, 256, sx_take_pan())     // heavier, the jerrycans rocking
+        return
     }
     sx_play(SFX_STEP, 2, 2, true, pitch, gain, sx_take_pan())
 }
@@ -240,12 +289,14 @@ fn sfx_super(m: Mech) {
     match m {
         Doubleblade, Shadow => c = SFX_CHARGE_ANTIMATTER
         Beam => c = SFX_CHARGE_CHEMICAL
-        Tank => c = SFX_CHARGE_NUCLEAR
+        Tank, Gamma => c = SFX_CHARGE_NUCLEAR
         Twins, TwinA, TwinB => c = SFX_CHARGE_FUSION
         else => {}
     }
     let p = sx_take_pan()
     sx_play(c, 9, 1, false, 1.0, 256, p)
+    if m == Mech.Seraph { sx_play(SFX_CHOIR, 9, 1, false, 1.0, 256, p) }     // the halo's rising choir
+    if m == Mech.Gamma { sx_play(SFX_KLAXON, 9, 1, false, 1.0, 256, p) }     // Ground Zero's klaxon
     sx_play(SFX_SUPER, 9, 1, false, 1.0, 256, 0)
     music_dip(90)
 }
@@ -426,4 +477,53 @@ fn sfx_shadow(kind: s32) {
         3 => sx_play(SFX_ORB_FIZZLE, 5, 1, false, 0.80, 220, p)
         else => sx_play(SFX_VOID_OUT, 3, 1, false, 1.20, 120, p)
     }
+}
+
+// Seraph's (mx-seraph-fx). The mark landing (the Mark event): a struck bell, quieter for a
+// refresh (fresh false).
+fn sfx_mark(fresh: bool) {
+    if fresh {
+        sx_one(SFX_MARK_HIT, 6, 1, false)
+    } else {
+        sx_play(SFX_MARK_HIT, 6, 1, false, 1.06, 150, sx_take_pan())
+    }
+}
+// A Wing Ward sent a shot back (the Reflect event): the clang and the rising shimmer.
+fn sfx_reflect() { sx_one(SFX_REFLECT, 7, 1, false) }
+// The Wing Ward wrapping round (sp_d's first frame).
+fn sfx_ward() { sx_one(SFX_WARD, 4, 1, false) }
+// A wing beat: the Seraph Dive's hop, Ascension's beat, Heaven's Arc's two.
+fn sfx_wing_beat() { sx_one(SFX_WING_BEAT, 4, 2, true) }
+// The Seraph Dive: the whistle as it dives, the impact of its touchdown (land).
+fn sfx_dive(land: bool) {
+    if land {
+        sx_one(SFX_DIVE_LAND, 5, 1, false)
+    } else {
+        sx_one(SFX_DIVE, 4, 1, false)
+    }
+}
+// Judgement's lock (the Column event): a thin rising tone as the ring opens on the floor.
+fn sfx_column_lock() { sx_one(SFX_COLUMN_LOCK, 9, 1, false) }
+
+// Gamma's (mx-gamma-fx): the one-shots sfx_gamma(k) plays (the ray's and the shield's from
+// gamma_sfx, the rest from the events), with the pending pan.
+const GSX_RAY_ON = 0                    // the ray comes on: the relay and the lamp striking
+const GSX_RAY_OFF = 1                   // the ray let go
+const GSX_CUT = 2                       // the ray cut by a strong shot or a Parry
+const GSX_VENT = 3                      // the gun vents (the Vent event)
+const GSX_BURN = 4                      // a shot burnt up in the ray (the Burn event)
+const GSX_SHIELD = 5                    // Lead Shielding swung out, clanging into place
+const GSX_LEAD = 6                      // a blow absorbed on the lead shield (the Armour event)
+const GSX_RAP = 7                       // the win: the drum rapped on the shield's lip
+
+fn sfx_gamma(k: s32) {
+    let p = sx_take_pan()
+    if k == GSX_RAY_ON { sx_play(SFX_RAY_ON, 6, 1, false, 1.0, 256, p) }
+    else if k == GSX_RAY_OFF { sx_play(SFX_RAY_OFF, 4, 1, false, 1.0, 256, p) }
+    else if k == GSX_CUT { sx_play(SFX_CUT, 6, 1, false, 1.0, 256, p) }
+    else if k == GSX_VENT { sx_play(SFX_VENT, 7, 1, false, 1.0, 256, p) }
+    else if k == GSX_BURN { sx_play(SFX_BURN, 4, 2, true, 1.0, 256, p) }
+    else if k == GSX_SHIELD { sx_play(SFX_SHIELD, 5, 1, false, 1.0, 256, p) }
+    else if k == GSX_LEAD { sx_play(SFX_LEAD, 6, 2, true, 1.0, 256, p) }
+    else if k == GSX_RAP { sx_play(SFX_LEAD, 4, 1, false, 1.35, 170, p) }
 }

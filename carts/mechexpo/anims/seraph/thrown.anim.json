@@ -1,0 +1,28 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Seraph thrown by the Hero's throw, Beam's Shock Grip, Tank's Scrap Heave and the Twins' throws (the fight holds the root about 3.4 m in front of the thrower, facing it, and lifts it to 3 m by frame 30, the release; then hit_air): Shadow's (../shadow/thrown.anim.json) on Seraph's rig to frame 26, the shoulders following the thrower's hands, the weapon joints held at 0 (\"still\"), the wings folded. Where Shadow arches back on the heave, Seraph is tipped on over and flung face down: frame 30 (the release) and the rest are hit_air's last frame, which the release jumps the victim to (MOVES.md, Seraph: it ends face down, the folded wings up off its back). Airborne: no floor check.",
+  "base": "../shadow/thrown.anim.json",
+  "rig": "../../models/seraph/seraph.rig.json",
+  "still": ["weapon_r", "weapon_l"],
+  "keys": [
+    {"at": 30, "remove": true},
+    {"at": 43, "remove": true},
+    {"at": 30, "from": "guard", "ease": "out", "offset": [0.0, -4.4],
+     "pose": {"pelvis": [-90, 0, 0], "torso": [10, 0, 0], "head": [40, 0, 0],
+              "upper_arm_r": [160, 0, 18], "forearm_r": [20, 0, 0], "hand_r": [0, 0, 0],
+              "upper_arm_l": [156, 0, -18], "forearm_l": [24, 0, 0], "hand_l": [0, 0, 0],
+              "thigh_r": [16, 0, -6], "shin_r": [-30, 0, 0], "foot_r": [-20, 0, 0],
+              "thigh_l": [8, 0, 6], "shin_l": [-20, 0, 0], "foot_l": [-20, 0, 0],
+              "pauldron_r": [56, 0, 9], "pauldron_l": [54.6, 0, -9], "wing_l": [-6, 0, 0],
+              "wing_r": [-6, 0, 0]}},
+    {"at": 43, "from": "guard", "offset": [0.0, -4.4],
+     "pose": {"pelvis": [-90, 0, 0], "torso": [10, 0, 0], "head": [40, 0, 0],
+              "upper_arm_r": [160, 0, 18], "forearm_r": [20, 0, 0], "hand_r": [0, 0, 0],
+              "upper_arm_l": [156, 0, -18], "forearm_l": [24, 0, 0], "hand_l": [0, 0, 0],
+              "thigh_r": [16, 0, -6], "shin_r": [-30, 0, 0], "foot_r": [-20, 0, 0],
+              "thigh_l": [8, 0, 6], "shin_l": [-20, 0, 0], "foot_l": [-20, 0, 0],
+              "pauldron_r": [56, 0, 9], "pauldron_l": [54.6, 0, -9], "wing_l": [-6, 0, 0],
+              "wing_r": [-6, 0, 0]}}
+  ]
+}

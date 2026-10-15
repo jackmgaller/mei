@@ -87,7 +87,11 @@ generator: the parts, each with its `id`, `parent` (or null for the root), the j
 from the parent's joint in the rest pose, and its part recipe (`parts/NAME_ID.asset.json`, origin
 at the joint), plus the attachment points A or F need (each hand's weapon mount; a weapon is a
 part like any other). A owns the format and may add to it; B keeps the generators writing it.
-The echo shares the Hero's skeleton: same part ids, same joints.
+The echo shares the Hero's skeleton: same part ids, same joints. Seraph's rig (Shadow's skeleton)
+has three joints more, appended to `enum Part` and the kit's `PARTS` after `foot_l`: `wing_l`,
+`wing_r` (the torso's children) and `halo` (the head's). A mech whose rig lacks them draws nothing
+there; its exported frames hold only its first 19 parts (`AK_NPART`), so the other mechs' data
+did not change.
 
 **Animation runtime (A, data by F) → fight (C), scene (D)**, in `anim.akr`. A designs the API;
 this is what the others rely on, in substance:
@@ -155,16 +159,30 @@ strikes), `sfx_shot(m, lvl)` (the wave, or Beam's orb by level), `sfx_clash(orb:
 fizzling against a wave), `sfx_armour(power)` (Tank's armour), `sfx_tank_lift()` (a command
 grab caught), `sfx_throw_by(m, mv)` (Tank's slam, Beam's Shock Grip crack, else the throw),
 `sfx_knockdown()` (a Land of power 2), `sfx_step_of(m)`; `sfx_super(m)` plays the power
-source's charge-up with the burst, and a heavy or crushing `sfx_hit` scatters debris. By state,
+source's charge-up with the burst, and a heavy or crushing `sfx_hit` scatters debris. Seraph's
+(mx-seraph-fx): `sfx_mark(fresh: bool)` (the Mark event; a refresh quieter), `sfx_reflect()`
+(the Reflect event), `sfx_column_lock()` (the Column event), and from its state (`seraph_fx.akr`'s
+`seraph_sfx()`) `sfx_ward()`, `sfx_wing_beat()`, `sfx_dive(land: bool)` and the loops
+`SFX_GLIDE` and `SFX_MARK_HUM`; its branches of `sfx_attack` (the column's impact, Ascension's
+rush, the fists), `sfx_shot` (the bolt's cast) and `sfx_super` (the choir). Gamma's
+(mx-gamma-fx): `sfx_gamma(k)` (`GSX_*`: the ray coming on, let go and cut, the vent, a shot
+burnt, the shield swung out, a blow on the lead shield; the Vent and Burn events, the Armour
+event on a braced Gamma, a Parry of its ray, and `gamma_fx.akr`'s `gamma_sfx()`), the loops
+`SFX_RAY`, `SFX_HEAT` and `SFX_DAZE`, and its branches of `sfx_attack` (the lamp, the sweep's
+sizzle, the flare, Ground Zero's blast), `sfx_shot` (the rod's crack), `sfx_throw_by` (Point
+Blank's blast), `sfx_super` (the nuclear charge-up and a klaxon) and `sfx_step_of` (its own
+step); `sfx_clash` fizzles whenever an orb is one of the two shots. By state,
 once a fight frame from `game.akr`'s `sound_poll()` (the mechs' parts in `beam_fx.akr`'s
 `beam_sfx()`, `tank_fx.akr`'s `tank_sfx()` and `twins_fx.akr`'s `twins_sfx()`):
 `sfx_couple(on: bool)`, `sfx_react()`, `sfx_charge_full()`, `sfx_void(back: bool)`,
 `sfx_smoulder()`. For the brochure: `sfx_page()` (from `menus_page()`), `sfx_stamp()`,
 `sfx_pass()`, `sfx_shutter()` (`menus.akr`'s `menus_sfx()` times the stamps to their drawing).
 
-**Loops** (Tank's treads, Beam's charge hum, which the Twins' Fusion Focus borrows lower, and the
-Shock Grip's buzz): `sfx_hold(slot, id, pri, x, pitch, gain)` every frame a loop should sound, a
-slot a side; `sfx_tick()` (once a frame, always, after the game's update) fades out over four
+**Loops** (Tank's treads, Beam's charge hum, which the Twins' Fusion Focus borrows lower, the
+Shock Grip's buzz, Seraph's glide and its Mark bolt's hum, Gamma's ray, its heat warning and the
+daze's count): `sfx_hold(slot, id, pri, x, pitch, gain)` every frame a loop should sound, a slot
+a side (0, 1), a side's bolt or Gamma's heat warning (2, 3) and the daze a side's Gamma caused
+(4, 5); `sfx_tick()` (once a frame, always, after the game's update) fades out over four
 frames and stops every loop not held that frame, so loops stop by themselves on the pause, on
 the menus, when the move ends and at a KO (`sfx_ko()` stops them at once).
 `sfx_stop_fight()` (in `leave_fight()`) stops every fight sound still playing. The voices'
@@ -239,6 +257,308 @@ Grip and Total Eclipse. The design is [MOVES.md](MOVES.md#shadow-umbral-research
   805,917 GPU cycles at the peak, 1,914 triangles; against Beam 557,418 and 740,850, 1,820
   triangles; Shadow's effects (`prof_fx`, with fx.akr's) at most about 76,000 cycles.
 
+## Seraph
+
+Seraph (Momentum Robotics, kinetic; `Mech.Seraph`, roster slot 6 under Shadow, SERAPH MR-02) is
+Momentum's echo of Shadow, the paladin, unlocked by clearing the arcade with Shadow. Phase 1
+(mx-seraph) put the mech in the game, drawn and pickable, with Shadow's moves as placeholders;
+phase 2's fight and CPU (mx-seraph-fight) gave it its own moves: the Mark of Judgement and the
+mark, the Seraph Dive, Ascension, the Wing Ward, Heaven's Arc and Judgement; its animations
+(mx-seraph-anim) and its effects and sounds (mx-seraph-fx, below) are phase 2's other two parts.
+What is real and what is still Shadow's:
+[MOVES.md](MOVES.md#phase-1-what-is-in-the-game-now).
+
+- **Files:** `models/seraph/make_seraph.py` (the model and rig: the owner's concept A, round 4b,
+  from `concepts/angel_a/`, which stays as the record; its guard is Seraph's boxer's guard),
+  `anims/seraph/` (Seraph's own moves, the weapon joints held at 0 with the kit's `"still"`; the
+  throws' victims Shadow's to the slam, then face down), `seraph.akr` (its hits, its stand-in timings, boxes, marks and root
+  motion, its move list, and its rules: the Mark bolt in the shot system (`Shot.mark`) and the
+  mark (`Fighter.mark`, 360 frames of play); the Dive's glide and dive (`seraph_advance`, called
+  from `fighter.akr`'s advance); the Wing Ward's reflect (`seraph_reflect`, from `shot_try`
+  before the Parry's test, on the `ward` frames: `MARK_WARD` in `anim.akr`), which moves the shot
+  to Seraph's slot (`Shot.refl`); Heaven's Arc (`seraph_hold`, from `throw_tick`; the victim plays
+  `thrown_vault`); Judgement's lock (`judge_x`, following the other's root for `SER_FOLLOW`, 8
+  frames, after the flash, then locked: the balance pass, 2026-10-14), its column
+  (`seraph_column_box`, from `load_boxes`) and its x 1.5 on a marked mech (`seraph_judged`, from
+  `resolve`; `Hit.nodebt` keeps the antimatter debt's 25 % from stacking with it)), and
+  Seraph's CPU at the end of `cpu.akr`. Shadow's rules ask the predicates `has_hex_bolt`,
+  `has_sneak`, `has_rift_mine`, `has_phantom_grip` and `has_eclipse` (Shadow's alone now) and
+  `has_dive` (Shadow's and Seraph's); Seraph's ask `has_mark`, `has_glide`, `has_ward`,
+  `has_over_throw` and `has_judgement`. `enum Ev` gains `Mark`, `Reflect` and `Column`
+  (appended). Its numbers are a row of `STATS` (1,000 health, a walk of 0.080 m a frame forward
+  and 0.064 back, the kinetic meter) and its names a row of `ROSTER`.
+- **Its placeholders:** none since its own animations landed: the fight plays every move from
+  the animation data, as every other mech's (`seraph.akr`'s stand-in data serves only the moves
+  the export marks as stand-ins). Telling a placeholder of Shadow's from the data
+  ([MOVES.md](MOVES.md#phase-1-what-is-in-the-game-now)) was done at `fight_init` until then, and
+  cost the first frame of a fight with Seraph about 240,000 cycles (ladder scenario 118's final
+  went late); it is now the tests' (`sv_placeholder` in `tests/harness.akr`: scenarios 160 and
+  161 assert that no move of Seraph's is one). Still to come:
+  `COVER_POSE` in `cover.akr` (it holds frame 119 of Shadow's win), and the halo's glow dimmed
+  while Seraph lies (MOVES.md's effects table: the halo is an emissive part, so it needs a dimmed
+  palette or mesh in the drawing, not a sprite).
+- **Effects and sounds (mx-seraph-fx):** `seraph_fx.akr`, from the fight's events (`Mark`,
+  `Reflect`, `Column`) and state (`Fighter.mark`, `Shot.mark`, `Shot.refl`, Seraph's move and
+  frame, `seraph_warding`, `seraph_gliding`), called with a line each from `game.akr`
+  (`seraph_fx_draw` after Shadow's, `seraph_fx_offset` after `fx_offset`, `seraph_sfx` in
+  `sound_poll`, three lines of `sound_event`), `fx.akr` (`seraph_fx_shot` before the Hex Bolt and
+  the orb; `seraph_trail` for the trails) and `hud.akr` (`seraph_mark_hud` after the Siphon,
+  `seraph_super_col` for the SUPER label). Light gold and white-gold (`SRX_GOLD` 0x80E0FF,
+  `SRX_CORE` 0xDCF8FF): the Mark bolt (gathering at the fist on `sp_n`'s first 16 frames, a flash
+  as it leaves; a white-gold core in a gold glow 2.4 m across, a soft halo, a four-point glint
+  turning, motes); the mark on every marked body (a split Twins' partner too: a sigil at the
+  chest pulsing once a second, a ring turning over the head, motes rising, flickering in the
+  last 60 frames; a ring bursting from the chest when it lands, half the size for a refresh);
+  the HUD's mark on the marked side (the gauge hatched in gold, MARKED where the Siphon writes
+  SIPHON, the time bar under the gauge, a shine sweeping the health bar toward the centre every
+  30 frames, the bar flashing gold for 8 frames on a new mark) and Seraph's SUPER pulsing gold
+  while the other is marked; the Wing Ward's sheen (a curved sheet of glows 11 m tall in front,
+  a bright band running up and down it, fading over 4 frames); a reflect (a white glow 4 m
+  across, a gold ring, a star, sparks) and the reflected shot drawn as light (a wave of light, a
+  gold ball at the orb's size, the Mark bolt for a bolt); the fists' short white trails edged
+  gold on the active frames; the Dive's downdraft on the hop, glows, streaks, feathers and
+  ribbons off the wing tips through the glide, a streak along the dive and a downdraft at the
+  touchdown; Ascension's light along the fist and a burst at each wing tip on the beat; Heaven's
+  Arc's downdraft and feathers on each wing beat; Judgement's halo flare in the flash (rings
+  growing to 4 m, a white glow, the core lit), the stage brightened to white-gold through
+  `layer_offset` from the flash to the column's last active frame (fading over 12), the lock's
+  gold ring opening to 5 m on the floor with a shaft of light over it and motes raining in, then
+  the column (bands of additive Gouraud quads from the floor past the top of the view, ±2.5 m, a
+  white core, flickering edges, held on the floor through its hit's hitstop) with dust, a floor
+  ring and a flash. Sounds (`tools/gen_mechexpo_audio.py`, `SERAPH` after the loops so every
+  earlier sound keeps its index and bytes): the bolt's cast and its hum (a loop in slots 2 and
+  3, a side's bolt, rising with its speed), the mark landing (a struck bell; a refresh quieter),
+  the ward's sweep, the reflect, a wing beat (the hop, Ascension's beat, Heaven's Arc's two), the
+  glide's wind (a loop), the dive's whistle and touchdown, Ascension's rush, Judgement's choir
+  (with the kinetic charge-up), the column's lock and its impact; 175,200 bytes in `sfx.adp`.
+  VRAM: no new texture slot or palette (the particle sheet's glint, sigil and feather, below).
+  The budget with the effects (debug builds, budget.sh): 162 against the split Twins on the
+  rooftop 709,651 CPU and 1,030,911 GPU cycles at the peak, against Shadow in the hangar 581,483
+  and 969,225; 168 on the container port 657,430 and 1,019,057; 198 (Judgement and a reflect
+  against the split Twins on the container port, both marked) 671,195 and 1,103,457; the
+  effects (`prof_fx`, with fx.akr's) at most 79,722 cycles (Shadow's 109: 78,971), the most of
+  it fx.akr's pool of 80 particles (`seraph_fx_draw` itself about 7,000 at that frame, up to
+  about 22,000 with the column over two marked twins); no late frames.
+- **The model:** 1,892 triangles (Shadow's 1,800 and the Hero's 1,776; the pack's limit for it
+  is 1,900, `MECH_LIMITS`), 13.55 m to the top of the halo in the rest pose (the roster's 135).
+  Packed after the other mechs (`LATE` in the generator), with its grey copy: 83,896 bytes of
+  meshes, as much again grey, 2,556 bytes of texture tiles (Momentum's mark on each pauldron,
+  the MR-02 plate on each thigh, the hazard stripes on each shin), four more 4-bit palettes.
+- **Tests:** scenarios 160 (against Shadow) and 161 (against the Hero) in `tests/harness.akr`:
+  1,000 health, the kinetic meter, 22 parts a frame, the walk, the jab landing at 4 m and missing
+  just past the fist where Shadow's Claw Jab reaches from 6 m, the lunge landing at 9 m and
+  missing just past the fist's reach, Heaven's Arc's side swap, Judgement's one hit (280) from a
+  full bar without debt; 170-181 its own moves (`tests/harness.akr`): the mark, Judgement's bonus
+  and the debt, the Wing Ward against the wave, every orb, the Hex Bolt and a mirror's Mark, the
+  Dive, Ascension, Heaven's Arc (and off the rooftop's edge), the column, the CPU;
+  162-168 through the whole game in `tests/seraph/harness.akr`: 162 and 168 the budget
+  (budget.sh), 163 the select with Seraph's card and spec sheet (and the roster row's checks),
+  164-167 mid-fight against Shadow and the Hero in the hangar and on the rooftop; 190-199 its
+  effects, HUD mark and sounds (`tests/seraph/harness.akr`: 190 the bolt and the mark, 191 the
+  mark's HUD on the split Twins, 192-194 the ward sending back the wave, a full orb and a Hex
+  Bolt, 195 the Dive, 196 Ascension and Heaven's Arc, 197 Judgement, 198 the budget, 199 every
+  sound heard); ladder scenario 118 (Shadow's NORMAL run: the final is Seraph, the clear unlocks
+  it) and 124 VIEWs 4 and 5 (Seraph's reveal, the VS card).
+- **The budget** (scenarios 162 and 168, CPU against CPU, debug builds, Seraph's Mark bolt kept
+  out, the other marked, a full bar every 300 frames for Judgement; mx-seraph-fight, before
+  `seraph_fx.akr`): against the split Twins on the rooftop 712,455 CPU cycles and 935,109 GPU
+  cycles at the peak, 2,300 triangles, the worst CPU of any fight measured; against Shadow in the
+  hangar 567,762 and 774,901, 1,866 triangles; against the split Twins on the container port (168)
+  666,525 and 962,451, 2,149 triangles, the worst GPU; the fight at most 69,655 cycles, the
+  mechs' drawing 417,682, the effects' 74,880; no late frames. (Phase 1, with Shadow's mine, bolt
+  and Total Eclipse kept out: 707,271 and 796,571; 579,210 and 763,551; 666,804 and 999,683.)
+  Mid-fight (164-167, CPU against CPU without the extras): 504,681 to 629,409 CPU and 378,106 to
+  604,592 GPU cycles.
+
+## Gamma
+
+Gamma (Heartland Atomic Company, nuclear; `Mech.Gamma`, roster slot 7 under Beam, GAMMA HA-58) is
+Heartland's echo of Beam, the gunner, unlocked by clearing the arcade with Beam. Phase 1
+(mx-gamma-rig) put the mech in the game, drawn and pickable, with Beam's moves as placeholders
+and its own nuclear meter; phase 2's fight and CPU (mx-gamma-fight) gave it its own moves: the
+Atomic Ray and the gun's heat, the Rod Shot, the Geiger Flare and its daze, Lead Shielding, Point
+Blank and Ground Zero; its animations and its effects and sounds are phase 2's other two parts.
+What is real and what is still Beam's: [MOVES.md](MOVES.md#gamma-heartland-atomic-company-nuclear).
+
+- **Its fight (mx-gamma-fight):** `gamma.akr` holds its hits, its stand-in timings, boxes, marks
+  and root motion, its move list and its rules: the Atomic Ray, a held hit box (not a shot) whose
+  box `gamma_ray_advance` re-arms every 6 frames while B holds the charge frame (`fighter.akr`'s
+  `advance`, before the charge rule), the first tick an ordinary hit and the later ones without
+  hitstop or events and scaled as one hit (`gamma_ray_touch`, `fighter.akr`'s `tick_later`); the
+  heat (`Fighter.heat`: +1 a ray frame, -1 every second frame off it, +10 for a shot burnt or a
+  tick warded, the vent at 100 for 50 frames, 0 on Ground Zero's blast; `gamma_tick`); the ray
+  against the shots (`gamma_ray_shots`, from `shots_tick`: strength 1 burnt, 2 cutting it, 3
+  cutting it and going on), against the Parry (`Fx.ray_cut`) and the Wing Ward (`R_WARD` in
+  `strike()`: no damage, +10 heat); the Rod Shot in the shot system (`Shot.pierce`; the shot's
+  move is `shot_move()`: `sp_f` for Gamma) through every shot, through Tank's armour and Lead
+  Shielding, never through a mech; the daze (`Hit.daze`, `Fx.dazed`, `Fx.daze_drop`,
+  `Fx.daze_spent`: in `struck()`, the landing in `advance()`, `grabbable()`); Lead Shielding
+  (`MARK_SHIELD` in `anim.akr`, `gamma_shielded` and `gamma_shield_absorb` beside Tank's armour:
+  one hit, or a whole ray to the brace's end); Point Blank's throw-off (`GM_PB_VX`); Ground Zero's
+  box on both sides of the root. `enum Ev` gains `Vent`, `Burn` and `Daze` (appended). Beam's
+  predicates `has_volt_orb`, `has_shock_grip` and `has_arc_fx` are Beam's alone; Gamma's own ask
+  `has_ray`, `has_rod`, `has_flare`, `has_shielding`, `has_point_blank` and `has_ground_zero`.
+  Its `STATS` row: 1,050 health, a walk of 0.058 m a frame forward and 0.050 back, a 5.6 m jump
+  (`pre` 6, `jv` 0.56, `grav` 0.028), the nuclear meter; its roster stats `0x3254`. Its CPU is
+  its own (the end of `cpu.akr`), and the other CPUs answer its ray and its vent there too
+  ([MOVES.md](MOVES.md#the-cpu-gamma)).
+- **Its stand-ins:** none since its own animations landed: the fight plays every move from the
+  animation data. While a move's animation was still Beam's placeholder (each of its eight own
+  moves has a length of its own, so a move with Beam's length is one), `moves.akr`'s `use_standin`
+  asked `gamma.akr` and the fight played it from the stand-in data; that compare cost every `mv_*`
+  call (about 8,000 cycles on scenario 69's first frame, the Twins against Tank, with no Gamma in
+  it), so it is now the tests' (`gamma_placeholder`, asserted by scenario 200 for each move).
+  Scenario 69's first frame: 967,691 cycles (966,502 before Gamma's fight).
+
+- **Files:** `models/gamma/make_gamma.py` (the model and rig: the owner's concept C, military
+  surplus, from `concepts/gamma_c/`, which stays as the record, refined after the owner's notes:
+  a longer projector with a primer shroud and a round primer lamp, its lens a green dome; the
+  head's lamp cut to a small eye; the shield in primer with bent-back wings; the cans' X and the
+  58 stencils gone), `anims/gamma/` (Gamma's own moves from MOVES.md's "For the animators" (mx-gamma-anim),
+  each on Gamma's `_body.anim.json` alone; the reactions, crouch, jump and grabs Beam's keys copied
+  in and re-keyed where the bigger kit met itself or the floor; no `allow` or `floor_allow` beyond
+  the rig's; the shield, `weapon_l`, held stowed with the kit's `"still"` but in `block`, the
+  hits, `sp_d` and `win`), `gamma.akr` (its hits and stand-ins, Beam's for now, its move
+  list, and the predicates `has_volt_orb`, `has_shock_grip` and `has_arc_fx` that Beam's rules
+  ask instead of "is this Beam", so each special can be given to Gamma's own code without
+  touching Beam's). Its numbers are a row of `STATS` (Beam's, on the nuclear meter) and its
+  names a row of `ROSTER`; the CPU plays it as Beam (`cpu_as_beam` in `cpu.akr`), without the
+  prime.
+- **The nuclear meter goes by the power source**, not by Tank: `meter.akr` read
+  `STATS[m].power` already; the HUD's gauge (`hud.akr`'s `draw_meter`, `tank_meter_hud`) and the
+  reactor's glow (`tank_fx.akr`'s `tank_fx_draw`) now do too, for any nuclear mech. Gamma's glow
+  is one, at the louvred hatch on its sternum, brightening with the meter as Tank's do; Tank's
+  are as they were (scenarios 40-49 pass unchanged). Beam's Reaction Prime is a chemical meter's,
+  so on Gamma `sp_d` plays the prime's animation and starts no reaction.
+- **Where phase 2 branches for `Mech.Gamma`** (phase 1's record: the fight's branches are made,
+  above; the animations, the effects and the sounds are the other two parts'): the three
+  predicates in `gamma.akr` (the Volt
+  Orb, to become the Atomic Ray, in `fighter.akr`'s `fires_shot` and `shot_fire` and
+  `beam_fx.akr`'s charge glow and hum; the Shock Grip in `fighter.akr`'s throw and `beam_fx.akr`'s
+  buzz; Beam's discharges in `beam_fx.akr`), `gamma_hit`, the stand-ins and `GAMMA_MOVES` in
+  `gamma.akr`, its `STATS` row (health, walk, jump), `cpu_as_beam` and `cpu_primes` in `cpu.akr`,
+  Lead Shielding as a new branch in `fighter.akr`'s hits (an absorbed hit, as Tank's armour, that
+  still feeds the reactor), the sounds (`sfx.akr`: `sfx_shot` plays a swing for its orb,
+  `sfx_attack` its swings, `sfx_throw_by` a plain throw, `sfx_super` the kinetic charge-up;
+  `game.akr`'s `sfx_clash` counts only Beam's orb), the trails in `fx.akr` (the no-trail branch),
+  `COVER_POSE` in `cover.akr` (it holds Beam's win), and the animations (the shield swung out at
+  `weapon_l` (0, 90, 0) for Lead Shielding).
+- **Effects and sounds (mx-gamma-fx):** `gamma_fx.akr`, from the fight's events (`Vent`, `Burn`,
+  `Daze`, appended to `enum Ev`; the shared `Shot`, `Throw`, `Armour`, `Parry`, `Swing`) and
+  state (`Fighter.heat`, `Fx.ray_t`, `Fx.dazed`, `Fx.daze_drop`, `Shot.pierce`, Gamma's move,
+  frame and hit boxes), called with a line each from `game.akr` (`gamma_fx_draw` after
+  Seraph's, `gamma_fx_offset` after Seraph's offset, `gamma_sfx` in `sound_poll`, and
+  `sound_event`'s Vent, Burn, Armour and Parry lines), `fx.akr` (`gamma_fx_rod` before every
+  other shot, `gamma_fx_rod_fire` for a rod's Shot event, no wave motes for a rod) and `hud.akr`
+  (`gamma_heat_hud` after Seraph's mark); `beam_fx.akr` leaves Gamma out (its discharges, charge
+  glow, hum and buzz are Beam's only), and fx.akr's no-trail branch keeps Gamma. Heartland's
+  colours (`GMX_GLOW` 0x6EFF8C, `GMX_CORE` 0xE0FFF0, `GMX_HALO` 0x40FF60, the shroud's ramp
+  0x2030A0, 0x2080FF, 0x80E0FF; 0xBBGGRR), anchored on the projector (`weapon_r`: the lens
+  (0, 0.8, −4.4), the bore (0, 0.3, −4.86), three slots along the shroud at z −1.2, −2.35 and
+  −3.3), the shield's face (`weapon_l`, (0.8, −0.1, 0)) and the hatch (torso, (0, 2.1, −1.5)).
+  The Atomic Ray is on while its hit box is out (sp_n's, found once in the data, so the effects
+  follow the ray's timing and reach as the data has them, the owner's retiming to an 18-frame
+  startup and 13 m too; while the data has none, phase 1's placeholder, while `Fx.ray_t` counts up
+  to the charge frame, 2.5 to 16 m); a braced Lead Shielding is sp_d's `shield` frames (4,096,
+  `MARK_SHIELD`; frames 4-28 while the data has no such mark):
+  the warm-up (the lens brightening, the slots lighting from the fist outward), then the beam from
+  the lens to the first hurt box it crosses (or its box's end, tapering over 1.4 m): a green halo
+  2 m thick whose edge flickers and flares on each tick, a white-green core 0.6 m thick (two bands
+  of additive Gouraud triangles off one projected middle line), two streaks running outward,
+  burning motes; at the contact a glow, a spark star, sparks and a burst on each tick (a green
+  hexagon on a guard, sparks thrown up and down off a braced lead shield, gold and green off a
+  Wing Ward); the lamp brighter with the heat; the shut-off's dimming lens and steam. The heat on
+  the gun for both players: the slots dull red from 30, orange from 60, yellow-white from 85,
+  haze over the shroud from 45, smoke from 60, a wisp of steam a frame from 85. The vent (the
+  Vent event, 50 frames): jets of steam both ways along the barrel, the lamp flickering out, the
+  hatch flaring, a column of steam rising and thinning, the slots from white through orange to
+  dark. A burn (the Burn event: a green-white flash 3 m across and sparks); a cut (the ray going
+  out while a shot of strength 2 or more was in it, or a Parry of it: a white snap, a star,
+  sparks). The Rod Shot (a shot with `pierce`): a white-hot spike in an orange glow, a 6 m trail
+  with a white thread, gold when a Wing Ward sent it back; the bore's flash and smoke; a spark
+  where it crosses another shot; a flare, a ring, shards and sparks where it ends against a body
+  on an armour frame or a braced shield. The lamp on the normals (a flash at the lens for the
+  Lamp Jab and the Down Flash, a white cone from the lens over the Glare Lance's box to 10 m, the
+  Scorch Sweep's spot at its box's far end on the floor and a scorched streak behind it for 12
+  frames). The Geiger Flare, while its box is out: a fan of white light 10 m long, 30° each side
+  of the barrel, from the cone's foot (its box's bottom middle, over the head: the lens itself
+  is above the view at fight range), a green glow over it, the lens's glare, green flecks; the daze on every dazed body (a split
+  Twins' partner too): two trefoils and three green spots circling the head, a green glow on the
+  chest flickering at random like a count, Geiger static over it, green ticks crackling off; on
+  the drop (`Fx.daze_drop`) a green streak above the falling body; the Daze event's star and
+  ring. Lead Shielding: a clank and sparks at the shield's top edge on sp_d's fifth frame; on an
+  absorb (the Armour event on a braced Gamma) a dull white dent-flash on the plate for 8 frames,
+  a star and grey sparks, with `tank_fx.akr`'s ring; the win's two raps of the drum on its lip
+  (frames 79 and 91, mx-gamma-anim's), a clank each. Point Blank: the lamp blazing on the
+  other's chest from the throw's sixth frame, light streaming out of its back; the blast (the
+  Throw event) a white flash, a flare and a green ring. Ground Zero: the hatch flaring white-green
+  through the flash (a glow and a trefoil swelling), the stage tinted toward green-white
+  (`layer_offset`, from the super's first frame to the blast's eighth, fading over 12); the
+  blast when its box comes out: a dome of light 8 m in radius grown in 3 frames and fading over
+  20, a white flash at the impact, a green and a white ring along the floor (16 and 20 m across),
+  a ring in the air, dust thrown out both ways, pebbles and sparks, the reactor flaring white.
+  The reactor's glow by the meter is `tank_fx.akr`'s (for every nuclear mech). The HUD: a 2-pixel
+  heat bar 5 pixels under Gamma's meter gauge, its length, filling from the outer end: green, amber
+  from 60, red flashing from 85, white while venting; HEAT flashing from 85, VENT while venting
+  (FONT_MICRO, beside the bar on the screen's centre side). Sounds (`tools/gen_mechexpo_audio.py`,
+  `GAMMA` after Seraph's so every earlier sound keeps its index and bytes): the ray coming on, its
+  hum (a loop with a throb at the ticks, pitched 0.9 + heat / 200), let go and cut, the heat's
+  warning (a loop: Geiger clicks and a beep, slot 2 or 3, from 85), the vent's steam, a burn's
+  sizzle, the rod's crack, the flare, the daze's ringing and count (a loop, slot 4 or 5), the
+  shield swung out and a blow on lead, Point Blank's blast (and its lamp's hum: the ray's loop at
+  1.25), the normals' lamp, Ground Zero's klaxon and its blast, Gamma's own step, and the win's
+  raps (the lead blow, higher and quieter); 202,960
+  bytes in `sfx.adp`. VRAM: no new texture slot or palette (the particle sheet's dome, trefoil,
+  spike, jet and static, below). Tests: scenarios 240-249 in `tests/gamma_fx/harness.akr` (240
+  the ray to its vent and the gauge every frame, 241 a guard, a burn and two cuts, 242 the Wing
+  Ward, 243 and 244 the rod through a wave and through armour, 245 Lead Shielding, 246 the flare
+  and both dazes, 247 the normals, the steps and Point Blank, 248 Ground Zero, 249 the budget),
+  each checking what it drew and which sounds it heard. Without Gamma's own rules in the fight
+  (`has_volt_orb(Mech.Gamma)`: phase 1's), they stand in for the fight's part (MOVES.md's
+  rules) and post its events; with them they only press the buttons. Both ways pass (checked
+  against the fight agent's and the animation agent's work in progress, 2026-10-14).
+  The budget (249, budget.sh: the ray held at heat 88 against Seraph's Wing Ward on the container
+  port, then against the split Twins there with Ground Zero every 300 frames; debug builds):
+  against Seraph 615,939 CPU and 594,112 GPU cycles at the peak, 2,101 triangles; against the
+  split Twins 651,756 and 1,141,459, 2,163 triangles; the effects (`prof_fx`, with fx.akr's and
+  Seraph's) at most 61,563 cycles, `gamma_fx_draw` itself at most 22,591 (Ground Zero's blast
+  coming out; about 19,000 to 21,000 a frame while the ray is held hot), within Shadow's (109:
+  about 76,000); no late frames. With the fight agent's rules and the animations together
+  (their work in progress laid over this branch, 2026-10-14): 602,059 and 589,623; 625,567 and
+  734,367; the effects at most 50,405 (Gamma's 19,769). Phase 1's moves with the effects stood
+  in (before the animations): the effects at most 75,452.
+- **The model:** 1,936 triangles (Beam's 1,794; concept C's 1,940; the pack's limit for it is
+  1,950, `MECH_LIMITS`), 11.9 m to the top of the searchlight head in the rest pose (the
+  roster's 119) and 13.6 m to the whip antenna's tip. The muzzle is Beam's, (0, 0.8, −4.4) in
+  `weapon_r`'s frame, so Beam's effects start at the lens (`gamma.rig.json`'s `muzzle` and
+  `shield`). Packed after Seraph (`LATE` in the generator), with its grey copy: 88,176 bytes of
+  meshes, as much again grey, 4,205 bytes of texture tiles before de-duplication (Heartland's
+  roundel on each pauldron, the HA-58 plate on each thigh, the trefoil on the shield, the chipped
+  paint, the shroud's slots), as much again grey.
+- **Tests:** scenarios 200 (against Beam) and 201 (against the Hero) in `tests/harness.akr`
+  (rewritten in mx-gamma-fight): 1,050 health, the nuclear meter, 19 parts a frame, its walk, each
+  of its own eight moves animated (none a placeholder of Beam's) and its length, the shield stowed
+  on its hand on every frame of every move but where it swings out (the brace, the block, the hits'
+  rattle, the win's raps), the Lamp Jab landing at 4 m and filling nothing, the other's jab filling the
+  meter 3 a point, the Rod Shot landing at 12 m, Point Blank's throw-off, Lead Shielding without a
+  reaction, Ground Zero from a full bar; 220-230 its own moves (`tests/harness.akr`, the fight
+  alone): the ray's ticks, push, chip and scaling and a cornered mech, the heat and the vent, the
+  ray against each shot and each defence, the Rod Shot, the daze, the ray after a high catch, Lead
+  Shielding, Point Blank, Ground Zero, the CPU against each mech;
+  202-207 through the whole game in `tests/gamma/harness.akr`: 202 the budget (budget.sh), 203 the
+  select with Gamma's card and spec sheet (and the roster row's checks), 204-207 mid-fight
+  against Beam and the Hero in the hangar, on the rooftop and on the container port; ladder
+  scenarios 210 (Beam's NORMAL run: the final is Gamma, the clear unlocks it) and 211 (Gamma's
+  reveal, VIEW 0, and the VS card, VIEW 1).
+- **The budget** (scenario 202, CPU against CPU, debug builds, a full Volt Orb kept out, a full
+  bar every 300 frames): against the split Twins on the rooftop 696,825 CPU cycles and 917,172
+  GPU cycles at the peak, 2,359 triangles; on the container port 662,403 and 979,223, 2,186
+  triangles, the worst GPU; the mechs' drawing at most 435,328 cycles, the effects' 47,863; no
+  late frames. Mid-fight (204-207, CPU against CPU without the extras): 536,666 to 631,217 CPU
+  and 458,025 to 659,901 GPU cycles. With its own fight and CPU (mx-gamma-fight, before
+  `gamma_fx.akr`; 202 keeps a Rod Shot out instead of the orb): 703,472 CPU and 885,144 GPU on
+  the rooftop, 676,469 and 711,365 on the port, the fight at most 49,104 cycles, no late frames.
+
 ## The arcade ladder
 
 The full ladder (mx-ladder), after the MVP's two fights; the owner's decisions are in
@@ -251,13 +571,17 @@ run, the difficulties and the test unit's names; `game.akr` the flow; `menus.akr
   by lot (`ladder_make()`) from the run's seed: the game tick the run starts on, so a scripted
   run replays exactly. Never your own maker, never the final opponent's maker, no maker twice.
   The Twins are drawn while they are still locked. As the Hero or the Double-blade Hero the two
-  rivals come from Raikō, Heartland and Binary Mechanica; as Shadow, Beam, Tank or the Twins
-  from the other four makers.
+  rivals come from Raikō, Heartland and Binary Mechanica; as Shadow or Seraph from Raikō,
+  Heartland and Binary Mechanica; as Beam or Gamma from Momentum, Umbral and Binary Mechanica;
+  as Tank or the Twins from the other four makers.
 - **The final** is the slot below (or above) yours: the Double-blade Hero for the Hero ("UMBRAL
   RESEARCH PRESENTS ITS COMPETING PRODUCT"), the Hero for the Double-blade Hero ("MOMENTUM
-  ROBOTICS DEFENDS ITS TITLE"). A mech whose echo's slot has no mech yet (Shadow, Beam, Tank,
-  the Twins) meets **the UAPC test unit**: its own mech in the UAPC's grey, the client's own
-  evaluation unit ("THE UAPC WILL NOW EVALUATE YOUR PRODUCT AGAINST ITS OWN TEST UNIT";
+  ROBOTICS DEFENDS ITS TITLE"), Seraph for Shadow ("MOMENTUM ROBOTICS PRESENTS ITS COMPETING
+  PRODUCT"), Shadow for Seraph ("UMBRAL RESEARCH DEFENDS ITS TITLE"), Gamma for Beam ("HEARTLAND
+  ATOMIC CO. PRESENTS ITS COMPETING PRODUCT"), Beam for Gamma ("RAIKO CHEMICAL GROUP DEFENDS ITS
+  TITLE"). A mech whose echo's slot has no mech yet (Tank, the Twins) meets **the UAPC test
+  unit**: its own mech in the UAPC's grey, the client's own evaluation unit ("THE UAPC WILL NOW
+  EVALUATE YOUR PRODUCT AGAINST ITS OWN TEST UNIT";
   "SPECIFICATION: YOURS. BUILDER: NOT DISCLOSED."). Giving an echo's slot its `mech` replaces the
   test unit with the echo, with no other change.
 - **Stages:** the company fights in the hangar, the final on the rooftop (`LADDER_STAGES` in
@@ -337,7 +661,8 @@ clear it holds becomes a NORMAL stamp, since the MVP's ladder was two fights at 
   `menus.akr`'s `draw_cover()` draws it). The owner's notes (2026-10-13): a photograph, a
   fanfare, and headlines that vary.
   - **A photograph:** the winner in 3D, frozen in one held frame of its win move
-    (`COVER_POSE`: the end of the win, weapons up; Tank at frame 40, square to the camera), on
+    (`COVER_POSE`: the end of the win, weapons up; Tank at frame 40, square to the camera; Gamma
+    at frame 40, the searchlight high in its sweep), on
     its maker's colour, cut at the knees; no idle motion and no turntable. Per mech: the turn
     toward the camera, the camera's distance, the feet's height and the backdrop's shades
     (lighter behind the dark Shadow).
@@ -362,15 +687,17 @@ clear it holds becomes a NORMAL stamp, since the MVP's ladder was two fights at 
 - **The masthead** is "PROCUREMENT TODAY", the owner's pick.
 
 **The test unit's grey** is made by `tools/gen_mechexpo_assets.py`, not by hand: for each body in
-`GREY_BODIES` (Shadow, Beam, Tank, the combined Twins, twin A, twin B) every part recipe is packed
-again as `grey_NAME` (`ASSET_GREY_*`), the same geometry with its colours mapped by
+`GREY_BODIES` (Shadow, Beam, Tank, the combined Twins, twin A, twin B, Seraph, Gamma) every part
+recipe is packed again as `grey_NAME` (`ASSET_GREY_*`), the same geometry with its colours mapped by
 `grey_colour()`: a maker's saturated colour to the UAPC's grey paint (lighter for a lighter
 colour), a neutral one to a gunmetal-to-primer ramp by its lightness, texture colours the same
 way, the emissive glows the UAPC's pale blue. `assets.akr` lists the pairs (`GREY_FROM`,
 `GREY_TO`); `anim.akr` fills a grey mesh table a mech at a time, the first time that mech is
 drawn grey, and draws from it while `anim_grey` is set, which the game sets around a test
-unit's bodies (`p_grey`), the split Twins' twin B included. The grey parts add about 410 KB of
-ROM and 16 4-bit palettes.
+unit's bodies (`p_grey`), the split Twins' twin B included. The grey parts add 573,544 bytes of
+meshes to the ROM (83,896 of them Seraph's, 88,176 Gamma's) and 18 4-bit palettes before Gamma.
+Shadow's, Seraph's, Beam's and Gamma's are packed though each pair has each other as their
+finals: the owner's rule is a grey for every body (scenario 125's VIEW 0 still fights Shadow's).
 
 **Budgets** (scenarios 117-119, debug builds, peaks): the schedule page 275,000 CPU and 353,000
 GPU cycles; the reveal 256,000 and 188,000; the cover 310,000 and 350,000; the fights with the
@@ -382,11 +709,15 @@ triangles); no late frames.
 `tests/check.sh` (`tests/ladder/run.sh SCENARIO VIEW FRAMES OUT`; `tests/run.sh` runs VIEW 0):
 116 EASY against the masher, 117-119 a whole run on each grade (EASY with the Hero, NORMAL with
 Shadow, HARD with Tank: the rivals drawn and checked, the Twins drawn while locked, a lost fight
-and its continue, the levels, the reveal, the test unit, the cover, the unlock on EASY, the
-stamps, the save written, each screen's budget), 120 the lot over 300 seeds a mech, 121 the
-save's migration (and the stamps on the select and the spec sheet), 122 the difficulty select,
-123 the schedule page, 124 the reveal, 125 the test unit in a fight, 126 the cover, 127 a
-continue.
+and its continue, the levels, the reveal, the final (the Double-blade Hero, Seraph, the test
+unit), the cover, the unlocks (the Double-blade Hero on EASY, Seraph on NORMAL), the stamps, the
+save written, each screen's budget), 120 the lot over 300 seeds a mech, 121 the save's migration
+(and the stamps on the select and the spec sheet), 122 the difficulty select, 123 the schedule
+page, 124 the reveal (VIEW 2 Tank's test unit, since Beam's final is Gamma; VIEWs 4 and 5:
+Shadow's final, Seraph, and its VS card), 125 the test unit in a fight (VIEW 0's grey Shadow set
+by the harness, since Shadow's final is Seraph), 126 the cover, 127 a continue; 210 a whole run
+on NORMAL with Beam (the final Gamma, the clear unlocks it; its fights peak at 801,664 CPU and
+563,087 GPU cycles) and 211 Gamma's reveal (VIEW 0) and VS card (VIEW 1) (mx-gamma-rig).
 
 ## Stages
 
@@ -620,12 +951,22 @@ across the fight plane, z behind it, y up from the apron.
   the menu page; texture slots 8 (fonts), 9 (UI sprites), 10 (effects); palettes 240–254 (244 is
   lent to the menu page and the hall's put back); a backdrop table at 0x582000; line channels 0,
   2 and 7. Priorities: BG2 0, BG1 1, the mechs 2, BG0 (the HUD's frame) 3, the interface list 4.
-- **Palettes, as built with Beam, Tank, the Twins, Shadow and the test units' grey parts
-  (mx-ladder):** the pack's 4-bit palettes are 0–43 (its surface, emissive and textured
-  palettes), counting up from 0 (0–27 before the grey parts); its 8-bit palettes would come down
-  from 14. The pack's textures still fit texture slot 0.
+- **Palettes, as built with Beam, Tank, the Twins, Shadow, the test units' grey parts, Seraph
+  (mx-seraph) and Gamma (mx-gamma-rig):** the pack's 4-bit palettes are 0–54 (its surface,
+  emissive and textured palettes), counting up from 0 (0–27 before the grey parts, 0–43 before
+  Seraph, 0–47 before Gamma); its 8-bit palettes would come down from 14. The pack's textures take
+  texture slots 0 and 1: 29,824 bytes in slot 0 and 8,320 in slot 1 (38,144 loaded; 36,096
+  before Gamma; 56,018 bytes of tiles before de-duplication, 47,608 before Gamma); the pack's ROM
+  in `art/` is 1,360,272 bytes (1,181,648 before Gamma, 1,008,480 before Seraph). The exported
+  `anims/anim_data.bin` is 11,212,396 bytes: 9,997,820 with Seraph's placeholders, 10,019,132 with
+  Seraph's own animations, 11,164,188 with Gamma's placeholders after them, and Gamma's own
+  animations in their place (every other mech's bytes unchanged).
 - **The particle effects (fx.akr, mx-fx's):** texture slot 11 and 4-bit palette 192
-  (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. A pool of 80 particles,
+  (`tools/gen_mechexpo_fx.py`, `fx_art.akr`); 193–195 are kept for more. Seraph's sprites
+  (mx-seraph-fx: a four-point glint in four turns, the mark's sigil, a feather) are on the same
+  sheet after the others, which keep their rectangles, and Gamma's (mx-gamma-fx: a dome of light,
+  the radiation trefoil, the rod's spike, a jet of steam, two frames of Geiger static) after
+  Seraph's: rows 0–171, 22,016 bytes (19,840 before Gamma's, 14,592 before Seraph's). A pool of 80 particles,
   at most 52 spawned a frame; at their busiest (scenarios 50–54) about 75,000 CPU cycles a frame
   in a release build.
 - **The menus (mx-menus):** texture slot 12 (`ui_menu.tex`: the small fonts FONT_MICRO and
@@ -658,7 +999,8 @@ across the fight plane, z behind it, y up from the apron.
   `tools/gen_mechexpo_ui.py`. The reveal uses the print layer (BG0, palettes 197-199) and the
   GPU's fog register while it shows. The model pack took 4-bit palettes 28–43 for the grey
   parts (above).
-- **Triangles:** a mech about 1,600–1,800 (the sketches are 1,632 and 1,734); the frame limit is
+- **Triangles:** a mech about 1,600–1,800 (the sketches are 1,632 and 1,734; Seraph, with wings
+  and a halo, 1,892; Gamma, with a lamp-headed gun and a shield, 1,936); the frame limit is
   4,000.
 - **Budgets a tick:** CPU 1,000,000 cycles, GPU 2,000,000 (`mei-headless --gpu-stats`). The
   sketches cost about 155,000 CPU cycles and 5 % of the GPU each, posed as one mesh; the rig's

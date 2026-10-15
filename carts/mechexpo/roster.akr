@@ -109,7 +109,15 @@ const ROSTER_COLS = 5
 // Names and numbers from MOVES.md where the mech exists: Beam is shown as BEAM MECH, model RC-03
 // (mx-beam); Tank's model is HA-57, product name open ("Homestead" proposed), 10.2 m tall and
 // 9.5 m across the fists (mx-tank); Shadow is SHADOW, UR-01, the lowest health (armour 1), the
-// Sneak's speed and the claws' reach (mx-shadow-fight).
+// Sneak's speed and the claws' reach (mx-shadow-fight); Seraph is SERAPH, MR-02, Momentum's echo of
+// Shadow (mx-seraph): stats 0x2323 (power 2: Shadow's hits for now; speed 3: a walk of 0.080 m a
+// frame, between the Hero's 0.075 (3) and Shadow's 0.085 (4); reach 2: fists 2.4-2.6 m shorter
+// than the talons; armour 3: 1,000 health, the Hero's), 13.5 m to the top of its halo; Gamma is
+// GAMMA, HA-58, Heartland's echo of Beam (mx-gamma-rig): stats 0x3254 since its own numbers
+// (mx-gamma-fight; power 3: its normals a little heavier than Beam's, its specials lighter; speed 2:
+// a walk of 0.058 m a frame, between Tank's 0.055 (1) and Beam's 0.062 (2); reach 5: the ray's
+// 16 m and the Rod Shot across the stage; armour 4: 1,050 health, between Beam's 1,000 (3) and
+// Tank's 1,150 (5)), 11.9 m to the top of its searchlight head (13.6 to the whip antenna's tip).
 const ROSTER: [10]Slot = [
     // the base mechs
     Slot { maker: CO_MOMENTUM, mech: Mech.Hero as s32, rule: RULE_OPEN,
@@ -137,10 +145,14 @@ const ROSTER: [10]Slot = [
            mystery: true, emblem: UI_EMBLEM_ECHO, emblem24: UI_EMBLEM24_UMBRAL, epal: PAL_EMBLEM,
            name: "DOUBLE-BLADE HERO", short: "DOUBLE-BLADE", card: "DBL-BLADE", model: "UR-02", height: 120,
            stats: 0x3422, blurb: "TWO BLADES,\nMORE RUSH", hint: "CLEAR ARCADE\nWITH THE HERO" },
-    Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 1, bit: 0x40, mystery: true, name: "?",
-           short: "?", card: "?", model: "?", stats: 0, blurb: "", hint: "CLEAR ARCADE\nWITH SHADOW" },
-    Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 2, bit: 0x80, mystery: true, name: "?",
-           short: "?", card: "?", model: "?", stats: 0, blurb: "", hint: "CLEAR ARCADE\nWITH BEAM" },
+    Slot { maker: CO_MOMENTUM, echo: true, mech: Mech.Seraph as s32, rule: RULE_CLEAR, arg: 1, bit: 0x40,
+           mystery: true, emblem: UI_EMBLEM_HERO, emblem24: UI_EMBLEM24_MOMENTUM, epal: PAL_EMBLEM,
+           name: "SERAPH", short: "SERAPH", card: "SERAPH", model: "MR-02", height: 135, stats: 0x2323,
+           blurb: "PALADIN: WARD,\nJUDGEMENT", hint: "CLEAR ARCADE\nWITH SHADOW" },
+    Slot { maker: CO_HEARTLAND, echo: true, mech: Mech.Gamma as s32, rule: RULE_CLEAR, arg: 2, bit: 0x80,
+           mystery: true, emblem: UI_EMBLEM_HEARTLAND, emblem24: UI_EMBLEM24_HEARTLAND, epal: PAL_POWER,
+           name: "GAMMA", short: "GAMMA", card: "GAMMA", model: "HA-58", height: 119, stats: 0x3254,
+           blurb: "THE GUNNER:\nRAYS, LEAD", hint: "CLEAR ARCADE\nWITH BEAM" },
     Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 3, bit: 0x100, mystery: true, name: "?",
            short: "?", card: "?", model: "?", stats: 0, blurb: "", hint: "CLEAR ARCADE\nWITH TANK" },
     Slot { maker: CO_NONE, echo: true, rule: RULE_CLEAR, arg: 4, bit: 0x200, mystery: true, name: "?",

@@ -12,9 +12,9 @@ FORMAT = 'mei-anim'
 EASES = ('linear', 'ease', 'in', 'out', 'hold')
 KINDS = {'hit': 0, 'hurt': 1, 'push': 2}
 MARKS = {'cancel': 1, 'invuln': 2, 'armour': 4, 'flash': 8, 'step': 16, 'release': 32, 'riposte': 64, 'parry': 128,
-         'nopush': 256, 'hide': 512, 'charge': 1024}
+         'nopush': 256, 'hide': 512, 'charge': 1024, 'ward': 2048, 'shield': 4096}
 TOP = {'format', 'version', 'name', 'rig', 'base', 'retime', 'length', 'loop', 'air', 'travel', 'phases', 'boxes',
-       'keys', 'marks', 'motion', 'plant', 'allow', 'design', 'note'}
+       'keys', 'marks', 'motion', 'plant', 'allow', 'floor_allow', 'design', 'still', 'note'}
 KEY = {'at', 'from', 'relative', 'ease', 'reach_ease', 'pose', 'offset', 'floor', 'aim', 'reach', 'boxes', 'note',
        'remove'}
 BOX = {'kind', 'part', 'min', 'max', 'rect', 'split', 'hit', 'grow', 'note'}
@@ -269,7 +269,20 @@ class Move:
         self.pose_keys = []          # (frame, ease, rotate {id: [x, y, z]}, offset [f, u])
         self.box_keys = [(0, self.boxes0)]
         guard = rig.poses.get('guard', {'rotate': {}, 'offset': [0.0, 0.0]})
-        cur_rot = dict(guard['rotate'])
+        # "still": joints held at rotation 0 on every frame, whatever the keys and poses say (an
+        # echo on its base's moves: Seraph's fists on Shadow's claw keys)
+        still = d.get('still', [])
+        need(isinstance(still, list) and all(isinstance(j, str) for j in still), '/still',
+             'still is a list of parts held at rotation 0: ["weapon_r", "weapon_l"].')
+        for i, j in enumerate(still):
+            need(j in PARTS, f'/still/{i}', f'{j!r} is not a part ({", ".join(PARTS)}).')
+        self.still = list(still)
+
+        def hold(rot):
+            for j in self.still:
+                rot[j] = [0.0, 0.0, 0.0]
+            return rot
+        cur_rot = hold(dict(guard['rotate']))
         cur_off = list(guard['offset'])
         off_from = None              # the pose key whose offset the current one is (for "floor")
         self.offset_from = []        # per pose key: that key's index, or None (a rig's pose)
@@ -303,7 +316,7 @@ class Move:
             if 'from' in key:
                 need(key['from'] in rig.poses, p+'/from',
                      f'{key["from"]!r} is not one of the rig\'s poses ({", ".join(rig.poses) or "none"}).')
-                cur_rot = dict(rig.poses[key['from']]['rotate'])
+                cur_rot = hold(dict(rig.poses[key['from']]['rotate']))
                 cur_off = list(rig.poses[key['from']]['offset'])
                 off_from = None
             if 'pose' in key:
@@ -316,6 +329,8 @@ class Move:
                     need(all(abs(v) <= MAX_ANGLE for v in r), f'{p}/pose/{j}', f'Angles are within +-{MAX_ANGLE:g} degrees.')
                     if j not in rig.joints:
                         self.warn(f'{p}/pose/{j}', f'The rig {rig.name} has no {j}; the rotation does nothing.')
+                    if j in self.still:
+                        continue
                     if relative:
                         g = guard['rotate'].get(j, [0.0, 0.0, 0.0])
                         cur_rot[j] = [a+float(v) for a, v in zip(g, r)]
@@ -452,6 +467,16 @@ class Move:
                  '/design/hit', 'hit is [x0, y0, x1, y1]: the extent of the move\'s hit boxes over its active frames.')
             need(number(dz.get('tolerance', 0.5)) and dz.get('tolerance', 0.5) >= 0, '/design/tolerance',
                  'tolerance is metres (default 0.5).')
+        # "floor_allow": parts that may go into the floor, each up to its depth (m): verify warns
+        # instead of failing (a move made for another body: Seraph's folded wings on Shadow's
+        # knockdown)
+        fa = d.get('floor_allow', {})
+        need(isinstance(fa, dict), '/floor_allow', 'floor_allow is an object: {"wing_l": 2.2}, metres a part may go '
+             'into the floor.')
+        for j, v in fa.items():
+            need(j in PARTS, f'/floor_allow/{j}', f'{j!r} is not a part ({", ".join(PARTS)}).')
+            need(number(v) and 0 < v <= 5, f'/floor_allow/{j}', 'A depth is metres, more than 0 and at most 5.')
+        self.floor_allow = {j: float(v) for j, v in fa.items()}
         self.allow = set(rig.allow)
         for i, pair in enumerate(d.get('allow', [])):
             need(isinstance(pair, list) and len(pair) == 2 and all(isinstance(s, str) for s in pair), f'/allow/{i}',

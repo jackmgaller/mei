@@ -8,7 +8,8 @@
                16, none thinner than 0.1 m, none absurdly far from the root
   parts        no two parts pass into each other deeper than the rig's own poses have them (rest
                and guard) plus a tolerance, from boxes fitted to each part's pieces
-  floor        nothing below the floor (a grounded move); feet planted where the plant says
+  floor        nothing below the floor (a grounded move), but what the move's floor_allow allows;
+               feet planted where the plant says
   slides       a foot on the floor that moves along it (a warning)
 """
 import math
@@ -257,6 +258,11 @@ class Checker:
                 fx, _ = fight_xy((m[0][3], m[1][3], m[2][3]))
                 foot_track[p].append((y, fx+travel[0]))
         for pid, s in sunk.items():
+            if s['depth'] <= mv.floor_allow.get(pid, -1.0):
+                self.warn('floor', f'{pid} goes {s["depth"]:.2f} m into the floor on frames {ranges(s["frames"])}: '
+                          f'allowed ("floor_allow": up to {mv.floor_allow[pid]:g} m).',
+                          part=pid, frames=s['frames'], depth=round(s['depth'], 3), frame=s['frame'])
+                continue
             # what the pelvis needs on the worst frame: its offset's up raised by the depth (a key
             # there with "floor": true sets it)
             up = mv.pose_at(s['frame'])[1][1]

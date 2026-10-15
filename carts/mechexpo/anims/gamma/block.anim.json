@@ -1,0 +1,17 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Block: 4 frames to raise it, then the last frame is held (the fight shakes it in blockstun). Upright on bent knees, the left forearm raised across the chest and face with the lead shield swung half out (weapon_l y 0 to 45 by frame 3) in front of it, the head tucked down behind; the projector drawn back level at the hip, out of the way.",
+  "base": "_body.anim.json",
+  "length": 4,
+  "still": [],
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "reach": {"foot_r": "guard", "foot_l": "guard"}},
+    {"at": 3, "offset": [-0.25, -0.9],
+     "pose": {"pelvis": [-2, -2, 0], "torso": [-6, 6, 0], "head": [16, 0, 0],
+              "upper_arm_r": [-36, 0, -12], "forearm_r": [104, 0, 8], "hand_r": [23, 0, 0],
+              "upper_arm_l": [62, 0, -6], "forearm_l": [96, 0, -30], "hand_l": [-10, 0, 0],
+              "weapon_l": [0, 45, 0], "pauldron_r": [-12.6, 0, -6], "pauldron_l": [21.7, 0, -3]},
+     "reach": {"foot_r": "guard", "foot_l": "guard"}}
+  ]
+}

@@ -5,8 +5,9 @@
 # 6 and 7 the chains, 8 the kinetic super, 9 the antimatter super and its debt, 10 CPU against
 # CPU twice (the same match), 11 the separation limit and the walls, 12 the Parry and the
 # anti-air, 13 the ladder's levels, 18 the Vault Throw, 19 the air attack, 15 training. The
-# budget scenarios (14, 39, 49, 54, 69, 98, 99, 109, 147-149) are tests/budget.sh's. MEIC and
-# RUN as in tools/cart_scenario.sh.
+# budget scenarios (14, 39, 49, 54, 69, 98, 99, 109, 147-149, 162, 168, 198, 202, 249) are
+# tests/budget.sh's.
+# MEIC and RUN as in tools/cart_scenario.sh.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 O="$HERE/out/check"
@@ -14,11 +15,11 @@ mkdir -p "$O"
 POOL_DIR="$O"
 . "$HERE/pool.sh"
 pool_report() {
-    grep -E '^(OK|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|cover|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb)' "$O/$1.log"
+    grep -E '^(OK|Seraph|the (fists|jab|lunging|throw|super)|blurb|stats|Shadow.s (final|Claw)|fight [0-9]|  the (schedule|reveal|fights|cover|fight)|the novice|level 0|the run on|the version|cover|EASY levels|NORMAL levels|HARD levels|KO after|time up|chain|meter after|  round|run |rounds|apart|pushed|level|peak|Beam against|Hero health|thrown to|Tank|clinched|Hero thrown|anti-air|late|combine|split|jab and|twin|overlapping|Tag Toss|Binary|combined|Fusion|meter after|Twins|frames split|tread|stages|the |siphoned|refreshed|mine |armed|snared|tapped|held|Eclipse|open floor|cornered|Total|in debt|blocked|Phantom|Shadow|blurb|Judgement|orb level|ward [0-9]|Ascension|its back|6 m from|landing|Seraph.s CPU|  peak|mark_cast|the (bolt|mark|ward|Dive)|Judgement:|Gamma|every move|walked|Beam.s final|on hit|after the jab|against the wall|held from cold|vented|cooling|started at|a (tapped|charged|full|Hex|Mark|mirror|Wing|second)|parried|Lead Shielding|one rod|caught|dazed|absorbed|Point Blank|[0-9]+ m |6 m in|5 m behind|whiffed|Ground Zero|atk_n|  heard)' "$O/$1.log"
 }
 run() {       # scenario frames: the scenarios through the whole game cost about 8 times a frame
     s="$1"; f="$2"; shift 2
-    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]|14[0-6]|150) c=$((f * 8)) ;; 108) c=$((f * 40)) ;; *) c="$f" ;; esac
+    case "$s" in 5[0-4]|6[89]|8[0-9]|9[0-9]|11[2-5]|14[0-6]|150|16[3-7]|19[0-79]|20[3-7]|24[0-8]) c=$((f * 8)) ;; 108|181|230) c=$((f * 40)) ;; *) c="$f" ;; esac
     pool_add "s$s" "$c" "$HERE/run.sh" "$s" "$f" "$O/s$s" "$@"
 }
 run 1 800
@@ -134,14 +135,102 @@ run 106 900
 run 107 1600
 run 108 2500
 run 110 900
+# Seraph (mx-seraph, phase 1: Shadow's moves on its body): 160 against Shadow, 161 against the
+# Hero (its numbers, the fists' reach, a throw, the kinetic super); through the whole game
+# (tests/seraph/harness.akr): 163 the select with its card and spec sheet, 164-167 mid-fight
+# against Shadow and the Hero in the hangar and on the rooftop (162 and 168, the budget, are
+# budget.sh's)
+run 160 1500
+run 161 1500
+run 163 61
+run 164 301
+run 165 301
+run 166 301
+run 167 301
+# Seraph's own moves (mx-seraph-fight): 170 the mark, 171 Judgement's x 1.5 and the debt, 172-175
+# the Wing Ward against the wave, the orbs, the Hex Bolt and a mirror's Mark, 176 the Seraph Dive,
+# 177 Ascension against a jump, 178 Heaven's Arc (open floor and both walls), 179 off the
+# rooftop's edge, 180 Judgement's column, 181 its CPU against each mech
+run 170 1200
+run 171 400
+run 172 200
+run 173 450
+run 174 200
+run 175 450
+run 176 650
+run 177 150
+run 178 250
+run 179 200
+run 180 400
+run 181 2600
+# Seraph's effects, HUD mark and sounds (mx-seraph-fx, tests/seraph/harness.akr, the whole game):
+# 190 the Mark bolt and the mark, 191 the mark's HUD on the split Twins (running out, a refresh),
+# 192-194 the Wing Ward sending back the wave, a full Volt Orb and a Hex Bolt (as a Mark), 195 the
+# Seraph Dive held, 196 Ascension and Heaven's Arc, 197 Judgement on a marked Hero, 199 every one
+# of its sounds (198, the budget, is budget.sh's)
+run 190 151
+run 191 301
+run 192 201
+run 193 201
+run 194 201
+run 195 141
+run 196 201
+run 197 161
+run 199 561
+# Gamma (mx-gamma-rig, phase 1: Beam's moves on its body, the nuclear meter): 200 against Beam,
+# 201 against the Hero (its numbers, every move Beam's with the shield stowed, the meter filling
+# from damage taken, the orb, the throw, the brace without a reaction, the super); through the
+# whole game (tests/gamma/harness.akr): 203 the select with its card and spec sheet, 204-207
+# mid-fight against Beam and the Hero in the hangar, on the rooftop and on the port (202, the
+# budget, is budget.sh's)
+run 200 1500
+run 201 1500
+run 203 61
+run 204 301
+run 205 301
+run 206 301
+run 207 301
+# Gamma's own moves (mx-gamma-fight): 220 the Atomic Ray's ticks, push, chip and scaling, 221 the
+# heat and the vent, 222 the ray against each shot, 223 against the Parry, the Wing Ward, Tank's
+# armour, Lead Shielding and the Void Step, 224 the Rod Shot, 225 the daze, 226 the ray after a
+# high catch, 227 Lead Shielding, 228 Point Blank, 229 Ground Zero, 230 its CPU against each mech
+run 220 600
+run 221 400
+run 222 550
+run 223 400
+run 224 500
+run 225 400
+run 226 200
+run 227 300
+run 228 300
+run 229 550
+run 230 2600
+# Gamma's effects, its HUD heat gauge and its sounds (mx-gamma-fx, tests/gamma_fx/harness.akr,
+# the whole game): 240 the Atomic Ray held to its vent (the heat on the gun and the gauge), 241
+# the ray blocked, a shot burnt up and the ray cut, 242 against the Wing Ward, 243 the Rod Shot
+# through a wave, 244 through Tank's armour, 245 Lead Shielding against a mirror's ray, 246 the
+# Geiger Flare's daze on the ground and in the air, 247 the normals' lamp, the steps and Point
+# Blank, 248 Ground Zero between the split Twins (249, the budget, is budget.sh's)
+run 240 201
+run 241 261
+run 242 201
+run 243 121
+run 244 121
+run 245 141
+run 246 201
+run 247 401
+run 248 161
 # the arcade ladder (mx-ladder, tests/ladder/harness.akr, the whole game; VIEWs as listed there):
 # 116 EASY against a scripted masher, 117-119 a whole run on each difficulty (EASY with the Hero,
 # NORMAL with Shadow, HARD with Tank: the rivals drawn, a loss and a continue, the reveal, the
-# test unit, the cover, the unlock and the stamps), 120 the lot, 121 the save's migration from
-# version 1 and the stamps on the select, 122 the difficulty select, 123 the schedule page, 124
-# the reveal, 125 the test unit in a fight, 126 the cover (a frozen pose per mech, the fanfare,
-# the headline pick and every line's width), 127 a continue. 117-119 and 121 get a
-# memory card each (out/check/ladder_card*.bin, made fresh)
+# final (Seraph's for Shadow, the test unit's for Tank), the cover, the unlock and the stamps),
+# 120 the lot, 121 the save's migration from version 1 and the stamps on the select, 122 the
+# difficulty select, 123 the schedule page, 124 the reveal (VIEWs 4 and 5: Seraph and its VS
+# card), 125 the test unit in a fight, 126 the cover (a frozen pose per mech, the fanfare,
+# the headline pick and every line's width), 127 a continue; 210 a whole run on NORMAL with Beam
+# (the final Gamma, the clear unlocks it) and 211 its reveal (VIEW 0) and VS card (VIEW 1)
+# (mx-gamma-rig). 117-119, 121 and 210 get a memory card each (out/check/ladder_card*.bin, made
+# fresh)
 lrun() {      # scenario view frames [mei-headless args]
     s="$1"; v="$2"; f="$3"; shift 3
     case "$s" in 116) c=$((f * 60)) ;; *) c=$((f * 8)) ;; esac
@@ -163,6 +252,8 @@ lrun 124 0 121
 lrun 124 1 241
 lrun 124 2 241
 lrun 124 3 241
+lrun 124 4 241
+lrun 124 5 141
 lrun 125 0 601
 lrun 125 1 601
 lrun 126 0 151
@@ -176,6 +267,9 @@ lrun 126 7 401
 lrun 127 0 61
 lrun 127 1 141
 lrun 127 2 121
+lrun 210 0 6500 --card1 "$(lcard 210)"
+lrun 211 0 241
+lrun 211 1 141
 pool_run
 echo "all Mech Expo fight checks passed"
 # 55-59: the menus (mx-menus), the whole game with scripted pads: tests/menus/check.sh

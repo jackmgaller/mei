@@ -1,0 +1,27 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Grab break (both mechs; the fight slides each back about 3 m): both arms shove out hard at chest height on frames 0-3, the fists breaking the other's grip, then the recoil throws the body back onto its back foot as it slides, the wings opening half way (frames 3-9) and folding again as it gathers itself into the guard by 19.",
+  "base": "_body.anim.json",
+  "length": 20,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "offset": [0.2, -1.2],
+     "pose": {"pelvis": [-4, 0, 0], "torso": [-14, 0, 0], "head": [14, 0, 0],
+              "upper_arm_r": [50, 0, 8], "forearm_r": [100, 0, 0], "hand_r": [-20, 0, 0],
+              "upper_arm_l": [48, 0, -8], "forearm_l": [104, 0, 0], "hand_l": [-20, 0, 0]},
+     "reach": {"foot_r": "guard", "foot_l": "guard"}},
+    {"at": 3, "ease": "ease", "offset": [-0.2, -1.25],
+     "pose": {"pelvis": [4, 0, 0], "torso": [-6, 0, 0], "head": [6, 0, 0],
+              "upper_arm_r": [84, 0, 6], "forearm_r": [16, 0, 0], "hand_r": [-30, 0, 0],
+              "upper_arm_l": [82, 0, -6], "forearm_l": [18, 0, 0], "hand_l": [-30, 0, 0],
+              "pauldron_r": [29, 0, 3], "pauldron_l": [29, 0, -3], "wing_l": [-30, 12, -6],
+              "wing_r": [-30, -12, 6]}},
+    {"at": 9, "ease": "ease", "offset": [-0.5, -1.45],
+     "pose": {"pelvis": [10, -6, 0], "torso": [2, -6, 0], "head": [12, 6, 0],
+              "upper_arm_r": [40, 0, -20], "forearm_r": [60, 0, 0], "hand_r": [0, 0, 0],
+              "upper_arm_l": [20, 0, 24], "forearm_l": [70, 0, 0], "hand_l": [0, 0, 0],
+              "pauldron_r": [14, 0, -10], "pauldron_l": [7, 0, 12], "wing_l": [-60, 25, -12],
+              "wing_r": [-60, -25, 12]}},
+    {"at": 19, "from": "guard", "reach": {"foot_r": "guard", "foot_l": "guard"}}
+  ]
+}

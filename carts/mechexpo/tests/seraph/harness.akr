@@ -1,0 +1,743 @@
+// Mech Expo 2000's Seraph scenarios that need the whole game (mx-seraph): the real game
+// (game.akr: the stages, the camera, the mechs drawn by anim.akr, the effects, the HUD and the
+// menus) driven through its test hooks, as tests/shadow/harness.akr does. tests/run.sh builds
+// scenarios 162-168 and 190-199 from this file and ../../game.akr; tests/check.sh runs 163-167,
+// 190-197 and 199, tests/budget.sh 162, 168 and 198. 190-199 (Seraph's effects, its HUD mark and
+// its sounds: mx-seraph-fx) are listed at their code, after the others. 160 and 161 (the fight alone) are in ../harness.akr; the arcade's
+// final for Shadow (Seraph's reveal and the VS card) is ladder scenario 124, VIEWs 4 and 5.
+//
+// 162 the budget with Seraph: CPU against CPU (level 2) through the real game, Seraph against the
+//     split Twins on the rooftop (four bodies' worth: three on screen, and the city) for 900
+//     frames, then against Shadow in the hangar for 900. As 109 does for Shadow, the scenario
+//     keeps Seraph's Mark of Judgement out, the other marked, and every 300 frames a full bar for
+//     its super (Judgement: the halo's flare, the stage brightened, the column). Prints the peak
+//     CPU, GPU and triangles of each half
+// 168 the same kept out, against the split Twins on the container port, for 900 frames
+// 163 the character select (Versus): Seraph unlocked, 1P's cursor on its card (the echo slot under
+//     Shadow), 2P's on Shadow: Seraph's catalogue page and spec sheet. Checks the roster row and
+//     what follows from it: the names (mech_name, fighter_short), the model number, the maker and
+//     its kinetic meter icon, the stats, the blurb's two lines within 76 px, the height, the move
+//     list
+// 164-167 Seraph mid-fight, CPU against CPU for 300 frames (the pictures): 164 against Shadow in
+//     the hangar, 165 against the Hero in the hangar, 166 against Shadow on the rooftop, 167
+//     against the Hero on the rooftop. Each within the budgets
+
+var fr: s32
+var started: bool
+var peak_cpu: [2]s32               // 162: [0] against the split Twins, [1] against Shadow
+var peak_gpu: [2]s32
+var peak_tris: [2]s32
+var peak_fight: s32
+var peak_mechs: s32
+var peak_fx: s32
+var late: s32
+var supers: s32
+
+const SR_FOE = match SCENARIO { 165 => Mech.Hero, 167 => Mech.Hero, else => Mech.Shadow }
+const SR_ROOF = SCENARIO == 166 || SCENARIO == 167
+const SR_BUDGET = SCENARIO == 162 || SCENARIO == 168
+
+fn test_init() {
+    if FX_SC {
+        fx_init()
+        return
+    }
+    match SCENARIO {
+        162, 168 => {
+            game = Game.Versus
+            p_cpu = false
+            p_mech[0] = Mech.Seraph
+            p_mech[1] = Mech.Twins
+            if SCENARIO == 168 { stage_sel = ST_PORT } else { stage_sel = ST_ROOFTOP }
+            enter_fight()
+        }
+        163 => {
+            check_roster()
+            save.unlocked |= ROSTER[mech_slot(Mech.Seraph)].bit
+            game = Game.Versus
+            enter_select()
+        }
+        else => {
+            game = Game.Versus
+            p_cpu = false
+            p_mech[0] = Mech.Seraph
+            p_mech[1] = SR_FOE
+            if SR_ROOF { stage_sel = ST_ROOFTOP } else { stage_sel = ST_HANGAR }
+            enter_fight()
+        }
+    }
+}
+
+fn input_stick(n: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+fn input_pad(n: s32) -> u32 {
+    if FX_SC { return fx_pad(n) }
+    if SCENARIO == 163 { return 0 }
+    if st != St.Fight { return 0 }
+    let p = cpu_pad(n, 2)
+    if SR_BUDGET && n == 1 && fr < 900 { return p & ~L }     // the Twins stay split: three bodies
+    if SR_BUDGET && n == 0 && fr % 300 >= 2 && fr % 300 < 40 && fight.f[0].super_ok && actionable(0) {
+        return A | B
+    }
+    return p
+}
+
+fn test_hook() {
+    if FX_SC {
+        fx_hook()
+        return
+    }
+    if SCENARIO == 163 {
+        hook_select()
+        return
+    }
+    if st != St.Fight { return }
+    let f = fight_get()
+    var k = 0
+    if SCENARIO == 162 && fr >= 900 { k = 1 }
+    if started && fr > 3 && fr != 900 && fr != 901 {
+        peak_cpu[k] = max(peak_cpu[k], cpu_used())
+        peak_gpu[k] = max(peak_gpu[k], gpu_used())
+        peak_tris[k] = max(peak_tris[k], tris_drawn())
+        peak_fight = max(peak_fight, prof_fight)
+        peak_mechs = max(peak_mechs, prof_mechs)
+        peak_fx = max(peak_fx, prof_fx)
+        if frame_ticks() > 1 { late += 1 }
+    }
+    started = true
+    fr += 1
+    if !SR_BUDGET {
+        // the pictures: both kept on their feet, so the fight goes on
+        fight.f[0].health = max(fight.f[0].health, 300)
+        fight.f[1].health = max(fight.f[1].health, 300)
+        if fr == 300 { report_fight() }
+        return
+    }
+    if fight.phase == Phase.Fight { keep_busy(f) }
+    let ev = fight_events()
+    for e in 0..ev.n {
+        if ev.e[e].kind == Ev.Super && ev.e[e].side == 0 { supers += 1 }
+    }
+    if SCENARIO == 168 && fr == 900 { report_budget() }
+    if SCENARIO == 162 && fr == 900 {
+        p_mech[1] = Mech.Shadow
+        stage_sel = ST_HANGAR
+        enter_fight()
+    }
+    if SCENARIO == 162 && fr == 1800 { report_budget() }
+}
+
+// 162's and 168's worst case kept on screen: Seraph's bolt out, the other marked, a full bar now and
+// then (Seraph's meter is kinetic: the super needs the bar).
+private fn keep_busy(f: *Fight) {
+    let s = &f.f[0]
+    let sh = &f.shot[0]
+    if !sh.on && s.mv != Mv.sp_n {
+        sh.hex = false
+        sh.refl = false
+        seraph_bolt_fire(0, sh)
+        sh.on = true
+        sh.t = 0
+        sh.y = 0.0
+    }
+    if f.f[1].mark < 10 { f.f[1].mark = SER_MARK_FRAMES }
+    if fr % 300 == 0 { s.meter = METER_BAR }
+}
+
+private fn report_budget() {
+    var n = 2
+    if SCENARIO == 168 { n = 1 }
+    for k in 0..n {
+        if SCENARIO == 168 { print("Seraph against the split Twins on the container port: ") }
+        else if k == 0 { print("Seraph against the split Twins on the rooftop: ") }
+        else { print("Seraph against Shadow in the hangar: ") }
+        print("peak cpu ")
+        print_int(peak_cpu[k])
+        print(", gpu ")
+        print_int(peak_gpu[k])
+        print(", triangles ")
+        print_int(peak_tris[k])
+        println("")
+        assert(peak_cpu[k] <= CPU_BUDGET, "over the CPU budget")
+        assert(peak_gpu[k] <= GPU_BUDGET, "over the GPU budget")
+        assert(peak_tris[k] < 4000, "over 4,000 triangles")
+    }
+    assert(supers >= n, "Seraph's super was not measured")
+    print("supers ")
+    print_int(supers)
+    print(", late frames ")
+    print_int(late)
+    print(", the fight's peak ")
+    print_int(peak_fight)
+    print(", the mechs' drawing peak ")
+    print_int(peak_mechs)
+    print(", the effects' peak ")
+    print_int(peak_fx)
+    println(" cycles")
+    println("OK the budget with Seraph (its bolt, the mark and Judgement)")
+}
+
+private fn report_fight() {
+    print("Seraph against ")
+    print(mech_name(SR_FOE))
+    if SR_ROOF { print(" on the rooftop") } else { print(" in the hangar") }
+    print(": peak cpu ")
+    print_int(peak_cpu[0])
+    print(", gpu ")
+    print_int(peak_gpu[0])
+    print(", triangles ")
+    print_int(peak_tris[0])
+    print(", late frames ")
+    print_int(late)
+    println("")
+    assert(fight.f[0].mech == Mech.Seraph && fight.f[1].mech == SR_FOE, "the fighters")
+    assert(peak_cpu[0] <= CPU_BUDGET, "over the CPU budget")
+    assert(peak_gpu[0] <= GPU_BUDGET, "over the GPU budget")
+    assert(peak_tris[0] < 4000, "over 4,000 triangles")
+    println("OK Seraph mid-fight")
+}
+
+// 163: the select, both cursors placed, then the shot.
+private fn hook_select() {
+    fr += 1
+    if st != St.Select { return }
+    sel_cur[0] = mech_slot(Mech.Seraph)
+    sel_cur[1] = mech_slot(Mech.Shadow)
+    if fr == 60 {
+        assert(slot_ok(sel_cur[0]), "Seraph is not selectable once unlocked")
+        assert(slot_mech(sel_cur[0]) == Mech.Seraph, "the cursor is not on Seraph")
+        println("OK the select with Seraph's card and spec sheet")
+    }
+}
+
+// The roster's row and what follows from it.
+private fn check_roster() {
+    let i = mech_slot(Mech.Seraph)
+    let r = &ROSTER[i]
+    assert_eq(i, ROSTER_COLS + mech_slot(Mech.Shadow), "Seraph is not the echo under Shadow")
+    assert(r.echo && r.rule == RULE_CLEAR && r.arg == mech_slot(Mech.Shadow) && r.bit == 0x40, "the unlock rule")
+    assert(!slot_unlocked(i), "Seraph unlocked from the start")
+    assert_eq(r.maker, CO_MOMENTUM, "Seraph's maker")
+    assert(str_eq(mech_name(Mech.Seraph), "SERAPH") && str_eq(mech_short(Mech.Seraph), "SERAPH"), "the names")
+    assert(str_eq(r.card, "SERAPH") && str_eq(mech_model(Mech.Seraph), "MR-02"), "the card and the model")
+    assert(str_eq(mech_maker(Mech.Seraph), "MOMENTUM ROBOTICS"), "the maker's name")
+    assert_eq(mech_src(Mech.Seraph), SRC_KINETIC, "the meter icon's power source")
+    assert(meter_power(Mech.Seraph) == Power.Kinetic, "the meter")
+    assert(r.emblem == &UI_EMBLEM_HERO[0] && r.emblem24 == &UI_EMBLEM24_MOMENTUM[0], "Momentum's emblem")
+    assert_eq(STATS[Mech.Seraph].health, 1000, "the health")
+    assert(STATS[Mech.Seraph].walk_f < STATS[Mech.Shadow].walk_f, "the walk is not slower than Shadow's")
+    assert_eq(r.height, 135, "the height")
+    var w = 0
+    var lines = 0
+    var line: [32]u8
+    var n = 0
+    var k = 0
+    while true {
+        let c = r.blurb[k]
+        if c == 10 || c == 0 {
+            line[n] = 0
+            w = txt_w(FONT_MICRO, &line[0])
+            print("blurb line ")
+            print_int(lines + 1)
+            print(": ")
+            print(&line[0])
+            print(", ")
+            print_int(w)
+            println(" px")
+            assert(w <= 76, "a blurb line wider than 76 px")
+            lines += 1
+            n = 0
+            if c == 0 { break }
+        } else {
+            line[n] = c
+            n += 1
+        }
+        k += 1
+    }
+    assert_eq(lines, 2, "the blurb is not two lines")
+    let ml = fight_moves(Mech.Seraph)
+    assert_eq(ml.n, 15, "Seraph's move list")
+    // each row's name and input side by side in the move list's 234 px (menus.akr's draw_move_list)
+    var widest = 0
+    for i in 0..ml.n {
+        widest = max(widest, txt_w(FONT_LABEL, ml.e[i].name) + 6 + txt_w(FONT_LABEL, ml.e[i].input))
+    }
+    print("the move list's widest row ")
+    print_int(widest)
+    println(" px of 234")
+    assert(widest <= 234, "a row of Seraph's move list is too wide")
+    print("stats ")
+    print_hex(r.stats)
+    print(", card ")
+    print(r.card)
+    print(", model ")
+    println(mech_model(Mech.Seraph))
+}
+
+private fn str_eq(a: *u8, b: *u8) -> bool {
+    var k = 0
+    while a[k] == b[k] {
+        if a[k] == 0 { return true }
+        k += 1
+    }
+    return false
+}
+
+// ---- 190-199: Seraph's effects, its HUD mark and its sounds (mx-seraph-fx; seraph_fx.akr). Each
+// stages one move through the real game and checks what seraph_fx.akr drew (srx_seen, the HUD's
+// srx_hud_bar and srx_hud_label, srx_marks_drawn, srx_bright) and, for 199, what sfx.akr played.
+// SEQ="N FROM" with run.sh saves the frames for the pictures.
+
+const FX_SC = SCENARIO >= 190 && SCENARIO <= 199
+const FX_FOE = match SCENARIO {
+    191 => Mech.Twins, 193 => Mech.Beam, 194 => Mech.Shadow, 198 => Mech.Twins, else => Mech.Hero
+}
+var fxe: [len(Ev)]s32                   // events seen, by kind
+var fx_mark_power: s32 = -1             // the last Mark event's power
+var fx_mark_side: s32 = -1
+var fx_refl_power: s32 = -1             // the last Reflect event's power
+var fx_lock_x: fixed                    // the Column event's x, and the other's root then
+var fx_lock_other: fixed
+var fx_hp0: s32                         // 197: the Hero's health before the column
+var fx_ward_at: s32 = -1                // when Seraph warded (192-194)
+var fx_flicker_on: s32                  // 191: the label's frames shown and hidden in the last second
+var fx_flicker_off: s32
+var fx_gold: s32                        // 191: frames the SUPER label was gold
+var fx_heard: [SFX_COUNT]s32            // 199: sounds started, by id
+var fx_peak: [3]s32                     // 198: cpu, gpu, triangles
+
+fn sfx_heard(id: s32, ch: s32) {
+    if id >= 0 && id < SFX_COUNT { fx_heard[id] += 1 }
+}
+
+private fn fx_init() {
+    game = Game.Versus
+    p_cpu = false
+    p_mech[0] = Mech.Seraph
+    p_mech[1] = FX_FOE
+    stage_sel = ST_HANGAR
+    if SCENARIO == 198 { stage_sel = ST_PORT }
+    enter_fight()
+    if SCENARIO == 198 { return }
+    fight.phase = Phase.Fight
+    fight.phase_t = 100
+    set_mv(0, Mv.idle)
+    set_mv(1, Mv.idle)
+    var x0 = -6.0
+    var x1 = 6.0
+    match SCENARIO {
+        192, 193, 194 => { x0 = -9.0; x1 = 9.0 }
+        195 => { x0 = -12.0; x1 = 10.0 }
+        197 => { x0 = -6.0; x1 = 8.0 }
+        else => {}
+    }
+    fight.f[0].x = x0
+    fight.f[1].x = x1
+    cam_reset(fight.f[0].x, fight.f[1].x)
+}
+
+// Seraph's forward on the pad (side 0 faces +x at the start).
+private fn fx_fwd() -> u32 {
+    if fight.f[0].facing > 0 { return RIGHT }
+    return LEFT
+}
+
+// The other's shot coming at Seraph arrives within the ward's reach: about 4 to 12 frames.
+private fn fx_ward_now() -> bool {
+    let sh = &fight.shot[1]
+    if !sh.on || fx_ward_at >= 0 || !actionable(0) { return false }
+    let d = abs(sh.x - fight.f[0].x) - sh.half - 3.5       // the guard's fist about 3.3 m out
+    let v = max(abs(sh.vx), 0.05)
+    return d / v <= 10.0
+}
+
+private fn fx_pad(n: s32) -> u32 {
+    if st != St.Fight { return 0 }
+    let f = &fight
+    match SCENARIO {
+        190 => if n == 0 && fr >= 4 && fr <= 6 { return B }
+        191 => if n == 0 && (fr == 140 || fr == 141 || fr == 230 || fr == 231) { return B }
+        192, 193, 194 => {
+            if n == 1 {
+                if SCENARIO == 193 { if fr >= 4 && fr < 120 { return B } }
+                else if fr >= 4 && fr <= 6 { return B }
+                return 0
+            }
+            if fx_ward_now() {
+                fx_ward_at = fr
+                return DOWN | B
+            }
+        }
+        195 => if n == 0 && fr >= 4 && fr <= 70 { return if_u(fr <= 6, fx_fwd() | B, B) }
+        196 => {
+            if n == 0 && fr >= 4 && fr <= 6 { return UP | B }
+            if n == 0 && fr >= 92 && fr <= 94 { return Y }
+        }
+        197 => if n == 0 && fr >= 4 && fr <= 6 { return A | B }
+        198 => return fx_pad_budget(n)
+        199 => return fx_pad_sounds(n)
+        else => {}
+    }
+    return 0
+}
+
+private fn if_u(c: bool, a: u32, b: u32) -> u32 {
+    if c { return a }
+    return b
+}
+
+private fn fx_hook() {
+    if st != St.Fight { return }
+    let f = fight_get()
+    fr += 1
+    if SCENARIO != 198 { fight.timer = ROUND_FRAMES }        // no time up
+    if fr > 3 {
+        peak_cpu[0] = max(peak_cpu[0], cpu_used())
+        peak_gpu[0] = max(peak_gpu[0], gpu_used())
+        peak_tris[0] = max(peak_tris[0], tris_drawn())
+        peak_fx = max(peak_fx, prof_fx)
+        if frame_ticks() > 1 { late += 1 }
+    }
+    let ev = fight_events()
+    for k in 0..ev.n {
+        let e = &ev.e[k]
+        fxe[e.kind] += 1
+        match e.kind {
+            Mark => { fx_mark_power = e.power; fx_mark_side = e.side }
+            Reflect => fx_refl_power = e.power
+            Column => { fx_lock_x = e.x; fx_lock_other = f.f[1].x }
+            else => {}
+        }
+    }
+    match SCENARIO {
+        190 => fx_check_bolt(f)
+        191 => fx_check_hud(f)
+        192, 193, 194 => fx_check_ward(f)
+        195 => fx_check_dive(f)
+        196 => fx_check_ascend(f)
+        197 => fx_check_column(f)
+        198 => fx_check_budget(f)
+        199 => fx_check_sounds(f)
+        else => {}
+    }
+}
+
+// The HUD's mark agrees with the fighter's: the bar's length, the label (flickering in the
+// last second), nothing when unmarked.
+private fn fx_hud_agrees(f: *Fight, s: s32) {
+    let m = f.f[s].mark
+    if m <= 0 {
+        assert(srx_hud_bar[s] < 0 && !srx_hud_label[s], "the HUD shows a mark on an unmarked mech")
+        return
+    }
+    let l = HUD_METER_W - HUD_SLANT
+    assert(abs(srx_hud_bar[s] - clamp(m, 0, SER_MARK_FRAMES) * l / SER_MARK_FRAMES) <= 1, "the mark's time bar")
+    if m > 61 { assert(srx_hud_label[s], "MARKED is not shown") }
+}
+
+// 190: the bolt gathers at the fist, leaves with a flash, flies drawn as the Mark bolt, lands:
+// the Mark event (a new mark), the burst, the mark on the Hero, the HUD.
+private fn fx_check_bolt(f: *Fight) {
+    if fr > 3 { fx_hud_agrees(f, 1) }
+    if fr == 150 {
+        assert(srx_seen[SRXS_GATHER] >= 12, "the bolt's gathering")
+        assert_eq(srx_seen[SRXS_RELEASE], 1, "the flash at the fist")
+        assert(srx_seen[SRXS_BOLT] >= 10, "the Mark bolt was not drawn")
+        assert_eq(fxe[Ev.Mark], 1, "the Mark event")
+        assert(fx_mark_power == 1 && fx_mark_side == 0, "a new mark by Seraph")
+        assert_eq(srx_seen[SRXS_MARKED], 1, "the mark's burst")
+        assert(f.f[1].mark > 0 && srx_marks_drawn == 1, "the mark on the Hero")
+        assert(srx_hud_label[1] && srx_hud_bar[1] > 0, "the HUD's mark")
+        print("the bolt: gathering ")
+        print_int(srx_seen[SRXS_GATHER])
+        print(" frames, drawn ")
+        print_int(srx_seen[SRXS_BOLT])
+        print(" frames; the Hero marked, ")
+        print_int(f.f[1].mark)
+        print(" frames left, the HUD's bar ")
+        print_int(srx_hud_bar[1])
+        println(" px")
+        fx_report()
+        println("OK 190 the Mark bolt and the mark")
+    }
+}
+
+// 191: a mark running out on the split Twins (both bodies), its HUD (the bar, the label
+// flickering in the last second, Seraph's SUPER gold while it lasts), then a new mark and a
+// refresh by bolts.
+private fn fx_check_hud(f: *Fight) {
+    if fr == 2 {
+        fight.f[1].mark = 120
+        fight.f[0].meter = METER_BAR
+    }
+    if fr < 4 { return }
+    fx_hud_agrees(f, 1)
+    let m = f.f[1].mark
+    if m > 0 && m <= 60 {
+        if srx_hud_label[1] { fx_flicker_on += 1 } else { fx_flicker_off += 1 }
+    }
+    if fr < 130 {
+        assert(m <= 0 || srx_marks_drawn == 2 || (m <= 60 && srx_marks_drawn == 0), "the mark on both twins")
+        if m > 0 && seraph_super_col(0, C_YELLOW) != C_YELLOW { fx_gold += 1 }
+        if m <= 0 { assert(seraph_super_col(0, C_YELLOW) == C_YELLOW, "SUPER gold after the mark") }
+    }
+    if fr == 128 {
+        assert_eq(m, 0, "the mark did not run out")
+        assert(fx_flicker_on > 10 && fx_flicker_off > 10, "MARKED does not flicker in its last second")
+        assert(fx_gold > 100, "Seraph's SUPER is not gold while the other is marked")
+        fight.f[0].meter = 0
+    }
+    if fr == 300 {
+        assert_eq(fxe[Ev.Mark], 2, "two bolts: two Mark events")
+        assert_eq(fx_mark_power, 0, "the second is a refresh")
+        assert_eq(srx_seen[SRXS_MARKED], 2, "the marks' bursts")
+        print("the mark on the split Twins: the label shown ")
+        print_int(fx_flicker_on)
+        print(" and hidden ")
+        print_int(fx_flicker_off)
+        print(" frames of its last second, SUPER gold ")
+        print_int(fx_gold)
+        println(" frames")
+        fx_report()
+        println("OK 191 the mark's HUD, both twins, a refresh")
+    }
+}
+
+// 192-194: Seraph wards the other's shot (the Hero's wave, Beam's full orb, Shadow's Hex Bolt):
+// the sheen, the Reflect event and its burst, the shot drawn as light (a Mark for the bolt).
+private fn fx_check_ward(f: *Fight) {
+    if fr == 200 {
+        assert(fx_ward_at > 0, "Seraph never warded")
+        assert(srx_seen[SRXS_WARD] >= 4, "the ward's sheen")
+        assert_eq(fxe[Ev.Reflect], 1, "the Reflect event")
+        assert_eq(srx_seen[SRXS_REFLECT], 1, "the reflect's burst")
+        assert(srx_seen[SRXS_REFL] + srx_seen[SRXS_BOLT] >= 10, "the reflected shot drawn as light")
+        if SCENARIO == 193 { assert_eq(fx_refl_power, 3, "a full orb's strength") }
+        if SCENARIO == 194 {
+            assert(srx_seen[SRXS_BOLT] >= 10, "the reflected Hex Bolt is not drawn as a Mark")
+            assert_eq(fxe[Ev.Mark], 1, "the reflected bolt did not mark Shadow")
+        }
+        print("the ward: sheen ")
+        print_int(srx_seen[SRXS_WARD])
+        print(" frames, the reflect's strength ")
+        print_int(fx_refl_power)
+        print(", drawn as light ")
+        print_int(srx_seen[SRXS_REFL] + srx_seen[SRXS_BOLT])
+        println(" frames")
+        fx_report()
+        match SCENARIO {
+            192 => println("OK 192 the Wing Ward sends the wave back")
+            193 => println("OK 193 the Wing Ward sends a full Volt Orb back")
+            else => println("OK 194 the Wing Ward turns the Hex Bolt into a Mark")
+        }
+    }
+}
+
+// 195: the Seraph Dive held: the hop's downdraft, the glide's streaks, the dive, the touchdown.
+private fn fx_check_dive(f: *Fight) {
+    if fr == 140 {
+        assert(srx_seen[SRXS_DRAFT] >= 2, "the hop's and the touchdown's downdrafts")
+        assert(srx_seen[SRXS_GLIDE] >= 20, "the glide's streaks (held)")
+        assert(srx_seen[SRXS_DIVE] >= 3, "the dive's streak")
+        print("the Dive: glide ")
+        print_int(srx_seen[SRXS_GLIDE])
+        print(" frames, dive ")
+        print_int(srx_seen[SRXS_DIVE])
+        print(", downdrafts ")
+        print_int(srx_seen[SRXS_DRAFT])
+        println("")
+        fx_report()
+        println("OK 195 the Seraph Dive")
+    }
+}
+
+// 196: Ascension (the wing tips' burst on the beat), then Heaven's Arc (two wing beats).
+private fn fx_check_ascend(f: *Fight) {
+    if fr == 90 {
+        fight.f[1].x = fight.f[0].x + fixed(fight.f[0].facing) * 3.0
+        set_mv(1, Mv.idle)
+    }
+    if fr == 200 {
+        assert_eq(srx_seen[SRXS_ASCEND], 1, "Ascension's burst")
+        assert(fxe[Ev.Throw] == 1, "Heaven's Arc did not land")
+        assert_eq(srx_seen[SRXS_DRAFT], 3, "Ascension's beat and Heaven's Arc's two")
+        fx_report()
+        println("OK 196 Ascension and Heaven's Arc")
+    }
+}
+
+// 197: Judgement on a marked Hero: the halo's flare in the flash, the stage brightened, the
+// lock (on the Hero's root) and its ring, the column and its slam; half as much again.
+private fn fx_check_column(f: *Fight) {
+    if fr == 2 {
+        fight.f[0].meter = METER_BAR
+        fight.f[1].mark = SER_MARK_FRAMES
+    }
+    if fr == 4 { fx_hp0 = f.f[1].health }
+    let s0 = &f.f[0]
+    if s0.mv == Mv.super && (s0.frame as s32) >= 4 && (s0.frame as s32) <= SRX_COL1 && fx_flash <= 0 {
+        assert(srx_bright > 0, "the stage is not brightened")
+    }
+    if fr == 160 {
+        assert(srx_seen[SRXS_FLARE] >= 30, "the halo's flare")
+        assert_eq(fxe[Ev.Column], 1, "the Column event")
+        assert(abs(fx_lock_x - fx_lock_other) < 0.01, "the lock is not on the Hero's root")
+        assert(srx_seen[SRXS_LOCK] >= 6, "the lock's ring")
+        assert(srx_seen[SRXS_COLUMN] >= 12, "the column")
+        assert_eq(srx_seen[SRXS_SLAM], 1, "the column's slam")
+        assert_eq(srx_bright, 0, "the stage's light did not fade")
+        print("Judgement: the flare ")
+        print_int(srx_seen[SRXS_FLARE])
+        print(" frames, the lock ")
+        print_int(srx_seen[SRXS_LOCK])
+        print(", the column ")
+        print_int(srx_seen[SRXS_COLUMN])
+        print("; the marked Hero took ")
+        print_int(fx_hp0 - f.f[1].health)
+        println("")
+        fx_report()
+        println("OK 197 Judgement's flare, lock and column")
+    }
+}
+
+// 198: the budget, Seraph's effects at their heaviest: CPU against CPU on the container port
+// against the split Twins (three bodies, both marked) for 1,000 frames, and every 300 frames of
+// play a wave thrown at Seraph that its ward sends back (the reflect, the shot drawn as light)
+// and, while it flies, Judgement (the flash, the lock, the column, the stage's light); the Twins
+// hold still for those 140 frames so both happen.
+var fx_live: s32                        // 198: frames of play
+var fx_thrown: bool                     // 198: this cycle's wave thrown
+
+private fn fx_pad_budget(n: s32) -> u32 {
+    if st != St.Fight { return 0 }
+    let p = cpu_pad(n, 2)
+    let k = fx_live % 300
+    if fight.phase != Phase.Fight || k >= 140 {
+        if n == 1 { return p & ~L }                 // the Twins stay split
+        return p
+    }
+    if n == 1 { return 0 }
+    if fx_ward_now() {
+        fx_ward_at = fr
+        return DOWN | B
+    }
+    if fx_ward_at >= 0 && fight.f[0].super_ok && actionable(0) { return A | B }
+    return 0
+}
+
+private fn fx_check_budget(f: *Fight) {
+    if fight.phase != Phase.Fight { return }
+    fx_live += 1
+    let k = fx_live % 300
+    if f.f[1].mark < 10 { fight.f[1].mark = SER_MARK_FRAMES }
+    if k == 1 {
+        fx_ward_at = -1
+        fx_thrown = false
+        fight.f[0].meter = METER_BAR
+    }
+    if k < 60 && !fx_thrown && actionable(0) && !f.shot[1].on {
+        // a wave from the Twins' side, coming at Seraph from 12 m
+        fx_thrown = true
+        let s0 = &f.f[0]
+        let dir = fixed(sgn(s0.x - f.f[1].x))
+        let sh = &fight.shot[1]
+        sh.on = true
+        sh.x = s0.x - dir * 12.0
+        sh.y = 0.0
+        sh.vx = dir * 0.22
+        sh.t = 0
+        sh.lvl = 0
+        sh.str = 2
+        sh.half = 0.8
+        sh.y0 = 0.0
+        sh.y1 = 3.0
+        sh.life = 150
+        sh.hex = false
+        sh.mark = false
+        sh.refl = false
+    }
+    if fr == 1000 {
+        print("Seraph's effects against the split Twins on the container port: peak cpu ")
+        print_int(peak_cpu[0])
+        print(", gpu ")
+        print_int(peak_gpu[0])
+        print(", triangles ")
+        print_int(peak_tris[0])
+        print(", the effects' peak ")
+        print_int(peak_fx)
+        print(" cycles, late frames ")
+        print_int(late)
+        println("")
+        print("reflects ")
+        print_int(fxe[Ev.Reflect])
+        print(", columns ")
+        print_int(srx_seen[SRXS_SLAM])
+        println("")
+        assert(fxe[Ev.Reflect] >= 2, "the reflects were not measured")
+        assert(srx_seen[SRXS_SLAM] >= 2, "Judgement was not measured")
+        assert(peak_cpu[0] <= CPU_BUDGET, "over the CPU budget")
+        assert(peak_gpu[0] <= GPU_BUDGET, "over the GPU budget")
+        assert(peak_tris[0] < 4000, "over 4,000 triangles")
+        println("OK 198 the budget with Seraph's effects")
+    }
+}
+
+// 199: every one of Seraph's sounds through its moves against the Hero: the bolt (the cast,
+// the hum, the mark), the ward and a reflect of the Hero's wave, the Dive (the beat, the glide,
+// the whistle, the touchdown), Ascension, Judgement (the choir, the lock, the column).
+private fn fx_pad_sounds(n: s32) -> u32 {
+    if st != St.Fight { return 0 }
+    if n == 1 {
+        if fr >= 120 && fr <= 122 { return B }      // the Hero's wave
+        return 0
+    }
+    if fr >= 4 && fr <= 6 { return B }
+    if fr >= 110 && fr < 200 && fx_ward_now() {
+        fx_ward_at = fr
+        return DOWN | B
+    }
+    if fr >= 250 && fr <= 280 { return if_u(fr <= 252, fx_fwd() | B, B) }
+    if fr >= 360 && fr <= 362 { return UP | B }
+    if fr >= 440 && fr <= 442 { return A | B }
+    return 0
+}
+
+private fn fx_check_sounds(f: *Fight) {
+    if fr == 2 { fight.f[1].x = fight.f[0].x + 14.0 }
+    if fr == 240 {
+        fight.f[0].x = -12.0
+        fight.f[1].x = 10.0
+    }
+    if fr == 340 { fight.f[1].x = fight.f[0].x + fixed(fight.f[0].facing) * 6.0 }
+    if fr == 430 {
+        fight.f[0].meter = METER_BAR
+        fight.f[1].x = fight.f[0].x + fixed(fight.f[0].facing) * 12.0
+    }
+    if fr == 560 {
+        let ids: [13]s32 = [SFX_MARK_CAST, SFX_MARK_HUM, SFX_MARK_HIT, SFX_WARD, SFX_REFLECT, SFX_WING_BEAT,
+                            SFX_GLIDE, SFX_DIVE, SFX_DIVE_LAND, SFX_ASCEND, SFX_CHOIR, SFX_COLUMN_LOCK, SFX_COLUMN]
+        var missing = 0
+        for k in 0..13 {
+            print(SFX_NAMES[ids[k]])
+            print(" ")
+            print_int(fx_heard[ids[k]])
+            if k < 12 { print(", ") }
+            if fx_heard[ids[k]] == 0 { missing += 1 }
+        }
+        println("")
+        assert_eq(missing, 0, "a sound of Seraph's was not heard")
+        println("OK 199 Seraph's sounds")
+    }
+}
+
+private fn fx_report() {
+    print("  peak cpu ")
+    print_int(peak_cpu[0])
+    print(", gpu ")
+    print_int(peak_gpu[0])
+    print(", the effects ")
+    print_int(peak_fx)
+    println(" cycles")
+    assert(peak_cpu[0] <= CPU_BUDGET, "over the CPU budget")
+    assert(peak_gpu[0] <= GPU_BUDGET, "over the GPU budget")
+}

@@ -1,0 +1,27 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Grab (MOVES.md, Point Blank's grab: Beam's timing and reach): the left hand shoots out for the other's shoulder, the body turning its left side in and pitching forward over a half step of the right foot, while the projector is drawn back low at the hip, level, ready to be swung onto the chest. The left forearm is kept less folded than Beam's on the wind-up (2) so the stowed shield's end clears the pauldron. Startup 5, active 2 (the grab box x 1.0-3.6, y 2-10, a fixed rectangle), no recovery: a miss goes on into grab_whiff, a catch into throw.",
+  "base": "_body.anim.json",
+  "length": 7,
+  "phases": {"startup": 5, "active": 2, "recovery": 0},
+  "design": {"hit": [1.0, 2.0, 3.6, 10.0], "tolerance": 0.2,
+             "note": "MOVES.md, grab: x 1.0-3.6, y 2-10"},
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "in",
+     "reach": {"foot_r": [0.03, 0.0], "foot_l": [-2.13, 0.0]}},
+    {"at": 2, "ease": "ease", "offset": [-0.1, -0.7],
+     "pose": {"pelvis": [0, -2, 0], "torso": [-4, 2, 0], "head": [4, 4, 0],
+              "upper_arm_r": [-3, 0, -10], "forearm_r": [89, 0, 8], "hand_r": [5, 0, 0],
+              "upper_arm_l": [28, 0, 16], "forearm_l": [104, 0, -12], "hand_l": [-10, 0, 0],
+              "pauldron_r": [-1, 0, -5], "pauldron_l": [9.8, 0, 8]}},
+    {"at": 5, "offset": [0.4, -1.0],
+     "pose": {"pelvis": [-6, 4, 0], "torso": [-14, 10, 0], "head": [12, -4, 0],
+              "upper_arm_r": [8, 0, -10], "forearm_r": [97, 0, 8], "hand_r": [-1, 0, 0],
+              "upper_arm_l": [92, 0, 8], "forearm_l": [36, 0, -6], "hand_l": [-10, 0, 0],
+              "pauldron_r": [2.7, 0, -5], "pauldron_l": [30, 0, 8]},
+     "reach": {"foot_r": [0.45, 0.0], "foot_l": [-2.13, 0.0]},
+     "boxes": {"grab": {"kind": "hit", "rect": [1.0, 2.0, 3.6, 10.0]}}},
+    {"at": 6, "offset": [0.45, -1.03], "reach": {"foot_r": [0.45, 0.0], "foot_l": [-2.13, 0.0]}}
+  ]
+}

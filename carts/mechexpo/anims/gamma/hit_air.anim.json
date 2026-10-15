@@ -1,0 +1,28 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Hit in the air: Beam's (the Hero's) on Gamma's rig: knocked back and tipped over, the arms flung up past the head and the legs trailing; its last frame (29) is held while the fight carries the root down, and the knockdown starts from it. The arms are flung up less wide than Beam's (29) so the right fist stays clear of the stowed shield.",
+  "base": "_body.anim.json",
+  "length": 30,
+  "air": true,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "out", "offset": [-0.3, -0.6],
+     "pose": {"pelvis": [14, -10, 0], "torso": [16, -22, 4], "head": [10, 18, 0],
+              "upper_arm_r": [50, 0, -28], "forearm_r": [40, 0, 8], "hand_r": [10, 0, 0],
+              "upper_arm_l": [16, 0, 36], "forearm_l": [40, 0, -6], "thigh_r": [30, 0, -6],
+              "shin_r": [-40, 0, 0], "foot_r": [20, 0, 5], "thigh_l": [-10, 0, 6],
+              "shin_l": [-24, 0, 0], "foot_l": [30, 0, -5]}},
+    {"at": 6, "ease": "ease", "offset": [-0.3, -0.2],
+     "pose": {"pelvis": [32, -10, 0], "torso": [18, -18, 6], "head": [24, 14, 0],
+              "upper_arm_r": [100, 0, -34], "forearm_r": [30, 0, 8], "hand_r": [10, 0, 0],
+              "upper_arm_l": [70, 0, 40], "forearm_l": [30, 0, -6], "thigh_r": [40, 0, -10],
+              "shin_r": [-50, 0, 0], "foot_r": [30, 0, 5], "thigh_l": [16, 0, 8],
+              "shin_l": [-46, 0, 0], "foot_l": [30, 0, -5]}},
+    {"at": 29, "offset": [-0.2, 0.2],
+     "pose": {"pelvis": [56, -10, 0], "torso": [10, -14, 4], "head": [20, 10, 0],
+              "upper_arm_r": [140, 0, -16], "forearm_r": [24, 0, 8], "hand_r": [6, 0, 0],
+              "upper_arm_l": [120, 0, 16], "forearm_l": [26, 0, -6], "thigh_r": [28, 0, -12],
+              "shin_r": [-30, 0, 0], "foot_r": [24, 0, 5], "thigh_l": [10, 0, 10],
+              "shin_l": [-40, 0, 0], "foot_l": [24, 0, -5]}}
+  ]
+}

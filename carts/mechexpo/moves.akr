@@ -8,6 +8,8 @@ import "beam_moves.akr"     // Beam's tables (mx-beam)
 import "tank.akr"               // Tank's data (mx-tank)
 import "twins.akr"              // the Twins' data and rules (mx-twins-fight)
 import "shadow.akr"             // Shadow's data and rules (mx-shadow-fight)
+import "seraph.akr"             // Seraph's data, and which of Shadow's rules it plays (mx-seraph)
+import "gamma.akr"              // Gamma's data, and which of Beam's rules it plays (mx-gamma-rig)
 
 // The stand-in data (below) is used for every move anim.akr still stands in for (it holds the
 // guard pose there: anim_standin()), and for all of them while STANDIN_ALL is set.
@@ -56,6 +58,14 @@ const STATS: [len(Mech)]Stats = [
     // Shadow (MOVES.md, "Shadow"): 4 frames' crouch, 36 in the air, 6.2 m high; the lowest health
     Stats { health: 900, walk_f: 0.085, walk_b: 0.068, pre: 4, jv: 0.688889, grav: 0.038272,
             jvx: 0.17, land: 5, land_air: 8, push: 1.4, power: Power.Antimatter },
+    // Seraph (MOVES.md, "Seraph"): Shadow's jump and push box; 1,000 health (the Hero's), a walk a
+    // little slower than Shadow's (0.080 and 0.064 m a frame: 4.8 and 3.8 m/s), Momentum's kinetic meter
+    Stats { health: 1000, walk_f: 0.080, walk_b: 0.064, pre: 4, jv: 0.688889, grav: 0.038272,
+            jvx: 0.17, land: 5, land_air: 8, push: 1.4, power: Power.Kinetic },
+    // Gamma (MOVES.md, "Gamma"): 1,050 health; the slowest walk on legs (0.058 and 0.050 m a
+    // frame); 6 frames' crouch, 40 in the air, 5.6 m high; Beam's push box; Heartland's nuclear meter
+    Stats { health: 1050, walk_f: 0.058, walk_b: 0.050, pre: 6, jv: 0.56, grav: 0.028,
+            jvx: 0.13, land: 7, land_air: 10, push: 1.7, power: Power.Nuclear },
 ]
 
 // ---- what a hit does
@@ -70,6 +80,9 @@ struct Hit {
     kb: fixed               // the knockback slide's speed, m a frame
     kd: bool                // knocks down
     launch: fixed           // upward speed of a knockdown or an air hit
+    nodebt: bool            // the antimatter debt's 25 % does not apply (Seraph's Judgement on a
+                            // marked mech: the mark's 50 % does instead, seraph_judged)
+    daze: s32               // frames of daze (Gamma's Geiger Flare), 0 for every other hit
 }
 
 const HIT_NONE = Hit {}
@@ -93,7 +106,9 @@ fn move_hit(m: Mech, mv: Mv) -> Hit {
     }
     if m == Mech.Tank { return tank_hit(mv) }
     if m == Mech.Shadow { return shadow_hit(mv) }
-    if m >= Mech.Twins { return twins_hit(m, mv) }
+    if m == Mech.Seraph { return seraph_hit(mv) }
+    if m == Mech.Gamma { return gamma_hit(mv) }
+    if m >= Mech.Twins && m <= Mech.TwinB { return twins_hit(m, mv) }
     return match mv {
         atk_n => Hit { dmg: 65, hitstun: 17, blockstun: 12, stop: 7, kb: 0.09 }
         atk_f => Hit { dmg: 110, hitstun: 24, blockstun: 17, stop: 10, power: 1, kb: 0.13 }
@@ -140,7 +155,10 @@ const PARRY_FREEZE = 20
 // ---- the timing source
 
 fn mv_len(m: Mech, mv: Mv) -> s32 {
-    if use_standin(m, mv) { return tm(m, mv).len }
+    if use_standin(m, mv) {
+        if m == Mech.Gamma { return gamma_len(mv) }
+        return tm(m, mv).len
+    }
     return anim_len(m, mv)
 }
 
@@ -152,6 +170,8 @@ fn mv_loops(m: Mech, mv: Mv) -> bool {
 fn mv_root(m: Mech, mv: Mv, f: s32) -> vec2 {
     if !use_standin(m, mv) { return anim_root(m, mv, f) }
     if m == Mech.Shadow { return shadow_root(mv, f) }
+    if m == Mech.Seraph { return seraph_root(mv, f) }
+    if m == Mech.Gamma { return gamma_root(mv, f) }
     let t = tm(m, mv)
     var r = vec2(0.0, 0.0)
     if f >= t.m0 && f <= t.m1 { r = vec2(t.dx, t.dy) }
@@ -161,6 +181,7 @@ fn mv_root(m: Mech, mv: Mv, f: s32) -> vec2 {
 
 fn mv_marks(m: Mech, mv: Mv, f: s32) -> u32 {
     if !use_standin(m, mv) { return anim_marks(m, mv, f) }
+    if m == Mech.Gamma { return gamma_marks(mv, f) }       // read a frame at a time: no Tm built
     let t = tm(m, mv)
     var k: u32 = 0
     if t.a0 >= 0 && t.c1 > 0 && f >= t.a0 && f <= t.c1 { k |= MARK_CANCEL }
@@ -175,6 +196,7 @@ fn mv_marks(m: Mech, mv: Mv, f: s32) -> u32 {
     // Tank's treads glide: no steps
     if (mv == Mv.walk_f || mv == Mv.walk_b) && (f == 0 || f == t.len / 2) && m != Mech.Tank { k |= MARK_STEP }
     if m == Mech.Shadow { k |= shadow_marks(mv, f) }    // its sinks: hidden, not passing through
+    if m == Mech.Seraph { k |= seraph_marks(mv, f) }
     return k
 }
 
@@ -191,7 +213,15 @@ fn mv_boxes(m: Mech, mv: Mv, f: s32, out: *Boxes) {
         shadow_boxes(mv, f, out)
         return
     }
-    if m >= Mech.Twins {
+    if m == Mech.Seraph {
+        seraph_boxes(mv, f, out)
+        return
+    }
+    if m == Mech.Gamma {
+        gamma_boxes(mv, f, out)
+        return
+    }
+    if m >= Mech.Twins && m <= Mech.TwinB {
         twins_boxes(m, mv, f, out)
         return
     }
@@ -290,7 +320,9 @@ fn tm(m: Mech, mv: Mv) -> Tm {
     }
     if m == Mech.Tank { return tank_tm(mv) }
     if m == Mech.Shadow { return shadow_tm(mv) }
-    if m >= Mech.Twins { return twins_tm(m, mv) }
+    if m == Mech.Seraph { return seraph_tm(mv) }
+    if m == Mech.Gamma { return gamma_tm(mv) }
+    if m >= Mech.Twins && m <= Mech.TwinB { return twins_tm(m, mv) }
     return match mv {
         idle => Tm { len: 60, loops: true }
         walk_f, walk_b => Tm { len: 40, loops: true }

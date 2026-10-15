@@ -76,8 +76,12 @@ A part's matrix relative to the root is parent × T(offset) × R(rest) × R(pose
 takes the pose's `offset`. The runtime numbers parts one way for every mech (`enum Part` in
 `anim.akr`, `PARTS` in `tools/animkit/rig.py`): `pelvis, torso, head, pauldron_r, upper_arm_r,
 forearm_r, hand_r, weapon_r, pauldron_l, upper_arm_l, forearm_l, hand_l, weapon_l, thigh_r,
-shin_r, foot_r, thigh_l, shin_l, foot_l`. Pauldrons hang off the torso beside the upper arms (not
-their children): pose them as joints of their own.
+shin_r, foot_r, thigh_l, shin_l, foot_l` (`SKELETON`, every rig's), then `wing_l, wing_r, halo`:
+joints only Seraph's rig has (the wings the torso's children, the halo the head's), appended so
+the others keep their numbers. A mech's exported frames hold its parts up to the last one its rig
+has (19 for every mech but Seraph, 22 for Seraph: [The exported data](#the-exported-data)), so a
+joint appended for one mech leaves the others' data as it was. Pauldrons hang off the torso
+beside the upper arms (not their children): pose them as joints of their own.
 
 ## The move format
 
@@ -118,6 +122,7 @@ with `_` are not moves). Every path in a move is relative to its own file.
 | `loop` | the move loops: after its last key it interpolates back to its first, at `length` (idle, walks). Default false |
 | `air` | an airborne move: no floor check, no push box needed, boxes may reach 4 m below the root (`atk_air`, `jump`) |
 | `travel` | metres a frame the fight moves the root forward (negative: back) while the move plays, up to 2: the walks' speeds (`moves.akr`'s `walk_f`, `walk_b`). Not exported (the fight moves the root itself); plants hold in the world through it and `verify` counts it when it looks for sliding feet |
+| `still` | joints held at rotation 0 on every frame, whatever the keys and the rig's poses say: `["weapon_r", "weapon_l"]`. A move made from another mech's (`base`) leaves out the keys of joints its own rig must not turn: Seraph's fists on Shadow's claw keys. An `aim` at a still part still turns its wrist |
 | `phases` | `startup`, `active`, `recovery` in frames; `verify` checks that they add up to `length` and that the frames with a hit box are exactly `startup` .. `startup + active − 1` (frames count from 0: startup 13 means the hit box is on frame 13, the 14th) |
 | `design` | the design's numbers: `hit` `[x0, y0, x1, y1]`, what the hit boxes should span over the active frames, within `tolerance` (default 0.5 m) |
 | `boxes` | the boxes from frame 0 (below) |
@@ -126,6 +131,7 @@ with `_` are not moves). Every path in a move is relative to its own file.
 | `plant` | feet held in place (below) |
 | `marks` | per-frame flags (below) |
 | `allow` | pairs of parts (`["forearm_r", "weapon_r"]`, or `part/node` ids) that may pass into each other, added to the rig's `allow` and the base's |
+| `floor_allow` | `{"wing_l": 2.15}`: parts that may go into the floor, each up to its depth in metres (at most 5): `verify`'s `floor` check warns instead of failing. For a move made for another body and not yet re-keyed (phase 1's Seraph: its folded wings on Shadow's knockdown, and phase 1's Gamma: its jerrycan rack on Beam's); no move of the cart uses it now |
 | `note` | free text: what the move is |
 
 ### Keys
@@ -247,6 +253,8 @@ The fight moves the root; the animation's poses are relative to it.
 | `nopush` | 256 `MARK_NOPUSH` | no push box and no hurt (`verify` then needs neither) |
 | `hide` | 512 `MARK_HIDE` | `anim_draw()` draws nothing (the Void Step's gone frames) |
 | `charge` | 1024 `MARK_CHARGE` | the move holds this frame while its button is held (Beam's Volt Orb, `sp_n`) |
+| `ward` | 2048 `MARK_WARD` | Seraph's Wing Ward (`sp_d`): a shot of the other side that touches a hurt box on this frame, coming at the front, is sent back |
+| `shield` | 4096 `MARK_SHIELD` | Gamma's Lead Shielding (`sp_d`), the brace: the first hit that lands on this frame, on the ground, is absorbed (Tank's armour for one hit), then the move jumps to its `riposte` frame |
 
 ### A move made from another (`base`)
 
@@ -268,6 +276,21 @@ frame merge, the later over the earlier; the derived file's keys then go by the 
 `remove` drops a retimed key). The Double-blade's Jump is the Hero's with nothing but a retime
 and its rig.
 
+Seraph's moves are its own (`anims/seraph/`, on its boxer's guard), but for the three throws'
+victims: `thrown`, `thrown_vault` and `thrown_slam` are Shadow's (`"base":
+"../shadow/MOVE.anim.json"`, so the shoulders follow the throwers' hands as Shadow's do) with
+Seraph's rig and `"still": ["weapon_r", "weapon_l"]` (Shadow's claw keys would twist the fists),
+their keys from the slam on replaced (`"remove"`) so they end face down in `hit_air`'s last frame.
+Every Seraph move keeps the weapon joints still the same way.
+
+Gamma's moves are its own too (`anims/gamma/`), every one based on Gamma's `_body.anim.json`
+(Beam's boxes on Gamma's rig) and on no other move: where MOVES.md says a move is Beam's (the
+reactions, the crouch, the jump, the grabs), Beam's keys were copied in with their bases merged,
+then re-keyed where Gamma's kit met itself or the floor (the stowed shield and the pauldron, the
+projector and the shield, the jerrycan rack lying on its back). The shield (`weapon_l`) is held at
+0 by the body's `"still"`; the moves that swing it (`block`, `hit_high`, `hit_low`, `sp_d`, `win`)
+give `"still": []` and key it about Y.
+
 The echo shares the Hero's skeleton, so a Double-blade move can be the Hero's with
 `"rig": "../../models/doubleblade/doubleblade.rig.json"` and the differences: `"from":
 "guard"` then means the Double-blade's guard, and so do a reach's `"guard"` and a
@@ -285,7 +308,7 @@ is the Hero's Tip Thrust re-keyed for the Double-blade with both blades, and
 |---|---|
 | `verify MOVE... [--json] [--tolerance M]` | the checks below; exit 1 on a failure |
 | `preview MOVE -o DIR [--build-dir DIR] [--as MOVE] [--every N] [--columns N] [--distance M] [--no-boxes] [--json]` | every frame drawn by Mei and a contact sheet |
-| `export [-o DIR] [--anims DIR] [--extra DIR]... [--runtime] [--no-meshes]` | every move of both mechs into `DIR/anim_data.akr` and `DIR/anims/anim_data.bin` (default the cart) |
+| `export [-o DIR] [--anims DIR] [--extra DIR]... [--runtime] [--no-meshes]` | every move of every mech into `DIR/anim_data.akr` and `DIR/anims/anim_data.bin` (default the cart) |
 | `info MOVE [--json] [--joints [--frames F]]` | the move frame by frame: keys, boxes, hits, marks, root motion; `--joints`: as `pose` |
 | `pose MOVE [--frames F] [--no-joints] [--json]` | where each frame puts things (below); `F` is `13`, `10-16,20` or `keys` (default every frame) |
 | `fmt [MOVE...] [--check]` | rewrite move files in the one compact style (default every file of the cart's `anims/`); `--check` lists the files that would change and exits 1 if any |
@@ -304,7 +327,7 @@ else `--build-dir`, else `MEIC` and `RUN`, else `$B`, else `build/`.
 | `design` | the hit boxes' extent over the active frames is further than `design.tolerance` from `design.hit` on any side |
 | `boxes` | a frame has no hurt box (except `nopush` frames), more than 16 boxes, a box thinner than 0.1 m, more than 30 m from the root, or reaching more than 2 m below it (4 m on an `air` move, or on a frame whose root motion has lifted the root). A grounded frame without a push box is a warning |
 | `parts` | two parts pass into each other deeper than the rig's own poses (rest and guard) have them, plus `--tolerance` (0.12 m). Each part is fitted with a box per piece of its recipe (the recipe's top-level nodes), and the pairs are tested by the separating axis test on every frame. Parent and child, and two parts on one joint, are not tested; `allow` excuses a pair |
-| `floor` | anything below the floor by more than 0.03 m on a grounded move (the floor follows the root when motion lifts it), with the offset `up` the pelvis needs on the worst frame (or key `"floor": true` there); a plant the leg cannot hold |
+| `floor` | anything below the floor by more than 0.03 m on a grounded move (the floor follows the root when motion lifts it), with the offset `up` the pelvis needs on the worst frame (or key `"floor": true` there), unless the move's `floor_allow` allows the part that deep (a warning then); a plant the leg cannot hold |
 
 Warnings: a foot on the floor that slides more than 0.04 m a frame in the world (the root's
 motion and `travel` counted: `slides`), a step mark with no foot down, a pose for a part the rig
@@ -371,7 +394,7 @@ The boxes are drawn in the fight's plane (z = 0); the near-side arm and its weap
 
 ### export
 
-Bakes every move of `enum Mv` for both mechs (`enum Mech`) in that order. A move without a file
+Bakes every move of `enum Mv` for every mech (`enum Mech`) in that order. A move without a file
 gets the mech's `_body.anim.json` as a **stand-in** (the guard held; looping for `idle`,
 `walk_f`, `walk_b`, `crouch` and `block`): the runtime has every move from the start, and
 `anim_standin()` says which. `--extra DIR` adds moves from another folder in place of the
@@ -381,19 +404,23 @@ imports it from there), `--no-meshes` writes data that names no meshes (no pack 
 ## The exported data
 
 `anim_data.akr` (generated) imports the pack (`assets.akr`), embeds `anims/anim_data.bin` as
-`AK_BLOB` and holds two tables: `AK_MOVES` (an `AnimMove` per mech and move: length, flags,
-and where its sections start in the blob) and `AK_MESH` (each mech's part meshes in `Part`
-order, `null` where it has none). The blob, per move, every section 4-byte aligned:
+`AK_BLOB` and holds three tables: `AK_MOVES` (an `AnimMove` per mech and move: length, flags,
+and where its sections start in the blob), `AK_MESH` (each mech's part meshes in `Part`
+order, `null` where it has none) and `AK_NPART` (how many parts each mech's frames hold: its
+parts in `Part` order up to the last one its rig has; 19, and Seraph's 22). The blob, per move,
+every section 4-byte aligned:
 
 | Section | Per frame |
 |---|---|
-| frames | per part (`Part` order) a `PartXf`, 32 bytes: the rotation's 9 entries as `fixed16` (4.12) and one of padding, the translation as 3 `fixed`: the part's matrix relative to the root |
+| frames | per part (`Part` order, the mech's `AK_NPART`) a `PartXf`, 32 bytes: the rotation's 9 entries as `fixed16` (4.12) and one of padding, the translation as 3 `fixed`: the part's matrix relative to the root |
 | box_first | a `u16`: the frame's first box (one more at the end: the count) |
 | boxes | `Box` records, 20 bytes: kind, hit, part, padding, x0, y0, x1, y1 (`fixed`) |
 | marks | a `u32` |
 | root | the root motion over the frame, two `fixed` (raw) |
 
-About 860 bytes a frame (608 of them the pose). Every pose is baked, plants and reaches
+About 860 bytes a frame (608 of them the pose; Seraph's 704). The mechs follow each other in
+`Mech` order, so a mech appended to `Mech` adds its moves at the end of the blob and every other
+mech's bytes stay where they were. Every pose is baked, plants and reaches
 included, so what `verify` checked is what the game draws, the runtime has no solving to do, and
 the runtime and the kit agree to the 4.12 rounding (`tests/test_animkit.py` compares them).
 
@@ -401,7 +428,7 @@ the runtime and the kit agree to the 4.12 rounding (`tests/test_animkit.py` comp
 
 | | |
 |---|---|
-| `enum Mech { Hero, Doubleblade }`, `enum Mv { idle, ... super, thrown_vault }`, `enum Part { pelvis, ... foot_l }` | new moves go at the end of `Mv`, so the others keep their numbers (`thrown_vault`: the victim of the Double-blade Hero's Vault Throw) |
+| `enum Mech { Hero, Doubleblade, ..., Shadow, Seraph }`, `enum Mv { idle, ... super, thrown_vault, ... }`, `enum Part { pelvis, ... foot_l, wing_l, wing_r, halo }` | new mechs, moves and parts go at the end, so the others keep their numbers (`thrown_vault`: the victim of the Double-blade Hero's Vault Throw) |
 | `anim_len(m, mv) -> s32` | frames |
 | `anim_loops(m, mv) -> bool`, `anim_standin(m, mv) -> bool` | |
 | `anim_boxes(m, mv, f: s32, out: *Boxes)` | the frame's boxes (`Box { kind, hit, part, x0, y0, x1, y1 }`, fight-local, x0 < x1) |
@@ -409,7 +436,7 @@ the runtime and the kit agree to the 4.12 rounding (`tests/test_animkit.py` comp
 | `anim_marks(m, mv, f: s32) -> u32` | `MARK_*` bits |
 | `anim_place(pos: vec2, facing: s32) -> mat4` | the root's world matrix at fight (x, y), facing +x (facing > 0) or −x: turned about Y, not mirrored |
 | `anim_draw(m, mv, f: fixed, root: mat4)` | poses and draws; a fractional f interpolates between two frames (hitstop, stretched hitstun) |
-| `anim_part(m, mv, f: fixed, root: mat4, part: Part) -> mat4` | a part's matrix (a weapon's +Y runs along its blade) |
+| `anim_part(m, mv, f: fixed, root: mat4, part: Part) -> mat4` | a part's matrix (a weapon's +Y runs along its blade); for a part past the mech's `AK_NPART` (a wing or the halo on a mech without them) the joint it would hang from: the torso, the head |
 | `anim_draw_boxes(m, mv, f: s32, pos: vec2, facing: s32)` | outlines the boxes (training mode); after the camera is set |
 | `var anim_cpu: s32` | the cycles of the last `anim_draw()` |
 
@@ -463,7 +490,11 @@ a foot through root motion, merging a base; `retime` (keys, motion, plants, mark
 map), `relative` keys on the other rig's guard, the `"guard"` foot of each rig, `aim` within
 0.05° under a twisted torso, `travel` holding plants in the world and the slide warning, a reach
 ended by `null`, `reach_ease`, the `legs` warning, `floor` keys and the offset `verify` names,
-the rig's and the base's `allow`; `pose`'s blade and boxes, `fmt` keeping every file's values
+the rig's and the base's `allow`, `still` holding joints at 0 through keys and bases, `floor_allow`
+turning a sinking part's failure into a warning only to its depth, the `ward` mark (its bit, Seraph's
+`sp_d` frames, the exported marks), the `shield` mark (its bit, Gamma's `sp_d` frames and its
+`riposte`, the exported marks), each rig's part count (19,
+Seraph's 22) and the export's `AK_NPART`; `pose`'s blade and boxes, `fmt` keeping every file's values
 (and the cart's files in the style); each `verify` check failing when it should, the export's
 layout; and with `meic` and `mei-headless`, the runtime's matrices, boxes and marks against the
 kit's (the test cart's scene 5).

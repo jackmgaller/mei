@@ -1,0 +1,26 @@
+{
+  "format": "mei-anim",
+  "version": 1,
+  "note": "Idle: the boxer's guard breathing, one breath a loop. On the in-breath (0-18) the chest rises and leans back a little, the shoulders lift, the folded wings lift with it (x -4) and the halo bobs up (x 4); on the out-breath (18-36) it all settles and the weight rolls forward onto the lead foot, the fists drifting an inch down and in; then the weight shifts back over the rear foot (36-50), the lead fist pumping out a few centimetres, and back to the guard. The head stays level on the other mech. Feet planted.",
+  "base": "_body.anim.json",
+  "length": 60,
+  "loop": true,
+  "keys": [
+    {"at": 0, "from": "guard", "ease": "ease"},
+    {"at": 18, "relative": true, "ease": "ease", "offset": [-0.05, 0.08],
+     "pose": {"torso": [3, 0, 0], "head": [-3, 0, 0], "pauldron_r": [2, 0, -2],
+              "pauldron_l": [2, 0, 2], "upper_arm_r": [-2, 0, 0], "forearm_r": [3, 0, 0],
+              "upper_arm_l": [-1, 0, 0], "forearm_l": [2, 0, 0], "wing_l": [-4, 0, 0],
+              "wing_r": [-4, 0, 0], "halo": [4, 0, 0]}},
+    {"at": 36, "relative": true, "ease": "ease", "offset": [0.08, -0.06],
+     "pose": {"pelvis": [0, -1, 0], "torso": [-2, -1, 0], "head": [2, 1, 0],
+              "upper_arm_r": [2, 0, 1], "forearm_r": [-3, 0, 0], "upper_arm_l": [1, 0, -1],
+              "forearm_l": [-2, 0, 0], "wing_l": [-1, 0, 0], "wing_r": [-1, 0, 0],
+              "halo": [1, 0, 0]}},
+    {"at": 48, "relative": true, "ease": "ease", "offset": [-0.07, -0.02],
+     "pose": {"pelvis": [0, 1, 0], "torso": [0, 1, 0], "head": [0, -1, 0], "upper_arm_r": [3, 0, 0],
+              "forearm_r": [-4, 0, 0], "wing_l": [-2, 0, 0], "wing_r": [-2, 0, 0],
+              "halo": [2, 0, 0]}}
+  ],
+  "plant": {"foot_r": [[0, 59]], "foot_l": [[0, 59]]}
+}

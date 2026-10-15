@@ -70,6 +70,9 @@ struct Cpu {
     mine_plan: s32          // MP_*, kept for mine_t frames
     mine_t: s32
     shot_seen: bool         // the other's shot on its way was reacted to (once, whatever it holds)
+    plan: s32               // Seraph: what it does about that shot (SP_*: ward it, dive over it, block)
+    grabs_seen: s32         // the other's grabs (Gamma shields less against a mech that grabs)
+    ray_seen: bool          // the other's Atomic Ray held with this mech out of its reach was answered
 }
 
 var cpu: [2]Cpu
@@ -84,13 +87,22 @@ var cpu_trav_a: [len(Mech)]fixed
 fn cpu_init(seed: s32) {
     cpu[0] = Cpu { rng: (seed as u32) * 2654435761 + 1 }
     cpu[1] = Cpu { rng: (seed as u32) * 40503 + 977 }
-    // the reaches of the mechs in this fight (fight_init set them; the Twins' split body too)
+    // the reaches of the mechs in this fight (fight_init set them; the Twins' split body too),
+    // read once a mech: the data does not change, and the frame a fight starts on has little to spare
     for i in 0..2 {
         let m = fight.f[i].mech
-        cpu_tip[m] = reach_of(m, Mv.atk_f)
-        if m == Mech.Twins { cpu_tip[Mech.TwinA] = reach_of(Mech.TwinA, Mv.atk_f) }
+        tip_read(m)
+        if m == Mech.Twins { tip_read(Mech.TwinA) }
     }
     if stage_has_open(stage_now()) { cpu_edge_init() }     // mx-stages: the open edge
+}
+
+var cpu_tip_read: [len(Mech)]bool       // cpu_tip read (tip_read)
+
+private fn tip_read(m: Mech) {
+    if cpu_tip_read[m] { return }
+    cpu_tip[m] = reach_of(m, Mv.atk_f)
+    cpu_tip_read[m] = true
 }
 
 // The furthest a move's hit boxes reach ahead of the root, with its root motion.
@@ -189,6 +201,9 @@ fn cpu_pad(i: s32, level: s32) -> u32 {
     let lv = cpu_level_row(level)
     var p = cpu_think(i, level)
     if rift[other(i)].on { p = mine_wary(i, lv, p) }
+    // no jump-ins within the ray's reach of a Gamma with a cool gun: its first tick knocks a jump
+    // down (MOVES.md, "The CPU (Gamma)")
+    if (p & X) != 0 && gamma_ray_ready(other(i)) && abs(fight.f[other(i)].x - fight.f[i].x) < GM_RAY_X1 { p &= ~X }
     // the novice's limits (mx-ladder); the other levels skip both (no dice rolled)
     if !lv.supers && (p & (A | B)) == (A | B) { p &= ~B }
     if lv.grabs < 100 && (p & Y) != 0 && !is_thrown(fight.f[i].mv) && !roll(&cpu[i], lv.grabs) { p &= ~Y }
@@ -214,6 +229,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         c.decided = false
         c.punish_rolled = false
         if op.mv == Mv.block { c.blocks_seen += 1 }
+        if op.mv == Mv.grab { c.grabs_seen += 1 }
     }
     c.opp_t = ot
     if fx[j].had_hit { c.opp_active = true }
@@ -230,6 +246,12 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
     }
     c.break_roll = false
 
+    // Gamma's Atomic Ray: B held while it is worth holding (gamma_ray_hold)
+    if cpu_as_gamma(me.mech) && me.mv == Mv.sp_n {
+        if gamma_ray_hold(i, level) { return B }
+        return 0
+    }
+
     // a chain on contact
     if fx[i].contact && is_attack(me.mv) {
         // on a hit the chain goes on; on a block the special at the end would be blocked too
@@ -240,13 +262,15 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
             c.chain_go = roll(c, if_else(landed, lv.chain, lv.chain / 2))
         }
         if c.chain_go && (cur_marks(i) & MARK_CANCEL) != 0 && fx[i].t % 2 == 0 {
+            if cpu_as_seraph(me.mech) { return seraph_chain(i, c, landed, fwd) }
+            if cpu_as_gamma(me.mech) { return gamma_chain(i, c, lv, landed, fwd) }
             if me.mv == Mv.atk_n {
                 if me.mech == Mech.Doubleblade && fx[i].chain == 0 { return A }
                 return fwd | A
             }
             if me.mv == Mv.atk_f {
                 if landed && super_wise(i) && roll(c, 30) { return A | B }
-                if me.mech == Mech.Shadow { return B }                  // Shadow: the Hex Bolt (the curse)
+                if cpu_as_shadow(me.mech) { return B }                  // Shadow: the Hex Bolt (the curse)
                 // not a dash onto the other's mine: the neutral special instead (mx-balance)
                 if me.mech == Mech.Tank {
                     if mine_in_path(i, cpu_trav_d[me.body]) { return B }
@@ -259,13 +283,15 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         return 0
     }
     // Beam charging its orb: B held until the charge it chose
-    if me.mech == Mech.Beam && me.mv == Mv.sp_n && c.charge_want > 0 && fx[i].t <= 12 && me.charge < c.charge_want {
+    if cpu_as_beam(me.mech) && me.mv == Mv.sp_n && c.charge_want > 0 && fx[i].t <= 12 && me.charge < c.charge_want {
         return B
     }
     // the Twins' Fusion Focus: B held for the frames it chose
     if me.mech == Mech.Twins && me.mv == Mv.sp_d && me.body == Mech.Twins && me.charge < c.charge_want { return B }
     // Shadow Sneak: B held while the shadow is still short of the other mech
-    if me.mech == Mech.Shadow && me.mv == Mv.sp_f && dist > SH_SNEAK_STOP { return B }
+    if cpu_as_shadow(me.mech) && me.mv == Mv.sp_f && dist > SH_SNEAK_STOP { return B }
+    // the Seraph Dive: B held (gliding on) while the other is further than the dive reaches
+    if cpu_as_seraph(me.mech) && me.mv == Mv.sp_f && dist > SR_DIVE_REACH { return B }
     if !actionable(i) {
         c.hold = 0
         c.hold_t = 0
@@ -276,8 +302,15 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         return 0
     }
     // Shadow: a mech its mine snared is punished at once (once seen)
-    if me.mech == Mech.Shadow && shadow_snared(j) && snare_t[j] <= SNARE_FRAMES - lv.react / 2 {
+    if cpu_as_shadow(me.mech) && shadow_snared(j) && snare_t[j] <= SNARE_FRAMES - lv.react / 2 {
         return shadow_snare_punish(i, c, dist, fwd)
+    }
+    // Gamma: a mech its Geiger Flare dazed: the ray if it is still dropping, else the jab or Point
+    // Blank
+    if cpu_as_gamma(me.mech) && (fx[j].dazed || fx[j].daze_drop > 0) {
+        if !grounded(j) && me.heat < GM_CPU_HOLD { return B }
+        if dist < 4.8 && grabbable(j) { return Y }
+        if dist < 9.5 { return A }
     }
 
     // reactions to the other's move, once it has been seen long enough
@@ -290,19 +323,56 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         if roll(c, min(lv.block + 25, 95)) { return hold(c, R, 24) }
     }
     if seen && !c.decided {
-        // a jump coming in
-        if (op.mv == Mv.jump || op.mv == Mv.atk_air) && dist < 13.0 {
+        // Seraph's Judgement: its column falls wherever the other stands, so it is blocked on the
+        // flash at any distance, more often by a marked mech (MOVES.md, "The CPU (Seraph)")
+        if op.mv == Mv.super && has_judgement(op.mech) && ot < SR_COL_END {
+            c.decided = true
+            if roll(c, if_else(me.mark > 0, min(lv.block + 30, 95), lv.block)) { return hold(c, R, SR_COL_END + 2 - ot) }
+        }
+        // Seraph: Judgement on Beam's Reaction Prime, from anywhere
+        if cpu_as_seraph(me.mech) && op.mech == Mech.Beam && op.mv == Mv.sp_d && super_wise(i) {
+            c.decided = true
+            if roll(c, lv.punish) { return A | B }
+        }
+        // Gamma against a jump: the Geiger Flare close, the ray further out (a tick knocks it down)
+        if cpu_as_gamma(me.mech) && (op.mv == Mv.jump || op.mv == Mv.atk_air) && dist < GM_RAY_X1 - 1.0 {
+            c.decided = true
+            if dist < GM_AA_RANGE && roll(c, lv.aa) { return UP | B }
+            if dist >= GM_AA_RANGE && me.heat < GM_CPU_HOLD && roll(c, lv.aa) { return B }
+            if roll(c, lv.block) { return hold(c, R, 30) }
+        }
+        // a jump coming in (Seraph's Ascension reaches about 5 m out: it waits until the jump is
+        // within SR_AA_RANGE)
+        if (op.mv == Mv.jump || op.mv == Mv.atk_air) && dist < 13.0 && !(cpu_as_seraph(me.mech) && dist > SR_AA_RANGE) {
             c.decided = true
             if roll(c, lv.aa) { return dir_bit(0) | UP | B }
             if roll(c, lv.block) { return hold(c, R, 30) }
         }
-        // an attack starting in range
-        if opp_attacking && !c.opp_active && dist < tip(op.body) + 2.0 && op.mv != Mv.grab {
+        // an attack starting in range (Gamma's ray reaches 13 m: its dig-in is one out to there)
+        let ray = gamma_ray_starting(j)
+        var reach = tip(op.body) + 2.0
+        if ray { reach = GM_RAY_X1 + 2.0 }
+        if opp_attacking && !c.opp_active && dist < reach && op.mv != Mv.grab {
             c.decided = true
+            // Gamma: a reversal with Ground Zero, or Lead Shielding in place of the block
+            if cpu_as_gamma(me.mech) {
+                let g = gamma_answer(i, c, lv, dist)
+                if g != CPU_NO_IDEA { return g }
+            }
             // (never against a super: armour does not take a super's hit, so it is blocked: mx-balance)
             if me.mech == Mech.Tank && op.mv != Mv.super && roll(c, lv.punish / 2) { return tank_armour_through(dist, fwd) }
+            // under Gamma's ray (the slide, the Low Roll, the Sneak), or Seraph's ward into a hot gun
+            if ray {
+                let u = under_ray(i, c, lv, fwd)
+                if u != 0 { return u }
+            }
             if roll(c, lv.block) { return hold(c, R, 24) }
         }
+    }
+    // Gamma's gun venting: punished by what reaches it (MOVES.md, "The CPU (Gamma)")
+    if gamma_venting(j) && !c.punish_rolled {
+        c.punish_rolled = true
+        if roll(c, lv.punish) { return vent_punish(i, c, dist, fwd) }
     }
     // a whiff, or a move left unsafe on block: punish the recovery
     if seen && !c.punish_rolled && is_attack(op.mv) && c.opp_active && !fx[j].had_hit && grounded(j) {
@@ -310,6 +380,8 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         if roll(c, lv.punish) {
             if me.mech == Mech.Tank { return tank_punish(dist, fwd) }
             if me.mech == Mech.Shadow { return shadow_punish(dist, fwd) }
+            if cpu_as_seraph(me.mech) { return seraph_punish(i, c, dist, fwd) }
+            if cpu_as_gamma(me.mech) { return gamma_punish(i, c, dist, fwd) }
             if super_wise(i) && dist < 12.0 && roll(c, 50) { return A | B }
             if dist < jab_reach(me.body) + 1.0 { return A }    // its jab's own reach (mx-balance)
             if dist < tip(me.body) - 0.5 { return fwd | A }
@@ -320,6 +392,8 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
     let s = &fight.shot[j]
     if s.on && abs(s.x - me.x) < 12.0 && sgn(me.x - s.x) == sgn(s.vx) {
         // (once a shot even while it holds a walk: walking into it was a blind spot, mx-balance)
+        // Seraph: ward it, dive over it or block it, each at its moment (seraph_shot)
+        if cpu_as_seraph(me.mech) { return seraph_shot(i, c, lv, s, fwd) }
         if !c.decided || c.hold_t == 0 || !c.shot_seen {
             c.decided = true
             c.shot_seen = true
@@ -328,10 +402,12 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
             // enough to pass under the jump (mx-balance)
             let tt = ((abs(s.x - me.x) - s.half - STATS[me.body].push) / abs(s.vx)) as s32
             // Beam answers the wave from far with a charged orb, which trades with it (MOVES.md)
-            if me.mech == Mech.Beam && tt > 48 && !fight.shot[i].on && roll(c, lv.aa) {
+            if cpu_as_beam(me.mech) && tt > 48 && !fight.shot[i].on && roll(c, lv.aa) {
                 c.charge_want = ORB_CHARGE_HALF + 4
                 return B
             }
+            // Gamma: the Rod Shot, which passes through it (a trade)
+            if cpu_as_gamma(me.mech) && tt > 24 && !fight.shot[i].on && roll(c, lv.aa) { return fwd | B }
             if tt > 24 { return hold(c, R, min(tt - 20, 20)) }
             if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
             if tt >= 8 && roll(c, lv.aa / 2) { return fwd | X }
@@ -339,6 +415,20 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         }
     } else {
         c.shot_seen = false
+    }
+    // Gamma's ray held with this mech out of its reach: the Hero's wave goes under it to Gamma's
+    // shins, Beam's charged orb cuts it (once a ray)
+    if gamma_ray_on(j) && dist > GM_RAY_X1 + 2.0 && !fight.shot[i].on {
+        if !c.ray_seen {
+            c.ray_seen = true
+            if me.mech == Mech.Hero && roll(c, lv.aa) { return B }
+            if cpu_as_beam(me.mech) && roll(c, lv.aa) {
+                c.charge_want = ORB_CHARGE_HALF + 4
+                return B
+            }
+        }
+    } else if !gamma_ray_on(j) {
+        c.ray_seen = false
     }
 
     // keep holding what was decided
@@ -354,10 +444,12 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         let e = cpu_edge(i, c, lv, dist, fwd)
         if e != CPU_NO_IDEA { return e }
     }
-    if me.mech == Mech.Beam { return beam_neutral(i, c, lv, dist, fwd, back) }
+    if cpu_as_beam(me.mech) { return beam_neutral(i, c, lv, dist, fwd, back) }
+    if cpu_as_gamma(me.mech) { return gamma_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Tank { return tank_neutral(i, c, lv, dist, fwd, back) }
     if me.mech == Mech.Twins { return twins_neutral(i, c, lv, dist, fwd, back) }
-    if me.mech == Mech.Shadow { return shadow_neutral(i, c, lv, dist, fwd, back) }
+    if cpu_as_shadow(me.mech) { return shadow_neutral(i, c, lv, dist, fwd, back) }
+    if cpu_as_seraph(me.mech) { return seraph_neutral(i, c, lv, dist, fwd, back) }
     // neutral: footsies around the tip of its forward attack
     let range = tip(me.body)
     if dist < tip(op.body) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
@@ -391,7 +483,7 @@ private fn cpu_think(i: s32, level: s32) -> u32 {
         return hold(c, fwd, 8)
     }
     if dist < range + 6.0 && roll(c, lv.jump) { return fwd | X }
-    if me.mech == Mech.Hero && dist > 14.0 && !fight.shot[i].on && roll(c, 25) { return B }
+    if me.mech == Mech.Hero && dist > 14.0 && !fight.shot[i].on && roll(c, if_else(ward_ready(other(i)), 10, 25)) { return B }
     if me.mech == Mech.Doubleblade && dist > 12.0 && roll(c, 12) { return B }
     if super_wise(i) && me.meter >= METER_BAR && dist < 14.0 && roll(c, 3) { return A | B }
     return hold(c, fwd, 10 + rnd_n(c, 20))
@@ -429,7 +521,11 @@ fn dummy_pad(i: s32) -> u32 {
 
 // ---- Beam (mx-beam): the zoner in neutral. Orbs at range (charged when far), the Arc Lance at a
 // mech walking or jumping in, the prime when it is safe (far, nothing coming), the super from
-// anywhere it reaches; up close a jab, a grab or a step back out.
+// anywhere it reaches; up close a jab, a grab or a step back out. (Gamma has its own since
+// mx-gamma-fight, at the end of this file.)
+
+private fn cpu_as_beam(m: Mech) -> bool { return m == Mech.Beam }
+private fn cpu_primes(m: Mech) -> bool { return meter_power(m) == Power.Chemical }
 
 // The room behind side i, to the stage's edge (a wall or an open lip).
 private fn room_behind(i: s32) -> fixed {
@@ -447,7 +543,8 @@ private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, b
     if room_behind(i) < 6.0 { back = R }
     // the prime while the other is down: the safest moment there is
     let down = op.mv == Mv.knockdown || op.mv == Mv.getup || op.mv == Mv.hit_air
-    if down && me.react == 0 && me.meter < METER_BAR && dist > 6.0 && me.curse == 0 && roll(c, lv.special * 6) { return DOWN | B }
+    if down && me.react == 0 && me.meter < METER_BAR && dist > 6.0 && me.curse == 0 && cpu_primes(me.mech)
+        && roll(c, lv.special * 6) { return DOWN | B }
     if dist < tip(op.body) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
     if dist < 5.5 {
         if c.blocks_seen >= 2 && roll(c, lv.grab) { c.blocks_seen = 0; return Y }
@@ -459,7 +556,7 @@ private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, b
         return hold(c, R, 10)
     }
     if dist > 12.0 && me.react == 0 && me.meter < METER_BAR && !incoming && !is_attack(op.mv)
-        && me.curse == 0 && roll(c, lv.special * 4) {
+        && me.curse == 0 && cpu_primes(me.mech) && roll(c, lv.special * 4) {
         return DOWN | B
     }
     if super_wise(i) && dist < 28.0 && roll(c, 4) { return A | B }
@@ -469,7 +566,7 @@ private fn beam_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, b
     if dist > 7.0 && dist < 15.0 && (op.mv == Mv.walk_f || op.mv == Mv.jump) && roll(c, lv.poke) {
         return fwd | B
     }
-    if dist > 8.0 && safe && !fight.shot[i].on && roll(c, 45) {
+    if dist > 8.0 && safe && !fight.shot[i].on && roll(c, if_else(ward_ready(other(i)), 20, 45)) {
         c.charge_want = 0
         if dist > 20.0 && roll(c, 40) { c.charge_want = ORB_CHARGE_MAX }
         else if roll(c, 35) { c.charge_want = ORB_CHARGE_HALF + 4 }
@@ -669,6 +766,9 @@ private fn cpu_edge(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32) -> u3
 
 const SH_SNEAK_STOP: fixed = 4.5        // the Sneak's hold is let go this close (it erupts in reach)
 
+// Shadow's CPU (Seraph has its own since mx-seraph-fight, at the end of this file).
+private fn cpu_as_shadow(m: Mech) -> bool { return m == Mech.Shadow }
+
 private fn shadow_punish(dist: fixed, fwd: u32) -> u32 {
     if dist < 6.0 { return A }
     if dist < 10.0 { return fwd | A }
@@ -696,7 +796,7 @@ private fn shadow_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
     // a mine where the other must walk: laid in the open between them, or while it is down. A
     // mech with a shot keeps its distance and shoots (the Hero's wave clears a mine): against it
     // a mine in the open is time given away, so only while it is down (mx-balance)
-    let open_ok = !fires_shot(op.mech) || op.mech == Mech.Shadow
+    let open_ok = !fires_shot(op.mech) || has_hex_bolt(op.mech) || has_mark(op.mech)
     if !mine && ((down && dist > 4.0) || (open_ok && dist > 8.0 && dist < 20.0 && !threat)) && roll(c, lv.special * 4) {
         return DOWN | B
     }
@@ -704,9 +804,10 @@ private fn shadow_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32,
     // (mx-balance: not inside the other's poke, where the bolt's 40 frames are a free hit, nor at a
     // mech with a stronger shot to answer it, the Hero's wave or Beam's charged orb: the bolt does
     // not win a projectile war, so against them the curse comes from the chain)
-    let beaten = fires_shot(op.mech) && op.mech != Mech.Shadow
+    let beaten = fires_shot(op.mech) && !has_hex_bolt(op.mech) && !has_mark(op.mech)
     let clear = dist > tip(op.body) + 2.0
-    if !fight.shot[i].on && !beaten && clear && dist < 24.0 && op.curse < 60 && !down && roll(c, 30 + lv.special * 2) {
+    let bolt_p = if_else(ward_ready(j), 12 + lv.special, 30 + lv.special * 2)    // fewer into a Wing Ward
+    if !fight.shot[i].on && !beaten && clear && dist < 24.0 && op.curse < 60 && !down && roll(c, bolt_p) {
         return B
     }
     // in front of its mine: step back behind it, so the other has to cross it
@@ -777,6 +878,11 @@ private fn mine_wary(i: s32, lv: *CpuLevel, p: u32) -> u32 {
         if (p & DOWN) != 0 { go = cpu_trav_d[me.body] }
         else if (p & fwd) != 0 { go = cpu_trav_f[me.body] }
     }
+    // the Seraph Dive passes over the floor: only its touchdown, 7 to 11 m on, sets a mine off
+    if cpu_as_seraph(me.mech) && (p & B) != 0 && (p & fwd) != 0 && (p & (UP | DOWN)) == 0 {
+        if ahead > SR_DIVE_LAND0 && ahead < SR_DIVE_LAND1 { return p & ~(fwd | B) }
+        return p
+    }
     if (p & A) != 0 && (p & fwd) != 0 && (p & DOWN) == 0 { go = cpu_trav_a[me.body] }
     if go < 0.0 || gap > go + MINE_WARY { return p }
     if c.mine_x != m.x || c.mine_t <= 0 {
@@ -803,6 +909,7 @@ private fn mine_wary(i: s32, lv: *CpuLevel, p: u32) -> u32 {
     }
     if c.mine_plan == MP_JUMP && gap < 2.5 {
         c.mine_t = 0
+        if cpu_as_seraph(me.mech) { return fwd | B }        // the Seraph Dive flies over it
         return fwd | X
     }
     return p & ~(fwd | A | B)
@@ -817,13 +924,360 @@ private fn shot_above(i: s32, c: *Cpu, lv: *CpuLevel, s: *Shot, fwd: u32) -> u32
     let me = &fight.f[i]
     let far = abs(s.x - me.x)
     if me.mech == Mech.Doubleblade && roll(c, lv.aa) { return B }
-    if me.mech == Mech.Shadow && abs(fight.f[other(i)].x - me.x) < 19.0 && roll(c, lv.aa) { return fwd | B }
-    if me.mech == Mech.Hero && s.str < 2 && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) { return B }
-    if me.mech == Mech.Beam && s.str < 2 && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) {
+    if cpu_as_shadow(me.mech) && abs(fight.f[other(i)].x - me.x) < 19.0 && roll(c, lv.aa) { return fwd | B }
+    if me.mech == Mech.Hero && s.str < 2 && !s.pierce && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) { return B }
+    // Gamma: the Rod Shot passes through it (the answer to a shot war)
+    if cpu_as_gamma(me.mech) && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) { return fwd | B }
+    if cpu_as_beam(me.mech) && s.str < 2 && !s.pierce && !fight.shot[i].on && far > 8.0 && roll(c, lv.aa) {
         c.charge_want = ORB_CHARGE_HALF + 4                 // a charged orb beats a bolt or a tap
         return B
     }
     // the roll passes under it if it starts close enough that the shot is past when it stands
     if me.body == Mech.TwinA && far > 4.0 && far < 6.0 + abs(s.vx) * 20 && roll(c, lv.aa) { return DOWN | B }
     return hold(c, R, 20)
+}
+
+// ---- Seraph's CPU (mx-seraph-fight; MOVES.md, "The CPU (Seraph)"): mark the other with the bolt
+// from range, ward the shots it is sent and dive over the waves and mines, Ascension against a
+// jump, Judgement as the punish from anywhere (gladly on a marked mech), Heaven's Arc out of a
+// corner and off an open edge; up close, a boxer's footsies
+
+const SR_DIVE_REACH: fixed = 7.0        // the Dive's B is let go this close: the dive and the fist
+const SR_AA_RANGE: fixed = 9.0          // Ascension against a jump within this
+const SR_COL_END = 58                   // Judgement's column is out until this frame of the super
+const SR_WARD0 = 6                      // a shot is warded when it will touch in SR_WARD0..SR_WARD1
+const SR_WARD1 = 14                     // frames (the ward's 20 frames start 5 after the press)
+const SR_HOP0 = 19                      // a wave is dived over when it will touch in SR_HOP0..SR_HOP1
+const SR_HOP1 = 22                      // frames (the hop is clear of the floor 12 frames in)
+const SR_DIVE_LAND0: fixed = 6.5        // where a tapped Dive lands, ahead of the root
+const SR_DIVE_LAND1: fixed = 10.5
+const SR_MARK_LOW = 120                 // a mark this short is renewed
+const SP_BLOCK = 0
+const SP_WARD = 1
+const SP_DIVE = 2
+const SP_DONE = 3
+
+private fn cpu_as_seraph(m: Mech) -> bool { return m == Mech.Seraph }
+
+// Whether body j is a mech that could ward a shot now (a Seraph free to act): the others fire less.
+fn ward_ready(j: s32) -> bool { return has_ward(fight.f[j].mech) && actionable(j) }
+
+// The chain on contact: from the jab, Judgement on a marked mech, Ascension up close, else the
+// straight; from the straight, Judgement (gladly on a marked mech), the bolt to mark (or to renew
+// the mark on a hit), nothing more on a block.
+private fn seraph_chain(i: s32, c: *Cpu, landed: bool, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    let op = &fight.f[other(i)]
+    let marked = op.mark > SR_MARK_LOW
+    if me.mv == Mv.atk_n {
+        if landed && marked && super_wise(i) && roll(c, 50) { return A | B }
+        if landed && abs(op.x - me.x) < 4.5 && roll(c, 25) { return UP | B }
+        return fwd | A
+    }
+    if me.mv == Mv.atk_f {
+        if landed && super_wise(i) && roll(c, if_else(marked, 70, 25)) { return A | B }
+        if !marked || landed { return B }
+    }
+    return 0
+}
+
+private fn seraph_punish(i: s32, c: *Cpu, dist: fixed, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    let op = &fight.f[other(i)]
+    if super_wise(i) && roll(c, if_else(op.mark > 0, 80, 45)) { return A | B }   // anywhere on the stage
+    if dist < jab_reach(me.body) + 1.0 { return A }
+    if dist < tip(me.body) - 0.5 { return fwd | A }
+    if dist < 24.0 && roll(c, 80) { return fwd | B }                            // the Dive, held as far as it needs
+    return 0
+}
+
+// The other's shot on its way: once, a plan (the Dive over a wave at lv.aa, the ward at lv.special
+// x 5, else block), then each frame the press at its moment: the ward when the shot will touch in
+// SR_WARD0..SR_WARD1 frames, the Dive's hop in SR_HOP0..SR_HOP1, else block in time.
+private fn seraph_shot(i: s32, c: *Cpu, lv: *CpuLevel, s: *Shot, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    let tt = ((abs(s.x - me.x) - s.half - 1.6) / abs(s.vx)) as s32
+    if !c.shot_seen {
+        c.shot_seen = true
+        c.decided = true
+        c.hold = 0
+        c.hold_t = 0
+        c.plan = SP_BLOCK
+        let wave = s.y1 <= WAVE_H
+        if wave && tt >= SR_HOP0 && roll(c, lv.aa) { c.plan = SP_DIVE }
+        else if tt >= SR_WARD0 && roll(c, lv.special * 5) { c.plan = SP_WARD }
+    }
+    if c.plan == SP_WARD {
+        if tt > SR_WARD1 { return 0 }                   // wait for it
+        c.plan = SP_DONE
+        if tt >= SR_WARD0 { return DOWN | B }
+        return hold(c, R, 20)
+    }
+    if c.plan == SP_DIVE {
+        if tt > SR_HOP1 { return 0 }
+        c.plan = SP_DONE
+        if tt >= SR_HOP0 { return fwd | B }
+        return hold(c, R, 20)
+    }
+    if c.plan == SP_BLOCK {
+        if tt > 24 { return 0 }
+        c.plan = SP_DONE
+        return hold(c, R, min(tt + 8, 30))
+    }
+    if c.hold_t > 0 {
+        c.hold_t -= 1
+        return c.hold
+    }
+    return 0
+}
+
+private fn seraph_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, back: u32) -> u32 {
+    let me = &fight.f[i]
+    let j = other(i)
+    let op = &fight.f[j]
+    let threat = is_attack(op.mv) || op.mv == Mv.grab || fight.shot[j].on
+    let down = op.mv == Mv.knockdown || op.mv == Mv.getup || op.mv == Mv.hit_air
+    // Heaven's Arc out of a corner (its back within 6 m of a wall or a lip): the sides swap, and
+    // off an open edge the other goes over
+    if room_behind(i) < 6.0 && dist < 4.5 && grabbable(j) && roll(c, lv.grab + 25) { return Y }
+    // Judgement on a mech in a move anywhere on the stage (it cannot block the column in time), and
+    // on a marked mech standing in the open: the threat it must respect
+    if super_wise(i) && grounded(j) && !down {
+        if is_attack(op.mv) && roll(c, 40) { return A | B }
+        if op.mark > 90 && roll(c, 15) { return A | B }
+    }
+    // the bolt from outside the other's poke: to mark it, or to renew a mark running out; against a
+    // mech with a stronger shot (the Hero's wave, Beam's orbs) only while it is down or busy
+    let stronger = fires_shot(op.mech) && !has_hex_bolt(op.mech) && !has_mark(op.mech)
+    let clear = dist > tip(op.body) + 2.0
+    if clear && !fight.shot[i].on && !fight.shot[j].on && op.mark < SR_MARK_LOW && dist < 28.0
+        && (!stronger || down || is_attack(op.mv)) && roll(c, 20 + lv.special * 2) {
+        return B
+    }
+    // a shooter at range: stand and let it shoot (the ward answers), or walk in
+    if stronger && dist > 12.0 && roll(c, 25) { return hold(c, 0, 10 + rnd_n(c, 10)) }
+    // the Dive to close from mid range and far, when nothing is coming
+    if dist > tip(me.body) + 3.0 && dist < 22.0 && !threat && roll(c, lv.special * 3) { return fwd | B }
+    if dist < tip(op.body) + 2.0 && roll(c, lv.guard) { return hold(c, R, 16 + rnd_n(c, 20)) }
+    if dist < 5.0 {
+        if c.blocks_seen >= 1 && roll(c, lv.grab) { c.blocks_seen = 0; return Y }   // grabs beat block
+        let r = rnd_n(c, 100)
+        if r < 32 {
+            if dist < jab_reach(me.body) + 0.9 { return A }
+            return fwd | A                              // out of the short jab's reach: the straight
+        }
+        if r < 42 { return Y }
+        if r < 54 { return fwd | A }
+        if r < 60 { return DOWN | A }                   // the Reaping Kick
+        if r < 78 { return hold(c, back, 12) }
+        return hold(c, R, 10)
+    }
+    let range = tip(me.body)
+    if dist < range + 0.5 {
+        let r = rnd_n(c, 100)
+        if r < lv.poke { return fwd | A }
+        if r < lv.poke + 8 { return DOWN | A }
+        if r < lv.poke + 25 { return hold(c, back, 10) }
+        if r < lv.poke + 35 { return hold(c, R, 12) }
+        return hold(c, fwd, 8)
+    }
+    if dist < range + 6.0 && roll(c, lv.jump) { return fwd | X }
+    return hold(c, fwd, 10 + rnd_n(c, 16))
+}
+
+// ---- Gamma's CPU (mx-gamma-fight; MOVES.md, "The CPU (Gamma)"): hold the middle with the Atomic
+// Ray (at a mech walking in, jumping in or recovering, within its 13 m, the gun under 60) and let
+// go when the other is pushed out of it or before the gun vents (level 0 and the novice hold it to
+// the vent); the Rod Shot beyond the ray, through a shot war and into armour; the Geiger Flare
+// against a jump close in and the ray against one further out, then the follow-up on a daze; Lead
+// Shielding in place of a block against a heavy attack; Point Blank to push a rushing mech back
+// out (gladly toward an open edge); Ground Zero when a mech has got in. The others' answers to it
+// are in the shared lines above: the ray's dig-in counts as an attack out to 13 m (block it, or go
+// under it: under_ray), the Hero's wave and Beam's charged orb at a ray held out of reach, the
+// vent punished by distance (vent_punish), no jump-ins at a cool gun (cpu_pad).
+
+const GM_CPU_HEAT = 60                  // the ray is started only below this heat
+const GM_CPU_HOLD = 85                  // and held below this one (levels 1-3)
+const GM_AA_RANGE: fixed = 8.5          // the Geiger Flare against a jump within this; the ray beyond
+const GM_GZ_RANGE: fixed = 8.5          // Ground Zero's reach (8 m from the root to a hurt box), near enough
+
+private fn cpu_as_gamma(m: Mech) -> bool { return has_ray(m) }
+
+// Whether body j is a Gamma whose ray is starting or on (its dig-in is an attack out to 13 m).
+fn gamma_ray_starting(j: s32) -> bool {
+    let f = &fight.f[j]
+    if !has_ray(f.mech) || f.mv != Mv.sp_n || fx[j].riposte { return false }
+    return fx[j].t <= gm_charge
+}
+
+// Whether body j is a Gamma ready to ray a jump: free to act, or firing, with the gun cool.
+fn gamma_ray_ready(j: s32) -> bool {
+    let f = &fight.f[j]
+    return has_ray(f.mech) && f.heat < GM_CPU_HEAT && (actionable(j) || gamma_ray_starting(j))
+}
+
+// Whether body j is in a move that goes under the ray (the Double-blade Hero's slide, the split
+// Twins' Low Roll, Shadow Sneak's travel): blocked, not rayed.
+private fn under_ray_now(j: s32) -> bool {
+    let f = &fight.f[j]
+    if f.mv == Mv.sp_d && (f.mech == Mech.Doubleblade || f.body == Mech.TwinA) { return true }
+    return f.mv == Mv.sp_f && has_sneak(f.mech)
+}
+
+// B held on the ray: through its first 12 frames, then while its ticks still touch the other (the
+// last one within a tick), the gun under GM_CPU_HOLD; level 0 and the novice hold it to the vent.
+private fn gamma_ray_hold(i: s32, level: s32) -> bool {
+    let me = &fight.f[i]
+    let x = &fx[i]
+    if gamma_venting(i) { return false }
+    if level <= 0 { return me.heat < GM_HEAT_MAX }
+    if me.heat >= GM_CPU_HOLD { return false }
+    if x.ray_t < GM_RAY_MIN { return true }
+    return x.ray_n > 0 && x.ray_t - x.ray_last <= GM_TICK + 1
+}
+
+// The chain on contact: from the jab, Ground Zero within its reach, the flare up close now and
+// then (a reset), else the lance; from the lance on a hit, Ground Zero, the rod from beyond 9 m,
+// else the ray (the push); on a block, Lead Shielding to take the punish (lv.special).
+private fn gamma_chain(i: s32, c: *Cpu, lv: *CpuLevel, landed: bool, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    let op = &fight.f[other(i)]
+    let dist = abs(op.x - me.x)
+    if me.mv == Mv.atk_n {
+        if landed && super_wise(i) && dist < GM_GZ_RANGE && roll(c, 30) { return A | B }
+        if landed && dist < 5.5 && roll(c, 15) { return UP | B }
+        return fwd | A
+    }
+    if me.mv == Mv.atk_f {
+        if landed {
+            if super_wise(i) && dist < GM_GZ_RANGE && roll(c, 40) { return A | B }
+            if dist > 9.0 && !fight.shot[i].on && (me.heat >= GM_CPU_HOLD || roll(c, 40)) { return fwd | B }
+            if me.heat < GM_CPU_HOLD { return B }
+            if !fight.shot[i].on { return fwd | B }
+            return 0
+        }
+        if roll(c, lv.special) { return DOWN | B }
+    }
+    return 0
+}
+
+// A whiff punished: Ground Zero within its reach, the jab (it reaches 9 m), the lance, the ray
+// within 13 m, else the rod.
+private fn gamma_punish(i: s32, c: *Cpu, dist: fixed, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    if super_wise(i) && dist < GM_GZ_RANGE && roll(c, 50) { return A | B }
+    if dist < jab_reach(me.body) + 1.0 { return A }
+    if dist < tip(me.body) - 0.5 { return fwd | A }
+    if dist < GM_RAY_X1 && me.heat < GM_CPU_HOLD { return B }
+    if !fight.shot[i].on { return fwd | B }
+    return 0
+}
+
+// The other's attack starting in range: Ground Zero as a reversal within its reach (lv.punish),
+// or Lead Shielding in place of the block against a forward attack or a special (lv.special x 3,
+// less often against a mech that grabs: grabs beat the brace); never against a super's flash.
+// CPU_NO_IDEA: block it as the others do.
+private fn gamma_answer(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed) -> u32 {
+    let j = other(i)
+    let op = &fight.f[j]
+    if op.mv == Mv.super { return CPU_NO_IDEA }
+    if super_wise(i) && dist < GM_GZ_RANGE && roll(c, lv.punish) { return A | B }
+    if (op.mv == Mv.atk_f || is_special(op.mv)) && !gamma_ray_starting(j) {
+        if roll(c, lv.special * 6 / (2 + min(c.grabs_seen, 6))) { return DOWN | B }
+    }
+    return CPU_NO_IDEA
+}
+
+// The other's ray starting (its 18 frames of dig-in are seen in time to answer at level 2): Seraph
+// wards it when the gun is hot (each warded tick heats it 10), the Double-blade Hero slides, the
+// split Twins roll and Shadow sneaks under it (lv.special x 5 at mid range, x 3 closer); 0: block
+// it as any attack. (A jump does not clear it: the ray at chest height meets every jump.)
+private fn under_ray(i: s32, c: *Cpu, lv: *CpuLevel, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    let op = &fight.f[other(i)]
+    if cpu_as_seraph(me.mech) {
+        if op.heat > 50 && roll(c, lv.special * 5) { return DOWN | B }
+        return 0
+    }
+    let under = me.mech == Mech.Doubleblade || me.body == Mech.TwinA || cpu_as_shadow(me.mech)
+    // at mid range (outside the jab's reach) more often: there the ray is the threat (the balance pass)
+    let mid = abs(op.x - me.x) > 6.0
+    if !under || !roll(c, lv.special * if_else(mid, 5, 3)) { return 0 }
+    if cpu_as_shadow(me.mech) { return fwd | B }
+    return DOWN | B
+}
+
+// Gamma venting (50 frames open): what reaches it, by distance: the jab, the forward attack, a
+// super that reaches, the Hero's Charge Slash, Beam's Arc Lance, the Double-blade Hero's Charge
+// Slash, Tank's Bulldozer, a held Sneak or Dive; else a walk in.
+private fn vent_punish(i: s32, c: *Cpu, dist: fixed, fwd: u32) -> u32 {
+    let me = &fight.f[i]
+    if dist < jab_reach(me.body) + 1.0 { return A }
+    if dist < tip(me.body) - 0.5 { return fwd | A }
+    if super_wise(i) && me.mech != Mech.Tank && (dist < 12.0 || has_judgement(me.mech)) { return A | B }
+    if (me.mech == Mech.Hero || me.mech == Mech.Doubleblade) && dist < 12.0 { return fwd | B }
+    if cpu_as_beam(me.mech) && dist < 14.5 { return fwd | B }
+    if cpu_as_shadow(me.mech) || cpu_as_seraph(me.mech) { return fwd | B }
+    if me.mech == Mech.Tank && dist < 12.0 { return DOWN | B }
+    return hold(c, fwd, 12)
+}
+
+private fn gamma_neutral(i: s32, c: *Cpu, lv: *CpuLevel, dist: fixed, fwd: u32, back0: u32) -> u32 {
+    let me = &fight.f[i]
+    let j = other(i)
+    let op = &fight.f[j]
+    let sh = &fight.shot[j]
+    let incoming = sh.on && sgn(me.x - sh.x) == sgn(sh.vx)
+    let cool = me.heat < GM_CPU_HEAT
+    let under = under_ray_now(j)
+    let edge = edge_behind(j)
+    // it does not back away from a rushing mech (the slowest walk back): near its wall it holds
+    var back = back0
+    if room_behind(i) < 6.0 { back = R }
+    // Ground Zero on a mech that has got in: gladly with its back to a drop
+    if super_wise(i) && dist < GM_GZ_RANGE && grounded(j) {
+        if edge < 5.0 && roll(c, 50) { return A | B }
+        if roll(c, 8) { return A | B }
+    }
+    // Point Blank toward an open edge (about 10 m of throw)
+    if dist < 4.8 && edge < 10.0 && grabbable(j) && roll(c, lv.grab + 30) { return Y }
+    // the Rod Shot at armour, at any range: it pierces
+    if !fight.shot[i].on && (cur_marks(j) & (MARK_ARMOUR | MARK_SHIELD)) != 0 && roll(c, lv.punish) { return fwd | B }
+    // a mech going under the ray is blocked
+    if under && dist < GM_RAY_X1 { return hold(c, R, 14) }
+    // the ray at a mech walking in or jumping in within its reach, the gun cool, nothing coming
+    let coming = op.mv == Mv.walk_f || op.mv == Mv.jump || op.mv == Mv.atk_air
+    if dist > 5.5 && dist < GM_RAY_X1 - 1.0 && cool && !incoming && coming && roll(c, lv.poke + 25) { return B }
+    // the Rod Shot from beyond the ray (fewer into a Wing Ward)
+    if dist > GM_RAY_X1 && !fight.shot[i].on && roll(c, if_else(ward_ready(j), 15, 35)) { return fwd | B }
+    if dist < tip(op.body) + 2.0 && roll(c, lv.guard) { return hold(c, R, 18 + rnd_n(c, 24)) }
+    // up close: the jab, Point Blank to push it back out, the lance, the sweep, a step back
+    if dist < 5.5 {
+        if c.blocks_seen >= 2 && roll(c, lv.grab) { c.blocks_seen = 0; return Y }
+        let r = rnd_n(c, 100)
+        if r < 30 { return A }
+        if r < 45 { return Y }
+        if r < 55 { return fwd | A }
+        if r < 62 { return DOWN | A }
+        if r < 80 { return hold(c, back, 12) }
+        return hold(c, R, 10)
+    }
+    // its own range: the jab reaches 9 m, the lance a little further, the ray holds the middle
+    if dist < tip(me.body) + 0.5 {
+        let r = rnd_n(c, 100)
+        if r < lv.poke { return if_u32(dist < 9.5, A, fwd | A) }
+        if r < lv.poke + 8 { return DOWN | A }
+        if r < lv.poke + 25 && cool && !incoming && !under { return B }
+        if r < lv.poke + 45 { return hold(c, R, 12) }
+        return hold(c, 0, 8)
+    }
+    if dist < GM_RAY_X1 - 1.0 && cool && !incoming && !under && roll(c, 20) { return B }
+    if dist > 22.0 { return hold(c, fwd, 8 + rnd_n(c, 10)) }
+    if dist > GM_RAY_X1 && roll(c, 30) { return hold(c, fwd, 8 + rnd_n(c, 8)) }
+    return hold(c, 0, 8 + rnd_n(c, 8))
+}
+
+private fn if_u32(c: bool, a: u32, b: u32) -> u32 {
+    if c { return a }
+    return b
 }
