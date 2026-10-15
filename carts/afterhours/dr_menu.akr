@@ -1,0 +1,346 @@
+// The title, the stage select and the stage's end (agent E). All three are the dark void with a
+// stage's section as a small lit model (dr_section.akr), turning slowly:
+//
+// - the title: the first stage's model, every room lit, the name, PRESS START;
+// - the stage select: the stages down the left; the hovered one's model on the right (a locked
+//   stage a silhouette), its rooms lit as the save has them cleared, the route traced through
+//   the cleared ones, each room's best time and the stage's best total; A plays it, B goes back;
+// - the stage's end (the rank): the stage's model with the whole route, each room's time and
+//   restarts, the total, the new bests and what the stage unlocked; A goes to the select.
+//
+// The stages are A's levels, in order (dr_levels.akr): STAGES[n].level == n.
+
+struct StageDef {
+    name: *u8          // the stage select's line
+    place: *u8         // a line under it
+    level: s32         // A's level (dr_levels.akr)
+    names: s32         // its rooms' names: ROOM_NAMES from here, one a room
+}
+
+const STAGES: [2]StageDef = [
+    StageDef { name: "PLATFORM TO ROOF", place: "Up through the tower, after the last train", level: 0, names: 0 },
+    StageDef { name: "THE WAY HOME", place: "The station's platform, the long way round", level: 1, names: 5 },
+]
+// Room names (levels/level1/ROUTE.md; Gate 1's platform). Later from the worlds (a name field
+// on the room type would let each world carry its own).
+const ROOM_NAMES: [6]*u8 = ["THE LAST TRAIN", "THE TICKET GATES", "THE PASSAGE", "THE LOBBY",
+                            "THE AQUARIUM", "THE PLATFORM"]
+const STAGE_N = len(STAGES)
+
+const COL_TEXT = 0xEEE6E0          // rgb(224, 230, 238)
+const COL_DIM = 0x8C7A6E           // rgb(110, 122, 140)
+const COL_FAINT = 0x5A4C44         // rgb(68, 76, 90)
+const COL_WARM = 0xB4E6FF          // rgb(255, 230, 180)
+const COL_ORANGE = 0x2080FF        // rgb(255, 128, 32): the thief's colour
+const COL_LOCK = 0x6E5A50          // rgb(80, 90, 110)
+
+var scr_t: s32                     // frames on this screen
+var sel: s32                       // the stage hovered
+var shown: s32 = -1                // the stage whose world is open for the model
+var shown_lit: u32                 // its rooms lit
+var go_t: s32 = -1                 // frames since a stage was picked (the fade out), -1 none
+var fade_in: s32                   // frames of the fade in left (the first room)
+var end_flags: s32                 // the stage's end: save_stage()'s bits
+var end_stage: s32
+var end_best: [SAVE_ROOMS]bool     // the rooms whose time is a new best
+var menu_buf: [80]u8
+var frames_n: s32                  // frames since boot (the models' turn)
+
+fn menu_init() {
+    font_load(FONT_TITLE)
+    font_load(FONT_HEAD)
+}
+
+fn room_name(stage: s32, k: s32) -> *u8 {
+    let i = STAGES[clamp(stage, 0, STAGE_N - 1)].names + k
+    if i < 0 || i >= len(ROOM_NAMES) { return "" }
+    return ROOM_NAMES[i]
+}
+
+// The section of stage n, open for drawing: its world (A's level_open_n), its rooms, their
+// lights (lit: bit k, room k).
+fn menu_show(n: s32, lit: u32) {
+    if shown != n {
+        assert(level_open_n(STAGES[n].level), "a stage's world did not open")
+        section_read()
+        shown = n
+        shown_lit = 0xFFFFFFFF
+    }
+    let pal = section_lights_for(lit)
+    if shown_lit != pal {
+        section_lights(pal)
+        shown_lit = pal
+    }
+}
+
+// The rooms of stage s the save has cleared, as a mask.
+fn saved_lit(s: s32) -> u32 { return save.stages[s].rooms }
+
+// The model's slow turn: about 26 degrees either side of the front, over 14 s.
+fn menu_yaw() -> fixed { return sin(fixed(frames_n % 840) * (TAU / 840)) * 0.45 }
+
+fn text_c(x: s32, y: s32, s: *u8, col: u32) { let _ = font_text_align(x, y, s, col, ALIGN_CENTRE) }
+
+fn fade_cover(k: s32) {
+    if k <= 0 { return }
+    let v = clamp(k, 0, 255)
+    rect_blend(0, 0, 320, 240, rgb(v, v, v), BLEND_SUB)
+}
+
+fn saving_mark() {
+    font_use(null)
+    if save_writing {
+        let _ = font_text_align(304, 226, "SAVING", COL_FAINT, ALIGN_RIGHT)
+    } else if !card_present(1) && mode != Mode.Transition {
+        let _ = font_text_align(304, 226, "NO MEMORY CARD", COL_FAINT, ALIGN_RIGHT)
+    }
+}
+
+// ---- the title
+
+fn title_begin() {
+    game_mode(Mode.Title)
+    au_ambience(AMB_NONE)
+    scr_t = 0
+    go_t = -1
+}
+
+fn title_update(press: u32) {
+    scr_t += 1
+    if scr_t > 12 && press & (START | A) != 0 {
+        au_menu_ok()
+        select_begin(sel)
+    }
+}
+
+fn title_draw() {
+    cls(VOID)
+    menu_show(0, 0xFFFFFFFF)
+    section_view(160, 146, 270, menu_yaw(), -0.55, false, false, 0xFFFFFFFF)
+    font_use(FONT_TITLE)
+    text_c(160, 26, "AFTER HOURS", COL_WARM)
+    font_use(FONT_HEAD)
+    text_c(160, 62, "TOKYO  1998", COL_DIM)
+    if (scr_t / 30) % 3 != 2 { text_c(160, 212, "PRESS START", COL_TEXT) }
+    font_use(null)
+    saving_mark()
+    fade_cover(255 - scr_t * 8)
+}
+
+// ---- the stage select
+
+fn select_begin(n: s32) {
+    game_mode(Mode.Select)
+    au_ambience(AMB_NONE)
+    sel = clamp(n, 0, STAGE_N - 1)
+    scr_t = 0
+    go_t = -1
+}
+
+fn select_update(pad: u32, press: u32) {
+    scr_t += 1
+    if go_t >= 0 {
+        go_t += 1
+        if go_t >= 14 { play_stage(sel) }
+        return
+    }
+    if press & UP != 0 && sel > 0 {
+        sel -= 1
+        au_menu_move()
+    } else if press & DOWN != 0 && sel + 1 < STAGE_N {
+        sel += 1
+        au_menu_move()
+    } else if press & (A | START) != 0 {
+        if stage_unlocked(sel) {
+            au_menu_ok()
+            go_t = 0
+        } else {
+            au_menu_deny()
+        }
+    } else if press & B != 0 {
+        au_menu_back()
+        title_begin()
+    }
+    let _ = pad
+}
+
+// Plays stage n from its first room, in control, fading in.
+fn play_stage(n: s32) {
+    go_t = -1
+    shown = -1
+    gpu_fog_off()
+    stage_start(STAGES[n].level)
+    fade_in = 20
+}
+
+fn select_draw() {
+    cls(VOID)
+    let locked = !stage_unlocked(sel)
+    let lit = saved_lit(sel)
+    menu_show(sel, if_u(locked, 0xFFFFFFFF, lit))
+    section_view(212, 100, 178, menu_yaw(), -0.6, true, locked, lit)
+    font_use(FONT_HEAD)
+    let _ = font_text(16, 10, "SELECT STAGE", COL_DIM)
+    // the stages
+    for i in 0..STAGE_N {
+        let y = 32 + i * 30
+        let open = stage_unlocked(i)
+        let b = &menu_buf[0]
+        str_copy(b, 80, "")
+        str_append_int(b, 80, i + 1, 0, false)
+        str_append(b, 80, "   ")
+        if open { str_append(b, 80, STAGES[i].name) } else { str_append(b, 80, "LOCKED") }
+        var col = COL_DIM
+        if !open { col = COL_LOCK }
+        if i == sel {
+            rect(10, y + 1, 2, 12, COL_ORANGE)
+            col = if_u(open, COL_TEXT, COL_DIM)
+        }
+        font_use(FONT_HEAD)
+        let _ = font_text(18, y, b, col)
+        font_use(null)
+        str_copy(b, 80, "")
+        if !open {
+            str_append(b, 80, "Clear stage ")
+            str_append_int(b, 80, i, 0, false)
+            str_append(b, 80, " to open")
+        } else if stage_cleared(i) {
+            str_append(b, 80, "Best ")
+            str_append_ticks(b, 80, save.stages[i].best_total)
+            str_append(b, 80, "  restarts ")
+            str_append_int(b, 80, save.stages[i].best_restarts, 0, false)
+        } else {
+            str_append(b, 80, "Not cleared yet")
+        }
+        let _ = font_text(31, y + 15, b, if_u(i == sel, COL_DIM, COL_FAINT))
+    }
+    // the hovered stage's rooms, in two columns under the model: lit when cleared, with their
+    // best times
+    if !locked {
+        font_use(null)
+        let _ = font_text(16, 152, STAGES[sel].place, COL_FAINT)
+        rect(16, 166, 288, 1, COL_FAINT)
+        let half = (sec_n + 1) / 2
+        for k in 0..sec_n {
+            let x = if_s(k < half, 16, 170)
+            let y = 174 + (k % half) * 11
+            let done = (lit >> k as u32) & 1 != 0
+            rect(x, y + 2, 4, 4, if_u(done, COL_ORANGE, COL_FAINT))
+            let _ = font_text(x + 9, y, room_name(sel, k), if_u(done, COL_TEXT, COL_DIM))
+            let b = &menu_buf[0]
+            str_copy(b, 80, "")
+            let t = save.stages[sel].room_best[k]
+            if t > 0 { str_append_ticks(b, 80, t) } else { str_append(b, 80, "-") }
+            let _ = font_text_align(x + 134, y, b, if_u(done, COL_WARM, COL_FAINT), ALIGN_RIGHT)
+        }
+    }
+    font_use(FONT_HEAD)
+    let _ = font_text(16, 222, "A  PLAY     B  TITLE", COL_FAINT)
+    font_use(null)
+    saving_mark()
+    fade_cover(go_t * 20)
+}
+
+fn if_s(c: bool, a: s32, b: s32) -> s32 {
+    if c { return a }
+    return b
+}
+
+fn if_u(c: bool, a: u32, b: u32) -> u32 {
+    if c { return a }
+    return b
+}
+
+// ---- the stage's end: the rank
+
+// The stage's last room is cleared (Ev.StageClear): the save, and the end screen.
+fn end_begin() {
+    end_stage = clamp(stage_of(), 0, STAGE_N - 1)
+    end_flags = save_stage(end_stage, total, run_restarts(), STAGE_N)
+    section_read()
+    shown = end_stage
+    shown_lit = 0xFFFFFFFF
+    section_lights(0xFFFFFFFF)
+    scr_t = 0
+}
+
+fn end_update(press: u32) {
+    scr_t += 1
+    if scr_t > 30 && press & (A | START) != 0 {
+        au_menu_ok()
+        var next = end_stage
+        if end_flags & 4 != 0 { next = end_stage + 1 }
+        select_begin(next)
+    }
+}
+
+fn end_draw() {
+    cls(VOID)
+    section_view(160, 80, 210, menu_yaw() * 0.6, -0.5, true, false, 0xFFFFFFFF)
+    font_use(FONT_TITLE)
+    text_c(160, 8, "STAGE CLEAR", COL_WARM)
+    let n = run_length
+    let y0 = 156 - n * 6
+    font_use(null)
+    let b = &menu_buf[0]
+    for k in 0..n {
+        let y = y0 + k * 11
+        str_copy(b, 80, "")
+        str_append_int(b, 80, k + 1, 0, false)
+        str_append(b, 80, "  ")
+        str_append(b, 80, room_name(end_stage, k))
+        let _ = font_text(56, y, b, COL_TEXT)
+        str_copy(b, 80, "")
+        str_append_ticks(b, 80, room_time[k])
+        let _ = font_text_align(222, y, b, COL_WARM, ALIGN_RIGHT)
+        str_copy(b, 80, "")
+        str_append_int(b, 80, room_restarts[k], 0, false)
+        let _ = font_text_align(272, y, b, COL_DIM, ALIGN_RIGHT)
+        if room_time[k] == save.stages[end_stage].room_best[k] && save.stages[end_stage].runs > 1 {
+            rect(48, y + 2, 4, 4, COL_ORANGE)
+        }
+    }
+    let _ = font_text_align(222, y0 - 12, "TIME", COL_FAINT, ALIGN_RIGHT)
+    let _ = font_text_align(272, y0 - 12, "RESTARTS", COL_FAINT, ALIGN_RIGHT)
+    let yt = y0 + n * 11 + 6
+    rect(56, yt - 3, 216, 1, COL_FAINT)
+    font_use(FONT_HEAD)
+    let _ = font_text(56, yt, "TOTAL", COL_TEXT)
+    str_copy(b, 80, "")
+    str_append_ticks(b, 80, total)
+    let _ = font_text_align(222, yt, b, COL_WARM, ALIGN_RIGHT)
+    str_copy(b, 80, "")
+    str_append_int(b, 80, run_restarts(), 0, false)
+    let _ = font_text_align(272, yt, b, COL_DIM, ALIGN_RIGHT)
+    var y = yt + 18
+    if end_flags & 1 != 0 && save.stages[end_stage].runs > 1 {
+        text_c(160, y, "NEW BEST TIME", COL_ORANGE)
+        y += 14
+    }
+    if end_flags & 4 != 0 {
+        str_copy(b, 80, "STAGE ")
+        str_append_int(b, 80, end_stage + 2, 0, false)
+        str_append(b, 80, " OPEN: ")
+        str_append(b, 80, STAGES[end_stage + 1].name)
+        text_c(160, y, b, COL_TEXT)
+    }
+    if scr_t > 30 { let _ = font_text(16, 222, "A  CONTINUE", COL_FAINT) }
+    font_use(null)
+    saving_mark()
+    fade_cover(255 - scr_t * 10)
+}
+
+// ---- the transition's caption: the next room's number and name (dr_trans.akr)
+
+fn trans_caption(k: s32, alpha: s32) {
+    let st = clamp(stage_of(), 0, STAGE_N - 1)
+    let b = &menu_buf[0]
+    str_copy(b, 80, "ROOM ")
+    str_append_int(b, 80, k + 1, 0, false)
+    font_use(null)
+    let a = fixed(alpha) / 255
+    text_c(160, 196, b, col_scale(COL_DIM, a))
+    font_use(FONT_HEAD)
+    text_c(160, 207, room_name(st, k), col_scale(COL_TEXT, a))
+    font_use(null)
+}

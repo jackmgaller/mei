@@ -120,10 +120,11 @@ nothing it read has changed ([WORLDKIT.md](docs/WORLDKIT.md#quick-tools)).
   generator. **NumPy and Pillow** for the Reference Renderer. **Pillow** too for the generators
   that draw: `gen_boot_duet`, `gen_boot_eclipse`, `gen_shell_assets`, `gen_lantern_assets`,
   `gen_orbs_assets`, `gen_weather_assets`, `gen_fallline_plane`, `gen_fallline_assets` (the models'
-  textures), `gen_mechexpo_stage`, `gen_mechexpo_ui`, Mech Expo's wall and banner makers and `meifont`, and for the Asset Kit's textures read
+  textures), `gen_mechexpo_stage`, `gen_mechexpo_ui`, Mech Expo's wall and banner makers, After Hours' `make_front_art.py` and `meifont`, and for the Asset Kit's textures read
   from PNG images and sheets (`examples/assets/stall`, the shrine world's assets, so `make`;
   recipes without images need it not).
-  **SciPy** too for `gen_boot_duet`, `gen_soundlab_assets`, `gen_fallline_audio`, `gen_mechexpo_audio` and the garden's
+  **SciPy** too for `gen_boot_duet`, `gen_soundlab_assets`, `gen_fallline_audio`, `gen_mechexpo_audio`,
+  `gen_afterhours_audio` and the garden's
   audio generators (`carts/garden/audio/gen_sounds.py`, `gen_music.py`).
 - The generators draw text with the OFL fonts in `tools/fonts/` (Figtree, Sofia Sans Condensed,
   Belleza, Gelasio, Noto Sans JP, Noto Serif JP, Zen Maru Gothic, M PLUS Rounded 1c), which
@@ -247,6 +248,7 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_mechexpo_fx.py` | `carts/mechexpo/art/fx_particles.tex`, `fx_particles.pal` and `fx_art.akr`: Mech Expo's particle sprites (texture slot 11, 4-bit palette 192) (`--preview DIR`) |
 | `gen_mechexpo_rooftop.py` | `carts/mechexpo/art/stage_roof_*` and `roof_art.akr`: Mech Expo's rooftop stage (the far shore, the moon and the sea on BG1, the roof deck on BG2); runs `props/rooftop/make_rooftop.py` and packs its props into `art/stage_roof_*` and `roof_props.akr` (texture slot 13, 4-bit palettes 200-203); runs `props/rooftop_city/make_city.py` and packs the city into `art/stage_roof_city_*`, `art/stage_roof_city3d.*` and `roof_city3d.akr` (texture slot 14, palettes 204-211) (`--preview DIR`) |
 | `gen_mechexpo_port.py` | `carts/mechexpo/art/stage_port_*` and `port_art.akr`: Mech Expo's container port stage (the far harbour and the Bay Bridge on BG1, the apron's asphalt on BG2); runs `props/port/make_port.py` and packs its props into `art/stage_port_*` and `port_props.akr` (texture slot 16, 4-bit palettes 256-272); runs `props/port_harbour/make_harbour.py` and packs the harbour into `art/stage_port_*`, `art/stage_port_harbour.*` and `port_harbour.akr` (texture slot 17, palettes 288-300) (`--preview DIR`) |
+| `gen_afterhours_audio.py` | `carts/afterhours/audio/` (`music.adp`, `sfx.adp`) and `carts/afterhours/au_data.akr`: After Hours' stage track ("Shutters Down"), its sound effects and its rooms' ambiences, read by `dr_audio.akr` (`--preview DIR`: a WAV of the track, its stems, every sound and a balance mix) |
 | `fonts/make_fonts.py` | `tools/fonts/`: the generators' fonts as static weights cut to Latin, kana and the kanji in its `KANJI` list, and their licences (`OFL-*.txt`) |
 | `meinet/make_fixture.sh` | `tests/lang/data/broadcast.bin`, the canned broadcast the language tests replay (`meinet.py --fixture`) |
 | `carts/garden/shrinetown/art/water/draw_water.py` | The shrine town's water textures in `art/water/`: `water.png`, `pond_water.png`, `falls.png`, `water_ramps.akr` |
@@ -273,8 +275,9 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/mechexpo/props/port/make_port.py` | The container port's props: `port_wall.asset.json` (the container wall), `port_kerb.asset.json` (the quay's coping and bollards), `art/wall_ends_*.png` and `art/wall_sides_*.png` (each row's stacked doors and liveried sides), `cameras.json`, `asset-preview.json` (`gen_mechexpo_port.py` runs it) |
 | `carts/mechexpo/props/port_harbour/make_harbour.py` | The container port's harbour in polygons: `port_water`, `port_apron`, `port_crane_a`, `port_crane_b`, `port_ship` and `port_yard` (`.asset.json`), the textures `art/*.png` (the hull, the accommodation block, the funnel, the cargo's and the yard's stacks, the asphalt, the water's ripples and reflections, the floodlights' glow), `cameras.json`, `asset-preview.json` (`gen_mechexpo_port.py` runs it; it imports `make_port.py` for the liveries) |
 | `examples/assets/lab/tank_nook/make_tank_nook.py` | `tank_nook.asset.json` beside it: the Asset Kit's point-light example, an aquarium corner lit by three coloured lights (docs/ASSETKIT.md, "Point lights") |
+| `carts/afterhours/art/make_front_art.py` | After Hours' front-end art (agent E): `art/front_title.fnt` (Belleza) and `art/front_head.fnt` (Sofia Sans Condensed) in texture slot 7, palettes 250-251; `art/save_icon.bin`, the save's title and icon (`tools/mei_icon.py`); `carts/afterhours/front_art.akr`, their embeds (`--preview DIR`: the fonts' atlases and the icon) |
 
-The last twenty-four are run by their path from the repository root, not as `tools/NAME.py`; the
+The last twenty-five are run by their path from the repository root, not as `tools/NAME.py`; the
 garden's two audio generators share `carts/garden/audio/garden_dsp.py`, and Mech Expo's models
 `carts/mechexpo/models/hero/mxpaint.py`, which write nothing.
 

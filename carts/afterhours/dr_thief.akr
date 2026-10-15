@@ -5,6 +5,8 @@ const THIEF_R: fixed = 0.3          // the footprint, the probe's radius
 const WALK: fixed = 0.04            // metres a tick: 2.4 m/s
 const RUN: fixed = 0.08             // 4.8 m/s
 const DEAD: fixed = 0.2             // the stick's dead zone
+const WALK_STRIDE: fixed = 0.8      // metres a footstep
+const RUN_STRIDE: fixed = 1.2
 
 const TOY_R: fixed = 0.12
 const TOY_SPEED: fixed = 0.015      // 0.9 m/s
@@ -23,6 +25,8 @@ struct Thief {
     head: fixed
     hidden: bool
     hide_t: s32        // the clock he last went into or came out of hiding (-1000: not yet)
+    stride: fixed      // metres walked since the last footstep
+    moved: fixed       // metres he moved this tick (for the footsteps' sound, au_thief())
     running: bool      // ran this tick (loud)
     moving: bool
     tool: Tool
@@ -130,10 +134,13 @@ fn thief_update(inp: *Input, t: s32) {
     let moving = mv.x != 0.0 || mv.y != 0.0
     thief.moving = moving
     thief.running = false
+    thief.moved = 0.0
     if thief.hidden {
         if moving || inp.press & A != 0 {
             thief.hidden = false
             thief.hide_t = t
+            event(Ev.HideOut, 0)
+            au_hide(false)
         }
         return
     }
@@ -145,8 +152,18 @@ fn thief_update(inp: *Input, t: s32) {
         }
         thief.head = heading_to(mv.x, mv.y)
         let p = solid_push(thief.x + mv.x * step, thief.z + mv.y * step, THIEF_R)
+        // footsteps: one a stride of what he really moved (a wall he presses on is no step)
+        let mdx = p.x - thief.x
+        let mdz = p.y - thief.z
+        thief.moved = sqrt(mdx * mdx + mdz * mdz)
+        thief.stride += thief.moved
         thief.x = p.x
         thief.z = p.y
+        let len = if_f(thief.running, RUN_STRIDE, WALK_STRIDE)
+        if thief.stride >= len {
+            thief.stride -= len
+            event(Ev.Step, thief.running as s32)
+        }
     }
     thief.car = train_inside(thief.x, thief.z)
     if thief.running { noise(thief.x, thief.z, 0.0, -1) }
@@ -157,6 +174,8 @@ fn thief_update(inp: *Input, t: s32) {
         if dist2(thief.x, thief.z, room.frag_x[i], room.frag_z[i]) < r * r {
             fragile_down[i] = true
             fragile_at[i] = t
+            event(Ev.Fragile, i)
+            au_knock(room.frag_x[i] - cam_x)
             noise(room.frag_x[i], room.frag_z[i], room.frag_noise[i], -1)
         }
     }
@@ -166,6 +185,8 @@ fn thief_update(inp: *Input, t: s32) {
             if box_contains(&room.spots[i], thief.x, thief.z) {
                 thief.hidden = true
                 thief.hide_t = t
+                event(Ev.HideIn, 0)
+                au_hide(true)
                 break
             }
         }
@@ -185,6 +206,7 @@ fn use_tool(t: s32) {
             let p = solid_push(thief.x + sin(thief.head) * 0.5, thief.z + cos(thief.head) * 0.5, TOY_R)
             toys[i] = Toy { x: p.x, z: p.y, head: thief.head, ticks: TOY_TICKS, on: true }
             thief.toys -= 1
+            event(Ev.ToolUse, 0)
             return
         }
     } else {
@@ -193,6 +215,7 @@ fn use_tool(t: s32) {
             if bells[i].on { continue }
             bells[i] = Bell { x: thief.x, z: thief.z, ticks: BELL_DELAY, on: true, placed_at: t, rang_at: -1 }
             thief.bells -= 1
+            event(Ev.ToolUse, 1)
             return
         }
     }
@@ -222,6 +245,8 @@ fn tools_update(t: s32) {
         if b.ticks <= 0 {
             b.ticks = -1
             b.rang_at = t
+            event(Ev.BellRing, i)
+            au_bell(b.x - cam_x)
             noise(b.x, b.z, BELL_NOISE, -1)
         }
     }

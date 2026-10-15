@@ -1,0 +1,83 @@
+// The hooks between the stealth core (agent A: dr_game.akr and the rules), the front end (agent
+// E: the transition, the title, the stage select, the section model, the save; dr_front.akr) and
+// the audio (agent F: dr_audio.akr; NOTES_F.md, "The calls"). Every hook here is a weak default
+// that E's or F's files replace; without them (A's scenarios, or before their files are
+// imported) the cart behaves as Gate 1 and level 1 did: it starts in the first stage, a room's
+// exit loads the next room at once, the stage's end shows A's end line. NOTES_A.md, "Hooks for E
+// and F", is the contract in words.
+//
+// The game is in one of five modes. A plays the rooms (Play); E owns every other mode's frames:
+// it reads the pad in fe_update(), draws in fe_draw(), and moves the game on with game_mode(),
+// stage_start(), transition_ready() and transition_control() (dr_game.akr).
+//
+// Nothing here changes the rooms' clockwork: the hooks are told what happened and draw or play
+// it, so a tape plays the same with them or without.
+
+enum Mode: u8 { Title, Select, Play, Transition, End }
+
+// ---- E (front end)
+
+// Once, at the end of init() (the first stage's run already set up): E may go to the title with
+// game_mode(Mode.Title). Default: the first stage is played.
+weak fn fe_start() {}
+
+// Every frame in Title, Select, Transition and End (nothing ticks then): the pad held and pressed.
+weak fn fe_update(_pad: u32, _press: u32) {}
+
+// Every frame, after A drew the room (when it did): true when E drew the frame's front end (A
+// then draws no HUD).
+weak fn fe_draw() -> bool { return false }
+
+// Whether A draws the room being played this frame (in Play, Transition, and End without E).
+// E's transition may draw its own picture instead (it may still call draw_trains(),
+// draw_things(), draw_people(), draw_cones() with its own camera and view_origin).
+weak fn fe_draw_room() -> bool { return true }
+
+// Whether E runs the transitions: then a room's exit goes to Mode.Transition and waits for
+// transition_ready() / transition_control(), and the stage's last exit goes to Mode.End.
+weak fn fe_owns_transition() -> bool { return false }
+
+// ---- events, for anyone (E's HUD, the tests); `a` as each says
+
+enum Ev: u8 {
+    StageStart,    // a stage's first room is about to be played: a = the stage (level)
+    RoomEnter,     // the thief is in control in a room, its clock at 0: a = its index in the run
+    RoomExit,      // the thief went through a room's exit: a = the room left
+    RoomReady,     // (transition) the next room is loaded, at its clock 0, not running: a = it
+    StageClear,    // the stage's last room is cleared: a = the stage
+    Caught,        // a = why (Why: 1 seen, 2 touched, 3 the doors)
+    Restart,       // the room starts again at its door (after a catch, or START): a = the room
+    Step,          // a footstep (0.8 m walked, 1.2 m run): a = 0 walking, 1 running
+    HideIn,        // into a hiding place
+    HideOut,       // out of it
+    ToolUse,       // a = the tool (Tool: 0 the toy, 1 the bell)
+    BellRing,      // a bell beeps: a = its index
+    Fragile,       // a fragile thing knocked over: a = its index
+    Heard,         // a guard heard a noise and goes to it: a = the watcher
+    TrainArrive,   // a train comes out of its tunnel: a = the train
+    DoorsOpen,     // it has stopped and its doors open: a = the train
+    DoorsClose,    // its doors close and it pulls away: a = the train
+    TrainGone,     // its tail has left the room: a = the train
+}
+
+weak fn fe_event(_e: Ev, _a: s32) {}
+
+fn event(e: Ev, a: s32) { fe_event(e, a) }
+
+// ---- F (audio): the calls F asked for (NOTES_F.md, "The calls"); dr_audio.akr replaces these.
+// Types as A calls them: metres and the pan's dx as fixed, flags as bool, counts as s32.
+
+weak fn au_tick() {}
+weak fn au_music(_on: bool) {}
+weak fn au_room(_amb: s32) {}      // 0 none, 1 platform, 2 gates, 3 passage, 4 lobby, 5 aquarium
+weak fn au_restart() {}
+weak fn au_retry() {}
+weak fn au_caught() {}
+weak fn au_thief(_moved: fixed, _running: bool, _dx: fixed) {}
+weak fn au_hide(_on: bool) {}
+weak fn au_train(_t: s32, _phase: s32, _head: fixed, _dx: fixed, _to_close: s32) {}
+weak fn au_exit() {}
+weak fn au_clear() {}
+weak fn au_alert(_dx: fixed) {}
+weak fn au_knock(_dx: fixed) {}
+weak fn au_bell(_dx: fixed) {}

@@ -195,7 +195,9 @@ fn view_update() {
 // The world draws itself (dr_world.akr replaces this when B's world is in).
 weak fn world_draw(_eye: vec3, _yaw: fixed, _pitch: fixed) {}
 
-fn view_draw() {
+// The room being played as the game sees it: the room, the trains, the people, the cones, the
+// rings and the marks; no HUD (draw_hud()).
+fn view_draw_room() {
     cls(VOID)
     eye = cam_eye(cam_x, cam_tz)
     if room_is_world {
@@ -214,7 +216,6 @@ fn view_draw() {
     draw_cones()
     draw_rings()
     draw_marks()
-    draw_hud()
 }
 
 // A point y above the room's floor, in the frame drawn.

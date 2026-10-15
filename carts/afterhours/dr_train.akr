@@ -30,6 +30,7 @@ struct TrainState {
     ncars: s32
     cars: [MAX_CARS]Car
     open: bool         // stopped with its doors open
+    to_close: s32      // while open, ticks until the doors close; -1 otherwise
     closing: bool      // the doors close this tick
 }
 
@@ -53,6 +54,7 @@ fn train_at(d: *TrainDef, t: s32, st: *TrainState) {
     let L = d.path.len
     st.closing = false
     st.open = false
+    st.to_close = -1
     if tau < d.arrive {
         let u = fixed(tau) / d.arrive
         let v = 1.0 - u
@@ -63,6 +65,7 @@ fn train_at(d: *TrainDef, t: s32, st: *TrainState) {
         st.head = d.stop
         st.open = true
         st.closing = tau == d.arrive + d.dwell - 1
+        st.to_close = d.arrive + d.dwell - 1 - tau
     } else if tau < d.arrive + d.dwell + d.leave {
         let u = fixed(tau - d.arrive - d.dwell) / d.leave
         st.phase = TPhase.Leaving
@@ -227,6 +230,13 @@ fn train_sight(d: *TrainDef, st: *TrainState) {
     }
 }
 
+// The x of the middle of the part of train i on the path (for its sound's pan).
+fn train_mid_x(i: s32) -> fixed {
+    let st = &trains[i]
+    if st.ncars == 0 { return 0.0 }
+    return (st.cars[0].cx + st.cars[st.ncars - 1].cx) / 2
+}
+
 // Every train at clock t: positions, the lines that cut the cones, the shells.
 fn trains_update(t: s32) {
     ndyn = 0
@@ -234,7 +244,15 @@ fn trains_update(t: s32) {
     for i in 0..room.ntrains {
         let d = &room.trains[i]
         let st = &trains[i]
+        let was = st.phase
+        let was_open = st.open
         train_at(d, t, st)
+        if !sim_quiet {
+            if was == TPhase.Off && st.phase != TPhase.Off { event(Ev.TrainArrive, i) }
+            if !was_open && st.open { event(Ev.DoorsOpen, i) }
+            if was_open && !st.open { event(Ev.DoorsClose, i) }
+            if was != TPhase.Off && st.phase == TPhase.Off { event(Ev.TrainGone, i) }
+        }
         train_cars(d, st)
         train_sight(d, st)
         train_shell(i, d, st)

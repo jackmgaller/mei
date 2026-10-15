@@ -1,0 +1,172 @@
+// The transition between rooms (agent E; DESIGN.md, "Next: transitions"): through a room's exit
+// the camera pulls back from the room being left until it and the next one show together as
+// cut-away models in the section, slides along the section and drops into the next room, whose
+// clock starts at 0 when the thief is in control. 90 frames (1.5 s); A (or START) skips it.
+//
+// Frame by frame (TR_*): 0-29 the room left is drawn as the game draws it (its placements, the
+// thief at the exit, the guards and cones where they were) while the camera pulls back; from 30
+// it is its stand-in, and the next room's textures are copied into VRAM one a frame (the room
+// left's textures go, so nothing textured of it may show from then on); at 50 the next room is
+// loaded at its clock 0 (transition_ready(): its entities, its region's palettes, the rest of its
+// textures), and drawn as its placements with its guards and cones at clock 0: its lights come
+// on; at 90 the thief is in control (transition_control()). Rooms cleared on this run are lit,
+// the ones ahead dark; the route is traced from the exit to the next door in the thief's colour.
+// The camera ends exactly where A's view starts (cam_x, cam_tz), so the hand-over does not jump.
+
+const TR_N = 90
+const TR_SWAP = 30
+const TR_READY = 50
+const TR_SKIP_FROM = 8
+const TR_FOV_PEAK: fixed = 0.4189      // 24 degrees at the farthest
+const TR_PITCH_PEAK: fixed = -0.5760   // 33 degrees down at the farthest (the game's is 60)
+const TR_TAN_PEAK: fixed = 0.2126      // tan(TR_FOV_PEAK / 2)
+
+var tr_t: s32 = -1             // the transition's frame, -1: none
+var tr_from: s32
+var tr_to: s32
+var tr_ready: bool
+var tr_tex: s32                // the next room's textures copied so far
+var tr_ntex: s32
+var tr_region: s32
+var tr_t0: vec3                // the camera's target as he went through the exit
+var tr_est: vec3               // where the next room's will be, from the section's numbers
+var tr_dpk: fixed              // the farthest distance
+var tr_origin: vec3            // what the transition's frames are drawn around
+var tr_lit: u32                // the rooms lit (cleared on this run)
+var tr_skipped: bool
+// measured, for the checks
+var tr_frames: s32             // frames of the last transition, from the exit to control
+var tr_clock_ok: bool = true   // the next room's clock stayed at 0 from ready to control
+
+fn smooth(a: fixed, b: fixed, x: fixed) -> fixed {
+    let t = clamp((x - a) / (b - a), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+}
+
+// The thief went through room `from`'s exit and the stage has a next room (Ev.RoomExit).
+fn trans_begin(from: s32) {
+    tr_t = 0
+    tr_from = from
+    tr_to = from + 1
+    tr_ready = false
+    tr_skipped = false
+    tr_tex = 0
+    tr_clock_ok = true
+    section_read()
+    let a = &sec[min(from, sec_n - 1)]
+    let b = &sec[min(from + 1, sec_n - 1)]
+    tr_region = b.region
+    tr_ntex = 0
+    if tr_region >= 0 { tr_ntex = wp_region(tr_region).texture_count as s32 }
+    tr_t0 = vec3(cam_x, room.floor + CAM_TARGET_Y, cam_tz)
+    // the next room's target as A will frame it: x as cam_goal() for the thief at its door, z
+    // as far from its centre as this room's is from this one's (both centred), y its floor
+    var ex = b.c.x
+    let lo = b.c.x - b.sx / 2 + HALF_VIEW
+    let hi = b.c.x + b.sx / 2 - HALF_VIEW
+    if lo <= hi { ex = clamp(b.spawn.x, lo, hi) }
+    let zoff = (cam_tz_lo + cam_tz_hi) / 2 - room.cz
+    tr_est = vec3(ex, b.c.y + CAM_TARGET_Y, b.c.z + zoff)
+    // far enough back to hold both rooms, across and up
+    let w = abs(b.c.x - a.c.x) + (a.sx + b.sx) / 2 + 6.0
+    let h = abs(b.c.y - a.c.y) * cos(TR_PITCH_PEAK) + (a.sz + b.sz) / 4 + 8.0
+    tr_dpk = clamp(max(w / (TR_TAN_PEAK * 8 / 3), h / (TR_TAN_PEAK * 2)), 50.0, 140.0)
+    tr_origin = vec3(fixed(((a.c.x + b.c.x) / 2) as s32), fixed(((a.c.y + b.c.y) / 2) as s32),
+                     fixed(((a.c.z + b.c.z) / 2) as s32))
+    // the rooms cleared on this run are lit, the ones ahead dark
+    tr_lit = 0
+    for k in 0..from + 1 { tr_lit = tr_lit | ((1 as u32) << k as u32) }
+    section_lights(tr_lit)
+    au_transition()
+}
+
+// One frame of the transition (fe_update in Mode.Transition).
+fn trans_update(_pad: u32, press: u32) {
+    if tr_t < 0 { return }
+    if tr_t >= TR_SKIP_FROM && press & (A | START) != 0 {
+        tr_skipped = true
+        au_transition_skip()
+        trans_finish()
+        return
+    }
+    tr_t += 1
+    tr_frames = tr_t
+    if tr_t >= TR_SWAP && tr_tex < tr_ntex && !tr_ready {
+        wp_texture_load(tr_region, tr_tex)
+        tr_tex += 1
+    }
+    if tr_t == TR_READY { tr_make_ready() }
+    if tr_ready && clock != 0 { tr_clock_ok = false }
+    if tr_t >= TR_N { trans_finish() }
+}
+
+fn tr_make_ready() {
+    if tr_ready { return }
+    transition_ready()
+    tr_ready = true
+}
+
+fn trans_finish() {
+    tr_make_ready()
+    tr_t = -1
+    transition_control()
+}
+
+// Whether A draws the room this frame: not while the transition draws its own picture.
+fn trans_owns_frame() -> bool { return tr_t >= 0 && mode == Mode.Transition }
+
+// The transition's picture (fe_draw in Mode.Transition).
+fn trans_draw() {
+    let u = fixed(tr_t) / TR_N
+    // out: eased from rest over the first 40%; held; back in over the last 45%, to rest
+    var h = smooth(0.0, 0.40, u)
+    if u > 0.55 { h = 1.0 - smooth(0.55, 1.0, u) }
+    var dest = tr_est
+    if tr_ready {
+        let exact = vec3(cam_x, room.floor + CAM_TARGET_Y, cam_tz)
+        dest = lerp(tr_est, exact, smooth(fixed(TR_READY), fixed(TR_READY + 26), fixed(tr_t)))
+    }
+    // the target slides to between the two rooms as the camera pulls back, holds there, and goes
+    // on to the next room's as it comes down
+    let mid = (tr_t0 + tr_est) / 2
+    let target = lerp(lerp(tr_t0, mid, smooth(0.04, 0.42, u)), dest, smooth(0.52, 0.97, u))
+    let d = lerp(CAM_DIST, tr_dpk, h)
+    let pitch = lerp(CAM_PITCH, TR_PITCH_PEAK, h)
+    let fov = lerp(CAM_FOV, TR_FOV_PEAK, h)
+    let eye = target - vec3(0.0, sin(pitch), cos(pitch)) * d
+    cls(VOID)
+    view_origin = tr_origin
+    camera_fov(fov)
+    camera_clip(max(CAM_DIST - 14.0, d - 60.0), d + 60.0)
+    camera_look(eye - view_origin, 0.0, pitch)
+    section_xf(tr_origin, vec3(0.0, 0.0, 0.0), 1.0, 0.0, false)
+    sec_tris = 0
+    for k in 0..sec_n {
+        let full = (k == tr_from && tr_t < TR_SWAP) || (k == tr_to && tr_ready)
+        section_room(k, full)
+    }
+    // the people, the trains and the cones: the room left's as they were, then the next room's
+    // at its clock 0
+    if tr_t < TR_SWAP || tr_ready {
+        draw_trains()
+        draw_things()
+        draw_people()
+        draw_cones()
+    }
+    // the way through the building, from the exit to the next door
+    let p = smooth(0.12, 0.62, u)
+    if p > 0.0 {
+        let a = sec_screen(tr_from, sec[tr_from].exit)
+        let b = sec_screen(tr_to, sec[tr_to].spawn)
+        if a.z >= 0 && b.z >= 0 {
+            let e = ivec4(a.x + (fixed(b.x - a.x) * p) as s32, a.y + (fixed(b.y - a.y) * p) as s32, 1, 0)
+            sec_dots(a, e, SEC_ROUTE)
+            rect_blend(e.x - 2, e.y - 2, 5, 5, SEC_ROUTE, BLEND_ADD)
+        }
+    }
+    // the next room's name, as its lights come on
+    if tr_ready {
+        let k = clamp(min((tr_t - TR_READY) * 8, (TR_N - tr_t) * 24), 0, 255)
+        trans_caption(tr_to, k)
+    }
+}

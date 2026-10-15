@@ -13,6 +13,7 @@ import "dr_levels.akr"
 // The run's rooms come from the level's world (replaces dr_game.akr's weak defaults).
 fn room_load_n(k: s32) -> bool { return world_room_load(k) }
 fn room_count() -> s32 { return level_rooms() }
+fn stage_of() -> s32 { return level }
 
 // Opens level n's world for the next run (replaces dr_game.akr's weak default): the level after
 // this one when n is -1, the first after the last.

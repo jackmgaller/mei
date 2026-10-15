@@ -1,0 +1,77 @@
+// After Hours' front end (agent E): the title, the stage select, the transition between rooms,
+// the stage's end and the save, on A's modes and events (dr_hooks.akr; NOTES_A.md, "Hooks for E
+// and F"; NOTES_E.md). The cart imports this file; A's scenarios do not, so they play as before.
+//
+// Mode.Title, Select and End are E's screens (dr_menu.akr); Mode.Transition is dr_trans.akr;
+// in Mode.Play A plays the rooms and E only fades the first room in and keeps the save going.
+import "card.akr"
+import "dr_audio.akr"
+import "front_art.akr"
+import "dr_section.akr"
+import "dr_save.akr"
+import "dr_trans.akr"
+import "dr_menu.akr"
+
+fn fe_start() {
+    save_boot()
+    menu_init()
+    title_begin()
+}
+
+fn fe_owns_transition() -> bool { return standin_run == 0 }
+
+fn fe_update(pad: u32, press: u32) {
+    frames_n += 1
+    match mode {
+        Title => title_update(press)
+        Select => select_update(pad, press)
+        Transition => trans_update(pad, press)
+        End => end_update(press)
+        else => {}
+    }
+}
+
+fn fe_draw_room() -> bool { return !trans_owns_frame() }
+
+fn fe_draw() -> bool {
+    save_flush()
+    match mode {
+        Title => {
+            title_draw()
+            return true
+        }
+        Select => {
+            select_draw()
+            return true
+        }
+        End => {
+            end_draw()
+            return true
+        }
+        Transition => {
+            if trans_owns_frame() {
+                trans_draw()
+                saving_mark()
+                return true
+            }
+        }
+        Play => {
+            frames_n += 1
+            if fade_in > 0 {
+                fade_cover(fade_in * 13)
+                fade_in -= 1
+            }
+        }
+        else => {}
+    }
+    return false
+}
+
+fn fe_event(e: Ev, a: s32) {
+    if e == Ev.RoomExit {
+        let _ = save_room(stage_of(), a, room_time[a])
+        if room_load_more() && fe_owns_transition() { trans_begin(a) }
+    } else if e == Ev.StageClear {
+        end_begin()
+    }
+}

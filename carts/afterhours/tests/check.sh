@@ -15,7 +15,9 @@
 PENDING="${PENDING-}"
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
-O="$HERE/out/check"
+# the logs go into out/check-BUILD (BUILD: the folder MEIC is in), so that agents checking from
+# their own build directories at the same time do not write over each other's
+O="$HERE/out/check-$(basename "$(dirname "${MEIC:-build/meic}")")"
 mkdir -p "$O"
 n=0
 pending() {   # scenario frames: a PENDING scenario is run and reported, never fatal
@@ -42,6 +44,8 @@ pending 15 2400
 for s in 41 42 43 44 45; do run $s 1700; done
 run 46 5200
 run 47 10
+run 48 5600
+run 49 3001
 grep -h '^RUN' "$O"/s46.log
 run 2 400
 run 3 3100
@@ -60,3 +64,5 @@ run 17 700
 run 31 2001
 grep -h '^BUDGET' "$O"/s31.log
 echo "all $n After Hours scenarios passed"
+# E's front end has its own harness (it replaces the hooks this harness replaces too)
+if [ -x "$HERE/front/check.sh" ]; then "$HERE/front/check.sh" || exit 1; fi

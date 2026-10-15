@@ -1,0 +1,437 @@
+// After Hours' sound and music (agent F; NOTES_F.md has the calls, when to make them and the
+// channels). tools/gen_afterhours_audio.py synthesises everything into au_data.akr and audio/:
+// "Shutters Down", the stage track; the room sounds; the rooms' ambiences; the menus' sounds.
+//
+// Nothing here changes the game: every call is told what happened and plays it, so a tape plays
+// the same with these sounds or without them (dr_hooks.akr's weak stubs).
+//
+// Channels: 0-2 the track (its three stems, looped by the console from the end of its intro),
+// 3-4 the ambience (two, so one room's fades while the next one's comes up), 5-6 the first two
+// trains' loops, 7-15 the one-shots through voice.akr's allocator (a sound takes a free channel or
+// the least important one playing, never a more important one; the same sound again within two
+// frames plays once).
+//
+// The track never restarts on a catch or a restart: it runs on across attempts and rooms, and
+// au_music(true) while it plays does nothing. A catch dips it for half a second under the sting.
+// The trains' and the ambience's loops are held: au_train() every tick keeps a train's loop
+// sounding, and au_tick() fades out any loop nobody held that frame, so in the caught freeze the
+// trains go quiet by themselves.
+import "voice.akr"
+import "au_data.akr"
+
+const AU_CH_AMB = 3              // 3 and 4
+const AU_CH_TRAIN = 5            // 5 and 6: trains 0 and 1
+const AU_CH_FX_FIRST = 7
+const AU_CH_FX_LAST = 15
+const AU_TRAINS = 2              // trains with a loop of their own (more play their one-shots only)
+const AU_MAX_TRAINS = 4
+
+const AU_HALF_VIEW: fixed = 6.6  // metres from the screen's middle to its edge: full pan
+const AU_FADE_MU = 9             // of 256 a frame: the track fades out in about half a second
+const AU_FADE_AMB = 6            // the ambiences cross in about 0.7 s
+const AU_FADE_LOOP = 64          // a train loop nobody held fades out over four frames
+const AU_DUCK = 80               // the track and the ambience while paused, of 256 (about -10 dB)
+const AU_DIP = 160               // the track under the caught sting (about -4 dB) ...
+const AU_DIP_FRAMES = 30         // ... for this long, then back up
+const AU_CHIME_LEAD = 90         // the door chime this many ticks before a train's doors close
+const AU_BRAKE_SPEED: fixed = 2.2   // m/s: an arriving train's brakes squeal below this
+const AU_TOP_SPEED: fixed = 12.0    // m/s: the train loop's pitch 1.05 here
+const AU_WALK_STRIDE: fixed = 0.8   // metres between steps
+const AU_RUN_STRIDE: fixed = 1.3
+const AU_FIRST_STEP: fixed = 0.5    // metres into a stride when he sets off (the first step soon)
+
+private const AU_VARY: [8]fixed = [1.0, 0.955, 1.035, 0.98, 1.05, 0.94, 1.015, 0.97]
+
+private var au_ready: bool
+private var au_fx: Voices
+private var au_turn: s32                 // the pitch cycle's position
+private var au_paused: bool
+
+// the track
+private var mu_on: bool                  // its stems are playing
+private var mu_want: bool                // it should be heard (else it fades out)
+private var mu_lvl: s32                  // its fade, 0..256
+private var mu_gain: s32 = 256           // the pause and the dip, 0..256
+private var mu_dip: s32                  // frames of dip left
+
+// the ambience: per channel (3, 4) the sound (SFX_*, -1 none) and its fade; amb_live is the
+// channel that should be heard (-1: none)
+private var amb_id: [2]s32
+private var amb_lvl: [2]s32
+private var amb_live: s32 = -1
+private var amb_cur: s32 = -1            // the AMB_* playing
+
+// the trains: what the last tick said, and the loop on each train's channel
+private var tr_phase: [AU_MAX_TRAINS]s32 // -1: unknown (a restart); else TPhase
+private var tr_head: [AU_MAX_TRAINS]fixed
+private var tr_close: [AU_MAX_TRAINS]s32
+private var tr_braked: [AU_MAX_TRAINS]bool
+private var tr_loop: [AU_TRAINS]s32      // SFX_* playing on its channel, -1 none
+private var tr_held: [AU_TRAINS]bool
+private var tr_fade: [AU_TRAINS]s32
+private var tr_vl: [AU_TRAINS]s32
+private var tr_vr: [AU_TRAINS]s32
+
+// the steps
+private var step_acc: fixed
+private var step_foot: s32
+
+// Every sound started (id: SFX_*; ch: its channel). The tests may replace it to log what plays.
+weak fn au_heard(_id: s32, _ch: s32) {}
+
+private fn au_init() {
+    if au_ready { return }
+    au_ready = true
+    voices_init(&au_fx, AU_CH_FX_FIRST, AU_CH_FX_LAST, 2)
+    for k in 0..2 {
+        amb_id[k] = -1
+        amb_lvl[k] = 0
+    }
+    for t in 0..AU_TRAINS { tr_loop[t] = -1 }
+    for t in 0..AU_MAX_TRAINS { tr_phase[t] = -1 }
+    step_acc = AU_FIRST_STEP
+    if REVERB_CTRL != AU_REVERB as u32 { reverb(AU_REVERB, AU_WET, AU_WET) }
+    reverb_decay(AMB_DECAY[AMB_NONE])
+}
+
+private fn au_flags(id: s32) -> u32 {
+    var f = SND_ADPCM
+    if SFX[id * 5 + 3] != 0 { f = f | SND_REVERB }
+    if SFX[id * 5 + 4] >= 0 { f = f | SND_LOOP }
+    return f as u32
+}
+
+// The pan for a sound dx metres from the screen's middle: -256 (left) .. 256 (right).
+private fn au_pan(dx: fixed) -> s32 {
+    return clamp((clamp(dx, -AU_HALF_VIEW, AU_HALF_VIEW) / AU_HALF_VIEW * 256.0) as s32, -256, 256)
+}
+
+// A volume v (0..255) panned by p: the far side drops to 40 %.
+private fn au_left(v: s32, p: s32) -> s32 { return v * (256 - max(0, p) * 160 / 256) >> 8 }
+private fn au_right(v: s32, p: s32) -> s32 { return v * (256 - max(0, -p) * 160 / 256) >> 8 }
+
+// Starts sound id on channel ch at pitch, gain of its volume (0..256), panned by p.
+private fn au_start(ch: s32, id: s32, pitch: fixed, gain: s32, p: s32) {
+    let e = id * 5
+    let v = SFX[e + 2] * gain >> 8
+    var ls = SFX[e + 4]
+    if ls < 0 { ls = 0 }
+    play_sample(ch, AU_SFX + SFX[e], SFX[e + 1] as u32, ls as u32, pitch, au_left(v, p), au_right(v, p), au_flags(id))
+    au_heard(id, ch)
+}
+
+// One-shot id on the effects' channels (pri: higher wins a channel; limit: instances at once,
+// a new one restarting the oldest). Returns its channel or -1.
+private fn au_fx_play(id: s32, pri: s32, limit: s32, pitch: fixed, gain: s32, p: s32) -> s32 {
+    au_init()
+    let c = voice_alloc(&au_fx, id, pri, limit)
+    if c >= 0 { au_start(c, id, pitch, gain, p) }
+    return c
+}
+
+private fn au_vary() -> fixed {
+    au_turn = (au_turn + 1) & 7
+    return AU_VARY[au_turn]
+}
+
+// ---- the track
+
+private fn mu_volumes() {
+    let g = mu_lvl * mu_gain >> 8
+    for s in 0..MU_STEMS {
+        let e = s * 7
+        sound_vol(MU_STEM[e], MU_STEM[e + 4] * g >> 8, MU_STEM[e + 5] * g >> 8)
+    }
+}
+
+private fn mu_halt() {
+    for s in 0..MU_STEMS { stop(MU_STEM[s * 7]) }
+    mu_on = false
+    mu_lvl = 0
+}
+
+// The stage track: on starts it from its intro (or brings it back up if it is fading out; it
+// never restarts while it plays); off fades it out.
+fn au_music(on: bool) {
+    au_init()
+    mu_want = on
+    if !on || mu_on { return }
+    for s in 0..MU_STEMS {
+        let e = s * 7
+        var flags = SND_ADPCM | SND_LOOP
+        if MU_STEM[e + 6] != 0 { flags = flags | SND_REVERB }
+        play_sample(MU_STEM[e], AU_MUSIC + MU_STEM[e + 1], MU_STEM[e + 2] as u32, MU_STEM[e + 3] as u32,
+                    1.0, 0, 0, flags as u32)
+    }
+    mu_on = true
+    mu_lvl = 256
+    mu_volumes()
+}
+
+// The pause: on ducks the track and the ambience, off brings them back.
+fn au_pause(on: bool) { au_paused = on }
+
+// ---- the rooms
+
+private fn amb_volumes(k: s32) {
+    if amb_id[k] < 0 { return }
+    var g = amb_lvl[k]
+    if au_paused { g = g * AU_DUCK >> 8 }
+    let v = SFX[amb_id[k] * 5 + 2] * g >> 8
+    sound_vol(AU_CH_AMB + k, v, v)
+}
+
+// Entering a room (not on a restart): its ambience (AMB_*), crossfaded from the last room's (the
+// same one carries on untouched), the reverb's decay for the room, and the door shutting behind.
+fn au_room(amb: s32) {
+    au_init()
+    let a = clamp(amb, 0, AMB_COUNT - 1)
+    reverb_decay(AMB_DECAY[a])
+    au_fx_play(SFX_DOOR_SHUT, 6, 1, 1.0, 230, 0)
+    au_ambience(a)
+}
+
+// The ambience alone (AMB_*), crossfaded, with no door and no change of reverb: the title and
+// the stage select call au_ambience(AMB_NONE) for quiet; the next au_room() brings a room's back.
+fn au_ambience(amb: s32) {
+    au_init()
+    let a = clamp(amb, 0, AMB_COUNT - 1)
+    if a == amb_cur { return }
+    amb_cur = a
+    let id = AMB_LOOP[a]
+    if id < 0 {
+        amb_live = -1
+        return
+    }
+    // the quieter channel (or the one not live) takes the new room; the other fades out
+    var k = 0
+    if amb_live == 0 || (amb_live < 0 && amb_lvl[0] > amb_lvl[1]) { k = 1 }
+    amb_id[k] = id
+    amb_lvl[k] = 0
+    au_start(AU_CH_AMB + k, id, 1.0, 0, 0)
+    amb_live = k
+}
+
+// Through the exit: the staff door opens.
+fn au_exit() { au_fx_play(SFX_DOOR_OPEN, 6, 1, 1.0, 256, 0) }
+
+// ---- an attempt
+
+// The sounds an attempt starts, which a restart stops (not the sting, the doors of the room's
+// entry and exit, the retry, the transition, the menus, the clear).
+private fn au_attempt_sound(id: s32) -> bool {
+    return id == SFX_STEP_WALK || id == SFX_STEP_RUN || id == SFX_HIDE_IN || id == SFX_HIDE_OUT ||
+           id == SFX_TRAIN_HORN || id == SFX_TRAIN_BRAKE || id == SFX_DOORS_OPEN ||
+           id == SFX_DOOR_CHIME || id == SFX_DOORS_CLOSE || id == SFX_ALERT || id == SFX_KNOCK ||
+           id == SFX_BELL
+}
+
+// Every attempt's start (a catch's, START's, a room's entry): stops the attempt's sounds and
+// forgets the trains, so nothing stacks from one attempt to the next.
+fn au_restart() {
+    au_init()
+    let active = AUDIO_ACTIVE
+    for c in AU_CH_FX_FIRST..AU_CH_FX_LAST + 1 {
+        if (active >> (c as u32)) & 1 != 0 && au_attempt_sound(au_fx.id[c]) { stop(c) }
+    }
+    for t in 0..AU_TRAINS {
+        stop(AU_CH_TRAIN + t)
+        tr_loop[t] = -1
+        tr_held[t] = false
+    }
+    for t in 0..AU_MAX_TRAINS { tr_phase[t] = -1 }
+    step_acc = AU_FIRST_STEP
+}
+
+// START restarts the room: a short rewind.
+fn au_retry() { au_fx_play(SFX_RETRY, 7, 1, 1.0, 256, 0) }
+
+// Seen: the sting, and the track dips under it.
+fn au_caught() {
+    au_fx_play(SFX_CAUGHT, 9, 1, 1.0, 256, 0)
+    mu_dip = AU_DIP_FRAMES
+}
+
+// Every tick: the metres he moved, whether he runs, his x less the camera's. A step every
+// stride; none while he stands still.
+fn au_thief(moved: fixed, running: bool, dx: fixed) {
+    au_init()
+    if moved < 0.002 {
+        step_acc = AU_FIRST_STEP
+        return
+    }
+    var stride = AU_WALK_STRIDE
+    if running { stride = AU_RUN_STRIDE }
+    step_acc += moved
+    if step_acc < stride { return }
+    step_acc -= stride
+    if step_acc > stride { step_acc = 0.0 }
+    step_foot ^= 1
+    let gain = 256 - 40 * step_foot          // the second foot a little softer
+    let p = au_pan(dx) / 2
+    if running {
+        au_fx_play(SFX_STEP_RUN, 3, 1, au_vary(), gain, p)
+    } else {
+        au_fx_play(SFX_STEP_WALK, 2, 1, au_vary(), gain, p)
+    }
+}
+
+fn au_hide(on: bool) {
+    if on {
+        au_fx_play(SFX_HIDE_IN, 4, 1, 1.0, 256, 0)
+    } else {
+        au_fx_play(SFX_HIDE_OUT, 4, 1, 1.0, 256, 0)
+    }
+}
+
+// A guard hears a noise and sets off toward it.
+fn au_alert(dx: fixed) { au_fx_play(SFX_ALERT, 6, 1, 1.0, 256, au_pan(dx)) }
+
+// A fragile thing knocked over.
+fn au_knock(dx: fixed) { au_fx_play(SFX_KNOCK, 5, 1, au_vary(), 256, au_pan(dx)) }
+
+// The pocket bell beeps.
+fn au_bell(dx: fixed) { au_fx_play(SFX_BELL, 6, 2, 1.0, 256, au_pan(dx)) }
+
+// ---- the trains
+
+// Train t's loop (SFX_TRAIN_RUN or SFX_TRAIN_IDLE) at pitch and gain (0..256), panned by p, held
+// for this frame.
+private fn tr_hold(t: s32, id: s32, pitch: fixed, gain: s32, p: s32) {
+    let ch = AU_CH_TRAIN + t
+    let v = SFX[id * 5 + 2] * clamp(gain, 0, 256) >> 8
+    tr_vl[t] = au_left(v, p)
+    tr_vr[t] = au_right(v, p)
+    tr_held[t] = true
+    tr_fade[t] = 256
+    if tr_loop[t] == id && sound_playing(ch) {
+        sound_vol(ch, tr_vl[t], tr_vr[t])
+        sound_pitch(ch, pitch)
+        return
+    }
+    tr_loop[t] = id
+    au_start(ch, id, pitch, gain, p)
+}
+
+// Every tick, for every train t of the room: its phase (0 off, 1 arriving, 2 stopped, 3 leaving),
+// its head's metres along its path, the middle of its part on the path less the camera's x, and
+// while it stands open the ticks until its doors close (else -1).
+fn au_train(t: s32, phase: s32, head: fixed, dx: fixed, to_close: s32) {
+    au_init()
+    if t < 0 || t >= AU_MAX_TRAINS { return }
+    let pp = tr_phase[t]
+    var speed: fixed = 0.0
+    if pp >= 0 && (phase == 1 || phase == 3) { speed = abs(head - tr_head[t]) * 60.0 }
+    let p = au_pan(dx)
+    var far = 256                               // beyond the screen's edge it grows quieter
+    let out = abs(dx) - AU_HALF_VIEW
+    if out > 0.0 { far = max(80, 256 - (out * 12.0) as s32) }
+    // the one-shots, from what changed since the last tick
+    if pp >= 0 && pp != phase {
+        if phase == 1 {
+            au_fx_play(SFX_TRAIN_HORN, 6, 1, 1.0, far, p)
+            tr_braked[t] = false
+        } else if phase == 2 {
+            if !tr_braked[t] { au_fx_play(SFX_TRAIN_BRAKE, 5, 1, 1.0, far * 3 / 4, p) }
+            au_fx_play(SFX_DOORS_OPEN, 6, 2, 1.0, far, p)
+        } else if phase == 3 && pp == 2 {
+            au_fx_play(SFX_DOORS_CLOSE, 6, 2, 1.0, far, p)
+        }
+    }
+    if pp == 1 && phase == 1 && !tr_braked[t] && speed < AU_BRAKE_SPEED {
+        tr_braked[t] = true
+        au_fx_play(SFX_TRAIN_BRAKE, 5, 1, 1.0, far, p)
+    }
+    if phase == 2 && to_close >= 0 && to_close <= AU_CHIME_LEAD && tr_close[t] > AU_CHIME_LEAD {
+        au_fx_play(SFX_DOOR_CHIME, 6, 2, 1.0, far, p)
+    }
+    tr_phase[t] = phase
+    tr_head[t] = head
+    tr_close[t] = to_close
+    // the loop: running (its pitch and level follow the speed) or idling
+    if t >= AU_TRAINS { return }
+    if phase == 1 || phase == 3 {
+        let u = min(speed / AU_TOP_SPEED, 1.2)
+        let gain = clamp(((0.12 + speed / 9.0) * 256.0) as s32, 0, 256) * far >> 8
+        tr_hold(t, SFX_TRAIN_RUN, 0.45 + u * 0.5, gain, p)
+    } else if phase == 2 {
+        tr_hold(t, SFX_TRAIN_IDLE, 1.0, far, p)
+    }
+}
+
+// ---- the front end (agent E)
+
+// The pull-back between rooms starts: a slow air (1.6 s).
+fn au_transition() { au_fx_play(SFX_TRANSITION, 8, 1, 1.0, 256, 0) }
+
+// The pull-back is skipped: the air stops.
+fn au_transition_skip() {
+    au_init()
+    voice_stop(&au_fx, SFX_TRANSITION)
+}
+
+fn au_menu_move() { au_fx_play(SFX_MENU_MOVE, 8, 1, 1.0, 256, 0) }
+fn au_menu_ok() { au_fx_play(SFX_MENU_OK, 8, 1, 1.0, 256, 0) }
+fn au_menu_back() { au_fx_play(SFX_MENU_BACK, 8, 1, 1.0, 256, 0) }
+fn au_menu_deny() { au_fx_play(SFX_MENU_DENY, 8, 1, 1.0, 256, 0) }
+
+// A stage cleared, or one unlocked.
+fn au_clear() { au_fx_play(SFX_CLEAR, 8, 1, 1.0, 256, 0) }
+
+// ---- every frame
+
+// Once a frame, always, whatever the screen: the track's fade, dip and duck, the ambiences'
+// crossfade, and the train loops nobody held this frame fading out.
+fn au_tick() {
+    au_init()
+    // the track
+    var target = 256
+    if mu_dip > 0 {
+        target = AU_DIP
+        mu_dip -= 1
+    }
+    if au_paused { target = AU_DUCK }
+    var changed = false
+    if mu_gain < target {
+        mu_gain = min(target, mu_gain + 6)
+        changed = true
+    } else if mu_gain > target {
+        mu_gain = max(target, mu_gain - 24)
+        changed = true
+    }
+    if mu_on && !mu_want {
+        mu_lvl = max(0, mu_lvl - AU_FADE_MU)
+        if mu_lvl == 0 { mu_halt() } else { changed = true }
+    }
+    if mu_on && changed { mu_volumes() }
+    // the ambiences
+    for k in 0..2 {
+        if amb_id[k] < 0 { continue }
+        if k == amb_live {
+            amb_lvl[k] = min(256, amb_lvl[k] + AU_FADE_AMB)
+        } else {
+            amb_lvl[k] = max(0, amb_lvl[k] - AU_FADE_AMB)
+            if amb_lvl[k] == 0 {
+                stop(AU_CH_AMB + k)
+                amb_id[k] = -1
+                continue
+            }
+        }
+        amb_volumes(k)
+    }
+    // the trains' loops
+    for t in 0..AU_TRAINS {
+        if tr_loop[t] < 0 { continue }
+        if tr_held[t] {
+            tr_held[t] = false
+            continue
+        }
+        tr_fade[t] -= AU_FADE_LOOP
+        if tr_fade[t] <= 0 {
+            stop(AU_CH_TRAIN + t)
+            tr_loop[t] = -1
+        } else {
+            sound_vol(AU_CH_TRAIN + t, tr_vl[t] * tr_fade[t] >> 8, tr_vr[t] * tr_fade[t] >> 8)
+        }
+    }
+}

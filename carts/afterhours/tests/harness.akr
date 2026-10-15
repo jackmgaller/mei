@@ -9,6 +9,7 @@
 
 import "a_tapes.akr"
 import "../dr_world.akr"       // B's room (the cart's own; the rules' scenarios load the stand-in)
+import "../dr_audio.akr"       // F's sounds, so the scenarios run the cart's audio calls too
 import "tapes/platform_solution.akr"   // B's solution tapes: Gate 1's platform
 import "tapes/level1_solution.akr"     // and level 1's, a room each
 
@@ -17,6 +18,54 @@ const L1_TAPES: [5]*Span = [SOLUTION_L1_ARRIVAL, SOLUTION_L1_GATES, SOLUTION_L1_
 const L1_LENS: [5]s32 = [len(SOLUTION_L1_ARRIVAL), len(SOLUTION_L1_GATES), len(SOLUTION_L1_PASSAGE),
                          len(SOLUTION_L1_LOBBY), len(SOLUTION_L1_AQUARIUM)]
 var test_run: bool             // scenario 46: each room of the run plays its own tape
+
+// ---- the harness as a front end (dr_hooks.akr): every event is counted and the room flow
+// logged; with test_fe (scenario 48) the harness runs the transitions as E's does: the exit goes
+// to Mode.Transition, transition_ready() at frame 46 (the next room loaded at its clock 0, not
+// running), transition_control() at frame 90; the stage's end is Mode.End.
+var test_fe: bool
+var ev_count: [len(Ev)]s32
+var ev_log_e: [64]u8
+var ev_log_a: [64]s8
+var ev_n: s32
+var flow_log: [32]u8           // the room-flow events alone (StageStart .. StageClear), in order
+var flow_n: s32
+var fe_frames: s32
+var fe_trans: s32              // transitions run
+var fe_hold_clock_ok: bool = true
+
+fn fe_event(e: Ev, a: s32) {
+    ev_count[e] += 1
+    if flow_n < 32 && (e == Ev.StageStart || e == Ev.RoomEnter || e == Ev.RoomExit || e == Ev.RoomReady || e == Ev.StageClear) {
+        flow_log[flow_n] = e as u8
+        flow_n += 1
+    }
+    if ev_n < 64 && e != Ev.Step && e != Ev.Heard {
+        ev_log_e[ev_n] = e as u8
+        ev_log_a[ev_n] = a as s8
+        ev_n += 1
+    }
+    if test_fe && e == Ev.RoomEnter {
+        always(mode == Mode.Play && clock == 0 && phase == Phase.Play, "in control at the room's clock 0", fixed(clock))
+        always(thief.x == room.spawn_x && thief.z == room.spawn_z, "at the room's door", thief.x)
+    }
+    if e == Ev.RoomExit { fe_frames = 0 }
+}
+
+fn fe_owns_transition() -> bool { return test_fe }
+
+fn fe_update(_pad: u32, _press: u32) {
+    if !test_fe { return }
+    fe_frames += 1
+    if mode == Mode.Transition {
+        if fe_frames == 46 { transition_ready() }
+        if trans_ready && clock != 0 { fe_hold_clock_ok = false }
+        if fe_frames == 90 {
+            fe_trans += 1
+            transition_control()
+        }
+    }
+}
 
 var name: *u8 = "picture"
 var checks: s32
@@ -95,6 +144,8 @@ fn test_init() {
         56 => { name = "shot: hidden in the gates' hiding place"; level_room(1) }
         55 => { name = "shot: the platform's front row"; platform_run(); test_no_catch = true; play(&TAPE_FRONT[0], len(TAPE_FRONT)) }
         46 => { name = "level 1 as one run: five rooms' tapes, the run's totals"; test_run = true }
+        48 => { name = "the state flow: level 1 through four transitions run by a front end, its end, the stage again"; test_run = true; test_fe = true; ev_n = 0; for e in Ev { ev_count[e] = 0 }; flow_n = 0; stage_start(0) }
+        49 => { name = "events: footsteps, the trains, catches"; platform_run(); test_no_catch = true; ev_n = 0; for e in Ev { ev_count[e] = 0 }; play(&TAPE_SHOT_TRAIN[0], len(TAPE_SHOT_TRAIN)) }
         40 => { name = "B's platform: a tour"; platform_run(); test_no_catch = true; play(&TAPE_TOUR[0], len(TAPE_TOUR)) }
         else => {}
     }
@@ -265,6 +316,8 @@ fn scenario(f: s32) {
         1, 14, 15 => s_solution(f)
         41, 42, 43, 44, 45 => s_l1_room(f)
         46 => s_l1_run(f)
+        48 => s_flow(f)
+        49 => s_events(f)
         47 => s_framing(f)
         50, 51, 52, 53, 54, 55 => { if clock >= 100 { done() } }
         56 => s_hidden_shot(f)
@@ -352,6 +405,7 @@ fn s_into_cone(f: s32) {
         expect(clock == 0, "the clock is back at 0", fixed(clock))
         expect(thief.x == room.spawn_x && thief.z == room.spawn_z, "he is back at the door", thief.x)
         expect(restarts == 1, "one restart counted", fixed(restarts))
+        expect(ev_count[Ev.Caught] == 1 && ev_count[Ev.Restart] == 1, "a Caught event, then a Restart", fixed(ev_count[Ev.Restart]))
         expect(best.have && best.ticks == caught_at + 1, "the attempt's tape is kept as the best", fixed(best.ticks))
         expect(spans_ticks(&best.spans[0], best.nspans) == best.ticks, "its spans cover every tick", 0.0)
         done()
@@ -870,4 +924,78 @@ fn s_hidden_shot(_f: s32) {
     if !thief.hidden && t0 >= 0 && t1 < 0 { t1 = clock }
     if SHOT != 2 && t0 >= 0 && clock >= t0 + 40 && !finished { note("frame", fixed(_f)); done() }
     if SHOT == 2 && t1 >= 0 && clock >= t1 + 8 && !finished { note("frame", fixed(_f)); done() }
+}
+
+// 48: level 1 with the harness as its front end (as E's runs it): each exit goes to
+// Mode.Transition; the next room is ready at frame 46 (its clock held at 0), in control at 90
+// (RoomEnter at clock 0, checked in fe_event). The last exit ends the stage (Mode.End,
+// StageClear) with the same times as without transitions; stage_start(0) plays it again.
+fn s_flow(f: s32) {
+    if f == 0 { return }
+    never_caught()
+    if mode == Mode.End && t0 < 0 {
+        t0 = f
+        expect(fe_trans == 4, "four transitions, each 90 frames", fixed(fe_trans))
+        expect(fe_hold_clock_ok, "the next room's clock stays at 0 until control", 0.0)
+        expect(ev_count[Ev.StageClear] == 1 && ev_count[Ev.RoomExit] == 5 && ev_count[Ev.RoomEnter] == 5 && ev_count[Ev.RoomReady] == 4, "5 exits, 4 ready, 5 in control, the stage cleared", fixed(ev_count[Ev.RoomEnter]))
+        // StageStart, RoomEnter, then (RoomExit, RoomReady, RoomEnter) four times, RoomExit,
+        // StageClear
+        var seq_ok = flow_n == 16
+        for i in 0..min(flow_n, 16) {
+            let want = match i {
+                0 => Ev.StageStart
+                1 => Ev.RoomEnter
+                14 => Ev.RoomExit
+                15 => Ev.StageClear
+                else => match (i - 2) % 3 { 0 => Ev.RoomExit, 1 => Ev.RoomReady, else => Ev.RoomEnter }
+            }
+            if flow_log[i] as Ev != want { seq_ok = false }
+        }
+        expect(seq_ok, "each transition is RoomExit, RoomReady, RoomEnter", fixed(flow_n))
+        expect(ev_count[Ev.HideIn] >= 1 && ev_count[Ev.HideIn] == ev_count[Ev.HideOut], "hiding in and out (the gates)", fixed(ev_count[Ev.HideIn]))
+        expect(ev_count[Ev.Step] > 60, "footsteps", fixed(ev_count[Ev.Step]))
+        var sum = 0
+        for r in 0..5 { sum += room_time[r] }
+        expect(total == sum && sum == 4786, "the stage's time is its rooms' (the transitions do not count)", fixed(total))
+        expect(phase == Phase.Clear, "the stage's end", 0.0)
+    }
+    if t0 >= 0 && f == t0 + 20 {
+        test_run = false
+        stage_start(0)
+    }
+    if t0 >= 0 && f == t0 + 22 {
+        expect(mode == Mode.Play && run_room == 0 && clock <= 2 && total <= 2, "stage_start plays it again from room 1", fixed(run_room))
+        expect(bests[0].have, "the ghosts kept (the same stage)", 0.0)
+        done()
+    }
+    if f > 7000 { expect(false, "the stage did not end", fixed(run_room)) }
+}
+
+// 49: on the platform, standing by track A: each train's events in order (it comes in, its doors
+// open, close, it is gone), and footsteps at the walk's stride.
+fn s_events(f: s32) {
+    if f == 160 {
+        // 38 ticks down, 120 right at 0.04 m: about 6.3 m less what the walls took
+        expect(ev_count[Ev.Step] >= 5 && ev_count[Ev.Step] <= 9, "footsteps every 0.8 m walked", fixed(ev_count[Ev.Step]))
+        n0 = ev_count[Ev.Step]
+    }
+    if f == 3000 {
+        expect(ev_count[Ev.Step] == n0, "no footsteps standing still", fixed(ev_count[Ev.Step]))
+        for t in 0..room.ntrains {
+            var stage = 0
+            var ok = true
+            var seen_n = 0
+            for i in 0..ev_n {
+                let e = ev_log_e[i] as Ev
+                if ev_log_a[i] as s32 != t { continue }
+                let s = match e { TrainArrive => 1, DoorsOpen => 2, DoorsClose => 3, TrainGone => 4, else => 0 }
+                if s == 0 { continue }
+                if s != stage % 4 + 1 { ok = false }
+                stage = s
+                seen_n += 1
+            }
+            expect(ok && seen_n >= 4, "a train's events in order: in, doors open, doors close, gone", fixed(seen_n))
+        }
+        done()
+    }
 }

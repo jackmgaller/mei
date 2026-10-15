@@ -1,0 +1,392 @@
+// The front end's scenarios (agent E; tests/front/run.sh SCENARIO FRAMES OUT, tests/front/check.sh
+// runs them all). The cart as it plays, title and all: the harness drives the pad through the
+// menus and plays B's level 1 tapes in the rooms (by each room's clock), and checks what the front
+// end does. A check prints "OK what value"; a failed one "FAIL what value" and stops the run
+// (status 2); a passing run ends with "DONE n: name, k checks".
+//
+// 60: the whole of stage 1 from the title: four transitions, each handing over at the next
+//     room's clock 0 with the thief at its door, no frame over the CPU or GPU budget (the
+//     transitions' and the menus' worst frames are printed), the stage's end, the save written
+//     and read back from the card, the select after it (stage 2 unlocked and hovered; stage 1's
+//     rooms all lit).
+// 61: the stage select with a save that has rooms 1 and 3 of stage 1 cleared: those rooms' colours
+//     are the world's, the others dimmed; stage 2, locked, is a silhouette (the GPU's fog) and
+//     cannot be played. A blank card gives a fresh save.
+// 62, 63: the save round trip: 62 writes a known save; 63, booted on the same card, reads it.
+// 64: skipping a transition with A: control at once, the clock at 0, the next room's state right.
+// 65: stage 2 (Gate 1's platform, one room, its world a single region with no stand-ins: the model
+//     draws its placements), unlocked by the save, played with B's tape; its end and its save.
+import "../../dr_game.akr"
+import "../../dr_world.akr"
+import "../tapes/level1_solution.akr"
+import "../tapes/platform_solution.akr"
+
+const L1_TAPES: [5]*Span = [SOLUTION_L1_ARRIVAL, SOLUTION_L1_GATES, SOLUTION_L1_PASSAGE,
+                            SOLUTION_L1_LOBBY, SOLUTION_L1_AQUARIUM]
+const L1_LENS: [5]s32 = [len(SOLUTION_L1_ARRIVAL), len(SOLUTION_L1_GATES), len(SOLUTION_L1_PASSAGE),
+                         len(SOLUTION_L1_LOBBY), len(SOLUTION_L1_AQUARIUM)]
+const CPU_BUDGET_C = 1000000
+const GPU_BUDGET_C = 2000000
+
+var name: *u8 = "front end"
+var checks: s32
+var finished: bool
+var pad_v: u32
+var stick_v: vec2
+var presses: [16]s32           // frames to press a button on, and which (scripted menus)
+var press_b: [16]u32
+var npress: s32
+var t0: s32 = -1
+var t1: s32 = -1
+var last_mode: Mode = Mode.Play
+var trans_n: s32               // transitions finished
+var trans_len: s32             // frames the last one took
+var trans_start: s32
+var handover_ok: bool = true
+var worst: [len(Mode)]s32      // the worst CPU frame in each mode
+var worst_gpu: [len(Mode)]s32
+var worst_at: [len(Mode)]s32
+var dropped: s32
+
+// ---- the hooks
+
+fn test_init() {
+    match SCENARIO {
+        60 => { name = "stage 1 through the front end: title, select, four transitions, the end, the save" }
+        61 => { name = "the stage select: cleared rooms lit, the others dark; a locked stage a silhouette" }
+        62 => { name = "the save round trip: writing" }
+        63 => { name = "the save round trip: reading it back at boot" }
+        64 => { name = "skipping a transition" }
+        65 => { name = "stage 2 (the platform, one room): unlocked by the save, played, its end, its save" }
+        else => {}
+    }
+}
+
+fn test_hook(_f: s32) {}
+
+fn input_stick(_f: s32) -> vec2 { return stick_v }
+
+fn input_pad(f: s32) -> u32 {
+    // the frame before's cost, by the mode it was drawn in
+    if f > 2 {
+        let m = last_mode as s32
+        if cpu_used() > worst[m] {
+            worst[m] = cpu_used()
+            worst_at[m] = f - 1
+        }
+        worst_gpu[m] = max(worst_gpu[m], gpu_used())
+        dropped += frames_dropped()
+    }
+    pad_v = 0
+    stick_v = vec2(0.0, 0.0)
+    if mode == Mode.Play && phase == Phase.Play && stage_of() == 0 && run_room < 5 {
+        let s = span_at(L1_TAPES[run_room], L1_LENS[run_room], clock)
+        pad_v = s.pad as u32
+        stick_v = vec2(fixed(s.sx as s32) / 127, fixed(s.sy as s32) / 127)
+    }
+    if mode == Mode.Play && phase == Phase.Play && stage_of() == 1 {
+        let s = span_at(&SOLUTION_PLATFORM[0], len(SOLUTION_PLATFORM), clock)
+        pad_v = s.pad as u32
+        stick_v = vec2(fixed(s.sx as s32) / 127, fixed(s.sy as s32) / 127)
+    }
+    for i in 0..npress {
+        if presses[i] == f { pad_v = pad_v | press_b[i] }
+    }
+    watch(f)
+    scenario(f)
+    last_mode = mode
+    return pad_v
+}
+
+fn press_at(f: s32, b: u32) {
+    presses[npress] = f
+    press_b[npress] = b
+    npress += 1
+}
+
+// ---- reporting
+
+fn report(word: *u8, what: *u8, v: fixed) {
+    print(word)
+    print(what)
+    print(" ")
+    print_fixed(v)
+    print("  (mode ")
+    print_int(mode as s32)
+    print(", room ")
+    print_int(run_room)
+    print(", clock ")
+    print_int(clock)
+    println(")")
+}
+
+fn expect(c: bool, what: *u8, v: fixed) {
+    if !c {
+        report("FAIL ", what, v)
+        assert(false)
+    }
+    checks += 1
+    report("OK ", what, v)
+}
+
+fn always(c: bool, what: *u8, v: fixed) {
+    if !c {
+        report("FAIL ", what, v)
+        assert(false)
+    }
+}
+
+fn done() {
+    if finished { return }
+    finished = true
+    print("DONE ")
+    print_int(SCENARIO)
+    print(": ")
+    print(name)
+    print(", ")
+    print_int(checks)
+    println(" checks")
+}
+
+fn print_worst(label: *u8, m: Mode) {
+    print("BUDGET ")
+    print(label)
+    print(": worst CPU ")
+    print_int(worst[m as s32])
+    print(" (frame ")
+    print_int(worst_at[m as s32])
+    print("), worst GPU ")
+    print_int(worst_gpu[m as s32])
+    println("")
+}
+
+// Every frame: the transitions' frames counted, and the hand-over checked: the first frame back
+// in play finds the room at its clock 0, the thief at its door, the phase Play.
+fn watch(f: s32) {
+    if last_mode != Mode.Transition && mode == Mode.Transition { trans_start = f }
+    if last_mode == Mode.Transition && mode == Mode.Play {
+        trans_n += 1
+        trans_len = f - trans_start
+        print("TRANSITION ")
+        print_int(trans_n)
+        print(" into room ")
+        print_int(run_room + 1)
+        print(": frames ")
+        print_int(trans_start)
+        print("-")
+        print_int(f - 1)
+        println("")
+        if !(clock == 0 && phase == Phase.Play && thief.x == room.spawn_x && thief.z == room.spawn_z) { handover_ok = false }
+        if !tr_clock_ok { handover_ok = false }
+    }
+    if caught_n > 0 {
+        expect(false, "the tapes are never caught", fixed(caught_at))
+    }
+}
+
+fn scenario(f: s32) {
+    if finished { return }
+    match SCENARIO {
+        60 => s_stage(f)
+        61 => s_select(f)
+        62 => s_save_write(f)
+        63 => s_save_read(f)
+        64 => s_skip(f)
+        65 => s_stage2(f)
+        else => {}
+    }
+}
+
+// ---- 60
+
+fn budget_ok(m: Mode, label: *u8) {
+    print_worst(label, m)
+    expect(worst[m as s32] < CPU_BUDGET_C, label, fixed(worst[m as s32] / 1000))
+    expect(worst_gpu[m as s32] < GPU_BUDGET_C, label, fixed(worst_gpu[m as s32] / 1000))
+}
+
+// The pack's colours of room k's region equal palette memory's (lit), or not (dimmed).
+fn room_lit(k: s32) -> bool {
+    let r = wp_region(sec[k].region)
+    let cols = (wp_pack as u32 + r.palette_off + 4 * (r.variant_count as u32)) as *u16
+    let pal = palette_ptr(r.first_colour as s32)
+    for i in 0..r.colour_count as s32 {
+        if pal[i] != cols[i] { return false }
+    }
+    return true
+}
+
+fn s_stage(f: s32) {
+    if f == 1 {
+        expect(mode == Mode.Title, "the cart opens on the title", 0.0)
+        press_at(40, START)
+        press_at(60, A)
+    }
+    if f == 50 { expect(mode == Mode.Select && sel == 0, "START: the stage select, stage 1 hovered", fixed(sel)) }
+    if f == 80 {
+        expect(mode == Mode.Play && stage_of() == 0 && run_room == 0, "A: stage 1's first room, in play", fixed(run_room))
+    }
+    if mode == Mode.End && t0 < 0 {
+        t0 = f
+        print("END frame ")
+        print_int(f)
+        println("")
+        expect(trans_n == 4 && trans_len == TR_N, "four transitions, 90 frames each", fixed(trans_n))
+        expect(handover_ok, "each hands over at the room's clock 0, the thief at its door", 0.0)
+        var sum = 0
+        for r in 0..5 { sum += room_time[r] }
+        expect(total == sum && sum == 4786, "the stage's time is its rooms' (the transitions do not count)", fixed(total))
+        let st = &save.stages[0]
+        expect(st.flags & ST_CLEARED != 0 && st.rooms == 0x1F, "the save: stage 1 cleared, its five rooms", fixed(st.rooms as s32))
+        expect(st.best_total == total && st.best_restarts == 0, "its best total and restarts", fixed(st.best_total))
+        for r in 0..5 { always(st.room_best[r] == room_time[r], "each room's best time", fixed(r)) }
+        expect(stage_unlocked(1), "stage 2 unlocked", 0.0)
+        press_at(f + 60, A)
+    }
+    if t0 >= 0 && f == t0 + 40 {
+        // the save written (the room clears and the end), then read back from the card
+        expect(save_writes >= 2 && !save_writing && save_result == CARD_OK, "written to the card", fixed(save_writes))
+        var back: AhSave
+        let n = card_load(SAVE_NUM, &back as *u8, sizeof(AhSave))
+        expect(n == sizeof(AhSave), "read back", fixed(n))
+        expect(mem_equal(&back as *u8, &save as *u8, sizeof(AhSave)), "the card holds the save", 0.0)
+    }
+    if t0 >= 0 && f == t0 + 70 {
+        expect(mode == Mode.Select && sel == 1, "A: the stage select, the unlocked stage 2 hovered", fixed(sel))
+        press_at(f + 2, UP)
+    }
+    if t0 >= 0 && f == t0 + 80 {
+        expect(sel == 0 && shown == 0 && sec_n == 5, "stage 1 hovered again", fixed(sel))
+        var all = true
+        for k in 0..5 { if !room_lit(k) { all = false } }
+        expect(all, "its rooms all lit", 0.0)
+        expect(GPU_FOG & 0x1000000 == 0, "not a silhouette", 0.0)
+        expect(dropped == 0, "no frame dropped", fixed(dropped))
+        budget_ok(Mode.Transition, "the transitions' worst frame within the budgets")
+        budget_ok(Mode.Title, "the title's worst frame within the budgets")
+        budget_ok(Mode.Select, "the select's worst frame within the budgets")
+        budget_ok(Mode.End, "the end's worst frame within the budgets")
+        print_worst("play", Mode.Play)
+        done()
+    }
+    if f > 6200 { expect(false, "the stage did not end", fixed(run_room)) }
+}
+
+fn mem_equal(a: *u8, b: *u8, n: s32) -> bool {
+    for i in 0..n {
+        if a[i] != b[i] { return false }
+    }
+    return true
+}
+
+// ---- 61
+
+fn s_select(f: s32) {
+    if f == 1 {
+        expect(!save_loaded && stage_unlocked(0) && !stage_unlocked(1), "a blank card: a fresh save, stage 1 open", 0.0)
+        save.stages[0].rooms = 0x5            // rooms 1 and 3 cleared
+        save.stages[0].room_best[0] = 400
+        save.stages[0].room_best[2] = 950
+        press_at(20, START)
+        press_at(60, DOWN)
+        press_at(90, A)
+    }
+    if f == 40 {
+        expect(mode == Mode.Select && shown == 0, "the select, stage 1's model", 0.0)
+        expect(room_lit(0) && room_lit(2), "rooms 1 and 3, cleared, lit", 0.0)
+        expect(!room_lit(1) && !room_lit(3) && !room_lit(4), "rooms 2, 4 and 5 dark", 0.0)
+        expect(GPU_FOG & 0x1000000 == 0, "not a silhouette", 0.0)
+    }
+    if f == 80 {
+        expect(sel == 1 && shown == 1 && !stage_unlocked(1), "stage 2 hovered, locked, its world open", fixed(sel))
+        expect(GPU_FOG & 0x1000000 != 0, "drawn as a silhouette (the fog on)", 0.0)
+    }
+    if f == 110 {
+        expect(mode == Mode.Select, "A on a locked stage does not play it", 0.0)
+        done()
+    }
+}
+
+// ---- 62, 63
+
+fn s_save_write(f: s32) {
+    if f == 1 {
+        save_blank()
+        let _ = save_room(0, 0, 383)
+        let _ = save_room(0, 1, 1500)
+        let r = save_stage(0, 4800, 3, STAGE_N)
+        expect(r & 4 != 0, "clearing stage 1 unlocks stage 2", fixed(r))
+        let _ = save_room(1, 0, 2100)
+    }
+    if f == 3 { expect(save_writing && save_writes == 1, "one write under way", fixed(save_writes)) }
+    if f == 40 {
+        expect(!save_writing && save_result == CARD_OK, "the write ended", fixed(save_result))
+        done()
+    }
+}
+
+fn s_save_read(f: s32) {
+    if f == 1 {
+        expect(save_loaded, "the card holds a save at boot", 0.0)
+        let a = &save.stages[0]
+        expect(a.flags & ST_CLEARED != 0 && a.rooms == 3 && a.room_best[0] == 383 && a.room_best[1] == 1500, "stage 1: cleared, rooms 1 and 2, their times", fixed(a.rooms as s32))
+        expect(a.best_total == 4800 && a.best_restarts == 3 && a.runs == 1, "its total and restarts", fixed(a.best_total))
+        let b = &save.stages[1]
+        expect(stage_unlocked(1) && b.rooms == 1 && b.room_best[0] == 2100 && !stage_cleared(1), "stage 2: unlocked, room 1's time", fixed(b.room_best[0]))
+        done()
+    }
+}
+
+// ---- 64
+
+fn s_skip(f: s32) {
+    if f == 1 {
+        press_at(20, START)
+        press_at(40, A)
+    }
+    if mode == Mode.Transition && t0 < 0 {
+        t0 = f
+        press_at(f + 20, A)
+    }
+    if t0 >= 0 && f == t0 + 21 {
+        expect(mode == Mode.Play && run_room == 1 && clock == 0, "A: in control at once, room 2 at its clock 0", fixed(clock))
+        expect(tr_skipped && trans_len == 21, "skipped after 21 frames", fixed(trans_len))
+        expect(handover_ok && thief.x == room.spawn_x && thief.z == room.spawn_z, "the thief at its door", thief.x)
+        expect(wp_region_loaded == sec[1].region, "its region's textures loaded", fixed(wp_region_loaded))
+    }
+    if t0 >= 0 && f == t0 + 30 {
+        expect(clock == 9 && caught_n == 0, "the room runs", fixed(clock))
+        budget_ok(Mode.Transition, "the skipped transition's worst frame within the budgets")
+        done()
+    }
+}
+
+// ---- 65
+
+fn s_stage2(f: s32) {
+    if f == 1 {
+        let _ = save_stage(0, 5000, 2, STAGE_N)       // stage 1 cleared: stage 2 open
+        press_at(20, START)
+        press_at(40, DOWN)
+        press_at(70, A)
+    }
+    if f == 60 {
+        expect(mode == Mode.Select && sel == 1 && shown == 1 && sec_n == 1, "stage 2 hovered: its one room's model", fixed(sec_n))
+        expect(sec_dimmed && GPU_FOG & 0xFFFFFF == SEC_NIGHT, "open, not a silhouette; not cleared: dimmed by the fog", 0.0)
+    }
+    if f == 100 { expect(mode == Mode.Play && stage_of() == 1 && run_room == 0, "A: the platform, in play", 0.0) }
+    if mode == Mode.End && t0 < 0 {
+        t0 = f
+        expect(trans_n == 0 && run_length == 1, "one room, no transition", fixed(trans_n))
+        let st = &save.stages[1]
+        expect(stage_cleared(1) && st.rooms == 1 && st.best_total == total && st.room_best[0] == room_time[0], "the save: stage 2 cleared, its time", fixed(total))
+        press_at(f + 40, A)
+    }
+    if t0 >= 0 && f == t0 + 50 {
+        expect(mode == Mode.Select && sel == 1 && room_lit(0) && !sec_dimmed && GPU_FOG & 0x1000000 == 0, "back at the select, stage 2 hovered, its room lit", fixed(sel))
+        budget_ok(Mode.Select, "the select's worst frame within the budgets")
+        budget_ok(Mode.End, "the end's worst frame within the budgets")
+        done()
+    }
+    if f > 3000 { expect(false, "the stage did not end", fixed(clock)) }
+}

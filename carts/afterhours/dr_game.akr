@@ -11,6 +11,7 @@
 // the tools, the guards (routes, hearing), the fans, the test. The frame then draws that state,
 // so the fans drawn are the fans the thief was tested against.
 import "depth.akr"
+import "dr_hooks.akr"          // the hooks E (front end) and F (audio) build on
 import "dr_mesh.akr"
 import "dr_room.akr"
 import "dr_sight.akr"
@@ -52,13 +53,85 @@ var tick_prev: u32             // the pad of the tick before (this attempt's pre
 var tick_cycles: s32           // cycles the last tick took
 var room_cycles: s32           // cycles the last update() took
 var test_no_catch: bool        // (the tests) cones, guards and doors catch nobody
+var mode: Mode = Mode.Play     // dr_hooks.akr: A plays the rooms in Play; E owns the others
+var trans_to: s32 = -1         // in a transition: the room it leads to
+var trans_ready: bool          // ... and it is loaded, at its clock 0, not running
+var ghost_stage: s32           // the stage the ghosts (bests) were recorded on
+var sim_quiet: bool            // events are not sent (a room set up again at its clock 0)
 
 fn init() {
     render_depth(true)
     render_perspective(true)
     view_init()
     run_start()
+    fe_start()
     test_init()
+}
+
+// The stage (level) being played (dr_world.akr replaces it).
+weak fn stage_of() -> s32 { return 0 }
+
+// ---- for E (dr_hooks.akr): moving the game on
+
+// Sets the mode (E: Title, Select, End; Play only through stage_start or transition_control).
+fn game_mode(m: Mode) { mode = m }
+
+// Starts stage n (a level; 0 is level 1) from its first room, in control (Mode.Play). Its world
+// is opened again (the stage select may have opened another to draw it); the ghosts are
+// forgotten when n is not the stage they were recorded on.
+fn stage_start(n: s32) {
+    if standin_run == 0 {
+        assert(level_switch(n), "no such stage")
+        if n != ghost_stage {
+            for k in 0..MAX_RUN { bests[k].have = false }
+            ghost_stage = n
+        }
+    }
+    mode = Mode.Play
+    run_start()
+}
+
+// In a transition: loads the next room and sets it at its clock 0, not running (E may draw it
+// now). Once; transition_control() does it if E did not.
+fn transition_ready() {
+    if mode != Mode.Transition || trans_ready { return }
+    assert(load_room(trans_to), "the next room did not load")
+    enter_room()
+    trans_ready = true
+    event(Ev.RoomReady, run_room)
+}
+
+// Ends the transition: the next room is played from its clock 0, the thief in control.
+fn transition_control() {
+    if mode != Mode.Transition { return }
+    transition_ready()
+    mode = Mode.Play
+    trans_to = -1
+    trans_ready = false
+    event(Ev.RoomEnter, run_room)
+}
+
+// The thief went through the exit: the next room (at once, or through E's transition), or the
+// stage's end (Mode.End with E; A's end line without).
+fn room_exit() {
+    event(Ev.RoomExit, run_room)
+    au_exit()
+    if !room_load_more() {
+        phase = Phase.Clear
+        event(Ev.StageClear, stage_of())
+        au_clear()
+        if fe_owns_transition() { mode = Mode.End }
+        return
+    }
+    if fe_owns_transition() {
+        mode = Mode.Transition
+        trans_to = run_room + 1
+        trans_ready = false
+        return
+    }
+    assert(load_room(run_room + 1), "the next room did not load")
+    enter_room()
+    event(Ev.RoomEnter, run_room)
 }
 
 // Room k of the run: B's world when it is in (dr_world.akr replaces this), else one stand-in
@@ -109,13 +182,27 @@ fn run_start() {
         room_restarts[k] = 0
         room_spent[k] = 0
     }
+    event(Ev.StageStart, stage_of())
+    au_music(true)
     enter_room()
+    event(Ev.RoomEnter, 0)
 }
 
+// A room entered (the first of a run, or the next through its exit or a transition): its clock
+// at 0, its restarts 0, its ambience. (Ev.RoomEnter follows when the thief is in control.)
 fn enter_room() {
     restarts = 0
     room_entered = total
     restart_attempt()
+    au_room(room_amb())
+}
+
+// The room's ambience for au_room(): level 1's rooms in their order (platform, gates, passage,
+// lobby, aquarium: 1-5), the platform level's room the platform (1); 0 for a stand-in room.
+fn room_amb() -> s32 {
+    if !room_is_world { return 0 }
+    if stage_of() == 0 { return min(run_room + 1, 5) }
+    return 1
 }
 
 fn restart_attempt() {
@@ -127,11 +214,14 @@ fn restart_attempt() {
     tick_prev = 0
     thief_reset()
     guards_reset()
+    sim_quiet = true
     trains_update(0)
+    sim_quiet = false
     guards_sight()
     nnoise = 0
     tape_begin(&tape_now)
     view_restart()
+    au_restart()
 }
 
 fn quantize(v: fixed) -> s32 { return clamp((v * 127) as s32, -127, 127) }
@@ -143,6 +233,13 @@ fn update() {
     let press_raw = pad & ~raw_prev
     raw_prev = pad
     test_hook(frame_n)
+    if mode != Mode.Play {
+        fe_update(pad, press_raw)
+        frame_n += 1
+        au_tick()
+        room_cycles = cycle_count() - c0
+        return
+    }
     match phase {
         Play => {
             if press_raw & START != 0 {
@@ -150,6 +247,8 @@ fn update() {
                 tape_end()
                 restarts += 1
                 restart_attempt()
+                au_retry()
+                event(Ev.Restart, run_room)
             } else {
                 var inp = Input { pad: pad & ~START, sx: quantize(st.x), sy: quantize(st.y) }
                 inp.press = inp.pad & ~tick_prev
@@ -157,7 +256,7 @@ fn update() {
                 tick(&inp)
                 if next_room {
                     next_room = false
-                    if load_room(run_room + 1) { enter_room() } else { phase = Phase.Clear }
+                    room_exit()
                 }
             }
         }
@@ -166,12 +265,14 @@ fn update() {
             if freeze <= 0 {
                 restarts += 1
                 restart_attempt()
+                event(Ev.Restart, run_room)
             }
         }
         Clear => {
             if press_raw & A != 0 {
                 if standin_run == 0 && level_switch(-1) {
                     for k in 0..MAX_RUN { bests[k].have = false }
+                    ghost_stage = stage_of()
                 }
                 run_start()
             }
@@ -179,6 +280,7 @@ fn update() {
     }
     frame_n += 1
     view_update()
+    au_tick()
     room_cycles = cycle_count() - c0
 }
 
@@ -187,6 +289,10 @@ fn tick(inp: *Input) {
     nnoise = 0
     trains_update(clock)
     thief_update(inp, clock)
+    au_thief(thief.moved, thief.running, thief.x - cam_x)
+    for i in 0..room.ntrains {
+        au_train(i, trains[i].phase as s32, trains[i].head, train_mid_x(i) - cam_x, trains[i].to_close)
+    }
     tools_update(clock)
     for i in 0..room.nwatch { guard_update(i, clock) }
     let s0 = cycle_count()
@@ -250,8 +356,15 @@ fn caught(who: s32, w: Why) {
     caught_n += 1
     tape_now.caught = true
     tape_end()
+    au_caught()
+    event(Ev.Caught, w as s32)
 }
 
+// The room being played (Play, Transition, and the stage's end line without E), unless E draws
+// the frame itself; then E's front end; A's HUD when E drew none.
 fn draw() {
-    view_draw()
+    let in_room = mode == Mode.Play || mode == Mode.Transition || (mode == Mode.End && !fe_owns_transition())
+    let shown = in_room && fe_draw_room()
+    if shown { view_draw_room() } else { cls(VOID) }
+    if !fe_draw() && shown { draw_hud() }
 }

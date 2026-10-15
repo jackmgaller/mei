@@ -1,0 +1,115 @@
+// The save (agent E; docs/MEMCARD.md): one small save on the memory card, save number 0, with
+// each stage's progress: cleared, unlocked, the rooms ever cleared, each room's best clearing
+// time, the stage's best total (every attempt's ticks, as the end line counts it) and its fewest
+// restarts. 424 bytes: 2 blocks. Read once at boot (the card answers at once); written in the
+// background (save_flush() starts a write when something changed and the card is idle, so a
+// write never stalls a frame): after each room cleared and at a stage's end.
+//
+// The best tapes (the ghosts) are not saved yet: A's tape is what to save, and it can be
+// several KB a room (DESIGN.md: "the best tapes are saved to the memory card"; a later version).
+
+const SAVE_MAGIC: u32 = 0x30534841     // "AHS0"
+const SAVE_VERSION: u32 = 1
+const SAVE_NUM = 0
+const SAVE_STAGES = 8
+const SAVE_ROOMS = 8
+
+const ST_CLEARED: u32 = 1
+const ST_UNLOCKED: u32 = 2
+
+struct StageSave {
+    flags: u32                 // ST_CLEARED, ST_UNLOCKED
+    rooms: u32                 // bit k: room k cleared at least once
+    best_total: s32            // ticks, 0: none
+    best_restarts: s32         // -1: none
+    room_best: [SAVE_ROOMS]s32 // each room's fastest clearing attempt, ticks (0: none)
+    runs: s32                  // stages played to the end
+}
+
+struct AhSave {
+    magic: u32
+    version: u32
+    stages: [SAVE_STAGES]StageSave
+}
+
+var save: AhSave
+var save_dirty: bool           // changed since the last write began
+var save_writing: bool         // a write is in progress
+var save_result: s32 = -1      // the last write's error (CARD_OK...), -1 none yet
+var save_writes: s32           // writes begun (the checks)
+var save_loaded: bool          // the card held a save at boot
+
+// A fresh save: stage 0 unlocked, nothing cleared.
+fn save_blank() {
+    save = AhSave { magic: SAVE_MAGIC, version: SAVE_VERSION }
+    for s in 0..SAVE_STAGES { save.stages[s].best_restarts = -1 }
+    save.stages[0].flags = ST_UNLOCKED
+}
+
+// Reads the card (at boot). A card without the save, or with another version, gives a fresh one.
+fn save_boot() {
+    save_blank()
+    save_loaded = false
+    var got: AhSave
+    let n = card_load(SAVE_NUM, &got as *u8, sizeof(AhSave))
+    if n == sizeof(AhSave) && got.magic == SAVE_MAGIC && got.version == SAVE_VERSION {
+        save = got
+        save.stages[0].flags |= ST_UNLOCKED
+        save_loaded = true
+    }
+}
+
+fn stage_unlocked(s: s32) -> bool { return s == 0 || save.stages[s].flags & ST_UNLOCKED != 0 }
+fn stage_cleared(s: s32) -> bool { return save.stages[s].flags & ST_CLEARED != 0 }
+
+// Room k of stage s cleared in `ticks`: its bit, and its best time. True when it is a new best.
+fn save_room(s: s32, k: s32, ticks: s32) -> bool {
+    if s < 0 || s >= SAVE_STAGES || k < 0 || k >= SAVE_ROOMS { return false }
+    let st = &save.stages[s]
+    st.rooms |= (1 as u32) << k as u32
+    var best = false
+    if st.room_best[k] == 0 || ticks < st.room_best[k] {
+        st.room_best[k] = ticks
+        best = true
+    }
+    save_dirty = true
+    return best
+}
+
+// Stage s ended: cleared, its totals, the next stage unlocked. Bit 0 of the result: a new best
+// total; bit 1: fewer restarts; bit 2: the next stage was unlocked by it.
+fn save_stage(s: s32, total_ticks: s32, restarts_n: s32, stages: s32) -> s32 {
+    if s < 0 || s >= SAVE_STAGES { return 0 }
+    let st = &save.stages[s]
+    var r = 0
+    st.flags |= ST_CLEARED | ST_UNLOCKED
+    st.runs += 1
+    if st.best_total == 0 || total_ticks < st.best_total {
+        st.best_total = total_ticks
+        r |= 1
+    }
+    if st.best_restarts < 0 || restarts_n < st.best_restarts {
+        st.best_restarts = restarts_n
+        r |= 2
+    }
+    if s + 1 < min(stages, SAVE_STAGES) && save.stages[s + 1].flags & ST_UNLOCKED == 0 {
+        save.stages[s + 1].flags |= ST_UNLOCKED
+        r |= 4
+    }
+    save_dirty = true
+    return r
+}
+
+// Once a frame: starts a write when the save changed and the card is idle; notes when one ends.
+fn save_flush() {
+    if save_writing && !card_busy() {
+        save_writing = false
+        save_result = card_error()
+    }
+    if !save_dirty || card_busy() { return }
+    save_dirty = false
+    let err = card_save(SAVE_NUM, &save as *u8, sizeof(AhSave), SAVE_ICON)
+    save_result = err
+    save_writing = err == CARD_OK
+    save_writes += 1
+}

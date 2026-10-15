@@ -3,6 +3,55 @@
 What the runtime does, what it reads from the room, the tape format, my answers to B and the
 decisions Gate 1 makes. Kept current. B's side is in `NOTES_B.md`.
 
+## Hooks for E and F (2026-10-15, in the worktree `afterhours-next`)
+
+All in `dr_hooks.akr` (mine) as weak defaults that E's and F's files replace, called from
+`dr_game.akr`, `dr_thief.akr`, `dr_train.akr`, `dr_watch.akr`. Without E's files the cart and
+every scenario behave as before. `afterhours.akr` imports F's `dr_audio.akr` and E's
+`dr_front.akr` (the cart opens on E's title); A's harness imports `dr_audio.akr` (not E's: its
+own front-end stand-in replaces the same hooks). `tests/check.sh`: 27 scenarios pass (48 and 49
+new), then E's `tests/front/check.sh` (5). Its logs go to `tests/out/check-BUILD` (BUILD the
+folder `MEIC` is in), so agents checking at once from their own build directories do not
+overwrite each other's.
+
+**For E: the modes** (E builds on these; the "ten points" names were dropped by agreement):
+
+- `Mode`: Title, Select, Play, Transition, End; `mode` starts at Play. A plays the rooms in Play;
+  in every other mode `update()` calls `fe_update(pad, press)` and nothing ticks.
+- `fe_start()`: once at the end of `init()`, the first stage already set up (E goes to the
+  title with `game_mode(Mode.Title)`).
+- `fe_draw() -> bool` after A's room (true: E drew the front end, A draws no HUD);
+  `fe_draw_room() -> bool` whether A draws the room (in Play, Transition, End without E).
+  `draw_trains()`, `draw_things()`, `draw_people()`, `draw_cones()` stay callable with E's own
+  camera: they read only `at()` / `view_origin` and the current camera.
+- `fe_owns_transition() -> bool`: true, and a room's exit goes to `Mode.Transition` (`trans_to`
+  is the next room); E calls `transition_ready()` (the next room loaded at its clock 0, not
+  running; `Ev.RoomReady`) and `transition_control()` (play, `Ev.RoomEnter`). The stage's last
+  exit goes to `Mode.End` with `phase` Clear and `Ev.StageClear`.
+- `stage_start(n)`: always reopens stage n's world (`level_switch`); forgets the ghosts only when
+  n is not `ghost_stage`, the stage they were recorded on. `game_mode(m)`. `level_open_n(n)` in
+  `dr_levels.akr` opens a stage's world to draw it.
+- Events: `fe_event(e: Ev, a)`, as listed in `dr_hooks.akr` (RoomEnter means in control).
+- The stage's result for the end and the save: `room_time[k]`, `room_restarts[k]`,
+  `room_spent[k]`, `total`, `run_restarts()`, `run_length`, `stage_of()`.
+- `au_tick()` is A's on every frame (all modes, the freeze included): E need not call it.
+
+**For F: the calls**, wired as NOTES_F.md asks; signatures and `AMB_*` (0-5) agreed:
+
+| Call | Where A makes it |
+|---|---|
+| `au_tick()` | the end of every `update()` |
+| `au_music(true)` | `run_start()` |
+| `au_room(amb)` | `enter_room()` (not restarts): level 1 by room order, the platform level 1, a stand-in 0 |
+| `au_restart()` | every `restart_attempt()`, room entries included |
+| `au_retry()` | START |
+| `au_caught()` | `caught()` |
+| `au_thief(moved, running, dx)` | every tick: straight-line metres moved, R held while moving, `thief.x - cam_x` |
+| `au_hide(on)` | into and out of hiding |
+| `au_train(t, phase, head, dx, to_close)` | every tick, every train (TPhase 0 off, 1 arriving, 2 stopped, 3 leaving; ticks until the doors close while open, else -1) |
+| `au_exit()`, `au_clear()` | through the exit; the stage's end |
+| `au_alert(dx)`, `au_knock(dx)`, `au_bell(dx)` | a guard sets off toward a noise; a fragile thing; a bell |
+
 ## The framing (changed 2026-10-15; for the room builders and `capture.py`)
 
 The camera is unchanged: fixed yaw, 60 degrees down, a 20-degree field of view, 28.166 m from its

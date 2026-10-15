@@ -16,3 +16,5 @@ fn test_hook(_f: s32) {}
 
 import "dr_game.akr"
 import "dr_world.akr"          // the room: B's World Kit world (worlds.txt)
+import "dr_audio.akr"          // the sounds and music (agent F's; NOTES_F.md)
+import "dr_front.akr"          // the title, the stage select, the transitions, the save (agent E's)

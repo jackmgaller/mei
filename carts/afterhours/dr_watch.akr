@@ -152,6 +152,10 @@ fn guard_hear(d: *WatchDef, g: *Guard) {
             g.btarget = g.target
             g.btimer = g.timer
         }
+        if g.mode != GMode.GoNoise {
+            event(Ev.Heard, g_index(g))
+            au_alert(g.x - cam_x)
+        }
         g.mode = GMode.GoNoise
         g.nx = n.x
         g.nz = n.z
@@ -160,6 +164,8 @@ fn guard_hear(d: *WatchDef, g: *Guard) {
         g.best = 30000.0
     }
 }
+
+fn g_index(g: *Guard) -> s32 { return g - &guards[0] }
 
 fn guard_update(i: s32, t: s32) {
     let d = &room.watch[i]

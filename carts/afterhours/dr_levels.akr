@@ -9,7 +9,11 @@ const LEVELS = 2
 var level: s32                 // the level being played (0: level 1)
 
 // Opens the level's world (the reader keeps one pack open).
-fn level_open() -> bool {
-    if level == 1 { return world_platform_load() }
+fn level_open() -> bool { return level_open_n(level) }
+
+// Opens level n's world without making it the level played (E's stage select draws each stage's
+// model from its world; the run then reopens its own through stage_start()).
+fn level_open_n(n: s32) -> bool {
+    if n == 1 { return world_platform_load() }
     return world_level1_load()
 }
