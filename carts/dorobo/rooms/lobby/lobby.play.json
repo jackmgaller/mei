@@ -1,0 +1,324 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "lobby",
+ "entities": [
+  {
+   "id": "r4_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "entry": "r4_spawn",
+    "exit": "r4_exit",
+    "size": [
+     14.5,
+     2.4,
+     10.0
+    ]
+   }
+  },
+  {
+   "id": "r4_spawn",
+   "type": "spawn",
+   "position": [
+    -6.4,
+    0,
+    -3.7
+   ],
+   "params": {
+    "yaw": 90
+   }
+  },
+  {
+   "id": "r4_exit",
+   "type": "exit",
+   "position": [
+    0.55,
+    0,
+    4.12
+   ],
+   "params": {
+    "size": [
+     0.7,
+     2.0,
+     1.1
+    ]
+   }
+  },
+  {
+   "id": "r4_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -4.875
+   ],
+   "params": {
+    "size": [
+     14.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "r4_wall_back",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    4.875
+   ],
+   "params": {
+    "size": [
+     14.5,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "r4_wall_end_w_front",
+   "type": "wall",
+   "position": [
+    -7.125,
+    0,
+    -4.625
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "r4_wall_end_w_back",
+   "type": "wall",
+   "position": [
+    -7.125,
+    0,
+    0.925
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     7.65
+    ]
+   }
+  },
+  {
+   "id": "r4_wall_entry_beyond",
+   "type": "wall",
+   "position": [
+    -7.4,
+    0,
+    -3.7
+   ],
+   "params": {
+    "size": [
+     0.3,
+     2.4,
+     1.6
+    ]
+   }
+  },
+  {
+   "id": "r4_wall_end_e",
+   "type": "wall",
+   "position": [
+    7.125,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     9.5
+    ]
+   }
+  },
+  {
+   "id": "r4_wall_desk",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -0.05
+   ],
+   "params": {
+    "size": [
+     3.2,
+     1.0,
+     0.9
+    ]
+   }
+  },
+  {
+   "id": "r4_wall_balustrade",
+   "type": "wall",
+   "position": [
+    4.0,
+    0,
+    3.565
+   ],
+   "params": {
+    "size": [
+     6.0,
+     1.0,
+     0.13
+    ]
+   }
+  },
+  {
+   "id": "r4_wall_escalator",
+   "type": "wall",
+   "position": [
+    4.3,
+    0,
+    4.19
+   ],
+   "params": {
+    "size": [
+     5.4,
+     2.4,
+     1.12
+    ]
+   }
+  },
+  {
+   "id": "r4_wall_planter_0",
+   "type": "wall",
+   "position": [
+    -5.4,
+    0,
+    0.6
+   ],
+   "params": {
+    "size": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "id": "r4_wall_planter_1",
+   "type": "wall",
+   "position": [
+    3.6,
+    0,
+    -2.2
+   ],
+   "params": {
+    "size": [
+     1.0,
+     1.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "id": "r4_wp_back_w",
+   "type": "waypoint",
+   "position": [
+    -2.6,
+    0,
+    2.6
+   ],
+   "params": {
+    "next": "r4_wp_back_e",
+    "wait": 120,
+    "look": 260
+   }
+  },
+  {
+   "id": "r4_wp_back_e",
+   "type": "waypoint",
+   "position": [
+    3.8,
+    0,
+    2.6
+   ],
+   "params": {
+    "next": "r4_wp_back_w",
+    "wait": 120,
+    "look": 80
+   }
+  },
+  {
+   "id": "r4_guard_back",
+   "type": "guard",
+   "position": [
+    3.8,
+    0,
+    2.6
+   ],
+   "yaw": 270.0,
+   "params": {
+    "kind": "patrol",
+    "route": "r4_wp_back_w",
+    "speed": 0.8,
+    "sight": 4.5,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 180
+   }
+  },
+  {
+   "id": "r4_wp_west_s",
+   "type": "waypoint",
+   "position": [
+    -3.2,
+    0,
+    -3.8
+   ],
+   "params": {
+    "next": "r4_wp_west_n",
+    "wait": 60,
+    "look": 170
+   }
+  },
+  {
+   "id": "r4_wp_west_n",
+   "type": "waypoint",
+   "position": [
+    -3.2,
+    0,
+    3.6
+   ],
+   "params": {
+    "next": "r4_wp_west_s",
+    "wait": 60,
+    "look": 10
+   }
+  },
+  {
+   "id": "r4_guard_west",
+   "type": "guard",
+   "position": [
+    -3.2,
+    0,
+    0.4
+   ],
+   "yaw": 180.0,
+   "params": {
+    "kind": "patrol",
+    "route": "r4_wp_west_s",
+    "speed": 0.8,
+    "sight": 4.5,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 180
+   }
+  }
+ ],
+ "paths": {}
+}

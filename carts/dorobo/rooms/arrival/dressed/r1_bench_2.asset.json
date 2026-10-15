@@ -1,0 +1,332 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "r1_bench_2",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 200
+ },
+ "materials": {
+  "seat": {
+   "color": "#4c6aa8"
+  },
+  "steel": {
+   "color": "#7c828c"
+  },
+  "foot": {
+   "color": "#5a606a"
+  }
+ },
+ "nodes": [
+  {
+   "id": "beam",
+   "op": "box",
+   "size": [
+    1.5,
+    0.08,
+    0.1
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     0.0,
+     0.34,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "leg_w",
+   "op": "box",
+   "size": [
+    0.08,
+    0.31,
+    0.04
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -0.66,
+     0.155,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "leg_e",
+   "op": "box",
+   "size": [
+    0.08,
+    0.31,
+    0.04
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     0.66,
+     0.155,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "foot_w",
+   "op": "box",
+   "size": [
+    0.16,
+    0.06,
+    0.4
+   ],
+   "material": "foot",
+   "transform": {
+    "translate": [
+     -0.66,
+     0.01,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "foot_e",
+   "op": "box",
+   "size": [
+    0.16,
+    0.06,
+    0.4
+   ],
+   "material": "foot",
+   "transform": {
+    "translate": [
+     0.66,
+     0.01,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "pan_0",
+   "op": "box",
+   "size": [
+    0.4,
+    0.07,
+    0.38
+   ],
+   "material": "seat",
+   "transform": {
+    "translate": [
+     -0.66,
+     0.405,
+     0.02
+    ]
+   }
+  },
+  {
+   "id": "back_0",
+   "op": "box",
+   "size": [
+    0.37,
+    0.42,
+    0.08
+   ],
+   "material": "seat",
+   "transform": {
+    "translate": [
+     -0.66,
+     0.61,
+     -0.2
+    ]
+   }
+  },
+  {
+   "id": "pan_1",
+   "op": "box",
+   "size": [
+    0.4,
+    0.07,
+    0.38
+   ],
+   "material": "seat",
+   "transform": {
+    "translate": [
+     -0.22,
+     0.405,
+     0.02
+    ]
+   }
+  },
+  {
+   "id": "back_1",
+   "op": "box",
+   "size": [
+    0.37,
+    0.42,
+    0.08
+   ],
+   "material": "seat",
+   "transform": {
+    "translate": [
+     -0.22,
+     0.61,
+     -0.2
+    ]
+   }
+  },
+  {
+   "id": "pan_2",
+   "op": "box",
+   "size": [
+    0.4,
+    0.07,
+    0.38
+   ],
+   "material": "seat",
+   "transform": {
+    "translate": [
+     0.22,
+     0.405,
+     0.02
+    ]
+   }
+  },
+  {
+   "id": "back_2",
+   "op": "box",
+   "size": [
+    0.37,
+    0.42,
+    0.08
+   ],
+   "material": "seat",
+   "transform": {
+    "translate": [
+     0.22,
+     0.61,
+     -0.2
+    ]
+   }
+  },
+  {
+   "id": "pan_3",
+   "op": "box",
+   "size": [
+    0.4,
+    0.07,
+    0.38
+   ],
+   "material": "seat",
+   "transform": {
+    "translate": [
+     0.66,
+     0.405,
+     0.02
+    ]
+   }
+  },
+  {
+   "id": "back_3",
+   "op": "box",
+   "size": [
+    0.37,
+    0.42,
+    0.08
+   ],
+   "material": "seat",
+   "transform": {
+    "translate": [
+     0.66,
+     0.61,
+     -0.2
+    ]
+   }
+  }
+ ],
+ "lighting": {
+  "direction": [
+   -0.2,
+   0.9,
+   -0.35
+  ],
+  "ambient": 0.13,
+  "diffuse": 0.08,
+  "lights": [
+   {
+    "id": "tube_0",
+    "at": [
+     -5.0,
+     2.6,
+     1.0
+    ],
+    "color": "#d6ecf0",
+    "intensity": 1.9,
+    "range": 4.7
+   },
+   {
+    "id": "tube_1",
+    "at": [
+     -1.7,
+     2.6,
+     1.0
+    ],
+    "color": "#d6ecf0",
+    "intensity": 1.9,
+    "range": 4.7
+   },
+   {
+    "id": "tube_2",
+    "at": [
+     1.6,
+     2.6,
+     1.0
+    ],
+    "color": "#d6ecf0",
+    "intensity": 1.9,
+    "range": 4.7
+   },
+   {
+    "id": "edge_0",
+    "at": [
+     -3.4,
+     2.6,
+     3.15
+    ],
+    "color": "#d6ecf0",
+    "intensity": 1.1,
+    "range": 4.2
+   },
+   {
+    "id": "edge_1",
+    "at": [
+     0.0,
+     2.6,
+     3.15
+    ],
+    "color": "#d6ecf0",
+    "intensity": 1.1,
+    "range": 4.2
+   }
+  ],
+  "refine": {
+   "tolerance": 22,
+   "max_added": 40
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

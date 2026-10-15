@@ -1,0 +1,205 @@
+// Sight: a watcher's fan of 17 rays (16 triangles), each cut by the nearest blocking wall side or
+// train side, and the test of the thief's footprint (a circle) against that polygon. The fan's
+// points are the numbers drawn (dr_view.akr builds the cone's mesh from them) and the numbers
+// tested, so what is drawn is what sees.
+
+const RAYS = 17
+
+struct Fan {
+    ax: fixed          // the apex
+    az: fixed
+    px: [RAYS]fixed    // the rays' ends, left to right (increasing heading)
+    pz: [RAYS]fixed
+    x0: fixed          // the bounds of the polygon
+    z0: fixed
+    x1: fixed
+    z1: fixed
+}
+
+// The trains' sides this tick (dr_train.akr fills them before the fans are cast).
+const MAX_DYN_SEGS = 128
+var dyn_segs: [MAX_DYN_SEGS]Seg
+var ndyn: s32
+
+var sight_cycles: s32      // cycles the last sight_cast_all() took (for the budget)
+var sight_rays_tested: s32 // ray-segment pairs tested last time
+
+fn dyn_seg(ax: fixed, az: fixed, bx: fixed, bz: fixed) {
+    if ndyn >= MAX_DYN_SEGS { return }
+    dyn_segs[ndyn] = Seg { ax: ax, az: az, bx: bx, bz: bz,
+                           x0: min(ax, bx), z0: min(az, bz), x1: max(ax, bx), z1: max(az, bz) }
+    ndyn += 1
+}
+
+// The nearest t (0..best) at which the ray a + t d crosses the segment s, or best.
+fn ray_seg(ax: fixed, az: fixed, dx: fixed, dz: fixed, s: *Seg, best: fixed) -> fixed {
+    let ex = s.bx - s.ax
+    let ez = s.bz - s.az
+    let den = dx * ez - dz * ex
+    if abs(den) < 0.0005 { return best }
+    let wx = s.ax - ax
+    let wz = s.az - az
+    let tn = wx * ez - wz * ex
+    let un = wx * dz - wz * dx
+    if den > 0.0 {
+        if tn < 0.0 || un < 0.0 || un > den { return best }
+    } else {
+        if tn > 0.0 || un > 0.0 || un < den { return best }
+    }
+    let t = tn / den
+    if t < best { return t }
+    return best
+}
+
+// The segments one fan is cast against: those that can meet its wedge, relative to its apex,
+// with the part of the crossing test that does not depend on the ray.
+struct Cand {
+    wx: fixed          // the segment's start less the apex
+    wz: fixed
+    ex: fixed          // the segment's direction (end less start)
+    ez: fixed
+    tn: fixed          // w x e: the ray's t is tn / (d x e)
+}
+var cands: [MAX_SEGS + MAX_DYN_SEGS]Cand
+var ncand: s32
+
+// The fan being cast: its apex, its outer rays (directions times the range) and its bounds.
+var fc_ax: fixed
+var fc_az: fixed
+var fc_lx: fixed
+var fc_lz: fixed
+var fc_rx: fixed
+var fc_rz: fixed
+var fc_x0: fixed
+var fc_z0: fixed
+var fc_x1: fixed
+var fc_z1: fixed
+
+// Adds the segments that can meet the fan's wedge: not wholly outside its bounds, nor wholly on
+// the far side of one of its two sides (the rays turn clockwise from l to r: inside is clockwise
+// of l and counter-clockwise of r).
+fn cands_from(segs: *Seg, n: s32) {
+    for i in 0..n {
+        let s = &segs[i]
+        if s.x1 < fc_x0 || s.x0 > fc_x1 || s.z1 < fc_z0 || s.z0 > fc_z1 { continue }
+        let wx = s.ax - fc_ax
+        let wz = s.az - fc_az
+        let vx = s.bx - fc_ax
+        let vz = s.bz - fc_az
+        if fc_lx * wz - fc_lz * wx > 0.0 && fc_lx * vz - fc_lz * vx > 0.0 { continue }
+        if fc_rx * wz - fc_rz * wx < 0.0 && fc_rx * vz - fc_rz * vx < 0.0 { continue }
+        let ex = s.bx - s.ax
+        let ez = s.bz - s.az
+        cands[ncand] = Cand { wx: wx, wz: wz, ex: ex, ez: ez, tn: wx * ez - wz * ex }
+        ncand += 1
+    }
+}
+
+// How far along the ray (dx, dz) from the apex (0..1) it first crosses a candidate.
+fn ray_t(dx: fixed, dz: fixed) -> fixed {
+    var t: fixed = 1.0
+    for i in 0..ncand {
+        let c = &cands[i]
+        let den = dx * c.ez - dz * c.ex
+        let un = c.wx * dz - c.wz * dx
+        let tn = c.tn
+        if den > 0.0005 {
+            if tn < 0.0 || un < 0.0 || un > den || tn >= den * t { continue }
+        } else if den < -0.0005 {
+            if tn > 0.0 || un > 0.0 || un < den || tn <= den * t { continue }
+        } else {
+            continue
+        }
+        t = tn / den
+    }
+    return t
+}
+
+// Casts the fan from (ax, az) looking `head`, `half` either side, `range` long: 17 rays, each
+// cut at the nearest crossing of a wall side or a train side.
+fn fan_cast(f: *Fan, ax: fixed, az: fixed, head: fixed, half: fixed, range: fixed) {
+    f.ax = ax
+    f.az = az
+    // the rays' directions (times the range), and the wedge's bounds
+    var dxs: [RAYS]fixed
+    var dzs: [RAYS]fixed
+    var bx0 = ax
+    var bx1 = ax
+    var bz0 = az
+    var bz1 = az
+    for k in 0..RAYS {
+        let a = head - half + (half * 2 * k) / (RAYS - 1)
+        let dx = sin(a) * range
+        let dz = cos(a) * range
+        dxs[k] = dx
+        dzs[k] = dz
+        bx0 = min(bx0, ax + dx)
+        bx1 = max(bx1, ax + dx)
+        bz0 = min(bz0, az + dz)
+        bz1 = max(bz1, az + dz)
+    }
+    // the arc bulges past the rays' ends between them by at most range (1 - cos(half / 16)): a
+    // margin
+    fc_x0 = bx0 - 0.05
+    fc_z0 = bz0 - 0.05
+    fc_x1 = bx1 + 0.05
+    fc_z1 = bz1 + 0.05
+    fc_ax = ax
+    fc_az = az
+    fc_lx = dxs[0]
+    fc_lz = dzs[0]
+    fc_rx = dxs[RAYS - 1]
+    fc_rz = dzs[RAYS - 1]
+    ncand = 0
+    cands_from(&room.segs[0], room.nseg)
+    cands_from(&dyn_segs[0], ndyn)
+    sight_rays_tested += ncand * RAYS
+    var x0 = ax
+    var x1 = ax
+    var z0 = az
+    var z1 = az
+    for k in 0..RAYS {
+        let dx = dxs[k]
+        let dz = dzs[k]
+        let t = ray_t(dx, dz)
+        let px = ax + dx * t
+        let pz = az + dz * t
+        f.px[k] = px
+        f.pz[k] = pz
+        x0 = min(x0, px)
+        x1 = max(x1, px)
+        z0 = min(z0, pz)
+        z1 = max(z1, pz)
+    }
+    f.x0 = x0
+    f.x1 = x1
+    f.z0 = z0
+    f.z1 = z1
+}
+
+// Twice the signed area of (o, a, b): positive when b is counter-clockwise of a seen from o
+// (x right, z up).
+fn cross3(ox: fixed, oz: fixed, ax: fixed, az: fixed, bx: fixed, bz: fixed) -> fixed {
+    return (ax - ox) * (bz - oz) - (az - oz) * (bx - ox)
+}
+
+// Whether the point (x, z) is inside the fan's polygon (its edges included): inside one of the
+// 16 triangles (apex, p[k], p[k+1]). The rays turn clockwise (x right, z up), so the point is
+// inside a triangle when it is clockwise of p[k] and counter-clockwise of p[k+1] from the apex,
+// and on the apex's side of the far edge. A triangle with no area (a ray cut at its apex) covers
+// nothing. The thief is seen when his centre is covered (DESIGN.md, "The drawn cone is the
+// test"; Gate 1 tested his whole footprint).
+fn fan_covers(f: *Fan, x: fixed, z: fixed) -> bool {
+    if x < f.x0 || x > f.x1 || z < f.z0 || z > f.z1 { return false }
+    let ax = f.ax
+    let az = f.az
+    for k in 0..RAYS - 1 {
+        let c0 = cross3(ax, az, f.px[k], f.pz[k], x, z)
+        let c1 = cross3(ax, az, f.px[k + 1], f.pz[k + 1], x, z)
+        if c0 <= 0.0 && c1 >= 0.0 {
+            let c2 = cross3(f.px[k], f.pz[k], f.px[k + 1], f.pz[k + 1], x, z)
+            if c2 <= 0.0 && cross3(ax, az, f.px[k], f.pz[k], f.px[k + 1], f.pz[k + 1]) != 0.0 { return true }
+        }
+    }
+    return false
+}

@@ -1,0 +1,47 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "arrival",
+ "placements": [
+  {
+   "id": "r1_station",
+   "asset": "r1_station",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "r1_station_col"
+  },
+  {
+   "id": "r1_pillar",
+   "asset": "r1_pillar",
+   "position": [
+    -5.0,
+    0,
+    -1.2
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "r1_bench_1",
+   "asset": "r1_bench_1",
+   "position": [
+    -3.0,
+    0,
+    -2.6
+   ],
+   "collision": "r1_bench_col"
+  },
+  {
+   "id": "r1_bench_2",
+   "asset": "r1_bench_2",
+   "position": [
+    0.4,
+    0,
+    -2.6
+   ],
+   "collision": "r1_bench_col"
+  }
+ ]
+}

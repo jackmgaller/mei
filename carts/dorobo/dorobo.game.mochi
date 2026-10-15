@@ -1,0 +1,148 @@
+// After Hours' game schema (the folder keeps its working name, dorobo, until it is renamed) (docs/WORLDKIT.md, "Game data and stable IDs"). Owned by agent B;
+// agent A lists what the runtime needs in carts/dorobo/NOTES_A.md, and B's answers and decisions
+// are in NOTES_B.md.
+//
+// A world holds one level: its rooms side by side, each in its own cell, at its own floor height
+// (NOTES_B.md, "Level 1: how the rooms join"). An entity belongs to the room whose box (the room
+// entity's position and size) contains its position in x and z.
+//
+// Conventions for every type:
+// - Lengths in metres, one world unit a metre. Positions are world positions; a room's floor is
+//   at its room entity's y, and every entity of the room stands at that height.
+// - Times in ticks, 60 a second, counted on the room's clock (0 when the thief comes through the
+//   room's door).
+// - Directions in degrees, as a placement's yaw: 0 faces +z (away from the camera), 90 faces +x
+//   (right on the screen), 180 faces -z (toward the camera), 270 (or -90) faces -x.
+// - A box (`size`) is centred on the entity's position in x and z and rises size.y from it, and
+//   is turned by the entity's yaw.
+
+game dorobo
+
+probe {
+  radius            = 0.3
+  height            = 1.7
+  floor_max_degrees = 40
+}
+
+worlds level1, platform
+
+// A room. The entity's position is the centre of the room's floor (its y is the floor's height)
+// and `size` its extent (x, y, z), which the camera's pan keeps on the screen and which holds the
+// room's entities. `entry` is the spawn the thief starts and restarts at, `exit` the exit box that
+// clears the room; the thief then goes on to `next`, whose clock starts at 0 (none: the level is
+// over). The level starts at the room marked `first`. `toys` and `bells` are the tools the thief
+// has in the room.
+type room {
+  entry: ref
+  exit:  ref
+  size:  vec3
+  next:  ref?
+  first: bool = false
+  toys:  u8 = 0
+  bells: u8 = 0
+}
+
+// Where the thief starts and restarts: the foot of the stair, the room's door.
+type spawn {
+  yaw: fixed = 0
+}
+
+// The way out (the staff door). The room is cleared when the thief's centre is inside the box.
+type exit {
+  size: vec3 = [1, 2, 1]
+}
+
+// A point on a patrol guard's route. The guard walks to it, stops `wait` ticks looking `look`
+// degrees, then walks on to `next` (none: the route ends here and the guard stays, looking `look`).
+// While walking he looks where he walks.
+type waypoint {
+  next: ref?
+  wait: s16 = 0
+  look: fixed = 0
+}
+
+// A watcher. Its sight is a fan `sight` metres long and `fov` degrees wide, centred on where it
+// looks, cut by walls (`wall` entities that block, and trains) and not by glass.
+//
+// - patrol: starts at its position and walks to `route` (its first waypoint), then round the
+//   waypoints at `speed` metres a second.
+// - posted: stands at its position and turns its head between `look_a` and `look_b`: it looks
+//   `look_a` for `hold` ticks, turns to `look_b` in `turn` ticks, holds `hold` ticks, turns back
+//   in `turn` ticks, and so on. `phase` ticks of that cycle have already passed at clock 0.
+// - camera: as posted, and it cannot leave its post or hear. Its position is the lens, high on a
+//   wall; the fan is drawn on the floor.
+//
+// How gentle a watcher is: `speed` (a patrol's walk), `sight` (the cone's length), `fov` (its
+// width) and `turn_rate` (how fast a patrol's head turns toward where he walks or looks, degrees a
+// second). Level 1's early rooms use slow patrols, short and narrow cones and slow heads.
+//
+// Patrol and posted guards hear noise: they walk to it, look around and walk back (DESIGN.md,
+// "Caught means restart"). `hear` is how far, in metres, they hear the thief running; a tool's
+// noise carries as far as the tool says (A's runtime).
+type guard {
+  kind:   patrol | posted | camera
+  route:  ref?
+  sight:  fixed = 6
+  fov:    u8 = 60
+  speed:  fixed = 1.2
+  look_a: fixed = 0
+  look_b: fixed = 0
+  hold:   s16 = 60
+  turn:   s16 = 90
+  phase:  s16 = 0
+  hear:   fixed = 6
+  turn_rate: fixed = 240
+}
+
+// A train on its timetable. It runs along the World Kit path `path` (the track's centre line at
+// the platform's height), from its first point (the tunnel mouth it comes out of) to its last (the
+// one it leaves by); only the part of the train on the path exists (is drawn, blocks cones). Its
+// head reaches the path's first point at tick `offset`, and again every `period` ticks. It slows to
+// a stop `arrive` ticks later with its head `stop` metres along the path, opens its doors for
+// `dwell` ticks, then speeds up and is gone from the path (its tail past the last point) `leave`
+// ticks after the doors close. It is `cars` carriages of `car_length` metres, `width` metres wide,
+// coupled without gaps; each carriage has `doors` doors on each side `sides` names (left and right
+// of the way it travels), `door_width` metres wide, evenly spaced. The band along the path,
+// `width` wide, is out of bounds to the thief and the guards except inside a stopped train with its
+// doors open, which the thief enters and leaves by its doors; the doors close on a thief inside:
+// caught. While on the path the train blocks every cone across it. The motion between the stops
+// (easing in and out) is the runtime's (NOTES_A.md).
+type train {
+  path:       name
+  period:     s16
+  offset:     s16 = 0
+  arrive:     s16 = 240
+  stop:       fixed
+  dwell:      s16 = 480
+  leave:      s16 = 240
+  cars:       u8 = 2
+  car_length: fixed = 10
+  width:      fixed = 2.6
+  doors:      u8 = 3
+  door_width: fixed = 1.3
+  sides:      left | right | both = both
+}
+
+// Somewhere to hide: a box. The thief inside it who presses A is hidden from every cone until he
+// moves out.
+type hide_spot {
+  size: vec3 = [1, 2, 1]
+}
+
+// Something fragile (a stack of cans, a sign on an easel). Brushing it makes a noise `noise`
+// metres round, once, and changes nothing else. `radius` is its footprint.
+type fragile {
+  radius: fixed = 0.4
+  noise:  fixed = 8
+}
+
+// The room's walls, as boxes in plan (2D): the wall map, written by the room's script from the
+// same numbers as the room's assets, so the two cannot drift apart. `blocks` cuts cones; `solid`
+// stops the thief and the guards. Glass is a wall that does not block (a tank, a window); low
+// furniture (a bench) is the same: it stops the thief and the cones pass over it. The tracks are
+// not walls: the runtime makes each train's path, `width` wide, out of bounds by itself.
+type wall {
+  size:   vec3
+  blocks: bool = true
+  solid:  bool = true
+}

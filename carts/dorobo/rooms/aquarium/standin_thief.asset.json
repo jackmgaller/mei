@@ -1,0 +1,215 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "standin_thief",
+ "budget": {
+  "vertices": 256,
+  "triangles": 200
+ },
+ "materials": {
+  "suit": {
+   "color": "#ff5a1e"
+  },
+  "suit_dark": {
+   "color": "#e0400c"
+  },
+  "hood": {
+   "color": "#ff6a2c"
+  },
+  "shadow": {
+   "color": "#0a0c10",
+   "blend": "sub"
+  }
+ },
+ "nodes": [
+  {
+   "id": "thief_leg_l",
+   "op": "box",
+   "size": [
+    0.14,
+    0.82,
+    0.18
+   ],
+   "material": "suit_dark",
+   "transform": {
+    "translate": [
+     -0.1,
+     0.41,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "thief_leg_r",
+   "op": "box",
+   "size": [
+    0.14,
+    0.82,
+    0.18
+   ],
+   "material": "suit_dark",
+   "transform": {
+    "translate": [
+     0.1,
+     0.41,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "thief_torso",
+   "op": "box",
+   "size": [
+    0.46,
+    0.62,
+    0.26
+   ],
+   "material": "suit",
+   "transform": {
+    "translate": [
+     0.0,
+     1.11,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "thief_arm_l",
+   "op": "box",
+   "size": [
+    0.12,
+    0.6,
+    0.14
+   ],
+   "material": "suit",
+   "transform": {
+    "translate": [
+     -0.27,
+     1.08,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "thief_arm_r",
+   "op": "box",
+   "size": [
+    0.12,
+    0.6,
+    0.14
+   ],
+   "material": "suit",
+   "transform": {
+    "translate": [
+     0.27,
+     1.08,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "thief_head",
+   "op": "sphere",
+   "radius": 1.0,
+   "rings": 4,
+   "segments": 8,
+   "material": "hood",
+   "transform": {
+    "scale": [
+     0.13,
+     0.145,
+     0.13
+    ],
+    "translate": [
+     0.0,
+     1.555,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "thief_shadow",
+   "op": "mesh",
+   "material": "shadow",
+   "vertices": [
+    [
+     0.29125,
+     0.02,
+     -0.17634
+    ],
+    [
+     0.11125,
+     0.02,
+     -0.28532
+    ],
+    [
+     -0.11125,
+     0.02,
+     -0.28532
+    ],
+    [
+     -0.29125,
+     0.02,
+     -0.17634
+    ],
+    [
+     -0.36,
+     0.02,
+     0.0
+    ],
+    [
+     -0.29125,
+     0.02,
+     0.17634
+    ],
+    [
+     -0.11125,
+     0.02,
+     0.28532
+    ],
+    [
+     0.11125,
+     0.02,
+     0.28532
+    ],
+    [
+     0.29125,
+     0.02,
+     0.17634
+    ],
+    [
+     0.36,
+     0.02,
+     0.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9
+    ]
+   ]
+  }
+ ],
+ "lighting": {
+  "direction": [
+   -0.2,
+   1.0,
+   0.6
+  ],
+  "ambient": 0.62
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

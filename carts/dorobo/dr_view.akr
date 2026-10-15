@@ -1,0 +1,494 @@
+// The camera and the drawing: the room (B's world, or the stand-in), the trains, the people,
+// the cones, the noise rings, the ghost, the "!" and the line of text at the exit.
+//
+// The camera (DESIGN.md, "The look"; the framing rooms/aquarium/capture.py found): fixed yaw,
+// on the room's -Z side looking toward +Z, 60 degrees down, a 20-degree vertical field of view,
+// 28.2 m from its target, about 24 px a metre in the middle of the room. It pans along x with
+// the thief, a lead ahead of where he walks, clamped so the room's ends stay on the screen's
+// edges; cones beyond the screen's sides that reach near it are marked at the edge.
+
+const CAM_PITCH: fixed = -1.0472   // -60 degrees
+const CAM_FOV: fixed = 0.34907     // 20 degrees
+const CAM_DIST: fixed = 28.166
+const CAM_TARGET_Y: fixed = 0.6    // the target's height
+const FRONT_Y = 222                // the room's front edge (its floor, at the box's -z side) no
+                                   // lower than this line: above the bottom HUD line (228-236)
+const BACK_Y = 16                  // its back edge no higher than this: below the top HUD line
+const HALF_VIEW: fixed = 6.6       // half the picture's width at the target, metres
+const LEAD: fixed = 2.2            // how far ahead of the thief the camera looks
+const CONE_Y: fixed = 0.03
+const TRAIN_SILL: fixed = 0.9      // the carriages are drawn cut at their window sills
+const VOID = 0x160A06              // rgb(6, 10, 22)
+
+var view_origin: vec3              // what the frame is drawn around (the world's origin, or 0)
+var cam_x: fixed
+var cam_tz: fixed                  // the target's z, between ...
+var cam_tz_lo: fixed               // ... the room's front edge on FRONT_Y (the lowest) and
+var cam_tz_hi: fixed               // its back edge on BACK_Y (the highest): frame_room()
+var cam_lead: fixed
+var eye: vec3
+
+// meshes built at init
+var buf_room: [32768]u32
+var buf_thief: [1024]u32
+var buf_ghost: [1024]u32
+var buf_hidden: [1024]u32
+var buf_guard: [1280]u32
+var buf_cam: [512]u32
+var buf_car: [512]u32
+var buf_car_floor: [512]u32
+var buf_ring: [2048]u32
+var buf_toy: [512]u32
+var buf_bell: [512]u32
+var buf_stack: [512]u32
+var buf_fallen: [512]u32
+var buf_spot: [512]u32
+var buf_cones: [MAX_WATCH * 300]u32
+var mb_room: MB
+var mb_thief: MB
+var mb_ghost: MB
+var mb_hidden: MB
+var mb_guard: MB
+var mb_cam: MB
+var mb_car: MB
+var mb_car_floor: MB
+var mb_ring: MB
+var mb_toy: MB
+var mb_bell: MB
+var mb_stack: MB
+var mb_fallen: MB
+var mb_spot: MB
+var mb_cones: [MAX_WATCH]MB
+
+const COL_THIEF = 0x2080FF         // rgb(255, 128, 32): the thief's colour, used by nothing else
+const COL_GUARD = 0x8C4A2A         // rgb(42, 74, 140)
+const COL_CONE = 0xA8F2FF          // rgb(255, 242, 168)
+const COL_CONE_HOT = 0x2020FF      // rgb(255, 32, 32)
+
+fn view_init() {
+    camera_fov(CAM_FOV)
+    // the thief: a capsule-like prism and a head, in his colour
+    mb_init(&mb_thief, &buf_thief[0], len(buf_thief), 64)
+    person_mesh(&mb_thief, rgb(255, 128, 32), rgb(255, 196, 150), 0, 0)
+    // hidden: the same figure dimmed and greyed (his orange gone to a dull brown), drawn crouched
+    mb_init(&mb_hidden, &buf_hidden[0], len(buf_hidden), 64)
+    person_mesh(&mb_hidden, rgb(92, 72, 62), rgb(112, 96, 88), 0, 0)
+    mb_init(&mb_ghost, &buf_ghost[0], len(buf_ghost), 64)
+    person_mesh(&mb_ghost, rgb(40, 70, 110), rgb(50, 90, 130), FACE_SEMI, BLEND_ADD)
+    mb_init(&mb_guard, &buf_guard[0], len(buf_guard), 80)
+    person_mesh(&mb_guard, rgb(42, 74, 140), rgb(200, 170, 140), 0, 0)
+    mb_box(&mb_guard, -0.07, 1.05, 0.22, 0.07, 1.2, 0.45, rgb(255, 236, 120))   // his torch
+    mb_init(&mb_cam, &buf_cam[0], len(buf_cam), 32)
+    mb_box(&mb_cam, -0.15, 2.45, -0.25, 0.15, 2.7, 0.25, rgb(170, 170, 176))
+    mb_box(&mb_cam, -0.06, 2.5, 0.25, 0.06, 2.62, 0.32, rgb(255, 60, 40))
+    // a carriage: a unit box (x along it, -0.5..0.5; y 0..1; z across), scaled when drawn
+    mb_init(&mb_car, &buf_car[0], len(buf_car), 32)
+    mb_box(&mb_car, -0.5, 0.0, -0.5, 0.5, 1.0, 0.5, rgb(96, 120, 150))
+    mb_init(&mb_car_floor, &buf_car_floor[0], len(buf_car_floor), 32)
+    mb_box(&mb_car_floor, -0.5, 0.0, -0.5, 0.5, 1.0, 0.5, rgb(150, 196, 214))
+    mb_init(&mb_ring, &buf_ring[0], len(buf_ring), 64)
+    mb_ring_build(&mb_ring, 0.94, 1.0, 0.0, 32, rgb(90, 90, 90), BLEND_ADD)
+    mb_init(&mb_toy, &buf_toy[0], len(buf_toy), 32)
+    mb_box(&mb_toy, -0.1, 0.0, -0.13, 0.1, 0.16, 0.13, rgb(80, 220, 120))
+    mb_box(&mb_toy, -0.03, 0.16, -0.03, 0.03, 0.26, 0.03, rgb(240, 240, 240))
+    mb_init(&mb_bell, &buf_bell[0], len(buf_bell), 40)
+    mb_prism(&mb_bell, 0.0, 0.0, 0.11, 0.0, 0.08, 6, rgb(80, 220, 120))
+    mb_init(&mb_stack, &buf_stack[0], len(buf_stack), 32)
+    mb_box(&mb_stack, -0.3, 0.0, -0.3, 0.3, 0.3, 0.3, rgb(214, 70, 160))
+    mb_box(&mb_stack, -0.2, 0.3, -0.2, 0.2, 0.6, 0.2, rgb(214, 90, 170))
+    mb_init(&mb_fallen, &buf_fallen[0], len(buf_fallen), 32)
+    mb_box(&mb_fallen, -0.45, 0.0, -0.2, 0.15, 0.25, 0.35, rgb(160, 60, 120))
+    mb_box(&mb_fallen, 0.2, 0.0, -0.45, 0.55, 0.2, -0.1, rgb(160, 70, 130))
+    mb_init(&mb_spot, &buf_spot[0], len(buf_spot), 32)
+    mb_box_ex(&mb_spot, -0.5, 0.0, -0.5, 0.5, 1.0, 0.5, rgb(40, 80, 60), FACE_SEMI, BLEND_ADD, true)
+    for i in 0..MAX_WATCH { mb_init(&mb_cones[i], &buf_cones[i * 300], 300, 20) }
+}
+
+// The stand-in room's mesh, when the room is the stand-in, and the framing.
+fn view_init_room() {
+    mb_init(&mb_room, &buf_room[0], len(buf_room), 4096)
+    if !room_is_world { standin_mesh(&mb_room) }
+    frame_room()
+}
+
+// The target z that puts the floor's point at depth z on picture line y (the camera's x and its
+// distance unchanged: it slides along z, so the pixels a metre stay as they are).
+fn tz_for(z: fixed, y: s32) -> fixed {
+    var tz = z + 5.0
+    for _i in 0..6 {
+        camera_look(cam_eye(room.cx, tz), 0.0, CAM_PITCH)
+        let p = project_point(vec3(room.cx, room.floor, z))
+        tz += fixed(y - p.y) / 21
+    }
+    return tz
+}
+
+// The camera's range in z for the room. Its whole floor (the box's front edge, where the cut front
+// wall stands, to its back edge) is kept between BACK_Y and FRONT_Y, clear of the HUD's lines.
+// A room that fits is centred and the camera never moves in z; a deeper one (more than about
+// 9.8 m at 60 degrees and 20) pans in z with the thief between the two ends, as a long room pans
+// in x. The back wall's top may leave the picture; the floor never does.
+fn frame_room() {
+    camera_fov(CAM_FOV)
+    camera_clip(CAM_DIST - 14.0, CAM_DIST + 14.0)
+    let lo = tz_for(room.cz - room.sz / 2, FRONT_Y)    // the front on its line
+    let hi = tz_for(room.cz + room.sz / 2, BACK_Y)     // the back on its line
+    if hi <= lo {
+        cam_tz_lo = (lo + hi) / 2
+        cam_tz_hi = cam_tz_lo
+    } else {
+        cam_tz_lo = lo
+        cam_tz_hi = hi
+    }
+    cam_tz = cam_tz_lo
+}
+
+fn cam_eye(x: fixed, tz: fixed) -> vec3 {
+    return vec3(x, room.floor + CAM_TARGET_Y, tz) - vec3(0.0, sin(CAM_PITCH), cos(CAM_PITCH)) * CAM_DIST
+}
+
+// A person: a 10-sided prism 1.45 m high, radius 0.3 (the footprint), and a head.
+fn person_mesh(b: *MB, body: u32, head: u32, flags: u32, blend: u32) {
+    let f0 = b.nf
+    mb_prism(b, 0.0, 0.0, 0.3, 0.0, 1.45, 10, body)
+    mb_prism(b, 0.0, 0.0, 0.16, 1.45, 1.75, 8, head)
+    mb_box(b, -0.08, 1.5, 0.12, 0.08, 1.62, 0.2, body)     // which way he faces
+    if flags != 0 {
+        for k in f0..b.nf {
+            b.f[k].flags = b.f[k].flags | flags as u8
+            b.f[k].blend = blend as u8
+        }
+    }
+}
+
+fn view_restart() {
+    cam_x = cam_goal(thief.x)
+    cam_tz = cam_goal_z(thief.z)
+    cam_lead = 0.0
+}
+
+// The target z that follows the thief in a room too deep for the picture.
+fn cam_goal_z(z: fixed) -> fixed { return clamp(z, cam_tz_lo, cam_tz_hi) }
+
+fn cam_goal(x: fixed) -> fixed {
+    let lo = room.cx - room.sx / 2 + HALF_VIEW
+    let hi = room.cx + room.sx / 2 - HALF_VIEW
+    if lo > hi { return room.cx }
+    return clamp(x, lo, hi)
+}
+
+fn view_update() {
+    // the lead eases toward the way the thief walks across the screen
+    var want: fixed = 0.0
+    if thief.moving {
+        let s = sin(thief.head)
+        if s > 0.3 { want = LEAD } else if s < -0.3 { want = -LEAD }
+    } else {
+        want = cam_lead
+    }
+    cam_lead += (want - cam_lead) / 40
+    let goal = cam_goal(thief.x + cam_lead)
+    cam_x += (goal - cam_x) / 8
+    cam_tz += (cam_goal_z(thief.z) - cam_tz) / 8
+}
+
+// The world draws itself (dr_world.akr replaces this when B's world is in).
+weak fn world_draw(_eye: vec3, _yaw: fixed, _pitch: fixed) {}
+
+fn view_draw() {
+    cls(VOID)
+    eye = cam_eye(cam_x, cam_tz)
+    if room_is_world {
+        world_draw(eye, 0.0, CAM_PITCH)
+    } else {
+        view_origin = vec3(0.0, 0.0, 0.0)
+        camera_fov(CAM_FOV)
+        camera_clip(CAM_DIST - 14.0, CAM_DIST + 14.0)
+        camera_look(eye, 0.0, CAM_PITCH)
+        mesh(mb_room.m)
+        for i in 0..room.nspots { draw_box(mb_spot.m, &room.spots[i], room.spots[i].h) }
+    }
+    draw_trains()
+    draw_things()
+    draw_people()
+    draw_cones()
+    draw_rings()
+    draw_marks()
+    draw_hud()
+}
+
+// A point y above the room's floor, in the frame drawn.
+fn at(x: fixed, y: fixed, z: fixed) -> vec3 { return vec3(x, y + room.floor, z) - view_origin }
+
+// A unit box (x, z -0.5..0.5, y 0..1) as the plan box b, h high.
+fn draw_box(m: *Mesh, b: *Box2, h: fixed) {
+    var model: mat4
+    model[0] = vec4(b.c * b.hx * 2, 0.0, b.s * b.hz * 2, b.cx - view_origin.x)
+    model[1] = vec4(0.0, h, 0.0, room.floor - view_origin.y)
+    model[2] = vec4(-b.s * b.hx * 2, 0.0, b.c * b.hz * 2, b.cz - view_origin.z)
+    model[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    mesh_xf(m, model)
+}
+
+// The model matrix of a car part: along a0..a1, across b0..b1 (metres from the car's centre),
+// from y0 to y1.
+fn car_model(c: *Car, a0: fixed, a1: fixed, b0: fixed, b1: fixed, y0: fixed, y1: fixed) -> mat4 {
+    let ma = (a0 + a1) / 2
+    let mb = (b0 + b1) / 2
+    let la = a1 - a0
+    let lb = b1 - b0
+    var model: mat4
+    model[0] = vec4(c.ux * la, 0.0, -c.uz * lb, c.cx + c.ux * ma - c.uz * mb - view_origin.x)
+    model[1] = vec4(0.0, y1 - y0, 0.0, y0 - view_origin.y)
+    model[2] = vec4(c.uz * la, 0.0, c.ux * lb, c.cz + c.uz * ma + c.ux * mb - view_origin.z)
+    model[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    return model
+}
+
+// A train as a section (B's look, NOTES_B.md): its floor lit, its shell cut at the window sills,
+// the open doors' gaps showing. The floor is the car's rectangle, the walls the shell's boxes:
+// the numbers that block the cones and the thief.
+fn draw_trains() {
+    for i in 0..room.ntrains {
+        let d = &room.trains[i]
+        let st = &trains[i]
+        let y = d.path.y
+        for k in 0..st.ncars {
+            let c = &st.cars[k]
+            mesh_xf(mb_car_floor.m, car_model(c, -c.len / 2, c.len / 2, -c.w / 2, c.w / 2, y - TRAIN_BELOW, y + 0.02))
+        }
+        for k in 0..nshell[i] {
+            draw_box_y(mb_car.m, &shells[i * MAX_SHELL + k], y - TRAIN_BELOW, y + TRAIN_SILL)
+        }
+    }
+}
+
+// A unit box (x, z -0.5..0.5, y 0..1) as the plan box b, from y0 to y1.
+fn draw_box_y(m: *Mesh, b: *Box2, y0: fixed, y1: fixed) {
+    var model: mat4
+    model[0] = vec4(b.c * b.hx * 2, 0.0, b.s * b.hz * 2, b.cx - view_origin.x)
+    model[1] = vec4(0.0, y1 - y0, 0.0, y0 - view_origin.y)
+    model[2] = vec4(-b.s * b.hx * 2, 0.0, b.c * b.hz * 2, b.cz - view_origin.z)
+    model[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    mesh_xf(m, model)
+}
+
+fn draw_things() {
+    for i in 0..room.nfrag {
+        let p = at(room.frag_x[i], 0.0, room.frag_z[i])
+        if fragile_down[i] { mesh_at(mb_fallen.m, p, 0.6) } else { mesh_at(mb_stack.m, p, 0.0) }
+    }
+    for i in 0..MAX_TOYS {
+        let y = &toys[i]
+        if y.on { mesh_at(mb_toy.m, at(y.x, 0.0, y.z), y.head) }
+    }
+    for i in 0..MAX_BELLS {
+        let b = &bells[i]
+        if b.on { mesh_at(mb_bell.m, at(b.x, 0.0, b.z), 0.0) }
+    }
+}
+
+fn draw_people() {
+    for i in 0..room.nwatch {
+        let g = &guards[i]
+        if room.watch[i].kind == WKind.Camera {
+            mesh_at(mb_cam.m, at(g.x, 0.0, g.z), g.head)
+        } else {
+            mesh_at(mb_guard.m, at(g.x, 0.0, g.z), g.head)
+        }
+    }
+    if thief.hidden {
+        // crouched in the hiding place: drawn low and dimmed, with a cool ring at his feet
+        // (draw_rings), so hiding reads at a glance
+        var model: mat4
+        let s = sin(thief.head)
+        let c = cos(thief.head)
+        model[0] = vec4(c, 0.0, s, thief.x - view_origin.x)
+        model[1] = vec4(0.0, 0.55, 0.0, room.floor - view_origin.y)
+        model[2] = vec4(-s, 0.0, c, thief.z - view_origin.z)
+        model[3] = vec4(0.0, 0.0, 0.0, 1.0)
+        mesh_xf(mb_hidden.m, model)
+    } else {
+        mesh_at(mb_thief.m, at(thief.x, 0.0, thief.z), thief.head)
+    }
+    // the ghost: the best attempt so far, at this tick of the clock
+    if best.have && phase == Phase.Play && clock < best.ticks {
+        let p = ghost_at(clock)
+        mesh_at(mb_ghost.m, at(p.x, 0.0, p.y), 0.0)
+    }
+}
+
+// Each watcher's fan as the polygon tested: the apex and the 17 rays' ends, 16 triangles.
+fn draw_cones() {
+    depth_offset(6)
+    for i in 0..room.nwatch {
+        let g = &guards[i]
+        let f = &g.fan
+        let b = &mb_cones[i]
+        mb_reset(b)
+        let _ = mb_vert(b, 0.0, 0.0, 0.0)
+        for k in 0..RAYS { let _ = mb_vert(b, f.px[k] - f.ax, 0.0, f.pz[k] - f.az) }
+        var col = COL_CONE
+        if g.caught && phase == Phase.Caught { col = COL_CONE_HOT }
+        for k in 0..RAYS - 1 { mb_tri(b, 0, k + 2, k + 1, col, FACE_SEMI | FACE_DOUBLE, BLEND_HALF) }
+        mesh_at(b.m, at(f.ax, CONE_Y, f.az), 0.0)
+    }
+    depth_offset(0)
+}
+
+fn ring_colour(col: u32) {
+    for k in 0..mb_ring.nf {
+        let f = &mb_ring.f[k]
+        f.col[0] = col
+        f.col[1] = col
+        f.col[2] = col
+        f.col[3] = col
+    }
+}
+
+fn ring_at(x: fixed, z: fixed, r: fixed, col: u32) {
+    if r < 0.05 { return }
+    ring_colour(col)
+    var model: mat4
+    model[0] = vec4(r, 0.0, 0.0, x - view_origin.x)
+    model[1] = vec4(0.0, 1.0, 0.0, room.floor + 0.04 - view_origin.y)
+    model[2] = vec4(0.0, 0.0, r, z - view_origin.z)
+    model[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    mesh_xf(mb_ring.m, model)
+}
+
+// Noise: the running thief's ring (as far as the guards hear him), and rings spreading from a
+// bell, a fragile thing and the toys' clicks.
+fn draw_rings() {
+    depth_offset(8)
+    // hiding: a ring closes onto him as he goes in (12 ticks), a cool ring stays at his feet while
+    // he hides, and one opens out as he comes out
+    let ht = clock - thief.hide_t
+    if thief.hidden {
+        if ht < 12 { ring_at(thief.x, thief.z, 1.2 - fixed(ht) * 0.06, rgb(150, 190, 230)) }
+        ring_at(thief.x, thief.z, 0.5, rgb(50, 80, 120))
+    } else if ht < 12 && phase == Phase.Play {
+        ring_at(thief.x, thief.z, 0.5 + fixed(ht) * 0.07, col_scale(rgb(150, 190, 230), 1.0 - fixed(ht) / 12))
+    }
+    if thief.running && room.hear_max > 0.0 {
+        ring_at(thief.x, thief.z, room.hear_max, rgb(110, 90, 70))
+    }
+    for i in 0..MAX_BELLS {
+        let b = &bells[i]
+        if b.on && b.rang_at >= 0 && clock - b.rang_at < 30 {
+            ring_at(b.x, b.z, BELL_NOISE * (clock - b.rang_at + 1) / 30, rgb(130, 140, 90))
+        }
+    }
+    for i in 0..room.nfrag {
+        if fragile_down[i] && clock - fragile_at[i] < 30 {
+            ring_at(room.frag_x[i], room.frag_z[i], room.frag_noise[i] * (clock - fragile_at[i] + 1) / 30, rgb(140, 90, 120))
+        }
+    }
+    for i in 0..MAX_TOYS {
+        let y = &toys[i]
+        if y.on && y.ticks > 0 {
+            let p = (TOY_TICKS - y.ticks) % 30
+            ring_at(y.x, y.z, TOY_NOISE * (p + 1) / 30, rgb(50, 90, 60))
+        }
+    }
+    depth_offset(0)
+}
+
+// The marks over the picture: the "!" over a caught thief, and cones off the screen's sides.
+fn draw_marks() {
+    if phase == Phase.Caught {
+        let p = project_point(at(thief.x, 2.3, thief.z))
+        if p.z >= 0 {
+            rect(p.x - 5, p.y - 14, 11, 15, rgb(230, 30, 30))
+            text(p.x - 3, p.y - 11, "!", rgb(255, 255, 255))
+        }
+    }
+    // cones whose apex is off the screen's side but that reach within 2 m of it
+    let left = cam_x - HALF_VIEW
+    let right = cam_x + HALF_VIEW
+    for i in 0..room.nwatch {
+        let f = &guards[i].fan
+        if f.x1 < left && f.x1 > left - 2.0 {
+            let p = project_point(at(left, 0.0, f.az))
+            mark_edge(4, p.y, true)
+        } else if f.x0 > right && f.x0 < right + 2.0 {
+            let p = project_point(at(right, 0.0, f.az))
+            mark_edge(315, p.y, false)
+        }
+    }
+}
+
+fn mark_edge(x: s32, y: s32, left: bool) {
+    let yy = clamp(y, 8, 230)
+    if left {
+        tri_fill(x - 3, yy, x + 4, yy - 6, x + 4, yy + 6, rgb(255, 230, 120), BLEND_NONE)
+    } else {
+        tri_fill(x + 3, yy, x - 4, yy - 6, x - 4, yy + 6, rgb(255, 230, 120), BLEND_NONE)
+    }
+}
+
+var hud_buf: [96]u8
+
+fn draw_hud() {
+    let b = &hud_buf[0]
+    if phase == Phase.Clear {
+        // the run's end: a line a room, then the run's total
+        let n = run_room + 1
+        let y0 = 120 - (n + 1) * 6
+        rect_blend(40, y0 - 6, 240, (n + 1) * 12 + 12, rgb(10, 12, 24), BLEND_HALF)
+        for k in 0..n {
+            str_copy(b, 96, "ROOM ")
+            str_append_int(b, 96, k + 1, 0, false)
+            str_append(b, 96, "   ")
+            str_append_ticks(b, 96, room_time[k])
+            str_append(b, 96, "   RESTARTS ")
+            str_append_int(b, 96, room_restarts[k], 0, false)
+            let _ = font_text_align(160, y0 + k * 12, b, rgb(220, 220, 220), ALIGN_CENTRE)
+        }
+        str_copy(b, 96, "TOTAL ")
+        str_append_ticks(b, 96, total)
+        str_append(b, 96, "   RESTARTS ")
+        str_append_int(b, 96, run_restarts(), 0, false)
+        let _ = font_text_align(160, y0 + n * 12 + 2, b, rgb(255, 236, 170), ALIGN_CENTRE)
+        return
+    }
+    str_copy(b, 96, "")
+    if run_room > 0 || room_load_more() {
+        str_append(b, 96, "ROOM ")
+        str_append_int(b, 96, run_room + 1, 0, false)
+        str_append(b, 96, "  ")
+    }
+    str_append_ticks(b, 96, clock)
+    str_append(b, 96, "  R")
+    str_append_int(b, 96, restarts, 0, false)
+    font_shadow(rgb(0, 0, 0))
+    font_text(6, 4, b, rgb(230, 230, 230))
+    // the tools, the selected one bright; nothing when the room gives none
+    var x = 6
+    if room.toys > 0 {
+        str_copy(b, 96, "TOY ")
+        str_append_int(b, 96, thief.toys, 0, false)
+        x = font_text(x, 228, b, if_c(thief.tool == Tool.Toy, rgb(130, 255, 160), rgb(110, 120, 120))) + 10
+    }
+    if room.bells > 0 {
+        str_copy(b, 96, "BELL ")
+        str_append_int(b, 96, thief.bells, 0, false)
+        x = font_text(x, 228, b, if_c(thief.tool == Tool.Bell, rgb(130, 255, 160), rgb(110, 120, 120))) + 10
+    }
+    if thief.hidden { let _ = font_text(x + 6, 228, "HIDDEN", rgb(140, 200, 255)) }
+    font_shadow_off()
+}
+
+fn if_c(c: bool, a: u32, b: u32) -> u32 {
+    if c { return a }
+    return b
+}
+
+// Ticks as m:ss.t
+fn str_append_ticks(b: *u8, cap: s32, t: s32) -> *u8 {
+    let s = t / 60
+    str_append_time(b, cap, s)
+    str_append(b, cap, ".")
+    str_append_int(b, cap, (t % 60) / 6, 0, false)
+    return b
+}

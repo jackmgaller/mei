@@ -1,0 +1,785 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "pf_shell",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 900
+ },
+ "lighting": {
+  "direction": [
+   -0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "materials": {
+  "slab": {
+   "color": "#3a3f4a"
+  },
+  "cut": {
+   "color": "#a8b2c4"
+  },
+  "bed": {
+   "color": "#2a2c31"
+  },
+  "rail": {
+   "color": "#707680"
+  },
+  "platform": {
+   "color": "#8c9098"
+  },
+  "platform_side": {
+   "color": "#5c6068"
+  },
+  "edge_line": {
+   "color": "#d0b440"
+  },
+  "walkway": {
+   "color": "#7a7e86"
+  },
+  "wall": {
+   "color": "#4c5462"
+  },
+  "tunnel": {
+   "color": "#14161a"
+  },
+  "stair": {
+   "color": "#9a9ea6"
+  },
+  "stair_side": {
+   "color": "#5c6470"
+  },
+  "hide": {
+   "color": "#3c5c8c"
+  },
+  "hide_floor": {
+   "color": "#283c5c"
+  },
+  "door": {
+   "color": "#3c7c5c"
+  },
+  "door_light": {
+   "color": "#7cf0a0",
+   "class": "emissive"
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    30.5,
+    0.3,
+    11.5
+   ],
+   "material": "slab",
+   "transform": {
+    "translate": [
+     16.0,
+     -1.25,
+     6.5
+    ]
+   },
+   "faces": {
+    "top": "bed",
+    "back": "cut",
+    "left": "cut",
+    "right": "cut"
+   }
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    30.5,
+    2.1,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     16.0,
+     -0.05,
+     0.875
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "platform",
+   "op": "box",
+   "size": [
+    30.0,
+    1.1,
+    4.2
+   ],
+   "material": "platform_side",
+   "transform": {
+    "translate": [
+     16.0,
+     -0.55,
+     5.5
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ],
+   "faces": {
+    "top": "platform"
+   },
+   "decals": [
+    {
+     "id": "edge_a",
+     "face": "top",
+     "material": "edge_line",
+     "size": [
+      29.9,
+      0.3
+     ],
+     "at": [
+      0,
+      -1.45
+     ]
+    },
+    {
+     "id": "edge_b",
+     "face": "top",
+     "material": "edge_line",
+     "size": [
+      29.9,
+      0.3
+     ],
+     "at": [
+      0,
+      1.45
+     ]
+    }
+   ]
+  },
+  {
+   "id": "walkway",
+   "op": "box",
+   "size": [
+    30.0,
+    1.1,
+    1.22
+   ],
+   "material": "platform_side",
+   "transform": {
+    "translate": [
+     16.0,
+     -0.55,
+     10.61
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "faces": {
+    "top": "walkway"
+   },
+   "decals": [
+    {
+     "id": "edge_w",
+     "face": "top",
+     "material": "edge_line",
+     "size": [
+      29.9,
+      0.15
+     ],
+     "at": [
+      0,
+      -0.31
+     ]
+    }
+   ]
+  },
+  {
+   "id": "rail_al",
+   "op": "box",
+   "size": [
+    30.5,
+    0.17,
+    0.07
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     16.0,
+     -1.025,
+     1.665
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "rail_ar",
+   "op": "box",
+   "size": [
+    30.5,
+    0.17,
+    0.07
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     16.0,
+     -1.025,
+     2.735
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "rail_bl",
+   "op": "box",
+   "size": [
+    30.5,
+    0.17,
+    0.07
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     16.0,
+     -1.025,
+     8.265
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "rail_br",
+   "op": "box",
+   "size": [
+    30.5,
+    0.17,
+    0.07
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     16.0,
+     -1.025,
+     9.335
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "back_wall_w",
+   "op": "box",
+   "size": [
+    23.75,
+    3.5,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     12.625,
+     0.65,
+     11.325
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "back_wall_e",
+   "op": "box",
+   "size": [
+    5.75,
+    3.5,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     28.375,
+     0.65,
+     11.325
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   },
+   "decals": [
+    {
+     "id": "door",
+     "face": "back",
+     "material": "door",
+     "size": [
+      1.0,
+      2.1
+     ],
+     "at": [
+      1.125,
+      0.4
+     ]
+    },
+    {
+     "id": "door_light",
+     "face": "back",
+     "material": "door_light",
+     "size": [
+      0.5,
+      0.14
+     ],
+     "at": [
+      1.125,
+      1.6
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cupboard_back",
+   "op": "box",
+   "size": [
+    1.5,
+    3.5,
+    0.25
+   ],
+   "material": "hide",
+   "transform": {
+    "translate": [
+     25.0,
+     0.65,
+     12.125
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "cupboard_w",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    0.55
+   ],
+   "material": "hide",
+   "transform": {
+    "translate": [
+     24.375,
+     0.65,
+     11.725
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "cupboard_e",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    0.55
+   ],
+   "material": "hide",
+   "transform": {
+    "translate": [
+     25.625,
+     0.65,
+     11.725
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "cupboard_floor",
+   "op": "box",
+   "size": [
+    1.02,
+    1.1,
+    0.79
+   ],
+   "material": "platform_side",
+   "transform": {
+    "translate": [
+     25.0,
+     -0.55,
+     11.615
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "left",
+    "right",
+    "front"
+   ],
+   "faces": {
+    "top": "hide_floor"
+   }
+  },
+  {
+   "id": "end_w_plat",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    4.2
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.875,
+     0.65,
+     5.5
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_w_walk",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    1.2
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.875,
+     0.65,
+     10.6
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_w_lintel_a",
+   "op": "box",
+   "size": [
+    0.25,
+    0.2,
+    2.4
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.875,
+     2.3,
+     2.2
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "bottom": "tunnel"
+   }
+  },
+  {
+   "id": "end_w_lintel_b",
+   "op": "box",
+   "size": [
+    0.25,
+    0.2,
+    2.4
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.875,
+     2.3,
+     8.8
+    ]
+   },
+   "open": [
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "bottom": "tunnel"
+   }
+  },
+  {
+   "id": "end_e_plat",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    4.2
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     31.125,
+     0.65,
+     5.5
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_walk",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    1.2
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     31.125,
+     0.65,
+     10.6
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_lintel_a",
+   "op": "box",
+   "size": [
+    0.25,
+    0.2,
+    2.4
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     31.125,
+     2.3,
+     2.2
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "bottom": "tunnel"
+   }
+  },
+  {
+   "id": "end_e_lintel_b",
+   "op": "box",
+   "size": [
+    0.25,
+    0.2,
+    2.4
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     31.125,
+     2.3,
+     8.8
+    ]
+   },
+   "open": [
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "bottom": "tunnel"
+   }
+  },
+  {
+   "id": "stair",
+   "op": "extrude",
+   "material": "stair",
+   "depth": 2.0,
+   "points": [
+    [
+     0.98,
+     -0.02
+    ],
+    [
+     4.4,
+     -0.02
+    ],
+    [
+     4.4,
+     0.2
+    ],
+    [
+     4.1,
+     0.2
+    ],
+    [
+     4.1,
+     0.4
+    ],
+    [
+     3.8,
+     0.4
+    ],
+    [
+     3.8,
+     0.6
+    ],
+    [
+     3.5,
+     0.6
+    ],
+    [
+     3.5,
+     0.8
+    ],
+    [
+     3.2,
+     0.8
+    ],
+    [
+     3.2,
+     1.0
+    ],
+    [
+     2.9,
+     1.0
+    ],
+    [
+     2.9,
+     1.2
+    ],
+    [
+     2.6,
+     1.2
+    ],
+    [
+     2.6,
+     1.4
+    ],
+    [
+     2.3,
+     1.4
+    ],
+    [
+     2.3,
+     1.6
+    ],
+    [
+     2.0,
+     1.6
+    ],
+    [
+     2.0,
+     1.8
+    ],
+    [
+     1.7,
+     1.8
+    ],
+    [
+     1.7,
+     2.0
+    ],
+    [
+     1.4,
+     2.0
+    ],
+    [
+     1.4,
+     2.2
+    ],
+    [
+     0.98,
+     2.2
+    ]
+   ],
+   "faces": {
+    "front": "stair_side",
+    "back": "stair_side"
+   },
+   "transform": {
+    "translate": [
+     0,
+     0,
+     5.5
+    ]
+   }
+  }
+ ]
+}

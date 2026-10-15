@@ -1,0 +1,27 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "aquarium",
+ "placements": [
+  {
+   "id": "r5_room_shell",
+   "asset": "aq_room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "aq_col"
+  },
+  {
+   "id": "r5_tanks",
+   "asset": "aq_tanks",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

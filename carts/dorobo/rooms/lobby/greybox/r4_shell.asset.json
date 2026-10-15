@@ -1,0 +1,455 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "r4_shell",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 500
+ },
+ "lighting": {
+  "direction": [
+   -0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "materials": {
+  "cut": {
+   "color": "#a8b2c4"
+  },
+  "desk": {
+   "color": "#7a6a5a"
+  },
+  "escalator": {
+   "color": "#7c8088"
+  },
+  "escalator_side": {
+   "color": "#4c5058"
+  },
+  "floor_dark": {
+   "color": "#6c7078"
+  },
+  "lift": {
+   "color": "#9c9070"
+  },
+  "plant": {
+   "color": "#4c7c4c"
+  },
+  "tile": {
+   "color": "#9aa0a6"
+  },
+  "wall": {
+   "color": "#4c5462"
+  },
+  "wall_light": {
+   "color": "#6c7484"
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    14.5,
+    0.4,
+    10.0
+   ],
+   "material": "floor_dark",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.2,
+     0.0
+    ]
+   },
+   "faces": {
+    "top": "tile",
+    "back": "cut"
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    14.5,
+    1.0,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.0,
+     0.5,
+     -4.875
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "back_wall",
+   "op": "box",
+   "size": [
+    14.5,
+    2.4,
+    0.25
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     0.0,
+     1.2,
+     4.875
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_w_front",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -7.125,
+     1.2,
+     -4.625
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_w_back",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    7.65
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -7.125,
+     1.2,
+     0.925
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "entry_lintel",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.6
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -7.125,
+     2.245,
+     -3.7
+    ]
+   },
+   "open": [
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "end_e",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    9.5
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     7.125,
+     1.2,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   },
+   "decals": [
+    {
+     "id": "lift_0",
+     "face": "left",
+     "material": "lift",
+     "size": [
+      2.0,
+      2.0
+     ],
+     "at": [
+      -0.0,
+      -0.19
+     ]
+    }
+   ]
+  },
+  {
+   "id": "desk",
+   "op": "box",
+   "size": [
+    3.2,
+    1.0,
+    0.9
+   ],
+   "material": "desk",
+   "transform": {
+    "translate": [
+     0.0,
+     0.5,
+     -0.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "planter_0",
+   "op": "box",
+   "size": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "material": "plant",
+   "transform": {
+    "translate": [
+     -5.4,
+     0.5,
+     0.6
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "planter_1",
+   "op": "box",
+   "size": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "material": "plant",
+   "transform": {
+    "translate": [
+     3.6,
+     0.5,
+     -2.2
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "escalator",
+   "op": "extrude",
+   "material": "escalator",
+   "depth": 0.95,
+   "points": [
+    [
+     7.03,
+     -0.02
+    ],
+    [
+     1.0,
+     -0.02
+    ],
+    [
+     1.0,
+     0.19
+    ],
+    [
+     1.5025,
+     0.19
+    ],
+    [
+     1.5025,
+     0.38
+    ],
+    [
+     2.005,
+     0.38
+    ],
+    [
+     2.005,
+     0.57
+    ],
+    [
+     2.5075,
+     0.57
+    ],
+    [
+     2.5075,
+     0.76
+    ],
+    [
+     3.01,
+     0.76
+    ],
+    [
+     3.01,
+     0.95
+    ],
+    [
+     3.5125,
+     0.95
+    ],
+    [
+     3.5125,
+     1.14
+    ],
+    [
+     4.015,
+     1.14
+    ],
+    [
+     4.015,
+     1.33
+    ],
+    [
+     4.5175,
+     1.33
+    ],
+    [
+     4.5175,
+     1.52
+    ],
+    [
+     5.02,
+     1.52
+    ],
+    [
+     5.02,
+     1.71
+    ],
+    [
+     5.5225,
+     1.71
+    ],
+    [
+     5.5225,
+     1.9
+    ],
+    [
+     6.025,
+     1.9
+    ],
+    [
+     6.025,
+     2.09
+    ],
+    [
+     6.5275,
+     2.09
+    ],
+    [
+     6.5275,
+     2.28
+    ],
+    [
+     7.03,
+     2.28
+    ]
+   ],
+   "faces": {
+    "front": "escalator_side",
+    "back": "escalator_side"
+   },
+   "transform": {
+    "translate": [
+     0,
+     0,
+     4.125
+    ]
+   }
+  },
+  {
+   "id": "balustrade",
+   "op": "box",
+   "size": [
+    6.0,
+    1.0,
+    0.13
+   ],
+   "material": "escalator_side",
+   "transform": {
+    "translate": [
+     4.0,
+     0.5,
+     3.565
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  }
+ ],
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

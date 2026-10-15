@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "r1_bench_col",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 40
+ },
+ "materials": {
+  "floor": {
+   "color": "#8c9098"
+  }
+ },
+ "nodes": [
+  {
+   "id": "bench",
+   "op": "box",
+   "size": [
+    1.8,
+    0.47,
+    0.45
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     0.0,
+     0.215,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

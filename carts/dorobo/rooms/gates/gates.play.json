@@ -1,0 +1,486 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "gates",
+ "entities": [
+  {
+   "id": "r2_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "entry": "r2_spawn",
+    "exit": "r2_exit",
+    "size": [
+     13.5,
+     2.4,
+     9.0
+    ]
+   }
+  },
+  {
+   "id": "r2_spawn",
+   "type": "spawn",
+   "position": [
+    -3.6,
+    0,
+    -2.9
+   ],
+   "params": {
+    "yaw": 90
+   }
+  },
+  {
+   "id": "r2_exit",
+   "type": "exit",
+   "position": [
+    6.2,
+    0,
+    -2.6
+   ],
+   "params": {
+    "size": [
+     0.6,
+     2.0,
+     2.0
+    ]
+   }
+  },
+  {
+   "id": "r2_hide_lockers",
+   "type": "hide_spot",
+   "position": [
+    -4.5,
+    0,
+    3.8
+   ],
+   "params": {
+    "size": [
+     1.0,
+     1.7,
+     0.9
+    ]
+   }
+  },
+  {
+   "id": "r2_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -4.375
+   ],
+   "params": {
+    "size": [
+     13.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "r2_wall_back",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    4.375
+   ],
+   "params": {
+    "size": [
+     13.5,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "r2_wall_end_w",
+   "type": "wall",
+   "position": [
+    -6.625,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     8.5
+    ]
+   }
+  },
+  {
+   "id": "r2_wall_end_e_front",
+   "type": "wall",
+   "position": [
+    6.625,
+    0,
+    -3.925
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.65
+    ]
+   }
+  },
+  {
+   "id": "r2_wall_end_e_back",
+   "type": "wall",
+   "position": [
+    6.625,
+    0,
+    1.325
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     5.85
+    ]
+   }
+  },
+  {
+   "id": "r2_wall_stairwell",
+   "type": "wall",
+   "position": [
+    -5.34,
+    0,
+    -2.865
+   ],
+   "params": {
+    "size": [
+     2.32,
+     1.0,
+     2.77
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r2_wall_machines",
+   "type": "wall",
+   "position": [
+    -2.3,
+    0,
+    -4.0
+   ],
+   "params": {
+    "size": [
+     1.8,
+     1.0,
+     0.5
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r2_wall_office_w",
+   "type": "wall",
+   "position": [
+    -1.525,
+    0,
+    3.2
+   ],
+   "params": {
+    "size": [
+     0.15,
+     1.0,
+     2.1
+    ]
+   }
+  },
+  {
+   "id": "r2_wall_office_e",
+   "type": "wall",
+   "position": [
+    1.525,
+    0,
+    3.2
+   ],
+   "params": {
+    "size": [
+     0.15,
+     1.0,
+     2.1
+    ]
+   }
+  },
+  {
+   "id": "r2_wall_office_window",
+   "type": "wall",
+   "position": [
+    -0.425,
+    0,
+    2.225
+   ],
+   "params": {
+    "size": [
+     2.05,
+     1.0,
+     0.15
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r2_wall_office_jamb",
+   "type": "wall",
+   "position": [
+    1.375,
+    0,
+    2.225
+   ],
+   "params": {
+    "size": [
+     0.15,
+     1.0,
+     0.15
+    ]
+   }
+  },
+  {
+   "id": "r2_wall_lockers_w",
+   "type": "wall",
+   "position": [
+    -5.75,
+    0,
+    3.8
+   ],
+   "params": {
+    "size": [
+     1.5,
+     2.0,
+     0.9
+    ]
+   }
+  },
+  {
+   "id": "r2_wall_lockers_e",
+   "type": "wall",
+   "position": [
+    -3.3,
+    0,
+    3.8
+   ],
+   "params": {
+    "size": [
+     1.4,
+     2.0,
+     0.9
+    ]
+   }
+  },
+  {
+   "id": "r2_wall_gate_0",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -3.85
+   ],
+   "params": {
+    "size": [
+     0.6,
+     1.0,
+     0.25
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r2_wall_gate_1",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -2.65
+   ],
+   "params": {
+    "size": [
+     0.6,
+     1.0,
+     0.25
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r2_wall_gate_2",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -1.45
+   ],
+   "params": {
+    "size": [
+     0.6,
+     1.0,
+     0.25
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r2_wall_gate_3",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -0.25
+   ],
+   "params": {
+    "size": [
+     0.6,
+     1.0,
+     0.25
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r2_wall_gate_4",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    0.95
+   ],
+   "params": {
+    "size": [
+     0.6,
+     1.0,
+     0.25
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r2_wall_gate_barrier",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    1.6125
+   ],
+   "params": {
+    "size": [
+     0.6,
+     1.0,
+     1.075
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r2_wp_aisle_e",
+   "type": "waypoint",
+   "position": [
+    2.4,
+    0,
+    -2.05
+   ],
+   "params": {
+    "next": "r2_wp_aisle_w",
+    "wait": 0,
+    "look": 270
+   }
+  },
+  {
+   "id": "r2_wp_aisle_w",
+   "type": "waypoint",
+   "position": [
+    -2.6,
+    0,
+    -2.05
+   ],
+   "params": {
+    "next": "r2_wp_lockers",
+    "wait": 30,
+    "look": 270
+   }
+  },
+  {
+   "id": "r2_wp_lockers",
+   "type": "waypoint",
+   "position": [
+    -3.2,
+    0,
+    2.3
+   ],
+   "params": {
+    "next": "r2_wp_back_w",
+    "wait": 90,
+    "look": 300
+   }
+  },
+  {
+   "id": "r2_wp_back_w",
+   "type": "waypoint",
+   "position": [
+    -2.6,
+    0,
+    0.35
+   ],
+   "params": {
+    "next": "r2_wp_back_e",
+    "wait": 0,
+    "look": 90
+   }
+  },
+  {
+   "id": "r2_wp_back_e",
+   "type": "waypoint",
+   "position": [
+    2.4,
+    0,
+    0.35
+   ],
+   "params": {
+    "next": "r2_wp_office",
+    "wait": 0,
+    "look": 90
+   }
+  },
+  {
+   "id": "r2_wp_office",
+   "type": "waypoint",
+   "position": [
+    0.95,
+    0,
+    1.75
+   ],
+   "params": {
+    "next": "r2_wp_aisle_e",
+    "wait": 120,
+    "look": 180
+   }
+  },
+  {
+   "id": "r2_guard",
+   "type": "guard",
+   "position": [
+    2.4,
+    0,
+    0.4
+   ],
+   "yaw": 180.0,
+   "params": {
+    "kind": "patrol",
+    "route": "r2_wp_aisle_e",
+    "speed": 0.9,
+    "sight": 4.5,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 180
+   }
+  }
+ ],
+ "paths": {}
+}

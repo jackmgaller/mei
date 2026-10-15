@@ -1,0 +1,361 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "r4_lobby_col",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 400
+ },
+ "lighting": {
+  "direction": [
+   -0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "materials": {
+  "floor": {
+   "color": "#8c9098"
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    14.5,
+    0.4,
+    10.0
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.2,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front",
+    "back"
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    14.5,
+    1.0,
+    0.25
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     0.0,
+     0.5,
+     -4.875
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "back_wall",
+   "op": "box",
+   "size": [
+    14.5,
+    2.4,
+    0.25
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     0.0,
+     1.2,
+     4.875
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "end_w_front",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    0.25
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -7.125,
+     1.2,
+     -4.625
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "back"
+   ]
+  },
+  {
+   "id": "end_w_back",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    7.65
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -7.125,
+     1.2,
+     0.925
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "end_e",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    9.5
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     7.125,
+     1.2,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "desk",
+   "op": "box",
+   "size": [
+    3.2,
+    1.0,
+    0.9
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     0.0,
+     0.5,
+     -0.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "planter_0",
+   "op": "box",
+   "size": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -5.4,
+     0.5,
+     0.6
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "planter_1",
+   "op": "box",
+   "size": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     3.6,
+     0.5,
+     -2.2
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "balustrade",
+   "op": "box",
+   "size": [
+    6.0,
+    1.0,
+    0.13
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     4.0,
+     0.5,
+     3.565
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "right"
+   ]
+  },
+  {
+   "id": "steps",
+   "op": "extrude",
+   "material": "floor",
+   "depth": 0.92,
+   "points": [
+    [
+     7.03,
+     -0.02
+    ],
+    [
+     1.0,
+     -0.02
+    ],
+    [
+     1.0,
+     0.19
+    ],
+    [
+     1.5025,
+     0.19
+    ],
+    [
+     1.5025,
+     0.38
+    ],
+    [
+     2.005,
+     0.38
+    ],
+    [
+     2.005,
+     0.57
+    ],
+    [
+     2.5075,
+     0.57
+    ],
+    [
+     2.5075,
+     0.76
+    ],
+    [
+     3.01,
+     0.76
+    ],
+    [
+     3.01,
+     0.95
+    ],
+    [
+     3.5125,
+     0.95
+    ],
+    [
+     3.5125,
+     1.14
+    ],
+    [
+     4.015,
+     1.14
+    ],
+    [
+     4.015,
+     1.33
+    ],
+    [
+     4.5175,
+     1.33
+    ],
+    [
+     4.5175,
+     1.52
+    ],
+    [
+     5.02,
+     1.52
+    ],
+    [
+     5.02,
+     1.71
+    ],
+    [
+     5.5225,
+     1.71
+    ],
+    [
+     5.5225,
+     1.9
+    ],
+    [
+     6.025,
+     1.9
+    ],
+    [
+     6.025,
+     2.09
+    ],
+    [
+     6.5275,
+     2.09
+    ],
+    [
+     6.5275,
+     2.28
+    ],
+    [
+     7.03,
+     2.28
+    ]
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0,
+     4.145
+    ]
+   }
+  }
+ ]
+}

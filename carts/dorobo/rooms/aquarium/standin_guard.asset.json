@@ -1,0 +1,271 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "standin_guard",
+ "budget": {
+  "vertices": 256,
+  "triangles": 250
+ },
+ "materials": {
+  "uniform": {
+   "color": "#8a9cbc"
+  },
+  "trousers": {
+   "color": "#2a3650"
+  },
+  "skin": {
+   "color": "#d8b8a0"
+  },
+  "cap": {
+   "color": "#202c48"
+  },
+  "shadow": {
+   "color": "#0a0c10",
+   "blend": "sub"
+  },
+  "torch": {
+   "color": "#fff0b0",
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "guard_leg_l",
+   "op": "box",
+   "size": [
+    0.14,
+    0.82,
+    0.18
+   ],
+   "material": "trousers",
+   "transform": {
+    "translate": [
+     -0.1,
+     0.41,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "guard_leg_r",
+   "op": "box",
+   "size": [
+    0.14,
+    0.82,
+    0.18
+   ],
+   "material": "trousers",
+   "transform": {
+    "translate": [
+     0.1,
+     0.41,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "guard_torso",
+   "op": "box",
+   "size": [
+    0.46,
+    0.62,
+    0.26
+   ],
+   "material": "uniform",
+   "transform": {
+    "translate": [
+     0.0,
+     1.11,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "guard_arm_l",
+   "op": "box",
+   "size": [
+    0.12,
+    0.6,
+    0.14
+   ],
+   "material": "uniform",
+   "transform": {
+    "translate": [
+     -0.27,
+     1.08,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "guard_arm_r",
+   "op": "box",
+   "size": [
+    0.12,
+    0.6,
+    0.14
+   ],
+   "material": "uniform",
+   "transform": {
+    "translate": [
+     0.27,
+     1.08,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "guard_head",
+   "op": "sphere",
+   "radius": 1.0,
+   "rings": 4,
+   "segments": 8,
+   "material": "skin",
+   "transform": {
+    "scale": [
+     0.13,
+     0.145,
+     0.13
+    ],
+    "translate": [
+     0.0,
+     1.555,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "guard_cap",
+   "op": "cylinder",
+   "radius": 0.15,
+   "height": 0.09,
+   "segments": 8,
+   "material": "cap",
+   "transform": {
+    "translate": [
+     0.0,
+     1.655,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "guard_peak",
+   "op": "box",
+   "size": [
+    0.2,
+    0.025,
+    0.14
+   ],
+   "material": "cap",
+   "transform": {
+    "translate": [
+     0.0,
+     1.6325,
+     -0.17
+    ]
+   }
+  },
+  {
+   "id": "torch",
+   "op": "box",
+   "size": [
+    0.09,
+    0.08,
+    0.26
+   ],
+   "material": "torch",
+   "transform": {
+    "translate": [
+     0.265,
+     1.04,
+     -0.19
+    ]
+   }
+  },
+  {
+   "id": "guard_shadow",
+   "op": "mesh",
+   "material": "shadow",
+   "vertices": [
+    [
+     0.29125,
+     0.02,
+     -0.17634
+    ],
+    [
+     0.11125,
+     0.02,
+     -0.28532
+    ],
+    [
+     -0.11125,
+     0.02,
+     -0.28532
+    ],
+    [
+     -0.29125,
+     0.02,
+     -0.17634
+    ],
+    [
+     -0.36,
+     0.02,
+     0.0
+    ],
+    [
+     -0.29125,
+     0.02,
+     0.17634
+    ],
+    [
+     -0.11125,
+     0.02,
+     0.28532
+    ],
+    [
+     0.11125,
+     0.02,
+     0.28532
+    ],
+    [
+     0.29125,
+     0.02,
+     0.17634
+    ],
+    [
+     0.36,
+     0.02,
+     0.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9
+    ]
+   ]
+  }
+ ],
+ "lighting": {
+  "direction": [
+   -0.2,
+   1.0,
+   0.6
+  ],
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

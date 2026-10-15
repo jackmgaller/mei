@@ -1,0 +1,2074 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "r2_concourse",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 1400
+ },
+ "materials": {
+  "cut": {
+   "color": "#76849e",
+   "class": "emissive"
+  },
+  "section": {
+   "color": "#4a5468",
+   "texture": {
+    "image": "art/r2_section.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_front": {
+   "color": "#a8a294",
+   "texture": {
+    "image": "art/r2_floor_front.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_back": {
+   "color": "#a8a294",
+   "texture": {
+    "image": "art/r2_floor_back.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "wall_back": {
+   "color": "#b4b0a4",
+   "texture": {
+    "image": "art/r2_wall.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "lockers_w": {
+   "color": "#8a96a4",
+   "texture": {
+    "image": "art/r2_lockers_w.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "lockers_e": {
+   "color": "#8a96a4",
+   "texture": {
+    "image": "art/r2_lockers_e.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "faremap": {
+   "color": "#c8d0d8",
+   "texture": {
+    "image": "art/r2_faremap.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "sign": {
+   "color": "#3a6ab0",
+   "texture": {
+    "image": "art/r2_sign.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "clock": {
+   "color": "#e0e0d8",
+   "texture": {
+    "image": "art/r2_clock.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "gate_top": {
+   "color": "#b0b8c0",
+   "texture": {
+    "image": "art/r2_gate_top.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "screen": {
+   "color": "#3c5c90",
+   "texture": {
+    "image": "art/r2_machine.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "crt_screen": {
+   "color": "#2c7468",
+   "texture": {
+    "image": "art/r2_crt.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "wall_in": {
+   "color": "#7a8292"
+  },
+  "end": {
+   "color": "#a4acb8"
+  },
+  "way_up": {
+   "color": "#d8e6f4",
+   "class": "emissive"
+  },
+  "well_wall": {
+   "color": "#68707e"
+  },
+  "well_tread": {
+   "color": "#a4aab2"
+  },
+  "well_tread2": {
+   "color": "#9ca2aa"
+  },
+  "well_riser": {
+   "color": "#7c828c"
+  },
+  "well_nose": {
+   "color": "#c8bc84"
+  },
+  "rail": {
+   "color": "#9aa2ae"
+  },
+  "cap": {
+   "color": "#d4dae2"
+  },
+  "office_out": {
+   "color": "#a8a29a"
+  },
+  "office_in": {
+   "color": "#c0aa88"
+  },
+  "ledge": {
+   "color": "#8a8274"
+  },
+  "door": {
+   "color": "#7c8a96"
+  },
+  "desk": {
+   "color": "#8a8a84"
+  },
+  "desk_top": {
+   "color": "#9a9488",
+   "texture": {
+    "image": "art/r2_desk.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "crt_body": {
+   "color": "#c4c0b4"
+  },
+  "lamp": {
+   "color": "#ffd890",
+   "class": "emissive"
+  },
+  "chair": {
+   "color": "#4a5470"
+  },
+  "cabinet": {
+   "color": "#8e9aa6"
+  },
+  "cabinet_top": {
+   "color": "#a4aeb8"
+  },
+  "frame": {
+   "color": "#5c626c"
+  },
+  "locker_side": {
+   "color": "#7e8a98"
+  },
+  "locker_top": {
+   "color": "#5a6470"
+  },
+  "gate": {
+   "color": "#c8ccd4"
+  },
+  "machine": {
+   "color": "#8a98aa"
+  },
+  "carton": {
+   "color": "#b08a5c"
+  }
+ },
+ "nodes": [
+  {
+   "id": "floor_front",
+   "op": "mesh",
+   "material": "floor_front",
+   "vertices": [
+    [
+     -4.3,
+     0.0,
+     -1.6
+    ],
+    [
+     -6.5,
+     0.0,
+     -1.6
+    ],
+    [
+     -6.5,
+     0.0,
+     0.0
+    ],
+    [
+     6.5,
+     0.0,
+     0.0
+    ],
+    [
+     6.5,
+     0.0,
+     -1.6
+    ],
+    [
+     6.75,
+     0.0,
+     -1.6
+    ],
+    [
+     6.75,
+     0.0,
+     -3.6
+    ],
+    [
+     6.5,
+     0.0,
+     -3.6
+    ],
+    [
+     6.5,
+     0.0,
+     -4.25
+    ],
+    [
+     -4.3,
+     0.0,
+     -4.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9
+    ]
+   ]
+  },
+  {
+   "id": "floor_back",
+   "op": "mesh",
+   "material": "floor_back",
+   "vertices": [
+    [
+     -6.5,
+     0.0,
+     4.25
+    ],
+    [
+     6.5,
+     0.0,
+     4.25
+    ],
+    [
+     6.5,
+     0.0,
+     0.0
+    ],
+    [
+     -6.5,
+     0.0,
+     0.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "well",
+   "op": "mesh",
+   "material": "well_wall",
+   "vertices": [
+    [
+     -6.5,
+     0.0,
+     -1.6
+    ],
+    [
+     -4.3,
+     0.0,
+     -1.6
+    ],
+    [
+     -4.3,
+     -2.2,
+     -1.6
+    ],
+    [
+     -6.5,
+     -2.2,
+     -1.6
+    ],
+    [
+     -4.575,
+     -0.2,
+     -1.6
+    ],
+    [
+     -4.36,
+     -0.2,
+     -1.6
+    ],
+    [
+     -4.36,
+     -0.2,
+     -4.25
+    ],
+    [
+     -4.575,
+     -0.2,
+     -4.25
+    ],
+    [
+     -4.3,
+     -0.2,
+     -1.6
+    ],
+    [
+     -4.3,
+     -0.2,
+     -4.25
+    ],
+    [
+     -4.3,
+     0.0,
+     -4.25
+    ],
+    [
+     -4.85,
+     -0.4,
+     -1.6
+    ],
+    [
+     -4.635,
+     -0.4,
+     -1.6
+    ],
+    [
+     -4.635,
+     -0.4,
+     -4.25
+    ],
+    [
+     -4.85,
+     -0.4,
+     -4.25
+    ],
+    [
+     -4.575,
+     -0.4,
+     -1.6
+    ],
+    [
+     -4.575,
+     -0.4,
+     -4.25
+    ],
+    [
+     -5.125,
+     -0.6,
+     -1.6
+    ],
+    [
+     -4.91,
+     -0.6,
+     -1.6
+    ],
+    [
+     -4.91,
+     -0.6,
+     -4.25
+    ],
+    [
+     -5.125,
+     -0.6,
+     -4.25
+    ],
+    [
+     -4.85,
+     -0.6,
+     -1.6
+    ],
+    [
+     -4.85,
+     -0.6,
+     -4.25
+    ],
+    [
+     -5.4,
+     -0.8,
+     -1.6
+    ],
+    [
+     -5.185,
+     -0.8,
+     -1.6
+    ],
+    [
+     -5.185,
+     -0.8,
+     -4.25
+    ],
+    [
+     -5.4,
+     -0.8,
+     -4.25
+    ],
+    [
+     -5.125,
+     -0.8,
+     -1.6
+    ],
+    [
+     -5.125,
+     -0.8,
+     -4.25
+    ],
+    [
+     -5.675,
+     -1.0,
+     -1.6
+    ],
+    [
+     -5.46,
+     -1.0,
+     -1.6
+    ],
+    [
+     -5.46,
+     -1.0,
+     -4.25
+    ],
+    [
+     -5.675,
+     -1.0,
+     -4.25
+    ],
+    [
+     -5.4,
+     -1.0,
+     -1.6
+    ],
+    [
+     -5.4,
+     -1.0,
+     -4.25
+    ],
+    [
+     -5.95,
+     -1.2,
+     -1.6
+    ],
+    [
+     -5.735,
+     -1.2,
+     -1.6
+    ],
+    [
+     -5.735,
+     -1.2,
+     -4.25
+    ],
+    [
+     -5.95,
+     -1.2,
+     -4.25
+    ],
+    [
+     -5.675,
+     -1.2,
+     -1.6
+    ],
+    [
+     -5.675,
+     -1.2,
+     -4.25
+    ],
+    [
+     -6.225,
+     -1.4,
+     -1.6
+    ],
+    [
+     -6.01,
+     -1.4,
+     -1.6
+    ],
+    [
+     -6.01,
+     -1.4,
+     -4.25
+    ],
+    [
+     -6.225,
+     -1.4,
+     -4.25
+    ],
+    [
+     -5.95,
+     -1.4,
+     -1.6
+    ],
+    [
+     -5.95,
+     -1.4,
+     -4.25
+    ],
+    [
+     -6.5,
+     -1.6,
+     -1.6
+    ],
+    [
+     -6.285,
+     -1.6,
+     -1.6
+    ],
+    [
+     -6.285,
+     -1.6,
+     -4.25
+    ],
+    [
+     -6.5,
+     -1.6,
+     -4.25
+    ],
+    [
+     -6.225,
+     -1.6,
+     -1.6
+    ],
+    [
+     -6.225,
+     -1.6,
+     -4.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     5,
+     8,
+     9,
+     6
+    ],
+    [
+     8,
+     1,
+     10,
+     9
+    ],
+    [
+     11,
+     12,
+     13,
+     14
+    ],
+    [
+     12,
+     15,
+     16,
+     13
+    ],
+    [
+     15,
+     4,
+     7,
+     16
+    ],
+    [
+     17,
+     18,
+     19,
+     20
+    ],
+    [
+     18,
+     21,
+     22,
+     19
+    ],
+    [
+     21,
+     11,
+     14,
+     22
+    ],
+    [
+     23,
+     24,
+     25,
+     26
+    ],
+    [
+     24,
+     27,
+     28,
+     25
+    ],
+    [
+     27,
+     17,
+     20,
+     28
+    ],
+    [
+     29,
+     30,
+     31,
+     32
+    ],
+    [
+     30,
+     33,
+     34,
+     31
+    ],
+    [
+     33,
+     23,
+     26,
+     34
+    ],
+    [
+     35,
+     36,
+     37,
+     38
+    ],
+    [
+     36,
+     39,
+     40,
+     37
+    ],
+    [
+     39,
+     29,
+     32,
+     40
+    ],
+    [
+     41,
+     42,
+     43,
+     44
+    ],
+    [
+     42,
+     45,
+     46,
+     43
+    ],
+    [
+     45,
+     35,
+     38,
+     46
+    ],
+    [
+     47,
+     48,
+     49,
+     50
+    ],
+    [
+     48,
+     51,
+     52,
+     49
+    ],
+    [
+     51,
+     41,
+     44,
+     52
+    ]
+   ],
+   "face_materials": [
+    "well_wall",
+    "well_tread",
+    "well_nose",
+    "well_riser",
+    "well_tread2",
+    "well_nose",
+    "well_riser",
+    "well_tread",
+    "well_nose",
+    "well_riser",
+    "well_tread2",
+    "well_nose",
+    "well_riser",
+    "well_tread",
+    "well_nose",
+    "well_riser",
+    "well_tread2",
+    "well_nose",
+    "well_riser",
+    "well_tread",
+    "well_nose",
+    "well_riser",
+    "well_tread2",
+    "well_nose",
+    "well_riser"
+   ]
+  },
+  {
+   "id": "rail_n",
+   "op": "box",
+   "size": [
+    2.32,
+    0.95,
+    0.12
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     -5.34,
+     0.475,
+     -1.54
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "cap"
+   }
+  },
+  {
+   "id": "rail_e",
+   "op": "box",
+   "size": [
+    0.12,
+    0.95,
+    2.65
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     -4.24,
+     0.475,
+     -2.925
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cap"
+   }
+  },
+  {
+   "id": "front_wall",
+   "op": "mesh",
+   "material": "cut",
+   "vertices": [
+    [
+     -6.75,
+     1.0,
+     -4.5
+    ],
+    [
+     6.75,
+     1.0,
+     -4.5
+    ],
+    [
+     6.75,
+     -0.4,
+     -4.5
+    ],
+    [
+     -4.3,
+     -0.4,
+     -4.5
+    ],
+    [
+     -4.3,
+     -2.2,
+     -4.5
+    ],
+    [
+     -6.75,
+     -2.2,
+     -4.5
+    ],
+    [
+     -6.75,
+     -2.2,
+     -4.25
+    ],
+    [
+     -4.3,
+     -2.2,
+     -4.25
+    ],
+    [
+     -4.3,
+     -0.4,
+     -4.25
+    ],
+    [
+     6.75,
+     -0.4,
+     -4.25
+    ],
+    [
+     6.75,
+     1.0,
+     -4.25
+    ],
+    [
+     -6.75,
+     1.0,
+     -4.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ],
+    [
+     2,
+     1,
+     10,
+     9
+    ],
+    [
+     1,
+     0,
+     11,
+     10
+    ],
+    [
+     0,
+     5,
+     6,
+     11
+    ]
+   ],
+   "face_materials": [
+    "section",
+    "wall_in",
+    "cut",
+    "cut",
+    "cut"
+   ]
+  },
+  {
+   "id": "back_wall",
+   "op": "box",
+   "size": [
+    13.5,
+    2.8,
+    0.25
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     0.0,
+     1.0,
+     4.375
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "wall_back"
+   }
+  },
+  {
+   "id": "end_w_low",
+   "op": "box",
+   "size": [
+    0.25,
+    2.2,
+    2.65
+   ],
+   "material": "well_wall",
+   "transform": {
+    "translate": [
+     -6.625,
+     -1.1,
+     -2.925
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "top"
+   ],
+   "faces": {
+    "left": "cut"
+   }
+  },
+  {
+   "id": "end_w",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    8.5
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -6.625,
+     1.2,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "left": "cut"
+   }
+  },
+  {
+   "id": "end_w_slab",
+   "op": "box",
+   "size": [
+    0.25,
+    0.4,
+    5.85
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     -6.625,
+     -0.2,
+     1.325
+    ]
+   },
+   "open": [
+    "top",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "end_e_front",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    0.65
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     6.625,
+     1.0,
+     -3.925
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut",
+    "right": "cut"
+   }
+  },
+  {
+   "id": "end_e_back",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    5.85
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     6.625,
+     1.0,
+     1.325
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "right": "cut"
+   }
+  },
+  {
+   "id": "exit_lintel",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    2.0
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     6.625,
+     2.245,
+     -2.6
+    ]
+   },
+   "open": [
+    "back",
+    "front"
+   ],
+   "faces": {
+    "bottom": "way_up",
+    "top": "cut",
+    "right": "cut"
+   }
+  },
+  {
+   "id": "threshold_slab",
+   "op": "box",
+   "size": [
+    0.25,
+    0.38,
+    2.0
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     6.625,
+     -0.21,
+     -2.6
+    ]
+   },
+   "open": [
+    "top",
+    "left",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "office_w",
+   "op": "box",
+   "size": [
+    0.15,
+    1.02,
+    2.1
+   ],
+   "material": "office_out",
+   "transform": {
+    "translate": [
+     -1.525,
+     0.49,
+     3.2
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "right": "office_in"
+   }
+  },
+  {
+   "id": "office_e",
+   "op": "box",
+   "size": [
+    0.15,
+    1.02,
+    2.1
+   ],
+   "material": "office_out",
+   "transform": {
+    "translate": [
+     1.525,
+     0.49,
+     3.2
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "left": "office_in"
+   }
+  },
+  {
+   "id": "office_sill",
+   "op": "box",
+   "size": [
+    2.05,
+    0.82,
+    0.15
+   ],
+   "material": "office_out",
+   "transform": {
+    "translate": [
+     -0.425,
+     0.39,
+     2.225
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "ledge",
+    "front": "office_in"
+   }
+  },
+  {
+   "id": "office_jamb",
+   "op": "box",
+   "size": [
+    0.15,
+    1.02,
+    0.15
+   ],
+   "material": "office_out",
+   "transform": {
+    "translate": [
+     1.375,
+     0.49,
+     2.225
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "office_door",
+   "op": "box",
+   "size": [
+    0.04,
+    1.02,
+    0.69
+   ],
+   "material": "door",
+   "transform": {
+    "translate": [
+     1.41,
+     0.49,
+     2.675
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "desk",
+   "op": "box",
+   "size": [
+    1.75,
+    0.77,
+    0.61
+   ],
+   "material": "desk",
+   "transform": {
+    "translate": [
+     -0.475,
+     0.365,
+     3.925
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "desk_top"
+   }
+  },
+  {
+   "id": "crt",
+   "op": "box",
+   "size": [
+    0.45,
+    0.38,
+    0.4
+   ],
+   "material": "crt_body",
+   "transform": {
+    "translate": [
+     -0.775,
+     0.93,
+     3.98
+    ]
+   },
+   "faces": {
+    "back": "crt_screen"
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "lamp_shade",
+   "op": "cone",
+   "radius": 0.11,
+   "height": 0.14,
+   "segments": 6,
+   "material": "lamp",
+   "caps": true,
+   "transform": {
+    "translate": [
+     -0.15,
+     1.0,
+     3.88
+    ]
+   }
+  },
+  {
+   "id": "lamp_arm",
+   "op": "box",
+   "size": [
+    0.02,
+    0.21,
+    0.03
+   ],
+   "material": "crt_body",
+   "transform": {
+    "translate": [
+     -0.12,
+     0.845,
+     3.965
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "chair_seat",
+   "op": "box",
+   "size": [
+    0.45,
+    0.07,
+    0.45
+   ],
+   "material": "chair",
+   "transform": {
+    "translate": [
+     -0.775,
+     0.455,
+     3.275
+    ]
+   }
+  },
+  {
+   "id": "chair_back",
+   "op": "box",
+   "size": [
+    0.45,
+    0.43,
+    0.07
+   ],
+   "material": "chair",
+   "transform": {
+    "translate": [
+     -0.775,
+     0.685,
+     3.005
+    ]
+   }
+  },
+  {
+   "id": "chair_post",
+   "op": "box",
+   "size": [
+    0.05,
+    0.45,
+    0.05
+   ],
+   "material": "crt_body",
+   "transform": {
+    "translate": [
+     -0.775,
+     0.205,
+     3.275
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "cabinet",
+   "op": "box",
+   "size": [
+    0.65,
+    1.32,
+    0.51
+   ],
+   "material": "cabinet",
+   "transform": {
+    "translate": [
+     0.925,
+     0.64,
+     3.975
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cabinet_top"
+   }
+  },
+  {
+   "id": "sign",
+   "op": "box",
+   "size": [
+    0.55,
+    0.5,
+    0.08
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     -0.725,
+     1.85,
+     4.23
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "sign"
+   }
+  },
+  {
+   "id": "clock",
+   "op": "box",
+   "size": [
+    0.36,
+    0.36,
+    0.07
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     0.55,
+     1.85,
+     4.235
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "clock"
+   }
+  },
+  {
+   "id": "lockers_w",
+   "op": "box",
+   "size": [
+    1.5,
+    2.02,
+    0.9
+   ],
+   "material": "locker_side",
+   "transform": {
+    "translate": [
+     -5.75,
+     0.99,
+     3.8
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "left"
+   ],
+   "faces": {
+    "back": "lockers_w",
+    "top": "locker_top"
+   }
+  },
+  {
+   "id": "lockers_e",
+   "op": "box",
+   "size": [
+    1.4,
+    2.02,
+    0.9
+   ],
+   "material": "locker_side",
+   "transform": {
+    "translate": [
+     -3.3,
+     0.99,
+     3.8
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "back": "lockers_e",
+    "top": "locker_top"
+   }
+  },
+  {
+   "id": "gate_0",
+   "op": "box",
+   "size": [
+    0.6,
+    1.0,
+    0.25
+   ],
+   "material": "gate",
+   "transform": {
+    "translate": [
+     0.0,
+     0.48,
+     -3.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "gate_top"
+   }
+  },
+  {
+   "id": "gate_1",
+   "op": "box",
+   "size": [
+    0.6,
+    1.0,
+    0.25
+   ],
+   "material": "gate",
+   "transform": {
+    "translate": [
+     0.0,
+     0.48,
+     -2.65
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "gate_top"
+   }
+  },
+  {
+   "id": "gate_2",
+   "op": "box",
+   "size": [
+    0.6,
+    1.0,
+    0.25
+   ],
+   "material": "gate",
+   "transform": {
+    "translate": [
+     0.0,
+     0.48,
+     -1.45
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "gate_top"
+   }
+  },
+  {
+   "id": "gate_3",
+   "op": "box",
+   "size": [
+    0.6,
+    1.0,
+    0.25
+   ],
+   "material": "gate",
+   "transform": {
+    "translate": [
+     0.0,
+     0.48,
+     -0.25
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "gate_top"
+   }
+  },
+  {
+   "id": "gate_4",
+   "op": "box",
+   "size": [
+    0.6,
+    1.0,
+    0.25
+   ],
+   "material": "gate",
+   "transform": {
+    "translate": [
+     0.0,
+     0.48,
+     0.95
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "gate_top"
+   }
+  },
+  {
+   "id": "barrier",
+   "op": "box",
+   "size": [
+    0.12,
+    0.74,
+    1.075
+   ],
+   "material": "gate",
+   "transform": {
+    "translate": [
+     0.0,
+     0.35,
+     1.6125
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "back"
+   ],
+   "faces": {
+    "top": "cap"
+   }
+  },
+  {
+   "id": "machine_0",
+   "op": "box",
+   "size": [
+    0.56,
+    0.77,
+    0.5
+   ],
+   "material": "machine",
+   "transform": {
+    "translate": [
+     -2.9,
+     0.365,
+     -4.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "top"
+   ]
+  },
+  {
+   "id": "console_0",
+   "op": "mesh",
+   "material": "machine",
+   "vertices": [
+    [
+     -3.18,
+     0.75,
+     -3.75
+    ],
+    [
+     -2.62,
+     0.75,
+     -3.75
+    ],
+    [
+     -2.62,
+     0.95,
+     -4.25
+    ],
+    [
+     -3.18,
+     0.95,
+     -4.25
+    ],
+    [
+     -3.18,
+     0.75,
+     -4.25
+    ],
+    [
+     -2.62,
+     0.75,
+     -4.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     0,
+     3,
+     4
+    ],
+    [
+     5,
+     2,
+     1
+    ]
+   ],
+   "face_materials": [
+    "screen",
+    "machine",
+    "machine"
+   ]
+  },
+  {
+   "id": "machine_1",
+   "op": "box",
+   "size": [
+    0.56,
+    0.77,
+    0.5
+   ],
+   "material": "machine",
+   "transform": {
+    "translate": [
+     -2.3,
+     0.365,
+     -4.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "top"
+   ]
+  },
+  {
+   "id": "console_1",
+   "op": "mesh",
+   "material": "machine",
+   "vertices": [
+    [
+     -2.58,
+     0.75,
+     -3.75
+    ],
+    [
+     -2.02,
+     0.75,
+     -3.75
+    ],
+    [
+     -2.02,
+     0.95,
+     -4.25
+    ],
+    [
+     -2.58,
+     0.95,
+     -4.25
+    ],
+    [
+     -2.58,
+     0.75,
+     -4.25
+    ],
+    [
+     -2.02,
+     0.75,
+     -4.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     0,
+     3,
+     4
+    ],
+    [
+     5,
+     2,
+     1
+    ]
+   ],
+   "face_materials": [
+    "screen",
+    "machine",
+    "machine"
+   ]
+  },
+  {
+   "id": "machine_2",
+   "op": "box",
+   "size": [
+    0.56,
+    0.77,
+    0.5
+   ],
+   "material": "machine",
+   "transform": {
+    "translate": [
+     -1.7,
+     0.365,
+     -4.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "top"
+   ]
+  },
+  {
+   "id": "console_2",
+   "op": "mesh",
+   "material": "machine",
+   "vertices": [
+    [
+     -1.98,
+     0.75,
+     -3.75
+    ],
+    [
+     -1.42,
+     0.75,
+     -3.75
+    ],
+    [
+     -1.42,
+     0.95,
+     -4.25
+    ],
+    [
+     -1.98,
+     0.95,
+     -4.25
+    ],
+    [
+     -1.98,
+     0.75,
+     -4.25
+    ],
+    [
+     -1.42,
+     0.75,
+     -4.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     0,
+     3,
+     4
+    ],
+    [
+     5,
+     2,
+     1
+    ]
+   ],
+   "face_materials": [
+    "screen",
+    "machine",
+    "machine"
+   ]
+  },
+  {
+   "id": "carton_a",
+   "op": "box",
+   "size": [
+    0.55,
+    0.32,
+    0.55
+   ],
+   "material": "carton",
+   "transform": {
+    "translate": [
+     -6.025,
+     2.14,
+     3.875
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "carton_b",
+   "op": "box",
+   "size": [
+    0.4,
+    0.22,
+    0.4
+   ],
+   "material": "carton",
+   "transform": {
+    "translate": [
+     -3.2,
+     2.09,
+     3.9
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "faremap",
+   "op": "box",
+   "size": [
+    3.0,
+    0.95,
+    0.08
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     4.0,
+     1.525,
+     4.23
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "faremap"
+   }
+  }
+ ],
+ "lighting": {
+  "direction": [
+   -0.25,
+   0.7,
+   -0.65
+  ],
+  "ambient": 0.12,
+  "diffuse": 0.2,
+  "lights": [
+   {
+    "id": "office_lamp",
+    "at": [
+     -0.15,
+     1.05,
+     3.85
+    ],
+    "color": "#ffbe74",
+    "intensity": 1.8,
+    "range": 2.4
+   },
+   {
+    "id": "office_ceiling",
+    "at": [
+     0.0,
+     2.7,
+     3.2
+    ],
+    "color": "#ffe2b8",
+    "intensity": 1.7,
+    "range": 5.0
+   },
+   {
+    "id": "hall_w",
+    "at": [
+     -3.4,
+     2.7,
+     0.3
+    ],
+    "color": "#e8f0f0",
+    "intensity": 1.6,
+    "range": 4.6
+   },
+   {
+    "id": "hall_e",
+    "at": [
+     3.3,
+     2.7,
+     0.3
+    ],
+    "color": "#e8f0f0",
+    "intensity": 1.4,
+    "range": 4.4
+   },
+   {
+    "id": "hall_front",
+    "at": [
+     2.8,
+     2.7,
+     -2.7
+    ],
+    "color": "#e8f0f0",
+    "intensity": 1.3,
+    "range": 4.0
+   },
+   {
+    "id": "lockers",
+    "at": [
+     -4.5,
+     2.5,
+     2.3
+    ],
+    "color": "#cfe6f0",
+    "intensity": 1.5,
+    "range": 3.4
+   },
+   {
+    "id": "machines",
+    "at": [
+     -2.3,
+     0.95,
+     -3.55
+    ],
+    "color": "#a8d4ff",
+    "intensity": 1.6,
+    "range": 2.6
+   },
+   {
+    "id": "well",
+    "at": [
+     -6.1,
+     -1.7,
+     -2.9
+    ],
+    "color": "#d2eaf0",
+    "intensity": 2.0,
+    "range": 2.8
+   },
+   {
+    "id": "way_up",
+    "at": [
+     7.1,
+     1.6,
+     -2.6
+    ],
+    "color": "#e6f0ff",
+    "intensity": 2.4,
+    "range": 4.0
+   }
+  ],
+  "refine": {
+   "tolerance": 22,
+   "max_added": 220
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

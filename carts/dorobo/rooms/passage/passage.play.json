@@ -1,0 +1,265 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "passage",
+ "entities": [
+  {
+   "id": "r3_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "entry": "r3_spawn",
+    "exit": "r3_exit",
+    "size": [
+     22.5,
+     2.4,
+     7.3
+    ]
+   }
+  },
+  {
+   "id": "r3_spawn",
+   "type": "spawn",
+   "position": [
+    -10.4,
+    0,
+    -1.6
+   ],
+   "params": {
+    "yaw": 90
+   }
+  },
+  {
+   "id": "r3_exit",
+   "type": "exit",
+   "position": [
+    10.7,
+    0,
+    -2.5
+   ],
+   "params": {
+    "size": [
+     0.6,
+     2.0,
+     1.8
+    ]
+   }
+  },
+  {
+   "id": "r3_camera",
+   "type": "guard",
+   "position": [
+    10.85,
+    2.3,
+    2.9
+   ],
+   "params": {
+    "kind": "camera",
+    "look_a": 235,
+    "look_b": 285,
+    "hold": 60,
+    "turn": 210,
+    "phase": 0,
+    "sight": 13.0,
+    "fov": 34
+   }
+  },
+  {
+   "id": "r3_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -3.525
+   ],
+   "params": {
+    "size": [
+     22.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "r3_wall_back",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    3.525
+   ],
+   "params": {
+    "size": [
+     22.5,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "r3_wall_end_w_front",
+   "type": "wall",
+   "position": [
+    -11.125,
+    0,
+    -3.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.8
+    ]
+   }
+  },
+  {
+   "id": "r3_wall_end_w_back",
+   "type": "wall",
+   "position": [
+    -11.125,
+    0,
+    1.4
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     4.0
+    ]
+   }
+  },
+  {
+   "id": "r3_wall_end_e",
+   "type": "wall",
+   "position": [
+    11.125,
+    0,
+    0.9
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     5.0
+    ]
+   }
+  },
+  {
+   "id": "r3_wall_entry_beyond",
+   "type": "wall",
+   "position": [
+    -11.4,
+    0,
+    -1.6
+   ],
+   "params": {
+    "size": [
+     0.3,
+     2.4,
+     2.0
+    ]
+   }
+  },
+  {
+   "id": "r3_wall_exit_beyond",
+   "type": "wall",
+   "position": [
+    11.4,
+    0,
+    -2.5
+   ],
+   "params": {
+    "size": [
+     0.3,
+     2.4,
+     1.8
+    ]
+   }
+  },
+  {
+   "id": "r3_wall_pillar_0",
+   "type": "wall",
+   "position": [
+    -6.5,
+    0,
+    0.6
+   ],
+   "params": {
+    "size": [
+     0.8,
+     1.0,
+     0.8
+    ]
+   }
+  },
+  {
+   "id": "r3_wall_pillar_1",
+   "type": "wall",
+   "position": [
+    -2.5,
+    0,
+    -1.4
+   ],
+   "params": {
+    "size": [
+     0.8,
+     1.0,
+     0.8
+    ]
+   }
+  },
+  {
+   "id": "r3_wall_pillar_2",
+   "type": "wall",
+   "position": [
+    1.5,
+    0,
+    0.6
+   ],
+   "params": {
+    "size": [
+     0.8,
+     1.0,
+     0.8
+    ]
+   }
+  },
+  {
+   "id": "r3_wall_pillar_3",
+   "type": "wall",
+   "position": [
+    5.5,
+    0,
+    -1.4
+   ],
+   "params": {
+    "size": [
+     0.8,
+     1.0,
+     0.8
+    ]
+   }
+  },
+  {
+   "id": "r3_wall_machine_0",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -3.15
+   ],
+   "params": {
+    "size": [
+     1.2,
+     1.0,
+     0.5
+    ]
+   }
+  }
+ ],
+ "paths": {}
+}

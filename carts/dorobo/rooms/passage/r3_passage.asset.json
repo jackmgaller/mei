@@ -1,0 +1,1979 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "r3_passage",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 2400
+ },
+ "materials": {
+  "cut": {
+   "color": "#8c9ab4",
+   "class": "emissive"
+  },
+  "ground_0": {
+   "color": "#3a3230",
+   "class": "emissive",
+   "texture": {
+    "image": "art/ground_0.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "ground_1": {
+   "color": "#3a3230",
+   "class": "emissive",
+   "texture": {
+    "image": "art/ground_1.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "jamb": {
+   "color": "#8a8c90"
+  },
+  "end_wall": {
+   "color": "#a8a69c",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#c8c6ba",
+     "#9a988e"
+    ],
+    "size": 16,
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "projection": "box",
+    "scale": [
+     0.3,
+     0.3
+    ]
+   }
+  },
+  "lintel": {
+   "color": "#76787e"
+  },
+  "door_light": {
+   "color": "#ffd8a8",
+   "class": "emissive"
+  },
+  "pillar": {
+   "color": "#c4c2b4",
+   "texture": {
+    "image": "art/pillar.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "pillar_cut": {
+   "color": "#8c9ab4",
+   "class": "emissive",
+   "texture": {
+    "image": "art/pillar_cut.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "machine": {
+   "color": "#c8d4e4"
+  },
+  "machine_side": {
+   "color": "#3c64b4"
+  },
+  "machine_top": {
+   "color": "#e0e8f4",
+   "class": "emissive",
+   "texture": {
+    "image": "art/machine_top.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "bin": {
+   "color": "#8c98a4"
+  },
+  "bin_top": {
+   "color": "#96a0a8",
+   "texture": {
+    "image": "art/bin_top.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "sign_box": {
+   "color": "#50525a"
+  },
+  "phone": {
+   "color": "#3c9c5c"
+  },
+  "phone_dark": {
+   "color": "#30343a"
+  },
+  "phone_lit": {
+   "color": "#b8f0c8",
+   "class": "emissive"
+  },
+  "shelf": {
+   "color": "#9a9ea4"
+  },
+  "hose_box": {
+   "color": "#a83028"
+  },
+  "hose_face": {
+   "color": "#c83028",
+   "texture": {
+    "image": "art/hose.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "hose_lamp": {
+   "color": "#ff4030",
+   "class": "emissive"
+  },
+  "vinyl": {
+   "color": "#e8f4ff",
+   "blend": "half",
+   "double_sided": true
+  },
+  "umbrella_rib": {
+   "color": "#e8eef4"
+  },
+  "umbrella_handle": {
+   "color": "#3a2c24"
+  },
+  "crate": {
+   "color": "#c09a30"
+  },
+  "crate_top": {
+   "color": "#c8a034",
+   "texture": {
+    "image": "art/crate_top.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "papers": {
+   "color": "#c8c4b4",
+   "texture": {
+    "image": "art/papers.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "bucket": {
+   "color": "#3c8c6c"
+  },
+  "floor_0": {
+   "color": "#5a6070",
+   "class": "emissive",
+   "texture": {
+    "image": "art/floor_0.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "sign_0": {
+   "color": "#e0e6f4",
+   "class": "emissive",
+   "texture": {
+    "image": "art/sign_0.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "floor_1": {
+   "color": "#5a6070",
+   "class": "emissive",
+   "texture": {
+    "image": "art/floor_1.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "sign_1": {
+   "color": "#f0b878",
+   "class": "emissive",
+   "texture": {
+    "image": "art/sign_1.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "floor_2": {
+   "color": "#5a6070",
+   "class": "emissive",
+   "texture": {
+    "image": "art/floor_2.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "sign_2": {
+   "color": "#f0b8d0",
+   "class": "emissive",
+   "texture": {
+    "image": "art/sign_2.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "wall_0": {
+   "color": "#6a6c70",
+   "class": "emissive",
+   "texture": {
+    "image": "art/wall_0.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "wall_1": {
+   "color": "#6a6c70",
+   "class": "emissive",
+   "texture": {
+    "image": "art/wall_1.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "floor",
+   "op": "mesh",
+   "material": "floor_0",
+   "vertices": [
+    [
+     -11.25,
+     0.0,
+     3.65
+    ],
+    [
+     -3.75,
+     0.0,
+     3.65
+    ],
+    [
+     -3.75,
+     0.0,
+     -3.65
+    ],
+    [
+     -11.25,
+     0.0,
+     -3.65
+    ],
+    [
+     3.75,
+     0.0,
+     3.65
+    ],
+    [
+     3.75,
+     0.0,
+     -3.65
+    ],
+    [
+     11.25,
+     0.0,
+     3.65
+    ],
+    [
+     11.25,
+     0.0,
+     -3.65
+    ],
+    [
+     -11.25,
+     1.0,
+     -3.65
+    ],
+    [
+     0.0,
+     1.0,
+     -3.65
+    ],
+    [
+     0.0,
+     -0.4,
+     -3.65
+    ],
+    [
+     -11.25,
+     -0.4,
+     -3.65
+    ],
+    [
+     11.25,
+     1.0,
+     -3.65
+    ],
+    [
+     11.25,
+     -0.4,
+     -3.65
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     1,
+     4,
+     5,
+     2
+    ],
+    [
+     4,
+     6,
+     7,
+     5
+    ],
+    [
+     8,
+     9,
+     10,
+     11
+    ],
+    [
+     9,
+     12,
+     13,
+     10
+    ]
+   ],
+   "face_materials": [
+    "floor_0",
+    "floor_1",
+    "floor_2",
+    "ground_0",
+    "ground_1"
+   ]
+  },
+  {
+   "id": "back_wall",
+   "op": "mesh",
+   "material": "wall_0",
+   "vertices": [
+    [
+     -11.25,
+     2.4,
+     3.4
+    ],
+    [
+     -9.5,
+     2.4,
+     3.4
+    ],
+    [
+     -9.5,
+     0.0,
+     3.4
+    ],
+    [
+     -11.25,
+     0.0,
+     3.4
+    ],
+    [
+     -5.5,
+     2.4,
+     3.4
+    ],
+    [
+     -4.5,
+     2.4,
+     3.4
+    ],
+    [
+     -4.5,
+     0.0,
+     3.4
+    ],
+    [
+     -5.5,
+     0.0,
+     3.4
+    ],
+    [
+     -0.5,
+     2.4,
+     3.4
+    ],
+    [
+     0.0,
+     2.4,
+     3.4
+    ],
+    [
+     0.0,
+     0.0,
+     3.4
+    ],
+    [
+     -0.5,
+     0.0,
+     3.4
+    ],
+    [
+     0.0,
+     2.4,
+     3.4
+    ],
+    [
+     0.5,
+     2.4,
+     3.4
+    ],
+    [
+     0.5,
+     0.0,
+     3.4
+    ],
+    [
+     0.0,
+     0.0,
+     3.4
+    ],
+    [
+     4.5,
+     2.4,
+     3.4
+    ],
+    [
+     11.25,
+     2.4,
+     3.4
+    ],
+    [
+     11.25,
+     0.0,
+     3.4
+    ],
+    [
+     4.5,
+     0.0,
+     3.4
+    ],
+    [
+     -5.5,
+     1.75,
+     3.4
+    ],
+    [
+     -9.5,
+     1.75,
+     3.4
+    ],
+    [
+     -9.5,
+     1.75,
+     3.6
+    ],
+    [
+     -5.5,
+     1.75,
+     3.6
+    ],
+    [
+     -5.5,
+     0.0,
+     3.6
+    ],
+    [
+     -9.5,
+     0.0,
+     3.6
+    ],
+    [
+     -9.5,
+     1.75,
+     3.4
+    ],
+    [
+     -9.5,
+     1.75,
+     3.6
+    ],
+    [
+     -9.5,
+     0.0,
+     3.6
+    ],
+    [
+     -9.5,
+     0.0,
+     3.4
+    ],
+    [
+     -5.5,
+     0.0,
+     3.4
+    ],
+    [
+     -5.5,
+     0.0,
+     3.6
+    ],
+    [
+     -5.5,
+     1.75,
+     3.6
+    ],
+    [
+     -5.5,
+     1.75,
+     3.4
+    ],
+    [
+     -0.5,
+     1.75,
+     3.4
+    ],
+    [
+     -4.5,
+     1.75,
+     3.4
+    ],
+    [
+     -4.5,
+     1.75,
+     3.6
+    ],
+    [
+     -0.5,
+     1.75,
+     3.6
+    ],
+    [
+     -0.5,
+     0.0,
+     3.6
+    ],
+    [
+     -4.5,
+     0.0,
+     3.6
+    ],
+    [
+     -4.5,
+     1.75,
+     3.4
+    ],
+    [
+     -4.5,
+     1.75,
+     3.6
+    ],
+    [
+     -4.5,
+     0.0,
+     3.6
+    ],
+    [
+     -4.5,
+     0.0,
+     3.4
+    ],
+    [
+     -0.5,
+     0.0,
+     3.4
+    ],
+    [
+     -0.5,
+     0.0,
+     3.6
+    ],
+    [
+     -0.5,
+     1.75,
+     3.6
+    ],
+    [
+     -0.5,
+     1.75,
+     3.4
+    ],
+    [
+     4.5,
+     1.75,
+     3.4
+    ],
+    [
+     0.5,
+     1.75,
+     3.4
+    ],
+    [
+     0.5,
+     1.75,
+     3.6
+    ],
+    [
+     4.5,
+     1.75,
+     3.6
+    ],
+    [
+     4.5,
+     0.0,
+     3.6
+    ],
+    [
+     0.5,
+     0.0,
+     3.6
+    ],
+    [
+     0.5,
+     1.75,
+     3.4
+    ],
+    [
+     0.5,
+     1.75,
+     3.6
+    ],
+    [
+     0.5,
+     0.0,
+     3.6
+    ],
+    [
+     0.5,
+     0.0,
+     3.4
+    ],
+    [
+     4.5,
+     0.0,
+     3.4
+    ],
+    [
+     4.5,
+     0.0,
+     3.6
+    ],
+    [
+     4.5,
+     1.75,
+     3.6
+    ],
+    [
+     4.5,
+     1.75,
+     3.4
+    ],
+    [
+     -11.25,
+     2.4,
+     3.65
+    ],
+    [
+     11.25,
+     2.4,
+     3.65
+    ],
+    [
+     11.25,
+     2.4,
+     3.4
+    ],
+    [
+     -11.25,
+     2.4,
+     3.4
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     8,
+     9,
+     10,
+     11
+    ],
+    [
+     12,
+     13,
+     14,
+     15
+    ],
+    [
+     16,
+     17,
+     18,
+     19
+    ],
+    [
+     1,
+     4,
+     20,
+     21
+    ],
+    [
+     22,
+     23,
+     24,
+     25
+    ],
+    [
+     26,
+     27,
+     28,
+     29
+    ],
+    [
+     30,
+     31,
+     32,
+     33
+    ],
+    [
+     5,
+     8,
+     34,
+     35
+    ],
+    [
+     36,
+     37,
+     38,
+     39
+    ],
+    [
+     40,
+     41,
+     42,
+     43
+    ],
+    [
+     44,
+     45,
+     46,
+     47
+    ],
+    [
+     13,
+     16,
+     48,
+     49
+    ],
+    [
+     50,
+     51,
+     52,
+     53
+    ],
+    [
+     54,
+     55,
+     56,
+     57
+    ],
+    [
+     58,
+     59,
+     60,
+     61
+    ],
+    [
+     62,
+     63,
+     64,
+     65
+    ]
+   ],
+   "face_materials": [
+    "wall_0",
+    "wall_0",
+    "wall_0",
+    "wall_1",
+    "wall_1",
+    "wall_0",
+    "wall_0",
+    "jamb",
+    "jamb",
+    "wall_0",
+    "wall_0",
+    "jamb",
+    "jamb",
+    "wall_1",
+    "wall_1",
+    "jamb",
+    "jamb",
+    "cut"
+   ],
+   "uvs": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.15556,
+     0.0
+    ],
+    [
+     0.15556,
+     1.0
+    ],
+    [
+     0.0,
+     1.0
+    ],
+    [
+     0.51111,
+     0.0
+    ],
+    [
+     0.6,
+     0.0
+    ],
+    [
+     0.6,
+     1.0
+    ],
+    [
+     0.51111,
+     1.0
+    ],
+    [
+     0.95556,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     1.0,
+     1.0
+    ],
+    [
+     0.95556,
+     1.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.04444,
+     0.0
+    ],
+    [
+     0.04444,
+     1.0
+    ],
+    [
+     0.0,
+     1.0
+    ],
+    [
+     0.4,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     1.0,
+     1.0
+    ],
+    [
+     0.4,
+     1.0
+    ],
+    [
+     0.51111,
+     0.27083
+    ],
+    [
+     0.15556,
+     0.27083
+    ],
+    [
+     0.15556,
+     0.27083
+    ],
+    [
+     0.51111,
+     0.27083
+    ],
+    [
+     0.51111,
+     1.0
+    ],
+    [
+     0.15556,
+     1.0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0.95556,
+     0.27083
+    ],
+    [
+     0.6,
+     0.27083
+    ],
+    [
+     0.6,
+     0.27083
+    ],
+    [
+     0.95556,
+     0.27083
+    ],
+    [
+     0.95556,
+     1.0
+    ],
+    [
+     0.6,
+     1.0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0.4,
+     0.27083
+    ],
+    [
+     0.04444,
+     0.27083
+    ],
+    [
+     0.04444,
+     0.27083
+    ],
+    [
+     0.4,
+     0.27083
+    ],
+    [
+     0.4,
+     1.0
+    ],
+    [
+     0.04444,
+     1.0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    22.5,
+    1.02,
+    0.25
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     0.0,
+     0.49,
+     -3.525
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "back"
+   ]
+  },
+  {
+   "id": "end_w_front",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    0.8
+   ],
+   "material": "end_wall",
+   "transform": {
+    "translate": [
+     -11.125,
+     1.18,
+     -3.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "end_w_back",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    4.01
+   ],
+   "material": "end_wall",
+   "transform": {
+    "translate": [
+     -11.125,
+     1.18,
+     1.405
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "entry_lintel",
+   "op": "box",
+   "size": [
+    0.226,
+    0.27,
+    2.02
+   ],
+   "material": "lintel",
+   "transform": {
+    "translate": [
+     -11.125,
+     2.235,
+     -1.6
+    ]
+   },
+   "open": [
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    5.01
+   ],
+   "material": "end_wall",
+   "transform": {
+    "translate": [
+     11.125,
+     1.18,
+     0.905
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "exit_lintel",
+   "op": "box",
+   "size": [
+    0.226,
+    0.27,
+    1.8
+   ],
+   "material": "lintel",
+   "transform": {
+    "translate": [
+     11.125,
+     2.235,
+     -2.49
+    ]
+   },
+   "open": [
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "bottom": "door_light"
+   }
+  },
+  {
+   "id": "pillar_0",
+   "op": "box",
+   "size": [
+    0.8,
+    1.02,
+    0.8
+   ],
+   "material": "pillar",
+   "transform": {
+    "translate": [
+     -6.5,
+     0.49,
+     0.6
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "pillar_cut"
+   }
+  },
+  {
+   "id": "pillar_1",
+   "op": "box",
+   "size": [
+    0.8,
+    1.02,
+    0.8
+   ],
+   "material": "pillar",
+   "transform": {
+    "translate": [
+     -2.5,
+     0.49,
+     -1.4
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "pillar_cut"
+   }
+  },
+  {
+   "id": "pillar_2",
+   "op": "box",
+   "size": [
+    0.8,
+    1.02,
+    0.8
+   ],
+   "material": "pillar",
+   "transform": {
+    "translate": [
+     1.5,
+     0.49,
+     0.6
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "pillar_cut"
+   }
+  },
+  {
+   "id": "pillar_3",
+   "op": "box",
+   "size": [
+    0.8,
+    1.02,
+    0.8
+   ],
+   "material": "pillar",
+   "transform": {
+    "translate": [
+     5.5,
+     0.49,
+     -1.4
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "pillar_cut"
+   }
+  },
+  {
+   "id": "machine",
+   "op": "box",
+   "size": [
+    1.2,
+    0.97,
+    0.5
+   ],
+   "material": "machine",
+   "transform": {
+    "translate": [
+     0.0,
+     0.465,
+     -3.15
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "machine_top",
+    "left": "machine_side",
+    "right": "machine_side"
+   }
+  },
+  {
+   "id": "bin",
+   "op": "box",
+   "size": [
+    0.32,
+    0.76,
+    0.28
+   ],
+   "material": "bin",
+   "transform": {
+    "translate": [
+     -0.86,
+     0.36,
+     -3.24
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "bin_top"
+   }
+  },
+  {
+   "id": "sign_0",
+   "op": "box",
+   "size": [
+    3.4,
+    0.44,
+    0.14
+   ],
+   "material": "sign_box",
+   "transform": {
+    "translate": [
+     -7.5,
+     2.08,
+     3.35
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "sign_0"
+   }
+  },
+  {
+   "id": "sign_1",
+   "op": "box",
+   "size": [
+    3.4,
+    0.44,
+    0.14
+   ],
+   "material": "sign_box",
+   "transform": {
+    "translate": [
+     -2.5,
+     2.08,
+     3.35
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "sign_1"
+   }
+  },
+  {
+   "id": "sign_2",
+   "op": "box",
+   "size": [
+    3.4,
+    0.44,
+    0.14
+   ],
+   "material": "sign_box",
+   "transform": {
+    "translate": [
+     2.5,
+     2.08,
+     3.35
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "sign_2"
+   }
+  },
+  {
+   "id": "payphone",
+   "op": "group",
+   "children": [
+    {
+     "id": "phone_shelf",
+     "op": "box",
+     "size": [
+      0.84,
+      0.05,
+      0.36
+     ],
+     "material": "shelf",
+     "transform": {
+      "translate": [
+       -5.0,
+       0.865,
+       3.24
+      ]
+     },
+     "open": [
+      "front"
+     ]
+    },
+    {
+     "id": "phone_body",
+     "op": "box",
+     "size": [
+      0.4,
+      0.545,
+      0.24
+     ],
+     "material": "phone",
+     "transform": {
+      "translate": [
+       -5.0,
+       1.1475,
+       3.3
+      ]
+     },
+     "open": [
+      "front",
+      "bottom"
+     ],
+     "faces": {
+      "top": "phone_dark"
+     }
+    },
+    {
+     "id": "phone_handset",
+     "op": "box",
+     "size": [
+      0.1,
+      0.24,
+      0.06
+     ],
+     "material": "phone_dark",
+     "transform": {
+      "translate": [
+       -5.12,
+       1.24,
+       3.16
+      ]
+     }
+    },
+    {
+     "id": "phone_sign",
+     "op": "box",
+     "size": [
+      0.44,
+      0.14,
+      0.08
+     ],
+     "material": "phone_lit",
+     "transform": {
+      "translate": [
+       -5.0,
+       1.69,
+       3.38
+      ]
+     },
+     "open": [
+      "front"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hose",
+   "op": "group",
+   "children": [
+    {
+     "id": "hose_box",
+     "op": "box",
+     "size": [
+      0.8,
+      0.72,
+      0.14
+     ],
+     "material": "hose_box",
+     "transform": {
+      "translate": [
+       -10.25,
+       0.76,
+       3.35
+      ]
+     },
+     "open": [
+      "front"
+     ],
+     "faces": {
+      "back": "hose_face"
+     }
+    },
+    {
+     "id": "hose_lamp",
+     "op": "sphere",
+     "radius": 0.07,
+     "rings": 3,
+     "segments": 6,
+     "material": "hose_lamp",
+     "transform": {
+      "translate": [
+       -10.25,
+       1.26,
+       3.36
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "umbrella",
+   "op": "group",
+   "children": [
+    {
+     "id": "canopy",
+     "op": "cone",
+     "radius": 0.48,
+     "height": 0.3,
+     "segments": 8,
+     "caps": false,
+     "material": "vinyl",
+     "transform": {
+      "rotate": [
+       0.0,
+       0.0,
+       62.0
+      ],
+      "translate": [
+       -5.55,
+       0.3,
+       1.55
+      ]
+     }
+    },
+    {
+     "id": "shaft",
+     "op": "box",
+     "size": [
+      0.78,
+      0.025,
+      0.025
+     ],
+     "material": "umbrella_rib",
+     "transform": {
+      "rotate": [
+       0.0,
+       0.0,
+       -28.0
+      ],
+      "translate": [
+       -5.19,
+       0.2,
+       1.53
+      ]
+     }
+    },
+    {
+     "id": "handle",
+     "op": "box",
+     "size": [
+      0.05,
+      0.12,
+      0.04
+     ],
+     "material": "umbrella_handle",
+     "transform": {
+      "translate": [
+       -4.82,
+       0.05,
+       1.53
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "morning",
+   "op": "group",
+   "children": [
+    {
+     "id": "crate",
+     "op": "box",
+     "size": [
+      0.5,
+      0.32,
+      0.38
+     ],
+     "material": "crate",
+     "transform": {
+      "translate": [
+       -1.17,
+       0.14,
+       3.11
+      ]
+     },
+     "open": [
+      "bottom"
+     ],
+     "faces": {
+      "top": "crate_top"
+     }
+    },
+    {
+     "id": "papers_0",
+     "op": "box",
+     "size": [
+      0.4,
+      0.24,
+      0.32
+     ],
+     "material": "papers",
+     "transform": {
+      "translate": [
+       -1.85,
+       0.1,
+       3.14
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "papers_1",
+     "op": "box",
+     "size": [
+      0.38,
+      0.19,
+      0.3
+     ],
+     "material": "papers",
+     "transform": {
+      "translate": [
+       -1.81,
+       0.305,
+       3.11
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "buckets",
+   "op": "group",
+   "children": [
+    {
+     "id": "bucket_0",
+     "op": "cylinder",
+     "radius": 0.17,
+     "height": 0.42,
+     "segments": 8,
+     "material": "bucket",
+     "transform": {
+      "translate": [
+       4.05,
+       0.2,
+       3.1
+      ]
+     }
+    },
+    {
+     "id": "bucket_1",
+     "op": "cylinder",
+     "radius": 0.17,
+     "height": 0.36,
+     "segments": 8,
+     "material": "bucket",
+     "transform": {
+      "translate": [
+       3.65,
+       0.17,
+       3.1
+      ]
+     }
+    },
+    {
+     "id": "bucket_2",
+     "op": "cylinder",
+     "radius": 0.15,
+     "height": 0.3,
+     "segments": 8,
+     "material": "bucket",
+     "transform": {
+      "translate": [
+       3.86,
+       0.14,
+       2.78
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "lighting": {
+  "direction": [
+   0.0,
+   1.0,
+   -0.25
+  ],
+  "ambient": 0.07,
+  "diffuse": 0.04,
+  "lights": [
+   {
+    "id": "tube_0",
+    "at": [
+     -8.3,
+     2.35,
+     -0.25
+    ],
+    "color": "#cdf0e0",
+    "intensity": 2.0,
+    "range": 3.5,
+    "shadows": true,
+    "radius": 0.3
+   },
+   {
+    "id": "tube_1",
+    "at": [
+     -2.9,
+     2.35,
+     -0.25
+    ],
+    "color": "#cdf0e0",
+    "intensity": 1.7,
+    "range": 3.5,
+    "shadows": true,
+    "radius": 0.3
+   },
+   {
+    "id": "tube_2",
+    "at": [
+     2.6,
+     2.35,
+     -0.25
+    ],
+    "color": "#cdf0e0",
+    "intensity": 1.2,
+    "range": 3.5,
+    "shadows": true,
+    "radius": 0.3
+   },
+   {
+    "id": "tube_3",
+    "at": [
+     8.0,
+     2.35,
+     -0.25
+    ],
+    "color": "#cdf0e0",
+    "intensity": 1.9,
+    "range": 3.5,
+    "shadows": true,
+    "radius": 0.3
+   },
+   {
+    "id": "sign_0",
+    "at": [
+     -7.5,
+     1.95,
+     2.5999999999999996
+    ],
+    "color": "#e6eeff",
+    "intensity": 1.7,
+    "range": 3.2,
+    "shadows": true,
+    "radius": 0.4
+   },
+   {
+    "id": "sign_1",
+    "at": [
+     -2.5,
+     1.95,
+     2.5999999999999996
+    ],
+    "color": "#ffac64",
+    "intensity": 1.7,
+    "range": 3.2,
+    "shadows": true,
+    "radius": 0.4
+   },
+   {
+    "id": "sign_2",
+    "at": [
+     2.5,
+     1.95,
+     2.5999999999999996
+    ],
+    "color": "#ff94c4",
+    "intensity": 1.7,
+    "range": 3.2,
+    "shadows": true,
+    "radius": 0.4
+   },
+   {
+    "id": "night",
+    "at": [
+     0.0,
+     7.0,
+     -1.0
+    ],
+    "color": "#5c74b0",
+    "intensity": 0.42,
+    "range": 16.0
+   },
+   {
+    "id": "machine",
+    "at": [
+     0.0,
+     0.8,
+     -2.45
+    ],
+    "color": "#e2f2ff",
+    "intensity": 3.0,
+    "range": 3.9,
+    "shadows": true,
+    "radius": 0.35
+   },
+   {
+    "id": "hose",
+    "at": [
+     -10.25,
+     1.35,
+     3.15
+    ],
+    "color": "#ff3a24",
+    "intensity": 0.9,
+    "range": 1.3
+   },
+   {
+    "id": "camera",
+    "at": [
+     10.7,
+     2.2,
+     2.85
+    ],
+    "color": "#ff2a1a",
+    "intensity": 1.1,
+    "range": 1.9
+   },
+   {
+    "id": "exit_stair",
+    "at": [
+     11.9,
+     1.7,
+     -2.5
+    ],
+    "color": "#ffc488",
+    "intensity": 2.4,
+    "range": 3.6,
+    "shadows": true,
+    "radius": 0.3
+   },
+   {
+    "id": "entry_stair",
+    "at": [
+     -11.9,
+     1.5,
+     -1.6
+    ],
+    "color": "#a8c4ff",
+    "intensity": 2.0,
+    "range": 3.2,
+    "shadows": true,
+    "radius": 0.3
+   },
+   {
+    "id": "phone",
+    "at": [
+     -5.0,
+     1.65,
+     3.05
+    ],
+    "color": "#9cffc0",
+    "intensity": 0.7,
+    "range": 1.3
+   },
+   {
+    "id": "posters",
+    "at": [
+     7.2,
+     2.3,
+     2.5
+    ],
+    "color": "#dce8ff",
+    "intensity": 1.3,
+    "range": 2.9
+   },
+   {
+    "id": "showcase",
+    "at": [
+     0.0,
+     1.2,
+     2.9
+    ],
+    "color": "#ffd49a",
+    "intensity": 1.1,
+    "range": 2.2
+   }
+  ],
+  "refine": {
+   "tolerance": 20,
+   "max_added": 220
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

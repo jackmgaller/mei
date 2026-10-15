@@ -1,0 +1,37 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "lobby",
+ "placements": [
+  {
+   "id": "r4_lobby",
+   "asset": "r4_lobby",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "r4_lobby_col"
+  },
+  {
+   "id": "r4_escalator",
+   "asset": "r4_escalator",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "r4_front",
+   "asset": "r4_front",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

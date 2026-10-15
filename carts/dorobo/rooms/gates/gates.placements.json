@@ -1,0 +1,27 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "gates",
+ "placements": [
+  {
+   "id": "r2_concourse",
+   "asset": "r2_concourse",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "r2_concourse_col"
+  },
+  {
+   "id": "r2_glass",
+   "asset": "r2_glass",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

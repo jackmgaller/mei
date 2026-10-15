@@ -1,0 +1,375 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "r3_showcase",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 400
+ },
+ "materials": {
+  "frame": {
+   "color": "#4a3426"
+  },
+  "back": {
+   "color": "#e8d8b8",
+   "class": "emissive"
+  },
+  "shelf": {
+   "color": "#c8b89c"
+  },
+  "glass": {
+   "color": "#9cb8c8",
+   "blend": "half"
+  },
+  "omelette": {
+   "color": "#f0c840"
+  },
+  "ketchup": {
+   "color": "#c83020"
+  },
+  "pasta": {
+   "color": "#e08838"
+  },
+  "soda": {
+   "color": "#40d070"
+  },
+  "cherry": {
+   "color": "#e02030"
+  },
+  "cake": {
+   "color": "#f4e8d0"
+  },
+  "plate": {
+   "color": "#f0f0ec"
+  }
+ },
+ "nodes": [
+  {
+   "id": "base",
+   "op": "box",
+   "size": [
+    0.84,
+    0.06,
+    0.38
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     0.0,
+     0.75,
+     3.23
+    ]
+   },
+   "open": [
+    "front"
+   ]
+  },
+  {
+   "id": "back",
+   "op": "box",
+   "size": [
+    0.8,
+    0.725,
+    0.025
+   ],
+   "material": "back",
+   "transform": {
+    "translate": [
+     0.0,
+     1.1325,
+     3.4025
+    ]
+   },
+   "open": [
+    "front",
+    "bottom"
+   ]
+  },
+  {
+   "id": "side_l",
+   "op": "box",
+   "size": [
+    0.026,
+    0.73,
+    0.372
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     -0.403,
+     1.135,
+     3.23
+    ]
+   },
+   "open": [
+    "front",
+    "bottom"
+   ]
+  },
+  {
+   "id": "side_r",
+   "op": "box",
+   "size": [
+    0.026,
+    0.73,
+    0.372
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     0.403,
+     1.135,
+     3.23
+    ]
+   },
+   "open": [
+    "front",
+    "bottom"
+   ]
+  },
+  {
+   "id": "shelf",
+   "op": "box",
+   "size": [
+    0.79,
+    0.03,
+    0.32
+   ],
+   "material": "shelf",
+   "transform": {
+    "translate": [
+     0.0,
+     1.095,
+     3.24
+    ]
+   }
+  },
+  {
+   "id": "glass_front",
+   "op": "box",
+   "size": [
+    0.78,
+    0.72,
+    0.01
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     0.0,
+     1.14,
+     3.045
+    ]
+   },
+   "open": [
+    "front",
+    "left",
+    "right",
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "glass_top",
+   "op": "box",
+   "size": [
+    0.78,
+    0.01,
+    0.35
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     0.0,
+     1.495,
+     3.215
+    ]
+   },
+   "open": [
+    "front",
+    "back",
+    "left",
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "plate_0",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 0.024,
+   "segments": 8,
+   "material": "plate",
+   "transform": {
+    "translate": [
+     -0.2,
+     0.802,
+     3.22
+    ]
+   }
+  },
+  {
+   "id": "plate_1",
+   "op": "cylinder",
+   "radius": 0.16,
+   "height": 0.024,
+   "segments": 8,
+   "material": "plate",
+   "transform": {
+    "translate": [
+     0.18,
+     0.802,
+     3.22
+    ]
+   }
+  },
+  {
+   "id": "plate_2",
+   "op": "cylinder",
+   "radius": 0.15,
+   "height": 0.024,
+   "segments": 8,
+   "material": "plate",
+   "transform": {
+    "translate": [
+     -0.18,
+     1.132,
+     3.22
+    ]
+   }
+  },
+  {
+   "id": "omelette",
+   "op": "sphere",
+   "radius": 1.0,
+   "rings": 3,
+   "segments": 6,
+   "material": "omelette",
+   "transform": {
+    "scale": [
+     0.14,
+     0.06,
+     0.09
+    ],
+    "translate": [
+     -0.2,
+     0.84,
+     3.22
+    ]
+   }
+  },
+  {
+   "id": "ketchup",
+   "op": "box",
+   "size": [
+    0.14,
+    0.015,
+    0.04
+   ],
+   "material": "ketchup",
+   "transform": {
+    "translate": [
+     -0.19,
+     0.8975,
+     3.22
+    ]
+   }
+  },
+  {
+   "id": "pasta",
+   "op": "sphere",
+   "radius": 1.0,
+   "rings": 3,
+   "segments": 6,
+   "material": "pasta",
+   "transform": {
+    "scale": [
+     0.12,
+     0.05,
+     0.1
+    ],
+    "translate": [
+     0.18,
+     0.83,
+     3.22
+    ]
+   }
+  },
+  {
+   "id": "soda",
+   "op": "cylinder",
+   "radius": 0.05,
+   "height": 0.2,
+   "segments": 6,
+   "material": "soda",
+   "transform": {
+    "translate": [
+     0.18,
+     1.205,
+     3.22
+    ]
+   }
+  },
+  {
+   "id": "cherry",
+   "op": "sphere",
+   "radius": 0.025,
+   "rings": 3,
+   "segments": 5,
+   "material": "cherry",
+   "transform": {
+    "translate": [
+     0.18,
+     1.33,
+     3.22
+    ]
+   }
+  },
+  {
+   "id": "cake",
+   "op": "box",
+   "size": [
+    0.12,
+    0.09,
+    0.12
+   ],
+   "material": "cake",
+   "transform": {
+    "translate": [
+     -0.18,
+     1.175,
+     3.22
+    ]
+   }
+  }
+ ],
+ "lighting": {
+  "direction": [
+   0.0,
+   1.0,
+   -0.6
+  ],
+  "ambient": 0.45,
+  "diffuse": 0.3,
+  "lights": [
+   {
+    "id": "lamp",
+    "at": [
+     0.0,
+     1.42,
+     3.24
+    ],
+    "color": "#fff0d0",
+    "intensity": 1.2,
+    "range": 1.2
+   }
+  ],
+  "refine": {
+   "max_added": 0
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

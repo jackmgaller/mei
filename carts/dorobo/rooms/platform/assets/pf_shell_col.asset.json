@@ -1,0 +1,483 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "pf_shell_col",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 400
+ },
+ "lighting": {
+  "direction": [
+   -0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "materials": {
+  "m": {
+   "color": "#808080"
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    30.5,
+    0.3,
+    11.5
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     16.0,
+     -1.25,
+     6.5
+    ]
+   }
+  },
+  {
+   "id": "platform",
+   "op": "box",
+   "size": [
+    30.0,
+    1.1,
+    4.2
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     16.0,
+     -0.55,
+     5.5
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "walkway_w",
+   "op": "box",
+   "size": [
+    23.5,
+    1.1,
+    1.22
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     12.75,
+     -0.55,
+     10.61
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "walkway_m",
+   "op": "box",
+   "size": [
+    1.0,
+    1.1,
+    1.22
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     25.0,
+     -0.55,
+     10.61
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "walkway_e",
+   "op": "box",
+   "size": [
+    5.5,
+    1.1,
+    1.22
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     28.25,
+     -0.55,
+     10.61
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "cupboard_floor",
+   "op": "box",
+   "size": [
+    1.0,
+    1.1,
+    0.78
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     25.0,
+     -0.55,
+     11.61
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    30.5,
+    2.1,
+    0.25
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     16.0,
+     -0.05,
+     0.875
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "back_wall_w",
+   "op": "box",
+   "size": [
+    23.75,
+    3.5,
+    0.25
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     12.625,
+     0.65,
+     11.325
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "back_wall_e",
+   "op": "box",
+   "size": [
+    5.75,
+    3.5,
+    0.25
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     28.375,
+     0.65,
+     11.325
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "cupboard_back",
+   "op": "box",
+   "size": [
+    1.5,
+    3.5,
+    0.25
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     25.0,
+     0.65,
+     12.125
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "cupboard_w",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    0.55
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     24.375,
+     0.65,
+     11.725
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "cupboard_e",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    0.55
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     25.625,
+     0.65,
+     11.725
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "end_w_plat",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    4.2
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     0.875,
+     0.65,
+     5.5
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "end_w_walk",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    1.2
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     0.875,
+     0.65,
+     10.6
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "end_e_plat",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    4.2
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     31.125,
+     0.65,
+     5.5
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "end_e_walk",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    1.2
+   ],
+   "material": "m",
+   "transform": {
+    "translate": [
+     31.125,
+     0.65,
+     10.6
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "stair",
+   "op": "extrude",
+   "material": "m",
+   "depth": 2.0,
+   "points": [
+    [
+     0.98,
+     -0.02
+    ],
+    [
+     4.4,
+     -0.02
+    ],
+    [
+     4.4,
+     0.2
+    ],
+    [
+     4.1,
+     0.2
+    ],
+    [
+     4.1,
+     0.4
+    ],
+    [
+     3.8,
+     0.4
+    ],
+    [
+     3.8,
+     0.6
+    ],
+    [
+     3.5,
+     0.6
+    ],
+    [
+     3.5,
+     0.8
+    ],
+    [
+     3.2,
+     0.8
+    ],
+    [
+     3.2,
+     1.0
+    ],
+    [
+     2.9,
+     1.0
+    ],
+    [
+     2.9,
+     1.2
+    ],
+    [
+     2.6,
+     1.2
+    ],
+    [
+     2.6,
+     1.4
+    ],
+    [
+     2.3,
+     1.4
+    ],
+    [
+     2.3,
+     1.6
+    ],
+    [
+     2.0,
+     1.6
+    ],
+    [
+     2.0,
+     1.8
+    ],
+    [
+     1.7,
+     1.8
+    ],
+    [
+     1.7,
+     2.0
+    ],
+    [
+     1.4,
+     2.0
+    ],
+    [
+     1.4,
+     2.2
+    ],
+    [
+     0.98,
+     2.2
+    ]
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0,
+     5.5
+    ]
+   }
+  }
+ ]
+}

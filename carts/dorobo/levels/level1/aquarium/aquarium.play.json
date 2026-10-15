@@ -1,0 +1,444 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "aquarium",
+ "entities": [
+  {
+   "id": "r5_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0.85
+   ],
+   "params": {
+    "entry": "r5_spawn",
+    "exit": "r5_exit",
+    "size": [
+     12.1,
+     3.2,
+     8.0
+    ]
+   }
+  },
+  {
+   "id": "r5_spawn",
+   "type": "spawn",
+   "position": [
+    -4.3,
+    0,
+    -2.45
+   ],
+   "params": {
+    "yaw": 0
+   }
+  },
+  {
+   "id": "r5_exit",
+   "type": "exit",
+   "position": [
+    5.25,
+    0,
+    2.6
+   ],
+   "params": {
+    "size": [
+     0.8,
+     2.0,
+     0.6
+    ]
+   }
+  },
+  {
+   "id": "r5_guard_watchman",
+   "type": "guard",
+   "position": [
+    0.0,
+    0.0,
+    2.0
+   ],
+   "params": {
+    "kind": "posted",
+    "look_a": 0,
+    "look_b": 180,
+    "hold": 150,
+    "turn": 90,
+    "phase": 0,
+    "sight": 5.0,
+    "fov": 60,
+    "hear": 6
+   }
+  },
+  {
+   "id": "r5_wall_front_w",
+   "type": "wall",
+   "position": [
+    -5.475,
+    0,
+    -3.025
+   ],
+   "params": {
+    "size": [
+     1.15,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "r5_wall_front_e",
+   "type": "wall",
+   "position": [
+    1.175,
+    0,
+    -3.025
+   ],
+   "params": {
+    "size": [
+     9.75,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "r5_wall_entry_beyond",
+   "type": "wall",
+   "position": [
+    -4.3,
+    0,
+    -3.3
+   ],
+   "params": {
+    "size": [
+     1.2,
+     2.4,
+     0.3
+    ]
+   }
+  },
+  {
+   "id": "r5_wall_side_w",
+   "type": "wall",
+   "position": [
+    -5.925,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     5.8
+    ]
+   }
+  },
+  {
+   "id": "r5_wall_side_e",
+   "type": "wall",
+   "position": [
+    5.925,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     5.8
+    ]
+   }
+  },
+  {
+   "id": "r5_wall_pier_w",
+   "type": "wall",
+   "position": [
+    -5.225,
+    0,
+    3.025
+   ],
+   "params": {
+    "size": [
+     1.65,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "r5_wall_pier_e",
+   "type": "wall",
+   "position": [
+    5.225,
+    0,
+    3.025
+   ],
+   "params": {
+    "size": [
+     1.65,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "r5_glass_window",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    3.025
+   ],
+   "params": {
+    "size": [
+     8.8,
+     2.4,
+     0.25
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r5_wall_tank_back",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    4.725
+   ],
+   "params": {
+    "size": [
+     9.7,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "r5_wall_tank_w",
+   "type": "wall",
+   "position": [
+    -4.725,
+    0,
+    3.875
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     1.45
+    ]
+   }
+  },
+  {
+   "id": "r5_wall_tank_e",
+   "type": "wall",
+   "position": [
+    4.725,
+    0,
+    3.875
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     1.45
+    ]
+   }
+  },
+  {
+   "id": "r5_wall_pillar",
+   "type": "wall",
+   "position": [
+    -0.2,
+    0,
+    -1.6
+   ],
+   "params": {
+    "size": [
+     0.5,
+     1.0,
+     0.5
+    ]
+   }
+  },
+  {
+   "id": "r5_glass_jelly",
+   "type": "wall",
+   "position": [
+    -2.9,
+    0,
+    -0.2
+   ],
+   "params": {
+    "size": [
+     1.5,
+     2.4,
+     1.5
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r5_glass_cube",
+   "type": "wall",
+   "position": [
+    3.0,
+    0,
+    0.15
+   ],
+   "params": {
+    "size": [
+     1.42,
+     1.42,
+     1.42
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r5_wall_bench",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    1.35
+   ],
+   "params": {
+    "size": [
+     2.6,
+     0.5,
+     0.5
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r5_wall_stanchions",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    2.42
+   ],
+   "params": {
+    "size": [
+     7.3,
+     0.9,
+     0.1
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r5_wall_cart",
+   "type": "wall",
+   "position": [
+    4.7,
+    0,
+    -2.25
+   ],
+   "params": {
+    "size": [
+     0.9,
+     0.9,
+     0.5
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r5_wall_sign",
+   "type": "wall",
+   "position": [
+    -1.65,
+    0,
+    -0.5
+   ],
+   "params": {
+    "size": [
+     0.4,
+     1.5,
+     0.2
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "r5_wp_cube_se",
+   "type": "waypoint",
+   "position": [
+    4.9,
+    0,
+    -1.25
+   ],
+   "params": {
+    "next": "r5_wp_cube_ne",
+    "wait": 0,
+    "look": 90
+   }
+  },
+  {
+   "id": "r5_wp_cube_ne",
+   "type": "waypoint",
+   "position": [
+    4.9,
+    0,
+    1.95
+   ],
+   "params": {
+    "next": "r5_wp_cube_nw",
+    "wait": 60,
+    "look": 0
+   }
+  },
+  {
+   "id": "r5_wp_cube_nw",
+   "type": "waypoint",
+   "position": [
+    1.75,
+    0,
+    1.95
+   ],
+   "params": {
+    "next": "r5_wp_cube_sw",
+    "wait": 0,
+    "look": 270
+   }
+  },
+  {
+   "id": "r5_wp_cube_sw",
+   "type": "waypoint",
+   "position": [
+    1.75,
+    0,
+    -1.25
+   ],
+   "params": {
+    "next": "r5_wp_cube_se",
+    "wait": 60,
+    "look": 275
+   }
+  },
+  {
+   "id": "r5_guard_keeper",
+   "type": "guard",
+   "position": [
+    1.75,
+    0,
+    -1.25
+   ],
+   "yaw": 90.0,
+   "params": {
+    "kind": "patrol",
+    "route": "r5_wp_cube_se",
+    "speed": 0.9,
+    "sight": 4.5,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 180
+   }
+  }
+ ],
+ "paths": {}
+}

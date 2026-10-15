@@ -1,0 +1,73 @@
+// Written by carts/dorobo/levels/level1/solutions.py - do not edit; change the plans there.
+// Level 1's solution tapes (agent B's), one per room, each from that room's clock 0. Spans as
+// dr_tape.akr describes them (ticks, buttons held, the stick). Each reaches its room's exit
+// unseen. Drafted on a model of the rules (levels/rules_model.py) and checked in the cart; if a
+// room, its watchers or the rules change, redraft them and check again.
+
+// Room 1, the last train. The model clears it on tick 384.
+const SOLUTION_L1_ARRIVAL: [5]Span = [
+    Span { n: 52, pad: 0, sx: 126, sy: -18 },
+    Span { n: 1, pad: 0, sx: 104, sy: -68 },
+    Span { n: 235, pad: 0, sx: 0, sy: 0 },
+    Span { n: 72, pad: 0, sx: 126, sy: -15 },
+    Span { n: 55, pad: 0, sx: 126, sy: -17 },
+]
+
+// Room 2, the ticket gates. The model clears it on tick 1507.
+const SOLUTION_L1_GATES: [12]Span = [
+    Span { n: 38, pad: 0, sx: -19, sy: 126 },
+    Span { n: 112, pad: 0, sx: -20, sy: 125 },
+    Span { n: 1, pad: 0, sx: -46, sy: 95 },
+    Span { n: 20, pad: 0, sx: 0, sy: 127 },
+    Span { n: 1, pad: A, sx: 0, sy: 0 },
+    Span { n: 984, pad: 0, sx: 0, sy: 0 },
+    Span { n: 20, pad: 0, sx: 0, sy: -127 },
+    Span { n: 1, pad: 0, sx: -1, sy: -126 },
+    Span { n: 156, pad: 0, sx: 72, sy: -104 },
+    Span { n: 50, pad: 0, sx: 127, sy: 1 },
+    Span { n: 65, pad: 0, sx: 126, sy: -13 },
+    Span { n: 90, pad: 0, sx: 126, sy: -14 },
+]
+
+// Room 3, the passage. The model clears it on tick 936.
+const SOLUTION_L1_PASSAGE: [13]Span = [
+    Span { n: 88, pad: 0, sx: 125, sy: -22 },
+    Span { n: 101, pad: 0, sx: 125, sy: -23 },
+    Span { n: 1, pad: 0, sx: 59, sy: -58 },
+    Span { n: 61, pad: 0, sx: 0, sy: 0 },
+    Span { n: 56, pad: 0, sx: 127, sy: 10 },
+    Span { n: 2, pad: 0, sx: 127, sy: 9 },
+    Span { n: 3, pad: 0, sx: 127, sy: 8 },
+    Span { n: 23, pad: 0, sx: 127, sy: 7 },
+    Span { n: 109, pad: 0, sx: 127, sy: 8 },
+    Span { n: 1, pad: 0, sx: -11, sy: 63 },
+    Span { n: 346, pad: 0, sx: 0, sy: 0 },
+    Span { n: 28, pad: 0, sx: 127, sy: -6 },
+    Span { n: 148, pad: 0, sx: 127, sy: -7 },
+]
+
+// Room 4, the lobby. The model clears it on tick 1180.
+const SOLUTION_L1_LOBBY: [10]Span = [
+    Span { n: 549, pad: 0, sx: 0, sy: 0 },
+    Span { n: 77, pad: 0, sx: 127, sy: 3 },
+    Span { n: 33, pad: 0, sx: 127, sy: 5 },
+    Span { n: 123, pad: 0, sx: 109, sy: 65 },
+    Span { n: 1, pad: 0, sx: 54, sy: 97 },
+    Span { n: 239, pad: 0, sx: 0, sy: 0 },
+    Span { n: 52, pad: 0, sx: 0, sy: 127 },
+    Span { n: 1, pad: 0, sx: 1, sy: 65 },
+    Span { n: 41, pad: 0, sx: -127, sy: 0 },
+    Span { n: 95, pad: 0, sx: 0, sy: 127 },
+]
+
+// Room 5, the aquarium. The model clears it on tick 768.
+const SOLUTION_L1_AQUARIUM: [8]Span = [
+    Span { n: 57, pad: 0, sx: 127, sy: 3 },
+    Span { n: 1, pad: 0, sx: 64, sy: 45 },
+    Span { n: 45, pad: 0, sx: 127, sy: -4 },
+    Span { n: 423, pad: 0, sx: 0, sy: 0 },
+    Span { n: 45, pad: 0, sx: 114, sy: 56 },
+    Span { n: 98, pad: 0, sx: 127, sy: 0 },
+    Span { n: 1, pad: 0, sx: 93, sy: 42 },
+    Span { n: 129, pad: 0, sx: 0, sy: 127 },
+]

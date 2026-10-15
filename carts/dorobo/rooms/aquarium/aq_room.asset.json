@@ -1,0 +1,1201 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "aq_room",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 1200
+ },
+ "materials": {
+  "floor": {
+   "color": "#1a2a48",
+   "class": "emissive",
+   "texture": {
+    "image": "art/floor.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "slab": {
+   "color": "#2a3550"
+  },
+  "cut": {
+   "color": "#3c475e",
+   "class": "emissive"
+  },
+  "wall_in": {
+   "color": "#6a7ca0"
+  },
+  "wall_tank": {
+   "color": "#30a0c0",
+   "class": "emissive",
+   "texture": {
+    "image": "art/wall_tank.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "wall_face": {
+   "color": "#56688a"
+  },
+  "sill": {
+   "color": "#2a3650"
+  },
+  "sill_glow": {
+   "color": "#2a9ad0",
+   "class": "emissive"
+  },
+  "header": {
+   "color": "#9ad8f0",
+   "class": "emissive",
+   "texture": {
+    "image": "art/header.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "door": {
+   "color": "#405070",
+   "texture": {
+    "image": "art/door.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "exit": {
+   "color": "#30b060",
+   "class": "emissive",
+   "texture": {
+    "image": "art/exit.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "exit_box": {
+   "color": "#d8e0e0"
+  },
+  "porthole": {
+   "color": "#40b0d0",
+   "class": "emissive",
+   "texture": {
+    "image": "art/porthole.png",
+    "bits": 4,
+    "projection": "disc",
+    "axis": "y"
+   }
+  },
+  "brass": {
+   "color": "#b0a070"
+  },
+  "pillar": {
+   "color": "#7484a4"
+  },
+  "bench_top": {
+   "color": "#66768e"
+  },
+  "bench_leg": {
+   "color": "#3a4458"
+  },
+  "rope": {
+   "color": "#6a5ab0"
+  },
+  "sign_face": {
+   "color": "#c8b8f0",
+   "class": "emissive",
+   "texture": {
+    "image": "art/sign_jelly.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "sign_body": {
+   "color": "#3a4460"
+  },
+  "cart_body": {
+   "color": "#8aa0b8"
+  },
+  "cart_dark": {
+   "color": "#3a4a60"
+  },
+  "bucket": {
+   "color": "#4ac0b8"
+  },
+  "mop": {
+   "color": "#c8d0dc"
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    12.16,
+    0.4,
+    6.33
+   ],
+   "material": "slab",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.2,
+     -0.015
+    ]
+   },
+   "faces": {
+    "top": "floor",
+    "back": "cut"
+   },
+   "open": [
+    "front"
+   ]
+  },
+  {
+   "id": "wall_left",
+   "op": "box",
+   "size": [
+    0.24,
+    3.22,
+    6.05
+   ],
+   "material": "wall_in",
+   "transform": {
+    "translate": [
+     -5.92,
+     1.59,
+     0.075
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   },
+   "decals": [
+    {
+     "id": "tank_0",
+     "face": "right",
+     "material": "wall_tank",
+     "at": [
+      -1.475,
+      -0.29
+     ],
+     "size": [
+      1.1,
+      0.62
+     ]
+    },
+    {
+     "id": "tank_1",
+     "face": "right",
+     "material": "wall_tank",
+     "at": [
+      0.825,
+      -0.29
+     ],
+     "size": [
+      1.1,
+      0.62
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wall_right",
+   "op": "box",
+   "size": [
+    0.24,
+    3.22,
+    6.05
+   ],
+   "material": "wall_in",
+   "transform": {
+    "translate": [
+     5.92,
+     1.59,
+     0.075
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   },
+   "decals": [
+    {
+     "id": "tank_0",
+     "face": "left",
+     "material": "wall_tank",
+     "at": [
+      1.475,
+      -0.29
+     ],
+     "size": [
+      1.1,
+      0.62
+     ]
+    },
+    {
+     "id": "tank_1",
+     "face": "left",
+     "material": "wall_tank",
+     "at": [
+      -0.825,
+      -0.29
+     ],
+     "size": [
+      1.1,
+      0.62
+     ]
+    }
+   ]
+  },
+  {
+   "id": "front_left",
+   "op": "box",
+   "size": [
+    1.15,
+    1.02,
+    0.25
+   ],
+   "material": "wall_in",
+   "transform": {
+    "translate": [
+     -5.475,
+     0.49,
+     -3.025
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "front_right",
+   "op": "box",
+   "size": [
+    9.75,
+    1.02,
+    0.25
+   ],
+   "material": "wall_in",
+   "transform": {
+    "translate": [
+     1.175,
+     0.49,
+     -3.025
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "pier_left",
+   "op": "box",
+   "size": [
+    1.65,
+    3.26,
+    0.25
+   ],
+   "material": "wall_face",
+   "transform": {
+    "translate": [
+     -5.225,
+     1.61,
+     3.025
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "pier_right",
+   "op": "box",
+   "size": [
+    1.65,
+    3.26,
+    0.25
+   ],
+   "material": "wall_face",
+   "transform": {
+    "translate": [
+     5.225,
+     1.61,
+     3.025
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   },
+   "decals": [
+    {
+     "id": "door",
+     "face": "back",
+     "material": "door",
+     "at": [
+      0.025,
+      -0.56
+     ],
+     "size": [
+      0.82,
+      2.08
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sill",
+   "op": "box",
+   "size": [
+    8.84,
+    0.52,
+    0.17
+   ],
+   "material": "sill",
+   "transform": {
+    "translate": [
+     0.0,
+     0.24,
+     3.025
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "sill"
+   },
+   "decals": [
+    {
+     "id": "glow",
+     "face": "back",
+     "material": "sill_glow",
+     "at": [
+      0,
+      0.17
+     ],
+     "size": [
+      8.700000000000001,
+      0.05
+     ]
+    }
+   ]
+  },
+  {
+   "id": "header",
+   "op": "box",
+   "size": [
+    8.84,
+    0.5,
+    0.17
+   ],
+   "material": "wall_face",
+   "transform": {
+    "translate": [
+     0.0,
+     2.95,
+     3.025
+    ]
+   },
+   "faces": {
+    "top": "cut"
+   },
+   "decals": [
+    {
+     "id": "name",
+     "face": "back",
+     "material": "header",
+     "at": [
+      0,
+      0
+     ],
+     "size": [
+      3.2,
+      0.36
+     ]
+    }
+   ]
+  },
+  {
+   "id": "exit_sign",
+   "op": "box",
+   "size": [
+    0.44,
+    0.16,
+    0.12
+   ],
+   "material": "exit_box",
+   "transform": {
+    "translate": [
+     5.25,
+     2.32,
+     2.89
+    ]
+   },
+   "faces": {
+    "back": "exit"
+   }
+  },
+  {
+   "id": "porthole",
+   "op": "cylinder",
+   "radius": 0.3,
+   "height": 0.12,
+   "segments": 12,
+   "material": "brass",
+   "faces": {
+    "bottom": "porthole"
+   },
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -5.15,
+     1.5,
+     2.88
+    ]
+   }
+  },
+  {
+   "id": "pillar",
+   "op": "box",
+   "size": [
+    0.5,
+    1.02,
+    0.5
+   ],
+   "material": "pillar",
+   "transform": {
+    "translate": [
+     -0.2,
+     0.49,
+     -1.6
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "bench_seat",
+   "op": "box",
+   "size": [
+    2.6,
+    0.08,
+    0.48
+   ],
+   "material": "bench_top",
+   "transform": {
+    "translate": [
+     0.0,
+     0.44,
+     1.35
+    ]
+   }
+  },
+  {
+   "id": "bench_leg_0",
+   "op": "box",
+   "size": [
+    0.1,
+    0.44,
+    0.4
+   ],
+   "material": "bench_leg",
+   "transform": {
+    "translate": [
+     -1.05,
+     0.2,
+     1.35
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "bench_leg_1",
+   "op": "box",
+   "size": [
+    0.1,
+    0.44,
+    0.4
+   ],
+   "material": "bench_leg",
+   "transform": {
+    "translate": [
+     0.0,
+     0.2,
+     1.35
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "bench_leg_2",
+   "op": "box",
+   "size": [
+    0.1,
+    0.44,
+    0.4
+   ],
+   "material": "bench_leg",
+   "transform": {
+    "translate": [
+     1.05,
+     0.2,
+     1.35
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "stanchions",
+   "op": "group",
+   "children": [
+    {
+     "id": "post_0",
+     "op": "box",
+     "size": [
+      0.06,
+      0.9,
+      0.06
+     ],
+     "material": "brass",
+     "transform": {
+      "translate": [
+       -3.6,
+       0.47,
+       2.42
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "foot_0",
+     "op": "box",
+     "size": [
+      0.22,
+      0.055,
+      0.22
+     ],
+     "material": "brass",
+     "transform": {
+      "translate": [
+       -3.6,
+       0.0075,
+       2.42
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "post_1",
+     "op": "box",
+     "size": [
+      0.06,
+      0.9,
+      0.06
+     ],
+     "material": "brass",
+     "transform": {
+      "translate": [
+       -1.8,
+       0.47,
+       2.42
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "foot_1",
+     "op": "box",
+     "size": [
+      0.22,
+      0.055,
+      0.22
+     ],
+     "material": "brass",
+     "transform": {
+      "translate": [
+       -1.8,
+       0.0075,
+       2.42
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "post_2",
+     "op": "box",
+     "size": [
+      0.06,
+      0.9,
+      0.06
+     ],
+     "material": "brass",
+     "transform": {
+      "translate": [
+       0.0,
+       0.47,
+       2.42
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "foot_2",
+     "op": "box",
+     "size": [
+      0.22,
+      0.055,
+      0.22
+     ],
+     "material": "brass",
+     "transform": {
+      "translate": [
+       0.0,
+       0.0075,
+       2.42
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "post_3",
+     "op": "box",
+     "size": [
+      0.06,
+      0.9,
+      0.06
+     ],
+     "material": "brass",
+     "transform": {
+      "translate": [
+       1.8,
+       0.47,
+       2.42
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "foot_3",
+     "op": "box",
+     "size": [
+      0.22,
+      0.055,
+      0.22
+     ],
+     "material": "brass",
+     "transform": {
+      "translate": [
+       1.8,
+       0.0075,
+       2.42
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "post_4",
+     "op": "box",
+     "size": [
+      0.06,
+      0.9,
+      0.06
+     ],
+     "material": "brass",
+     "transform": {
+      "translate": [
+       3.6,
+       0.47,
+       2.42
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "foot_4",
+     "op": "box",
+     "size": [
+      0.22,
+      0.055,
+      0.22
+     ],
+     "material": "brass",
+     "transform": {
+      "translate": [
+       3.6,
+       0.0075,
+       2.42
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "rope_0",
+     "op": "box",
+     "size": [
+      1.76,
+      0.05,
+      0.04
+     ],
+     "material": "rope",
+     "transform": {
+      "translate": [
+       -2.7,
+       0.825,
+       2.42
+      ]
+     },
+     "open": [
+      "left",
+      "right"
+     ]
+    },
+    {
+     "id": "rope_1",
+     "op": "box",
+     "size": [
+      1.76,
+      0.05,
+      0.04
+     ],
+     "material": "rope",
+     "transform": {
+      "translate": [
+       -0.9,
+       0.825,
+       2.42
+      ]
+     },
+     "open": [
+      "left",
+      "right"
+     ]
+    },
+    {
+     "id": "rope_2",
+     "op": "box",
+     "size": [
+      1.76,
+      0.05,
+      0.04
+     ],
+     "material": "rope",
+     "transform": {
+      "translate": [
+       0.9,
+       0.825,
+       2.42
+      ]
+     },
+     "open": [
+      "left",
+      "right"
+     ]
+    },
+    {
+     "id": "rope_3",
+     "op": "box",
+     "size": [
+      1.76,
+      0.05,
+      0.04
+     ],
+     "material": "rope",
+     "transform": {
+      "translate": [
+       2.7,
+       0.825,
+       2.42
+      ]
+     },
+     "open": [
+      "left",
+      "right"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sign_post",
+   "op": "box",
+   "size": [
+    0.08,
+    0.84,
+    0.08
+   ],
+   "material": "sign_body",
+   "transform": {
+    "translate": [
+     -1.65,
+     0.4,
+     -0.5
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "sign_panel",
+   "op": "box",
+   "size": [
+    0.44,
+    0.32,
+    0.06
+   ],
+   "material": "sign_body",
+   "faces": {
+    "back": "sign_face"
+   },
+   "transform": {
+    "rotate": [
+     50.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -1.65,
+     0.92,
+     -0.5
+    ]
+   }
+  },
+  {
+   "id": "cart",
+   "op": "group",
+   "children": [
+    {
+     "id": "cart_base",
+     "op": "box",
+     "size": [
+      0.84,
+      0.08,
+      0.44
+     ],
+     "material": "cart_body",
+     "transform": {
+      "translate": [
+       4.7,
+       0.12,
+       -2.25
+      ]
+     }
+    },
+    {
+     "id": "cart_shelf",
+     "op": "box",
+     "size": [
+      0.84,
+      0.06,
+      0.44
+     ],
+     "material": "cart_body",
+     "transform": {
+      "translate": [
+       4.7,
+       0.65,
+       -2.25
+      ]
+     }
+    },
+    {
+     "id": "cart_frame",
+     "op": "box",
+     "size": [
+      0.04,
+      0.97,
+      0.4
+     ],
+     "material": "cart_dark",
+     "transform": {
+      "translate": [
+       5.08,
+       0.465,
+       -2.25
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "cart_bin",
+     "op": "box",
+     "size": [
+      0.4,
+      0.46,
+      0.36
+     ],
+     "material": "cart_dark",
+     "transform": {
+      "translate": [
+       4.52,
+       0.38,
+       -2.25
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    },
+    {
+     "id": "bucket",
+     "op": "cylinder",
+     "radius": 0.15,
+     "height": 0.26,
+     "segments": 8,
+     "material": "bucket",
+     "transform": {
+      "translate": [
+       4.85,
+       0.8,
+       -2.25
+      ]
+     }
+    },
+    {
+     "id": "mop",
+     "op": "cylinder",
+     "radius": 0.02,
+     "height": 1.3,
+     "segments": 4,
+     "caps": false,
+     "material": "mop",
+     "transform": {
+      "rotate": [
+       0.0,
+       0.0,
+       -18.0
+      ],
+      "translate": [
+       4.44,
+       0.62,
+       -2.3
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "lighting": {
+  "direction": [
+   0.12,
+   0.62,
+   1.0
+  ],
+  "ambient": 0.24,
+  "diffuse": 0.12,
+  "lights": [
+   {
+    "id": "window_0",
+    "at": [
+     -3.3,
+     1.5,
+     2.2
+    ],
+    "color": "#48b4ff",
+    "intensity": 1.8,
+    "range": 5.0,
+    "shadows": true,
+    "radius": 0.6
+   },
+   {
+    "id": "window_1",
+    "at": [
+     -1.1,
+     1.5,
+     2.2
+    ],
+    "color": "#48b4ff",
+    "intensity": 1.8,
+    "range": 5.0,
+    "shadows": true,
+    "radius": 0.6
+   },
+   {
+    "id": "window_2",
+    "at": [
+     1.1,
+     1.5,
+     2.2
+    ],
+    "color": "#48b4ff",
+    "intensity": 1.8,
+    "range": 5.0,
+    "shadows": true,
+    "radius": 0.6
+   },
+   {
+    "id": "window_3",
+    "at": [
+     3.3,
+     1.5,
+     2.2
+    ],
+    "color": "#48b4ff",
+    "intensity": 1.8,
+    "range": 5.0,
+    "shadows": true,
+    "radius": 0.6
+   },
+   {
+    "id": "jelly",
+    "at": [
+     -2.9,
+     1.3,
+     -0.2
+    ],
+    "color": "#a87cff",
+    "intensity": 4.0,
+    "range": 3.4,
+    "shadows": true,
+    "radius": 0.5
+   },
+   {
+    "id": "coral",
+    "at": [
+     3.0,
+     1.2,
+     0.15
+    ],
+    "color": "#3ae6cc",
+    "intensity": 4.2,
+    "range": 3.0,
+    "shadows": true,
+    "radius": 0.5
+   },
+   {
+    "id": "exit",
+    "at": [
+     5.25,
+     2.2,
+     2.6
+    ],
+    "color": "#50ff90",
+    "intensity": 0.8,
+    "range": 1.8
+   },
+   {
+    "id": "lift",
+    "at": [
+     -4.300000000000001,
+     1.1,
+     -3.65
+    ],
+    "color": "#ffd0a0",
+    "intensity": 2.4,
+    "range": 4.2,
+    "shadows": true,
+    "radius": 0.3
+   },
+   {
+    "id": "wall_tank_0",
+    "at": [
+     -5.45,
+     1.3,
+     -1.4
+    ],
+    "color": "#50c0e8",
+    "intensity": 0.9,
+    "range": 1.6
+   },
+   {
+    "id": "wall_tank_1",
+    "at": [
+     -5.45,
+     1.3,
+     0.9
+    ],
+    "color": "#50c0e8",
+    "intensity": 0.9,
+    "range": 1.6
+   },
+   {
+    "id": "wall_tank_2",
+    "at": [
+     5.45,
+     1.3,
+     -1.4
+    ],
+    "color": "#50c0e8",
+    "intensity": 0.9,
+    "range": 1.6
+   },
+   {
+    "id": "wall_tank_3",
+    "at": [
+     5.45,
+     1.3,
+     0.9
+    ],
+    "color": "#50c0e8",
+    "intensity": 0.9,
+    "range": 1.6
+   }
+  ],
+  "refine": {
+   "tolerance": 20,
+   "max_added": 160
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

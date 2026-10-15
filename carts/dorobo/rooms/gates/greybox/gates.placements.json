@@ -1,0 +1,17 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "gates",
+ "placements": [
+  {
+   "id": "r2_shell",
+   "asset": "r2_shell",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "r2_shell_col"
+  }
+ ]
+}

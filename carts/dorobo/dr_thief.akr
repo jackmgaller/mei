@@ -1,0 +1,230 @@
+// The thief: free movement in plan, collision with the walls, the tracks and the open trains,
+// hiding, the fragile things, and his tools (the wind-up toy and the pocket bell).
+
+const THIEF_R: fixed = 0.3          // the footprint, the probe's radius
+const WALK: fixed = 0.04            // metres a tick: 2.4 m/s
+const RUN: fixed = 0.08             // 4.8 m/s
+const DEAD: fixed = 0.2             // the stick's dead zone
+
+const TOY_R: fixed = 0.12
+const TOY_SPEED: fixed = 0.015      // 0.9 m/s
+const TOY_TICKS = 480               // it runs 8 s
+const TOY_NOISE: fixed = 4.0
+const BELL_DELAY = 180              // it beeps 3 s after it is set down
+const BELL_NOISE: fixed = 9.0
+const MAX_TOYS = 4
+const MAX_BELLS = 4
+
+enum Tool: u8 { Toy, Bell }
+
+struct Thief {
+    x: fixed
+    z: fixed
+    head: fixed
+    hidden: bool
+    hide_t: s32        // the clock he last went into or came out of hiding (-1000: not yet)
+    running: bool      // ran this tick (loud)
+    moving: bool
+    tool: Tool
+    toys: s32          // left to use
+    bells: s32
+    car: s32           // the car he is inside (train * 16 + car), -1 none
+}
+
+struct Toy {
+    x: fixed
+    z: fixed
+    head: fixed
+    ticks: s32         // left to run; 0: run down (or never set)
+    on: bool           // set down
+}
+
+struct Bell {
+    x: fixed
+    z: fixed
+    ticks: s32         // until it beeps; then -1 (rung)
+    on: bool
+    placed_at: s32     // the clock it was set down at
+    rang_at: s32       // the clock it rang at
+}
+
+var thief: Thief
+var toys: [MAX_TOYS]Toy
+var bells: [MAX_BELLS]Bell
+var fragile_down: [MAX_FRAGILE]bool
+var fragile_at: [MAX_FRAGILE]s32    // the clock it was knocked at
+
+// One tick of input, as the tape records it.
+struct Input {
+    pad: u32           // held
+    press: u32         // pressed this tick (held, and not on the tick before)
+    sx: s32            // the stick, -127..127
+    sy: s32
+}
+
+fn thief_reset() {
+    thief = Thief { x: room.spawn_x, z: room.spawn_z, head: room.spawn_head, toys: room.toys,
+                    bells: room.bells, car: -1, hide_t: -1000 }
+    if room.toys == 0 && room.bells > 0 { thief.tool = Tool.Bell }
+    for i in 0..MAX_TOYS { toys[i] = Toy {} }
+    for i in 0..MAX_BELLS { bells[i] = Bell {} }
+    for i in 0..MAX_FRAGILE {
+        fragile_down[i] = false
+        fragile_at[i] = 0
+    }
+}
+
+// Pushes a circle out of everything solid: the walls, and this tick's tracks and open trains
+// (dyn_boxes).
+fn solid_push(x0: fixed, z0: fixed, r: fixed) -> vec2 {
+    var x = x0
+    var z = z0
+    for _pass in 0..3 {
+        push_hit = false
+        for i in 0..room.nwalls {
+            let b = &room.walls[i]
+            if b.solid {
+                let p = box_push(b, x, z, r)
+                x = p.x
+                z = p.y
+            }
+        }
+        for i in 0..ndyn_boxes {
+            let p = box_push(&dyn_boxes[i], x, z, r)
+            x = p.x
+            z = p.y
+        }
+        if !push_hit { break }
+    }
+    return vec2(x, z)
+}
+
+// The movement this tick from the input: direction and speed.
+fn input_move(inp: *Input) -> vec2 {
+    var mx: fixed = 0.0
+    var mz: fixed = 0.0
+    if inp.pad & LEFT != 0 { mx -= 1.0 }
+    if inp.pad & RIGHT != 0 { mx += 1.0 }
+    if inp.pad & UP != 0 { mz += 1.0 }
+    if inp.pad & DOWN != 0 { mz -= 1.0 }
+    if mx != 0.0 && mz != 0.0 {
+        mx = mx * 0.70711
+        mz = mz * 0.70711
+    }
+    if mx == 0.0 && mz == 0.0 && (inp.sx != 0 || inp.sy != 0) {
+        let sx = fixed(inp.sx) / 127
+        let sz = fixed(inp.sy) / 127
+        let m2 = sx * sx + sz * sz
+        if m2 > DEAD * DEAD {
+            let m = sqrt(m2)
+            let k = min(m, 1.0) / m
+            mx = sx * k
+            mz = sz * k
+        }
+    }
+    return vec2(mx, mz)
+}
+
+fn thief_update(inp: *Input, t: s32) {
+    let mv = input_move(inp)
+    let moving = mv.x != 0.0 || mv.y != 0.0
+    thief.moving = moving
+    thief.running = false
+    if thief.hidden {
+        if moving || inp.press & A != 0 {
+            thief.hidden = false
+            thief.hide_t = t
+        }
+        return
+    }
+    if moving {
+        var step = WALK
+        if inp.pad & R != 0 {
+            step = RUN
+            thief.running = true
+        }
+        thief.head = heading_to(mv.x, mv.y)
+        let p = solid_push(thief.x + mv.x * step, thief.z + mv.y * step, THIEF_R)
+        thief.x = p.x
+        thief.z = p.y
+    }
+    thief.car = train_inside(thief.x, thief.z)
+    if thief.running { noise(thief.x, thief.z, 0.0, -1) }
+    // fragile things
+    for i in 0..room.nfrag {
+        if fragile_down[i] { continue }
+        let r = room.frag_r[i] + THIEF_R
+        if dist2(thief.x, thief.z, room.frag_x[i], room.frag_z[i]) < r * r {
+            fragile_down[i] = true
+            fragile_at[i] = t
+            noise(room.frag_x[i], room.frag_z[i], room.frag_noise[i], -1)
+        }
+    }
+    // A: hide in a spot he stands in
+    if inp.press & A != 0 {
+        for i in 0..room.nspots {
+            if box_contains(&room.spots[i], thief.x, thief.z) {
+                thief.hidden = true
+                thief.hide_t = t
+                break
+            }
+        }
+    }
+    // L: the other tool; B: use it
+    if inp.press & L != 0 {
+        if thief.tool == Tool.Toy { thief.tool = Tool.Bell } else { thief.tool = Tool.Toy }
+    }
+    if inp.press & B != 0 { use_tool(t) }
+}
+
+fn use_tool(t: s32) {
+    if thief.tool == Tool.Toy {
+        if thief.toys <= 0 { return }
+        for i in 0..MAX_TOYS {
+            if toys[i].on { continue }
+            let p = solid_push(thief.x + sin(thief.head) * 0.5, thief.z + cos(thief.head) * 0.5, TOY_R)
+            toys[i] = Toy { x: p.x, z: p.y, head: thief.head, ticks: TOY_TICKS, on: true }
+            thief.toys -= 1
+            return
+        }
+    } else {
+        if thief.bells <= 0 { return }
+        for i in 0..MAX_BELLS {
+            if bells[i].on { continue }
+            bells[i] = Bell { x: thief.x, z: thief.z, ticks: BELL_DELAY, on: true, placed_at: t, rang_at: -1 }
+            thief.bells -= 1
+            return
+        }
+    }
+}
+
+// The toys walk and click, turning right at walls; the bells count down and beep.
+fn tools_update(t: s32) {
+    for i in 0..MAX_TOYS {
+        let y = &toys[i]
+        if !y.on || y.ticks <= 0 { continue }
+        y.ticks -= 1
+        let nx = y.x + sin(y.head) * TOY_SPEED
+        let nz = y.z + cos(y.head) * TOY_SPEED
+        let p = solid_push(nx, nz, TOY_R)
+        if abs(p.x - nx) > 0.001 || abs(p.y - nz) > 0.001 {
+            y.head = wrap_angle(y.head + HALF_PI)
+        } else {
+            y.x = nx
+            y.z = nz
+        }
+        noise(y.x, y.z, TOY_NOISE, i)
+    }
+    for i in 0..MAX_BELLS {
+        let b = &bells[i]
+        if !b.on || b.ticks < 0 { continue }
+        b.ticks = BELL_DELAY - (t - b.placed_at)
+        if b.ticks <= 0 {
+            b.ticks = -1
+            b.rang_at = t
+            noise(b.x, b.z, BELL_NOISE, -1)
+        }
+    }
+}
+
+fn in_exit() -> bool { return box_contains(&room.exit, thief.x, thief.z) }

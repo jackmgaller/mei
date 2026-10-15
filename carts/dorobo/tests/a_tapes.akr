@@ -1,0 +1,105 @@
+// Agent A's tapes for the rules' scenarios (tests/harness.akr), on the stand-in platform: the
+// thief starts at (-10.4, 1.6) facing +x. Spans as dr_tape.akr describes: ticks, buttons held,
+// the stick.
+
+// Right along z 1.6 into patrol 2's cone.
+const TAPE_INTO_CONE: [1]Span = [Span { n: 900, pad: RIGHT }]
+
+// A busy attempt: a toy, the bell, a run, a hide, until a cone catches him.
+const TAPE_BUSY: [10]Span = [
+    Span { n: 20, pad: RIGHT },
+    Span { n: 1, pad: B },                     // the toy, walking right
+    Span { n: 10, pad: 0 },
+    Span { n: 1, pad: L },                     // the bell
+    Span { n: 30, pad: DOWN, sx: 0, sy: 0 },
+    Span { n: 1, pad: B },                     // set it down
+    Span { n: 60, pad: R | RIGHT },            // run (loud)
+    Span { n: 80, pad: 0, sx: 90, sy: -90 },   // the stick, down and right
+    Span { n: 200, pad: UP | RIGHT },
+    Span { n: 900, pad: RIGHT },
+]
+
+// A short run near patrol 1, then still.
+const TAPE_RUN: [2]Span = [
+    Span { n: 20, pad: R | RIGHT },
+    Span { n: 2000, pad: 0 },
+]
+
+// The toy (walking right), then the bell beside the thief.
+const TAPE_TOOLS: [6]Span = [
+    Span { n: 5, pad: 0 },
+    Span { n: 1, pad: B },
+    Span { n: 4, pad: 0 },
+    Span { n: 1, pad: L },
+    Span { n: 20, pad: DOWN },
+    Span { n: 1, pad: B },
+]
+
+// To the hiding place at (-7.5, 2.45): right to x -7.5, up, A.
+const TAPE_HIDE: [4]Span = [
+    Span { n: 73, pad: RIGHT },
+    Span { n: 23, pad: UP },
+    Span { n: 1, pad: A },
+    Span { n: 2000, pad: 0 },
+]
+
+// To the front train's door at x -2.0 (car 1's middle one), against the edge until the doors
+// open, in, and stay.
+const TAPE_TRAIN: [3]Span = [
+    Span { n: 210, pad: RIGHT },
+    Span { n: 420, pad: DOWN },
+    Span { n: 2000, pad: 0 },
+]
+
+// Right to x -1.4 and up into the fragile stack at (-1.4, 2.5).
+const TAPE_FRAGILE: [2]Span = [
+    Span { n: 225, pad: RIGHT },
+    Span { n: 100, pad: UP },
+]
+
+// B's platform: down by track A's edge and right, then still while train A comes in.
+const TAPE_SHOT_TRAIN: [3]Span = [
+    Span { n: 38, pad: DOWN },
+    Span { n: 120, pad: RIGHT },
+    Span { n: 2000, pad: 0 },
+]
+
+// B's platform: up to z 7.2 and right to x 14.6, then still while the camera on the back wall
+// looks past pillar 3.
+const TAPE_SHOT_PILLAR: [3]Span = [
+    Span { n: 43, pad: UP },
+    Span { n: 240, pad: RIGHT },
+    Span { n: 2000, pad: 0 },
+]
+
+// B's platform, for pictures and the budget (nobody catches him): from the stair's foot (5, 5.5)
+// up to z 7.2, along the platform, a run, the toy and the bell, down to train A's door while it
+// stands (doors open 720-1319), in, and along inside it.
+const TAPE_TOUR: [10]Span = [
+    Span { n: 43, pad: UP },
+    Span { n: 240, pad: RIGHT },
+    Span { n: 40, pad: R | RIGHT },
+    Span { n: 1, pad: B },
+    Span { n: 5, pad: 0 },
+    Span { n: 1, pad: L },
+    Span { n: 1, pad: B },
+    Span { n: 420, pad: DOWN },
+    Span { n: 300, pad: LEFT },
+    Span { n: 2000, pad: 0 },
+]
+
+// B's platform: up off the stair's line, then right along z 7.2 into the platform guard's or the
+// kiosk guard's cone.
+const TAPE_INTO_CONE_B: [2]Span = [
+    Span { n: 43, pad: UP },
+    Span { n: 900, pad: RIGHT },
+]
+
+// The stand-in: down to z -1.8, then right along the platform's front to the staff door.
+const TAPE_EXIT: [2]Span = [
+    Span { n: 85, pad: DOWN },
+    Span { n: 700, pad: RIGHT },
+]
+
+// Straight toward the camera from the spawn, to the room's front row.
+const TAPE_FRONT: [1]Span = [Span { n: 2000, pad: DOWN }]

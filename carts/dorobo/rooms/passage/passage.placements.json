@@ -1,0 +1,27 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "passage",
+ "placements": [
+  {
+   "id": "r3_passage",
+   "asset": "r3_passage",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "r3_passage_col"
+  },
+  {
+   "id": "r3_showcase",
+   "asset": "r3_showcase",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

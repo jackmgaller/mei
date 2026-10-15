@@ -1,0 +1,74 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "r2_glass",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 60
+ },
+ "materials": {
+  "glass": {
+   "color": "#9ccce0",
+   "blend": "half"
+  },
+  "glass_edge": {
+   "color": "#c8e4f0"
+  }
+ },
+ "nodes": [
+  {
+   "id": "window",
+   "op": "box",
+   "size": [
+    2.05,
+    0.21,
+    0.04
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     -0.425,
+     0.895,
+     2.22
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "glass_edge"
+   }
+  },
+  {
+   "id": "barrier_glass",
+   "op": "box",
+   "size": [
+    0.04,
+    0.27,
+    1.03
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     0.0,
+     0.845,
+     1.615
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "glass_edge"
+   }
+  }
+ ],
+ "lighting": {
+  "bake": false
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

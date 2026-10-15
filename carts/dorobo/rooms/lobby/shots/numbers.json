@@ -1,0 +1,106 @@
+{
+ "camera": {
+  "pitch_degrees": 60.0,
+  "fov_degrees": 20.0,
+  "distance": 28.166,
+  "target_z": -0.841
+ },
+ "checks": {
+  "r4_escalator": {
+   "ok": true,
+   "verdict": "PASS (depth mode); 64 findings allowed in depth mode (surface_intersection, t_junction)",
+   "failures": []
+  },
+  "r4_front": {
+   "ok": true,
+   "verdict": "PASS (depth mode); 163 findings allowed in depth mode (surface_intersection, t_junction)",
+   "failures": []
+  },
+  "r4_lobby": {
+   "ok": true,
+   "verdict": "PASS (depth mode); 511 findings allowed in depth mode (surface_intersection, t_junction)",
+   "failures": []
+  }
+ },
+ "assets": {
+  "r4_escalator": {
+   "triangles": 218,
+   "vertices": 136
+  },
+  "r4_front": {
+   "triangles": 134,
+   "vertices": 108
+  },
+  "r4_lobby": {
+   "triangles": 557,
+   "vertices": 413
+  }
+ },
+ "views": {
+  "0": {
+   "pan_x": 0,
+   "target_z": -0.841,
+   "eye": [
+    0,
+    24.992,
+    -14.924
+   ],
+   "full": {
+    "tick": 3,
+    "cpu_cycles": 177566,
+    "tris": 814,
+    "tris_empty": 254,
+    "tris_dropped": 0,
+    "clears": 1,
+    "lists": 1,
+    "px_flat": 1283,
+    "px_gouraud": 14289,
+    "px_tex": 75080,
+    "px_tex_gouraud": 3856,
+    "px_semi_flat": 5825,
+    "px_semi_gouraud": 4653,
+    "px_semi_tex": 0,
+    "px_semi_tex_gouraud": 0,
+    "gpu_cycles": 323120,
+    "ticks": 1,
+    "gpu_lag": 0,
+    "px_ztest": 104986,
+    "px_zfail": 21041,
+    "zclears": 1,
+    "tris_recip": 814,
+    "px_persp": 78936,
+    "persp_divs": 7762,
+    "tris_fog": 0,
+    "px_fog": 0
+   },
+   "bare": {
+    "tick": 3,
+    "cpu_cycles": 126428,
+    "tris": 556,
+    "tris_empty": 216,
+    "tris_dropped": 0,
+    "clears": 1,
+    "lists": 1,
+    "px_flat": 115,
+    "px_gouraud": 14289,
+    "px_tex": 75045,
+    "px_tex_gouraud": 3856,
+    "px_semi_flat": 0,
+    "px_semi_gouraud": 4653,
+    "px_semi_tex": 0,
+    "px_semi_tex_gouraud": 0,
+    "gpu_cycles": 295276,
+    "ticks": 1,
+    "gpu_lag": 0,
+    "px_ztest": 97958,
+    "px_zfail": 19021,
+    "zclears": 1,
+    "tris_recip": 556,
+    "px_persp": 78901,
+    "persp_divs": 7734,
+    "tris_fog": 0,
+    "px_fog": 0
+   }
+  }
+ }
+}

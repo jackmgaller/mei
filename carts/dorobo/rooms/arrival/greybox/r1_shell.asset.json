@@ -1,0 +1,444 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "r1_shell",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 500
+ },
+ "lighting": {
+  "direction": [
+   -0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "materials": {
+  "bed": {
+   "color": "#2a2c31"
+  },
+  "cut": {
+   "color": "#a8b2c4"
+  },
+  "door_light": {
+   "color": "#7cf0a0",
+   "class": "emissive"
+  },
+  "edge_line": {
+   "color": "#d0b440"
+  },
+  "floor": {
+   "color": "#8c9098"
+  },
+  "floor_dark": {
+   "color": "#6c7078"
+  },
+  "rail": {
+   "color": "#707680"
+  },
+  "slab": {
+   "color": "#3a3f4a"
+  },
+  "stair": {
+   "color": "#9a9ea6"
+  },
+  "stair_side": {
+   "color": "#5c6470"
+  },
+  "tunnel": {
+   "color": "#14161a"
+  },
+  "wall": {
+   "color": "#4c5462"
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    13.5,
+    0.3,
+    8.25
+   ],
+   "material": "slab",
+   "transform": {
+    "translate": [
+     0.0,
+     -1.25,
+     -0.375
+    ]
+   },
+   "faces": {
+    "top": "bed",
+    "back": "cut",
+    "left": "cut",
+    "right": "cut"
+   }
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    13.5,
+    2.1,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.05,
+     -4.375
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "platform",
+   "op": "box",
+   "size": [
+    13.0,
+    1.1,
+    5.35
+   ],
+   "material": "floor_dark",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.55,
+     -1.575
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back"
+   ],
+   "faces": {
+    "top": "floor"
+   },
+   "decals": [
+    {
+     "id": "edge",
+     "face": "top",
+     "material": "edge_line",
+     "size": [
+      12.9,
+      0.3
+     ],
+     "at": [
+      0,
+      2.025
+     ]
+    }
+   ]
+  },
+  {
+   "id": "back_wall",
+   "op": "box",
+   "size": [
+    13.5,
+    3.5,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.0,
+     0.65,
+     3.625
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   },
+   "decals": [
+    {
+     "id": "timetable",
+     "face": "back",
+     "material": "door_light",
+     "size": [
+      1.2,
+      0.5
+     ],
+     "at": [
+      5.0,
+      1.0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "end_w",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    5.35
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -6.625,
+     0.65,
+     -1.575
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e",
+   "op": "box",
+   "size": [
+    0.25,
+    3.5,
+    5.35
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     6.625,
+     0.65,
+     -1.575
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "lintel_w",
+   "op": "box",
+   "size": [
+    0.25,
+    0.19,
+    2.4
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -6.625,
+     2.295,
+     2.3
+    ]
+   },
+   "open": [
+    "back",
+    "front"
+   ],
+   "faces": {
+    "bottom": "tunnel"
+   }
+  },
+  {
+   "id": "lintel_e",
+   "op": "box",
+   "size": [
+    0.25,
+    0.19,
+    2.4
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     6.625,
+     2.295,
+     2.3
+    ]
+   },
+   "open": [
+    "back",
+    "front"
+   ],
+   "faces": {
+    "bottom": "tunnel"
+   }
+  },
+  {
+   "id": "rail_l",
+   "op": "box",
+   "size": [
+    13.5,
+    0.17,
+    0.07
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     0.0,
+     -1.025,
+     1.765
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "rail_r",
+   "op": "box",
+   "size": [
+    13.5,
+    0.17,
+    0.07
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     0.0,
+     -1.025,
+     2.835
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "stair",
+   "op": "extrude",
+   "material": "stair",
+   "depth": 2.2,
+   "points": [
+    [
+     6.52,
+     -0.02
+    ],
+    [
+     3.6,
+     -0.02
+    ],
+    [
+     3.6,
+     0.2
+    ],
+    [
+     3.8655,
+     0.2
+    ],
+    [
+     3.8655,
+     0.4
+    ],
+    [
+     4.1309,
+     0.4
+    ],
+    [
+     4.1309,
+     0.6
+    ],
+    [
+     4.3964,
+     0.6
+    ],
+    [
+     4.3964,
+     0.8
+    ],
+    [
+     4.6618,
+     0.8
+    ],
+    [
+     4.6618,
+     1.0
+    ],
+    [
+     4.9273,
+     1.0
+    ],
+    [
+     4.9273,
+     1.2
+    ],
+    [
+     5.1927,
+     1.2
+    ],
+    [
+     5.1927,
+     1.4
+    ],
+    [
+     5.4582,
+     1.4
+    ],
+    [
+     5.4582,
+     1.6
+    ],
+    [
+     5.7236,
+     1.6
+    ],
+    [
+     5.7236,
+     1.8
+    ],
+    [
+     5.9891,
+     1.8
+    ],
+    [
+     5.9891,
+     2.0
+    ],
+    [
+     6.2545,
+     2.0
+    ],
+    [
+     6.2545,
+     2.2
+    ],
+    [
+     6.52,
+     2.2
+    ]
+   ],
+   "faces": {
+    "front": "stair_side",
+    "back": "stair_side"
+   },
+   "transform": {
+    "translate": [
+     0,
+     0,
+     -0.2
+    ]
+   }
+  }
+ ],
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

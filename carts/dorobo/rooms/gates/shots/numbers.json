@@ -1,0 +1,82 @@
+{
+ "checks": {
+  "r2_concourse": "PASS (depth mode); 284 findings allowed in depth mode (surface_intersection, t_junction)",
+  "r2_glass": "PASS (depth mode)"
+ },
+ "assets": {
+  "r2_concourse": {
+   "triangles": 632,
+   "vertices": 478
+  },
+  "r2_glass": {
+   "triangles": 20,
+   "vertices": 16
+  }
+ },
+ "texture_bytes": 65830,
+ "room_triangles": 652,
+ "camera": {
+  "eye": [
+   0.0,
+   24.993,
+   -14.924
+  ],
+  "target_z": -0.841
+ },
+ "room": {
+  "tick": 3,
+  "cpu_cycles": 72828,
+  "tris": 351,
+  "tris_empty": 40,
+  "tris_dropped": 0,
+  "clears": 1,
+  "lists": 1,
+  "px_flat": 2189,
+  "px_gouraud": 11920,
+  "px_tex": 71737,
+  "px_tex_gouraud": 429,
+  "px_semi_flat": 145,
+  "px_semi_gouraud": 0,
+  "px_semi_tex": 0,
+  "px_semi_tex_gouraud": 0,
+  "gpu_cycles": 258427,
+  "ticks": 1,
+  "gpu_lag": 0,
+  "px_ztest": 86420,
+  "px_zfail": 15881,
+  "zclears": 1,
+  "tris_recip": 351,
+  "px_persp": 72166,
+  "persp_divs": 6477,
+  "tris_fog": 0,
+  "px_fog": 0
+ },
+ "full": {
+  "tick": 3,
+  "cpu_cycles": 104009,
+  "tris": 507,
+  "tris_empty": 57,
+  "tris_dropped": 0,
+  "clears": 1,
+  "lists": 1,
+  "px_flat": 2998,
+  "px_gouraud": 11920,
+  "px_tex": 71753,
+  "px_tex_gouraud": 429,
+  "px_semi_flat": 1953,
+  "px_semi_gouraud": 0,
+  "px_semi_tex": 0,
+  "px_semi_tex_gouraud": 0,
+  "gpu_cycles": 272178,
+  "ticks": 1,
+  "gpu_lag": 0,
+  "px_ztest": 89053,
+  "px_zfail": 16836,
+  "zclears": 1,
+  "tris_recip": 507,
+  "px_persp": 72182,
+  "persp_divs": 6488,
+  "tris_fog": 0,
+  "px_fog": 0
+ }
+}
