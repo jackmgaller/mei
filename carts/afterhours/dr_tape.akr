@@ -1,0 +1,152 @@
+// Tapes: every attempt's input, run-length coded from the room clock's 0, and the thief's
+// position each tick for the ghost. The best attempt so far is kept and drawn as a ghost on the
+// next (dr_view.akr); each room of a run keeps its own, and in a stage of doors each room and
+// door he came in by (a Ghost: the best attempt's track, not its input). A tape replays an attempt exactly: the room is a function of the clock and
+// the input.
+
+struct Span {
+    n: u16             // ticks this input lasts
+    pad: u16           // buttons held (input.akr's bits; START is not recorded)
+    sx: s8             // the stick, -127..127
+    sy: s8
+}
+
+const MAX_SPANS = 4096
+const MAX_TRACK = 7200         // two minutes of positions
+const TRACK_UNIT: fixed = 0.01 // positions in centimetres
+
+struct Tape {
+    nspans: s32
+    spans: [MAX_SPANS]Span
+    ticks: s32         // its length
+    have: bool         // holds an attempt
+    cleared: bool
+    caught: bool       // it ended caught (else restarted or still running)
+    near: fixed        // the nearest the thief came to the exit (metres)
+    end_x: fixed
+    end_z: fixed
+    track_x: [MAX_TRACK]s16
+    track_z: [MAX_TRACK]s16
+}
+
+// The best attempt of a room entered by a door: its track (for the ghost) and how it went.
+struct Ghost {
+    have: bool
+    cleared: bool
+    ticks: s32
+    near: fixed
+    track_x: [MAX_TRACK]s16
+    track_z: [MAX_TRACK]s16
+}
+
+const MAX_GHOSTS = 16
+
+var tape_now: Tape
+var bests: [MAX_GHOSTS]Ghost   // the best attempts, by ghost_key
+var ghost_key: [MAX_GHOSTS]s32 // the room and door each holds (0: free)
+var best: *Ghost               // the room being played's (as he came in)
+
+// Forgets every ghost (a new stage).
+fn ghosts_clear() {
+    for k in 0..MAX_GHOSTS {
+        bests[k].have = false
+        ghost_key[k] = 0
+    }
+}
+
+// The ghost of room k entered by door d (-1: its entry), a new one if it has none (the last slot
+// is shared once they are all taken).
+fn ghost_for(k: s32, d: s32) -> *Ghost {
+    let key = k * 16 + d + 2
+    for i in 0..MAX_GHOSTS {
+        if ghost_key[i] == key { return &bests[i] }
+    }
+    for i in 0..MAX_GHOSTS {
+        if ghost_key[i] == 0 {
+            ghost_key[i] = key
+            bests[i].have = false
+            return &bests[i]
+        }
+    }
+    return &bests[MAX_GHOSTS - 1]
+}
+
+fn tape_begin(tp: *Tape) {
+    tp.nspans = 0
+    tp.ticks = 0
+    tp.have = true
+    tp.cleared = false
+    tp.caught = false
+    tp.near = 1000.0
+}
+
+fn tape_record(tp: *Tape, inp: *Input, x: fixed, z: fixed) {
+    let pad = (inp.pad & 0x3FF) as u16
+    let sx = inp.sx as s8
+    let sy = inp.sy as s8
+    let n = tp.nspans
+    if n > 0 {
+        let s = &tp.spans[n - 1]
+        if s.pad == pad && s.sx == sx && s.sy == sy && s.n < 65535 {
+            s.n += 1
+        } else if n < MAX_SPANS {
+            tp.spans[n] = Span { n: 1, pad: pad, sx: sx, sy: sy }
+            tp.nspans += 1
+        }
+    } else {
+        tp.spans[0] = Span { n: 1, pad: pad, sx: sx, sy: sy }
+        tp.nspans = 1
+    }
+    if tp.ticks < MAX_TRACK {
+        tp.track_x[tp.ticks] = (x / TRACK_UNIT) as s32 as s16
+        tp.track_z[tp.ticks] = (z / TRACK_UNIT) as s32 as s16
+    }
+    tp.ticks += 1
+    tp.end_x = x
+    tp.end_z = z
+}
+
+// The input of a tape (spans) at tick t: held buttons and stick; `press` from the tick before.
+fn span_at(spans: *Span, n: s32, t: s32) -> Span {
+    var left = t
+    for i in 0..n {
+        let n = spans[i].n as s32
+        if left < n { return spans[i] }
+        left -= n
+    }
+    return Span { n: 1, pad: 0, sx: 0, sy: 0 }
+}
+
+fn spans_ticks(spans: *Span, count: s32) -> s32 {
+    var n = 0
+    for i in 0..count { n += spans[i].n as s32 }
+    return n
+}
+
+// Whether `a` is a better attempt than `b`: cleared beats not; then the faster clear, or the
+// nearer approach to the exit.
+fn tape_better(a: *Tape, b: *Ghost) -> bool {
+    if a.cleared != b.cleared { return a.cleared }
+    if a.cleared { return a.ticks < b.ticks }
+    return a.near < b.near
+}
+
+// Ends the attempt being recorded and keeps it if it is the best.
+fn tape_end() {
+    if !best.have || tape_better(&tape_now, best) {
+        best.have = true
+        best.cleared = tape_now.cleared
+        best.ticks = tape_now.ticks
+        best.near = tape_now.near
+        let n = min(tape_now.ticks, MAX_TRACK)
+        memcpy(&best.track_x[0] as *u8, &tape_now.track_x[0] as *u8, (n * 2) as u32)
+        memcpy(&best.track_z[0] as *u8, &tape_now.track_z[0] as *u8, (n * 2) as u32)
+    }
+}
+
+// The ghost's position at clock t: where the best attempt's thief stood after t ticks (the
+// track holds each tick's position after it ran).
+fn ghost_at(t: s32) -> vec2 {
+    let k = clamp(t - 1, 0, min(best.ticks, MAX_TRACK) - 1)
+    return vec2(fixed(best.track_x[k] as s32) * TRACK_UNIT, fixed(best.track_z[k] as s32) * TRACK_UNIT)
+}

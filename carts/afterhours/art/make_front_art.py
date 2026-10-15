@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""After Hours' front-end art (agent E): the menus' two fonts and the memory card's save icon.
+
+    python3 carts/afterhours/art/make_front_art.py [--preview DIR]
+
+Writes, beside this script:
+  front_title.fnt   the title's font: Belleza, 30 px, capitals and space only (stdlib font.akr
+                    blob, texels included), texture slot 7 from row 0, 4-bit palette 250
+  front_head.fnt    the menus' font: Sofia Sans Condensed SemiBold, 13 px, printable ASCII,
+                    slot 7 below the title's rows, palette 251
+  save_icon.bin     the save's title and icon (tools/mei_icon.py): a night tower in section, one
+                    window lighting up floor by floor and the thief's orange on the roof (3 frames)
+and carts/afterhours/front_art.akr, the embeds (generated; do not edit).
+
+Slot 7 and palettes 250-251 are free in After Hours: the worlds use slots 8-14 and palettes up to
+26; the stdlib's pixel font is slot 15, palette 255. The fonts are OFL (tools/fonts/).
+"""
+import argparse
+import os
+import sys
+
+import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+CART = os.path.dirname(HERE)
+ROOT = os.path.dirname(os.path.dirname(CART))
+sys.path.insert(0, os.path.join(ROOT, 'tools'))
+
+import meifont          # noqa: E402
+from mei_icon import make_meta   # noqa: E402
+
+FONTS = os.path.join(ROOT, 'tools', 'fonts')
+SLOT = 7
+PAL_TITLE = 250
+PAL_HEAD = 251
+
+
+def trimmed(path, size, keep=None, track=0):
+    """A TrueType font's glyphs cut to the rows any glyph uses (keep: only these characters)."""
+    glyphs, h, line = meifont.ttf_glyphs(path, size, first=32, count=95, track=track)
+    if keep is not None:
+        glyphs = [(img, adv) if chr(32 + i) in keep else (None, adv) for i, (img, adv) in enumerate(glyphs)]
+    top, bot = h, 0
+    for img, _ in glyphs:
+        if img is not None and img.any():
+            rows = np.where(img.any(axis=1))[0]
+            top, bot = min(top, rows.min()), max(bot, rows.max())
+    glyphs = [(img[top:bot + 1] if img is not None else None, adv) for img, adv in glyphs]
+    nh = bot + 1 - top
+    return glyphs, nh, nh + max(2, line - h)
+
+
+def fonts(preview):
+    caps = set(' ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    g, h, line = trimmed(os.path.join(FONTS, 'Belleza-Regular.ttf'), 30, keep=caps, track=3)
+    title = meifont.build_font(g, h, line, slot=SLOT, palette=PAL_TITLE, row=0,
+                               colours=meifont.default_colours(15, None, (8, 12, 28)))
+    row = title.rows + 1
+    g, h, line = trimmed(os.path.join(FONTS, 'SofiaSansCondensed-SemiBold.ttf'), 13, track=1)
+    head = meifont.build_font(g, h, line, slot=SLOT, palette=PAL_HEAD, row=row,
+                              colours=meifont.default_colours(15, None, (8, 12, 28)))
+    assert row + head.rows <= 256, 'the fonts do not fit in slot %d' % SLOT
+    for name, f in (('title', title), ('head', head)):
+        with open(os.path.join(HERE, 'front_%s.fnt' % name), 'wb') as fh:
+            fh.write(f.blob())
+        if preview:
+            f.preview(os.path.join(preview, 'front_%s.png' % name))
+    return title, head
+
+
+# The icon: palette indices. 0 transparent, 1 the night, 2 the tower's dark floors, 3 its slabs,
+# 4 a lit window (blue, the aquarium's), 5 a lit window (warm), 6 the thief's orange, 7 the sky's
+# star.
+ICON_PAL = [(0, 0, 0), (10, 14, 34), (34, 42, 70), (70, 82, 120), (90, 190, 255),
+            (255, 214, 130), (255, 128, 32), (200, 210, 255)]
+
+
+def icon_frames():
+    frames = []
+    for lit in range(3):
+        a = np.full((16, 16), 1, np.int64)
+        a[0, 2] = 7
+        a[2, 13] = 7
+        # the tower: x 4-11, floors of 3 rows from y 4 down, slabs between
+        a[3:16, 4:12] = 2
+        for k, y in enumerate(range(15, 3, -3)):      # floors from the bottom up
+            a[y, 4:12] = 3
+            on = k <= lit
+            if on:
+                a[y - 2:y, 5:11] = 4 if k == 3 else 5
+        a[3, 4:12] = 3
+        if lit == 2:
+            a[1:3, 7] = 6                             # the thief on the roof
+        frames.append(a)
+    return frames
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+    ap.add_argument('--preview', metavar='DIR', help='write PNG previews of the fonts and the icon')
+    args = ap.parse_args()
+    if args.preview:
+        os.makedirs(args.preview, exist_ok=True)
+    title, head = fonts(args.preview)
+    meta = make_meta(icon_frames(), title='AFTER HOURS', palette=ICON_PAL)
+    with open(os.path.join(HERE, 'save_icon.bin'), 'wb') as fh:
+        fh.write(meta)
+    if args.preview:
+        from PIL import Image
+        strip = np.concatenate(icon_frames(), axis=1)
+        img = np.array([[ICON_PAL[i] for i in row] for row in strip], np.uint8)
+        Image.fromarray(img).resize((strip.shape[1] * 8, 128), Image.NEAREST).save(
+            os.path.join(args.preview, 'save_icon.png'))
+    akr = [
+        '// Generated by carts/afterhours/art/make_front_art.py - do not edit.',
+        '// The front end\'s art (agent E): two fonts in texture slot 7 (rows 0-%d and %d-%d, palettes'
+        % (title.rows - 1, title.row + title.rows + 1, head.row + head.rows - 1),
+        '// %d and %d) and the save\'s title and icon.' % (PAL_TITLE, PAL_HEAD),
+        'embed FONT_TITLE: Font = "art/front_title.fnt"',
+        'embed FONT_HEAD: Font = "art/front_head.fnt"',
+        'embed SAVE_ICON: SaveMeta = "art/save_icon.bin"',
+        '',
+    ]
+    with open(os.path.join(CART, 'front_art.akr'), 'w') as fh:
+        fh.write('\n'.join(akr))
+    print('fonts: title %d px (%d rows), head %d px (%d rows); save icon 3 frames'
+          % (title.height, title.rows, head.height, head.rows))
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,2420 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "fh_hall",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 2000
+ },
+ "materials": {
+  "cut": {
+   "color": "#8c9ab4",
+   "class": "emissive"
+  },
+  "cut_tex": {
+   "color": "#8c9ab4",
+   "class": "emissive",
+   "texture": {
+    "image": "art/cut.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "end_wall": {
+   "color": "#c4b8a4"
+  },
+  "lintel": {
+   "color": "#5c544c"
+  },
+  "door_light": {
+   "color": "#ffe8c8",
+   "class": "emissive"
+  },
+  "column": {
+   "color": "#d4ccbc"
+  },
+  "counter": {
+   "color": "#8a6444"
+  },
+  "counter_top": {
+   "color": "#c8b89c"
+  },
+  "andon": {
+   "color": "#ffd8a0",
+   "class": "emissive"
+  },
+  "andon_frame": {
+   "color": "#3a2a20"
+  },
+  "canister": {
+   "color": "#2c4a3c"
+  },
+  "canister_lid": {
+   "color": "#b89850"
+  },
+  "bread": {
+   "color": "#c88a48"
+  },
+  "basket": {
+   "color": "#8a6438"
+  },
+  "sweet_box": {
+   "color": "#d8c8a8"
+  },
+  "sweet_lid": {
+   "color": "#a03040"
+  },
+  "melon_counter": {
+   "color": "#9a7048"
+  },
+  "melon_top": {
+   "color": "#5a3e28"
+  },
+  "kiri": {
+   "color": "#e0d0b0"
+  },
+  "melon": {
+   "color": "#9cb478",
+   "smooth": true,
+   "texture": {
+    "image": "art/melon.png",
+    "bits": 4,
+    "projection": "box",
+    "scale": [
+     0.2,
+     0.2
+    ]
+   }
+  },
+  "price": {
+   "color": "#f0ece0",
+   "class": "emissive"
+  },
+  "cart": {
+   "color": "#e0c040"
+  },
+  "cart_dark": {
+   "color": "#3a3c44"
+  },
+  "mop": {
+   "color": "#d8dce4"
+  },
+  "bucket": {
+   "color": "#4a90c8"
+  },
+  "lift_floor": {
+   "color": "#8a8c92"
+  },
+  "lift_frame": {
+   "color": "#6a6c74"
+  },
+  "pads": {
+   "color": "#3c4c70",
+   "texture": {
+    "image": "art/pads.png",
+    "bits": 4,
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "lift_lamp": {
+   "color": "#f0f4ff",
+   "class": "emissive"
+  },
+  "mall_floor": {
+   "color": "#c8beb0"
+  },
+  "shutter": {
+   "color": "#8c9098"
+  },
+  "exit_sign": {
+   "color": "#40d070",
+   "class": "emissive"
+  },
+  "floor_00": {
+   "color": "#a89880",
+   "class": "emissive",
+   "texture": {
+    "image": "art/floor_00.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "floor_01": {
+   "color": "#a89880",
+   "class": "emissive",
+   "texture": {
+    "image": "art/floor_01.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "floor_02": {
+   "color": "#a89880",
+   "class": "emissive",
+   "texture": {
+    "image": "art/floor_02.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "floor_10": {
+   "color": "#a89880",
+   "class": "emissive",
+   "texture": {
+    "image": "art/floor_10.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "floor_11": {
+   "color": "#a89880",
+   "class": "emissive",
+   "texture": {
+    "image": "art/floor_11.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "floor_12": {
+   "color": "#a89880",
+   "class": "emissive",
+   "texture": {
+    "image": "art/floor_12.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "wall_0": {
+   "color": "#6c584a",
+   "class": "emissive",
+   "texture": {
+    "image": "art/wall_0.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "front_0": {
+   "color": "#40342c",
+   "class": "emissive",
+   "texture": {
+    "image": "art/front_0.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "wall_1": {
+   "color": "#6c584a",
+   "class": "emissive",
+   "texture": {
+    "image": "art/wall_1.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "front_1": {
+   "color": "#40342c",
+   "class": "emissive",
+   "texture": {
+    "image": "art/front_1.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "floor",
+   "op": "mesh",
+   "material": "floor_00",
+   "vertices": [
+    [
+     -12.25,
+     0.0,
+     0.0
+    ],
+    [
+     -4.0833,
+     0.0,
+     0.0
+    ],
+    [
+     -4.0833,
+     0.0,
+     -5.0
+    ],
+    [
+     -12.25,
+     0.0,
+     -5.0
+    ],
+    [
+     -4.0833,
+     0.0,
+     0.0
+    ],
+    [
+     4.0833,
+     0.0,
+     0.0
+    ],
+    [
+     4.0833,
+     0.0,
+     -5.0
+    ],
+    [
+     -4.0833,
+     0.0,
+     -5.0
+    ],
+    [
+     4.0833,
+     0.0,
+     0.0
+    ],
+    [
+     12.25,
+     0.0,
+     0.0
+    ],
+    [
+     12.25,
+     0.0,
+     -5.0
+    ],
+    [
+     4.0833,
+     0.0,
+     -5.0
+    ],
+    [
+     -12.25,
+     0.0,
+     5.0
+    ],
+    [
+     -4.0833,
+     0.0,
+     5.0
+    ],
+    [
+     -4.0833,
+     0.0,
+     0.0
+    ],
+    [
+     -12.25,
+     0.0,
+     0.0
+    ],
+    [
+     -4.0833,
+     0.0,
+     5.0
+    ],
+    [
+     4.0833,
+     0.0,
+     5.0
+    ],
+    [
+     4.0833,
+     0.0,
+     0.0
+    ],
+    [
+     -4.0833,
+     0.0,
+     0.0
+    ],
+    [
+     4.0833,
+     0.0,
+     5.0
+    ],
+    [
+     12.25,
+     0.0,
+     5.0
+    ],
+    [
+     12.25,
+     0.0,
+     0.0
+    ],
+    [
+     4.0833,
+     0.0,
+     0.0
+    ],
+    [
+     -12.25,
+     1.0,
+     -5.0
+    ],
+    [
+     0.0,
+     1.0,
+     -5.0
+    ],
+    [
+     0.0,
+     -0.4,
+     -5.0
+    ],
+    [
+     -12.25,
+     -0.4,
+     -5.0
+    ],
+    [
+     12.25,
+     1.0,
+     -5.0
+    ],
+    [
+     12.25,
+     -0.4,
+     -5.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     8,
+     9,
+     10,
+     11
+    ],
+    [
+     12,
+     13,
+     14,
+     15
+    ],
+    [
+     16,
+     17,
+     18,
+     19
+    ],
+    [
+     20,
+     21,
+     22,
+     23
+    ],
+    [
+     24,
+     25,
+     26,
+     27
+    ],
+    [
+     25,
+     28,
+     29,
+     26
+    ]
+   ],
+   "face_materials": [
+    "floor_00",
+    "floor_01",
+    "floor_02",
+    "floor_10",
+    "floor_11",
+    "floor_12",
+    "front_0",
+    "front_1"
+   ],
+   "uvs": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     1.0,
+     1.0
+    ],
+    [
+     0.0,
+     1.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     1.0,
+     1.0
+    ],
+    [
+     0.0,
+     1.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     1.0,
+     1.0
+    ],
+    [
+     0.0,
+     1.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     1.0,
+     1.0
+    ],
+    [
+     0.0,
+     1.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     1.0,
+     1.0
+    ],
+    [
+     0.0,
+     1.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     1.0,
+     1.0
+    ],
+    [
+     0.0,
+     1.0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  {
+   "id": "back_wall",
+   "op": "mesh",
+   "material": "wall_0",
+   "vertices": [
+    [
+     -12.25,
+     2.4,
+     4.75
+    ],
+    [
+     -10.4,
+     2.4,
+     4.75
+    ],
+    [
+     -10.4,
+     0.0,
+     4.75
+    ],
+    [
+     -12.25,
+     0.0,
+     4.75
+    ],
+    [
+     -9.0,
+     2.4,
+     4.75
+    ],
+    [
+     0.0,
+     2.4,
+     4.75
+    ],
+    [
+     0.0,
+     0.0,
+     4.75
+    ],
+    [
+     -9.0,
+     0.0,
+     4.75
+    ],
+    [
+     0.0,
+     2.4,
+     4.75
+    ],
+    [
+     12.25,
+     2.4,
+     4.75
+    ],
+    [
+     12.25,
+     0.0,
+     4.75
+    ],
+    [
+     0.0,
+     0.0,
+     4.75
+    ],
+    [
+     -9.0,
+     2.1,
+     4.75
+    ],
+    [
+     -10.4,
+     2.1,
+     4.75
+    ],
+    [
+     -12.25,
+     2.4,
+     5.0
+    ],
+    [
+     12.25,
+     2.4,
+     5.0
+    ],
+    [
+     12.25,
+     2.4,
+     4.75
+    ],
+    [
+     -12.25,
+     2.4,
+     4.75
+    ],
+    [
+     -10.4,
+     2.1,
+     4.75
+    ],
+    [
+     -10.4,
+     2.1,
+     5.0
+    ],
+    [
+     -10.4,
+     0.0,
+     5.0
+    ],
+    [
+     -10.4,
+     0.0,
+     4.75
+    ],
+    [
+     -9.0,
+     0.0,
+     4.75
+    ],
+    [
+     -9.0,
+     0.0,
+     5.0
+    ],
+    [
+     -9.0,
+     2.1,
+     5.0
+    ],
+    [
+     -9.0,
+     2.1,
+     4.75
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     8,
+     9,
+     10,
+     11
+    ],
+    [
+     1,
+     4,
+     12,
+     13
+    ],
+    [
+     14,
+     15,
+     16,
+     17
+    ],
+    [
+     18,
+     19,
+     20,
+     21
+    ],
+    [
+     22,
+     23,
+     24,
+     25
+    ],
+    [
+     18,
+     25,
+     24,
+     19
+    ]
+   ],
+   "face_materials": [
+    "wall_0",
+    "wall_0",
+    "wall_1",
+    "wall_0",
+    "cut",
+    "lintel",
+    "lintel",
+    "door_light"
+   ],
+   "uvs": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.15102,
+     0.0
+    ],
+    [
+     0.15102,
+     1.0
+    ],
+    [
+     0.0,
+     1.0
+    ],
+    [
+     0.26531,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     1.0,
+     1.0
+    ],
+    [
+     0.26531,
+     1.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ],
+    [
+     1.0,
+     1.0
+    ],
+    [
+     0.0,
+     1.0
+    ],
+    [
+     0.26531,
+     0.125
+    ],
+    [
+     0.15102,
+     0.125
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    24.5,
+    1.02,
+    0.25
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     0.0,
+     0.49,
+     -4.875
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "back"
+   ]
+  },
+  {
+   "id": "end_w",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    9.51
+   ],
+   "material": "end_wall",
+   "transform": {
+    "translate": [
+     -12.125,
+     1.18,
+     0.005
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "end_e_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    1.15
+   ],
+   "material": "end_wall",
+   "transform": {
+    "translate": [
+     12.125,
+     1.18,
+     -4.175
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "end_e_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    7.16
+   ],
+   "material": "end_wall",
+   "transform": {
+    "translate": [
+     12.125,
+     1.18,
+     1.18
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_lintel",
+   "op": "box",
+   "size": [
+    0.226,
+    0.27,
+    1.22
+   ],
+   "material": "lintel",
+   "transform": {
+    "translate": [
+     12.125,
+     2.235,
+     -3.0
+    ]
+   },
+   "open": [
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "bottom": "door_light"
+   }
+  },
+  {
+   "id": "exit_sign",
+   "op": "box",
+   "size": [
+    0.1,
+    0.14,
+    0.7
+   ],
+   "material": "exit_sign",
+   "transform": {
+    "translate": [
+     11.97,
+     2.25,
+     -3.0
+    ]
+   },
+   "open": [
+    "right"
+   ]
+  },
+  {
+   "id": "column_0",
+   "op": "box",
+   "size": [
+    0.7,
+    1.02,
+    0.7
+   ],
+   "material": "column",
+   "transform": {
+    "translate": [
+     -4.25,
+     0.49,
+     -3.6
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut_tex"
+   }
+  },
+  {
+   "id": "column_1",
+   "op": "box",
+   "size": [
+    0.7,
+    1.02,
+    0.7
+   ],
+   "material": "column",
+   "transform": {
+    "translate": [
+     4.25,
+     0.49,
+     3.4
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut_tex"
+   }
+  },
+  {
+   "id": "back_counter_0",
+   "op": "group",
+   "children": [
+    {
+     "id": "bc_0",
+     "op": "box",
+     "size": [
+      5.4,
+      0.88,
+      0.52
+     ],
+     "material": "counter",
+     "transform": {
+      "translate": [
+       -4.9,
+       0.42,
+       4.51
+      ]
+     },
+     "open": [
+      "bottom",
+      "front"
+     ],
+     "faces": {
+      "top": "counter_top"
+     }
+    },
+    {
+     "id": "andon_0_0",
+     "op": "box",
+     "size": [
+      0.22,
+      0.445,
+      0.22
+     ],
+     "material": "andon",
+     "transform": {
+      "translate": [
+       -7.0,
+       1.0775,
+       4.44
+      ]
+     },
+     "faces": {
+      "top": "andon_frame"
+     }
+    },
+    {
+     "id": "andon_0_1",
+     "op": "box",
+     "size": [
+      0.22,
+      0.445,
+      0.22
+     ],
+     "material": "andon",
+     "transform": {
+      "translate": [
+       -4.9,
+       1.0775,
+       4.44
+      ]
+     },
+     "faces": {
+      "top": "andon_frame"
+     }
+    },
+    {
+     "id": "andon_0_2",
+     "op": "box",
+     "size": [
+      0.22,
+      0.445,
+      0.22
+     ],
+     "material": "andon",
+     "transform": {
+      "translate": [
+       -2.8,
+       1.0775,
+       4.44
+      ]
+     },
+     "faces": {
+      "top": "andon_frame"
+     }
+    },
+    {
+     "id": "tin_0_4",
+     "op": "cylinder",
+     "radius": 0.07,
+     "height": 0.2,
+     "segments": 6,
+     "material": "canister",
+     "faces": {
+      "top": "canister_lid"
+     },
+     "transform": {
+      "translate": [
+       -7.35,
+       0.95,
+       4.43
+      ]
+     }
+    },
+    {
+     "id": "tin_0_5",
+     "op": "cylinder",
+     "radius": 0.07,
+     "height": 0.2,
+     "segments": 6,
+     "material": "canister",
+     "faces": {
+      "top": "canister_lid"
+     },
+     "transform": {
+      "translate": [
+       -6.623,
+       0.95,
+       4.43
+      ]
+     }
+    },
+    {
+     "id": "tin_0_6",
+     "op": "cylinder",
+     "radius": 0.07,
+     "height": 0.2,
+     "segments": 6,
+     "material": "canister",
+     "faces": {
+      "top": "canister_lid"
+     },
+     "transform": {
+      "translate": [
+       -6.2543,
+       0.95,
+       4.43
+      ]
+     }
+    },
+    {
+     "id": "tin_0_7",
+     "op": "cylinder",
+     "radius": 0.07,
+     "height": 0.2,
+     "segments": 6,
+     "material": "canister",
+     "faces": {
+      "top": "canister_lid"
+     },
+     "transform": {
+      "translate": [
+       -5.854,
+       0.95,
+       4.43
+      ]
+     }
+    },
+    {
+     "id": "tin_0_8",
+     "op": "cylinder",
+     "radius": 0.07,
+     "height": 0.2,
+     "segments": 6,
+     "material": "canister",
+     "faces": {
+      "top": "canister_lid"
+     },
+     "transform": {
+      "translate": [
+       -5.4362,
+       0.95,
+       4.43
+      ]
+     }
+    },
+    {
+     "id": "tin_0_9",
+     "op": "cylinder",
+     "radius": 0.07,
+     "height": 0.2,
+     "segments": 6,
+     "material": "canister",
+     "faces": {
+      "top": "canister_lid"
+     },
+     "transform": {
+      "translate": [
+       -4.5746,
+       0.95,
+       4.43
+      ]
+     }
+    },
+    {
+     "id": "tin_0_10",
+     "op": "cylinder",
+     "radius": 0.07,
+     "height": 0.2,
+     "segments": 6,
+     "material": "canister",
+     "faces": {
+      "top": "canister_lid"
+     },
+     "transform": {
+      "translate": [
+       -4.1431,
+       0.95,
+       4.43
+      ]
+     }
+    },
+    {
+     "id": "tin_0_11",
+     "op": "cylinder",
+     "radius": 0.07,
+     "height": 0.2,
+     "segments": 6,
+     "material": "canister",
+     "faces": {
+      "top": "canister_lid"
+     },
+     "transform": {
+      "translate": [
+       -3.717,
+       0.95,
+       4.43
+      ]
+     }
+    },
+    {
+     "id": "tin_0_12",
+     "op": "cylinder",
+     "radius": 0.07,
+     "height": 0.2,
+     "segments": 6,
+     "material": "canister",
+     "faces": {
+      "top": "canister_lid"
+     },
+     "transform": {
+      "translate": [
+       -3.2852,
+       0.95,
+       4.43
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "back_counter_1",
+   "op": "group",
+   "children": [
+    {
+     "id": "bc_1",
+     "op": "box",
+     "size": [
+      2.4,
+      0.88,
+      0.52
+     ],
+     "material": "counter",
+     "transform": {
+      "translate": [
+       0.0,
+       0.42,
+       4.51
+      ]
+     },
+     "open": [
+      "bottom",
+      "front"
+     ],
+     "faces": {
+      "top": "counter_top"
+     }
+    },
+    {
+     "id": "andon_1_0",
+     "op": "box",
+     "size": [
+      0.22,
+      0.445,
+      0.22
+     ],
+     "material": "andon",
+     "transform": {
+      "translate": [
+       -0.6,
+       1.0775,
+       4.44
+      ]
+     },
+     "faces": {
+      "top": "andon_frame"
+     }
+    },
+    {
+     "id": "andon_1_1",
+     "op": "box",
+     "size": [
+      0.22,
+      0.445,
+      0.22
+     ],
+     "material": "andon",
+     "transform": {
+      "translate": [
+       0.0,
+       1.0775,
+       4.44
+      ]
+     },
+     "faces": {
+      "top": "andon_frame"
+     }
+    },
+    {
+     "id": "andon_1_2",
+     "op": "box",
+     "size": [
+      0.22,
+      0.445,
+      0.22
+     ],
+     "material": "andon",
+     "transform": {
+      "translate": [
+       0.6,
+       1.0775,
+       4.44
+      ]
+     },
+     "faces": {
+      "top": "andon_frame"
+     }
+    },
+    {
+     "id": "basket_1_4",
+     "op": "box",
+     "size": [
+      0.28,
+      0.075,
+      0.24
+     ],
+     "material": "basket",
+     "transform": {
+      "translate": [
+       -0.95,
+       0.8925,
+       4.43
+      ]
+     },
+     "faces": {
+      "top": "bread"
+     }
+    }
+   ]
+  },
+  {
+   "id": "back_counter_2",
+   "op": "group",
+   "children": [
+    {
+     "id": "bc_2",
+     "op": "box",
+     "size": [
+      5.2,
+      0.88,
+      0.52
+     ],
+     "material": "counter",
+     "transform": {
+      "translate": [
+       5.0,
+       0.42,
+       4.51
+      ]
+     },
+     "open": [
+      "bottom",
+      "front"
+     ],
+     "faces": {
+      "top": "counter_top"
+     }
+    },
+    {
+     "id": "andon_2_0",
+     "op": "box",
+     "size": [
+      0.22,
+      0.445,
+      0.22
+     ],
+     "material": "andon",
+     "transform": {
+      "translate": [
+       3.0,
+       1.0775,
+       4.44
+      ]
+     },
+     "faces": {
+      "top": "andon_frame"
+     }
+    },
+    {
+     "id": "andon_2_1",
+     "op": "box",
+     "size": [
+      0.22,
+      0.445,
+      0.22
+     ],
+     "material": "andon",
+     "transform": {
+      "translate": [
+       5.0,
+       1.0775,
+       4.44
+      ]
+     },
+     "faces": {
+      "top": "andon_frame"
+     }
+    },
+    {
+     "id": "andon_2_2",
+     "op": "box",
+     "size": [
+      0.22,
+      0.445,
+      0.22
+     ],
+     "material": "andon",
+     "transform": {
+      "translate": [
+       7.0,
+       1.0775,
+       4.44
+      ]
+     },
+     "faces": {
+      "top": "andon_frame"
+     }
+    },
+    {
+     "id": "box_2_4",
+     "op": "box",
+     "size": [
+      0.24,
+      0.115,
+      0.2
+     ],
+     "material": "sweet_box",
+     "transform": {
+      "translate": [
+       2.65,
+       0.9125,
+       4.43
+      ]
+     },
+     "faces": {
+      "top": "sweet_lid"
+     }
+    },
+    {
+     "id": "box_2_5",
+     "op": "box",
+     "size": [
+      0.24,
+      0.115,
+      0.2
+     ],
+     "material": "sweet_box",
+     "transform": {
+      "translate": [
+       3.3385,
+       0.9125,
+       4.43
+      ]
+     },
+     "faces": {
+      "top": "sweet_lid"
+     }
+    },
+    {
+     "id": "box_2_6",
+     "op": "box",
+     "size": [
+      0.24,
+      0.115,
+      0.2
+     ],
+     "material": "sweet_box",
+     "transform": {
+      "translate": [
+       3.685,
+       0.9125,
+       4.43
+      ]
+     },
+     "faces": {
+      "top": "sweet_lid"
+     }
+    },
+    {
+     "id": "box_2_7",
+     "op": "box",
+     "size": [
+      0.24,
+      0.115,
+      0.2
+     ],
+     "material": "sweet_box",
+     "transform": {
+      "translate": [
+       4.0256,
+       0.9125,
+       4.43
+      ]
+     },
+     "faces": {
+      "top": "sweet_lid"
+     }
+    },
+    {
+     "id": "box_2_8",
+     "op": "box",
+     "size": [
+      0.24,
+      0.115,
+      0.2
+     ],
+     "material": "sweet_box",
+     "transform": {
+      "translate": [
+       4.4486,
+       0.9125,
+       4.43
+      ]
+     },
+     "faces": {
+      "top": "sweet_lid"
+     }
+    },
+    {
+     "id": "box_2_9",
+     "op": "box",
+     "size": [
+      0.24,
+      0.115,
+      0.2
+     ],
+     "material": "sweet_box",
+     "transform": {
+      "translate": [
+       5.337,
+       0.9125,
+       4.43
+      ]
+     },
+     "faces": {
+      "top": "sweet_lid"
+     }
+    },
+    {
+     "id": "box_2_10",
+     "op": "box",
+     "size": [
+      0.24,
+      0.115,
+      0.2
+     ],
+     "material": "sweet_box",
+     "transform": {
+      "translate": [
+       5.7554,
+       0.9125,
+       4.43
+      ]
+     },
+     "faces": {
+      "top": "sweet_lid"
+     }
+    },
+    {
+     "id": "box_2_11",
+     "op": "box",
+     "size": [
+      0.24,
+      0.115,
+      0.2
+     ],
+     "material": "sweet_box",
+     "transform": {
+      "translate": [
+       6.127,
+       0.9125,
+       4.43
+      ]
+     },
+     "faces": {
+      "top": "sweet_lid"
+     }
+    },
+    {
+     "id": "box_2_12",
+     "op": "box",
+     "size": [
+      0.24,
+      0.115,
+      0.2
+     ],
+     "material": "sweet_box",
+     "transform": {
+      "translate": [
+       6.5375,
+       0.9125,
+       4.43
+      ]
+     },
+     "faces": {
+      "top": "sweet_lid"
+     }
+    }
+   ]
+  },
+  {
+   "id": "melons",
+   "op": "group",
+   "children": [
+    {
+     "id": "melon_counter",
+     "op": "box",
+     "size": [
+      0.8,
+      0.84,
+      3.4
+     ],
+     "material": "melon_counter",
+     "transform": {
+      "translate": [
+       10.0,
+       0.4,
+       0.7
+      ]
+     },
+     "open": [
+      "bottom"
+     ],
+     "faces": {
+      "top": "melon_top"
+     }
+    },
+    {
+     "id": "kiri_0",
+     "op": "box",
+     "size": [
+      0.48,
+      0.065,
+      0.4
+     ],
+     "material": "kiri",
+     "transform": {
+      "translate": [
+       10.0,
+       0.8475,
+       -0.6
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    },
+    {
+     "id": "melon_0",
+     "op": "sphere",
+     "radius": 0.13,
+     "rings": 4,
+     "segments": 6,
+     "material": "melon",
+     "transform": {
+      "translate": [
+       10.0,
+       0.86,
+       -0.6
+      ]
+     }
+    },
+    {
+     "id": "price_0",
+     "op": "box",
+     "size": [
+      0.02,
+      0.1,
+      0.14
+     ],
+     "material": "price",
+     "transform": {
+      "translate": [
+       9.6,
+       0.65,
+       -0.6
+      ]
+     }
+    },
+    {
+     "id": "kiri_1",
+     "op": "box",
+     "size": [
+      0.48,
+      0.065,
+      0.4
+     ],
+     "material": "kiri",
+     "transform": {
+      "translate": [
+       10.0,
+       0.8475,
+       0.05
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    },
+    {
+     "id": "melon_1",
+     "op": "sphere",
+     "radius": 0.13,
+     "rings": 4,
+     "segments": 6,
+     "material": "melon",
+     "transform": {
+      "translate": [
+       10.0,
+       0.86,
+       0.05
+      ]
+     }
+    },
+    {
+     "id": "price_1",
+     "op": "box",
+     "size": [
+      0.02,
+      0.1,
+      0.14
+     ],
+     "material": "price",
+     "transform": {
+      "translate": [
+       9.6,
+       0.65,
+       0.05
+      ]
+     }
+    },
+    {
+     "id": "kiri_2",
+     "op": "box",
+     "size": [
+      0.48,
+      0.065,
+      0.4
+     ],
+     "material": "kiri",
+     "transform": {
+      "translate": [
+       10.0,
+       0.8475,
+       0.7
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    },
+    {
+     "id": "melon_2",
+     "op": "sphere",
+     "radius": 0.13,
+     "rings": 4,
+     "segments": 6,
+     "material": "melon",
+     "transform": {
+      "translate": [
+       10.0,
+       0.86,
+       0.7
+      ]
+     }
+    },
+    {
+     "id": "price_2",
+     "op": "box",
+     "size": [
+      0.02,
+      0.1,
+      0.14
+     ],
+     "material": "price",
+     "transform": {
+      "translate": [
+       9.6,
+       0.65,
+       0.7
+      ]
+     }
+    },
+    {
+     "id": "kiri_3",
+     "op": "box",
+     "size": [
+      0.48,
+      0.065,
+      0.4
+     ],
+     "material": "kiri",
+     "transform": {
+      "translate": [
+       10.0,
+       0.8475,
+       1.35
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    },
+    {
+     "id": "melon_3",
+     "op": "sphere",
+     "radius": 0.13,
+     "rings": 4,
+     "segments": 6,
+     "material": "melon",
+     "transform": {
+      "translate": [
+       10.0,
+       0.86,
+       1.35
+      ]
+     }
+    },
+    {
+     "id": "price_3",
+     "op": "box",
+     "size": [
+      0.02,
+      0.1,
+      0.14
+     ],
+     "material": "price",
+     "transform": {
+      "translate": [
+       9.6,
+       0.65,
+       1.35
+      ]
+     }
+    },
+    {
+     "id": "kiri_4",
+     "op": "box",
+     "size": [
+      0.48,
+      0.065,
+      0.4
+     ],
+     "material": "kiri",
+     "transform": {
+      "translate": [
+       10.0,
+       0.8475,
+       2.0
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    },
+    {
+     "id": "melon_4",
+     "op": "sphere",
+     "radius": 0.13,
+     "rings": 4,
+     "segments": 6,
+     "material": "melon",
+     "transform": {
+      "translate": [
+       10.0,
+       0.86,
+       2.0
+      ]
+     }
+    },
+    {
+     "id": "price_4",
+     "op": "box",
+     "size": [
+      0.02,
+      0.1,
+      0.14
+     ],
+     "material": "price",
+     "transform": {
+      "translate": [
+       9.6,
+       0.65,
+       2.0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cart",
+   "op": "group",
+   "children": [
+    {
+     "id": "cart_base",
+     "op": "box",
+     "size": [
+      0.65,
+      0.08,
+      0.9
+     ],
+     "material": "cart",
+     "transform": {
+      "translate": [
+       -11.575,
+       0.12,
+       3.05
+      ]
+     }
+    },
+    {
+     "id": "cart_bin",
+     "op": "box",
+     "size": [
+      0.57,
+      0.55,
+      0.4
+     ],
+     "material": "cart",
+     "transform": {
+      "translate": [
+       -11.575,
+       0.425,
+       2.85
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "cart_frame",
+     "op": "box",
+     "size": [
+      0.61,
+      0.97,
+      0.04
+     ],
+     "material": "cart_dark",
+     "transform": {
+      "translate": [
+       -11.575,
+       0.465,
+       3.46
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "cart_bucket",
+     "op": "cylinder",
+     "radius": 0.13,
+     "height": 0.25,
+     "segments": 8,
+     "material": "bucket",
+     "transform": {
+      "translate": [
+       -11.575,
+       0.29,
+       3.2
+      ]
+     }
+    },
+    {
+     "id": "mop",
+     "op": "cylinder",
+     "radius": 0.02,
+     "height": 0.9,
+     "segments": 4,
+     "caps": false,
+     "material": "mop",
+     "transform": {
+      "rotate": [
+       12.0,
+       0.0,
+       0.0
+      ],
+      "translate": [
+       -11.475,
+       0.6,
+       3.18
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "lift",
+   "op": "group",
+   "children": [
+    {
+     "id": "car_floor",
+     "op": "box",
+     "size": [
+      1.8,
+      0.4,
+      1.7
+     ],
+     "material": "lift_floor",
+     "transform": {
+      "translate": [
+       -9.7,
+       -0.2,
+       5.85
+      ]
+     },
+     "open": [
+      "bottom",
+      "back",
+      "front",
+      "left",
+      "right"
+     ]
+    },
+    {
+     "id": "car_back",
+     "op": "box",
+     "size": [
+      1.8,
+      2.4,
+      0.15
+     ],
+     "material": "pads",
+     "transform": {
+      "translate": [
+       -9.7,
+       1.18,
+       6.775
+      ]
+     },
+     "open": [
+      "bottom",
+      "front"
+     ],
+     "faces": {
+      "top": "cut"
+     }
+    },
+    {
+     "id": "car_side_0",
+     "op": "box",
+     "size": [
+      0.15,
+      2.4,
+      1.7
+     ],
+     "material": "pads",
+     "transform": {
+      "translate": [
+       -10.675,
+       1.18,
+       5.85
+      ]
+     },
+     "open": [
+      "bottom",
+      "back",
+      "front"
+     ],
+     "faces": {
+      "top": "cut"
+     }
+    },
+    {
+     "id": "car_side_1",
+     "op": "box",
+     "size": [
+      0.15,
+      2.4,
+      1.7
+     ],
+     "material": "pads",
+     "transform": {
+      "translate": [
+       -8.875,
+       1.18,
+       5.85
+      ]
+     },
+     "open": [
+      "bottom",
+      "back",
+      "front"
+     ],
+     "faces": {
+      "top": "cut"
+     }
+    },
+    {
+     "id": "car_lamp",
+     "op": "box",
+     "size": [
+      0.8,
+      0.04,
+      0.6
+     ],
+     "material": "lift_lamp",
+     "transform": {
+      "translate": [
+       -9.7,
+       2.32,
+       5.9
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "mall",
+   "op": "group",
+   "children": [
+    {
+     "id": "mall_floor",
+     "op": "box",
+     "size": [
+      1.6,
+      0.4,
+      2.4
+     ],
+     "material": "mall_floor",
+     "transform": {
+      "translate": [
+       13.05,
+       -0.2,
+       -3.0
+      ]
+     },
+     "open": [
+      "bottom",
+      "left"
+     ],
+     "faces": {
+      "back": "cut"
+     }
+    },
+    {
+     "id": "shutter_box",
+     "op": "box",
+     "size": [
+      0.17,
+      0.15,
+      1.16
+     ],
+     "material": "shutter",
+     "transform": {
+      "translate": [
+       12.115,
+       2.015,
+       -3.0
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "lighting": {
+  "direction": [
+   0.0,
+   1.0,
+   -0.4
+  ],
+  "ambient": 0.07,
+  "diffuse": 0.04,
+  "lights": [
+   {
+    "id": "case_0",
+    "at": [
+     -4.25,
+     0.78,
+     -1.35
+    ],
+    "color": "#fff0e0",
+    "intensity": 1.25,
+    "range": 3.0
+   },
+   {
+    "id": "case_1",
+    "at": [
+     4.25,
+     0.78,
+     -1.35
+    ],
+    "color": "#eefff0",
+    "intensity": 1.25,
+    "range": 3.0
+   },
+   {
+    "id": "case_2",
+    "at": [
+     -4.25,
+     0.78,
+     1.45
+    ],
+    "color": "#ffe8f4",
+    "intensity": 1.25,
+    "range": 3.0
+   },
+   {
+    "id": "case_3",
+    "at": [
+     4.25,
+     0.78,
+     1.45
+    ],
+    "color": "#fff2d8",
+    "intensity": 1.25,
+    "range": 3.0
+   },
+   {
+    "id": "andon_0",
+    "at": [
+     -4.9,
+     1.15,
+     4.45
+    ],
+    "color": "#ffb468",
+    "intensity": 1.2,
+    "range": 2.6
+   },
+   {
+    "id": "andon_1",
+    "at": [
+     0.0,
+     1.15,
+     4.45
+    ],
+    "color": "#ffb468",
+    "intensity": 1.2,
+    "range": 2.6
+   },
+   {
+    "id": "andon_2",
+    "at": [
+     5.0,
+     1.15,
+     4.45
+    ],
+    "color": "#ffb468",
+    "intensity": 1.2,
+    "range": 2.6
+   },
+   {
+    "id": "melon",
+    "at": [
+     10.0,
+     2.0,
+     0.7
+    ],
+    "color": "#ffd08c",
+    "intensity": 1.8,
+    "range": 3.0,
+    "shadows": true,
+    "radius": 0.2
+   },
+   {
+    "id": "mall",
+    "at": [
+     13.3,
+     1.7,
+     -3.0
+    ],
+    "color": "#ffe6bc",
+    "intensity": 3.2,
+    "range": 5.8,
+    "shadows": true,
+    "radius": 0.3
+   },
+   {
+    "id": "lift_car",
+    "at": [
+     -9.7,
+     2.1,
+     5.85
+    ],
+    "color": "#e4ecff",
+    "intensity": 2.6,
+    "range": 4.4,
+    "shadows": true,
+    "radius": 0.25
+   },
+   {
+    "id": "night",
+    "at": [
+     0.0,
+     7.0,
+     0.0
+    ],
+    "color": "#806c90",
+    "intensity": 0.55,
+    "range": 18.0
+   },
+   {
+    "id": "camera",
+    "at": [
+     0.0,
+     2.2,
+     4.45
+    ],
+    "color": "#ff2a1a",
+    "intensity": 0.7,
+    "range": 1.5
+   },
+   {
+    "id": "exit_sign",
+    "at": [
+     11.85,
+     2.25,
+     -3.0
+    ],
+    "color": "#7cffa0",
+    "intensity": 0.8,
+    "range": 2.0
+   }
+  ],
+  "refine": {
+   "tolerance": 20,
+   "max_added": 240
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

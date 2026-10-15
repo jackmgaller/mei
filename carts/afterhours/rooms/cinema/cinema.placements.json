@@ -1,0 +1,27 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "cinema",
+ "placements": [
+  {
+   "id": "cn_room",
+   "asset": "cn_room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "cn_room_col"
+  },
+  {
+   "id": "cn_beam",
+   "asset": "cn_beam",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

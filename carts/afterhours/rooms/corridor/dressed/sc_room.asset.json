@@ -1,0 +1,2225 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "sc_room",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 2000
+ },
+ "materials": {
+  "cut": {
+   "color": "#76849e",
+   "class": "emissive"
+  },
+  "section": {
+   "color": "#4a5468",
+   "texture": {
+    "image": "art/sc_section.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_0_0": {
+   "color": "#8a8c8a",
+   "texture": {
+    "image": "art/sc_floor_0_0.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_1_0": {
+   "color": "#8a8c8a",
+   "texture": {
+    "image": "art/sc_floor_1_0.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "back_0": {
+   "color": "#9a9c98",
+   "texture": {
+    "image": "art/sc_back_0.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "back_1": {
+   "color": "#9a9c98",
+   "texture": {
+    "image": "art/sc_back_1.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "back_2": {
+   "color": "#9a9c98",
+   "texture": {
+    "image": "art/sc_back_2.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "wall_in": {
+   "color": "#8a9098"
+  },
+  "end": {
+   "color": "#a4aab0"
+  },
+  "reveal": {
+   "color": "#9aa0a8"
+  },
+  "lintel": {
+   "color": "#8a9098"
+  },
+  "door_glow": {
+   "color": "#e8f0f4",
+   "class": "emissive"
+  },
+  "threshold": {
+   "color": "#8a8c8e",
+   "class": "emissive"
+  },
+  "beyond_wall": {
+   "color": "#6a7078",
+   "class": "emissive"
+  },
+  "beyond": {
+   "color": "#b49a7a",
+   "class": "emissive"
+  },
+  "riser": {
+   "color": "#6a5444",
+   "class": "emissive"
+  },
+  "mesh": {
+   "color": "#c4c8ce",
+   "double_sided": true,
+   "texture": {
+    "image": "art/sc_cage_mesh.png",
+    "bits": 4,
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "steel": {
+   "color": "#7a8088"
+  },
+  "office": {
+   "color": "#a8acb0"
+  },
+  "office_in": {
+   "color": "#b8c0c8"
+  },
+  "ledge": {
+   "color": "#8a9098"
+  },
+  "desk": {
+   "color": "#8a8e94"
+  },
+  "desk_top": {
+   "color": "#a4a8ac"
+  },
+  "chair": {
+   "color": "#3e4656"
+  },
+  "cabinet": {
+   "color": "#7e8890"
+  },
+  "keys": {
+   "color": "#5a6070",
+   "texture": {
+    "image": "art/sc_keys.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "thermos": {
+   "color": "#c03c34"
+  },
+  "monitors": {
+   "color": "#2a6a6c",
+   "texture": {
+    "image": "art/sc_monitors.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "monitor_body": {
+   "color": "#3a3e46"
+  },
+  "column": {
+   "color": "#949aa0",
+   "texture": {
+    "image": "art/sc_column.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "pallet": {
+   "color": "#8a6a44",
+   "texture": {
+    "image": "art/sc_pallet.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "wrap": {
+   "color": "#c8ccd2",
+   "texture": {
+    "image": "art/sc_wrap.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "wrap_side": {
+   "color": "#b8bec6"
+  },
+  "frame": {
+   "color": "#5a6068"
+  },
+  "exit": {
+   "color": "#30a860",
+   "texture": {
+    "image": "art/sc_exit.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "hose": {
+   "color": "#b0302c",
+   "texture": {
+    "image": "art/sc_hose.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "hose_box": {
+   "color": "#b0302c"
+  },
+  "carton_0": {
+   "color": "#a07a50"
+  },
+  "carton_top_0": {
+   "color": "#b08a5c",
+   "texture": {
+    "image": "art/sc_carton_0.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "carton_1": {
+   "color": "#b48c60"
+  },
+  "carton_top_1": {
+   "color": "#c49c6e",
+   "texture": {
+    "image": "art/sc_carton_1.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "carton_2": {
+   "color": "#d0d0cc"
+  },
+  "carton_top_2": {
+   "color": "#e0e0dc",
+   "texture": {
+    "image": "art/sc_carton_2.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "carton_3": {
+   "color": "#906a46"
+  },
+  "carton_top_3": {
+   "color": "#a07850",
+   "texture": {
+    "image": "art/sc_carton_3.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "floor_0_0",
+   "op": "box",
+   "size": [
+    12.5,
+    0.05,
+    7.0
+   ],
+   "material": "floor_0_0",
+   "transform": {
+    "translate": [
+     -6.25,
+     -0.025,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "floor_1_0",
+   "op": "box",
+   "size": [
+    12.5,
+    0.05,
+    7.0
+   ],
+   "material": "floor_1_0",
+   "transform": {
+    "translate": [
+     6.25,
+     -0.025,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "mesh",
+   "material": "cut",
+   "vertices": [
+    [
+     -12.75,
+     1.0,
+     -3.75
+    ],
+    [
+     12.75,
+     1.0,
+     -3.75
+    ],
+    [
+     12.75,
+     -0.4,
+     -3.75
+    ],
+    [
+     -12.75,
+     -0.4,
+     -3.75
+    ],
+    [
+     -12.75,
+     -0.4,
+     -3.5
+    ],
+    [
+     12.75,
+     -0.4,
+     -3.5
+    ],
+    [
+     12.75,
+     1.0,
+     -3.5
+    ],
+    [
+     -12.75,
+     1.0,
+     -3.5
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     2,
+     1,
+     6,
+     5
+    ],
+    [
+     1,
+     0,
+     7,
+     6
+    ],
+    [
+     0,
+     3,
+     4,
+     7
+    ]
+   ],
+   "face_materials": [
+    "section",
+    "wall_in",
+    "cut",
+    "cut",
+    "cut"
+   ]
+  },
+  {
+   "id": "back_0_wall",
+   "op": "box",
+   "size": [
+    6.15,
+    2.42,
+    0.25
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -9.675,
+     1.19,
+     3.625
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "back_0",
+    "top": "cut",
+    "front": "cut",
+    "left": "cut",
+    "right": "reveal"
+   }
+  },
+  {
+   "id": "back_1_wall",
+   "op": "box",
+   "size": [
+    9.075,
+    2.42,
+    0.25
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -0.8625,
+     1.19,
+     3.625
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "back": "back_1",
+    "top": "cut",
+    "front": "cut",
+    "left": "reveal"
+   }
+  },
+  {
+   "id": "back_2_wall",
+   "op": "box",
+   "size": [
+    9.075,
+    2.42,
+    0.25
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     8.2125,
+     1.19,
+     3.625
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "back": "back_2",
+    "top": "cut",
+    "front": "cut",
+    "right": "cut"
+   }
+  },
+  {
+   "id": "back_lintel_0",
+   "op": "box",
+   "size": [
+    1.2,
+    0.29,
+    0.25
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -6.0,
+     2.245,
+     3.625
+    ]
+   },
+   "open": [
+    "left",
+    "right"
+   ],
+   "faces": {
+    "bottom": "door_glow",
+    "top": "cut",
+    "back": "lintel",
+    "front": "cut"
+   }
+  },
+  {
+   "id": "back_sill_0",
+   "op": "box",
+   "size": [
+    1.2,
+    0.38,
+    0.25
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     -6.0,
+     -0.21,
+     3.625
+    ]
+   },
+   "open": [
+    "top",
+    "left",
+    "right",
+    "back"
+   ]
+  },
+  {
+   "id": "end_w_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    0.9
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -12.625,
+     1.0,
+     -3.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut",
+    "left": "cut",
+    "right": "end",
+    "front": "reveal"
+   }
+  },
+  {
+   "id": "end_w_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    4.9
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -12.625,
+     1.0,
+     1.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "left": "cut",
+    "right": "end",
+    "back": "reveal"
+   }
+  },
+  {
+   "id": "end_w_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -12.625,
+     2.245,
+     -2.0
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_glow",
+    "top": "cut",
+    "left": "cut",
+    "right": "lintel"
+   }
+  },
+  {
+   "id": "end_w_sill_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.38,
+    1.2
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     -12.625,
+     -0.21,
+     -2.0
+    ]
+   },
+   "open": [
+    "top",
+    "front",
+    "back",
+    "right"
+   ]
+  },
+  {
+   "id": "end_e_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    4.9
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     12.625,
+     1.0,
+     -1.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut",
+    "right": "cut",
+    "left": "end",
+    "front": "reveal"
+   }
+  },
+  {
+   "id": "end_e_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    0.9
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     12.625,
+     1.0,
+     3.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "right": "cut",
+    "left": "end",
+    "back": "reveal"
+   }
+  },
+  {
+   "id": "end_e_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     12.625,
+     2.245,
+     2.0
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_glow",
+    "top": "cut",
+    "right": "cut",
+    "left": "lintel"
+   }
+  },
+  {
+   "id": "end_e_sill_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.38,
+    1.2
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     12.625,
+     -0.21,
+     2.0
+    ]
+   },
+   "open": [
+    "top",
+    "front",
+    "back",
+    "left"
+   ]
+  },
+  {
+   "id": "beyond_cinema",
+   "op": "mesh",
+   "material": "threshold",
+   "vertices": [
+    [
+     -14.15,
+     0.0,
+     -1.4
+    ],
+    [
+     -12.5,
+     0.0,
+     -1.4
+    ],
+    [
+     -12.5,
+     0.0,
+     -2.6
+    ],
+    [
+     -14.15,
+     0.0,
+     -2.6
+    ],
+    [
+     -14.15,
+     -0.4,
+     -2.6
+    ],
+    [
+     -12.75,
+     -0.4,
+     -2.6
+    ],
+    [
+     -12.75,
+     2.4,
+     -2.6
+    ],
+    [
+     -14.15,
+     2.4,
+     -2.6
+    ],
+    [
+     -14.15,
+     2.4,
+     -1.4
+    ],
+    [
+     -12.75,
+     2.4,
+     -1.4
+    ],
+    [
+     -12.75,
+     -0.4,
+     -1.4
+    ],
+    [
+     -14.15,
+     -0.4,
+     -1.4
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     8,
+     9,
+     10,
+     11
+    ]
+   ],
+   "face_materials": [
+    "threshold",
+    "beyond_wall",
+    "beyond_wall"
+   ]
+  },
+  {
+   "id": "beyond_booth",
+   "op": "mesh",
+   "material": "threshold",
+   "vertices": [
+    [
+     -6.6,
+     0.0,
+     4.05
+    ],
+    [
+     -5.4,
+     0.0,
+     4.05
+    ],
+    [
+     -5.4,
+     0.0,
+     3.5
+    ],
+    [
+     -6.6,
+     0.0,
+     3.5
+    ],
+    [
+     -6.6,
+     0.2,
+     4.05
+    ],
+    [
+     -5.4,
+     0.2,
+     4.05
+    ],
+    [
+     -6.6,
+     0.2,
+     4.31
+    ],
+    [
+     -5.4,
+     0.2,
+     4.31
+    ],
+    [
+     -6.6,
+     0.4,
+     4.31
+    ],
+    [
+     -5.4,
+     0.4,
+     4.31
+    ],
+    [
+     -6.6,
+     0.4,
+     4.57
+    ],
+    [
+     -5.4,
+     0.4,
+     4.57
+    ],
+    [
+     -6.6,
+     0.6,
+     4.57
+    ],
+    [
+     -5.4,
+     0.6,
+     4.57
+    ],
+    [
+     -6.6,
+     0.6,
+     4.83
+    ],
+    [
+     -5.4,
+     0.6,
+     4.83
+    ],
+    [
+     -6.6,
+     0.8,
+     4.83
+    ],
+    [
+     -5.4,
+     0.8,
+     4.83
+    ],
+    [
+     -6.6,
+     0.8,
+     5.09
+    ],
+    [
+     -5.4,
+     0.8,
+     5.09
+    ],
+    [
+     -6.6,
+     1.0,
+     5.09
+    ],
+    [
+     -5.4,
+     1.0,
+     5.09
+    ],
+    [
+     -6.6,
+     1.0,
+     5.35
+    ],
+    [
+     -5.4,
+     1.0,
+     5.35
+    ],
+    [
+     -6.6,
+     1.2,
+     5.35
+    ],
+    [
+     -5.4,
+     1.2,
+     5.35
+    ],
+    [
+     -6.6,
+     1.2,
+     5.61
+    ],
+    [
+     -5.4,
+     1.2,
+     5.61
+    ],
+    [
+     -6.6,
+     1.4,
+     5.61
+    ],
+    [
+     -5.4,
+     1.4,
+     5.61
+    ],
+    [
+     -6.6,
+     1.4,
+     5.87
+    ],
+    [
+     -5.4,
+     1.4,
+     5.87
+    ],
+    [
+     -6.6,
+     -0.4,
+     3.75
+    ],
+    [
+     -6.6,
+     2.4,
+     3.75
+    ],
+    [
+     -6.6,
+     2.4,
+     5.87
+    ],
+    [
+     -6.6,
+     -0.4,
+     5.87
+    ],
+    [
+     -5.4,
+     -0.4,
+     5.87
+    ],
+    [
+     -5.4,
+     2.4,
+     5.87
+    ],
+    [
+     -5.4,
+     2.4,
+     3.75
+    ],
+    [
+     -5.4,
+     -0.4,
+     3.75
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     6,
+     7,
+     5,
+     4
+    ],
+    [
+     8,
+     9,
+     7,
+     6
+    ],
+    [
+     10,
+     11,
+     9,
+     8
+    ],
+    [
+     12,
+     13,
+     11,
+     10
+    ],
+    [
+     14,
+     15,
+     13,
+     12
+    ],
+    [
+     16,
+     17,
+     15,
+     14
+    ],
+    [
+     18,
+     19,
+     17,
+     16
+    ],
+    [
+     20,
+     21,
+     19,
+     18
+    ],
+    [
+     22,
+     23,
+     21,
+     20
+    ],
+    [
+     24,
+     25,
+     23,
+     22
+    ],
+    [
+     26,
+     27,
+     25,
+     24
+    ],
+    [
+     28,
+     29,
+     27,
+     26
+    ],
+    [
+     30,
+     31,
+     29,
+     28
+    ],
+    [
+     32,
+     33,
+     34,
+     35
+    ],
+    [
+     36,
+     37,
+     38,
+     39
+    ]
+   ],
+   "face_materials": [
+    "threshold",
+    "riser",
+    "beyond",
+    "riser",
+    "beyond",
+    "riser",
+    "beyond",
+    "riser",
+    "beyond",
+    "riser",
+    "beyond",
+    "riser",
+    "beyond",
+    "riser",
+    "beyond",
+    "beyond_wall",
+    "beyond_wall"
+   ]
+  },
+  {
+   "id": "beyond_shop",
+   "op": "mesh",
+   "material": "threshold",
+   "vertices": [
+    [
+     12.5,
+     0.0,
+     2.6
+    ],
+    [
+     14.15,
+     0.0,
+     2.6
+    ],
+    [
+     14.15,
+     0.0,
+     1.4
+    ],
+    [
+     12.5,
+     0.0,
+     1.4
+    ],
+    [
+     12.75,
+     -0.4,
+     1.4
+    ],
+    [
+     14.15,
+     -0.4,
+     1.4
+    ],
+    [
+     14.15,
+     2.4,
+     1.4
+    ],
+    [
+     12.75,
+     2.4,
+     1.4
+    ],
+    [
+     12.75,
+     2.4,
+     2.6
+    ],
+    [
+     14.15,
+     2.4,
+     2.6
+    ],
+    [
+     14.15,
+     -0.4,
+     2.6
+    ],
+    [
+     12.75,
+     -0.4,
+     2.6
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     8,
+     9,
+     10,
+     11
+    ]
+   ],
+   "face_materials": [
+    "threshold",
+    "beyond_wall",
+    "beyond_wall"
+   ]
+  },
+  {
+   "id": "cage_0",
+   "op": "box",
+   "size": [
+    0.94,
+    0.92,
+    1.8
+   ],
+   "material": "mesh",
+   "transform": {
+    "translate": [
+     -8.5,
+     0.54,
+     -0.1
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "cage_0_base",
+   "op": "box",
+   "size": [
+    0.88,
+    0.11,
+    1.74
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -8.5,
+     0.035,
+     -0.1
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "cage_0_stock_0",
+   "op": "box",
+   "size": [
+    0.78,
+    0.47,
+    0.67
+   ],
+   "material": "carton_0",
+   "transform": {
+    "translate": [
+     -8.5,
+     0.315,
+     -0.585
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "carton_top_0"
+   }
+  },
+  {
+   "id": "cage_0_stock_1",
+   "op": "box",
+   "size": [
+    0.75,
+    0.67,
+    0.77
+   ],
+   "material": "carton_1",
+   "transform": {
+    "translate": [
+     -8.485,
+     0.415,
+     0.335
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "carton_top_1"
+   }
+  },
+  {
+   "id": "cage_1",
+   "op": "box",
+   "size": [
+    0.94,
+    0.92,
+    1.8
+   ],
+   "material": "mesh",
+   "transform": {
+    "translate": [
+     -7.5,
+     0.54,
+     -0.1
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "cage_1_base",
+   "op": "box",
+   "size": [
+    0.88,
+    0.11,
+    1.74
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -7.5,
+     0.035,
+     -0.1
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "cage_1_stock_0",
+   "op": "box",
+   "size": [
+    0.78,
+    0.67,
+    0.67
+   ],
+   "material": "carton_1",
+   "transform": {
+    "translate": [
+     -7.5,
+     0.415,
+     -0.585
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "carton_top_1"
+   }
+  },
+  {
+   "id": "cage_1_stock_1",
+   "op": "box",
+   "size": [
+    0.75,
+    0.88,
+    0.77
+   ],
+   "material": "carton_2",
+   "transform": {
+    "translate": [
+     -7.485,
+     0.52,
+     0.335
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "cage_2",
+   "op": "box",
+   "size": [
+    0.94,
+    0.92,
+    1.8
+   ],
+   "material": "mesh",
+   "transform": {
+    "translate": [
+     -6.5,
+     0.54,
+     -0.1
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "cage_2_base",
+   "op": "box",
+   "size": [
+    0.88,
+    0.11,
+    1.74
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -6.5,
+     0.035,
+     -0.1
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "cage_2_stock_0",
+   "op": "box",
+   "size": [
+    0.78,
+    0.88,
+    0.67
+   ],
+   "material": "carton_2",
+   "transform": {
+    "translate": [
+     -6.5,
+     0.52,
+     -0.585
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "cage_2_stock_1",
+   "op": "box",
+   "size": [
+    0.75,
+    0.82,
+    0.77
+   ],
+   "material": "carton_3",
+   "transform": {
+    "translate": [
+     -6.485,
+     0.49,
+     0.335
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "carton_top_3"
+   }
+  },
+  {
+   "id": "cage_3",
+   "op": "box",
+   "size": [
+    0.94,
+    0.92,
+    1.8
+   ],
+   "material": "mesh",
+   "transform": {
+    "translate": [
+     -5.5,
+     0.54,
+     -0.1
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "cage_3_base",
+   "op": "box",
+   "size": [
+    0.88,
+    0.11,
+    1.74
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -5.5,
+     0.035,
+     -0.1
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "cage_3_stock_0",
+   "op": "box",
+   "size": [
+    0.78,
+    0.82,
+    0.67
+   ],
+   "material": "carton_3",
+   "transform": {
+    "translate": [
+     -5.5,
+     0.49,
+     -0.585
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "carton_top_3"
+   }
+  },
+  {
+   "id": "cage_3_stock_1",
+   "op": "box",
+   "size": [
+    0.75,
+    0.47,
+    0.77
+   ],
+   "material": "carton_0",
+   "transform": {
+    "translate": [
+     -5.485,
+     0.315,
+     0.335
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "carton_top_0"
+   }
+  },
+  {
+   "id": "office_w",
+   "op": "box",
+   "size": [
+    0.15,
+    1.02,
+    3.7
+   ],
+   "material": "office",
+   "transform": {
+    "translate": [
+     -0.925,
+     0.49,
+     -1.65
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut",
+    "right": "office_in"
+   }
+  },
+  {
+   "id": "office_e",
+   "op": "box",
+   "size": [
+    0.15,
+    1.02,
+    3.7
+   ],
+   "material": "office",
+   "transform": {
+    "translate": [
+     3.925,
+     0.49,
+     -1.65
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut",
+    "left": "office_in"
+   }
+  },
+  {
+   "id": "office_n",
+   "op": "box",
+   "size": [
+    1.35,
+    1.02,
+    0.15
+   ],
+   "material": "office",
+   "transform": {
+    "translate": [
+     3.175,
+     0.49,
+     0.125
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "office_in"
+   }
+  },
+  {
+   "id": "office_sill",
+   "op": "box",
+   "size": [
+    3.35,
+    0.87,
+    0.15
+   ],
+   "material": "office",
+   "transform": {
+    "translate": [
+     0.825,
+     0.415,
+     0.125
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ],
+   "faces": {
+    "top": "ledge",
+    "back": "office_in"
+   }
+  },
+  {
+   "id": "desk",
+   "op": "box",
+   "size": [
+    4.0,
+    0.77,
+    0.7
+   ],
+   "material": "desk",
+   "transform": {
+    "translate": [
+     1.5,
+     0.365,
+     -3.15
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "desk_top"
+   }
+  },
+  {
+   "id": "chair_seat",
+   "op": "box",
+   "size": [
+    0.45,
+    0.06,
+    0.45
+   ],
+   "material": "chair",
+   "transform": {
+    "translate": [
+     2.625,
+     0.45,
+     -2.375
+    ]
+   }
+  },
+  {
+   "id": "chair_back",
+   "op": "box",
+   "size": [
+    0.41,
+    0.43,
+    0.07
+   ],
+   "material": "chair",
+   "transform": {
+    "translate": [
+     2.625,
+     0.685,
+     -2.135
+    ]
+   }
+  },
+  {
+   "id": "key_cabinet",
+   "op": "box",
+   "size": [
+    0.48,
+    1.02,
+    0.6
+   ],
+   "material": "cabinet",
+   "transform": {
+    "translate": [
+     3.59,
+     0.49,
+     -0.45
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "keys"
+   }
+  },
+  {
+   "id": "thermos",
+   "op": "cylinder",
+   "radius": 0.05,
+   "height": 0.26,
+   "segments": 6,
+   "material": "thermos",
+   "transform": {
+    "translate": [
+     3.25,
+     0.87,
+     -3.0
+    ]
+   }
+  },
+  {
+   "id": "monitors",
+   "op": "mesh",
+   "material": "monitor_body",
+   "vertices": [
+    [
+     0.0,
+     0.8,
+     -2.85
+    ],
+    [
+     3.0,
+     0.8,
+     -2.85
+    ],
+    [
+     3.0,
+     0.98,
+     -3.4
+    ],
+    [
+     0.0,
+     0.98,
+     -3.4
+    ],
+    [
+     0.0,
+     0.8,
+     -3.4
+    ],
+    [
+     3.0,
+     0.8,
+     -3.4
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     0,
+     3,
+     4
+    ],
+    [
+     5,
+     2,
+     1
+    ]
+   ],
+   "face_materials": [
+    "monitors",
+    "monitor_body",
+    "monitor_body"
+   ]
+  },
+  {
+   "id": "column",
+   "op": "box",
+   "size": [
+    0.7,
+    1.02,
+    0.7
+   ],
+   "material": "column",
+   "transform": {
+    "translate": [
+     1.5,
+     0.49,
+     2.2
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "pallet_0",
+   "op": "box",
+   "size": [
+    1.0867,
+    0.16,
+    0.9
+   ],
+   "material": "pallet",
+   "transform": {
+    "translate": [
+     6.5833,
+     0.06,
+     3.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "pallet"
+   }
+  },
+  {
+   "id": "wrap_0",
+   "op": "box",
+   "size": [
+    1.0067,
+    0.73,
+    0.82
+   ],
+   "material": "wrap_side",
+   "transform": {
+    "translate": [
+     6.5833,
+     0.495,
+     3.06
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "wrap"
+   }
+  },
+  {
+   "id": "pallet_1",
+   "op": "box",
+   "size": [
+    1.0867,
+    0.16,
+    0.9
+   ],
+   "material": "pallet",
+   "transform": {
+    "translate": [
+     7.75,
+     0.06,
+     3.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "pallet"
+   }
+  },
+  {
+   "id": "wrap_1",
+   "op": "box",
+   "size": [
+    1.0067,
+    0.57,
+    0.82
+   ],
+   "material": "wrap_side",
+   "transform": {
+    "translate": [
+     7.75,
+     0.415,
+     3.06
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "wrap"
+   }
+  },
+  {
+   "id": "pallet_2",
+   "op": "box",
+   "size": [
+    1.0867,
+    0.16,
+    0.9
+   ],
+   "material": "pallet",
+   "transform": {
+    "translate": [
+     8.9167,
+     0.06,
+     3.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "pallet"
+   }
+  },
+  {
+   "id": "wrap_2",
+   "op": "box",
+   "size": [
+    1.0067,
+    0.77,
+    0.82
+   ],
+   "material": "wrap_side",
+   "transform": {
+    "translate": [
+     8.9167,
+     0.515,
+     3.06
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "wrap"
+   }
+  },
+  {
+   "id": "hose",
+   "op": "box",
+   "size": [
+    0.7,
+    0.75,
+    0.18
+   ],
+   "material": "hose_box",
+   "transform": {
+    "translate": [
+     4.75,
+     1.225,
+     3.43
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "hose"
+   }
+  },
+  {
+   "id": "exit",
+   "op": "box",
+   "size": [
+    0.5,
+    0.26,
+    0.08
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     11.9,
+     2.13,
+     3.48
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "exit"
+   }
+  }
+ ],
+ "lighting": {
+  "direction": [
+   -0.25,
+   0.7,
+   -0.65
+  ],
+  "ambient": 0.1,
+  "diffuse": 0.18,
+  "lights": [
+   {
+    "id": "tube_0",
+    "at": [
+     -10.0,
+     2.6,
+     1.4
+    ],
+    "color": "#e4f0f2",
+    "intensity": 1.45,
+    "range": 4.4
+   },
+   {
+    "id": "tube_1",
+    "at": [
+     -6.0,
+     2.6,
+     1.4
+    ],
+    "color": "#e4f0f2",
+    "intensity": 1.45,
+    "range": 4.4
+   },
+   {
+    "id": "tube_2",
+    "at": [
+     -2.0,
+     2.6,
+     1.4
+    ],
+    "color": "#e4f0f2",
+    "intensity": 1.45,
+    "range": 4.4
+   },
+   {
+    "id": "tube_3",
+    "at": [
+     6.0,
+     2.6,
+     1.4
+    ],
+    "color": "#c8e8c8",
+    "intensity": 0.45,
+    "range": 4.4
+   },
+   {
+    "id": "tube_4",
+    "at": [
+     10.0,
+     2.6,
+     1.4
+    ],
+    "color": "#e4f0f2",
+    "intensity": 1.45,
+    "range": 4.4
+   },
+   {
+    "id": "tube_5",
+    "at": [
+     -10.0,
+     2.6,
+     -2.3
+    ],
+    "color": "#e4f0f2",
+    "intensity": 1.2,
+    "range": 4.4
+   },
+   {
+    "id": "tube_6",
+    "at": [
+     -6.0,
+     2.6,
+     -2.3
+    ],
+    "color": "#e4f0f2",
+    "intensity": 1.2,
+    "range": 4.4
+   },
+   {
+    "id": "tube_7",
+    "at": [
+     8.0,
+     2.6,
+     -2.3
+    ],
+    "color": "#e4f0f2",
+    "intensity": 1.2,
+    "range": 4.4
+   },
+   {
+    "id": "office",
+    "at": [
+     1.5,
+     2.5,
+     -1.7
+    ],
+    "color": "#e8f4ff",
+    "intensity": 1.6,
+    "range": 6.4
+   },
+   {
+    "id": "monitors",
+    "at": [
+     1.5,
+     1.0,
+     -2.75
+    ],
+    "color": "#70d0e0",
+    "intensity": 1.0,
+    "range": 2.2
+   },
+   {
+    "id": "door_cinema",
+    "at": [
+     -13.45,
+     1.4,
+     -2.0
+    ],
+    "color": "#d06070",
+    "intensity": 1.2,
+    "range": 2.6
+   },
+   {
+    "id": "door_booth",
+    "at": [
+     -6.0,
+     2.6,
+     5.15
+    ],
+    "color": "#ffc88a",
+    "intensity": 2.2,
+    "range": 3.6
+   },
+   {
+    "id": "door_shop",
+    "at": [
+     13.45,
+     1.6,
+     2.0
+    ],
+    "color": "#e8f2ff",
+    "intensity": 2.0,
+    "range": 3.0
+   }
+  ],
+  "refine": {
+   "tolerance": 22,
+   "max_added": 260
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

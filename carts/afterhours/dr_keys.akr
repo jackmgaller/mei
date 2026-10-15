@@ -1,0 +1,171 @@
+// Stage 2's keycards and staff doors (DESIGN.md "Next"; the rules agreed with B, NOTES_A.md
+// "Stage 2"), and the ways out of a room of doors.
+//
+// - A keycard is picked up when the thief's centre comes within CARD_R of it; it is kept (it
+//   opens every staff door of its colour) and shows on the HUD.
+// - A door with a card is shut: a wall across its box (it stops the thief and the guards and
+//   cuts cones) until the thief holding its colour walks into it. Then it is open, and so is the
+//   door on its other side, for the rest of the run.
+// - What the thief takes and opens in an attempt becomes the run's when he leaves the room by a
+//   door (or the end). Caught or START, the room is as it was when he came in: a card picked up
+//   lies there again, a door opened is shut again.
+// - Going through a door that leads somewhere (his centre in its box) leaves the room. A door
+//   is armed only once he has been out of its box, so one he comes in by never sends him back.
+//
+// Cards and doors are numbered in the stage (their `key`: the entity's number in a world), and
+// the run's state is two bit sets over those numbers.
+
+const KEY_WORDS = 16           // 512 numbers
+const CARD_R: fixed = 0.5
+const DOOR_REACH: fixed = 0.08 // how near the thief's circle comes to a shut door to open it
+
+var run_taken: [KEY_WORDS]u32  // the run's: cards taken, doors opened (committed on leaving)
+var run_open: [KEY_WORDS]u32
+var run_held: u32              // the colours held (bit c), the run's
+var att_taken: [KEY_WORDS]u32  // this attempt's: the run's and what it took and opened since
+var att_open: [KEY_WORDS]u32
+var held: u32                  // the colours held now (the HUD)
+var door_armed: [MAX_DOORS]bool
+var card_t: [MAX_CARDS]s32     // the clock it was taken at (-1: lies there)
+var door_t: [MAX_DOORS]s32     // the clock it opened at (-1: open since he came in, or shut)
+var cards_n: s32               // (the tests) cards taken, doors opened, ever
+var opened_n: s32
+
+fn bit_get(a: *u32, k: s32) -> bool {
+    if k < 0 || k >= KEY_WORDS * 32 { return false }
+    return a[k >> 5] & ((1 as u32) << (k & 31) as u32) != 0
+}
+
+fn bit_set(a: *u32, k: s32) {
+    if k < 0 || k >= KEY_WORDS * 32 { return }
+    a[k >> 5] = a[k >> 5] | ((1 as u32) << (k & 31) as u32)
+}
+
+// A new run: nothing taken, nothing opened.
+fn keys_reset() {
+    for i in 0..KEY_WORDS {
+        run_taken[i] = 0
+        run_open[i] = 0
+        att_taken[i] = 0
+        att_open[i] = 0
+    }
+    run_held = 0
+    held = 0
+}
+
+// He left the room by a door: what the attempt took and opened is the run's.
+fn keys_commit() {
+    for i in 0..KEY_WORDS {
+        run_taken[i] = att_taken[i]
+        run_open[i] = att_open[i]
+    }
+    run_held = held
+}
+
+fn card_taken(i: s32) -> bool { return bit_get(&att_taken[0], room.card_key[i]) }
+
+fn door_open(d: *Door) -> bool { return d.card == 0 || bit_get(&att_open[0], d.key) }
+
+// Whether the door leads out of the room (to another, or the end).
+fn door_leads(d: *Door) -> bool { return d.to_room >= 0 || d.end }
+
+// The room loaded: each door gets a wall (shut or not: the wall is turned off while it is open,
+// so the walls' numbers do not change within the room).
+fn doors_setup() {
+    for i in 0..room.ndoors {
+        let d = &room.doors[i]
+        d.wall = -1
+        if d.card != 0 {
+            d.wall = room.nwalls
+            room_wall(d.box)
+        }
+    }
+}
+
+// An attempt from the clock's 0: the room as it was when he came in, the doors armed that he
+// does not stand in.
+fn doors_reset() {
+    for i in 0..KEY_WORDS {
+        att_taken[i] = run_taken[i]
+        att_open[i] = run_open[i]
+    }
+    held = run_held
+    for i in 0..room.ncards { card_t[i] = -1 }
+    for i in 0..room.ndoors {
+        let d = &room.doors[i]
+        door_t[i] = -1
+        door_armed[i] = !box_contains(&d.box, thief.x, thief.z)
+        door_wall(d)
+    }
+    room_segs()
+}
+
+// A door's wall as its state: on while it is shut.
+fn door_wall(d: *Door) {
+    if d.wall < 0 { return }
+    let w = &room.walls[d.wall]
+    let shut = !door_open(d)
+    w.solid = shut
+    w.blocks = shut
+}
+
+// The cards he walks over, the shut doors he walks into holding their colour. After the thief
+// moves.
+fn keys_update(t: s32) {
+    for i in 0..room.ncards {
+        if card_taken(i) { continue }
+        if dist2(thief.x, thief.z, room.card_x[i], room.card_z[i]) < CARD_R * CARD_R {
+            bit_set(&att_taken[0], room.card_key[i])
+            held = held | ((1 as u32) << room.card_col[i] as u32)
+            card_t[i] = t
+            cards_n += 1
+            event(Ev.CardTake, room.card_col[i])
+            au_card(room.card_x[i] - cam_x)
+        }
+    }
+    var changed = false
+    for i in 0..room.ndoors {
+        let d = &room.doors[i]
+        if door_open(d) { continue }
+        if held & ((1 as u32) << d.card as u32) == 0 { continue }
+        if box_touches(&d.box, thief.x, thief.z, THIEF_R + DOOR_REACH) {
+            bit_set(&att_open[0], d.key)
+            bit_set(&att_open[0], d.to_key)
+            door_wall(d)
+            door_t[i] = t
+            opened_n += 1
+            changed = true
+            event(Ev.Unlock, d.card)
+            au_unlock(d.box.cx - cam_x)
+        }
+    }
+    if changed { room_segs() }
+}
+
+// The way out he is in this tick: a door's index, EXIT_LINE for the room's exit (level 1, the
+// platform), -1 none.
+const EXIT_LINE = 99
+fn way_out() -> s32 {
+    if room.has_exit && in_exit() { return EXIT_LINE }
+    for i in 0..room.ndoors {
+        let d = &room.doors[i]
+        let inside = box_contains(&d.box, thief.x, thief.z)
+        if !door_armed[i] {
+            door_armed[i] = !inside
+            continue
+        }
+        if inside && door_leads(d) && door_open(d) { return i }
+    }
+    return -1
+}
+
+// The nearest he is to a way out (the tape's `near`).
+fn exit_dist() -> fixed {
+    var best = 1000.0
+    if room.has_exit { best = sqrt(dist2(thief.x, thief.z, room.exit.cx, room.exit.cz)) }
+    for i in 0..room.ndoors {
+        let d = &room.doors[i]
+        if door_leads(d) { best = min(best, sqrt(dist2(thief.x, thief.z, d.box.cx, d.box.cz))) }
+    }
+    return best
+}

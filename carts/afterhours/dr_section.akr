@@ -1,0 +1,382 @@
+// The section (agent E): a stage's rooms as its World Kit world holds them, read from the open
+// pack and drawn as cut-away models. Each room is its own cell, side by side in x at its real
+// height (levels/level1/ROUTE.md); the kit made a low-detail stand-in of each (WORLDKIT.md,
+// "Stand-ins made by the kit"). Three pictures draw from it:
+//
+// - the transition between rooms (dr_trans.akr): the rooms where they are, the one being left
+//   and the one entered as their placements, the others as stand-ins;
+// - the stage select's model (dr_menu.akr): every room as its stand-in, packed side by side
+//   (the world's 32 m between cells closed up to SEC_GAP), small, turning slowly, with the route;
+// - the stage's end, and later a pause map: section_view() with any screen box.
+//
+// A room is lit or dark by its region's palette (every region of a world has its own colours,
+// all loaded at once): section_light(). A locked stage is drawn as a silhouette with the GPU's
+// fog (section_view(..., silhouette)).
+
+const SEC_MAX = 8
+const SEC_DOORS = 6
+const SEC_GAP: fixed = 3.0         // metres between rooms in the packed model
+const SEC_RISE: fixed = 9.0        // the most one room rises above the last in the packed model
+const SEC_DIM: fixed = 0.38        // a dark room keeps this much of its colour
+const SEC_NIGHT = 0x2A140C         // rgb(12, 20, 42): what a dark room's colours go toward
+const SEC_ROUTE = 0x2080FF         // rgb(255, 128, 32): the route, in the thief's colour
+const SEC_ROUTE_DIM = 0x6E5A48     // rgb(72, 90, 110): the route through rooms not cleared
+
+struct SecRoom {
+    cell: *WpCell
+    region: s32
+    c: vec3            // the room's centre on its floor (world)
+    sx: fixed          // its box in x and z
+    sz: fixed
+    spawn: vec3        // where he comes in (world, on the floor): the room's entry
+    exit: vec3         // its exit box's centre (a room of doors: its centre)
+    line: bool         // it has an exit box (level 1, the platform); else it has doors
+    name: *u8          // its name in the pack (a World Kit name: the_last_train), or ""
+    ndoors: s32        // its doors (a stage of doors), in entity order
+    door: [SEC_DOORS]vec3          // each door's centre (world)
+    door_to: [SEC_DOORS]s32        // the room it leads to (-1: none, or the stage's end)
+    door_at: [SEC_DOORS]vec3       // ... and where he comes into it (the door it leads to)
+    shift: fixed       // the packed model moves it this far in x ...
+    lift: fixed        // ... and this far in y (a rise of more than SEC_RISE between two rooms,
+                       // the tower's floors between the lobby and the roof, is closed up)
+}
+
+var sec: [SEC_MAX]SecRoom
+var sec_n: s32
+var sec_lo: vec3       // the rooms' boxes' bounds (packed, floors to 3 m above)
+var sec_hi: vec3
+
+// How section_room() and sec_point() place the world: a point p is drawn at
+// place + scale * R(yaw) (p + (packed shift, lift, 0) - pivot), R turning as mesh_at() does.
+var sec_pivot: vec3
+var sec_place: vec3
+var sec_scale: fixed = 1.0
+var sec_c: fixed = 1.0
+var sec_s: fixed
+var sec_packed: bool
+var sec_tris: s32      // triangles submitted by the section_room() calls since section_count()
+
+// The open pack's rooms, in the run's order (as dr_world.akr's level_rooms(): from the room with
+// `first` along `next`, then the rooms off that chain in entity order), and their doors. Returns
+// how many.
+fn section_read() -> s32 {
+    sec_n = 0
+    if wp_pack == null { return 0 }
+    let count = wp_pack.entity_count as s32
+    var first = -1
+    for n in 0..count {
+        let e = wp_entity(n)
+        if e.type_id as s32 == AFTERHOURS_TYPE_ROOM && (wp_entity_params(e) as *AfterhoursRoom).first { first = n }
+    }
+    if first >= 0 {
+        var n = first
+        while n >= 0 && sec_n < SEC_MAX {
+            sec_add(n)
+            let nx = (wp_entity_params(wp_entity(n)) as *AfterhoursRoom).next
+            if nx == 0xFFFFFFFF { n = -1 } else { n = nx as s32 }
+        }
+    }
+    for n in 0..count {
+        if wp_entity(n).type_id as s32 != AFTERHOURS_TYPE_ROOM || sec_n >= SEC_MAX { continue }
+        var have = false
+        for k in 0..sec_n {
+            if sec_ent[k] == n { have = true }
+        }
+        if !have { sec_add(n) }
+    }
+    // the doors (a stage of doors): each in the room whose box holds it, in entity order, with
+    // the room and the place its `to` leads to
+    for n in 0..count {
+        let e = wp_entity(n)
+        if e.type_id as s32 != AFTERHOURS_TYPE_DOOR { continue }
+        let pos = wp_entity_pos(e)
+        let k = sec_room_at(pos)
+        if k < 0 || sec[k].ndoors >= SEC_DOORS { continue }
+        let r = &sec[k]
+        let d = r.ndoors
+        r.ndoors += 1
+        r.door[d] = pos
+        r.door_to[d] = -1
+        let dp = wp_entity_params(e) as *AfterhoursDoor
+        if dp.to != 0xFFFFFFFF && !dp.end {
+            let te = wp_entity(dp.to as s32)
+            var at = wp_entity_pos(te)
+            if te.type_id as s32 == AFTERHOURS_TYPE_DOOR {
+                let tp = wp_entity_params(te) as *AfterhoursDoor
+                if tp.spawn != 0xFFFFFFFF { at = wp_entity_pos(wp_entity(tp.spawn as s32)) }
+            } else if te.type_id as s32 == AFTERHOURS_TYPE_ROOM {
+                at = wp_entity_pos(wp_entity((wp_entity_params(te) as *AfterhoursRoom).entry as s32))
+            }
+            r.door_to[d] = sec_room_at(at)
+            r.door_at[d] = at
+        }
+    }
+    // the packed model: the rooms side by side in the run's order, SEC_GAP apart, about the
+    // first room's centre
+    var x = 0.0
+    var lift = 0.0
+    for k in 0..sec_n {
+        let r = &sec[k]
+        if k == 0 { x = r.c.x - r.sx / 2 }
+        r.shift = x + r.sx / 2 - r.c.x
+        x += r.sx + SEC_GAP
+        if k > 0 {
+            let rise = r.c.y - sec[k - 1].c.y
+            lift += clamp(rise, -SEC_RISE, SEC_RISE) - rise
+        }
+        r.lift = lift
+    }
+    sec_lo = vec3(1000.0, 1000.0, 1000.0)
+    sec_hi = vec3(-1000.0, -1000.0, -1000.0)
+    for k in 0..sec_n {
+        let r = &sec[k]
+        let cx = r.c.x + r.shift
+        let cy = r.c.y + r.lift
+        sec_lo = vec3(min(sec_lo.x, cx - r.sx / 2), min(sec_lo.y, cy), min(sec_lo.z, r.c.z - r.sz / 2))
+        sec_hi = vec3(max(sec_hi.x, cx + r.sx / 2), max(sec_hi.y, cy + 3.0), max(sec_hi.z, r.c.z + r.sz / 2))
+    }
+    return sec_n
+}
+
+var sec_ent: [SEC_MAX]s32       // each room's entity number
+
+fn sec_add(n: s32) {
+    let e = wp_entity(n)
+    let p = wp_entity_params(e) as *AfterhoursRoom
+    let r = &sec[sec_n]
+    sec_ent[sec_n] = n
+    r.c = wp_entity_pos(e)
+    r.sx = p.size.x
+    r.sz = p.size.z
+    r.spawn = wp_entity_pos(wp_entity(p.entry as s32))
+    r.line = p.exit != 0xFFFFFFFF
+    r.exit = r.c
+    if r.line { r.exit = wp_entity_pos(wp_entity(p.exit as s32)) }
+    r.name = ""
+    if p.name != 0 { r.name = (wp_pack as u32 + p.name) as *u8 }
+    r.ndoors = 0
+    r.cell = wp_cell_at(r.c)
+    r.region = -1
+    if r.cell != null { r.region = r.cell.region as s32 }
+    r.shift = 0.0
+    r.lift = 0.0
+    sec_n += 1
+}
+
+// The room whose box holds world point p (as dr_world.akr's room_holds()), or -1.
+fn sec_room_at(p: vec3) -> s32 {
+    for k in 0..sec_n {
+        let r = &sec[k]
+        if abs(p.x - r.c.x) <= r.sx / 2 + 0.5 && abs(p.z - r.c.z) <= r.sz / 2 + 0.5 { return k }
+    }
+    return -1
+}
+
+// The middle of the packed model (its pivot for the select's turning model).
+fn section_mid() -> vec3 { return (sec_lo + sec_hi) / 2 }
+
+// Sets how the following section_room() and sec_point() calls place the world (above).
+fn section_xf(pivot: vec3, place: vec3, scale: fixed, yaw: fixed, packed: bool) {
+    sec_pivot = pivot
+    sec_place = place
+    sec_scale = scale
+    sec_c = cos(yaw)
+    sec_s = sin(yaw)
+    sec_packed = packed
+}
+
+// Where world point p of room k is drawn.
+fn sec_point(k: s32, p: vec3) -> vec3 {
+    var d = p - sec_pivot
+    if sec_packed { d = d + vec3(sec[k].shift, sec[k].lift, 0.0) }
+    return sec_place + vec3(sec_c * d.x + sec_s * d.z, d.y, sec_c * d.z - sec_s * d.x) * sec_scale
+}
+
+// The model matrix that draws a mesh whose vertices are turned by (c, s) about its origin, the
+// origin drawn at t, at the section's scale.
+fn sec_model(t: vec3, c: fixed, s: fixed) -> mat4 {
+    let k = sec_scale
+    var m: mat4
+    m[0] = vec4(k * c, 0.0, k * s, t.x)
+    m[1] = vec4(0.0, k, 0.0, t.y)
+    m[2] = vec4(-k * s, 0.0, k * c, t.z)
+    m[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    return m
+}
+
+// Draws room k: its stand-in, or its placements when `full` (or when it has no stand-in), with
+// the camera set. A room whose centre projects far off the screen is not drawn.
+fn section_room(k: s32, full: bool) {
+    let r = &sec[k]
+    let cell = r.cell
+    if cell == null { return }
+    let pc = project_point(sec_point(k, r.c))
+    if pc.z < 0 || pc.x < -480 || pc.x > 800 || pc.y < -360 || pc.y > 600 { return }
+    let cc = wp_cell_centre(cell)
+    let base = wp_pack as u32
+    if !full && cell.standin_off != 0 {
+        let m = (base + cell.standin_off) as *Mesh
+        mesh_xf(m, sec_model(sec_point(k, cc), sec_c, sec_s))
+        sec_tris += m.nfaces as s32
+        return
+    }
+    let mask = wp_cell_mask(cell)
+    var p = (base + cell.placement_off) as *WpPlacement
+    for _i in 0..cell.placement_count as s32 {
+        let pm = p.mask as u32
+        if (pm == 0 || pm & mask != 0) && p.mesh != 0 {
+            let m = (base + p.mesh) as *Mesh
+            let at = cc + vec3(p.pos.x, p.pos.y, p.pos.z)
+            mesh_xf(m, sec_model(sec_point(k, at), sec_c * p.cos - sec_s * p.sin, sec_s * p.cos + sec_c * p.sin))
+            sec_tris += m.nfaces as s32
+        }
+        p = p + 1
+    }
+}
+
+// ---- light: a room's region's colours, lit (as the world made them) or dark
+
+var sec_night: [512]u16          // SEC_NIGHT, for palette_lerp()
+var sec_night_ready: bool
+
+// Lights room k's region: t 1 as the world made it, 0 dark (SEC_DIM of its colour, the rest
+// night blue). Its main run only (palette-backed colours and 4-bit texture palettes: what the
+// stand-ins draw with). About 40 cycles a colour.
+fn section_light(k: s32, t: fixed) {
+    let rg = sec[k].region
+    if rg < 0 || rg >= wp_region_count() { return }
+    let r = wp_region(rg)
+    let n = min(r.colour_count as s32, len(sec_night))
+    let cols = (wp_pack as u32 + r.palette_off + 4 * (r.variant_count as u32)) as *u16
+    if t >= 1.0 {
+        load_palette(r.first_colour as s32, cols, n)
+        return
+    }
+    if !sec_night_ready {
+        let c = rgb15(SEC_NIGHT) as u16
+        for i in 0..len(sec_night) { sec_night[i] = c }
+        sec_night_ready = true
+    }
+    palette_lerp(r.first_colour as s32, &sec_night[0], cols, n, SEC_DIM + (1.0 - SEC_DIM) * t)
+}
+
+var sec_dimmed: bool             // the last section_view() dimmed the whole model with the fog
+
+// Every room of the section, as a mask.
+fn sec_all() -> u32 { return ((1 as u32) << sec_n as u32) - 1 }
+
+// The palettes for a model drawn with section_view(..., lit): the rooms of `lit` lit, the others
+// dark; none cleared, all lit (section_view() dims the whole model with the fog instead).
+fn section_lights_for(lit: u32) -> u32 {
+    if lit & sec_all() == 0 { return 0xFFFFFFFF }
+    return lit
+}
+
+// Lights every room by a mask (bit k: room k lit).
+fn section_lights(lit: u32) {
+    for k in 0..sec_n {
+        if (lit >> k as u32) & 1 != 0 { section_light(k, 1.0) } else { section_light(k, 0.0) }
+    }
+}
+
+// ---- the route: from each room's door to its exit, and on to the next room's door
+
+// A screen point of room k's world point p, 0.15 m over its floor, with the camera set; z < 0
+// when it is behind the camera.
+fn sec_screen(k: s32, p: vec3) -> ivec4 { return project_point(sec_point(k, p + vec3(0.0, 0.15, 0.0))) }
+
+fn sec_line(a: ivec4, b: ivec4, w: s32, col: u32) {
+    if a.z < 0 || b.z < 0 { return }
+    line_ex(a.x, a.y, b.x, b.y, w, col, col, BLEND_ADD)
+}
+
+// A dotted line from a to b (the way between two rooms, through the building).
+fn sec_dots(a: ivec4, b: ivec4, col: u32) {
+    if a.z < 0 || b.z < 0 { return }
+    let dx = b.x - a.x
+    let dy = b.y - a.y
+    let n = clamp(max(abs(dx), abs(dy)) / 4, 1, 64)
+    for i in 0..n + 1 {
+        let x = a.x + dx * i / n
+        let y = a.y + dy * i / n
+        rect_blend(x, y, 2, 2, col, BLEND_ADD)
+    }
+}
+
+// Draws the route through rooms 0..upto (the cleared ones, bit k of `lit`, in the thief's
+// colour), with the camera set: across each room from its door to its exit, and dotted from an
+// exit to the next room's door. The dots up to room upto + 1's door are drawn when `onward`.
+// A room of doors draws its doors instead, each dotted to where it leads (section_doors()).
+fn section_route(upto: s32, lit: u32, onward: bool) {
+    for k in 0..min(upto + 1, sec_n) {
+        let r = &sec[k]
+        var col = SEC_ROUTE_DIM
+        if (lit >> k as u32) & 1 != 0 { col = SEC_ROUTE }
+        if !r.line {
+            section_doors(k, lit)
+            continue
+        }
+        let a = sec_screen(k, r.spawn)
+        let b = sec_screen(k, r.exit)
+        sec_line(a, b, 2, col)
+        if a.z >= 0 { rect_blend(a.x - 1, a.y - 1, 3, 3, col, BLEND_ADD) }
+        if b.z >= 0 { rect_blend(b.x - 2, b.y - 2, 5, 5, col, BLEND_ADD) }
+        if k + 1 < sec_n && (k < upto || onward) {
+            sec_dots(b, sec_screen(k + 1, sec[k + 1].spawn), col)
+        }
+    }
+}
+
+// A room of doors: a mark at each door, and dots from it to where it leads (once a pair: from
+// the lower-numbered room), in the thief's colour when either room is cleared.
+fn section_doors(k: s32, lit: u32) {
+    let r = &sec[k]
+    for d in 0..r.ndoors {
+        var col = SEC_ROUTE_DIM
+        let to = r.door_to[d]
+        let on = (lit >> k as u32) & 1 != 0 || (to >= 0 && (lit >> to as u32) & 1 != 0)
+        if on { col = SEC_ROUTE }
+        let a = sec_screen(k, r.door[d])
+        if a.z >= 0 { rect_blend(a.x - 2, a.y - 2, 5, 5, col, BLEND_ADD) }
+        if to > k { sec_dots(a, sec_screen(to, r.door_at[d]), col) }
+    }
+}
+
+// ---- the model on screen
+
+// Draws the whole section as a small packed model in a screen box: centred on (sx, sy), `w`
+// pixels across its longest side, turned by yaw (radians; 0 shows the rooms' cut fronts), seen
+// from `pitch` (negative: from above). Lit rooms by `lit`; the route through them when `route`;
+// as a flat silhouette when `silhouette` (a locked stage: the GPU's fog, which is the frame's,
+// so nothing else drawn with depth this frame should mind). Sets the camera; the caller draws
+// its text afterwards.
+const SEC_VIEW_DIST: fixed = 60.0
+const SEC_VIEW_FOV: fixed = 0.2443     // 14 degrees: near isometric
+fn section_view(sx: s32, sy: s32, w: s32, yaw: fixed, pitch: fixed, route: bool, silhouette: bool, lit: u32) {
+    if sec_n == 0 { return }
+    // (at least 60 m, so a stage of one room is not drawn larger than a room of a long one)
+    let span = max(max(max(sec_hi.x - sec_lo.x, sec_hi.y - sec_lo.y), sec_hi.z - sec_lo.z), 60.0)
+    // pixels a unit at the distance: 120 / tan(fov / 2) / dist = 977 / 60 = 16.3
+    let px_unit = 120.0 / tan(SEC_VIEW_FOV / 2) / SEC_VIEW_DIST
+    let scale = fixed(w) / (px_unit * span)
+    section_xf(section_mid(), vec3(0.0, 0.0, 0.0), scale, yaw, true)
+    camera_fov(SEC_VIEW_FOV)
+    camera_clip(SEC_VIEW_DIST - 20.0, SEC_VIEW_DIST + 20.0)
+    let eye = vec3(0.0, -sin(pitch), -cos(pitch)) * SEC_VIEW_DIST
+    camera_look(eye, 0.0, pitch)
+    camera_pan(sx - 160, sy - 120)
+    sec_dimmed = false
+    if silhouette {
+        gpu_fog(0x301C14, 0.0, 1.0)    // rgb(20, 28, 48)
+    } else if lit & sec_all() == 0 {
+        // no room cleared: the whole model dimmed by the fog (about 60% of the way to the night
+        // at the model's distance), which dims what the palettes cannot, such as a greybox's
+        // vertex colours; its palettes are then left lit (section_lights_for())
+        gpu_fog(SEC_NIGHT, 0.0, SEC_VIEW_DIST * 1.6)
+        sec_dimmed = true
+    } else {
+        gpu_fog_off()
+    }
+    for k in 0..sec_n { section_room(k, false) }
+    if route && !silhouette { section_route(sec_n - 1, lit, true) }
+}

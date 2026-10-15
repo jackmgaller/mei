@@ -1,0 +1,746 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "fh_cases",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 400
+ },
+ "materials": {
+  "body": {
+   "color": "#d8dcdc"
+  },
+  "base": {
+   "color": "#3a3c40"
+  },
+  "glass": {
+   "color": "#b0d0dc",
+   "blend": "quarter"
+  },
+  "edge": {
+   "color": "#fff4e0",
+   "class": "emissive"
+  },
+  "tray_cakes": {
+   "color": "#e0d8c8",
+   "class": "emissive",
+   "texture": {
+    "image": "art/tray_cakes.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "tray_fruit": {
+   "color": "#e0d8c8",
+   "class": "emissive",
+   "texture": {
+    "image": "art/tray_fruit.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "tray_wagashi": {
+   "color": "#e0d8c8",
+   "class": "emissive",
+   "texture": {
+    "image": "art/tray_wagashi.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "tray_gifts": {
+   "color": "#e0d8c8",
+   "class": "emissive",
+   "texture": {
+    "image": "art/tray_gifts.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "case_0",
+   "op": "group",
+   "children": [
+    {
+     "id": "body_0",
+     "op": "box",
+     "size": [
+      6.5,
+      0.62,
+      0.7
+     ],
+     "material": "body",
+     "transform": {
+      "translate": [
+       -4.25,
+       0.29,
+       -1.35
+      ]
+     },
+     "open": [
+      "bottom"
+     ],
+     "faces": {
+      "top": "tray_cakes"
+     },
+     "decals": [
+      {
+       "id": "edge",
+       "face": "back",
+       "material": "edge",
+       "size": [
+        6.4,
+        0.04
+       ],
+       "at": [
+        0,
+        0.26
+       ]
+      }
+     ]
+    },
+    {
+     "id": "kick_0",
+     "op": "box",
+     "size": [
+      6.42,
+      0.1,
+      0.62
+     ],
+     "material": "base",
+     "transform": {
+      "translate": [
+       -4.25,
+       0.03,
+       -1.35
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    },
+    {
+     "id": "glass_0",
+     "op": "mesh",
+     "material": "glass",
+     "vertices": [
+      [
+       -7.49,
+       0.95,
+       -1.01
+      ],
+      [
+       -1.01,
+       0.95,
+       -1.01
+      ],
+      [
+       -1.01,
+       0.95,
+       -1.69
+      ],
+      [
+       -7.49,
+       0.95,
+       -1.69
+      ],
+      [
+       -1.01,
+       0.605,
+       -1.69
+      ],
+      [
+       -7.49,
+       0.605,
+       -1.69
+      ],
+      [
+       -7.49,
+       0.605,
+       -1.01
+      ],
+      [
+       -1.01,
+       0.605,
+       -1.01
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ],
+      [
+       3,
+       2,
+       4,
+       5
+      ],
+      [
+       6,
+       7,
+       1,
+       0
+      ],
+      [
+       5,
+       6,
+       0,
+       3
+      ],
+      [
+       2,
+       1,
+       7,
+       4
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "case_1",
+   "op": "group",
+   "children": [
+    {
+     "id": "body_1",
+     "op": "box",
+     "size": [
+      6.5,
+      0.62,
+      0.7
+     ],
+     "material": "body",
+     "transform": {
+      "translate": [
+       4.25,
+       0.29,
+       -1.35
+      ]
+     },
+     "open": [
+      "bottom"
+     ],
+     "faces": {
+      "top": "tray_fruit"
+     },
+     "decals": [
+      {
+       "id": "edge",
+       "face": "back",
+       "material": "edge",
+       "size": [
+        6.4,
+        0.04
+       ],
+       "at": [
+        0,
+        0.26
+       ]
+      }
+     ]
+    },
+    {
+     "id": "kick_1",
+     "op": "box",
+     "size": [
+      6.42,
+      0.1,
+      0.62
+     ],
+     "material": "base",
+     "transform": {
+      "translate": [
+       4.25,
+       0.03,
+       -1.35
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    },
+    {
+     "id": "glass_1",
+     "op": "mesh",
+     "material": "glass",
+     "vertices": [
+      [
+       1.01,
+       0.95,
+       -1.01
+      ],
+      [
+       7.49,
+       0.95,
+       -1.01
+      ],
+      [
+       7.49,
+       0.95,
+       -1.69
+      ],
+      [
+       1.01,
+       0.95,
+       -1.69
+      ],
+      [
+       7.49,
+       0.605,
+       -1.69
+      ],
+      [
+       1.01,
+       0.605,
+       -1.69
+      ],
+      [
+       1.01,
+       0.605,
+       -1.01
+      ],
+      [
+       7.49,
+       0.605,
+       -1.01
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ],
+      [
+       3,
+       2,
+       4,
+       5
+      ],
+      [
+       6,
+       7,
+       1,
+       0
+      ],
+      [
+       5,
+       6,
+       0,
+       3
+      ],
+      [
+       2,
+       1,
+       7,
+       4
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "case_2",
+   "op": "group",
+   "children": [
+    {
+     "id": "body_2",
+     "op": "box",
+     "size": [
+      6.5,
+      0.62,
+      0.7
+     ],
+     "material": "body",
+     "transform": {
+      "translate": [
+       -4.25,
+       0.29,
+       1.45
+      ]
+     },
+     "open": [
+      "bottom"
+     ],
+     "faces": {
+      "top": "tray_wagashi"
+     },
+     "decals": [
+      {
+       "id": "edge",
+       "face": "back",
+       "material": "edge",
+       "size": [
+        6.4,
+        0.04
+       ],
+       "at": [
+        0,
+        0.26
+       ]
+      }
+     ]
+    },
+    {
+     "id": "kick_2",
+     "op": "box",
+     "size": [
+      6.42,
+      0.1,
+      0.62
+     ],
+     "material": "base",
+     "transform": {
+      "translate": [
+       -4.25,
+       0.03,
+       1.45
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    },
+    {
+     "id": "glass_2",
+     "op": "mesh",
+     "material": "glass",
+     "vertices": [
+      [
+       -7.49,
+       0.95,
+       1.79
+      ],
+      [
+       -1.01,
+       0.95,
+       1.79
+      ],
+      [
+       -1.01,
+       0.95,
+       1.11
+      ],
+      [
+       -7.49,
+       0.95,
+       1.11
+      ],
+      [
+       -1.01,
+       0.605,
+       1.11
+      ],
+      [
+       -7.49,
+       0.605,
+       1.11
+      ],
+      [
+       -7.49,
+       0.605,
+       1.79
+      ],
+      [
+       -1.01,
+       0.605,
+       1.79
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ],
+      [
+       3,
+       2,
+       4,
+       5
+      ],
+      [
+       6,
+       7,
+       1,
+       0
+      ],
+      [
+       5,
+       6,
+       0,
+       3
+      ],
+      [
+       2,
+       1,
+       7,
+       4
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "case_3",
+   "op": "group",
+   "children": [
+    {
+     "id": "body_3",
+     "op": "box",
+     "size": [
+      6.5,
+      0.62,
+      0.7
+     ],
+     "material": "body",
+     "transform": {
+      "translate": [
+       4.25,
+       0.29,
+       1.45
+      ]
+     },
+     "open": [
+      "bottom"
+     ],
+     "faces": {
+      "top": "tray_gifts"
+     },
+     "decals": [
+      {
+       "id": "edge",
+       "face": "back",
+       "material": "edge",
+       "size": [
+        6.4,
+        0.04
+       ],
+       "at": [
+        0,
+        0.26
+       ]
+      }
+     ]
+    },
+    {
+     "id": "kick_3",
+     "op": "box",
+     "size": [
+      6.42,
+      0.1,
+      0.62
+     ],
+     "material": "base",
+     "transform": {
+      "translate": [
+       4.25,
+       0.03,
+       1.45
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    },
+    {
+     "id": "glass_3",
+     "op": "mesh",
+     "material": "glass",
+     "vertices": [
+      [
+       1.01,
+       0.95,
+       1.79
+      ],
+      [
+       7.49,
+       0.95,
+       1.79
+      ],
+      [
+       7.49,
+       0.95,
+       1.11
+      ],
+      [
+       1.01,
+       0.95,
+       1.11
+      ],
+      [
+       7.49,
+       0.605,
+       1.11
+      ],
+      [
+       1.01,
+       0.605,
+       1.11
+      ],
+      [
+       1.01,
+       0.605,
+       1.79
+      ],
+      [
+       7.49,
+       0.605,
+       1.79
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ],
+      [
+       3,
+       2,
+       4,
+       5
+      ],
+      [
+       6,
+       7,
+       1,
+       0
+      ],
+      [
+       5,
+       6,
+       0,
+       3
+      ],
+      [
+       2,
+       1,
+       7,
+       4
+      ]
+     ]
+    }
+   ]
+  }
+ ],
+ "lighting": {
+  "direction": [
+   0.0,
+   1.0,
+   -0.4
+  ],
+  "ambient": 0.17,
+  "diffuse": 0.04,
+  "lights": [
+   {
+    "id": "case_0",
+    "at": [
+     -4.25,
+     0.78,
+     -1.35
+    ],
+    "color": "#fff0e0",
+    "intensity": 1.25,
+    "range": 3.0
+   },
+   {
+    "id": "case_1",
+    "at": [
+     4.25,
+     0.78,
+     -1.35
+    ],
+    "color": "#eefff0",
+    "intensity": 1.25,
+    "range": 3.0
+   },
+   {
+    "id": "case_2",
+    "at": [
+     -4.25,
+     0.78,
+     1.45
+    ],
+    "color": "#ffe8f4",
+    "intensity": 1.25,
+    "range": 3.0
+   },
+   {
+    "id": "case_3",
+    "at": [
+     4.25,
+     0.78,
+     1.45
+    ],
+    "color": "#fff2d8",
+    "intensity": 1.25,
+    "range": 3.0
+   },
+   {
+    "id": "andon_0",
+    "at": [
+     -4.9,
+     1.15,
+     4.45
+    ],
+    "color": "#ffb468",
+    "intensity": 1.2,
+    "range": 2.6
+   },
+   {
+    "id": "andon_1",
+    "at": [
+     0.0,
+     1.15,
+     4.45
+    ],
+    "color": "#ffb468",
+    "intensity": 1.2,
+    "range": 2.6
+   },
+   {
+    "id": "andon_2",
+    "at": [
+     5.0,
+     1.15,
+     4.45
+    ],
+    "color": "#ffb468",
+    "intensity": 1.2,
+    "range": 2.6
+   },
+   {
+    "id": "night",
+    "at": [
+     0.0,
+     7.0,
+     0.0
+    ],
+    "color": "#806c90",
+    "intensity": 0.55,
+    "range": 18.0
+   }
+  ],
+  "refine": {
+   "max_added": 0
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

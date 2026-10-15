@@ -1,0 +1,2629 @@
+{
+ "format": "mei-world",
+ "version": 1,
+ "name": "level2",
+ "game": "../../afterhours.game.mochi",
+ "assets": "../../rooms/cinema/dressed",
+ "asset_dirs": [
+  "../../rooms/booth/dressed",
+  "../../rooms/corridor/dressed",
+  "../../rooms/shopfloor",
+  "../../rooms/foodhall"
+ ],
+ "grid": {
+  "cell_size": 32
+ },
+ "collision": {
+  "surfaces": {
+   "default": 0
+  }
+ },
+ "regions": {
+  "cinema": {},
+  "booth": {},
+  "corridor": {},
+  "shopfloor": {},
+  "foodhall": {}
+ },
+ "paths": {},
+ "runtime": {
+  "depth": true,
+  "perspective": true
+ },
+ "standins": {
+  "distance": 64,
+  "triangles": 700,
+  "cells": {
+   "cinema": {
+    "triangles": 720
+   },
+   "shopfloor": {
+    "triangles": 1600
+   },
+   "foodhall": {
+    "triangles": 1400
+   }
+  }
+ },
+ "verification": {
+  "vantage_points": [
+   {
+    "name": "game_cinema_0",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     11.35,
+     60.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_cinema_1",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     16.0,
+     60.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_cinema_2",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     20.65,
+     60.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_booth_0",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     48.0,
+     64.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_corridor_0",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     73.85,
+     60.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_corridor_1",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     80.0,
+     60.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_corridor_2",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     86.15,
+     60.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_shopfloor_0",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     106.35,
+     55.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_shopfloor_1",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     112.0,
+     55.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_shopfloor_2",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     117.65,
+     55.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_foodhall_0",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     138.35,
+     20.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_foodhall_1",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     144.0,
+     20.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_foodhall_2",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     149.65,
+     20.9925,
+     1.917
+    ]
+   }
+  ],
+  "thresholds": {
+   "cell_triangles": 2500,
+   "standin_triangles": 1600
+  }
+ },
+ "cells": [
+  {
+   "id": "cinema",
+   "at": [
+    0,
+    0
+   ],
+   "region": "cinema",
+   "placements": [
+    {
+     "id": "cn_room",
+     "asset": "cn_room",
+     "position": [
+      16.0,
+      36.0,
+      16.0
+     ],
+     "collision": "cn_room_col"
+    },
+    {
+     "id": "cn_beam",
+     "asset": "cn_beam",
+     "position": [
+      16.0,
+      36.0,
+      16.0
+     ],
+     "collision": "none"
+    }
+   ],
+   "entities": [
+    {
+     "id": "cn_room",
+     "type": "room",
+     "position": [
+      16.0,
+      36.0,
+      16.0
+     ],
+     "params": {
+      "name": "the_cinema",
+      "entry": "cn_spawn_screen",
+      "size": [
+       22.5,
+       2.4,
+       9.5
+      ],
+      "first": true,
+      "next": "pb_room"
+     }
+    },
+    {
+     "id": "cn_spawn_screen",
+     "type": "spawn",
+     "position": [
+      5.775,
+      36.0,
+      16.0
+     ],
+     "params": {
+      "yaw": 90
+     }
+    },
+    {
+     "id": "cn_door_screen",
+     "type": "door",
+     "position": [
+      4.875,
+      36.0,
+      16.0
+     ],
+     "yaw": 90,
+     "params": {
+      "size": [
+       1.2,
+       2.2,
+       0.4
+      ],
+      "spawn": "cn_spawn_screen"
+     }
+    },
+    {
+     "id": "cn_spawn_corridor",
+     "type": "spawn",
+     "position": [
+      26.125,
+      36.0,
+      19.2
+     ],
+     "params": {
+      "yaw": 270
+     }
+    },
+    {
+     "id": "cn_door_corridor",
+     "type": "door",
+     "position": [
+      27.125,
+      36.0,
+      19.2
+     ],
+     "yaw": 270,
+     "params": {
+      "size": [
+       1.2,
+       2.2,
+       0.4
+      ],
+      "spawn": "cn_spawn_corridor",
+      "to": "sc_door_cinema"
+     }
+    },
+    {
+     "id": "cn_wall_front",
+     "type": "wall",
+     "position": [
+      16.0,
+      36.0,
+      11.375
+     ],
+     "params": {
+      "size": [
+       22.5,
+       1.0,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "cn_wall_back_0",
+     "type": "wall",
+     "position": [
+      16.0,
+      36.0,
+      20.625
+     ],
+     "params": {
+      "size": [
+       22.5,
+       2.4,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "cn_wall_end_w_0",
+     "type": "wall",
+     "position": [
+      4.875,
+      36.0,
+      13.45
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       3.9
+      ]
+     }
+    },
+    {
+     "id": "cn_wall_end_w_1",
+     "type": "wall",
+     "position": [
+      4.875,
+      36.0,
+      18.55
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       3.9
+      ]
+     }
+    },
+    {
+     "id": "cn_wall_end_e_0",
+     "type": "wall",
+     "position": [
+      27.125,
+      36.0,
+      15.05
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       7.1
+      ]
+     }
+    },
+    {
+     "id": "cn_wall_end_e_1",
+     "type": "wall",
+     "position": [
+      27.125,
+      36.0,
+      20.15
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       0.7
+      ]
+     }
+    },
+    {
+     "id": "cn_wall_screen",
+     "type": "wall",
+     "position": [
+      6.85,
+      36.0,
+      16.2
+     ],
+     "params": {
+      "size": [
+       0.3,
+       2.4,
+       6.8
+      ]
+     }
+    },
+    {
+     "id": "cn_wall_seats_00",
+     "type": "wall",
+     "position": [
+      10.7,
+      36.0,
+      14.15
+     ],
+     "params": {
+      "size": [
+       3.4,
+       0.9,
+       2.3
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "cn_wall_seats_01",
+     "type": "wall",
+     "position": [
+      10.7,
+      36.0,
+      17.85
+     ],
+     "params": {
+      "size": [
+       3.4,
+       0.9,
+       2.3
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "cn_wall_seats_10",
+     "type": "wall",
+     "position": [
+      15.5,
+      36.0,
+      14.15
+     ],
+     "params": {
+      "size": [
+       3.4,
+       0.9,
+       2.3
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "cn_wall_seats_11",
+     "type": "wall",
+     "position": [
+      15.5,
+      36.0,
+      17.85
+     ],
+     "params": {
+      "size": [
+       3.4,
+       0.9,
+       2.3
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "cn_wall_seats_20",
+     "type": "wall",
+     "position": [
+      20.3,
+      36.0,
+      14.15
+     ],
+     "params": {
+      "size": [
+       3.4,
+       0.9,
+       2.3
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "cn_wall_seats_21",
+     "type": "wall",
+     "position": [
+      20.3,
+      36.0,
+      17.85
+     ],
+     "params": {
+      "size": [
+       3.4,
+       0.9,
+       2.3
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "cn_camera_booth",
+     "type": "guard",
+     "position": [
+      26.85,
+      38.3,
+      16.0
+     ],
+     "params": {
+      "kind": "camera",
+      "look_a": 270,
+      "look_b": 270,
+      "hold": 600,
+      "turn": 60,
+      "phase": 0,
+      "sight": 10.0,
+      "fov": 30
+     }
+    },
+    {
+     "id": "cn_wp_usher_sw",
+     "type": "waypoint",
+     "position": [
+      8.0,
+      36.0,
+      12.25
+     ],
+     "params": {
+      "next": "cn_wp_usher_se",
+      "wait": 30,
+      "look": 90
+     }
+    },
+    {
+     "id": "cn_wp_usher_se",
+     "type": "waypoint",
+     "position": [
+      23.6,
+      36.0,
+      12.25
+     ],
+     "params": {
+      "next": "cn_wp_usher_ne",
+      "wait": 60,
+      "look": 0
+     }
+    },
+    {
+     "id": "cn_wp_usher_ne",
+     "type": "waypoint",
+     "position": [
+      23.6,
+      36.0,
+      19.75
+     ],
+     "params": {
+      "next": "cn_wp_usher_nw",
+      "wait": 0,
+      "look": 270
+     }
+    },
+    {
+     "id": "cn_wp_usher_nw",
+     "type": "waypoint",
+     "position": [
+      8.0,
+      36.0,
+      19.75
+     ],
+     "params": {
+      "next": "cn_wp_usher_sw",
+      "wait": 0,
+      "look": 180
+     }
+    },
+    {
+     "id": "cn_guard_usher",
+     "type": "guard",
+     "position": [
+      8.0,
+      36.0,
+      17.0
+     ],
+     "yaw": 180.0,
+     "params": {
+      "kind": "patrol",
+      "route": "cn_wp_usher_sw",
+      "speed": 1.1,
+      "sight": 5.0,
+      "fov": 60,
+      "hear": 6,
+      "turn_rate": 200
+     }
+    },
+    {
+     "id": "cn_wp_cleaner_s",
+     "type": "waypoint",
+     "position": [
+      17.9,
+      36.0,
+      12.25
+     ],
+     "params": {
+      "next": "cn_wp_cleaner_n",
+      "wait": 90,
+      "look": 90
+     }
+    },
+    {
+     "id": "cn_wp_cleaner_n",
+     "type": "waypoint",
+     "position": [
+      17.9,
+      36.0,
+      19.75
+     ],
+     "params": {
+      "next": "cn_wp_cleaner_s",
+      "wait": 90,
+      "look": 260
+     }
+    },
+    {
+     "id": "cn_guard_cleaner",
+     "type": "guard",
+     "position": [
+      17.9,
+      36.0,
+      13.0
+     ],
+     "yaw": 180.0,
+     "params": {
+      "kind": "patrol",
+      "route": "cn_wp_cleaner_s",
+      "speed": 0.9,
+      "sight": 4.5,
+      "fov": 60,
+      "hear": 6,
+      "turn_rate": 200
+     }
+    },
+    {
+     "id": "cn_wall_curtain_s",
+     "type": "wall",
+     "position": [
+      6.86,
+      36.0,
+      13.0
+     ],
+     "params": {
+      "size": [
+       0.56,
+       1.0,
+       0.4
+      ]
+     }
+    },
+    {
+     "id": "cn_wall_curtain_n",
+     "type": "wall",
+     "position": [
+      6.86,
+      36.0,
+      19.4
+     ],
+     "params": {
+      "size": [
+       0.56,
+       1.0,
+       0.4
+      ]
+     }
+    },
+    {
+     "id": "cn_wall_speaker_s",
+     "type": "wall",
+     "position": [
+      6.54,
+      36.0,
+      14.2
+     ],
+     "params": {
+      "size": [
+       0.32,
+       1.0,
+       1.2
+      ]
+     }
+    },
+    {
+     "id": "cn_wall_speaker_n",
+     "type": "wall",
+     "position": [
+      6.54,
+      36.0,
+      18.2
+     ],
+     "params": {
+      "size": [
+       0.32,
+       1.0,
+       1.2
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "booth",
+   "at": [
+    1,
+    0
+   ],
+   "region": "booth",
+   "placements": [
+    {
+     "id": "pb_room",
+     "asset": "pb_room",
+     "position": [
+      48.0,
+      40.0,
+      16.0
+     ],
+     "collision": "pb_room_col"
+    },
+    {
+     "id": "pb_beams",
+     "asset": "pb_beams",
+     "position": [
+      48.0,
+      40.0,
+      16.0
+     ],
+     "collision": "none"
+    }
+   ],
+   "entities": [
+    {
+     "id": "pb_room",
+     "type": "room",
+     "position": [
+      48.0,
+      40.0,
+      16.0
+     ],
+     "params": {
+      "name": "the_projection_booth",
+      "entry": "pb_spawn_corridor",
+      "size": [
+       12.5,
+       2.4,
+       6.5
+      ],
+      "next": "sc_room"
+     }
+    },
+    {
+     "id": "pb_spawn_corridor",
+     "type": "spawn",
+     "position": [
+      53.125,
+      40.0,
+      14.2
+     ],
+     "params": {
+      "yaw": 270
+     }
+    },
+    {
+     "id": "pb_door_corridor",
+     "type": "door",
+     "position": [
+      54.125,
+      40.0,
+      14.2
+     ],
+     "yaw": 270,
+     "params": {
+      "size": [
+       1.2,
+       2.2,
+       0.4
+      ],
+      "spawn": "pb_spawn_corridor",
+      "to": "sc_door_booth"
+     }
+    },
+    {
+     "id": "pb_wall_front",
+     "type": "wall",
+     "position": [
+      48.0,
+      40.0,
+      12.875
+     ],
+     "params": {
+      "size": [
+       12.5,
+       1.0,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "pb_wall_back_0",
+     "type": "wall",
+     "position": [
+      48.0,
+      40.0,
+      19.125
+     ],
+     "params": {
+      "size": [
+       12.5,
+       2.4,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "pb_wall_end_w_0",
+     "type": "wall",
+     "position": [
+      41.875,
+      40.0,
+      16.0
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       6.0
+      ]
+     }
+    },
+    {
+     "id": "pb_wall_end_e_0",
+     "type": "wall",
+     "position": [
+      54.125,
+      40.0,
+      13.3
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       0.6
+      ]
+     }
+    },
+    {
+     "id": "pb_wall_end_e_1",
+     "type": "wall",
+     "position": [
+      54.125,
+      40.0,
+      16.9
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       4.2
+      ]
+     }
+    },
+    {
+     "id": "pb_wall_projector_0",
+     "type": "wall",
+     "position": [
+      44.5,
+      40.0,
+      16.3
+     ],
+     "params": {
+      "size": [
+       0.8,
+       1.6,
+       1.4
+      ]
+     }
+    },
+    {
+     "id": "pb_wall_projector_1",
+     "type": "wall",
+     "position": [
+      48.5,
+      40.0,
+      16.3
+     ],
+     "params": {
+      "size": [
+       0.8,
+       1.6,
+       1.4
+      ]
+     }
+    },
+    {
+     "id": "pb_wall_bench",
+     "type": "wall",
+     "position": [
+      44.3,
+      40.0,
+      18.7
+     ],
+     "params": {
+      "size": [
+       3.8,
+       0.9,
+       0.6
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "pb_wall_racks",
+     "type": "wall",
+     "position": [
+      51.3,
+      40.0,
+      18.55
+     ],
+     "params": {
+      "size": [
+       2.6,
+       2.0,
+       0.9
+      ]
+     }
+    },
+    {
+     "id": "pb_card_red",
+     "type": "keycard",
+     "position": [
+      43.0,
+      40.0,
+      17.9
+     ],
+     "params": {
+      "colour": "red"
+     }
+    },
+    {
+     "id": "pb_wp_proj_a",
+     "type": "waypoint",
+     "position": [
+      46.2,
+      40.0,
+      14.6
+     ],
+     "params": {
+      "next": "pb_wp_proj_b",
+      "wait": 120,
+      "look": 55
+     }
+    },
+    {
+     "id": "pb_wp_proj_b",
+     "type": "waypoint",
+     "position": [
+      43.0,
+      40.0,
+      14.6
+     ],
+     "params": {
+      "next": "pb_wp_proj_c",
+      "wait": 0,
+      "look": 0
+     }
+    },
+    {
+     "id": "pb_wp_proj_c",
+     "type": "waypoint",
+     "position": [
+      43.0,
+      40.0,
+      17.6
+     ],
+     "params": {
+      "next": "pb_wp_proj_d",
+      "wait": 0,
+      "look": 90
+     }
+    },
+    {
+     "id": "pb_wp_proj_d",
+     "type": "waypoint",
+     "position": [
+      46.2,
+      40.0,
+      17.6
+     ],
+     "params": {
+      "next": "pb_wp_proj_a",
+      "wait": 0,
+      "look": 180
+     }
+    },
+    {
+     "id": "pb_guard_projectionist",
+     "type": "guard",
+     "position": [
+      46.2,
+      40.0,
+      14.6
+     ],
+     "yaw": 0.0,
+     "params": {
+      "kind": "patrol",
+      "route": "pb_wp_proj_a",
+      "speed": 1.0,
+      "sight": 5.0,
+      "fov": 60,
+      "hear": 6,
+      "turn_rate": 220
+     }
+    },
+    {
+     "id": "pb_wall_lens_0",
+     "type": "wall",
+     "position": [
+      44.015,
+      40.0,
+      16.05
+     ],
+     "params": {
+      "size": [
+       0.17,
+       0.93,
+       0.14
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "pb_wall_lens_1",
+     "type": "wall",
+     "position": [
+      48.015,
+      40.0,
+      16.05
+     ],
+     "params": {
+      "size": [
+       0.17,
+       0.93,
+       0.14
+      ],
+      "blocks": false
+     }
+    }
+   ]
+  },
+  {
+   "id": "corridor",
+   "at": [
+    2,
+    0
+   ],
+   "region": "corridor",
+   "placements": [
+    {
+     "id": "sc_room",
+     "asset": "sc_room",
+     "position": [
+      80.0,
+      36.0,
+      16.0
+     ],
+     "collision": "sc_room_col"
+    },
+    {
+     "id": "sc_glass",
+     "asset": "sc_glass",
+     "position": [
+      80.0,
+      36.0,
+      16.0
+     ],
+     "collision": "none"
+    }
+   ],
+   "entities": [
+    {
+     "id": "sc_room",
+     "type": "room",
+     "position": [
+      80.0,
+      36.0,
+      16.0
+     ],
+     "params": {
+      "name": "the_staff_corridor",
+      "entry": "sc_spawn_cinema",
+      "size": [
+       25.5,
+       2.4,
+       7.5
+      ],
+      "next": "sf_room"
+     }
+    },
+    {
+     "id": "sc_spawn_cinema",
+     "type": "spawn",
+     "position": [
+      68.375,
+      36.0,
+      14.0
+     ],
+     "params": {
+      "yaw": 90
+     }
+    },
+    {
+     "id": "sc_door_cinema",
+     "type": "door",
+     "position": [
+      67.375,
+      36.0,
+      14.0
+     ],
+     "yaw": 90,
+     "params": {
+      "size": [
+       1.2,
+       2.2,
+       0.4
+      ],
+      "spawn": "sc_spawn_cinema",
+      "to": "cn_door_corridor"
+     }
+    },
+    {
+     "id": "sc_spawn_booth",
+     "type": "spawn",
+     "position": [
+      74.0,
+      36.0,
+      18.625
+     ],
+     "params": {
+      "yaw": 180
+     }
+    },
+    {
+     "id": "sc_door_booth",
+     "type": "door",
+     "position": [
+      74.0,
+      36.0,
+      19.625
+     ],
+     "yaw": 180,
+     "params": {
+      "size": [
+       1.2,
+       2.2,
+       0.4
+      ],
+      "spawn": "sc_spawn_booth",
+      "to": "pb_door_corridor",
+      "card": "blue"
+     }
+    },
+    {
+     "id": "sc_spawn_shop",
+     "type": "spawn",
+     "position": [
+      91.625,
+      36.0,
+      18.0
+     ],
+     "params": {
+      "yaw": 270
+     }
+    },
+    {
+     "id": "sc_door_shop",
+     "type": "door",
+     "position": [
+      92.625,
+      36.0,
+      18.0
+     ],
+     "yaw": 270,
+     "params": {
+      "size": [
+       1.2,
+       2.2,
+       0.4
+      ],
+      "spawn": "sc_spawn_shop",
+      "to": "sf_door_corridor"
+     }
+    },
+    {
+     "id": "sc_wall_front",
+     "type": "wall",
+     "position": [
+      80.0,
+      36.0,
+      12.375
+     ],
+     "params": {
+      "size": [
+       25.5,
+       1.0,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "sc_wall_back_0",
+     "type": "wall",
+     "position": [
+      70.325,
+      36.0,
+      19.625
+     ],
+     "params": {
+      "size": [
+       6.15,
+       2.4,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "sc_wall_back_1",
+     "type": "wall",
+     "position": [
+      83.675,
+      36.0,
+      19.625
+     ],
+     "params": {
+      "size": [
+       18.15,
+       2.4,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "sc_wall_end_w_0",
+     "type": "wall",
+     "position": [
+      67.375,
+      36.0,
+      12.95
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       0.9
+      ]
+     }
+    },
+    {
+     "id": "sc_wall_end_w_1",
+     "type": "wall",
+     "position": [
+      67.375,
+      36.0,
+      17.05
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       4.9
+      ]
+     }
+    },
+    {
+     "id": "sc_wall_end_e_0",
+     "type": "wall",
+     "position": [
+      92.625,
+      36.0,
+      14.95
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       4.9
+      ]
+     }
+    },
+    {
+     "id": "sc_wall_end_e_1",
+     "type": "wall",
+     "position": [
+      92.625,
+      36.0,
+      19.05
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       0.9
+      ]
+     }
+    },
+    {
+     "id": "sc_wall_cages",
+     "type": "wall",
+     "position": [
+      73.0,
+      36.0,
+      15.9
+     ],
+     "params": {
+      "size": [
+       4.0,
+       1.8,
+       1.8
+      ]
+     }
+    },
+    {
+     "id": "sc_wall_office_w",
+     "type": "wall",
+     "position": [
+      79.075,
+      36.0,
+      14.35
+     ],
+     "params": {
+      "size": [
+       0.15,
+       2.4,
+       3.7
+      ]
+     }
+    },
+    {
+     "id": "sc_wall_office_e",
+     "type": "wall",
+     "position": [
+      83.925,
+      36.0,
+      14.35
+     ],
+     "params": {
+      "size": [
+       0.15,
+       2.4,
+       3.7
+      ]
+     }
+    },
+    {
+     "id": "sc_wall_office_window",
+     "type": "wall",
+     "position": [
+      80.825,
+      36.0,
+      16.125
+     ],
+     "params": {
+      "size": [
+       3.35,
+       1.0,
+       0.15
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "sc_wall_office_n",
+     "type": "wall",
+     "position": [
+      83.175,
+      36.0,
+      16.125
+     ],
+     "params": {
+      "size": [
+       1.35,
+       2.4,
+       0.15
+      ]
+     }
+    },
+    {
+     "id": "sc_wall_office_desk",
+     "type": "wall",
+     "position": [
+      81.5,
+      36.0,
+      12.85
+     ],
+     "params": {
+      "size": [
+       4.0,
+       0.75,
+       0.7
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "sc_wall_column",
+     "type": "wall",
+     "position": [
+      81.5,
+      36.0,
+      18.2
+     ],
+     "params": {
+      "size": [
+       0.7,
+       2.4,
+       0.7
+      ]
+     }
+    },
+    {
+     "id": "sc_wall_pallets",
+     "type": "wall",
+     "position": [
+      87.75,
+      36.0,
+      19.05
+     ],
+     "params": {
+      "size": [
+       3.5,
+       0.9,
+       0.9
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "sc_guard_office",
+     "type": "guard",
+     "position": [
+      81.5,
+      36.0,
+      14.4
+     ],
+     "params": {
+      "kind": "posted",
+      "look_a": -40,
+      "look_b": 40,
+      "hold": 90,
+      "turn": 150,
+      "phase": 0,
+      "sight": 6.0,
+      "fov": 60,
+      "hear": 6
+     }
+    },
+    {
+     "id": "sc_wp_porter_se",
+     "type": "waypoint",
+     "position": [
+      76.8,
+      36.0,
+      13.6
+     ],
+     "params": {
+      "next": "sc_wp_porter_ne",
+      "wait": 0,
+      "look": 0
+     }
+    },
+    {
+     "id": "sc_wp_porter_ne",
+     "type": "waypoint",
+     "position": [
+      76.8,
+      36.0,
+      18.3
+     ],
+     "params": {
+      "next": "sc_wp_porter_nw",
+      "wait": 0,
+      "look": 270
+     }
+    },
+    {
+     "id": "sc_wp_porter_nw",
+     "type": "waypoint",
+     "position": [
+      69.8,
+      36.0,
+      18.3
+     ],
+     "params": {
+      "next": "sc_wp_porter_sw",
+      "wait": 0,
+      "look": 180
+     }
+    },
+    {
+     "id": "sc_wp_porter_sw",
+     "type": "waypoint",
+     "position": [
+      69.8,
+      36.0,
+      13.6
+     ],
+     "params": {
+      "next": "sc_wp_porter_se",
+      "wait": 0,
+      "look": 90
+     }
+    },
+    {
+     "id": "sc_guard_porter",
+     "type": "guard",
+     "position": [
+      73.0,
+      36.0,
+      13.6
+     ],
+     "yaw": 90.0,
+     "params": {
+      "kind": "patrol",
+      "route": "sc_wp_porter_se",
+      "speed": 1.1,
+      "sight": 4.5,
+      "fov": 60,
+      "hear": 6,
+      "turn_rate": 220
+     }
+    },
+    {
+     "id": "sc_camera_stair",
+     "type": "guard",
+     "position": [
+      92.3,
+      38.3,
+      12.7
+     ],
+     "params": {
+      "kind": "camera",
+      "look_a": 280,
+      "look_b": 328,
+      "hold": 90,
+      "turn": 150,
+      "phase": 360,
+      "sight": 8.0,
+      "fov": 40
+     }
+    }
+   ]
+  },
+  {
+   "id": "shopfloor",
+   "at": [
+    3,
+    0
+   ],
+   "region": "shopfloor",
+   "placements": [
+    {
+     "id": "sf_floor",
+     "asset": "sf_floor",
+     "position": [
+      112.0,
+      31.0,
+      16.0
+     ],
+     "collision": "sf_floor_col"
+    },
+    {
+     "id": "sf_escalators",
+     "asset": "sf_escalators",
+     "position": [
+      112.0,
+      31.0,
+      16.0
+     ],
+     "collision": "none"
+    },
+    {
+     "id": "sf_counters",
+     "asset": "sf_counters",
+     "position": [
+      112.0,
+      31.0,
+      16.0
+     ],
+     "collision": "none"
+    }
+   ],
+   "entities": [
+    {
+     "id": "sf_room",
+     "type": "room",
+     "position": [
+      112.0,
+      31.0,
+      16.0
+     ],
+     "params": {
+      "name": "the_shop_floor",
+      "entry": "sf_spawn_corridor",
+      "size": [
+       24.5,
+       2.4,
+       10.0
+      ],
+      "next": "fh_room"
+     }
+    },
+    {
+     "id": "sf_spawn_corridor",
+     "type": "spawn",
+     "position": [
+      100.875,
+      31.0,
+      18.2
+     ],
+     "params": {
+      "yaw": 90
+     }
+    },
+    {
+     "id": "sf_door_corridor",
+     "type": "door",
+     "position": [
+      99.875,
+      31.0,
+      18.2
+     ],
+     "yaw": 90,
+     "params": {
+      "size": [
+       1.2,
+       2.2,
+       0.4
+      ],
+      "spawn": "sf_spawn_corridor",
+      "to": "sc_door_shop"
+     }
+    },
+    {
+     "id": "sf_spawn_lift",
+     "type": "spawn",
+     "position": [
+      121.1,
+      31.0,
+      19.875
+     ],
+     "params": {
+      "yaw": 180
+     }
+    },
+    {
+     "id": "sf_door_lift",
+     "type": "door",
+     "position": [
+      121.1,
+      31.0,
+      20.875
+     ],
+     "yaw": 180,
+     "params": {
+      "size": [
+       1.4,
+       2.2,
+       0.4
+      ],
+      "spawn": "sf_spawn_lift",
+      "to": "fh_door_lift",
+      "card": "red"
+     }
+    },
+    {
+     "id": "sf_wall_front",
+     "type": "wall",
+     "position": [
+      112.0,
+      31.0,
+      11.125
+     ],
+     "params": {
+      "size": [
+       24.5,
+       1.0,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "sf_wall_back_0",
+     "type": "wall",
+     "position": [
+      110.075,
+      31.0,
+      20.875
+     ],
+     "params": {
+      "size": [
+       20.65,
+       2.4,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "sf_wall_back_1",
+     "type": "wall",
+     "position": [
+      123.025,
+      31.0,
+      20.875
+     ],
+     "params": {
+      "size": [
+       2.45,
+       2.4,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "sf_wall_end_w_0",
+     "type": "wall",
+     "position": [
+      99.875,
+      31.0,
+      14.425
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       6.35
+      ]
+     }
+    },
+    {
+     "id": "sf_wall_end_w_1",
+     "type": "wall",
+     "position": [
+      99.875,
+      31.0,
+      19.775
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       1.95
+      ]
+     }
+    },
+    {
+     "id": "sf_wall_end_e_0",
+     "type": "wall",
+     "position": [
+      124.125,
+      31.0,
+      16.0
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       9.5
+      ]
+     }
+    },
+    {
+     "id": "sf_wall_well",
+     "type": "wall",
+     "position": [
+      112.0,
+      31.0,
+      16.1
+     ],
+     "params": {
+      "size": [
+       4.0,
+       1.0,
+       2.6
+      ]
+     }
+    },
+    {
+     "id": "sf_wall_counter_0",
+     "type": "wall",
+     "position": [
+      104.5,
+      31.0,
+      13.75
+     ],
+     "params": {
+      "size": [
+       3.0,
+       0.95,
+       0.7
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "sf_wall_counter_1",
+     "type": "wall",
+     "position": [
+      104.5,
+      31.0,
+      17.35
+     ],
+     "params": {
+      "size": [
+       3.0,
+       0.95,
+       0.7
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "sf_wall_counter_2",
+     "type": "wall",
+     "position": [
+      118.7,
+      31.0,
+      13.75
+     ],
+     "params": {
+      "size": [
+       3.4,
+       0.95,
+       0.7
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "sf_wall_counter_3",
+     "type": "wall",
+     "position": [
+      118.7,
+      31.0,
+      17.35
+     ],
+     "params": {
+      "size": [
+       3.4,
+       0.95,
+       0.7
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "sf_wall_mannequin_0",
+     "type": "wall",
+     "position": [
+      106.8,
+      31.0,
+      16.0
+     ],
+     "params": {
+      "size": [
+       0.6,
+       1.8,
+       0.6
+      ]
+     }
+    },
+    {
+     "id": "sf_wall_mannequin_1",
+     "type": "wall",
+     "position": [
+      117.0,
+      31.0,
+      20.0
+     ],
+     "params": {
+      "size": [
+       0.6,
+       1.8,
+       0.6
+      ]
+     }
+    },
+    {
+     "id": "sf_wall_mannequin_2",
+     "type": "wall",
+     "position": [
+      122.0,
+      31.0,
+      15.5
+     ],
+     "params": {
+      "size": [
+       0.6,
+       1.8,
+       0.6
+      ]
+     }
+    },
+    {
+     "id": "sf_wall_watch_counter",
+     "type": "wall",
+     "position": [
+      121.8,
+      31.0,
+      11.475
+     ],
+     "params": {
+      "size": [
+       2.4,
+       0.95,
+       0.45
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "sf_card_blue",
+     "type": "keycard",
+     "position": [
+      121.6,
+      31.0,
+      12.1
+     ],
+     "params": {
+      "colour": "blue"
+     }
+    },
+    {
+     "id": "sf_wp_night_nw",
+     "type": "waypoint",
+     "position": [
+      108.4,
+      31.0,
+      19.4
+     ],
+     "params": {
+      "next": "sf_wp_night_ne",
+      "wait": 0,
+      "look": 90
+     }
+    },
+    {
+     "id": "sf_wp_night_ne",
+     "type": "waypoint",
+     "position": [
+      122.6,
+      31.0,
+      19.4
+     ],
+     "params": {
+      "next": "sf_wp_night_se",
+      "wait": 30,
+      "look": 180
+     }
+    },
+    {
+     "id": "sf_wp_night_se",
+     "type": "waypoint",
+     "position": [
+      122.6,
+      31.0,
+      12.7
+     ],
+     "params": {
+      "next": "sf_wp_night_sw",
+      "wait": 90,
+      "look": 270
+     }
+    },
+    {
+     "id": "sf_wp_night_sw",
+     "type": "waypoint",
+     "position": [
+      108.4,
+      31.0,
+      12.7
+     ],
+     "params": {
+      "next": "sf_wp_night_nw",
+      "wait": 0,
+      "look": 0
+     }
+    },
+    {
+     "id": "sf_guard_night",
+     "type": "guard",
+     "position": [
+      108.4,
+      31.0,
+      16.0
+     ],
+     "yaw": 0.0,
+     "params": {
+      "kind": "patrol",
+      "route": "sf_wp_night_nw",
+      "speed": 1.1,
+      "sight": 5.0,
+      "fov": 60,
+      "hear": 6,
+      "turn_rate": 220
+     }
+    },
+    {
+     "id": "sf_camera_lift",
+     "type": "guard",
+     "position": [
+      123.5,
+      33.3,
+      20.6
+     ],
+     "params": {
+      "kind": "camera",
+      "look_a": 200,
+      "look_b": 260,
+      "hold": 90,
+      "turn": 120,
+      "phase": 0,
+      "sight": 9.0,
+      "fov": 40
+     }
+    },
+    {
+     "id": "sf_wall_knits",
+     "type": "wall",
+     "position": [
+      115.25,
+      31.0,
+      15.8
+     ],
+     "params": {
+      "size": [
+       1.3,
+       0.72,
+       1.1
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "sf_wall_shelves_w",
+     "type": "wall",
+     "position": [
+      103.6,
+      31.0,
+      20.59
+     ],
+     "params": {
+      "size": [
+       5.4,
+       1.6,
+       0.32
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "sf_wall_shelves_e",
+     "type": "wall",
+     "position": [
+      108.25,
+      31.0,
+      20.59
+     ],
+     "params": {
+      "size": [
+       1.5,
+       1.6,
+       0.32
+      ],
+      "blocks": false
+     }
+    }
+   ]
+  },
+  {
+   "id": "foodhall",
+   "at": [
+    4,
+    0
+   ],
+   "region": "foodhall",
+   "placements": [
+    {
+     "id": "fh_hall",
+     "asset": "fh_hall",
+     "position": [
+      144.0,
+      -4.0,
+      16.0
+     ],
+     "collision": "fh_hall_col"
+    },
+    {
+     "id": "fh_cases",
+     "asset": "fh_cases",
+     "position": [
+      144.0,
+      -4.0,
+      16.0
+     ],
+     "collision": "none"
+    }
+   ],
+   "entities": [
+    {
+     "id": "fh_room",
+     "type": "room",
+     "position": [
+      144.0,
+      -4.0,
+      16.0
+     ],
+     "params": {
+      "name": "the_food_hall",
+      "entry": "fh_spawn_lift",
+      "size": [
+       24.5,
+       2.4,
+       10.0
+      ]
+     }
+    },
+    {
+     "id": "fh_spawn_lift",
+     "type": "spawn",
+     "position": [
+      134.3,
+      -4.0,
+      19.875
+     ],
+     "params": {
+      "yaw": 180
+     }
+    },
+    {
+     "id": "fh_door_lift",
+     "type": "door",
+     "position": [
+      134.3,
+      -4.0,
+      20.875
+     ],
+     "yaw": 180,
+     "params": {
+      "size": [
+       1.4,
+       2.2,
+       0.4
+      ],
+      "spawn": "fh_spawn_lift",
+      "to": "sf_door_lift"
+     }
+    },
+    {
+     "id": "fh_door_mall",
+     "type": "door",
+     "position": [
+      156.125,
+      -4.0,
+      13.0
+     ],
+     "yaw": 270,
+     "params": {
+      "size": [
+       1.2,
+       2.2,
+       0.4
+      ],
+      "end": true
+     }
+    },
+    {
+     "id": "fh_wall_front",
+     "type": "wall",
+     "position": [
+      144.0,
+      -4.0,
+      11.125
+     ],
+     "params": {
+      "size": [
+       24.5,
+       1.0,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "fh_wall_back_0",
+     "type": "wall",
+     "position": [
+      132.675,
+      -4.0,
+      20.875
+     ],
+     "params": {
+      "size": [
+       1.85,
+       2.4,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "fh_wall_back_1",
+     "type": "wall",
+     "position": [
+      145.625,
+      -4.0,
+      20.875
+     ],
+     "params": {
+      "size": [
+       21.25,
+       2.4,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "fh_wall_end_w_0",
+     "type": "wall",
+     "position": [
+      131.875,
+      -4.0,
+      16.0
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       9.5
+      ]
+     }
+    },
+    {
+     "id": "fh_wall_end_e_0",
+     "type": "wall",
+     "position": [
+      156.125,
+      -4.0,
+      11.825
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       1.15
+      ]
+     }
+    },
+    {
+     "id": "fh_wall_end_e_1",
+     "type": "wall",
+     "position": [
+      156.125,
+      -4.0,
+      17.175
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       7.15
+      ]
+     }
+    },
+    {
+     "id": "fh_wall_case_0",
+     "type": "wall",
+     "position": [
+      139.75,
+      -4.0,
+      14.65
+     ],
+     "params": {
+      "size": [
+       6.5,
+       0.95,
+       0.7
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "fh_wall_case_1",
+     "type": "wall",
+     "position": [
+      148.25,
+      -4.0,
+      14.65
+     ],
+     "params": {
+      "size": [
+       6.5,
+       0.95,
+       0.7
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "fh_wall_case_2",
+     "type": "wall",
+     "position": [
+      139.75,
+      -4.0,
+      17.45
+     ],
+     "params": {
+      "size": [
+       6.5,
+       0.95,
+       0.7
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "fh_wall_case_3",
+     "type": "wall",
+     "position": [
+      148.25,
+      -4.0,
+      17.45
+     ],
+     "params": {
+      "size": [
+       6.5,
+       0.95,
+       0.7
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "fh_wall_counter",
+     "type": "wall",
+     "position": [
+      154.0,
+      -4.0,
+      16.7
+     ],
+     "params": {
+      "size": [
+       0.8,
+       0.9,
+       3.4
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "fh_wall_pillar_0",
+     "type": "wall",
+     "position": [
+      139.75,
+      -4.0,
+      12.4
+     ],
+     "params": {
+      "size": [
+       0.7,
+       2.4,
+       0.7
+      ]
+     }
+    },
+    {
+     "id": "fh_wall_pillar_1",
+     "type": "wall",
+     "position": [
+      148.25,
+      -4.0,
+      19.4
+     ],
+     "params": {
+      "size": [
+       0.7,
+       2.4,
+       0.7
+      ]
+     }
+    },
+    {
+     "id": "fh_wp_cleaner_se",
+     "type": "waypoint",
+     "position": [
+      152.4,
+      -4.0,
+      13.4
+     ],
+     "params": {
+      "next": "fh_wp_cleaner_ne",
+      "wait": 0,
+      "look": 0
+     }
+    },
+    {
+     "id": "fh_wp_cleaner_ne",
+     "type": "waypoint",
+     "position": [
+      152.4,
+      -4.0,
+      18.9
+     ],
+     "params": {
+      "next": "fh_wp_cleaner_nw",
+      "wait": 60,
+      "look": 270
+     }
+    },
+    {
+     "id": "fh_wp_cleaner_nw",
+     "type": "waypoint",
+     "position": [
+      135.4,
+      -4.0,
+      18.9
+     ],
+     "params": {
+      "next": "fh_wp_cleaner_sw",
+      "wait": 0,
+      "look": 180
+     }
+    },
+    {
+     "id": "fh_wp_cleaner_sw",
+     "type": "waypoint",
+     "position": [
+      135.4,
+      -4.0,
+      13.4
+     ],
+     "params": {
+      "next": "fh_wp_cleaner_se",
+      "wait": 0,
+      "look": 90
+     }
+    },
+    {
+     "id": "fh_guard_cleaner",
+     "type": "guard",
+     "position": [
+      146.0,
+      -4.0,
+      13.4
+     ],
+     "yaw": 90.0,
+     "params": {
+      "kind": "patrol",
+      "route": "fh_wp_cleaner_se",
+      "speed": 1.0,
+      "sight": 4.5,
+      "fov": 60,
+      "hear": 6,
+      "turn_rate": 200
+     }
+    },
+    {
+     "id": "fh_guard_melon",
+     "type": "guard",
+     "position": [
+      155.0,
+      -4.0,
+      16.6
+     ],
+     "params": {
+      "kind": "posted",
+      "look_a": 200,
+      "look_b": 300,
+      "hold": 120,
+      "turn": 150,
+      "phase": 0,
+      "sight": 6.0,
+      "fov": 60,
+      "hear": 6
+     }
+    },
+    {
+     "id": "fh_camera_middle",
+     "type": "guard",
+     "position": [
+      144.0,
+      -1.7,
+      20.6
+     ],
+     "params": {
+      "kind": "camera",
+      "look_a": 150,
+      "look_b": 210,
+      "hold": 90,
+      "turn": 120,
+      "phase": 0,
+      "sight": 7.0,
+      "fov": 36
+     }
+    },
+    {
+     "id": "fh_wall_back_counter_0",
+     "type": "wall",
+     "position": [
+      139.1,
+      -4.0,
+      20.5
+     ],
+     "params": {
+      "size": [
+       5.4,
+       0.86,
+       0.5
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "fh_wall_back_counter_1",
+     "type": "wall",
+     "position": [
+      144.0,
+      -4.0,
+      20.5
+     ],
+     "params": {
+      "size": [
+       2.4,
+       0.86,
+       0.5
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "fh_wall_back_counter_2",
+     "type": "wall",
+     "position": [
+      149.0,
+      -4.0,
+      20.5
+     ],
+     "params": {
+      "size": [
+       5.2,
+       0.86,
+       0.5
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "fh_wall_cart",
+     "type": "wall",
+     "position": [
+      132.425,
+      -4.0,
+      19.05
+     ],
+     "params": {
+      "size": [
+       0.65,
+       1.0,
+       0.9
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "fh_gifts_0",
+     "type": "fragile",
+     "position": [
+      142.3,
+      -4.0,
+      16.05
+     ],
+     "params": {
+      "radius": 0.4,
+      "noise": 8.0
+     }
+    },
+    {
+     "id": "fh_gifts_1",
+     "type": "fragile",
+     "position": [
+      152.6,
+      -4.0,
+      12.6
+     ],
+     "params": {
+      "radius": 0.4,
+      "noise": 8.0
+     }
+    },
+    {
+     "id": "fh_gifts_2",
+     "type": "fragile",
+     "position": [
+      135.0,
+      -4.0,
+      13.8
+     ],
+     "params": {
+      "radius": 0.4,
+      "noise": 8.0
+     }
+    }
+   ]
+  }
+ ]
+}

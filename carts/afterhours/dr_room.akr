@@ -1,0 +1,430 @@
+// The room in RAM: what the runtime plays, filled by a loader (dr_standin.akr's stand-in room,
+// or dr_world.akr's from B's World Kit world). Everything is in plan (2D): x right, z away from
+// the camera, metres; headings in radians, h facing (sin h, cos h) in (x, z), as mesh_at's yaw.
+
+const MAX_WALLS = 96
+const MAX_SEGS = 400       // the blocking walls' sides
+const MAX_WATCH = 8
+const MAX_WP = 48
+const MAX_TRAINS = 4
+const MAX_SPOTS = 8
+const MAX_FRAGILE = 8
+const MAX_PATH = 8         // points of a train's path
+const MAX_BANDS = 16       // the tracks' boxes (a box per path segment)
+const MAX_DOORS = 6        // a room's doors (stage 2: ways out, staff doors)
+const MAX_CARDS = 4        // keycards lying in a room
+const CARDS = 4            // the cards' colours: 1 red, 2 blue, 3 green, 4 yellow (0: none)
+
+// An oriented box in plan: centre, half extents along its own x and z, its yaw's cos and sin,
+// and its height (for drawing).
+struct Box2 {
+    cx: fixed
+    cz: fixed
+    hx: fixed
+    hz: fixed
+    c: fixed
+    s: fixed
+    h: fixed
+    blocks: bool       // cuts cones
+    solid: bool        // stops the thief and the guards
+}
+
+// A wall side for sight, with its bounds.
+struct Seg {
+    ax: fixed
+    az: fixed
+    bx: fixed
+    bz: fixed
+    x0: fixed
+    z0: fixed
+    x1: fixed
+    z1: fixed
+}
+
+struct Waypoint {
+    x: fixed
+    z: fixed
+    next: s32          // index, -1: the route ends here
+    wait: s32          // ticks
+    look: fixed        // heading while waiting
+}
+
+enum WKind: u8 { Patrol, Posted, Camera }
+
+struct WatchDef {
+    kind: WKind
+    x: fixed
+    z: fixed
+    head: fixed        // the heading at clock 0 (patrol)
+    route: s32         // the first waypoint, -1 none
+    sight: fixed
+    half: fixed        // half the fov, radians
+    speed: fixed       // metres a tick
+    look_a: fixed
+    look_b: fixed
+    hold: s32
+    turn: s32
+    phase: s32
+    hear: fixed
+    turn_rate: fixed   // radians a tick his head turns at (0 at load: TURN_RATE)
+    pace: fixed        // how much faster than `speed` he goes to a noise (0 at load: NOISE_PACE)
+}
+
+// A train's path: points, the length to each, the unit direction of each segment.
+struct Path {
+    n: s32
+    x: [MAX_PATH]fixed
+    z: [MAX_PATH]fixed
+    s: [MAX_PATH]fixed
+    ux: [MAX_PATH]fixed
+    uz: [MAX_PATH]fixed
+    y: fixed
+    len: fixed
+}
+
+struct TrainDef {
+    path: Path
+    period: s32
+    offset: s32
+    arrive: s32
+    dwell: s32
+    leave: s32
+    stop: fixed
+    cars: s32
+    car_len: fixed
+    width: fixed
+    doors: s32
+    door_w: fixed
+    left: bool         // doors on the left of the way it travels
+    right: bool
+}
+
+struct Room {
+    name: *u8
+    cx: fixed          // the room's floor: centre and size (the pan's limits)
+    cz: fixed
+    sx: fixed
+    sz: fixed
+    floor: fixed       // the floor's height (a level's rooms rise floor by floor)
+    spawn_x: fixed
+    spawn_z: fixed
+    spawn_head: fixed
+    exit: Box2
+    toys: s32
+    bells: s32
+    nwalls: s32
+    walls: [MAX_WALLS]Box2
+    nwp: s32
+    wps: [MAX_WP]Waypoint
+    nwatch: s32
+    watch: [MAX_WATCH]WatchDef
+    ntrains: s32
+    trains: [MAX_TRAINS]TrainDef
+    nspots: s32
+    spots: [MAX_SPOTS]Box2
+    nfrag: s32
+    frag_x: [MAX_FRAGILE]fixed
+    frag_z: [MAX_FRAGILE]fixed
+    frag_r: [MAX_FRAGILE]fixed
+    frag_noise: [MAX_FRAGILE]fixed
+    has_exit: bool     // `exit` leads on (level 1, the platform); a room of doors has none
+    ndoors: s32
+    doors: [MAX_DOORS]Door
+    ncards: s32
+    card_x: [MAX_CARDS]fixed
+    card_z: [MAX_CARDS]fixed
+    card_col: [MAX_CARDS]s32
+    card_key: [MAX_CARDS]s32       // the card's number in the stage (taken: the run's)
+    // derived by room_finish()
+    nseg: s32
+    segs: [MAX_SEGS]Seg
+    nbands: s32
+    bands: [MAX_BANDS]Box2     // the tracks: solid to the guards always, to the thief but inside an open train
+    hear_max: fixed
+}
+
+var room: Room
+
+// A door (stage 2; DESIGN.md "Next"): a doorway out of the room to a door of another room or the
+// stage's end, or a staff door inside it. A door with a card is shut (a wall across its box that
+// stops the thief and the guards and cuts cones) until the thief holding that card walks into
+// it; then it is open for the rest of the run, as is the door on its other side. Going through
+// an open door that leads somewhere (the thief's centre in its box) leaves the room.
+struct Door {
+    box: Box2
+    card: s32          // 0: none (always open), 1-4 the colour
+    to_room: s32       // the run's room it leads to (-1: none)
+    to_door: s32       // ... and the door of that room he comes in by
+    end: bool          // going through it ends the stage
+    way_in: bool       // a way in: he comes in at (sx, sz) facing sh
+    sx: fixed
+    sz: fixed
+    sh: fixed
+    key: s32           // the door's number in the stage (its open state is the run's)
+    to_key: s32        // the door on its other side (-1: none), opened with it
+    wall: s32          // its wall while shut (room.walls), -1 none
+}
+var room_is_world: bool    // the room is B's World Kit world (dr_world.akr), drawn by it
+
+const DEG: fixed = 0.0174533
+
+// ---- building it (the loaders)
+
+fn room_clear() {
+    mem_fill(&room as *u8, 0, sizeof(Room) as u32)
+    room_is_world = false
+    room.name = "room"
+}
+
+// A box centred at (x, z), size (sx, sz), turned by yaw, sy high.
+fn box2(x: fixed, z: fixed, sx: fixed, sy: fixed, sz: fixed, yaw: fixed, blocks: bool, solid: bool) -> Box2 {
+    return Box2 { cx: x, cz: z, hx: sx / 2, hz: sz / 2, c: cos(yaw), s: sin(yaw), h: sy, blocks: blocks, solid: solid }
+}
+
+fn room_wall(b: Box2) {
+    assert(room.nwalls < MAX_WALLS, "too many walls")
+    room.walls[room.nwalls] = b
+    room.nwalls += 1
+}
+
+fn room_waypoint(x: fixed, z: fixed, next: s32, wait: s32, look_deg: fixed) -> s32 {
+    assert(room.nwp < MAX_WP, "too many waypoints")
+    room.wps[room.nwp] = Waypoint { x: x, z: z, next: next, wait: wait, look: look_deg * DEG }
+    room.nwp += 1
+    return room.nwp - 1
+}
+
+fn room_watch(w: WatchDef) {
+    assert(room.nwatch < MAX_WATCH, "too many watchers")
+    room.watch[room.nwatch] = w
+    let d = &room.watch[room.nwatch]
+    if d.turn_rate <= 0.0 { d.turn_rate = TURN_RATE }
+    if d.pace <= 0.0 { d.pace = NOISE_PACE }
+    room.nwatch += 1
+}
+
+fn room_spot(b: Box2) {
+    assert(room.nspots < MAX_SPOTS, "too many hide spots")
+    room.spots[room.nspots] = b
+    room.nspots += 1
+}
+
+fn room_fragile(x: fixed, z: fixed, r: fixed, noise: fixed) {
+    assert(room.nfrag < MAX_FRAGILE, "too many fragile things")
+    let k = room.nfrag
+    room.frag_x[k] = x
+    room.frag_z[k] = z
+    room.frag_r[k] = r
+    room.frag_noise[k] = noise
+    room.nfrag += 1
+}
+
+// A door (its box, its card, where it leads); returns its index. Its way in, if any, is set
+// with door_in().
+fn room_door(b: Box2, card: s32, to_room: s32, to_door: s32, end: bool, key: s32, to_key: s32) -> s32 {
+    assert(room.ndoors < MAX_DOORS, "too many doors")
+    let d = &room.doors[room.ndoors]
+    d.box = b
+    d.box.blocks = true
+    d.box.solid = true
+    d.card = card
+    d.to_room = to_room
+    d.to_door = to_door
+    d.end = end
+    d.way_in = false
+    d.key = key
+    d.to_key = to_key
+    d.wall = -1
+    room.ndoors += 1
+    return room.ndoors - 1
+}
+
+fn door_in(k: s32, x: fixed, z: fixed, head: fixed) {
+    let d = &room.doors[k]
+    d.way_in = true
+    d.sx = x
+    d.sz = z
+    d.sh = head
+}
+
+fn room_card(x: fixed, z: fixed, col: s32, key: s32) {
+    assert(room.ncards < MAX_CARDS, "too many keycards")
+    let k = room.ncards
+    room.card_x[k] = x
+    room.card_z[k] = z
+    room.card_col[k] = col
+    room.card_key[k] = key
+    room.ncards += 1
+}
+
+// A path's lengths and directions from its points (x, z already set, n of them).
+fn path_finish(p: *Path) {
+    var s: fixed = 0.0
+    for k in 0..p.n {
+        p.s[k] = s
+        if k + 1 < p.n {
+            let dx = p.x[k + 1] - p.x[k]
+            let dz = p.z[k + 1] - p.z[k]
+            let l = sqrt(dx * dx + dz * dz)
+            p.ux[k] = dx / l
+            p.uz[k] = dz / l
+            s += l
+        } else {
+            p.ux[k] = p.ux[max(k - 1, 0)]
+            p.uz[k] = p.uz[max(k - 1, 0)]
+        }
+    }
+    p.len = s
+}
+
+// The point at length s along the path (clamped to its ends; beyond them it carries on straight).
+fn path_at(p: *Path, s: fixed) -> vec2 {
+    var k = 0
+    while k + 2 < p.n && p.s[k + 1] <= s { k += 1 }
+    let d = s - p.s[k]
+    return vec2(p.x[k] + p.ux[k] * d, p.z[k] + p.uz[k] * d)
+}
+
+// The segment of the path at length s.
+fn path_seg(p: *Path, s: fixed) -> s32 {
+    var k = 0
+    while k + 2 < p.n && p.s[k + 1] <= s { k += 1 }
+    return k
+}
+
+// The derived tables: the blocking walls' sides, the paths and the tracks, the loudest ear.
+fn room_finish() {
+    room_segs()
+    room.nbands = 0
+    for t in 0..room.ntrains {
+        let tr = &room.trains[t]
+        path_finish(&tr.path)
+        let p = &tr.path
+        for k in 0..p.n - 1 {
+            assert(room.nbands < MAX_BANDS, "too many track boxes")
+            room.bands[room.nbands] = Box2 { cx: (p.x[k] + p.x[k + 1]) / 2, cz: (p.z[k] + p.z[k + 1]) / 2,
+                                             hx: (p.s[k + 1] - p.s[k]) / 2, hz: tr.width / 2,
+                                             c: p.ux[k], s: -p.uz[k], h: 0.0, blocks: false, solid: true }
+            room.nbands += 1
+        }
+    }
+    room.hear_max = 0.0
+    for i in 0..room.nwatch {
+        if room.watch[i].kind != WKind.Camera { room.hear_max = max(room.hear_max, room.watch[i].hear) }
+    }
+}
+
+// The blocking walls' sides (again when a staff door opens).
+fn room_segs() {
+    room.nseg = 0
+    for i in 0..room.nwalls {
+        let b = &room.walls[i]
+        if !b.blocks { continue }
+        box_segs(b)
+    }
+}
+
+fn box_corner(b: *Box2, sx: fixed, sz: fixed) -> vec2 {
+    let lx = b.hx * sx
+    let lz = b.hz * sz
+    return vec2(b.cx + lx * b.c + lz * b.s, b.cz - lx * b.s + lz * b.c)
+}
+
+fn add_seg(a: vec2, c: vec2) {
+    assert(room.nseg < MAX_SEGS, "too many wall sides")
+    room.segs[room.nseg] = Seg { ax: a.x, az: a.y, bx: c.x, bz: c.y,
+                                 x0: min(a.x, c.x), z0: min(a.y, c.y), x1: max(a.x, c.x), z1: max(a.y, c.y) }
+    room.nseg += 1
+}
+
+fn box_segs(b: *Box2) {
+    let p0 = box_corner(b, -1.0, -1.0)
+    let p1 = box_corner(b, 1.0, -1.0)
+    let p2 = box_corner(b, 1.0, 1.0)
+    let p3 = box_corner(b, -1.0, 1.0)
+    add_seg(p0, p1)
+    add_seg(p1, p2)
+    add_seg(p2, p3)
+    add_seg(p3, p0)
+}
+
+// ---- plan geometry
+
+// The point in the box's own frame.
+fn box_local(b: *Box2, x: fixed, z: fixed) -> vec2 {
+    let dx = x - b.cx
+    let dz = z - b.cz
+    return vec2(dx * b.c - dz * b.s, dx * b.s + dz * b.c)
+}
+
+fn box_contains(b: *Box2, x: fixed, z: fixed) -> bool {
+    let l = box_local(b, x, z)
+    return abs(l.x) <= b.hx && abs(l.y) <= b.hz
+}
+
+// Whether a circle overlaps the box.
+fn box_touches(b: *Box2, x: fixed, z: fixed, r: fixed) -> bool {
+    let l = box_local(b, x, z)
+    let dx = l.x - clamp(l.x, -b.hx, b.hx)
+    let dz = l.y - clamp(l.y, -b.hz, b.hz)
+    if abs(dx) >= r || abs(dz) >= r { return false }
+    return dx * dx + dz * dz < r * r
+}
+
+// The circle at (x, z) of radius r pushed out of the box (unchanged when it does not overlap).
+var push_hit: bool
+fn box_push(b: *Box2, x: fixed, z: fixed, r: fixed) -> vec2 {
+    var l = box_local(b, x, z)
+    if abs(l.x) >= b.hx + r || abs(l.y) >= b.hz + r { return vec2(x, z) }
+    let qx = clamp(l.x, -b.hx, b.hx)
+    let qz = clamp(l.y, -b.hz, b.hz)
+    let dx = l.x - qx
+    let dz = l.y - qz
+    let d2 = dx * dx + dz * dz
+    if d2 >= r * r { return vec2(x, z) }
+    if d2 > 0.0001 {
+        let d = sqrt(d2)
+        let k = (r - d) / d
+        l.x += dx * k
+        l.y += dz * k
+    } else {
+        // the centre inside: out along the shallower axis
+        let px = b.hx - abs(l.x)
+        let pz = b.hz - abs(l.y)
+        if px < pz {
+            if l.x < 0.0 { l.x = -b.hx - r } else { l.x = b.hx + r }
+        } else {
+            if l.y < 0.0 { l.y = -b.hz - r } else { l.y = b.hz + r }
+        }
+    }
+    push_hit = true
+    return vec2(b.cx + l.x * b.c + l.y * b.s, b.cz - l.x * b.s + l.y * b.c)
+}
+
+fn dist2(ax: fixed, az: fixed, bx: fixed, bz: fixed) -> fixed {
+    let dx = ax - bx
+    let dz = az - bz
+    if abs(dx) > 150.0 || abs(dz) > 150.0 { return 30000.0 }
+    return dx * dx + dz * dz
+}
+
+// Floor division (the clock's cycles count from negative offsets too).
+fn floordiv(a: s32, b: s32) -> s32 {
+    var q = a / b
+    if (a % b != 0) && ((a < 0) != (b < 0)) { q -= 1 }
+    return q
+}
+
+// A heading toward (dx, dz).
+fn heading_to(dx: fixed, dz: fixed) -> fixed { return atan2(dx, dz) }
+
+// Turns h toward want by at most step, the shorter way. A turn of 180 degrees (to within
+// TURN_TIE) has no shorter way: it goes to his right, clockwise seen from above (x right, z
+// away), the heading increasing, from +z toward +x. (Without this rule the tie fell to the
+// rounding of wrap_angle(), and a model in floating point could turn the other way.)
+const TURN_TIE: fixed = 0.001
+fn turn_toward(h: fixed, want: fixed, step: fixed) -> fixed {
+    var d = wrap_angle(want - h)
+    if abs(d) >= PI - TURN_TIE { d = abs(d) }
+    return wrap_angle(h + clamp(d, -step, step))
+}
