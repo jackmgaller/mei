@@ -1,0 +1,457 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "tank_nook",
+ "materials": {
+  "floor": {
+   "color": "#8c96a8",
+   "texture": {
+    "pattern": "tile",
+    "size": 16,
+    "colors": [
+     "#9aa4b6",
+     "#6c7486"
+    ],
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "slab": {
+   "color": "#3a4258"
+  },
+  "wall": {
+   "color": "#7a88a4",
+   "palette": true,
+   "tag": "wall"
+  },
+  "cut": {
+   "color": "#c8d0dc"
+  },
+  "plinth": {
+   "color": "#4a5068"
+  },
+  "jelly_glow": {
+   "color": "#c8a8ff",
+   "class": "emissive"
+  },
+  "glass": {
+   "color": "#5048a8",
+   "blend": "half",
+   "double_sided": true
+  },
+  "jelly": {
+   "color": "#b080e0",
+   "blend": "add",
+   "smooth": true
+  },
+  "stand": {
+   "color": "#2c3044"
+  },
+  "water": {
+   "color": "#40d0c0",
+   "class": "emissive"
+  },
+  "coral": {
+   "color": "#e070a0"
+  },
+  "paper": {
+   "color": "#ffd090",
+   "class": "emissive"
+  },
+  "wood": {
+   "color": "#9a7050"
+  },
+  "bench": {
+   "color": "#b0b8c8"
+  }
+ },
+ "nodes": [
+  {
+   "id": "floor",
+   "op": "box",
+   "size": [
+    3.16,
+    0.2,
+    3.16
+   ],
+   "material": "slab",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.1,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "floor"
+   }
+  },
+  {
+   "id": "wall_back",
+   "op": "box",
+   "size": [
+    2.9,
+    1.62,
+    0.15
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.05,
+     0.79,
+     1.425
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "wall_left",
+   "op": "box",
+   "size": [
+    0.15,
+    1.56,
+    2.96
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -1.425,
+     0.76,
+     -0.02
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "column",
+   "op": "group",
+   "children": [
+    {
+     "id": "plinth",
+     "op": "cylinder",
+     "radius": 0.36,
+     "height": 0.42,
+     "segments": 12,
+     "material": "plinth",
+     "transform": {
+      "translate": [
+       -0.75,
+       0.19,
+       0.75
+      ]
+     },
+     "faces": {
+      "top": "jelly_glow"
+     }
+    },
+    {
+     "id": "glass",
+     "op": "cylinder",
+     "radius": 0.3,
+     "height": 1.0,
+     "segments": 12,
+     "material": "glass",
+     "transform": {
+      "translate": [
+       -0.75,
+       0.9,
+       0.75
+      ]
+     },
+     "caps": false
+    },
+    {
+     "id": "jelly_a",
+     "op": "lathe",
+     "profile": [
+      [
+       0.1,
+       0
+      ],
+      [
+       0.08,
+       0.06
+      ],
+      [
+       0,
+       0.09
+      ]
+     ],
+     "segments": 8,
+     "caps": false,
+     "material": "jelly",
+     "transform": {
+      "translate": [
+       -0.83,
+       0.95,
+       0.75
+      ]
+     }
+    },
+    {
+     "id": "jelly_b",
+     "op": "lathe",
+     "profile": [
+      [
+       0.07,
+       0
+      ],
+      [
+       0.055,
+       0.04
+      ],
+      [
+       0,
+       0.06
+      ]
+     ],
+     "segments": 8,
+     "caps": false,
+     "material": "jelly",
+     "transform": {
+      "translate": [
+       -0.65,
+       0.7,
+       0.7
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "coral_tank",
+   "op": "group",
+   "children": [
+    {
+     "id": "stand",
+     "op": "box",
+     "size": [
+      0.64,
+      0.62,
+      0.44
+     ],
+     "material": "stand",
+     "transform": {
+      "translate": [
+       0.85,
+       0.29,
+       0.9
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "water",
+     "op": "box",
+     "size": [
+      0.6,
+      0.38,
+      0.4
+     ],
+     "material": "water",
+     "transform": {
+      "translate": [
+       0.85,
+       0.79,
+       0.9
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "lantern",
+   "op": "group",
+   "children": [
+    {
+     "id": "pole",
+     "op": "cylinder",
+     "radius": 0.025,
+     "height": 0.94,
+     "segments": 6,
+     "material": "wood",
+     "transform": {
+      "translate": [
+       0.9,
+       0.45,
+       -0.85
+      ]
+     },
+     "caps": false
+    },
+    {
+     "id": "paper",
+     "op": "lathe",
+     "profile": [
+      [
+       0.06,
+       0
+      ],
+      [
+       0.14,
+       0.08
+      ],
+      [
+       0.15,
+       0.2
+      ],
+      [
+       0.13,
+       0.3
+      ],
+      [
+       0.06,
+       0.36
+      ]
+     ],
+     "segments": 10,
+     "material": "paper",
+     "transform": {
+      "translate": [
+       0.9,
+       0.9,
+       -0.85
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "bench",
+   "op": "group",
+   "children": [
+    {
+     "id": "seat",
+     "op": "box",
+     "size": [
+      1.2,
+      0.06,
+      0.3
+     ],
+     "material": "bench",
+     "transform": {
+      "translate": [
+       -0.1,
+       0.43,
+       -0.2
+      ]
+     }
+    },
+    {
+     "id": "leg_l",
+     "op": "box",
+     "size": [
+      0.06,
+      0.42,
+      0.24
+     ],
+     "material": "stand",
+     "transform": {
+      "translate": [
+       -0.59,
+       0.19,
+       -0.2
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    },
+    {
+     "id": "leg_r",
+     "op": "box",
+     "size": [
+      0.06,
+      0.42,
+      0.24
+     ],
+     "material": "stand",
+     "transform": {
+      "translate": [
+       0.39,
+       0.19,
+       -0.2
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    }
+   ]
+  }
+ ],
+ "lighting": {
+  "ambient": 0.22,
+  "diffuse": 0.12,
+  "lights": [
+   {
+    "id": "jelly",
+    "at": [
+     -0.75,
+     0.85,
+     0.75
+    ],
+    "color": "#a070ff",
+    "intensity": 2.4,
+    "range": 2.6,
+    "shadows": true,
+    "radius": 0.25
+   },
+   {
+    "id": "coral",
+    "at": [
+     0.85,
+     1.05,
+     0.9
+    ],
+    "color": "#30e0c8",
+    "intensity": 1.8,
+    "range": 1.8
+   },
+   {
+    "id": "lantern",
+    "at": [
+     0.9,
+     1.08,
+     -0.85
+    ],
+    "color": "#ffa850",
+    "intensity": 1.6,
+    "range": 2.2,
+    "shadows": true
+   }
+  ]
+ },
+ "budget": {
+  "vertices": 1024,
+  "triangles": 1000
+ },
+ "verification": {
+  "required": true,
+  "depth": true
+ }
+}

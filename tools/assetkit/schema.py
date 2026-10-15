@@ -61,6 +61,21 @@ VERIFICATION = obj({'required':BOOL,'yaw_steps':integer(4,120),
                     'scale':dict(choice('fit','world'),description='fit (default): the mesh scaled to about 2 units, as a prop. world: at its own size, so its faces sort in buckets of far/1024 units as in a world (far: the world\'s near range, about 96).')})
 
 
+LIGHT = obj({'id':dict(NAME,description='A name for the reports. Default light_K (K its index).'),
+             'at':dict(VEC,description="The light's position, in the asset's own coordinates (it turns with the asset)."),
+             'color':dict(COLOR,description='Its colour, multiplied into the surfaces it lights. Default #ffffff.'),
+             'intensity':dict(number(0,16),description='Added shade at full strength (the light straight on, at no distance): 1 adds as much as a fully lit face has. Default 1.'),
+             'range':dict(POS,description='Units: the light falls off smoothly, (1 - (d / range)^2)^2, to nothing at this distance.'),
+             'shadows':dict(BOOL,description="Faces of the recipe between a point and the light shadow it (a ray test at build time; semi-transparent and cutout faces cast none). Default false."),
+             'radius':dict(number(0,100),description='With shadows: the light is a sphere this size, and a point sees a fraction of it (8 rays), so shadows have soft edges. Default 0: hard shadows, one ray.')},
+            ['at','range'])
+LIGHTS = dict(array(LIGHT,1,16),description='Point lights, added to the directional or vertical shade and baked into vertex colours at export (docs/ASSETKIT.md, "Point lights"). Faces are refined where the light varies across them (lighting.refine). Not with bake: false; emissive faces ignore them.')
+REFINE = dict(obj({'tolerance':dict(number(1,255),description='8-bit colour steps: faces are split until the colour drawn across them is this close to the light. Default 16, two steps of 15-bit colour.'),
+                   'min_edge':dict(POS,description='Units: no split makes an edge shorter than this. Default an eighth of the shortest light range.'),
+                   'max_added':dict(integer(0,8000),description='The most triangles refinement adds (0: none, corners only). Default 512. The budget counts them.')}),
+              description='How faces are split for point lights: where the colour Gouraud shading would draw differs from the light by more than tolerance, longest edges first, without T-junctions.')
+
+
 def operation(name, props, required=(), common=None):
     return obj(dict(common or {}, op={'const':name}, **props), ['op', *required])
 
@@ -135,7 +150,9 @@ SCHEMA = {
         'prototypes':{'type':'object','propertyNames':NAME,'additionalProperties':ref('node'),'maxProperties':128},
         'nodes':array(ref('node'),1,128),
         'lighting':obj({'direction':VEC,'ambient':number(0,1),'bake':BOOL,
-                        'mode':dict(choice('directional','vertical'),description='vertical: shade by the face normal\'s Y only (tops light, walls mid, undersides dark), unchanged by any yaw. Default directional.')}),
+                        'mode':dict(choice('directional','vertical'),description='vertical: shade by the face normal\'s Y only (tops light, walls mid, undersides dark), unchanged by any yaw. Default directional.'),
+                        'diffuse':dict(number(0,2),description='The weight of the directional (or vertical) term: shade = ambient + diffuse x (its term, 0-1). Default 1 - ambient; 0 leaves ambient alone, for a room lit by its point lights.'),
+                        'lights':LIGHTS,'refine':REFINE}),
         'palette_layout':PALETTE_LAYOUT,
         'sheets':{'type':'object','propertyNames':NAME,'additionalProperties':SHEET,'maxProperties':32},
         'budget':obj({'vertices':integer(3,2048),'triangles':integer(1,4000)}),

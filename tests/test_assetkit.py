@@ -3306,5 +3306,248 @@ class BlendTests(unittest.TestCase):
         self.assertLess(centre['half'][2],centre[None][2]-40)
 
 
+def lit_floor(materials=None, nodes=(), refine=None, **light):
+    """A 4 x 4 floor (a box 0.2 thick, open below) in grey, ambient 0.3 and no directional
+    light, with one point light (default: white, 1 above the centre, range 3)."""
+    lighting = {'ambient':.3,'diffuse':0,'lights':[{'at':[0,1,0],'range':3,**light}]}
+    if refine is not None: lighting['refine'] = refine
+    out = recipe({'id':'floor','op':'box','size':[4,.2,4],'material':'floor','open':['bottom'],
+                  'transform':{'translate':[0,-.1,0]}},
+                 materials={'floor':{'color':'#c0c0c0'},**(materials or {})},lighting=lighting)
+    out['nodes'] += list(nodes)
+    return out
+
+
+def native_colours(mesh, materials, lighting):
+    """{vertex position: set of (r, g, b) the native faces give it}."""
+    from assetkit.gltf import decode_native
+    vertices,faces,_ = decode_native(native_bytes(mesh,materials,lighting))
+    out = {}
+    for f in faces:
+        for i,c in zip(f['indices'],f['colours']):
+            out.setdefault(tuple(round(x,4) for x in vertices[i]),set()).add((c&255,c>>8&255,c>>16&255))
+    return out
+
+
+def t_junctions(mesh):
+    """Vertices lying strictly inside an edge of a face that does not use them."""
+    used = sorted({i for f in mesh.faces for i in f.indices})
+    found = []
+    for f in mesh.faces:
+        for a,b in zip(f.indices,f.indices[1:]+f.indices[:1]):
+            pa,pb = mesh.vertices[a],mesh.vertices[b]
+            d = sub(pb,pa)
+            length2 = dot(d,d)
+            for i in used:
+                if i in (a,b): continue
+                q = sub(mesh.vertices[i],pa)
+                t = dot(q,d)/length2
+                if 1e-6 < t < 1-1e-6:
+                    off = sub(q,tuple(x*t for x in d))
+                    if dot(off,off) < 1e-10: found.append((a,b,i))
+    return found
+
+
+class PointLightTests(unittest.TestCase):
+    """lighting.lights: point lights baked into vertex colours (docs/ASSETKIT.md, "Point lights")."""
+
+    def test_schema_and_errors(self):
+        for light,where in (({'at':[0,1,0]},'/lighting/lights/0'),({'at':[0,1,0],'range':0},'/lighting/lights/0/range'),
+                            ({'at':[0,1,0],'range':2,'hue':1},'/lighting/lights/0')):
+            with self.assertRaises(AssetError) as caught:
+                compile_recipe(recipe(lighting={'lights':[light]}))
+            self.assertTrue(caught.exception.path.startswith(where),caught.exception.path)
+        for lighting,where in (({'bake':False,'lights':[{'at':[0,1,0],'range':2}]},'/lighting/lights'),
+                               ({'lights':[{'at':[0,1,0],'range':2,'radius':.2}]},'/lighting/lights/0/radius'),
+                               ({'lights':[{'id':'a','at':[0,1,0],'range':2},{'id':'a','at':[0,2,0],'range':2}]},
+                                '/lighting/lights/1/id')):
+            with self.assertRaises(AssetError) as caught:
+                compile_recipe(recipe(lighting=lighting))
+            self.assertEqual(caught.exception.path,where)
+
+    def test_without_lights_nothing_changes(self):
+        """diffuse defaults to 1 - ambient: giving it explicitly builds the same bytes; without
+        lights the report has no lights section and the mesh no lit shades."""
+        for mode in ('directional','vertical'):
+            r = recipe(lighting={'mode':mode,'ambient':.35})
+            mesh,materials,report = compile_recipe(r)
+            explicit = copy.deepcopy(r)
+            explicit['lighting']['diffuse'] = 1-.35
+            mesh2,_,_ = compile_recipe(explicit)
+            self.assertEqual(native_bytes(mesh,materials,r['lighting']),native_bytes(mesh2,materials,explicit['lighting']))
+            self.assertNotIn('lights',report)
+            self.assertIsNone(mesh.lit)
+        # diffuse 0: ambient alone, every face the same
+        mesh,materials,_ = compile_recipe(recipe(lighting={'ambient':.4,'diffuse':0}))
+        self.assertEqual(len({c for cs in native_colours(mesh,materials,{'ambient':.4,'diffuse':0}).values() for c in cs}),1)
+
+    def test_a_pool_of_light_is_refined_onto_a_floor(self):
+        r = lit_floor()
+        mesh,materials,report = compile_recipe(r)
+        refine = report['lights']['refine']
+        self.assertGreater(refine['added_triangles'],0)
+        self.assertEqual(report['triangles'],10+refine['added_triangles'])     # the box without its bottom: 10
+        self.assertLessEqual(refine['added_triangles'],512)
+        self.assertEqual(t_junctions(mesh),[])
+        colours = native_colours(mesh,materials,r['lighting'])
+        top = {p:max(cs) for p,cs in colours.items() if abs(p[1]) < 1e-9}
+        centre = max(top.items(),key=lambda kv: -(kv[0][0]**2+kv[0][2]**2))
+        corner = top[(2.0,0.0,2.0)]
+        self.assertLess(math.hypot(centre[0][0],centre[0][2]),.3,'a vertex lands near the light\'s foot')
+        self.assertGreater(centre[1][0],corner[0]+100)
+        # the corners are out of range: ambient alone (0.3 x 192)
+        self.assertEqual(corner,(round(192*.3),)*3)
+        # with refinement off, only the four corners: the light misses the floor entirely
+        mesh,materials,report = compile_recipe(lit_floor(refine={'max_added':0}))
+        self.assertEqual((report['triangles'],report['lights']['refine']['added_triangles']),(10,0))
+
+    def test_cap_tolerance_and_min_edge(self):
+        _,_,fine = compile_recipe(lit_floor(refine={'tolerance':4}))
+        _,_,coarse = compile_recipe(lit_floor(refine={'tolerance':40}))
+        self.assertGreater(fine['triangles'],coarse['triangles'])
+        _,_,big = compile_recipe(lit_floor(refine={'min_edge':1}))
+        self.assertLess(big['triangles'],fine['triangles'])
+        mesh,_,capped = compile_recipe(lit_floor(refine={'max_added':20,'tolerance':2}))
+        self.assertLessEqual(capped['lights']['refine']['added_triangles'],20)
+        self.assertTrue(capped['lights']['refine']['capped'])
+        self.assertIn('light_refine_capped',[w['code'] for w in capped['warnings']])
+        self.assertEqual(t_junctions(mesh),[])
+        # the budget counts what refinement adds
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(lit_floor() | {'budget':{'triangles':12}})
+        self.assertEqual(caught.exception.path,'/budget/triangles')
+
+    def test_colour_multiplies_and_clamps(self):
+        r = lit_floor(color='#ff0000',intensity=4)
+        mesh,materials,_ = compile_recipe(r)
+        colours = native_colours(mesh,materials,r['lighting'])
+        brightest = max((c for cs in colours.values() for c in cs),key=lambda c: c[0])
+        self.assertEqual(brightest[0],255)                      # 192 x (0.3 + 4 x ...) clamps
+        self.assertEqual(brightest[1:],(round(192*.3),)*2)       # a red light adds no green or blue
+
+    def test_tints_palette_backed_and_emissive(self):
+        """A palette-backed floor's tint takes the light's colour (128 = 1, at most 255); an
+        emissive one stays 128 everywhere."""
+        from assetkit.gltf import decode_native
+        for cls,expect_lit in (('surface',True),('emissive',False)):
+            r = lit_floor(color='#4080ff',intensity=3)
+            r['materials']['floor'] = {'color':'#c0c0c0','palette':True,'class':cls}
+            mesh,materials,report = compile_recipe(r)
+            _,faces,_ = decode_native(native_bytes(mesh,materials,r['lighting']))
+            tints = {(c&255,c>>8&255,c>>16&255) for f in faces for c in f['colours']}
+            if expect_lit:
+                self.assertIn((round(128*.3),)*3,tints)
+                self.assertTrue(any(b == 255 and r_ < 255 for r_,g,b in tints),tints)
+                self.assertGreater(report['lights']['refine']['added_triangles'],0)
+            else:
+                self.assertEqual(tints,{(128,128,128)})
+                self.assertEqual(report['lights']['refine']['added_triangles'],0)
+                self.assertIn('light_unused',[w['code'] for w in report['warnings']])
+
+    def test_textured_faces_keep_their_texture_coordinates(self):
+        """A fit texture over the floor's top: after refinement every corner's texel coordinate is
+        still its position's on the texture."""
+        r = lit_floor()
+        r['materials']['floor'] = {'color':'#c0c0c0','texture':{'pattern':'checker','size':16,
+                                                                  'colors':['#ffffff','#808080'],'projection':'fit'}}
+        r['nodes'][0]['faces'] = {'top':'floor'}
+        r['nodes'][0]['material'] = 'side'
+        r['materials']['side'] = {'color':'#606060'}
+        mesh,materials,report = compile_recipe(r)
+        self.assertGreater(report['lights']['refine']['added_triangles'],0)
+        tops = [f for f in mesh.faces if f.material == 'floor']
+        self.assertGreater(len(tops),2)
+        us = {}
+        for f in tops:
+            for i,(u,v) in zip(f.indices,f.texcoords):
+                x,_,z = mesh.vertices[i]
+                us.setdefault(round(x,4),set()).add(u)
+                self.assertLessEqual(abs(u-(x+2)/4*16),.51)
+        native_bytes(mesh,materials,r['lighting'])
+
+    def test_shadows(self):
+        """A post between the light and the floor shadows it with shadows: true (and not
+        without); a glass post does not; soft shadows have a penumbra; the floor beneath a box
+        standing on it is not shadowed by the box (back faces cast no shadow)."""
+        post = {'id':'post','op':'box','size':[.2,.6,.2],'material':'post','open':['bottom'],
+                'transform':{'translate':[.6,.3,0]}}
+
+        def value_at(r, point):
+            from assetkit.compiler import shading, palette_backed
+            from assetkit import lights as L
+            mesh,materials,_ = compile_recipe(r)
+            light = r['lighting']
+            baker = L.Baker(mesh,materials,light,shading(light),{},palette_backed)
+            return baker.value(point,(0,1,0),False)[0], baker
+        behind = (1.2,0.0,0.0)        # the post at x 0.5-0.7 hides the light (x 0, y 1) from here
+        mats = {'post':{'color':'#808080'}}
+        open_value,_ = value_at(lit_floor(mats,[post]),behind)
+        hard,baker = value_at(lit_floor(mats,[post],shadows=True),behind)
+        self.assertAlmostEqual(hard,.3)
+        self.assertGreater(open_value,.6)
+        self.assertGreater(baker.rays,0)
+        glass,_ = value_at(lit_floor({'post':{'color':'#808080','blend':'half'}},[post],shadows=True),behind)
+        self.assertAlmostEqual(glass,open_value)
+        soft,_ = value_at(lit_floor(mats,[post],shadows=True,radius=.4),behind)
+        self.assertTrue(.3 < soft < open_value,soft)
+        under,_ = value_at(lit_floor(mats,[post],shadows=True),(.6,0.0,0.0))
+        self.assertGreater(under,.6,'the floor under the post is not shadowed by it')
+        # and the report
+        _,_,report = compile_recipe(lit_floor(mats,[post],shadows=True,radius=.4))
+        self.assertEqual(report['lights']['lights'][0]['shadow_samples'],8)
+        self.assertGreater(report['lights']['shadow_rays'],0)
+
+    def test_double_sided_faces_are_lit_from_either_side(self):
+        sheet = {'id':'sheet','op':'mesh','material':'sheet','vertices':[[-1,0,0],[1,0,0],[1,0,2],[-1,0,2]],
+                 'faces':[[0,1,2,3]]}      # faces down (-Y): the light above lights its back
+        for double in (False,True):
+            r = recipe(sheet,materials={'sheet':{'color':'#ffffff','double_sided':double}},
+                       lighting={'ambient':.2,'diffuse':0,'lights':[{'at':[0,1,1],'range':3}]})
+            mesh,materials,_ = compile_recipe(r)
+            brightest = max(c[0] for cs in native_colours(mesh,materials,r['lighting']).values() for c in cs)
+            self.assertEqual(brightest > 100,double)
+
+    def test_deterministic_and_levels(self):
+        r = lit_floor(shadows=True,radius=.2)
+        r['nodes'].append({'id':'post','op':'box','size':[.2,.6,.2],'open':['bottom'],'transform':{'translate':[.6,.3,0]}})
+        a = compile_recipe(copy.deepcopy(r))
+        b = compile_recipe(copy.deepcopy(r))
+        self.assertEqual(native_bytes(a[0],a[1],r['lighting']),native_bytes(b[0],b[1],r['lighting']))
+        self.assertEqual(a[2],b[2])
+        # every level of detail is lit (and refined) by the same lights
+        r['lod'] = {'levels':[{'distance':10,'nodes':[r['nodes'][0]]}]}
+        mesh,materials,report = compile_recipe(r)
+        level,level_report = mesh.levels[0]
+        self.assertIsNotNone(level.lit)
+        self.assertGreater(level_report['lights']['refine']['added_triangles'],0)
+
+    def test_summary_and_example(self):
+        from assetkit import summary
+        _,_,report = compile_recipe(lit_floor(shadows=True))
+        self.assertTrue(summary.lights_line(report).startswith('point lights 1 (1 with shadows,'))
+        self.assertIsNone(summary.lights_line(compile_recipe(recipe())[2]))
+        path = ROOT/'examples/assets/lab/tank_nook/tank_nook.asset.json'
+        if not PILLOW: return
+        r = json.loads(path.read_text())
+        mesh,_,report = compile_recipe(r,path.parent)
+        self.assertGreaterEqual(report['lights']['count'],2)
+        self.assertFalse(report['lights']['refine']['capped'])
+        self.assertLessEqual(report['triangles'],r['budget']['triangles'])
+
+    @unittest.skipUnless(COMPILER.exists() and RUNNER.exists(),'Needs meic and mei-headless.')
+    def test_preview_draws_the_pool(self):
+        """In the emulator's top view the floor is red under a red light, and darker at its edge."""
+        r = lit_floor(color='#ff4040',intensity=2)
+        with tempfile.TemporaryDirectory() as tmp:
+            build(r,tmp,True,COMPILER,RUNNER)
+            raw = (Path(tmp)/'view_top.ppm').read_bytes().split(b'\n',3)[3]
+            at = lambda x,y: tuple(raw[(y*320+x)*3:(y*320+x)*3+3])
+            row = [at(x,120) for x in range(320)]
+            floor = [p for p in row if p != row[0]]
+            centre,edge = at(160,120),floor[2]
+            self.assertGreater(centre[0],centre[1]+80,centre)
+            self.assertGreater(centre[0],edge[0]+60,(centre,edge))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -27,8 +27,10 @@ VIEWS = {
 }
 
 
-def _face_colour(face, mesh, materials, textures, shade_of):
-    """(callable (b0, b1, b2) -> rgb or None, ...) for a face: its colour at barycentric coordinates."""
+def _face_colour(face, mesh, materials, textures, shade_of, lit=None):
+    """(callable (b0, b1, b2) -> rgb or None, ...) for a face: its colour at barycentric coordinates.
+    lit: the face's corners' (r, g, b) shades under point lights (mesh.lit), interpolated as the
+    GPU interpolates vertex colours."""
     import numpy as np
     mat = materials[face.material]
     a, b, c = (mesh.vertices[i] for i in face.indices[:3])
@@ -41,6 +43,14 @@ def _face_colour(face, mesh, materials, textures, shade_of):
     shade = 1.0 if emissive else shade_of(n)
     tex = textures.get(face.material)
     entry = mesh.palette['by_material'].get(face.material) if mesh.palette else None
+    if lit is not None:
+        corners = np.array(lit, dtype=float)
+        tinted = tex is not None or entry is not None
+
+        def lighten(colours, w):
+            s = w @ corners
+            # a tint is at most 255 (128 = 1), and the GPU clamps the product at 255
+            return np.minimum(colours*(np.minimum(s, 255/128) if tinted else s), 255)
     if tex is not None and face.texcoords:
         tile = tex.tile
         frame = tile.frames[0]
@@ -57,8 +67,10 @@ def _face_colour(face, mesh, materials, textures, shade_of):
             for k, (x, y) in enumerate(zip(u, v)):
                 c = frame[y][x]
                 if c is not None:
-                    out[k, :3] = [ch * shade for ch in rgb_of(c)]
+                    out[k, :3] = [ch * shade for ch in rgb_of(c)] if lit is None else rgb_of(c)
                     out[k, 3] = 1
+            if lit is not None:
+                out[:, :3] = lighten(out[:, :3], w)
             return out
         return colour
     colour_hex = entry['color'] if entry else mat['color']
@@ -68,6 +80,8 @@ def _face_colour(face, mesh, materials, textures, shade_of):
         out = np.zeros((len(w), 4))
         out[:, :3] = rgb
         out[:, 3] = 1
+        if lit is not None:
+            out[:, :3] = lighten(np.array([int(colour_hex[k:k + 2], 16) for k in (1, 3, 5)], dtype=float)[None, :], w)
         return out
     return flat
 
@@ -88,7 +102,7 @@ def render(recipe, base, view, ppu, supersample=2):
     img = np.zeros((H, W, 4))
     zbuf = np.full((H, W), np.inf)
     px, py = (cols - c0) * s, (rows - r0) * s
-    for face in mesh.faces:
+    for at, face in enumerate(mesh.faces):
         tri = face.indices[:3]
         x, y, z = px[list(tri)], py[list(tri)], depth[list(tri)]
         det = (y[1] - y[2]) * (x[0] - x[2]) + (x[2] - x[1]) * (y[0] - y[2])
@@ -113,7 +127,7 @@ def render(recipe, base, view, ppu, supersample=2):
         if not nearer.any():
             continue
         w, gx, gy, zz = w[nearer], gx[nearer], gy[nearer], zz[nearer]
-        col = _face_colour(face, mesh, materials, textures, shade_of)(w)
+        col = _face_colour(face, mesh, materials, textures, shade_of, mesh.lit[at] if mesh.lit else None)(w)
         solid = col[:, 3] > 0
         gx, gy, zz, col = gx[solid], gy[solid], zz[solid], col[solid]
         zbuf[gy, gx] = zz

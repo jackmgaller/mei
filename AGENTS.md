@@ -272,8 +272,9 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/mechexpo/props/rooftop_city/make_city.py` | The rooftop's city in polygons (Yokohama's Minato Mirai 21): `city_mm`, `city_towers`, `city_wheel`, `city_bay`, `city_venue` and `city_quay` (`.asset.json`), the textures `art/city_*.png` (the windows by rank, kind and side; the wheel and its clock; the sail; the venue's sign; the reflections) and `cameras.json` (`gen_mechexpo_rooftop.py` runs it) |
 | `carts/mechexpo/props/port/make_port.py` | The container port's props: `port_wall.asset.json` (the container wall), `port_kerb.asset.json` (the quay's coping and bollards), `art/wall_ends_*.png` and `art/wall_sides_*.png` (each row's stacked doors and liveried sides), `cameras.json`, `asset-preview.json` (`gen_mechexpo_port.py` runs it) |
 | `carts/mechexpo/props/port_harbour/make_harbour.py` | The container port's harbour in polygons: `port_water`, `port_apron`, `port_crane_a`, `port_crane_b`, `port_ship` and `port_yard` (`.asset.json`), the textures `art/*.png` (the hull, the accommodation block, the funnel, the cargo's and the yard's stacks, the asphalt, the water's ripples and reflections, the floodlights' glow), `cameras.json`, `asset-preview.json` (`gen_mechexpo_port.py` runs it; it imports `make_port.py` for the liveries) |
+| `examples/assets/lab/tank_nook/make_tank_nook.py` | `tank_nook.asset.json` beside it: the Asset Kit's point-light example, an aquarium corner lit by three coloured lights (docs/ASSETKIT.md, "Point lights") |
 
-The last twenty-three are run by their path from the repository root, not as `tools/NAME.py`; the
+The last twenty-four are run by their path from the repository root, not as `tools/NAME.py`; the
 garden's two audio generators share `carts/garden/audio/garden_dsp.py`, and Mech Expo's models
 `carts/mechexpo/models/hero/mxpaint.py`, which write nothing.
 

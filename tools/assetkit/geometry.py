@@ -43,6 +43,7 @@ class Mesh:
     levels: list = None    # set on the final mesh of a recipe with lod: [(mesh, report)] of levels 1..
     textures: dict = None  # set on the final mesh of a textured recipe (assetkit/textures.py)
     notes: list = None     # set on the final mesh: inspect's notes on modifiers (mirror copies over the original)
+    lit: list = None       # set on the final mesh of a recipe with point lights: per face, each corner's (r, g, b) shade
 
     def append(self, other):
         offset = len(self.vertices)

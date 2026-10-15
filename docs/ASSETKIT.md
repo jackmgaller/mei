@@ -40,6 +40,7 @@ build-mine/mei-headless build-mine/mei-asset-probe` once):
 | What each primitive costs | [Triangle costs](#triangle-costs) |
 | Limits that are not budgets (2,048 vertices, 128 root nodes, 7 windows) | [Hidden limits](#hidden-limits) |
 | A side or a cap in another material; a sign, poster or label on a face | [Face materials and decals](#face-materials-and-decals) |
+| Light from a lamp, a tank, a sign: coloured pools and shadows | [Point lights](#point-lights) |
 | A sign, a decal, stairs, a dial | [Cookbook](#cookbook) |
 | Texture scale, text on textures | [Texture tips](#texture-tips) |
 | What a failure means and how to repair it | [Reports and repairs](#reports-and-repairs) |
@@ -166,7 +167,8 @@ Conventions, each checked on native renders (`tests/test_assetkit.py`, `Conventi
 
 `preview` and `verify` print a summary of one screen, in plain text: the verdict, each failure,
 the counts (triangles and vertices against the budget, textures and VRAM bytes, always, also
-when 0, and palette entries for palette-backed materials), the bounds and how far the asset
+when 0, and palette entries for palette-backed materials), with [point lights](#point-lights) a
+line of what refinement added and the shadow rays, the bounds and how far the asset
 reaches below y = 0 (and which parts), the allowed findings as counts per kind and part pair,
 the compile warnings counted by code, the look, the images and where the full report is.
 `--json` prints the full report instead, as before. `preview` always writes the full report to
@@ -1008,15 +1010,20 @@ The implicit `default` material is `#c4cad4`. Flat shading is the default. Smoot
 area-weighted vertex normals within each named part and material; split parts to retain a
 hard boundary. Reflections and nonuniform scales are handled before normals are calculated.
 
-Root `lighting` accepts `direction: [-0.4,0.85,-0.35]`, `ambient: 0.45`, `bake: true` and
-`mode: "directional"`. Lighting is baked into face/vertex colors at export. Set `bake: false` for
-unlit colors. Double-sided faces render their single baked color from either side.
+Root `lighting` accepts `direction: [-0.4,0.85,-0.35]`, `ambient: 0.45`, `bake: true`,
+`mode: "directional"`, `diffuse` and point `lights` ([Point lights](#point-lights)). Lighting is
+baked into face/vertex colors at export. Set `bake: false` for unlit colors. Double-sided faces
+render their single baked color from either side. The shade is `ambient + diffuse × max(0, n ·
+direction)`; `diffuse` defaults to `1 - ambient` (a face facing the light is fully lit), and
+lower values dim the directional (or vertical) term, down to 0 for `ambient` alone: a room lit
+by its point lights.
 
 The directional bake is in the asset's own frame: an asset drawn with `mesh_at(…, yaw)` at yaw
 180 is lit from the opposite side to one drawn at yaw 0. For assets placed at arbitrary yaws
 (buildings, props scattered through a scene), use `"mode": "vertical"`. Its shade depends only
 on the normal's Y: `ambient + (1 - ambient) × (1 + y) / 2`, so tops are fully lit, walls get the
-midpoint and undersides get `ambient`. Any rotation about Y leaves every face's shade unchanged.
+midpoint and undersides get `ambient` (with `diffuse`: `ambient + diffuse × (1 + y) / 2`). Any
+rotation about Y leaves every face's shade unchanged.
 The price is that all walls share one shade, so adjacent walls of a box are not told apart by
 lighting; separate them with material colors. `direction` is an error in vertical mode.
 
@@ -1026,6 +1033,138 @@ all triangles produced from that polygon retain the material. This avoids overla
 panels that can cut through one another under Mei's triangle depth sorting. The robot example's
 head uses this approach, retaining a closed mesh with shared boundary vertices. Primitives do the
 same with `faces` (a material per side) and `decals` (rectangles baked into a face), below.
+
+### Point lights
+
+`lighting.lights` adds coloured light from points, on top of the directional or vertical shade.
+Like the rest of the lighting it is baked into the vertex colours at export (nothing is lit at
+draw time), and like it, it is in the asset's own frame: a light turns and moves with the asset.
+For a room, a lit diorama or a lamp on a stall, where the light belongs to the model.
+
+```json
+"lighting": {
+  "ambient": 0.22, "diffuse": 0.12,
+  "lights": [
+    {"id": "jelly", "at": [-0.75, 0.85, 0.75], "color": "#a070ff", "intensity": 2.4, "range": 2.6,
+     "shadows": true, "radius": 0.25},
+    {"id": "coral", "at": [0.85, 1.05, 0.9], "color": "#30e0c8", "intensity": 1.8, "range": 1.8}
+  ],
+  "refine": {"tolerance": 16, "max_added": 512}
+}
+```
+
+| Field | Default | Meaning |
+|---|---|---|
+| `at` | required | The light's position in the asset's coordinates |
+| `range` | required | Units: the light falls off smoothly to nothing at this distance |
+| `color` | `#ffffff` | Multiplied into what it lights, channel by channel |
+| `intensity` | 1 | 0–16: the shade it adds straight on at no distance (1: as much as a fully lit face has) |
+| `shadows` | `false` | The recipe's own faces shadow it (a ray test at build time, below) |
+| `radius` | 0 | With `shadows`: the light is a sphere this size, so shadows have soft edges |
+| `id` | `light_K` | A name for the reports |
+
+Up to 16 lights. Each corner of each face gets, per channel,
+
+    shade = ambient + diffuse × (the directional or vertical term)
+          + Σ color / 255 × intensity × max(0, n · l) × (1 − (d / range)²)² × visibility
+
+where *n* is the corner's normal (a smooth material's smoothed one), *l* the unit direction to
+the light, *d* its distance and *visibility* the share of the light the corner sees (1 without
+`shadows`). A double-sided face is lit from either side (|*n* · *l*|), since its one colour shows
+from both. `bake: false` with lights is an error.
+
+**What it lights, and how bright.** The shade multiplies the face's colour, as the directional
+shade does, with the light's colour per channel:
+
+- **An untextured face** gets `round(colour × shade)` per channel, at most 255. Light can take a
+  material up to white: a `#404040` floor four times, a `#c0c0c0` one 1.33 times. A light's
+  colour only scales channels the material has: violet light (`#a070ff`) on a pure green
+  material leaves it dark. Keep strong light colours a little desaturated, and dark-room
+  materials mid-grey rather than dark, so that both the pools and the dark have levels to show.
+- **A textured or palette-backed face** gets the shade as its tint, `round(128 × shade)` at most
+  255, so light can at most double its texels' or palette entry's colour (255/128). Paint
+  textures as they look in plain white light (the room's painted floor was the colour of its
+  light; a lit one is the colour of the terrazzo) and let the lights darken and colour them. A
+  palette-backed face keeps its light when the cart rewrites its entry: the tint is the light, the
+  entry the paint.
+- **Emissive materials** ignore the lights (their tint stays 128, as for the directional light)
+  and cast no shadows: they are where the light comes from, so a light inside a lantern's
+  emissive paper still lights the room.
+- **Semi-transparent faces** (`blend`) are lit like any face and cast no shadows; neither do
+  faces of a texture with holes.
+- The screen has 32 levels a channel (15-bit colour, dithered); in a dark room at shade 0.2 a
+  `#808080` material is level 3 of 31, so the dark end has few steps to grade through.
+
+**Refinement: pools on large faces.** A colour is only stored at corners, and the GPU blends
+between them (Gouraud), so a pool of light in the middle of a floor quad would fall between its
+four corners and vanish. The kit therefore splits faces where the light varies across them:
+
+1. Every face is measured: at its edges' midpoints, its centroid and its point nearest each light
+   that reaches it, the colour the GPU would draw (the blend of the corners) is compared with the
+   light there, in 8-bit steps of the largest channel (judged on the material's `color`, so give
+   a textured material a colour near its texture's).
+2. The worst face, weighted by its size (a pool across a floor before a line along a wall), is
+   bisected along its longest edge, and so is every face sharing that edge, each along its own
+   longest edge first (longest-edge bisection): no T-junctions, and the triangles keep their
+   shape. Texture coordinates and smooth normals are interpolated at the new corners.
+3. Until no face is more than `tolerance` off, or the next split would pass `max_added`
+   triangles. A face is not split below `min_edge`, nor when it is narrower than `min_edge` (a
+   rope, a rail: a pixel or two wide on screen).
+
+| `refine` field | Default | Meaning |
+|---|---|---|
+| `tolerance` | 16 | 8-bit steps: two of 15-bit colour |
+| `min_edge` | an eighth of the shortest `range` | Units: no split makes an edge shorter |
+| `max_added` | 512 | The most triangles refinement adds (0: corners only, no splits) |
+
+The budget counts the added triangles; `report.json`'s `lights.refine` gives `added_triangles`,
+`added_vertices`, `splits`, `capped` (stopped at `max_added`, also the warning
+`light_refine_capped`), `max_error` and `over_tolerance` (faces left over tolerance because they
+reached `min_edge` or are narrow: shadow edges, mostly). Every level of detail is lit and refined
+the same way.
+
+**Shadows.** With `shadows: true` a corner (and each point refinement measures) casts a ray to
+the light, or with `radius` 8 rays to the corners of a cube in the light's sphere, and the
+recipe's opaque faces block it. A face blocks only rays reaching its front, as Mei draws only
+its front (a double-sided face both ways): a floor's corner under a box standing on it, inside
+the box, is lit as the floor around the box is instead of darkening it. Shadows are opt-in per
+light because a light inside an opaque fixture would be blacked out by it, and because of what
+they cost: a shadow's edge is a line across faces that refinement follows down to `min_edge`.
+Rays are tested against a bounding volume hierarchy of the faces, in Python.
+
+**Costs, measured.** One white light 1 above a 4 × 4 grey floor (range 3, defaults): 26
+triangles added (36 in all), in 3 ms. The `tank_nook` example (below: three lights, two
+with shadows) and the aquarium room of `carts/dorobo` relit with 12 lights, five of them with
+soft shadows (484 triangles unlit), with `max_added` lifted to see where refinement stops:
+
+| Asset | `tolerance` | Shadows | Triangles added | Shadow rays | Build (compile) |
+|---|---|---|---|---|---|
+| `tank_nook` (302) | 16 | yes | 445 | 26,372 | 0.6 s |
+| `tank_nook` | 16 | none | 279 | 0 | 0.1 s |
+| aquarium room (506) | 16 | yes | 1,756 | 353,120 | 12.4 s |
+| aquarium room | 16 | none | 620 | 0 | 0.3 s |
+| aquarium room | 24 | yes | 1,086 | 269,112 | 9.5 s |
+| aquarium room | 32 | none | 189 | 0 | 0.2 s |
+
+With the defaults (512 at most) the room is 1,016 triangles, and at its 60° camera the frame
+draws 1,562 triangles where the painted room drew 1,086: CPU 301,000 cycles where it was 221,000
+(about 120 cycles a submitted triangle) and GPU 404,600 where it was 362,900. Refinement spends
+`max_added` on the largest faces first, so a low cap keeps the pools and loses the sharpness of
+shadow edges.
+
+**What it does not do.** Lights reach only the recipe's own faces: a prop built as another asset
+and placed in the room is not lit by them (below, [Decisions](#decisions)). Light is smooth
+between corners, so detail smaller than `min_edge` (caustics, a stud's glint, a sharp shadow
+edge) still belongs in a texture or an emissive face. A corner shared by a floor and a face that
+stands on it belongs to both, so where a floor runs under a wall the light blends across the
+wall's foot over one triangle (`min_edge` wide at most); a recipe that wants a crisp line there
+can split the floor at the wall itself.
+
+The example is [`examples/assets/lab/tank_nook`](../examples/assets/lab/tank_nook/) (its script
+`make_tank_nook.py` writes the recipe): a corner of an aquarium after closing, lit only by a
+violet jellyfish column (soft shadows), a teal coral tank (none) and an amber paper lantern (hard
+shadows), with a textured floor, palette-backed walls and emissive glows. It passes the Asset
+Checker in depth mode.
 
 ### Semi-transparent materials
 
@@ -1048,7 +1187,8 @@ mode in its blend byte (LANGUAGE.md, "Mesh format"); nothing else about the face
 face tests the depth buffer and writes none, so it hides nothing drawn after it. How it combines:
 
 - **Colour and lighting** are as for any face: F is the face's baked, shaded colour (with
-  `bake: false` its plain colour), so dark glass in `add` adds little.
+  `bake: false` its plain colour), so dark glass in `add` adds little. Point lights light it too,
+  and it casts no shadow ([Point lights](#point-lights)).
 - **Textures:** each texel is blended. A texture with holes (a cutout) draws nothing on texel 0
   and blends the rest; as for any cutout, the asset's policy must say `"depth": true`
   ([Cutouts](#cutouts)).
@@ -1212,7 +1352,8 @@ separate too). An emissive material never shares an entry with a surface one, ev
 colour, so a cart can drive emissives with a different curve.
 
 **Emissive shading.** An emissive surface's brightness is its palette entry's, not the light's:
-its tint is 128 at every vertex, whatever the lighting, `smooth` or orientation. Brightening or
+its tint is 128 at every vertex, whatever the lighting (point lights too), `smooth` or
+orientation. Brightening or
 dimming it is the cart's job, through its entries. Emissive implies `palette: true`; setting
 `palette: false` on an emissive material is an error.
 
@@ -1342,6 +1483,7 @@ profile, *k* the sections of a loft. Checked against `compile_recipe` for the va
 | `mesh` | *m* − 2 per polygon of *m* corners | as given | a quad 2 |
 | `faces` | no change | no change | a box with a sign side 12 |
 | a decal | 8 more | 4 more | a box with a decal 20; two decals 28 |
+| point lights | what refinement adds (`lights.refine.added_triangles`), at most `max_added` | about half as many | one pool on a 4 × 4 floor 26 more |
 
 Modifiers multiply: `mirror` 2 (with `keep_original`), `array` and `radial` their `count`,
 `subdivide` 4 per level. Texture splitting adds pieces (`split_faces` in the report). For the
@@ -1367,6 +1509,7 @@ Limits that are not budgets, each an error naming itself when reached:
 | A slot | 256 × 256 4-bit or 256 × 128 8-bit texels; slot 15 holds the fonts |
 | Levels of detail | 7 |
 | Decals | 32 a node; each at least 0.001 units inside its face and from the others |
+| Point lights | 16; refinement adds at most `lighting.refine.max_added` triangles (default 512, at most 8,000) |
 | Coordinates | −32,767 to 32,767 units in a recipe; the mesh's 16.16 vertices below 32,768 |
 
 ## Cookbook
@@ -2049,6 +2192,31 @@ The project owner's decisions about the kit (2026-10-03), besides those describe
   palette's tint separate surfaces. If a real street looks flat, the fallback is a variation of
   a few percent by facing, baked in the asset's own frame. Baking a sun direction per placement
   and lighting at draw time were both rejected.
+- **Point lights** (2026-10-15, for the lit rooms of `carts/dorobo`, whose aquarium sketch had to
+  paint every pool of light into its floor's texture): baked into vertex colours like the rest,
+  in the asset's own frame ([Point lights](#point-lights)). Settled in the building:
+  - *Large faces* are refined by the error of the colour the GPU would draw, worst and largest
+    faces first, by longest-edge bisection (conforming, so no T-junctions), under a triangle cap.
+    Rejected: splitting every lit face to a fixed size, which costs the same wherever the light
+    is flat (the 12.2 × 6.3 m aquarium floor in 0.5 m squares is 650 triangles, more than
+    refinement adds to the whole room by default), and an opt-in per part or material, which asks the
+    author to know where pools fall. Faces narrower than `min_edge` are left whole.
+  - *Shadows* are a ray test at build time against the recipe's own opaque, non-emissive faces,
+    seen from their front; opt-in per light, with a radius for soft edges. Rejected: shadows by
+    default (a light inside its own fixture goes dark, and shadow edges cost triangles and
+    seconds), and back faces as occluders, which darkened the floor around every foot and leg
+    standing on it (a corner under the foot is inside it).
+  - *Colour* multiplies per channel, as the directional shade does; a tint doubles a texel at
+    most. An additive light (brightening past white, or lighting black) would need a second
+    colour per vertex, which the mesh format does not have.
+  - *Not built: lights that reach other assets.* A room's lights light the room's own recipe.
+    A prop placed in it by the World Kit (or a cart) is lit by its own recipe's lighting only,
+    and baking the room's lights into each placed prop is baking per placement, rejected for
+    the sun: a mesh per placement, where today one mesh serves every copy. The question for the
+    World Kit, when a room needs it, is whether a world may name lights that its build bakes
+    into copies of the props within their range (more ROM and triangles per lit copy, and a
+    rebuild when a light or prop moves), or whether a prop meant for a lit room should be built
+    as a variant recipe that carries the room's lights at its place.
 - **Textures** (revised 2026-10-04): procedural patterns and recipe texel grids for repeats, and
   PNG images and sheets now for detailed art; 4-bit by default, 8-bit per texture; UVs by
   projection or `fit`, hand UVs only in `mesh` nodes; cutouts in depth-mode assets; animated
@@ -2125,7 +2293,16 @@ blend byte (on plain, palette-backed and textured faces), the material manifest'
 face ranges, the `.mtl` and glTF, and (with NumPy and the native tools) that the checker judges a
 core through its glass, fails a console drawing the glass opaque or leaving out a glass face, finds
 the ordering table's mistakes around the glass without the depth buffer, judges a blended cutout
-per texel, and that `preview` draws the glass blended. It also runs as part of `make test` when
+per texel, and that `preview` draws the glass blended. `PointLightTests` checks point lights:
+the schema's and the compiler's errors, that `diffuse` defaults to `1 - ambient` (the same bytes)
+and that recipes without lights have no lit shades, a pool refined onto a floor without
+T-junctions (and none with `max_added` 0), the tolerance, `min_edge`, the cap and its warning,
+the budget counting added triangles, colour per channel and the clamp at 255, palette-backed
+tints (coloured) and emissive ones (128, and `light_unused`), texture coordinates kept through
+refinement, hard and soft shadows, glass casting none and a box standing on the floor not
+shadowing the floor under it, double-sided faces lit from behind, determinism and levels of
+detail, the summary line and the `tank_nook` example, and that `preview` draws the pool in the
+emulator. It also runs as part of `make test` when
 Python is available. Pure Python tests can run independently; native render tests skip if
 the binaries are absent:
 
@@ -2137,4 +2314,5 @@ Example recipes: [`robot`](../examples/assets/robot.asset.json),
 [`vessel`](../examples/assets/vessel.asset.json), [`cottage`](../examples/assets/cottage.asset.json),
 [`kiosk`](../examples/assets/kiosk.asset.json) (palette-backed and emissive materials, tags,
 vertical lighting and a required verification policy), [`stall`](../examples/assets/stall.asset.json)
-(textures of every kind, cutouts, an animation, depth mode).
+(textures of every kind, cutouts, an animation, depth mode), and among the lab's
+[`tank_nook`](../examples/assets/lab/tank_nook/) (point lights with soft and hard shadows).

@@ -10,7 +10,7 @@ import meshlib
 from .geometry import (AssetError, Mesh, Face, add, sub, cross, dot, norm, extrude,
                        lathe, loft, explicit_mesh, transform, modify)
 from .schema import validate
-from . import textures as TEX, texout, faces as FACES
+from . import textures as TEX, texout, faces as FACES, lights as LIGHTS
 
 
 SIDE_AXES = {'right':(0,1),'left':(0,-1),'top':(1,1),'bottom':(1,-1),'front':(2,1),'back':(2,-1)}
@@ -191,6 +191,12 @@ def compile_recipe(recipe, base=None, budgets='error'):
                                  'scale (0.25, 0.5, 1, 2), which puts the cuts on exact coordinates, or move the corner.')
             raise AssetError('/nodes',f'Part {face.part!r} has a triangle that collapses at Mei 16.16 precision. Enlarge it or reduce detail.')
     mesh.vertices = vertices
+    light = recipe.get('lighting',{})
+    if light.get('lights'):
+        # Point lights: faces refined where the light varies across them (so before the budget
+        # is counted), and the light baked per corner into mesh.lit (assetkit/lights.py).
+        check_lighting(light)
+        lit,lit_warnings = LIGHTS.bake(mesh,materials,light,shading(light),textures,palette_backed)
     budget = {'vertices':2048,'triangles':2000,**recipe.get('budget',{})}
     breaches = []
     for key,count in (('vertices',len(vertices)),('triangles',len(mesh.faces))):
@@ -199,12 +205,7 @@ def compile_recipe(recipe, base=None, budgets='error'):
             if budgets != 'warn': raise AssetError('/budget/'+key,message)
             breaches.append({'code':'over_budget','key':key,'count':count,'budget':budget[key],
                              'message':message+' build fails until it fits; the per-part counts are in parts.'})
-    light = recipe.get('lighting',{})
-    if light.get('mode','directional') == 'vertical':
-        if 'direction' in light:
-            raise AssetError('/lighting/direction','Vertical lighting shades by each face normal\'s Y only. Remove direction, or use mode "directional".')
-    elif light.get('bake',True) and dot(light.get('direction',[-0.4,0.85,-0.35]), light.get('direction',[-0.4,0.85,-0.35])) == 0:
-        raise AssetError('/lighting/direction','Baked light direction must be nonzero.')
+    check_lighting(light)
     for name,mat in recipe.get('materials',{}).items():
         if mat.get('class') == 'emissive' and mat.get('palette') is False:
             raise AssetError(f'/materials/{name}/palette','Emissive materials are always drawn through palette entries of their own. Remove palette: false, or use class "surface".')
@@ -216,6 +217,9 @@ def compile_recipe(recipe, base=None, budgets='error'):
         mesh.textures['split_faces'] = split_faces
     result = report(mesh,recipe,budget,materials)
     result['warnings'][:0] = breaches
+    if light.get('lights'):
+        result['lights'] = lit
+        result['warnings'] += lit_warnings
     if log['faces']: result['face_maps'] = log['faces']
     if log['decals']: result['decals'] = decal_report(mesh,log['decals'])
     mesh.notes = notes
@@ -226,6 +230,15 @@ def compile_recipe(recipe, base=None, budgets='error'):
             result['warnings'] += [{**w,'level':k,'message':f'Level {k}: '+w['message']}
                                    for w in rep['warnings'] if w['code'] == 'over_budget']
     return mesh, materials, result
+
+
+def check_lighting(light):
+    if light.get('mode','directional') == 'vertical':
+        if 'direction' in light:
+            raise AssetError('/lighting/direction','Vertical lighting shades by each face normal\'s Y only. Remove direction, or use mode "directional".')
+    elif light.get('bake',True) and dot(light.get('direction',[-0.4,0.85,-0.35]), light.get('direction',[-0.4,0.85,-0.35])) == 0:
+        raise AssetError('/lighting/direction','Baked light direction must be nonzero.')
+    LIGHTS.check(light)
 
 
 def decal_report(mesh, decals):
@@ -615,11 +628,13 @@ def shading(lighting):
     """The baked shade (0-1) of a unit normal under a recipe's lighting."""
     ambient, bake = lighting.get('ambient',0.45),lighting.get('bake',True)
     if not bake: return lambda n: 1
+    # diffuse: the weight of the directional (or vertical) term, by default what ambient leaves
+    diffuse = lighting.get('diffuse',1-ambient)
     if lighting.get('mode','directional') == 'vertical':
         # A function of the normal's Y alone, so any rotation about Y leaves it unchanged.
-        return lambda n: ambient+(1-ambient)*(1+n[1])/2
+        return lambda n: ambient+diffuse*(1+n[1])/2
     light = norm(lighting.get('direction',[-0.4,0.85,-0.35]))
-    return lambda n: ambient+(1-ambient)*max(0,dot(n,light))
+    return lambda n: ambient+diffuse*max(0,dot(n,light))
 
 
 def native_bytes(mesh, materials, lighting, packing=None):
@@ -639,7 +654,9 @@ def native_bytes(mesh, materials, lighting, packing=None):
             smooth[key] = add(smooth[key],normal)
     result = NativeMesh()
     result.verts = mesh.vertices
-    for face,normal in zip(mesh.faces,normals):
+    # point lights: each corner's (r, g, b) shade, baked by compile_recipe (assetkit/lights.py)
+    lit = mesh.lit if lighting.get('lights') else None
+    for at,(face,normal) in enumerate(zip(mesh.faces,normals)):
         mat = materials[face.material]
         entry = palette['by_material'].get(face.material) if palette else None
         tex = textures.get(face.material)
@@ -647,7 +664,9 @@ def native_bytes(mesh, materials, lighting, packing=None):
         # a textured face its texture's texels, likewise.
         color = (128,128,128) if entry or tex else tuple(int(mat['color'][k:k+2],16) for k in (1,3,5))
         colors = []
-        for i in face.indices:
+        if lit is not None:
+            colors = [rgb(*(max(0,min(255,round(c*s))) for c,s in zip(color,shade))) for shade in lit[at]]
+        for i in (() if lit is not None else face.indices):
             n = norm(smooth[face.part,face.material,i]) if mat.get('smooth',False) else normal
             # Emissive surfaces are never shaded: their brightness is their palette entry's.
             shade = 1 if (entry or tex) and mat.get('class','surface') == 'emissive' else shade_of(n)

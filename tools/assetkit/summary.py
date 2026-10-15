@@ -33,6 +33,19 @@ def counts_line(report):
     return line
 
 
+def lights_line(report):
+    """'point lights 3 (1 with shadows, 9120 rays): refinement added 212 triangles and ...', or None."""
+    lights = report.get('lights')
+    if not lights: return None
+    refine = lights['refine']
+    shadowed = sum(light['shadows'] for light in lights['lights'])
+    return (f'point lights {lights["count"]}'+(f' ({shadowed} with shadows, {lights["shadow_rays"]} rays)' if shadowed else '')+
+            f': refinement added {refine["added_triangles"]} triangles and {refine["added_vertices"]} vertices'
+            +(' (stopped at max_added)' if refine['capped'] else '')+
+            (f'; {refine["over_tolerance"]} faces left over tolerance {refine["tolerance"]} (narrower than min_edge, '
+             f'or stopped), largest error {refine["max_error"]}' if refine['over_tolerance'] else ''))
+
+
 def bounds_lines(report):
     lo,hi = report['bounds']['min'],report['bounds']['max']
     size = ' x '.join(f'{b-a:.2f}' for a,b in zip(lo,hi))
@@ -103,6 +116,7 @@ def preview_text(report, output=None):
     else:
         lines.append('verdict: not checked (no required policy in the recipe; add --verify, or run verify)')
     lines.append(counts_line(report))
+    if lights_line(report): lines.append(lights_line(report))
     lines += bounds_lines(report)
     flush = report.get('flush_contacts')
     if flush and flush.get('count'):
