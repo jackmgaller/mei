@@ -44,6 +44,10 @@ replayable from their inputs, so ghosts and speedruns come free.
 | 2026-10-15 | Seeing into a train | Only through an open door: cones reach into a car through its open doors' gaps; its closed doors, sides and windows still block |
 | 2026-10-15 | The first level | A gentler introduction of several handcrafted rooms, from the platform up to the aquarium ([Level 1](#level-1)) |
 | 2026-10-15 | Tools in level 1 | None; tools arrive in later levels, one at a time |
+| 2026-10-15 | Level 1, played | Liked; easy, which is right for stage one |
+| 2026-10-15 | Next | Smoother transitions between rooms, basic sounds and music; then stage 2 starts without waiting |
+| 2026-10-15 | Menus | A stage select early on. An unlocked stage shows an isometric, simplified model of the space before you pick it; perhaps later usable at any time |
+| 2026-10-15 | Stage 2 | Keycards and backtracking |
 | 2026-10-15 | Gentler | Caught only when a cone covers the thief's centre; one new idea per room; slower guards, shorter cones and fewer watchers in early rooms |
 
 ## Setting: one complex, end to end
@@ -328,6 +332,49 @@ starts at 0. The pull-back between rooms comes later.
 - **Room builders**, two rooms each, dress rooms 1–4 to the standard of the aquarium sketch, on
   the lead's floor plans. They start when the plans exist.
 
+## Next: transitions, menus, audio, then stage 2
+
+**Transitions between rooms.** Going through a room's exit no longer cuts: the camera pulls back
+until the room you are leaving and the next one show together as cut-away models in the
+section, then slides and drops into the next room, whose clock starts at 0 when the thief is in
+control again (about 1.5 s; skippable with A). The rooms beyond those two are drawn from the
+World Kit's stand-ins.
+
+**Title and stage select.** A title screen, then a stage select. Hovering an unlocked stage
+shows its section as a slowly turning isometric model: every room as its stand-in, the route
+traced through them, the rooms you have cleared lit. A locked stage is a silhouette. Clearing a
+stage unlocks the next, saved to the memory card with the best times. The same model is meant to
+become a map that can be opened from the pause menu (later).
+
+**Sound and music.** Basic and generated like the other carts' (a `tools/gen_afterhours_audio.py`
+writing `audio/` and a data file): footsteps, running, the caught sting, hiding in and out, the
+train arriving and leaving, doors, the room transition, the menu's sounds, a quiet ambience per
+room (the platform's hum, the passage's tubes, the aquarium's pumps), and one stage track that
+stays out of the way of the clockwork. No agent can listen; the owner judges it by ear.
+
+**Stage 2** starts when the transitions and the audio have landed and pass their checks. Its
+new ideas are **keycards** and **backtracking**. Proposals, for the level lead to change:
+
+- The complex: the department store and cinema from [the chain](#setting-one-complex-end-to-end)
+  (food hall, a shop floor, the cinema and its projection booth, the staff corridors behind
+  them).
+- A keycard is picked up by walking over it, shows on the HUD, and opens staff doors of its
+  colour. The card for a door you have already passed lies further on, so you go back.
+- Rooms join as a graph, not a line: a room can have several doors, each to a room.
+- Going back into a room starts its clock at 0, like any entry, so every room stays a clockwork
+  puzzle. Cards taken and doors opened stay so for the rest of the run.
+- Caught means back at the door you came in by, whichever way you came.
+
+**Who builds it** (all Opus; in the worktree `afterhours-next` while the main checkout is busy):
+
+| Agent | Owns |
+|---|---|
+| A, stealth core | Hooks for the transition and the menus; then stage 2's rules (keycards, the room graph, re-entry) |
+| E, front end | The transition, the title, the stage select, the section model, the save |
+| F, audio | `tools/gen_afterhours_audio.py`, the cart's `audio/` and its sound data, the calls that play them (agreed with A) |
+| B, level lead | Stage 2's route, rooms in greybox, puzzles and tapes; floor plans for the room builders |
+| Room builders | Stage 2's rooms, two each, as in level 1 |
+
 ## Gates
 
 0. **A room sketch** (done 2026-10-15). [Below](#gate-0-the-aquarium-sketch).
@@ -408,8 +455,8 @@ deliberately plain: Gate 2 dresses it.
 - Each train's cone blocking lines up with where the train is drawn.
 
 **Delivered to the owner:** the cart (`make B=build-dr-A build-dr-A/mei
-build-dr-A/carts/afterhours.mei`, then `build-dr-A/mei build-dr-A/carts/afterhours.mei`), captures of
-the room at a few moments (a train passing, a cone cut by a pillar, the caught freeze), and the
+build-dr-A/carts/afterhours.mei`, then `build-dr-A/mei build-dr-A/carts/afterhours.mei`),
+captures of the room at a few moments (a train passing, a cone cut by a pillar, the caught freeze), and the
 worst frame's CPU and GPU figures, with sight's CPU cost on its own. The owner plays it and
 judges the speeds, the cone reading, the restart's timing and the trains' rhythm. (Done
 2026-10-15: fun but too hard; see [Decided](#decided) and [Level 1](#level-1).)
