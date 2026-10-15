@@ -3012,10 +3012,10 @@ class LookTests(unittest.TestCase):
             self.assertIsNone(look_for(args(look='none',ground='none')))
             (root/'bad.json').write_text('{"sky": "#000000"}')
             with self.assertRaises(AssetError): look_for(args(look=str(root/'bad.json')))
-        # Fall Line's look
-        fallline = ROOT/'carts/fallline/models/asset-preview.json'
-        self.assertEqual(find_look(ROOT/'carts/fallline/models/pine/pine.asset.json',ROOT),fallline)
-        self.assertIsNotNone(make_look(**look_file(fallline))['ground'])
+        # Mech Expo's hangar wall's look
+        hangar = ROOT/'carts/mechexpo/models/hangar_wall/asset-preview.json'
+        self.assertEqual(find_look(ROOT/'carts/mechexpo/models/hangar_wall/hangar_wall_r.asset.json',ROOT),hangar)
+        self.assertIsNotNone(make_look(**look_file(hangar))['ground'])
 
     def test_eye_level_shows_all_of_a_tall_asset_and_stands_on_the_ground(self):
         from assetkit.preview import closeups, in_view
@@ -3132,19 +3132,19 @@ class SummaryTests(unittest.TestCase):
 
     @unittest.skipUnless(NUMPY and COMPILER.exists() and RUNNER.exists() and PROBE.exists(),
                          'Needs NumPy, meic, mei-headless and mei-asset-probe.')
-    def test_fall_line_pine_previews_on_its_snow(self):
+    def test_hangar_wall_previews_on_its_floor(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'preview',
-                                     str(ROOT/'carts/fallline/models/pine/pine.asset.json'),'-o',tmp,'--closeups',
+                                     str(ROOT/'carts/mechexpo/models/hangar_wall/hangar_wall_r.asset.json'),'-o',tmp,'--closeups',
                                      '--compiler',str(COMPILER),'--runner',str(RUNNER),'--probe',str(PROBE)],
                                     capture_output=True,text=True)
             self.assertEqual(result.returncode,0,result.stdout)
             self.assertIn('verdict: PASS (depth mode)',result.stdout)
-            self.assertIn('(from carts/fallline/models/asset-preview.json)',result.stdout)
+            self.assertIn('(from carts/mechexpo/models/hangar_wall/asset-preview.json)',result.stdout)
             self.assertIn('allowed surface_intersection: ',result.stdout)
             width,height,pixels = png_pixels(Path(tmp)/'camera_eye_level.png')
             bottom = pixels[((height-4)*width+4)*3:((height-4)*width+4)*3+3]
-            self.assertTrue(all(c > 200 for c in bottom),'snow under the eye')
+            self.assertTrue(all(abs(c-g) < 24 for c,g in zip(bottom,(0x7a,0x85,0x92))),'the floor under the eye')
 
 
 # ---------------------------------------------------------------------------------------------

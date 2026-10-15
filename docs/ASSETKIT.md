@@ -173,24 +173,21 @@ reaches below y = 0 (and which parts), the allowed findings as counts per kind a
 the compile warnings counted by code, the look, the images and where the full report is.
 `--json` prints the full report instead, as before. `preview` always writes the full report to
 `report.json` in its output directory; `verify -o DIR` writes `verification.json` there.
-`build` prints JSON as before. `pine` from Fall Line (`carts/fallline/models/pine/`):
+`build` prints JSON as before. Mech Expo's right hangar wall
+(`carts/mechexpo/models/hangar_wall/hangar_wall_r.asset.json`):
 
 ```
-pine: preview written to build-mine/assets/pine
-verdict: PASS (depth mode); 104 findings allowed in depth mode (surface_intersection, t_junction)
-views judged: 16; faces seen 82 of 82
-allowed surface_intersection: 104 (tier_1/trunk 30, snow_1/trunk 18, tier_2/trunk 12, snow_1/tier_2 11, and 3 more pairs)
-close faces: 2 part pairs (they z-fight from a distance)
-  close_faces: 7 between snow_3 and tier_3: snow_3's faces 24.9 mm in front of tier_3's, facing the same way (…)
-  close_faces: 7 between snow_4 and tier_4: snow_4's faces 19.5 mm in front of tier_4's, facing the same way (…)
-triangles 82 of 100, vertices 81 of 128, textures 0, VRAM 0 bytes, palette entries 1
-bounds: x -1.98 .. 2.20  y -1.00 .. 6.60  z -2.14 .. 2.14  (size 4.18 x 7.60 x 4.29)
-below y = 0: down to -1.00 (trunk)
-warning open_surface: 8 (snow_1, snow_2, snow_3, snow_4, tier_3, tier_4, ...)
-look: background #70d0f8 to #fffcf4, ground #eef5fc (from carts/fallline/models/asset-preview.json)
-images: build-mine/assets/pine/contact.png (6 fitted views)
-        build-mine/assets/pine/cameras.png (the asset's share of a frame's GPU: eye_level 0.4 %, closeup_1 4.2 %, closeup_2 3.3 %)
-full report: build-mine/assets/pine/report.json (or run with --json)
+hangar_wall_r: preview written to build-mine/assets/hangar_wall_r
+verdict: PASS (depth mode); 126 findings allowed in depth mode (surface_intersection, t_junction)
+views judged: 16; faces seen 104 of 108 (4 never seen: inside, or hidden from every view)
+allowed surface_intersection: 126 (pier/rib_0 19, pier/rib_1 15, corner_post_top/pier 14, corner_post/corner_post_top 10, and 8 more pairs)
+triangles 108 of 160, vertices 84 of 512, textures 3, VRAM 1785 bytes, palette entries 1
+bounds: x -3.50 .. 9.10  y 0.00 .. 26.00  z -6.20 .. 14.00  (size 12.60 x 26.00 x 20.20)
+warning open_surface: 9 (buffer_0, buffer_1, corner_post, corner_post_top, kick_plate, lamp_arm, ...)
+look: background #56647a to #a4b0be, ground #7a8592 (from carts/mechexpo/models/hangar_wall/asset-preview.json)
+images: build-mine/assets/hangar_wall_r/contact.png (6 fitted views)
+        build-mine/assets/hangar_wall_r/cameras.png (the asset's share of a frame's GPU: eye_level 1.6 %)
+full report: build-mine/assets/hangar_wall_r/report.json (or run with --json)
 ```
 
 A failure names the parts and where they are, in the asset's coordinates (world units as placed
@@ -469,25 +466,25 @@ everything above the ground is the part behind it. HUD text is dark on a light b
 **A look file** sets the look once for a cart's assets: `asset-preview.json`, in the recipe's
 folder or any folder above it up to the repository's root (the nearest wins), applies to every
 preview of those recipes; `--background` and `--ground` override its values, `--look FILE` names
-another and `--look none` ignores it. A recipe read from stdin has none unless given. Fall Line's,
-`carts/fallline/models/asset-preview.json`, is its sky and snow:
+another and `--look none` ignores it. A recipe read from stdin has none unless given. Mech Expo's
+hangar wall's, `carts/mechexpo/models/hangar_wall/asset-preview.json`, is its hall's grey:
 
 ```json
 {
-  "background": ["#70d0f8", "#fffcf4"],
-  "ground": "#eef5fc"
+  "background": ["#56647a", "#a4b0be"],
+  "ground": "#7a8592"
 }
 ```
 
 `background` is a colour or a list of one or two; `ground` a colour. The report's `preview.look`
-says what was drawn and where it came from (`"from": "carts/fallline/models/asset-preview.json"`,
+says what was drawn and where it came from (`"from": "carts/mechexpo/models/hangar_wall/asset-preview.json"`,
 or `arguments`). Without a look (no options and no file), the views and `preview.akr` are exactly
 as before. The ground is in `preview_ground.bin` and `preview_ground_tint.bin` (the fitted views;
 `preview.akr` embeds them) and `camera_ground.bin` and `camera_ground_tint.bin` (the camera
 views), in the output directory. Costs include the look: the fitted views' frame costs include
 the ground's passes, and a camera view's `baseline` draws the ground (with the background) without
-the asset, so `asset_gpu_cycles` is still the asset's share. The six Fall Line models preview in
-0.9–1.8 s each with `--closeups`, their Asset Checker included.
+the asset, so `asset_gpu_cycles` is still the asset's share. The hangar walls and the expo banner
+preview in about 1.1 s each with `--closeups`, their Asset Checker included.
 
 ## Recipe contract
 
@@ -789,9 +786,10 @@ or a channel saturating at 31, can hide a missing or extra face there.
 In depth mode the views are chosen as before, the blended faces' pixels counted from the blended
 layer where a pixel holds one face's ID alone (a sum is attributed to no face, or to a wrong one:
 enough to choose by), so the judged views draw them too. The second cart costs a second compile
-and probe run, for assets with blended faces only: Fall Line's sled (448 triangles, 50 of them
-its canopy) checks in about 1.5 s, and its observed faces went from 351 to 437 when the canopy
-became see-through (the pilot is judged through it).
+and probe run, for assets with blended faces only: After Hours' aquarium tanks
+(`carts/dorobo/rooms/aquarium/aq_tanks.asset.json`, 1017 triangles, 236 of them blended: the
+glass, the water's surfaces, the jellyfish and the bubbles) check in about 3.7 s, the fish and
+the rocks judged through the glass.
 
 The report adds, per view, `blend` (`tested_pixels`, `undecided_pixels`,
 `undecided_wrong_pixels`, `wrong_pixels`, and `issues`: `blend_wrong` with the blended faces
@@ -1220,8 +1218,8 @@ while faces that all add (`add`, `quarter`) or all subtract (`sub`) do not.
 materials and tags the same way ([Outputs and game integration](#outputs-and-game-integration)).
 `report.json` counts the semi-transparent triangles by mode (`blend`). The `.mtl` file gives a
 `half` material `d 0.5`; `export` makes it an alpha-blended glTF material
-([below](#viewing-an-asset-elsewhere-export)). Fall Line's sled canopy is the example
-(`carts/fallline/models/sled/make_sled.py`). The World Kit places such a mesh as built; the World
+([below](#viewing-an-asset-elsewhere-export)). After Hours' aquarium tanks are the example
+(`carts/dorobo/rooms/aquarium/make_aquarium.py`). The World Kit places such a mesh as built; the World
 Checker does not compare semi-transparent faces' pixels (its `unverifiable_faces` warning).
 
 ### Face materials and decals
@@ -1701,9 +1699,9 @@ game data. For the kiosk (abridged):
 `colour` is the global palette colour index (`palette × 16 + index`). Face ranges are half-open
 `[start, end)` indices into the exported mesh's faces. A material with
 [`blend`](#semi-transparent-materials) has `"blend"` too (`"half"`, `"add"`, `"sub"` or
-`"quarter"`), so its ranges are the mesh's semi-transparent faces; Fall Line's sled:
-`"glass": {"color": "#38b8e8", "class": "surface", "palette_colour": null, "tag": "glass",
-"triangles": 50, "faces": [[138, 188]], "blend": "half"}`. `pack`'s `NAME.pack.json` gives each
+`"quarter"`), so its ranges are the mesh's semi-transparent faces; After Hours' aquarium tanks:
+`"jelly_glass": {"color": "#3a3aa0", "class": "surface", "palette_colour": null, "tag": null,
+"triangles": 32, "faces": [[620, 652]], "blend": "half"}`. `pack`'s `NAME.pack.json` gives each
 asset its `materials` and `tags` in this shape (with `palette_colour` where the pack put the
 entry), and an asset with levels of detail `level_materials`, one per level from 1, so a packer
 or a cart reads which faces are which from the manifest, not from the kit's internals. In
@@ -2228,9 +2226,8 @@ The project owner's decisions about the kit (2026-10-03), besides those describe
 - **Examples.** Of the five examples, `kiosk` and `stall` (in depth mode) pass the Asset
   Checker (and require it).
   `robot`, `vessel` and `cottage` predate the gate and fail its geometry check with surface
-  intersections (`verify`, October 2026); they remain as modelling examples. Three more recipes
-  made while the kit was developed (`ion_cruise`, `sky_castle` and `clockwork_kraken`) also fail
-  it and were left out until fixed, as was `tools/mei_modeler.py`.
+  intersections (`verify`, October 2026); they remain as modelling examples.
+  `tools/mei_modeler.py`, made while the kit was developed, was left out until fixed.
 
 ## Tests
 
@@ -2280,14 +2277,14 @@ its corners and texture coordinates, `rotate`, no flush contacts or T-junctions 
 errors, `mesh` polygons and modifiers' copies, `--part` framing a decal, and (with NumPy and the
 native tools) that a baked decal passes the Asset Checker with and without the depth buffer
 where a quad 3.5 cm proud fails without it. `LookTests` checks the look's options and files
-(found above the recipe, overridden by the options, Fall Line's), that a preview without a look is
+(found above the recipe, overridden by the options, the hangar wall's), that a preview without a look is
 unchanged, the ground's tiles and tint, the eye-level view's framing of a 12 m pylon, and the
 `stripes` axis and lighting `direction` conventions; `LookRenderTests` renders a post sunk 1 m
 into a white ground under a sky gradient and finds the sky, the ground, the post above it and
 the part below it tinted; `SummaryTests` that findings carry their positions, that allowed
 findings collapse to counts per kind and pair, the summaries of `preview` and `verify` (under 25
-lines, failures with parts and positions, textures and VRAM at 0) and Fall Line's pine previewed
-on its snow.
+lines, failures with parts and positions, textures and VRAM at 0) and Mech Expo's hangar wall
+previewed on its floor.
 `BlendTests` checks `blend`: each mode's flag and
 blend byte (on plain, palette-backed and textured faces), the material manifest's and the pack's
 face ranges, the `.mtl` and glTF, and (with NumPy and the native tools) that the checker judges a

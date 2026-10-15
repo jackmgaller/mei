@@ -41,7 +41,7 @@ MeiNet gateway's tests, then `test_assetkit.py`, `test_worldpack.py`, `test_worl
 `tools/check_generated.sh` (what `make check-generated` runs: the generators that need only the standard library, and
 `gen_adpcm_vectors.py` when NumPy is there, into a temporary directory, compared with the
 committed files). `make test-carts` runs `carts/weather/tests/check.sh`,
-`carts/lantern/tests/check.sh`, `carts/fallline/tests/check.sh`, `carts/mechexpo/tests/check.sh`
+`carts/lantern/tests/check.sh`, `carts/mechexpo/tests/check.sh`
 (about 90 scenarios, run side by side, `JOBS` at a time: the CPU count unless set, through
 `carts/mechexpo/tests/pool.sh`), Mech Expo's long budget runs `carts/mechexpo/tests/budget.sh`,
 the Animation Kit's `carts/mechexpo/tests/anim/check.sh` and `test-world-carts`, which builds World Viewer, the
@@ -119,11 +119,10 @@ nothing it read has changed ([WORLDKIT.md](docs/WORLDKIT.md#quick-tools)).
   test-carts`; and for every other
   generator. **NumPy and Pillow** for the Reference Renderer. **Pillow** too for the generators
   that draw: `gen_boot_duet`, `gen_boot_eclipse`, `gen_shell_assets`, `gen_lantern_assets`,
-  `gen_orbs_assets`, `gen_weather_assets`, `gen_fallline_plane`, `gen_fallline_assets` (the models'
-  textures), `gen_mechexpo_stage`, `gen_mechexpo_ui`, Mech Expo's wall and banner makers and `meifont`, and for the Asset Kit's textures read
+  `gen_orbs_assets`, `gen_weather_assets`, `gen_mechexpo_stage`, `gen_mechexpo_ui`, Mech Expo's wall and banner makers and `meifont`, and for the Asset Kit's textures read
   from PNG images and sheets (`examples/assets/stall`, the shrine world's assets, so `make`;
   recipes without images need it not).
-  **SciPy** too for `gen_boot_duet`, `gen_soundlab_assets`, `gen_fallline_audio`, `gen_mechexpo_audio` and the garden's
+  **SciPy** too for `gen_boot_duet`, `gen_soundlab_assets`, `gen_mechexpo_audio` and the garden's
   audio generators (`carts/garden/audio/gen_sounds.py`, `gen_music.py`).
 - The generators draw text with the OFL fonts in `tools/fonts/` (Figtree, Sofia Sans Condensed,
   Belleza, Gelasio, Noto Sans JP, Noto Serif JP, Zen Maru Gothic, M PLUS Rounded 1c), which
@@ -237,9 +236,6 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_weather_assets.py` | `carts/weather/art/` and `carts/weather/art.akr` |
 | `gen_weather_audio.py` | `carts/weather/audio/` and `carts/weather/mu_data.akr` |
 | `gen_weather_tape.py` | `carts/weather/demo_tape.bin`, Mei Weather's sample broadcast |
-| `gen_fallline_plane.py` | `carts/fallline/art/plane_*` and `carts/fallline/plane_art.akr`: Fall Line's snow and ridge tiles |
-| `gen_fallline_assets.py` | `carts/fallline/art/` (the rest) and `carts/fallline/assets.akr`: the pack of `carts/fallline/models/*` |
-| `gen_fallline_audio.py` | `carts/fallline/audio/` and `carts/fallline/mu_data.akr`: Fall Line's music and sound effects |
 | `gen_mechexpo_assets.py` | `carts/mechexpo/art/` (all but `stage_*` and `ui_*`) and `carts/mechexpo/assets.akr`: the pack of `carts/mechexpo/models/*` |
 | `gen_mechexpo_stage.py` | `carts/mechexpo/art/stage_*` and `stage_art.akr`: Mech Expo's hall (BG1) and floor (BG2) (`--preview DIR`) |
 | `gen_mechexpo_ui.py` | `carts/mechexpo/art/ui_*` and `ui_art.akr`: Mech Expo's fonts, sprites, effects, HUD frame, menu page, palettes and save icon (`--preview DIR`) |

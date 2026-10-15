@@ -171,7 +171,6 @@ test-world: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe
 test-carts: $(B)/meic $(B)/mei-headless
 	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/weather/tests/check.sh
 	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/lantern/tests/check.sh
-	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/fallline/tests/check.sh
 	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/mechexpo/tests/check.sh
 	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/mechexpo/tests/budget.sh
 	B=$(B) carts/mechexpo/tests/anim/check.sh

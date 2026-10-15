@@ -3,7 +3,7 @@
 **Status: design sketch, not implementation.** Nothing here is built. It records the owner's
 decisions of 2026-10-14 and 2026-10-15 and proposes the rest; proposals are marked as such, and
 the [open questions](#open-questions) are listed at the end. When the MVP starts, the contract
-(owners, interfaces, gates) goes in this folder's `README.md`, as Fall Line's and Mech Expo's did.
+(owners, interfaces, gates) goes in this folder's `README.md`, as Mech Expo's did.
 
 ## The game
 
