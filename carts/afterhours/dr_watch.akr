@@ -91,32 +91,44 @@ fn posted_head(d: *WatchDef, t: s32) -> fixed {
 fn guard_walk(g: *Guard, tx: fixed, tz: fixed, step: fixed, stop: fixed, rate: fixed) -> bool {
     let dx = tx - g.x
     let dz = tz - g.z
-    let d2 = dx * dx + dz * dz
-    if d2 <= stop * stop + step * step / 4 {
-        if stop == 0.0 {
-            g.x = tx
-            g.z = tz
+    var d: fixed = 0.0
+    if abs(dx) > 90.0 || abs(dz) > 90.0 {
+        // far off (a world's rooms lie 32 m and more apart: a target in another cell): the
+        // squares would overflow 16.16, so measured at a sixteenth
+        let sx = dx / 16
+        let sz = dz / 16
+        d = sqrt(sx * sx + sz * sz) * 16
+    } else {
+        let d2 = dx * dx + dz * dz
+        if d2 <= stop * stop + step * step / 4 {
+            if stop == 0.0 {
+                g.x = tx
+                g.z = tz
+            }
+            return true
         }
-        return true
+        d = sqrt(d2)
     }
-    let d = sqrt(d2)
     let k = min(step, d - stop) / d
     var x = g.x + dx * k
     var z = g.z + dz * k
     g.head = turn_toward(g.head, heading_to(dx, dz), rate)
+    let level = room.watch[g_index(g)].level
     for _pass in 0..2 {
         for i in 0..room.nwalls {
             let b = &room.walls[i]
-            if b.solid {
+            if b.solid && b.level == level {
                 let p = box_push(b, x, z, GUARD_R)
                 x = p.x
                 z = p.y
             }
         }
-        for i in 0..room.nbands {
-            let p = box_push(&room.bands[i], x, z, GUARD_R)
-            x = p.x
-            z = p.y
+        if level == 0 {
+            for i in 0..room.nbands {
+                let p = box_push(&room.bands[i], x, z, GUARD_R)
+                x = p.x
+                z = p.y
+            }
         }
     }
     g.x = x
@@ -252,6 +264,6 @@ fn guards_sight() {
     for i in 0..room.nwatch {
         let d = &room.watch[i]
         let g = &guards[i]
-        fan_cast(&g.fan, g.x, g.z, g.head, d.half, d.sight)
+        fan_cast_level(&g.fan, d.level, g.x, g.z, g.head, d.half, d.sight)
     }
 }

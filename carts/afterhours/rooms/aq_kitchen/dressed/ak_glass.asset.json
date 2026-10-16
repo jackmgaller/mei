@@ -1,0 +1,334 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "ak_glass",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 100
+ },
+ "materials": {
+  "strips": {
+   "color": "#b8d8e8",
+   "blend": "half",
+   "double_sided": true,
+   "texture": {
+    "image": "art/ak_strips.png",
+    "bits": 4,
+    "projection": "planar",
+    "axis": "x",
+    "scale": [
+     0.25,
+     1.0
+    ]
+   }
+  },
+  "glass": {
+   "color": "#4a90c0",
+   "blend": "quarter",
+   "double_sided": true
+  },
+  "surface": {
+   "color": "#3a90c8",
+   "blend": "quarter",
+   "texture": {
+    "sheet": "w_ripple_3a90c8_c8ecff",
+    "frames": [
+     [
+      0,
+      0
+     ],
+     [
+      1,
+      0
+     ],
+     [
+      2,
+      0
+     ],
+     [
+      3,
+      0
+     ],
+     [
+      4,
+      0
+     ],
+     [
+      5,
+      0
+     ],
+     [
+      6,
+      0
+     ],
+     [
+      7,
+      0
+     ],
+     [
+      8,
+      0
+     ],
+     [
+      9,
+      0
+     ],
+     [
+      10,
+      0
+     ],
+     [
+      11,
+      0
+     ],
+     [
+      12,
+      0
+     ],
+     [
+      13,
+      0
+     ],
+     [
+      14,
+      0
+     ],
+     [
+      15,
+      0
+     ]
+    ],
+    "ticks": 6,
+    "bits": 4,
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     2.0,
+     2.0
+    ]
+   }
+  },
+  "drip": {
+   "color": "#9ad0e0",
+   "blend": "add",
+   "texture": {
+    "sheet": "w_drip_9ad0e0",
+    "frames": [
+     [
+      0,
+      0
+     ],
+     [
+      1,
+      0
+     ],
+     [
+      2,
+      0
+     ],
+     [
+      3,
+      0
+     ],
+     [
+      4,
+      0
+     ],
+     [
+      5,
+      0
+     ],
+     [
+      6,
+      0
+     ],
+     [
+      7,
+      0
+     ],
+     [
+      8,
+      0
+     ],
+     [
+      9,
+      0
+     ],
+     [
+      10,
+      0
+     ],
+     [
+      11,
+      0
+     ],
+     [
+      12,
+      0
+     ],
+     [
+      13,
+      0
+     ],
+     [
+      14,
+      0
+     ],
+     [
+      15,
+      0
+     ]
+    ],
+    "ticks": 4,
+    "bits": 4,
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "strips",
+   "op": "mesh",
+   "material": "strips",
+   "vertices": [
+    [
+     -4.65,
+     0.0,
+     1.22
+    ],
+    [
+     -4.65,
+     0.99,
+     1.22
+    ],
+    [
+     -4.65,
+     0.99,
+     2.38
+    ],
+    [
+     -4.65,
+     0.0,
+     2.38
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "feed_glass",
+   "op": "box",
+   "size": [
+    1.72,
+    0.489,
+    1.12
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     4.7,
+     0.7255,
+     1.5
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "feed_water",
+   "op": "box",
+   "size": [
+    1.7,
+    0.01,
+    1.1
+   ],
+   "material": "surface",
+   "transform": {
+    "translate": [
+     4.7,
+     0.895,
+     1.5
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "drip",
+   "op": "mesh",
+   "material": "drip",
+   "vertices": [
+    [
+     -6.03,
+     0.92,
+     3.79
+    ],
+    [
+     -5.17,
+     0.92,
+     3.79
+    ],
+    [
+     -5.17,
+     0.92,
+     3.46
+    ],
+    [
+     -6.03,
+     0.92,
+     3.46
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  }
+ ],
+ "lighting": {
+  "bake": false
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "sheets": {
+  "w_ripple_3a90c8_c8ecff": {
+   "image": "art/w_ripple_3a90c8_c8ecff.png",
+   "grid": [
+    64,
+    64
+   ]
+  },
+  "w_drip_9ad0e0": {
+   "image": "art/w_drip_9ad0e0.png",
+   "grid": [
+    32,
+    32
+   ]
+  }
+ }
+}

@@ -1,0 +1,152 @@
+// Written by carts/afterhours/levels/aquarium/solutions.py - do not edit; change the plans there.
+// The aquarium's solution tapes (agent J's): the stage's legs in play order, each from its room's
+// clock 0. Spans as dr_tape.akr describes them (ticks, buttons held, the stick). Leg k is played
+// in room AQUARIUM_LEG_ROOM[k] (the rooms numbered in their `next` order: the entrance hall, the
+// great tank, the jellyfish gallery, the ocean gallery, quarantine, the life-support plant, the
+// fish kitchen, the tank tops) and leaves it unseen by its door AQUARIUM_LEG_DOOR[k] (the index
+// among the room's doors, in entity order). Drafted on a model of the rules
+// (levels/rules_model.py) and checked in the cart; if a room, its watchers or the rules change,
+// redraft them and check again.
+
+const AQUARIUM_LEGS = 10
+const AQUARIUM_LEG_ROOM: [10]u8 = [0, 1, 2, 3, 4, 5, 6, 7, 1, 0]
+const AQUARIUM_LEG_DOOR: [10]u8 = [1, 1, 1, 1, 1, 1, 1, 1, 3, 3]
+
+// Leg 0: The entrance hall, from the main doors to the great tank. The model leaves on tick 504.
+const SOLUTION_AQUARIUM_LEG_0: [8]Span = [
+    Span { n: 41, pad: 0, sx: 126, sy: -15 },
+    Span { n: 63, pad: 0, sx: 126, sy: -16 },
+    Span { n: 1, pad: 0, sx: 97, sy: -69 },
+    Span { n: 45, pad: 0, sx: 0, sy: 0 },
+    Span { n: 160, pad: 0, sx: 127, sy: 0 },
+    Span { n: 70, pad: 0, sx: 0, sy: 0 },
+    Span { n: 107, pad: 0, sx: 114, sy: 57 },
+    Span { n: 48, pad: 0, sx: 127, sy: 1 },
+]
+
+// Leg 1: The great tank's gallery, from the hall to the jellyfish. The model leaves on tick 935.
+const SOLUTION_AQUARIUM_LEG_1: [9]Span = [
+    Span { n: 69, pad: 0, sx: 52, sy: -116 },
+    Span { n: 292, pad: 0, sx: 0, sy: 0 },
+    Span { n: 237, pad: 0, sx: 127, sy: 0 },
+    Span { n: 1, pad: 0, sx: 116, sy: -3 },
+    Span { n: 117, pad: 0, sx: 0, sy: 0 },
+    Span { n: 162, pad: 0, sx: 127, sy: 0 },
+    Span { n: 1, pad: 0, sx: 65, sy: -1 },
+    Span { n: 23, pad: 0, sx: 83, sy: 96 },
+    Span { n: 64, pad: 0, sx: 127, sy: 1 },
+]
+
+// Leg 2: The jellyfish gallery, behind the wave of light. The model leaves on tick 814.
+const SOLUTION_AQUARIUM_LEG_2: [13]Span = [
+    Span { n: 5, pad: 0, sx: -45, sy: 119 },
+    Span { n: 240, pad: 0, sx: 0, sy: 0 },
+    Span { n: 74, pad: 0, sx: 127, sy: 1 },
+    Span { n: 1, pad: 0, sx: 109, sy: 45 },
+    Span { n: 45, pad: 0, sx: 0, sy: 0 },
+    Span { n: 75, pad: 0, sx: 127, sy: 0 },
+    Span { n: 45, pad: 0, sx: 0, sy: 0 },
+    Span { n: 75, pad: 0, sx: 127, sy: 0 },
+    Span { n: 45, pad: 0, sx: 0, sy: 0 },
+    Span { n: 71, pad: 0, sx: 126, sy: 14 },
+    Span { n: 20, pad: 0, sx: 126, sy: 17 },
+    Span { n: 105, pad: 0, sx: 1, sy: 127 },
+    Span { n: 44, pad: 0, sx: 127, sy: 1 },
+]
+
+// Leg 3: The ocean gallery, to the staff door. The model leaves on tick 768.
+const SOLUTION_AQUARIUM_LEG_3: [8]Span = [
+    Span { n: 57, pad: 0, sx: 127, sy: 3 },
+    Span { n: 1, pad: 0, sx: 64, sy: 45 },
+    Span { n: 45, pad: 0, sx: 127, sy: -4 },
+    Span { n: 423, pad: 0, sx: 0, sy: 0 },
+    Span { n: 45, pad: 0, sx: 114, sy: 56 },
+    Span { n: 98, pad: 0, sx: 127, sy: 0 },
+    Span { n: 1, pad: 0, sx: 93, sy: 42 },
+    Span { n: 129, pad: 0, sx: 0, sy: 127 },
+]
+
+// Leg 4: Quarantine, to the stair down. The model leaves on tick 854.
+const SOLUTION_AQUARIUM_LEG_4: [10]Span = [
+    Span { n: 56, pad: 0, sx: 41, sy: -120 },
+    Span { n: 424, pad: 0, sx: 0, sy: 0 },
+    Span { n: 237, pad: 0, sx: 127, sy: 0 },
+    Span { n: 1, pad: 0, sx: 125, sy: -3 },
+    Span { n: 27, pad: 0, sx: 127, sy: 0 },
+    Span { n: 1, pad: 0, sx: 65, sy: -1 },
+    Span { n: 77, pad: 0, sx: 0, sy: -127 },
+    Span { n: 1, pad: 0, sx: 1, sy: -65 },
+    Span { n: 12, pad: 0, sx: 0, sy: 0 },
+    Span { n: 49, pad: 0, sx: 127, sy: 0 },
+]
+
+// Leg 5: The life-support plant, to the service stair. The model leaves on tick 974.
+const SOLUTION_AQUARIUM_LEG_5: [11]Span = [
+    Span { n: 301, pad: 0, sx: 0, sy: 0 },
+    Span { n: 195, pad: 0, sx: 127, sy: 0 },
+    Span { n: 1, pad: 0, sx: 79, sy: 0 },
+    Span { n: 17, pad: 0, sx: 127, sy: 0 },
+    Span { n: 1, pad: 0, sx: 65, sy: 0 },
+    Span { n: 25, pad: 0, sx: 0, sy: -127 },
+    Span { n: 120, pad: 0, sx: 0, sy: 0 },
+    Span { n: 100, pad: 0, sx: 0, sy: -127 },
+    Span { n: 197, pad: 0, sx: 127, sy: 0 },
+    Span { n: 1, pad: 0, sx: 64, sy: 0 },
+    Span { n: 47, pad: 0, sx: 125, sy: 23 },
+]
+
+// Leg 6: The fish kitchen, to the tank tops. The model leaves on tick 703.
+const SOLUTION_AQUARIUM_LEG_6: [10]Span = [
+    Span { n: 35, pad: 0, sx: 126, sy: -17 },
+    Span { n: 57, pad: 0, sx: 126, sy: -18 },
+    Span { n: 209, pad: 0, sx: 0, sy: 0 },
+    Span { n: 100, pad: 0, sx: 127, sy: -1 },
+    Span { n: 69, pad: 0, sx: 0, sy: 0 },
+    Span { n: 35, pad: 0, sx: 127, sy: -2 },
+    Span { n: 144, pad: 0, sx: 0, sy: 127 },
+    Span { n: 1, pad: 0, sx: 10, sy: 103 },
+    Span { n: 25, pad: 0, sx: 126, sy: 13 },
+    Span { n: 59, pad: 0, sx: 1, sy: 127 },
+]
+
+// Leg 7: The tank tops, to the catwalk. The model leaves on tick 1239.
+const SOLUTION_AQUARIUM_LEG_7: [12]Span = [
+    Span { n: 22, pad: 0, sx: -127, sy: -2 },
+    Span { n: 153, pad: 0, sx: -127, sy: -3 },
+    Span { n: 28, pad: 0, sx: -127, sy: -5 },
+    Span { n: 156, pad: 0, sx: 0, sy: 0 },
+    Span { n: 197, pad: 0, sx: 0, sy: 127 },
+    Span { n: 70, pad: 0, sx: -127, sy: 0 },
+    Span { n: 453, pad: 0, sx: 0, sy: 0 },
+    Span { n: 132, pad: 0, sx: -127, sy: 0 },
+    Span { n: 1, pad: 0, sx: -84, sy: 27 },
+    Span { n: 13, pad: 0, sx: -71, sy: -106 },
+    Span { n: 1, pad: 0, sx: -43, sy: -63 },
+    Span { n: 44, pad: 0, sx: -127, sy: 0 },
+]
+
+// Leg 8: The great tank's catwalk, to the mezzanine. The model leaves on tick 879.
+const SOLUTION_AQUARIUM_LEG_8: [5]Span = [
+    Span { n: 158, pad: 0, sx: -127, sy: 0 },
+    Span { n: 282, pad: 0, sx: 0, sy: 0 },
+    Span { n: 131, pad: 0, sx: -127, sy: 0 },
+    Span { n: 121, pad: 0, sx: 0, sy: 0 },
+    Span { n: 218, pad: 0, sx: -127, sy: 0 },
+]
+
+// Leg 9: The entrance hall's mezzanine, out to the deck. The model leaves on tick 1013.
+const SOLUTION_AQUARIUM_LEG_9: [13]Span = [
+    Span { n: 78, pad: 0, sx: -127, sy: -6 },
+    Span { n: 30, pad: 0, sx: -127, sy: -8 },
+    Span { n: 257, pad: 0, sx: 0, sy: 0 },
+    Span { n: 132, pad: 0, sx: -127, sy: 0 },
+    Span { n: 1, pad: 0, sx: -93, sy: -36 },
+    Span { n: 62, pad: 0, sx: 0, sy: 0 },
+    Span { n: 40, pad: 0, sx: -119, sy: 44 },
+    Span { n: 1, pad: A, sx: 0, sy: 0 },
+    Span { n: 311, pad: 0, sx: 0, sy: 0 },
+    Span { n: 48, pad: 0, sx: -126, sy: -14 },
+    Span { n: 29, pad: 0, sx: -126, sy: -16 },
+    Span { n: 1, pad: 0, sx: -68, sy: -40 },
+    Span { n: 54, pad: 0, sx: -127, sy: 0 },
+]

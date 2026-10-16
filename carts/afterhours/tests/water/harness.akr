@@ -1,0 +1,161 @@
+// Agent W's measure of the moving water (NOTES_W.md): STAGE (a constant of dr_levels.akr)
+// started directly and its solution tapes played leg by leg through the front end's transitions
+// to the stage's end (as H's scenario 95, tests/trans/stages/), nobody catching. Prints, per
+// room, the worst frame in play (from the room's clock 3) and, per transition, the worst frame,
+// CPU and GPU cycles; then the stage's worst of each. A run ends with "DONE 97". run.sh's W_HEAD
+// can replace dr_water.akr's water_enabled() to measure the same build with the water still.
+import "../../dr_game.akr"
+import "../../dr_world.akr"
+import "../tapes/station_solution.akr"
+import "../tapes/tower_solution.akr"
+import "../tapes/aquarium_solution.akr"
+import "../tapes/store_solution.akr"
+
+const ST_TAPES: [3]*Span = [SOLUTION_STATION_ARRIVAL, SOLUTION_STATION_GATES, SOLUTION_STATION_PASSAGE]
+const ST_LENS: [3]s32 = [len(SOLUTION_STATION_ARRIVAL), len(SOLUTION_STATION_GATES), len(SOLUTION_STATION_PASSAGE)]
+const TW_TAPES: [6]*Span = [SOLUTION_TOWER_LEG_0, SOLUTION_TOWER_LEG_1, SOLUTION_TOWER_LEG_2, SOLUTION_TOWER_LEG_3,
+                            SOLUTION_TOWER_LEG_4, SOLUTION_TOWER_LEG_5]
+const TW_LENS: [6]s32 = [len(SOLUTION_TOWER_LEG_0), len(SOLUTION_TOWER_LEG_1), len(SOLUTION_TOWER_LEG_2),
+                         len(SOLUTION_TOWER_LEG_3), len(SOLUTION_TOWER_LEG_4), len(SOLUTION_TOWER_LEG_5)]
+const AQ_TAPES: [10]*Span = [SOLUTION_AQUARIUM_LEG_0, SOLUTION_AQUARIUM_LEG_1, SOLUTION_AQUARIUM_LEG_2,
+                             SOLUTION_AQUARIUM_LEG_3, SOLUTION_AQUARIUM_LEG_4, SOLUTION_AQUARIUM_LEG_5,
+                             SOLUTION_AQUARIUM_LEG_6, SOLUTION_AQUARIUM_LEG_7, SOLUTION_AQUARIUM_LEG_8,
+                             SOLUTION_AQUARIUM_LEG_9]
+const AQ_LENS: [10]s32 = [len(SOLUTION_AQUARIUM_LEG_0), len(SOLUTION_AQUARIUM_LEG_1), len(SOLUTION_AQUARIUM_LEG_2),
+                          len(SOLUTION_AQUARIUM_LEG_3), len(SOLUTION_AQUARIUM_LEG_4), len(SOLUTION_AQUARIUM_LEG_5),
+                          len(SOLUTION_AQUARIUM_LEG_6), len(SOLUTION_AQUARIUM_LEG_7), len(SOLUTION_AQUARIUM_LEG_8),
+                          len(SOLUTION_AQUARIUM_LEG_9)]
+const SR_TAPES: [8]*Span = [SOLUTION_STORE_LEG_0, SOLUTION_STORE_LEG_1, SOLUTION_STORE_LEG_2, SOLUTION_STORE_LEG_3,
+                            SOLUTION_STORE_LEG_4, SOLUTION_STORE_LEG_5, SOLUTION_STORE_LEG_6, SOLUTION_STORE_LEG_7]
+const SR_LENS: [8]s32 = [len(SOLUTION_STORE_LEG_0), len(SOLUTION_STORE_LEG_1), len(SOLUTION_STORE_LEG_2),
+                         len(SOLUTION_STORE_LEG_3), len(SOLUTION_STORE_LEG_4), len(SOLUTION_STORE_LEG_5),
+                         len(SOLUTION_STORE_LEG_6), len(SOLUTION_STORE_LEG_7)]
+
+const W_ROOMS = 16
+var leg: s32
+var nlegs: s32
+var stick_v: vec2
+var last_mode: Mode = Mode.Play
+var nt: s32
+var finished: bool
+var started: bool
+var prev_play: bool            // the frame before was a frame of play (clock > 2)
+var prev_room: s32
+var room_cpu: [W_ROOMS]s32
+var room_gpu: [W_ROOMS]s32
+var room_at: [W_ROOMS]s32      // the frame of the room's worst CPU
+var tr_cpu: s32                // this transition's worst
+var tr_gpu: s32
+var all_tr_cpu: s32
+var all_tr_gpu: s32
+var all_cpu: s32
+var all_gpu: s32
+var water_worst: s32           // dr_water.akr's water_tick(): its worst frame, cycles and rows copied
+var water_rows: s32
+
+fn test_init() { test_no_catch = true }
+fn test_hook(_f: s32) {}
+fn input_stick(_f: s32) -> vec2 { return stick_v }
+
+fn tape(k: s32) -> *Span {
+    if STAGE == STAGE_STATION { return ST_TAPES[k] }
+    if STAGE == STAGE_TOWER { return TW_TAPES[k] }
+    if STAGE == STAGE_AQUARIUM { return AQ_TAPES[k] }
+    return SR_TAPES[k]
+}
+
+fn tape_n(k: s32) -> s32 {
+    if STAGE == STAGE_STATION { return ST_LENS[k] }
+    if STAGE == STAGE_TOWER { return TW_LENS[k] }
+    if STAGE == STAGE_AQUARIUM { return AQ_LENS[k] }
+    return SR_LENS[k]
+}
+
+fn pr(label: *u8, c: s32, g: s32) {
+    print(label)
+    print(" CPU ")
+    print_int(c)
+    print(" GPU ")
+    print_int(g)
+    println("")
+}
+
+fn input_pad(f: s32) -> u32 {
+    // the frame before: its cycles go to its room in play, or to the transition
+    if f > 2 {
+        let c = cpu_used()
+        let g = gpu_used()
+        if last_mode == Mode.Transition {
+            tr_cpu = max(tr_cpu, c)
+            tr_gpu = max(tr_gpu, g)
+        } else if prev_play && prev_room >= 0 && prev_room < W_ROOMS {
+            if c > room_cpu[prev_room] { room_at[prev_room] = f - 1 }
+            room_cpu[prev_room] = max(room_cpu[prev_room], c)
+            room_gpu[prev_room] = max(room_gpu[prev_room], g)
+        }
+    }
+    water_worst = max(water_worst, water_cycles)
+    water_rows = max(water_rows, water_copied)
+    prev_play = started && mode == Mode.Play && phase == Phase.Play && clock > 2
+    prev_room = run_room
+    var pad: u32 = 0
+    stick_v = vec2(0.0, 0.0)
+    if finished { return 0 }
+    if f == 30 {
+        nlegs = 3
+        if STAGE == STAGE_TOWER { nlegs = TOWER_LEGS }
+        if STAGE == STAGE_AQUARIUM { nlegs = AQUARIUM_LEGS }
+        if STAGE == STAGE_STORE { nlegs = STORE_LEGS }
+        stage_start(STAGE)
+        started = true
+        println("START at frame 30")
+    }
+    if started && mode == Mode.Play && phase == Phase.Play && leg < nlegs {
+        let s = span_at(tape(leg), tape_n(leg), clock)
+        pad = s.pad as u32
+        stick_v = vec2(fixed(s.sx as s32) / 127, fixed(s.sy as s32) / 127)
+    }
+    if last_mode != Mode.Transition && mode == Mode.Transition {
+        tr_cpu = 0
+        tr_gpu = 0
+    }
+    if last_mode == Mode.Transition && mode == Mode.Play {
+        nt += 1
+        leg += 1
+        print("TRANS ")
+        print_int(nt)
+        print(" into room ")
+        print_int(run_room + 1)
+        print(" at frame ")
+        print_int(f)
+        pr(":", tr_cpu, tr_gpu)
+        all_tr_cpu = max(all_tr_cpu, tr_cpu)
+        all_tr_gpu = max(all_tr_gpu, tr_gpu)
+    }
+    if started && mode == Mode.End && !finished {
+        finished = true
+        for k in 0..W_ROOMS {
+            if room_cpu[k] == 0 { continue }
+            print("ROOM ")
+            print_int(k + 1)
+            print(" (frame ")
+            print_int(room_at[k])
+            print(")")
+            pr(" in play:", room_cpu[k], room_gpu[k])
+            all_cpu = max(all_cpu, room_cpu[k])
+            all_gpu = max(all_gpu, room_gpu[k])
+        }
+        pr("WORST in play:", all_cpu, all_gpu)
+        pr("WORST in transitions:", all_tr_cpu, all_tr_gpu)
+        print("WATER worst water_tick(): ")
+        print_int(water_worst)
+        print(" cycles, ")
+        print_int(water_rows)
+        println(" rows copied")
+        print("DONE 97: ")
+        print_int(nt)
+        println(" transitions")
+    }
+    last_mode = mode
+    return pad
+}

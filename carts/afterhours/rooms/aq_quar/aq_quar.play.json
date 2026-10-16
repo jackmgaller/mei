@@ -1,0 +1,417 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "aq_quar",
+ "entities": [
+  {
+   "id": "qt_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "name": "quarantine",
+    "entry": "qt_spawn_ocean",
+    "size": [
+     13.5,
+     2.4,
+     8.5
+    ],
+    "dark": true
+   }
+  },
+  {
+   "id": "qt_spawn_ocean",
+   "type": "spawn",
+   "position": [
+    -5.625,
+    0,
+    2.4
+   ],
+   "params": {
+    "yaw": 90
+   }
+  },
+  {
+   "id": "qt_door_ocean",
+   "type": "door",
+   "position": [
+    -6.625,
+    0,
+    2.4
+   ],
+   "yaw": 90,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "qt_spawn_ocean",
+    "to": "ao_door_quar"
+   }
+  },
+  {
+   "id": "qt_spawn_plant",
+   "type": "spawn",
+   "position": [
+    5.625,
+    0,
+    -2.8
+   ],
+   "params": {
+    "yaw": 270
+   }
+  },
+  {
+   "id": "qt_door_plant",
+   "type": "door",
+   "position": [
+    6.625,
+    0,
+    -2.8
+   ],
+   "yaw": 270,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "qt_spawn_plant",
+    "to": "ap_door_quar"
+   }
+  },
+  {
+   "id": "qt_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -4.125
+   ],
+   "params": {
+    "size": [
+     13.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "qt_wall_back_0",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    4.125
+   ],
+   "params": {
+    "size": [
+     13.5,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "qt_wall_end_w_0",
+   "type": "wall",
+   "position": [
+    -6.625,
+    0,
+    -1.1
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     5.8
+    ]
+   }
+  },
+  {
+   "id": "qt_wall_end_w_1",
+   "type": "wall",
+   "position": [
+    -6.625,
+    0,
+    3.5
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     1.0
+    ]
+   }
+  },
+  {
+   "id": "qt_wall_end_e_0",
+   "type": "wall",
+   "position": [
+    6.625,
+    0,
+    -3.7
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.6
+    ]
+   }
+  },
+  {
+   "id": "qt_wall_end_e_1",
+   "type": "wall",
+   "position": [
+    6.625,
+    0,
+    0.9
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     6.2
+    ]
+   }
+  },
+  {
+   "id": "qt_wall_row_a",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    1.6
+   ],
+   "params": {
+    "size": [
+     8.4,
+     1.2,
+     0.8
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "qt_wall_row_b",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -1.0
+   ],
+   "params": {
+    "size": [
+     8.4,
+     1.2,
+     0.8
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "qt_wall_filter_a",
+   "type": "wall",
+   "position": [
+    4.625,
+    0,
+    1.6
+   ],
+   "params": {
+    "size": [
+     0.75,
+     1.6,
+     1.2
+    ]
+   }
+  },
+  {
+   "id": "qt_wall_filter_b",
+   "type": "wall",
+   "position": [
+    4.625,
+    0,
+    -1.0
+   ],
+   "params": {
+    "size": [
+     0.75,
+     1.6,
+     1.2
+    ]
+   }
+  },
+  {
+   "id": "qt_wall_desk",
+   "type": "wall",
+   "position": [
+    -5.65,
+    0,
+    -3.5
+   ],
+   "params": {
+    "size": [
+     1.7,
+     0.8,
+     1.0
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "qt_light_uv_a",
+   "type": "light",
+   "position": [
+    0.0,
+    0,
+    2.1
+   ],
+   "params": {
+    "size": [
+     8.8,
+     0.1,
+     2.2
+    ],
+    "period": 480,
+    "on": 240,
+    "offset": 0
+   }
+  },
+  {
+   "id": "qt_light_uv_b",
+   "type": "light",
+   "position": [
+    0.0,
+    0,
+    -0.4
+   ],
+   "params": {
+    "size": [
+     8.8,
+     0.1,
+     2.8
+    ],
+    "period": 480,
+    "on": 240,
+    "offset": 240
+   }
+  },
+  {
+   "id": "qt_light_exit",
+   "type": "light",
+   "position": [
+    5.75,
+    0,
+    -2.8
+   ],
+   "params": {
+    "size": [
+     1.5,
+     0.1,
+     2.4
+    ]
+   }
+  },
+  {
+   "id": "qt_wp_keeper_se",
+   "type": "waypoint",
+   "position": [
+    5.6,
+    0,
+    -2.7
+   ],
+   "params": {
+    "next": "qt_wp_keeper_ne",
+    "wait": 0,
+    "look": 0
+   }
+  },
+  {
+   "id": "qt_wp_keeper_ne",
+   "type": "waypoint",
+   "position": [
+    5.6,
+    0,
+    3.1
+   ],
+   "params": {
+    "next": "qt_wp_keeper_nw",
+    "wait": 60,
+    "look": 270
+   }
+  },
+  {
+   "id": "qt_wp_keeper_nw",
+   "type": "waypoint",
+   "position": [
+    -5.0,
+    0,
+    3.2
+   ],
+   "params": {
+    "next": "qt_wp_keeper_sw",
+    "wait": 0,
+    "look": 180
+   }
+  },
+  {
+   "id": "qt_wp_keeper_sw",
+   "type": "waypoint",
+   "position": [
+    -5.0,
+    0,
+    -2.7
+   ],
+   "params": {
+    "next": "qt_wp_keeper_se",
+    "wait": 60,
+    "look": 90
+   }
+  },
+  {
+   "id": "qt_guard_keeper",
+   "type": "guard",
+   "position": [
+    3.0,
+    0,
+    -2.7
+   ],
+   "yaw": 90.0,
+   "params": {
+    "kind": "patrol",
+    "route": "qt_wp_keeper_se",
+    "speed": 0.9,
+    "sight": 4.5,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 200,
+    "torch": true
+   }
+  },
+  {
+   "id": "qt_camera_stair",
+   "type": "guard",
+   "position": [
+    6.3,
+    2.3,
+    -3.8
+   ],
+   "params": {
+    "kind": "camera",
+    "look_a": 280,
+    "look_b": 330,
+    "hold": 120,
+    "turn": 90,
+    "phase": 0,
+    "sight": 11.0,
+    "fov": 40
+   }
+  }
+ ],
+ "paths": {}
+}

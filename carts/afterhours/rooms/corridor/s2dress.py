@@ -80,8 +80,10 @@ class Room:
                 out.append((a + (b - a) * k / n, a + (b - a) * (k + 1) / n))
         return [(f'back_{k}', a, b) for k, (a, b) in enumerate(out)]
 
-    def wall_nodes(self, chunks):
+    def wall_nodes(self, chunks, height=WALL_H, top='cut'):
+        """The walls. A lower `height` makes parapets (a roof): their tops `top`, no lintels."""
         P = self.P
+        H = height
         n = []
         # the front wall in section
         m = Mesh()
@@ -93,7 +95,7 @@ class Room:
         edges = [a for _, a, _ in chunks] + [b for _, _, b in chunks]
         for name, a, b in chunks:
             op = ['bottom']
-            faces = {'back': name, 'top': 'cut', 'front': 'cut'}
+            faces = {'back': name, 'top': top, 'front': 'cut'}
             for side, x in (('left', a), ('right', b)):
                 if edges.count(x) > 1:
                     op.append(side)
@@ -101,8 +103,8 @@ class Room:
                     faces[side] = 'cut'
                 else:
                     faces[side] = 'reveal'
-            n.append(box(name + '_wall', (a, -0.02, self.Z1), (b, WALL_H, self.ZO1), 'end', open=op, faces=faces))
-        for i, (a, b) in enumerate(self.gaps['n']):
+            n.append(box(name + '_wall', (a, -0.02, self.Z1), (b, H, self.ZO1), 'end', open=op, faces=faces))
+        for i, (a, b) in enumerate(self.gaps['n'] if H > 2.1 else []):
             n.append(box(f'back_lintel_{i}', (a, 2.1, self.Z1), (b, WALL_H - 0.01, self.ZO1), 'end', open=['left', 'right'],
                          faces={'bottom': 'door_glow', 'top': 'cut', 'back': 'lintel', 'front': 'cut'}))
             n.append(box(f'back_sill_{i}', (a, -SLAB, self.Z1), (b, -0.02, self.ZO1), 'cut', open=['top', 'left', 'right', 'back']))
@@ -116,12 +118,13 @@ class Room:
                     op.append('back')
                 if b == self.Z1:
                     op.append('front')
-                n.append(box(f'end_{side}_{i}', (ax0, -SLAB, a), (ax1, WALL_H, b), 'end', open=op,
-                             faces={'top': 'cut', outer: 'cut', inner: 'end', **({} if 'back' in op else {'back': 'reveal'}),
+                n.append(box(f'end_{side}_{i}', (ax0, -SLAB, a), (ax1, H, b), 'end', open=op,
+                             faces={'top': top, outer: 'cut', inner: 'end', **({} if 'back' in op else {'back': 'reveal'}),
                                     **({} if 'front' in op else {'front': 'reveal'})}))
             for i, (a, b) in enumerate(self.gaps[side]):
-                n.append(box(f'end_{side}_lintel_{i}', (ax0, 2.1, a), (ax1, WALL_H - 0.01, b), 'end', open=['front', 'back'],
-                             faces={'bottom': 'door_glow', 'top': 'cut', outer: 'cut', inner: 'lintel'}))
+                if H > 2.1:
+                    n.append(box(f'end_{side}_lintel_{i}', (ax0, 2.1, a), (ax1, WALL_H - 0.01, b), 'end', open=['front', 'back'],
+                                 faces={'bottom': 'door_glow', 'top': 'cut', outer: 'cut', inner: 'lintel'}))
                 n.append(box(f'end_{side}_sill_{i}', (ax0, -SLAB, a), (ax1, -0.02, b), 'cut', open=['top', 'front', 'back', inner]))
         return n
 

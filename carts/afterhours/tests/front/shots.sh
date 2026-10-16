@@ -1,10 +1,11 @@
 #!/bin/sh
 # The front end's captures (agent E), into tests/front/shots/: the title, the stage select (new,
-# part cleared, cleared, stage 2 locked as a silhouette, stage 2 open), three transitions as
-# strips of every 6th frame (room 1 to 2; the lobby up to the aquarium; in stage 2, back from the
-# shop floor into the staff corridor), and the stages' ends. Each
-# is a run of a scenario from tests/front/harness.akr stopped at its frame. Needs Pillow for the
-# strips. MEIC, RUN and WORLDS as for tests/front/run.sh.
+# part cleared, cleared, the tower locked as a silhouette, the tower open, the store), three
+# transitions (H's) as strips of every 6th frame over 60 frames (the station's room 1 to 2 and
+# 2 to 3; in the store, back from the shop floor into the staff corridor), the stages' ends, and
+# the pause in the store (its map with the rooms so far, then its controls; scenario 73).
+# Each is a run of a scenario from tests/front/harness.akr stopped at its frame. Needs Pillow for
+# the strips. MEIC, RUN and WORLDS as for tests/front/run.sh.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SH="$HERE/shots"
@@ -33,14 +34,16 @@ PY
 }
 shot title 60 39
 shot select_new 60 58
-strip transition_1_to_2 60 456 552
-strip transition_4_to_5 60 4357 4452
-shot end 60 5270
-shot select_stage2_open 60 5292
-shot select_cleared 60 5302
+strip transition_1_to_2 60 459 519
+strip transition_2_to_3 60 2023 2083
+shot end 60 3067
+shot select_tower_open 60 3089
+shot select_cleared 60 3099
 shot select_part_cleared 61 41
 shot select_locked 61 81
-shot select_stage2 66 49
-strip transition_stage2_back 66 4523 4619
-shot end_stage2 66 10960
+shot select_store 66 49
+strip transition_store_back 66 4454 4514
+shot end_store 66 10708
+shot pause_map 73 4640
+shot pause_controls 73 4700
 echo "captures in $SH"

@@ -10,7 +10,7 @@ mei-headless, which dumps the frame and its CPU and GPU statistics. Each pitch i
   full     the room, the tanks, the thief, the guard and his cone, as the shots show it
   noglass  the same without the large semi-transparent panes (the three tanks' glass, the column's
            and the cube's water surfaces), so full - noglass is what the glass costs
-  noblend  without anything semi-transparent at all (also the jellyfish, the light shafts, the
+  noblend  without anything semi-transparent at all (also the bubbles, the light shafts, the
            cone and the blob shadows)
   loaded   full plus a third guard and the two cones drawn twice: the frame the budget is about
   thief    the thief alone on black, to measure his height on screen in pixels
@@ -45,7 +45,8 @@ VOID = (6, 10, 22)            # the void around the section: the game's (dr_view
 GAME_PITCH, GAME_DIST = 60, 28.166      # dr_view.akr's camera: CAM_PITCH, CAM_DIST, CAM_FOV (20 degrees)
 GAME_TARGET_Y = 0.6                     # CAM_TARGET_Y
 GAME_FRONT_Z, GAME_FRONT_LINE = -3.15, 246    # frame_room(): the room's front edge on screen line 246
-PANES = {'window_glass', 'surface', 'jelly_glass', 'jelly_surface', 'cube_glass'}
+REGION_SLOTS = '8,6,5,4,3,20,21,22,23,24'   # the room's region in the aquarium stage (PLAN.md)
+PANES = {'window_glass', 'surface', 'column_glass', 'column_surface', 'cube_glass'}
 ROOM_W = 2 * A.XO             # 12.1 m across the outer walls
 
 
@@ -210,7 +211,7 @@ def main():
     names = RECIPES + ['aq_room_noglass', 'aq_tanks_noglass', 'aq_room_noblend', 'aq_tanks_noblend',
                        'standin_thief_noblend', 'standin_guard_noblend']
     run(kit + ['pack'] + [src / f'{n}.asset.json' for n in names] +
-        ['-o', out / 'pack', '--name', 'aquarium', '--slots', '0-14', '--palette', '0', '--palette8', '14'])
+        ['-o', out / 'pack', '--name', 'aquarium', '--slots', REGION_SLOTS, '--palette', '0', '--palette8', '14'])
     pack_json = json.loads((out / 'pack' / 'aquarium.pack.json').read_text())
     per_asset = {}
     for entry in pack_json.get('assets', []):

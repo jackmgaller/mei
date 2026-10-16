@@ -54,13 +54,45 @@
     "projection": "fit"
    }
   },
-  "door": {
-   "color": "#405070",
+  "door_head": {
+   "color": "#c8e4ff",
+   "class": "emissive"
+  },
+  "service_floor": {
+   "color": "#707880"
+  },
+  "service_wall": {
+   "color": "#7c8590"
+  },
+  "tube": {
+   "color": "#eef6ff",
+   "class": "emissive"
+  },
+  "pipe": {
+   "color": "#7a8a94"
+  },
+  "doorway_dark": {
+   "color": "#06080c",
+   "class": "emissive"
+  },
+  "quar_sign": {
+   "color": "#e0e8f0",
+   "class": "emissive",
    "texture": {
-    "image": "art/door.png",
+    "image": "art/quar_sign.png",
     "bits": 4,
     "projection": "fit"
    }
+  },
+  "passage_floor": {
+   "color": "#5a5470"
+  },
+  "passage_wall": {
+   "color": "#4a4664"
+  },
+  "glow_strip": {
+   "color": "#9a70ff",
+   "class": "emissive"
   },
   "exit": {
    "color": "#30b060",
@@ -103,7 +135,7 @@
    "color": "#c8b8f0",
    "class": "emissive",
    "texture": {
-    "image": "art/sign_jelly.png",
+    "image": "art/sign_column.png",
     "bits": 8,
     "projection": "fit"
    }
@@ -326,16 +358,127 @@
    "id": "pier_right",
    "op": "box",
    "size": [
-    1.65,
+    0.44,
     3.26,
     0.25
    ],
    "material": "wall_face",
    "transform": {
     "translate": [
-     5.225,
+     4.62,
      1.61,
      3.025
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "pier_east",
+   "op": "box",
+   "size": [
+    0.39,
+    3.26,
+    0.25
+   ],
+   "material": "wall_face",
+   "transform": {
+    "translate": [
+     5.855,
+     1.61,
+     3.025
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "lintel",
+   "op": "box",
+   "size": [
+    0.86,
+    1.1,
+    0.17
+   ],
+   "material": "wall_face",
+   "transform": {
+    "translate": [
+     5.25,
+     2.65,
+     3.025
+    ]
+   },
+   "faces": {
+    "top": "cut",
+    "bottom": "door_head"
+   }
+  },
+  {
+   "id": "corridor_floor",
+   "op": "box",
+   "size": [
+    1.21,
+    0.4,
+    1.85
+   ],
+   "material": "service_floor",
+   "transform": {
+    "translate": [
+     5.465,
+     -0.2,
+     4.075
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ]
+  },
+  {
+   "id": "corridor_wall",
+   "op": "box",
+   "size": [
+    0.24,
+    3.22,
+    1.85
+   ],
+   "material": "service_wall",
+   "transform": {
+    "translate": [
+     5.92,
+     1.59,
+     4.045
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "corridor_end",
+   "op": "box",
+   "size": [
+    1.17,
+    3.19,
+    0.25
+   ],
+   "material": "service_wall",
+   "transform": {
+    "translate": [
+     5.425,
+     1.575,
+     5.075
     ]
    },
    "open": [
@@ -346,19 +489,186 @@
    },
    "decals": [
     {
-     "id": "door",
+     "id": "way_through",
      "face": "back",
-     "material": "door",
+     "material": "doorway_dark",
      "at": [
-      0.025,
-      -0.56
+      -0.005,
+      -0.575
      ],
      "size": [
-      0.82,
-      2.08
+      0.8,
+      1.98
+     ]
+    },
+    {
+     "id": "sign",
+     "face": "back",
+     "material": "quar_sign",
+     "at": [
+      -0.005,
+      0.745
+     ],
+     "size": [
+      0.84,
+      0.22
      ]
     }
    ]
+  },
+  {
+   "id": "corridor_tube",
+   "op": "box",
+   "size": [
+    0.08,
+    0.07,
+    1.15
+   ],
+   "material": "tube",
+   "transform": {
+    "translate": [
+     5.78,
+     2.485,
+     4.025
+    ]
+   }
+  },
+  {
+   "id": "corridor_pipe_0",
+   "op": "box",
+   "size": [
+    0.08,
+    0.08,
+    1.74
+   ],
+   "material": "pipe",
+   "transform": {
+    "translate": [
+     4.9,
+     2.66,
+     4.07
+    ]
+   }
+  },
+  {
+   "id": "corridor_pipe_1",
+   "op": "box",
+   "size": [
+    0.08,
+    0.08,
+    1.74
+   ],
+   "material": "pipe",
+   "transform": {
+    "translate": [
+     4.9,
+     2.82,
+     4.07
+    ]
+   }
+  },
+  {
+   "id": "passage_floor",
+   "op": "box",
+   "size": [
+    1.76,
+    0.4,
+    1.32
+   ],
+   "material": "passage_floor",
+   "transform": {
+    "translate": [
+     -4.3,
+     -0.2,
+     -3.84
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "passage_wall_0",
+   "op": "box",
+   "size": [
+    0.23,
+    0.99,
+    1.34
+   ],
+   "material": "passage_wall",
+   "transform": {
+    "translate": [
+     -5.035,
+     0.475,
+     -3.8
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "passage_glow_0",
+   "op": "box",
+   "size": [
+    0.06,
+    0.06,
+    1.25
+   ],
+   "material": "glow_strip",
+   "transform": {
+    "translate": [
+     -4.92,
+     0.02,
+     -3.825
+    ]
+   }
+  },
+  {
+   "id": "passage_wall_1",
+   "op": "box",
+   "size": [
+    0.23,
+    0.99,
+    1.34
+   ],
+   "material": "passage_wall",
+   "transform": {
+    "translate": [
+     -3.565,
+     0.475,
+     -3.8
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "passage_glow_1",
+   "op": "box",
+   "size": [
+    0.06,
+    0.06,
+    1.25
+   ],
+   "material": "glow_strip",
+   "transform": {
+    "translate": [
+     -3.68,
+     0.02,
+     -3.825
+    ]
+   }
   },
   {
    "id": "sill",
@@ -1094,14 +1404,14 @@
     "radius": 0.6
    },
    {
-    "id": "jelly",
+    "id": "column",
     "at": [
      -2.9,
      1.3,
      -0.2
     ],
-    "color": "#a87cff",
-    "intensity": 4.0,
+    "color": "#a8ccff",
+    "intensity": 3.6,
     "range": 3.4,
     "shadows": true,
     "radius": 0.5
@@ -1131,17 +1441,30 @@
     "range": 1.8
    },
    {
-    "id": "lift",
+    "id": "gallery",
     "at": [
      -4.300000000000001,
-     1.1,
-     -3.65
+     0.8,
+     -3.9
     ],
-    "color": "#ffd0a0",
-    "intensity": 2.4,
-    "range": 4.2,
+    "color": "#a070ff",
+    "intensity": 3.2,
+    "range": 4.6,
     "shadows": true,
-    "radius": 0.3
+    "radius": 0.2
+   },
+   {
+    "id": "corridor",
+    "at": [
+     5.3,
+     2.5,
+     3.95
+    ],
+    "color": "#e8f4ff",
+    "intensity": 1.6,
+    "range": 4.4,
+    "shadows": true,
+    "radius": 0.15
    },
    {
     "id": "wall_tank_0",

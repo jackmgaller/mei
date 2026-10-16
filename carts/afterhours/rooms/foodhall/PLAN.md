@@ -1,13 +1,12 @@
-# Stage 2, room 4: the food hall (floor plan)
+# The department store (stage 3), room 4: the food hall (floor plan)
 
-Stage 2's last room (`levels/level2/ROUTE.md`). The department store's basement, the depachika:
+The store's last room (`levels/store/ROUTE.md`). The department store's basement, the depachika:
 two rows of lit cases (cakes, fruit, wrapped boxes) either side of a middle aisle, the melon
-counter at the east end, columns, stacks of gift boxes. The service lift from the shop floor
-opens in the back wall at the west end; the way out, to the underground mall (stage 3's way
-home), is the shutter door at the front of the east wall. A cleaner pushes his cart round all the
-cases; the guard at the melon counter looks along the hall from side to side; a camera on the
-back wall sweeps the middle. A stack of gift boxes brushed falls with a noise that brings the
-guards to look.
+counter at the east end, columns, stacks of gift boxes. The service lift from the shop floor opens
+in the back wall at the west end; the way out, to the underground mall (stage 3's way home), is the
+shutter door at the front of the east wall. A cleaner pushes his cart round all the cases; the
+guard at the melon counter looks along the hall from side to side; a camera on the back wall sweeps
+the middle. A stack of gift boxes brushed falls with a noise that brings the guards to look.
 
 The greybox is `make_foodhall.py` (it writes `greybox/`, `foodhall.placements.json` and
 `foodhall.play.json`). The dressed room replaces the greybox recipes and the placements file;
@@ -71,5 +70,5 @@ open car beyond the back wall.
 
 ## Rules for every room
 
-As `levels/level2/ROUTE.md`, "Rules for every room", with this room's prefix `fh_` and its
+As `levels/store/ROUTE.md`, "Rules for every room", with this room's prefix `fh_` and its
 placements in `foodhall.placements.json`.

@@ -1,0 +1,413 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "aq_jelly",
+ "entities": [
+  {
+   "id": "aj_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "name": "the_jellyfish_gallery",
+    "entry": "aj_spawn_great",
+    "size": [
+     14.5,
+     2.4,
+     8.5
+    ],
+    "dark": true
+   }
+  },
+  {
+   "id": "aj_spawn_great",
+   "type": "spawn",
+   "position": [
+    -6.125,
+    0,
+    -2.6
+   ],
+   "params": {
+    "yaw": 90
+   }
+  },
+  {
+   "id": "aj_door_great",
+   "type": "door",
+   "position": [
+    -7.125,
+    0,
+    -2.6
+   ],
+   "yaw": 90,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "aj_spawn_great",
+    "to": "ag_door_jelly"
+   }
+  },
+  {
+   "id": "aj_spawn_ocean",
+   "type": "spawn",
+   "position": [
+    6.125,
+    0,
+    2.2
+   ],
+   "params": {
+    "yaw": 270
+   }
+  },
+  {
+   "id": "aj_door_ocean",
+   "type": "door",
+   "position": [
+    7.125,
+    0,
+    2.2
+   ],
+   "yaw": 270,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "aj_spawn_ocean",
+    "to": "ao_door_jelly"
+   }
+  },
+  {
+   "id": "aj_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -4.125
+   ],
+   "params": {
+    "size": [
+     14.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "aj_wall_back_0",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    4.125
+   ],
+   "params": {
+    "size": [
+     14.5,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "aj_wall_end_w_0",
+   "type": "wall",
+   "position": [
+    -7.125,
+    0,
+    -3.6
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.8
+    ]
+   }
+  },
+  {
+   "id": "aj_wall_end_w_1",
+   "type": "wall",
+   "position": [
+    -7.125,
+    0,
+    1.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     6.0
+    ]
+   }
+  },
+  {
+   "id": "aj_wall_end_e_0",
+   "type": "wall",
+   "position": [
+    7.125,
+    0,
+    -1.2
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     5.6
+    ]
+   }
+  },
+  {
+   "id": "aj_wall_end_e_1",
+   "type": "wall",
+   "position": [
+    7.125,
+    0,
+    3.4
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     1.2
+    ]
+   }
+  },
+  {
+   "id": "aj_wall_column_0",
+   "type": "wall",
+   "position": [
+    -4.5,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     1.0,
+     2.4,
+     1.0
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "aj_wall_column_1",
+   "type": "wall",
+   "position": [
+    -1.5,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     1.0,
+     2.4,
+     1.0
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "aj_wall_column_2",
+   "type": "wall",
+   "position": [
+    1.5,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     1.0,
+     2.4,
+     1.0
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "aj_wall_column_3",
+   "type": "wall",
+   "position": [
+    4.5,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     1.0,
+     2.4,
+     1.0
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "aj_wall_wall_tanks",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    3.8
+   ],
+   "params": {
+    "size": [
+     11.0,
+     2.4,
+     0.4
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "aj_light_bay_0",
+   "type": "light",
+   "position": [
+    -4.5,
+    0,
+    -0.2
+   ],
+   "params": {
+    "size": [
+     3.0,
+     0.1,
+     7.6
+    ],
+    "period": 480,
+    "on": 240,
+    "offset": 0
+   }
+  },
+  {
+   "id": "aj_light_bay_1",
+   "type": "light",
+   "position": [
+    -1.5,
+    0,
+    -0.2
+   ],
+   "params": {
+    "size": [
+     3.0,
+     0.1,
+     7.6
+    ],
+    "period": 480,
+    "on": 240,
+    "offset": 120
+   }
+  },
+  {
+   "id": "aj_light_bay_2",
+   "type": "light",
+   "position": [
+    1.5,
+    0,
+    -0.2
+   ],
+   "params": {
+    "size": [
+     3.0,
+     0.1,
+     7.6
+    ],
+    "period": 480,
+    "on": 240,
+    "offset": 240
+   }
+  },
+  {
+   "id": "aj_light_bay_3",
+   "type": "light",
+   "position": [
+    4.5,
+    0,
+    -0.2
+   ],
+   "params": {
+    "size": [
+     3.0,
+     0.1,
+     7.6
+    ],
+    "period": 480,
+    "on": 240,
+    "offset": 360
+   }
+  },
+  {
+   "id": "aj_guard_end",
+   "type": "guard",
+   "position": [
+    6.3,
+    0.0,
+    -3.3
+   ],
+   "params": {
+    "kind": "posted",
+    "look_a": 285,
+    "look_b": 315,
+    "hold": 120,
+    "turn": 120,
+    "phase": 0,
+    "sight": 13.0,
+    "fov": 40,
+    "hear": 6
+   }
+  },
+  {
+   "id": "aj_wp_keeper_e",
+   "type": "waypoint",
+   "position": [
+    5.5,
+    0,
+    2.6
+   ],
+   "params": {
+    "next": "aj_wp_keeper_w",
+    "wait": 90,
+    "look": 180
+   }
+  },
+  {
+   "id": "aj_wp_keeper_w",
+   "type": "waypoint",
+   "position": [
+    -5.5,
+    0,
+    2.6
+   ],
+   "params": {
+    "next": "aj_wp_keeper_e",
+    "wait": 90,
+    "look": 180
+   }
+  },
+  {
+   "id": "aj_guard_keeper",
+   "type": "guard",
+   "position": [
+    -5.5,
+    0,
+    2.6
+   ],
+   "yaw": 90.0,
+   "params": {
+    "kind": "patrol",
+    "route": "aj_wp_keeper_e",
+    "speed": 0.9,
+    "sight": 4.5,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 180
+   }
+  }
+ ],
+ "paths": {}
+}

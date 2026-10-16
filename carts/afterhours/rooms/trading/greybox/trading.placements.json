@@ -1,0 +1,17 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "trading",
+ "placements": [
+  {
+   "id": "tf_shell",
+   "asset": "tf_shell",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "tf_shell_col"
+  }
+ ]
+}

@@ -1,0 +1,469 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "ak_shell",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 1200
+ },
+ "lighting": {
+  "direction": [
+   -0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "materials": {
+  "cut": {
+   "color": "#a8b2c4"
+  },
+  "desk": {
+   "color": "#7a6a5a"
+  },
+  "door_light": {
+   "color": "#7cf0a0",
+   "class": "emissive"
+  },
+  "floor_dark": {
+   "color": "#6c7078"
+  },
+  "fragile_box": {
+   "color": "#c87c3c"
+  },
+  "glass": {
+   "color": "#6cb4d4"
+  },
+  "hide_floor": {
+   "color": "#283c5c"
+  },
+  "tile": {
+   "color": "#9aa0a6"
+  },
+  "wall": {
+   "color": "#4c5462"
+  },
+  "wall_light": {
+   "color": "#6c7484"
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    13.5,
+    0.4,
+    8.5
+   ],
+   "material": "floor_dark",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.2,
+     0.0
+    ]
+   },
+   "faces": {
+    "top": "tile",
+    "back": "cut"
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "decals": [
+    {
+     "id": "hide_freezer",
+     "face": "top",
+     "material": "hide_floor",
+     "size": [
+      0.78,
+      1.18
+     ],
+     "at": [
+      -4.2,
+      1.8
+     ]
+    }
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    13.5,
+    1.0,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.0,
+     0.5,
+     -4.125
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "back_0",
+   "op": "box",
+   "size": [
+    10.55,
+    2.42,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -1.475,
+     1.19,
+     4.125
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "back_1",
+   "op": "box",
+   "size": [
+    1.75,
+    2.42,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     5.875,
+     1.19,
+     4.125
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_w_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    0.8
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -6.625,
+     1.19,
+     -3.6
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_w_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    6.0
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -6.625,
+     1.19,
+     1.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    8.0
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     6.625,
+     1.19,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "back_lintel0_0",
+   "op": "box",
+   "size": [
+    1.2,
+    0.29,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     4.4,
+     2.245,
+     4.125
+    ]
+   },
+   "open": [
+    "left",
+    "right"
+   ],
+   "faces": {
+    "bottom": "door_light"
+   }
+  },
+  {
+   "id": "end_w_lintel0_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -6.625,
+     2.245,
+     -2.6
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_light"
+   }
+  },
+  {
+   "id": "island",
+   "op": "box",
+   "size": [
+    5.0,
+    0.92,
+    1.4
+   ],
+   "material": "desk",
+   "transform": {
+    "translate": [
+     -0.5,
+     0.44,
+     -0.5
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "desk"
+   }
+  },
+  {
+   "id": "sinks",
+   "op": "box",
+   "size": [
+    5.0,
+    0.92,
+    0.7
+   ],
+   "material": "desk",
+   "transform": {
+    "translate": [
+     -4.0,
+     0.44,
+     3.65
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "left"
+   ],
+   "faces": {
+    "top": "desk"
+   }
+  },
+  {
+   "id": "freezer",
+   "op": "box",
+   "size": [
+    1.9,
+    1.02,
+    2.4
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     -5.55,
+     0.49,
+     1.8
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "feed_tank",
+   "op": "box",
+   "size": [
+    1.8,
+    1.02,
+    1.2
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     4.7,
+     0.49,
+     1.5
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "shelves",
+   "op": "box",
+   "size": [
+    0.7,
+    1.02,
+    3.6
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     6.15,
+     0.49,
+     -1.8
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "fragile_buckets_0",
+   "op": "box",
+   "size": [
+    0.49,
+    0.5,
+    0.49
+   ],
+   "material": "fragile_box",
+   "transform": {
+    "translate": [
+     -0.6,
+     0.25,
+     -2.3
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "fragile_buckets_1",
+   "op": "box",
+   "size": [
+    0.49,
+    0.5,
+    0.49
+   ],
+   "material": "fragile_box",
+   "transform": {
+    "translate": [
+     2.6,
+     0.25,
+     -1.6
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "fragile_buckets_2",
+   "op": "box",
+   "size": [
+    0.49,
+    0.5,
+    0.49
+   ],
+   "material": "fragile_box",
+   "transform": {
+    "translate": [
+     1.4,
+     0.25,
+     3.1
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ],
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

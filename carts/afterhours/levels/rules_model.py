@@ -194,12 +194,29 @@ class Sim:
             for k, v in override.items():
                 ents[k]['params'].update(v)
         self.ents = ents
+        # the aquarium's two levels (NOTES_J.md): the thief is on the level of the spawn he comes
+        # in at; every entity has a level (0 when it says none)
+        room = next(e for e in ents.values() if e['type'] == 'room')
+        sp = ents[room['params']['entry']] if door is None else ents[ents[door]['params']['spawn']]
+        self.level = sp['params'].get('level', 0)
+        self.dark = room['params'].get('dark', False)
+        lv = lambda e: e['params'].get('level', 0)
         self.walls = []
+        self.walls_l = {}
         for e in ents.values():
             if e['type'] == 'wall':
                 p = e['params']
-                self.walls.append(Box(e['position'][0], e['position'][2], p['size'][0], p['size'][2],
-                                      p.get('blocks', True), p.get('solid', True)))
+                b = Box(e['position'][0], e['position'][2], p['size'][0], p['size'][2],
+                        p.get('blocks', True), p.get('solid', True))
+                self.walls_l.setdefault(lv(e), []).append(b)
+                if lv(e) == self.level:
+                    self.walls.append(b)
+        self.walls_l.setdefault(self.level, [])
+        # the dark rooms' lights: (box, level, period, on, offset)
+        self.lights = [(Box(e['position'][0], e['position'][2], e['params']['size'][0], e['params']['size'][2],
+                            yaw=e.get('yaw', 0) * DEG), lv(e), e['params'].get('period', 0), e['params'].get('on', 0),
+                        e['params'].get('offset', 0))
+                       for e in ents.values() if e['type'] == 'light']
         self.trains = []
         for e in ents.values():
             if e['type'] == 'train':
@@ -215,10 +232,8 @@ class Sim:
         for b in self.walls:
             if b.blocks:
                 self.segs += segs_of(b.corners())
-        room = next(e for e in ents.values() if e['type'] == 'room')
-        sp = ents[room['params']['entry']]
-        if door is not None:
-            sp = ents[ents[door]['params']['spawn']]
+        # the other level's walls, for its watchers' fans
+        self.segs_l = {k: [sg for b in bs if b.blocks for sg in segs_of(b.corners())] for k, bs in self.walls_l.items()}
         self.came_by = door
         self.spawn = (sp['position'][0], sp['position'][2], sp['params'].get('yaw', 0) * DEG)
         ex = ents.get(room['params'].get('exit'))
@@ -226,22 +241,22 @@ class Sim:
         # stage 2: the doors (in entity order, A's door index) and the keycards
         self.doors = []
         for e in ents.values():
-            if e['type'] != 'door':
+            if e['type'] != 'door' or lv(e) != self.level:
                 continue
             p = e['params']
             sz = p.get('size', [1.2, 2.2, 0.4])
             self.doors.append(dict(id=e['id'], card=p.get('card', 'none'), to=p.get('to'), end=p.get('end', False),
                                    box=Box(e['position'][0], e['position'][2], sz[0], sz[2], yaw=e.get('yaw', 0) * DEG)))
         self.cards = [dict(id=e['id'], colour=e['params']['colour'], x=e['position'][0], z=e['position'][2])
-                      for e in ents.values() if e['type'] == 'keycard']
+                      for e in ents.values() if e['type'] == 'keycard' and lv(e) == self.level]
         self.run_held, self.run_opened = set(held), set(opened)
         self.base_segs = self.segs
         self.ntoys = room['params'].get('toys', 0)
         self.nbells = room['params'].get('bells', 0)
         self.spots = [Box(e['position'][0], e['position'][2], e['params']['size'][0], e['params']['size'][2])
-                      for e in ents.values() if e['type'] == 'hide_spot']
+                      for e in ents.values() if e['type'] == 'hide_spot' and lv(e) == self.level]
         self.frag = [(e['position'][0], e['position'][2], e['params'].get('radius', 0.4), e['params'].get('noise', 8))
-                     for e in ents.values() if e['type'] == 'fragile']
+                     for e in ents.values() if e['type'] == 'fragile' and lv(e) == self.level]
         self.wp_index = {}
         self.wps = []
         for e in ents.values():
@@ -262,7 +277,7 @@ class Sim:
                      sight=p.get('sight', 6), half=p.get('fov', 60) * DEG / 2, speed=p.get('speed', 1.2) / 60,
                      look_a=p.get('look_a', 0) * DEG, look_b=p.get('look_b', 0) * DEG, hold=p.get('hold', 60),
                      turn=p.get('turn', 90), phase=p.get('phase', 0), hear=p.get('hear', 6),
-                     turn_rate=p.get('turn_rate', 240) * DEG / 60)
+                     turn_rate=p.get('turn_rate', 240) * DEG / 60, level=p.get('level', 0), torch=p.get('torch', False))
             d['head'] = e.get('yaw', 0) * DEG     # A's dr_world: the entity's yaw
             self.watch.append(d)
         self.reset()
@@ -294,7 +309,7 @@ class Sim:
         self.frag_down = [False] * len(self.frag)
         self.guards = []
         for d in self.watch:
-            g = dict(x=d['x'], z=d['z'], head=d['head'], target=d['route'], toy=None, away=False, timer=0)
+            g = dict(x=d['x'], z=d['z'], head=d['head'], target=d['route'], toy=None, away=False, timer=0, level=d['level'])
             if d['kind'] == 'patrol':
                 g['mode'] = 'route' if d['route'] >= 0 else 'hold'
             else:
@@ -456,7 +471,10 @@ class Sim:
         why = None
         th = self.th
         for i, (d, g) in enumerate(zip(self.watch, self.guards)):
-            if not th['hidden'] and fan_hits(g['fan'], th['x'], th['z'], 0.0 if RULES['centre'] else THIEF_R):
+            if d['level'] != self.level:
+                continue
+            if not th['hidden'] and fan_hits(g['fan'], th['x'], th['z'], 0.0 if RULES['centre'] else THIEF_R) \
+                    and self.sees_lit(d, th['x'], th['z'], t):
                 why = ('seen', d['id']); break
             if d['kind'] != 'camera' and (th['x'] - g['x']) ** 2 + (th['z'] - g['z']) ** 2 < (THIEF_R + GUARD_R) ** 2:
                 why = ('touched', d['id']); break
@@ -558,7 +576,7 @@ class Sim:
         x, z = g['x'] + dx * k, g['z'] + dz * k
         g['head'] = turn_toward(g['head'], heading_to(dx, dz), g['rate'])
         for _ in range(2):
-            for b in self.walls:
+            for b in (self.walls if g.get('level', 0) == self.level else self.walls_l[g['level']]):
                 if b.solid:
                     x, z, _h = b.push(x, z, GUARD_R)
         g['x'], g['z'] = x, z
@@ -634,7 +652,34 @@ class Sim:
     def sight(self):
         segs = self.segs + self.dyn_segs
         for d, g in zip(self.watch, self.guards):
-            g['fan'] = fan_cast(g['x'], g['z'], g['head'], d['half'], d['sight'], segs)
+            sg = segs if d['level'] == self.level else self.segs_l.get(d['level'], [])
+            g['fan'] = fan_cast(g['x'], g['z'], g['head'], d['half'], d['sight'], sg)
+
+    # ---- the aquarium's dark rooms (NOTES_J.md)
+    def lit(self, x, z, t, level=None):
+        """Whether (x, z) on the level is inside a light that is on at tick t."""
+        level = self.level if level is None else level
+        for b, lvl, period, on, off in self.lights:
+            if lvl != level or not b.contains(x, z):
+                continue
+            if period <= 0 or (t - off) % period < on:
+                return True
+        return False
+
+    def light_dist(self, x, z, t):
+        """How far (x, z) is from the nearest light on at tick t on his level (for the margins)."""
+        best = 99.0
+        for b, lvl, period, on, off in self.lights:
+            if lvl != self.level or not (period <= 0 or (t - off) % period < on):
+                continue
+            lx, lz = b.local(x, z)
+            best = min(best, math.hypot(max(abs(lx) - b.hx, 0), max(abs(lz) - b.hz, 0)))
+        return best
+
+    def sees_lit(self, d, x, z, t):
+        """A watcher's fan that covers him sees him: always in a lit room or with a torch, else
+        only where he stands in a light."""
+        return not self.dark or d['torch'] or self.lit(x, z, t)
 
 
 def ray_seg(ax, az, dx, dz, s, best):

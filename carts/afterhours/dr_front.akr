@@ -11,6 +11,7 @@ import "dr_section.akr"
 import "dr_save.akr"
 import "dr_trans.akr"
 import "dr_menu.akr"
+import "dr_pause.akr"
 
 fn fe_start() {
     save_boot()
@@ -27,11 +28,14 @@ fn fe_update(pad: u32, press: u32) {
         Select => select_update(pad, press)
         Transition => trans_update(pad, press)
         End => end_update(press)
+        Pause => pause_update(pad, press)
         else => {}
     }
 }
 
-fn fe_draw_room() -> bool { return !trans_owns_frame() }
+// A draws the room unless the transition draws its own picture, or it is the stage's first
+// frame (below, fe_draw()).
+fn fe_draw_room() -> bool { return !trans_owns_frame() && !(mode == Mode.Play && fade_in >= 20) }
 
 fn fe_draw() -> bool {
     save_flush()
@@ -48,6 +52,10 @@ fn fe_draw() -> bool {
             end_draw()
             return true
         }
+        Pause => {
+            pause_draw()
+            return true
+        }
         Transition => {
             if trans_owns_frame() {
                 trans_draw()
@@ -57,6 +65,14 @@ fn fe_draw() -> bool {
         }
         Play => {
             frames_n += 1
+            if fade_in >= 20 {
+                // the stage's first frame: its world and first room were set up in this frame's
+                // update (stage_start()), the heaviest the front end causes; the screen is black
+                // from the select's fade, so the room is not drawn on it (fe_draw_room() false)
+                cls(0)
+                fade_in -= 1
+                return true
+            }
             if fade_in > 0 {
                 fade_cover(fade_in * 13)
                 fade_in -= 1
@@ -73,9 +89,9 @@ fn fe_event(e: Ev, a: s32) {
         // clearing attempt's; in a stage of doors room_time sums every visit, so its best is
         // saved at the stage's end (end_begin())
         if exit_door == EXIT_LINE || exit_door < 0 {
-            let _ = save_room(stage_of(), a, room_time[a])
+            let _ = stage_room(stage_of(), a, room_time[a])
         } else {
-            save_room_cleared(stage_of(), a)
+            stage_room_cleared(stage_of(), a)
         }
         if room_load_more() && fe_owns_transition() { trans_begin(a) }
     } else if e == Ev.StageClear {

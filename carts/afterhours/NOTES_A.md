@@ -3,6 +3,100 @@
 What the runtime does, what it reads from the room, the tape format, my answers to B and the
 decisions Gate 1 makes. Kept current. B's side is in `NOTES_B.md`.
 
+## The stages (2026-10-15, with E, B and J)
+
+`dr_levels.akr`: `STAGE_STATION` 0 (`station`), `STAGE_TOWER` 1 (`tower`), `STAGE_AQUARIUM` 2
+(`aquarium`, J's), `STAGE_STORE` 3 (`store`; `STAGE2` an alias), `PLATFORM_LEVEL` 4; `LEVELS` 5.
+E's stage table is keyed by these. `stage_amb(k)` (`dr_world.akr`) gives each room F's ambience:
+the station 1-3, the tower 4 (its roof 5), the aquarium J's `AQUARIUM_AMB`, the store 6-10, the
+platform 1. Level 1 and level 2 are gone from the runtime and the scenarios (B removes them).
+
+| Scenario | What it plays |
+|---|---|
+| 41-43 | The station's rooms, each with B's tape from its clock 0 |
+| 46 | The station as one run (2,835 ticks), its totals and worst frame |
+| 47 | Every room's framing, every stage (each world opened bare, each room's box read, nothing loaded) |
+| 48 | The state flow through a front end: the station, two transitions, its end, again |
+| 63, 64 | The store's eight legs (10,216 ticks), alone and through transitions |
+| 83 | J's aquarium room by room, entered by every way in, 40 ticks each: worst frame 810k (debug, quarantine, after J's watcher changes) |
+| 85, 86 | J's aquarium tapes: the ten legs in order (8,693 ticks; worst frame CPU 692,513 debug, quarantine; GPU 381,437), and through a front end's nine transitions, by both levels' doors |
+| 88 | Each stage started as E's select does it: `stage_prepare(n)`, `stage_prepare_step()` a frame (one texture each) until done, `stage_start(n)`; no frame dropped; a prepare spoiled by another open falls back to opening the stage. `stage_start()` itself: 127k-324k cycles release (the aquarium's room load 271k) |
+| 91, 92 | The tower (now B's stage of doors, six legs): in order (6,969 ticks), and through transitions |
+| 87 | (diagnostic, not in `check.sh`) the aquarium's legs with nobody catching: the first tick of each leg on which any watcher would see or touch him |
+| 84 | A guard sent 200 m off walks toward it without overflow (the trap scenario 47 once hit at `dr_watch.akr:94`: a room loaded without `enter_room()` kept the last cell's guards; `guard_walk()` now measures a far target at a sixteenth) |
+
+**Dropped frames fail every scenario** (`drop_watch()` in the harness), except the frame after
+one on which the harness itself did heavy test work (`test_heavy`: the lit-fan grid sweeps, the
+framing search). The harness enters rooms as the game does: a stage through `stage_prepare()`
+and its steps, a room by `room_prepare()` and a texture a frame (83).
+
+**Worst frames in play only** (release, scenario 85, after each room's clock 2): the aquarium's
+rooms 195k-492k CPU (the hall's the most, mostly drawing; the rules' tick under 50k), GPU up to
+533k.
+
+**Dark fans kept** (2026-10-15): a dark-eyed watcher's lit fan and its dotted outline (the dots
+now small triangles on the floor) are one mesh per watcher (`cone_cached()`), rebuilt only when
+the fan's points, the lights on or its colour change; the lights' half-planes are worked out once
+(`room_light()`), a triangle outside a light's bounds is skipped before clipping. Scenario 80
+checks every tick that the kept mesh is the one a rebuild makes. Release, scenario 85, the dark
+rooms' worst frames in play before and after: hall 491,703 -> 473,701, great tank 450,520 ->
+452,158, jellyfish 469,277 -> 454,722, quarantine 340,181 -> 340,403, tank tops 285,006 ->
+251,573 (a worst frame is one where a moving guard's fan is rebuilt); the dark fans' average a
+frame 57,000-139,000 (before: about 120,000-250,000 every frame).
+
+**Stepped room load** for H's transition: `transition_ready_step()` (pieces: the entities, the
+doors and sight segments, the framing, the entry; `ready_piece`), `load_room_piece(k, p)`.
+**Pause** for E: `Mode.Pause`, `fe_pause()` on START, `room_restart()`, SELECT restarts at once
+(START and SELECT are never in a tape).
+
+## The aquarium stage: the dark, walkways, two-level rooms (2026-10-15, agreed with J)
+
+J leads the stage (`NOTES_J.md`, "Runtime, agreed with A"); B added the schema fields
+(`afterhours.game.mochi`); `dr_world.akr` reads them. Nothing changes for a room that does not
+use them: every earlier tape replays as before.
+
+**The rules as built:**
+
+- **Dark rooms** (`room.dark`): `light` entities are boxes in plan (size x, z, the entity's yaw)
+  on a level, lit always (`period` 0) or for `on` ticks from `offset` every `period` ticks on the
+  room clock (floor modulo). A watcher without a torch (`guard.torch` false; every camera) sees
+  the thief only where his centre is inside the fan **and** inside a light on now on his level. A
+  torch guard sees his whole fan; a torch lights only for its holder.
+- **Drawn as tested:** a dark-eyed watcher's fan is drawn bright only where it is lit (each of its
+  16 triangles clipped to each light on, `cone_lit()`), the rest as a dotted outline; each light
+  on has a faint wash on its floor; the thief is drawn dimmed when he stands unlit and a
+  dark-eyed watcher shares his level.
+- **Water and open air** are walls with `blocks` false and `solid` true on their level (no type of
+  their own, J's choice): they stop the thief and the guards, cones cross them.
+- **Two levels** (`room.upper` > 0: a walkway that many metres above the floor): every wall,
+  watcher (its waypoints with it), hide spot, fragile thing, card, door, exit and light has a
+  `level` (0 floor, 1 walkway). The thief is on the level of the spawn or door he came in by (a
+  catch or START puts him back there); he and the guards collide only with their level's solid
+  walls (the tracks and trains are on level 0); a fan is cast against its level's blocking walls
+  and sees only a thief on its level; spots, fragile things, cards, doors and the exit are his
+  only on his level. Noise is heard across levels: a guard walks to the point under (or over) it
+  on his own level. The levels join only through other rooms' doors (no stairs in v1).
+- **Drawing and framing:** everything on level 1 is drawn at floor + `upper`. The camera frames
+  the floor's front edge and the walkway's back edge (BACK_Y..FRONT_Y), panning in z beyond that:
+  with `upper` 3.2 the deepest two-level room with no z pan is **7.60 m** (one level: 10.15 m).
+- **The tick order:** the trains, the lights (`lights_update(clock)`), the thief (his level),
+  the cards and doors (his level), the tools, the guards (their level; noise from any), the fans
+  (per level), G's dash path test and the catch test, both through `watcher_sees(i, x, z)`: not
+  hidden, the watcher's level, the fan covers the point, and lit if the watcher is dark-eyed.
+
+**Checks** (`tests/check.sh`), on A's stand-in aquarium rooms (`dr_standin.akr`: a dark gallery
+with two tanks' light, one timed, a dark-eyed camera, a torch guard and a pool; a tank hall with
+a floor and a walkway 3.2 m up, a floor guard looking at the walkway and a walkway camera):
+
+| Scenario | What it checks |
+|---|---|
+| 80 | In the camera's fan in the dark: unseen, drawn dimmed; into light A: caught on the tick he enters it, the drawn lit fan covering him then and not the tick before; on a grid of the room the drawn lit fan is the rule, point for point (twice); under timed light B while off: unseen; caught on the tick it comes on; the torch guard catches him unlit; every tick, the drawn lit fan is the test |
+| 81 | The hall's floor and walkway entered by different doors (level, spawn, a ghost each); on the floor the walkway's railing does not stop him and the walkway camera's fan over him does not see him; on the walkway the railing holds him and the floor guard's fan under him does not see him; his run is heard below and the guard walks to beneath him; caught on the walkway: back at its door, on the walkway; both levels framed |
+| 82 | The budget in the stand-in rooms: worst frame CPU 205,581 (debug) / 168,625 (release), GPU 187,065 |
+
+`dr_dash.akr` (G's) tests its path points with `watcher_sees()` (one line, marked agent A) and
+draws its figure at his level.
+
 ## Stage 2: keycards, rooms of doors, re-entry (2026-10-15, agreed with B)
 
 The schema is B's (`afterhours.game.mochi`: `door`, `keycard`, `room.exit` optional,

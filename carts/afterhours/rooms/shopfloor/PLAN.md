@@ -1,12 +1,12 @@
-# Stage 2, room 3: the shop floor (floor plan)
+# The department store (stage 3), room 3: the shop floor (floor plan)
 
-Stage 2's fourth room (`levels/level2/ROUTE.md`), visited twice. A department store's floor at
-night (watches, accessories, a few mannequins), the escalators stopped in their well in the
-middle, glass counters lit low. The staff stair from the corridor comes in at the west end; the
-service lift down to the food hall is in the back wall at the east end, behind a **red** staff
-door. The **blue card** lies on the floor by the watch counter at the front of the east end. A
-night guard walks a long round of the floor; a camera high in the back corner past the lift
-sweeps between the lift and the east end.
+The store's fourth room (`levels/store/ROUTE.md`), visited twice. A department store's floor at
+night (watches, accessories, a few mannequins), the escalators stopped in their well in the middle,
+glass counters lit low. The staff stair from the corridor comes in at the west end; the service
+lift down to the food hall is in the back wall at the east end, behind a **red** staff door. The
+**blue card** lies on the floor by the watch counter at the front of the east end. A night guard
+walks a long round of the floor; a camera high in the back corner past the lift sweeps between the
+lift and the east end.
 
 The greybox is `make_shopfloor.py` (it writes `greybox/`, `shopfloor.placements.json` and
 `shopfloor.play.json`). The dressed room replaces the greybox recipes and the placements file;
@@ -72,5 +72,5 @@ lights, the lift's doors and call panel beyond the red door, the staff stair's l
 
 ## Rules for every room
 
-As `levels/level2/ROUTE.md`, "Rules for every room", with this room's prefix `sf_` and its
+As `levels/store/ROUTE.md`, "Rules for every room", with this room's prefix `sf_` and its
 placements in `shopfloor.placements.json`.

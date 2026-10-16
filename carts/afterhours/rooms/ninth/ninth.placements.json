@@ -1,0 +1,27 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "ninth",
+ "placements": [
+  {
+   "id": "nf_floor",
+   "asset": "nf_floor",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "nf_floor_col"
+  },
+  {
+   "id": "nf_glass",
+   "asset": "nf_glass",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

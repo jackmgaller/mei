@@ -1,11 +1,11 @@
-# Stage 2, room 1: the projection booth (floor plan)
+# The department store (stage 3), room 1: the projection booth (floor plan)
 
-Stage 2's dead end with the red card (`levels/level2/ROUTE.md`). Up the stair behind the staff
-corridor's blue door: a long, low room over the back of the cinema, its two projectors running
-the last reel through the ports in the west wall (their beams out into the dark auditorium), the
-rewind bench along the back wall, racks of film cans. The projectionist walks round his west
-machine and stops between the two to watch the east one. The **red card** (the service lift's
-key) lies at the far end of the bench. In and out by the same door: the quiet room of the stage.
+The store's dead end with the red card (`levels/store/ROUTE.md`). Up the stair behind the staff
+corridor's blue door: a long, low room over the back of the cinema, its two projectors running the
+last reel through the ports in the west wall (their beams out into the dark auditorium), the rewind
+bench along the back wall, racks of film cans. The projectionist walks round his west machine and
+stops between the two to watch the east one. The **red card** (the service lift's key) lies at the
+far end of the bench. In and out by the same door: the quiet room of the stage.
 
 The greybox is `make_booth.py` (it writes `greybox/`, `booth.placements.json` and
 `booth.play.json`). The dressed room replaces the greybox recipes and the placements file; the
@@ -65,5 +65,5 @@ shapes, a kettle, the stair beyond the door.
 
 ## Rules for every room
 
-As `levels/level2/ROUTE.md`, "Rules for every room", with this room's prefix `pb_` and its
+As `levels/store/ROUTE.md`, "Rules for every room", with this room's prefix `pb_` and its
 placements in `booth.placements.json`.

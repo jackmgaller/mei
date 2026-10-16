@@ -7,7 +7,7 @@ Writes, beside itself:
   aq_room.asset.json       the hall: floor slab, the section-cut walls, the window wall, bench,
                            pillar, stanchions, sign, cleaner's cart, lit by the room's point lights
   aq_tanks.asset.json      the three tanks: the ocean window (its glass, rock, kelp and animals,
-                           under a lid the void's colour), the jellyfish column and the coral cube
+                           under a dark lid), the glass column (sardines) and the coral cube
   standin_thief.asset.json a 1.7 m stand-in thief in one strong colour
   standin_guard.asset.json a stand-in guard
   sight_cone.asset.json    the guard's sight cone, 6 m and 60 degrees, cut by the walls and pillar
@@ -21,7 +21,7 @@ Kit's point lights (lighting.lights, baked into the walls' and props' vertex col
 shadows) and paint_floor(), which evaluates the same formula on the floor and adds what corners
 cannot carry: the water's shimmer in the window's light, soft shadows, the guide studs. The floor
 is emissive, so the kit spends no refinement triangles on it. The tanks' recipe has two lights of
-its own (inside the jellyfish column and the coral cube). AQ_REFINE='{"max_added": 0}' overrides
+its own (inside the glass column and the coral cube). AQ_REFINE='{"max_added": 0}' overrides
 the room's refinement, for comparisons. Everything here is fictional. Text uses the OFL fonts in
 tools/fonts/ only. Needs Pillow and NumPy.
 """
@@ -32,6 +32,10 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+
+import sys  # agent W: the moving water's tiles (carts/afterhours/water/wateranim.py, NOTES_W.md)
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'water'))
+import wateranim  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
@@ -47,7 +51,7 @@ ZF, ZFO = -2.9, -3.15   # front wall: inner and outer faces
 ZB, ZBO = 2.9, 3.15     # back (window) wall
 H = 3.2             # wall height (the section cut through the room's ceiling)
 CUT = 1.0           # the front wall, cut like an architect's section
-ENTRY = (-4.9, -3.7)    # the gap in the front wall: the way in, from the lift up from the lobby
+ENTRY = (-4.9, -3.7)    # the gap in the front wall: the way in, from the jellyfish gallery
 WIN_X = 4.4         # the ocean window: x in [-WIN_X, WIN_X], y in [WIN_Y0, WIN_Y1]
 WIN_Y0, WIN_Y1 = 0.5, 2.7
 SLAB = 0.4          # floor slab thickness, shown in section at the front
@@ -59,8 +63,8 @@ TANK_BASE_X = 4.88  # the tank's base stands 3 cm proud of its walls
 SAND_Y = 0.35
 WATER_Y = 2.95
 
-JELLY = (-2.9, -0.2)        # the jellyfish column
-JELLY_R = 0.75
+COLUMN = (-2.9, -0.2)       # the glass column (PLAN.md's "jellyfish column"): sardines now, the
+COLUMN_R = 0.75             # jellyfish are the jellyfish gallery's (levels/aquarium/ROUTE.md)
 CUBE = (3.0, 0.15)           # the coral cube
 CUBE_S = 1.42
 PILLAR = (-0.2, -1.6)      # structural column, 0.5 m square
@@ -70,7 +74,11 @@ BENCH_W = 2.6               # PLAN.md: shortened so the keeper walks between it 
 STANCHION_Z = 2.42
 STANCHION_X = (-3.6, -1.8, 0.0, 1.8, 3.6)
 CART = (4.7, -2.25)         # the night cleaner's cart, left by the front wall
-SIGN = (-1.65, -0.5)       # the jellyfish lightbox
+SIGN = (-1.65, -0.5)       # the column's lightbox
+DOOR_X = (4.84, 5.66)       # the staff door's opening in the right pier (PLAN.md: the exit at x 5.25)
+DOOR_H = 2.1
+CORRIDOR_Z1 = 4.95          # the service corridor beyond the staff door runs back to here, then east
+PASSAGE_Z0 = -4.5           # the jellyfish gallery's end, beyond the way in, runs out to here
 
 # the watchers of PLAN.md at one moment of the solution: the watchman looks over the room (his cone
 # toward the camera) while the keeper walks west along the cube's far side. Headings in degrees in
@@ -99,13 +107,22 @@ def room_lights():
     walls = [{'id': f'wall_tank_{k}', 'at': [sx * (XI - 0.35), 1.3, wz], 'color': '#50c0e8', 'intensity': 0.9,
               'range': 1.6} for k, (sx, wz) in enumerate((sx, wz) for sx in (-1, 1) for wz in WALL_TANKS)]
     return window + [
-        {'id': 'jelly', 'at': [JELLY[0], 1.3, JELLY[1]], 'color': '#a87cff', 'intensity': 4.0, 'range': 3.4,
+        {'id': 'column', 'at': [COLUMN[0], 1.3, COLUMN[1]], 'color': '#a8ccff', 'intensity': 3.6, 'range': 3.4,
          'shadows': True, 'radius': 0.5},
         {'id': 'coral', 'at': [CUBE[0], 1.2, CUBE[1]], 'color': '#3ae6cc', 'intensity': 4.2, 'range': 3.0,
          'shadows': True, 'radius': 0.5},
         {'id': 'exit', 'at': [5.25, 2.2, ZB - 0.3], 'color': '#50ff90', 'intensity': 0.8, 'range': 1.8},
-        {'id': 'lift', 'at': [ENTRY_X, 1.1, ZFO - 0.5], 'color': '#ffd0a0', 'intensity': 2.4, 'range': 4.2,
-         'shadows': True, 'radius': 0.3}] + walls
+        # the jellyfish gallery's violet, low through the way in (the front wall shades it but there)
+        {'id': 'gallery', 'at': [ENTRY_X, 0.8, ZFO - 0.75], 'color': '#a070ff', 'intensity': 3.2, 'range': 4.6,
+         'shadows': True, 'radius': 0.2, 'through': (ZFO, ENTRY[0], ENTRY[1], CUT)},
+        # the service corridor's tube, through the staff door (the piers and lintel shade it)
+        {'id': 'corridor', 'at': [5.3, 2.5, 3.95], 'color': '#e8f4ff', 'intensity': 1.6, 'range': 4.4,
+         'shadows': True, 'radius': 0.15, 'through': (ZB, DOOR_X[0], DOOR_X[1], DOOR_H)}] + walls
+
+
+def kit_lights():
+    """room_lights() as the Asset Kit takes them (without the floor painter's own keys)."""
+    return [{k: v for k, v in l.items() if k != 'through'} for l in room_lights()]
 
 
 ROOM_REFINE = {'tolerance': 20, 'max_added': 160}
@@ -238,7 +255,7 @@ def blockers_2d():
            (bx - BENCH_W / 2, bz - 0.25, bx + BENCH_W / 2, bz + 0.25, 0.5),
            (CUBE[0] - 0.75, CUBE[1] - 0.75, CUBE[0] + 0.75, CUBE[1] + 0.75, 0.72),
            (CART[0] - 0.45, CART[1] - 0.25, CART[0] + 0.45, CART[1] + 0.25, 0.9)]
-    jx, jz = JELLY
+    jx, jz = COLUMN
     out.append((jx - 0.55, jz - 0.55, jx + 0.55, jz + 0.55, 0.6))
     return out
 
@@ -278,6 +295,11 @@ def floor_light(x, z, light):
     k = light.get('intensity', 1.0) * (ly / d) * fall
     if light.get('shadows'):
         k = k * floor_visibility(x, z, light)
+    if light.get('through'):        # a light beyond a wall reaches the floor only through its opening
+        zp, x0, x1, ymax = light['through']
+        t = (zp - z) / (lz - z)
+        cx, cy = x + (lx - x) * t, ly * t
+        k = k * ((t > 0) & (t < 1) & (cx > x0) & (cx < x1) & (cy < ymax))
     return k[..., None] * hex_rgb(light.get('color', '#ffffff'))[None, None, :] / 255
 
 
@@ -303,7 +325,9 @@ def paint_floor(w=220, h=126):
     dvec = np.array(ROOM_DIRECTION) / np.linalg.norm(ROOM_DIRECTION)
     shade = np.zeros((h, w, 3)) + ROOM_AMBIENT + ROOM_DIFFUSE * max(0.0, dvec[1])
     # the water's shimmer: a caustic net in the window's light, strongest near the glass
-    caus = caustics(x, z, 1.9, 0.6)
+    # agent W: the net itself moves now (aq_water's caustic overlay); the floor keeps the light's
+    # average, a little under it, so that the net adds what was painted
+    caus = WATER_CAUS_MEAN
     near = np.exp(-(ZB - z) / 1.6)
     shimmer = (0.45 + 1.9 * caus * (0.2 + near))[..., None]
     for light in room_lights():
@@ -370,8 +394,7 @@ def paint_sand(w=200, h=40):
     grain = rng.random((h, w))
     rgb = np.zeros((h, w, 3)) + np.array([52, 96, 128])
     rgb += (grain - 0.5)[..., None] * np.array([18, 20, 22])
-    caus = caustics(x, z, 2.6, 1.7)
-    rgb += caus[..., None] * np.array([40, 80, 90])
+    rgb += WATER_CAUS_MEAN * np.array([40, 80, 90])     # agent W: the net moves (aq_water's overlay)
     ripple = np.sin(x * 9 + np.sin(z * 4) * 1.5) * 0.5 + 0.5
     rgb += (ripple * 0.15)[..., None] * np.array([30, 40, 40])
     return to_image(rgb, 5.0)
@@ -411,8 +434,8 @@ def paint_disc(w, inner, outer, ring=None):
     return rgb
 
 
-def paint_jelly_light():
-    return to_image(paint_disc(32, (210, 170, 255), (60, 40, 140), (120, 80, 160)), 4.0)
+def paint_column_light():
+    return to_image(paint_disc(32, (210, 235, 255), (40, 80, 150), (90, 140, 190)), 4.0)
 
 
 def paint_porthole():
@@ -470,15 +493,8 @@ def paint_exit():
     return img
 
 
-def paint_door():
-    w, h = 24, 60
-    img = Image.new('RGB', (w, h), (64, 78, 104))
-    d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, w - 1, h - 1], outline=(30, 38, 56))
-    d.rectangle([2, 2, w - 3, h - 2], outline=(78, 94, 122))
-    d.rectangle([3, 30, 20, 32], fill=(150, 160, 176))     # push bar
-    d.rectangle([5, 10, 18, 16], fill=(210, 214, 220))     # the staff-only plate
-    d.line([(7, 13), (16, 13)], fill=(170, 40, 50))
+def paint_quar_sign():
+    img = text_sign((48, 12), (210, 220, 232), [('QUARANTINE', 'Figtree-Bold.ttf', 9, (30, 50, 90), 0)])
     return img
 
 
@@ -498,7 +514,17 @@ def room_recipe():
         'sill_glow': {'color': '#2a9ad0', 'class': 'emissive'},
         'header': {'color': '#9ad8f0', 'class': 'emissive',
                    'texture': {'image': 'art/header.png', 'bits': 8, 'projection': 'fit'}},
-        'door': {'color': '#405070', 'texture': {'image': 'art/door.png', 'bits': 4, 'projection': 'fit'}},
+        'door_head': {'color': '#c8e4ff', 'class': 'emissive'},   # a light strip under the lintel
+        'service_floor': {'color': '#707880'},
+        'service_wall': {'color': '#7c8590'},
+        'tube': {'color': '#eef6ff', 'class': 'emissive'},
+        'pipe': {'color': '#7a8a94'},
+        'doorway_dark': {'color': '#06080c', 'class': 'emissive'},
+        'quar_sign': {'color': '#e0e8f0', 'class': 'emissive',
+                      'texture': {'image': 'art/quar_sign.png', 'bits': 4, 'projection': 'fit'}},
+        'passage_floor': {'color': '#5a5470'},
+        'passage_wall': {'color': '#4a4664'},
+        'glow_strip': {'color': '#9a70ff', 'class': 'emissive'},
         'exit': {'color': '#30b060', 'class': 'emissive',
                  'texture': {'image': 'art/exit.png', 'bits': 4, 'projection': 'fit'}},
         'exit_box': {'color': '#d8e0e0'},
@@ -510,7 +536,7 @@ def room_recipe():
         'bench_leg': {'color': '#3a4458'},
         'rope': {'color': '#6a5ab0'},
         'sign_face': {'color': '#c8b8f0', 'class': 'emissive',
-                      'texture': {'image': 'art/sign_jelly.png', 'bits': 8, 'projection': 'fit'}},
+                      'texture': {'image': 'art/sign_column.png', 'bits': 8, 'projection': 'fit'}},
         'sign_body': {'color': '#3a4460'},
         'cart_body': {'color': '#8aa0b8'},
         'cart_dark': {'color': '#3a4a60'},
@@ -542,14 +568,38 @@ def room_recipe():
     left = box('pier_left', [-XO, -0.02, ZB], [-WIN_X, top, ZBO], 'wall_face', open=['bottom'],
                faces={'top': 'cut'})
     n.append(left)
-    right = box('pier_right', [WIN_X, -0.02, ZB], [XO, top, ZBO], 'wall_face', open=['bottom'],
-                faces={'top': 'cut'})
-    # the staff door, a decal on the right pier's room side (faces right/up from the face centre)
-    pier_cx = (WIN_X + XO) / 2
-    pier_cy = (top - 0.02) / 2
-    right['decals'] = [{'id': 'door', 'face': 'back', 'material': 'door',
-                        'at': [r(5.25 - pier_cx), r(1.05 - pier_cy)], 'size': [0.82, 2.08]}]
-    n.append(right)
+    # the right pier with the staff door open in it (PLAN.md's exit), a lintel over the doorway,
+    # recessed 4 cm as the sill and header are
+    n.append(box('pier_right', [WIN_X, -0.02, ZB], [DOOR_X[0], top, ZBO], 'wall_face', open=['bottom'],
+                 faces={'top': 'cut'}))
+    n.append(box('pier_east', [DOOR_X[1], -0.02, ZB], [XO, top, ZBO], 'wall_face', open=['bottom'],
+                 faces={'top': 'cut'}))
+    n.append(box('lintel', [DOOR_X[0] - 0.02, DOOR_H, ZB + 0.04], [DOOR_X[1] + 0.02, top - 0.04, ZBO - 0.04],
+                 'wall_face', faces={'top': 'cut', 'bottom': 'door_head'}))
+    # beyond it, the service corridor to quarantine: plain floor and walls, a tube light, pipes,
+    # and at its end the door through (dark) under its sign
+    n.append(box('corridor_floor', [4.86, -SLAB, ZBO], [XO + 0.02, 0, CORRIDOR_Z1 + 0.05], 'service_floor',
+                 open=['bottom', 'back']))
+    n.append(box('corridor_wall', [XI, -0.02, ZBO - 0.03], [SIDE_OUT, H, CORRIDOR_Z1 + 0.02], 'service_wall',
+                 open=['bottom'], faces={'top': 'cut'}))
+    end_cx = (4.84 + SIDE_OUT - 0.03) / 2
+    n.append(box('corridor_end', [4.84, -0.02, CORRIDOR_Z1], [SIDE_OUT - 0.03, H - 0.03, CORRIDOR_Z1 + 0.25], 'service_wall',
+                 open=['bottom'], faces={'top': 'cut'},
+                 decals=[{'id': 'way_through', 'face': 'back', 'material': 'doorway_dark',
+                          'at': [r(5.42 - end_cx), r(1.0 - (H - 0.05) / 2)], 'size': [0.8, 1.98]},
+                         {'id': 'sign', 'face': 'back', 'material': 'quar_sign',
+                          'at': [r(5.42 - end_cx), r(2.32 - (H - 0.05) / 2)], 'size': [0.84, 0.22]}]))
+    n.append(box('corridor_tube', [XI - 0.06, 2.45, 3.45], [XI + 0.02, 2.52, 4.6], 'tube'))
+    for k, py in enumerate((2.62, 2.78)):
+        n.append(box(f'corridor_pipe_{k}', [4.86, py, ZBO + 0.05], [4.94, py + 0.08, CORRIDOR_Z1 - 0.01], 'pipe'))
+    # beyond the way in, the end of the jellyfish gallery: a dark passage lit violet, cut at 1 m
+    n.append(box('passage_floor', [ENTRY[0] - 0.28, -SLAB, PASSAGE_Z0], [ENTRY[1] + 0.28, 0, SLAB_Z],
+                 'passage_floor', open=['bottom', 'front']))
+    for k, (x0, x1) in enumerate(((ENTRY[0] - 0.25, ENTRY[0] - 0.02), (ENTRY[1] + 0.02, ENTRY[1] + 0.25))):
+        n.append(box(f'passage_wall_{k}', [x0, -0.02, PASSAGE_Z0 + 0.03], [x1, CUT - 0.03, ZFO + 0.02], 'passage_wall',
+                     open=['bottom'], faces={'top': 'cut', 'back': 'cut'}))
+        gx0, gx1 = (x1 - 0.03, x1 + 0.03) if k == 0 else (x0 - 0.03, x0 + 0.03)
+        n.append(box(f'passage_glow_{k}', [gx0, -0.01, PASSAGE_Z0 + 0.05], [gx1, 0.05, ZFO - 0.05], 'glow_strip'))
     n.append(box('sill', [-WIN_X - 0.02, -0.02, ZB + 0.04], [WIN_X + 0.02, WIN_Y0, ZBO - 0.04], 'sill',
                  open=['bottom'], faces={'top': 'sill'},
                  decals=[{'id': 'glow', 'face': 'back', 'material': 'sill_glow', 'at': [0, 0.17],
@@ -590,7 +640,7 @@ def room_recipe():
         posts.append(box(f'rope_{k}', [a + 0.02, 0.80, STANCHION_Z - 0.02], [b - 0.02, 0.85, STANCHION_Z + 0.02],
                          'rope', open=['left', 'right']))
     n.append({'id': 'stanchions', 'op': 'group', 'children': posts})
-    # the jellyfish lightbox, tilted up toward the visitor
+    # the column's lightbox, tilted up toward the visitor
     sx, sz = SIGN
     n.append(box('sign_post', [sx - 0.04, -0.02, sz - 0.04], [sx + 0.04, 0.82, sz + 0.04], 'sign_body',
                  open=['bottom']))
@@ -610,7 +660,7 @@ def room_recipe():
                 'material': 'mop'}, translate=[cx - 0.26, 0.62, cz - 0.05], rotate=[0, 0, -18])]
     n.append({'id': 'cart', 'op': 'group', 'children': cart})
     lighting = {'direction': ROOM_DIRECTION, 'ambient': ROOM_AMBIENT, 'diffuse': ROOM_DIFFUSE,
-                'lights': room_lights(), 'refine': ROOM_REFINE}
+                'lights': kit_lights(), 'refine': ROOM_REFINE}
     return recipe('aq_room', m, n, lighting, {'vertices': 2048, 'triangles': 1200})
 
 
@@ -640,9 +690,8 @@ def tanks_recipe():
         'sand': {'color': '#5090a8', 'class': 'emissive',
                  'texture': {'image': 'art/sand.png', 'bits': 8, 'projection': 'fit'}},
         'base': {'color': '#0e1830'},
-        'surface': {'color': '#3080b0', 'blend': 'quarter',
-                    'texture': {'image': 'art/ripple.png', 'bits': 4, 'projection': 'planar', 'axis': 'y',
-                                'scale': [1, 1]}},
+        'surface': {'color': '#3080b0', 'blend': 'quarter',     # agent W: the ripple moves
+                    'texture': wateranim.texture(WATER_RIPPLE)},
         'rock': {'color': '#34506e'},
         'rock_dark': {'color': '#223a58'},
         'kelp': {'color': '#2a9a7a', 'double_sided': True,
@@ -656,14 +705,12 @@ def tanks_recipe():
         'shark': {'color': '#5a7090', 'double_sided': True},
         'shaft': {'color': '#3a78a8', 'blend': 'add'},
         'plinth': {'color': '#141c34'},
-        'jelly_light': {'color': '#b090f0', 'class': 'emissive',
-                        'texture': {'image': 'art/jelly_light.png', 'bits': 4, 'projection': 'disc', 'axis': 'y'}},
-        'jelly_glass': {'color': '#3a3aa0', 'blend': 'half', 'double_sided': True},
-        'jelly_surface': {'color': '#5a50c0', 'blend': 'quarter',
-                          'texture': {'image': 'art/ripple.png', 'bits': 4, 'projection': 'planar', 'axis': 'y',
-                                      'scale': [1, 1]}},
-        'jelly': {'color': '#9a6ac8', 'blend': 'add', 'smooth': True},
-        'tentacle': {'color': '#5a3a88', 'blend': 'add', 'double_sided': True},
+        'column_light': {'color': '#b0d0f0', 'class': 'emissive',
+                         'texture': {'image': 'art/column_light.png', 'bits': 4, 'projection': 'disc', 'axis': 'y'}},
+        'column_glass': {'color': '#0e2848', 'blend': 'add', 'double_sided': True},   # lit glass: the shoal keeps its contrast
+        'column_surface': {'color': '#4a80c0', 'blend': 'quarter',     # agent W: the ripple moves
+                           'texture': wateranim.texture(WATER_RIPPLE)},
+        'sardine': {'color': '#e4eef8', 'double_sided': True},
         'rim': {'color': '#2a3450'},
         'bubble': {'color': '#8090c0', 'blend': 'add', 'double_sided': True},
         'cube_glass': {'color': '#2a8898', 'blend': 'half', 'double_sided': True},
@@ -780,31 +827,28 @@ def tanks_recipe():
                      (sx + wdt / 2 + lean, bot_y, z - 0.35), (sx - wdt / 2 + lean, bot_y, z - 0.35)], (0, 0.3, -1))
     n.append(shafts.node('shafts', 'shaft'))
 
-    # the jellyfish column
-    jx, jz = JELLY
+    # the glass column: a shoal of sardines turning round its light (the jellyfish are the gallery's)
+    jx, jz = COLUMN
     jelly = [at({'id': 'plinth', 'op': 'cylinder', 'radius': 0.76, 'height': 0.64, 'segments': 16,
-                 'material': 'plinth', 'faces': {'top': 'jelly_light'}}, translate=[jx, 0.30, jz]),
-             at({'id': 'column_glass', 'op': 'cylinder', 'radius': JELLY_R, 'height': 1.74, 'segments': 16,
-                 'caps': False, 'material': 'jelly_glass'}, translate=[jx, 0.61 + 0.87, jz]),
+                 'material': 'plinth', 'faces': {'top': 'column_light'}}, translate=[jx, 0.30, jz]),
+             at({'id': 'column_glass', 'op': 'cylinder', 'radius': COLUMN_R, 'height': 1.74, 'segments': 16,
+                 'caps': False, 'material': 'column_glass'}, translate=[jx, 0.61 + 0.87, jz]),
              at({'id': 'column_rim', 'op': 'lathe', 'profile': [[0.77, 0.0], [0.77, 0.1], [0.66, 0.13]],
                  'segments': 16, 'caps': False, 'material': 'rim'}, translate=[jx, 2.32, jz])]
     js = MeshBuilder()
     ring = [(jx + 0.73 * math.cos(math.tau * i / 16), 2.24, jz + 0.73 * math.sin(math.tau * i / 16)) for i in range(16)]
     js.poly(ring, (0, 1, 0))
-    jelly.append(js.node('column_surface', 'jelly_surface'))
-    bells, tents = [], MeshBuilder()
-    for k, (dx, y, dz, s) in enumerate(((-0.25, 1.85, 0.1, 1.0), (0.3, 1.5, -0.15, 0.85), (0.05, 1.15, 0.3, 0.9),
-                                         (-0.3, 0.95, -0.28, 0.7), (0.35, 2.0, 0.28, 0.6), (-0.05, 1.6, -0.4, 0.75))):
-        bx, bz = jx + dx, jz + dz
-        bells.append(at({'id': f'bell_{k}', 'op': 'lathe', 'profile': [[0.16, 0.0], [0.13, 0.09], [0.0, 0.14]],
-                         'segments': 8, 'caps': False, 'material': 'jelly'},
-                        translate=[bx, y, bz], scale=[s, s, s], rotate=[0, k * 20, 0]))
-        tl = 0.45 * s
-        tw = 0.09 * s
-        tents.poly([(bx - tw, y + 0.005, bz), (bx + tw, y + 0.005, bz), (bx + tw * 0.4, y - tl, bz + 0.02),
-                    (bx - tw * 0.4, y - tl, bz + 0.02)], (0, 0, -1))
-    jelly.append({'id': 'bells', 'op': 'group', 'children': bells})
-    jelly.append(tents.node('tentacles', 'tentacle'))
+    jelly.append(js.node('column_surface', 'column_surface'))
+    shoal = MeshBuilder()
+    for k in range(60):                      # a helix: three turns, wider in the middle, each fish on its tangent
+        t = k / 60
+        ang = t * 3 * 360 + 23 * math.sin(k * 1.7)
+        rad = 0.22 + 0.3 * math.sin(math.pi * t) + 0.04 * math.sin(k * 2.9)
+        y = 0.82 + t * 1.25 + 0.05 * math.sin(k * 3.3)
+        fx = jx + rad * math.cos(math.radians(ang))
+        fz = jz + rad * math.sin(math.radians(ang))
+        fish_mesh(shoal, (fx, y, fz), ang + 90, 0.22, 0.07)
+    jelly.append(shoal.node('sardines', 'sardine'))
     bub = MeshBuilder()
     for k in range(7):                       # a stream of bubbles from the plinth's light
         by = 0.75 + k * 0.21
@@ -813,7 +857,7 @@ def tanks_recipe():
         bub.poly([(bx - sz, by, jz - 0.35), (bx, by + sz, jz - 0.35), (bx + sz, by, jz - 0.35), (bx, by - sz, jz - 0.35)],
                  (0, 0, -1))
     jelly.append(bub.node('bubbles', 'bubble'))
-    n.append({'id': 'jelly_column', 'op': 'group', 'children': jelly})
+    n.append({'id': 'column', 'op': 'group', 'children': jelly})
 
     # the coral cube
     cx, cz = CUBE
@@ -845,12 +889,57 @@ def tanks_recipe():
     fish_mesh(fan, (cx + 0.25, 1.15, cz + 0.05), 210, 0.22, 0.1, 'fish_blue')
     cube.append(fan.node('sea_fan', 'fan'))
     n.append({'id': 'coral_cube', 'op': 'group', 'children': cube})
-    jx, jz = JELLY
+    jx, jz = COLUMN
     lighting = {'direction': [0.15, 1.0, -0.35], 'ambient': 0.45, 'diffuse': 0.45,
-                'lights': [{'id': 'jelly', 'at': [jx, 1.5, jz], 'color': '#b08cff', 'intensity': 1.6, 'range': 1.4},
+                'lights': [{'id': 'column', 'at': [jx, 0.75, jz], 'color': '#c0dcff', 'intensity': 1.8, 'range': 1.9},
                            {'id': 'coral', 'at': [cx, 1.6, cz], 'color': '#5af0d8', 'intensity': 1.4, 'range': 1.3}],
                 'refine': {'max_added': 0}}       # corners only: refining here split the glass
     return recipe('aq_tanks', m, n, lighting, {'vertices': 2048, 'triangles': 1500})
+
+
+# ---- agent W: the moving water (NOTES_W.md). The caustic net the window throws on the floor, on
+# the tank's sand and up its back wall: grey tiles added over them, lit only by lights of their
+# own (ambient 0), so the net is as bright and as blue as the window's light where it falls
+
+WATER_CAUS_MEAN = 0.12      # what the floor and the sand keep of the still net they had (its mean is 0.16)
+WATER_RIPPLE = wateranim.key('w_ripple', '#5ab0e8')
+WATER_Y_UP = 0.03           # the overlay over the floor (the cones are 3 cm up too)
+
+
+def water_recipe():
+    m = {'floor_caustic': wateranim.material('w_caustic'),
+         'sand_caustic': wateranim.material('w_caustic', scale=1.0),
+         'back_caustic': wateranim.material('w_caustic', axis='z', scale=[2.0, 1.0])}
+    n = []
+    # the floor in front of the window: four strips, so that the light's corners follow its pool
+    f = MeshBuilder()
+    zs = (-1.4, 0.2, 1.5, ZB - 0.02)
+    xs = (-XI + 0.02, -WIN_X, -1.5, 1.5, WIN_X, XI - 0.02)
+    for i in range(len(xs) - 1):
+        for j in range(len(zs) - 1):
+            f.poly([(xs[i], WATER_Y_UP, zs[j]), (xs[i + 1], WATER_Y_UP, zs[j]), (xs[i + 1], WATER_Y_UP, zs[j + 1]),
+                    (xs[i], WATER_Y_UP, zs[j + 1])], (0, 1, 0))
+    n.append(f.node('floor_net', 'floor_caustic'))
+    # the tank's sand, seen through the window
+    sd = MeshBuilder()
+    sy = SAND_Y + 0.02
+    for (a, b) in ((-TANK_X + 0.01, 0.0), (0.0, TANK_X - 0.01)):
+        sd.poly([(a, sy, ZBO + 0.02), (b, sy, ZBO + 0.02), (b, sy, TANK_Z1 - 0.02), (a, sy, TANK_Z1 - 0.02)], (0, 1, 0))
+    n.append(sd.node('sand_net', 'sand_caustic'))
+    # the tank's back wall, the net strongest high up, under the surface
+    bk = MeshBuilder()
+    bz = TANK_Z1 - 0.02
+    for (a, b) in ((-TANK_X + 0.01, 0.0), (0.0, TANK_X - 0.01)):
+        bk.poly([(b, SAND_Y + 0.05, bz), (a, SAND_Y + 0.05, bz), (a, WATER_Y - 0.05, bz), (b, WATER_Y - 0.05, bz)],
+                (0, 0, -1))
+    n.append(bk.node('back_net', 'back_caustic'))
+    lights = [{'id': f'window_{k}', 'at': [x, 1.4, ZB - 0.9], 'color': '#58b8ff', 'intensity': 1.2, 'range': 4.0}
+              for k, x in enumerate((-3.3, -1.1, 1.1, 3.3))]
+    lights += [{'id': f'surface_{k}', 'at': [x, WATER_Y + 0.6, 3.8], 'color': '#70d0ff', 'intensity': 1.3,
+                'range': 3.6} for k, x in enumerate((-2.4, 2.4))]
+    lighting = {'ambient': 0.0, 'diffuse': 0.0, 'lights': lights, 'refine': {'tolerance': 20, 'max_added': 48}}
+    rec = recipe('aq_water', m, n, lighting, {'vertices': 400, 'triangles': 200})
+    return wateranim.finish(rec, ART)
 
 
 # ---- the stand-ins
@@ -957,22 +1046,23 @@ def draw_art():
     paint_sand().save(ART / 'sand.png')
     paint_ripple().save(ART / 'ripple.png')
     paint_kelp().save(ART / 'kelp.png')
-    paint_jelly_light().save(ART / 'jelly_light.png')
+    paint_column_light().save(ART / 'column_light.png')
     paint_porthole().save(ART / 'porthole.png')
     paint_exit().save(ART / 'exit.png')
     paint_wall_tank().save(ART / 'wall_tank.png')
-    paint_door().save(ART / 'door.png')
+    paint_quar_sign().save(ART / 'quar_sign.png')
     text_sign((128, 14), (10, 26, 52), [
         ('OCEAN WINDOW', 'Figtree-Bold.ttf', 10, (150, 220, 245), 1)]).save(ART / 'header.png')
-    text_sign((48, 32), (36, 26, 70), [
-        ('クラゲ', 'ZenMaruGothic-Medium.ttf', 14, (235, 225, 255), 1),
-        ('JELLYFISH', 'Figtree-Bold.ttf', 8, (190, 170, 240), 20)]).save(ART / 'sign_jelly.png')
+    text_sign((48, 32), (18, 34, 66), [
+        ('イワシ', 'ZenMaruGothic-Medium.ttf', 14, (225, 240, 255), 1),
+        ('SARDINES', 'Figtree-Bold.ttf', 8, (170, 200, 240), 20)]).save(ART / 'sign_column.png')
 
 
 def main():
     draw_art()
     write('aq_room', room_recipe())
-    write('aq_tanks', tanks_recipe())
+    write('aq_tanks', wateranim.finish(tanks_recipe(), ART))      # agent W: its surfaces' ripple tile
+    write('aq_water', water_recipe())                                 # agent W
     write('standin_thief', thief_recipe())
     write('standin_guard', guard_recipe())
     write('sight_cone', cone_recipe())
@@ -980,7 +1070,8 @@ def main():
     # shell with the level lead's collision, aq_col; the tanks without (they are out of play)
     placements = {'format': 'after-hours-placements', 'version': 1, 'room': 'aquarium', 'placements': [
         {'id': 'r5_room_shell', 'asset': 'aq_room', 'position': [0, 0, 0], 'collision': 'aq_col'},
-        {'id': 'r5_tanks', 'asset': 'aq_tanks', 'position': [0, 0, 0], 'collision': 'none'}]}
+        {'id': 'r5_tanks', 'asset': 'aq_tanks', 'position': [0, 0, 0], 'collision': 'none'},
+        {'id': 'r5_water', 'asset': 'aq_water', 'position': [0, 0, 0], 'collision': 'none'}]}     # agent W
     (HERE / 'aquarium.placements.json').write_text(json.dumps(placements, indent=1) + '\n')
     print('wrote', ', '.join(sorted(p.name for p in HERE.glob('*.asset.json'))), 'and', len(list(ART.glob('*.png'))),
           'textures in', ART.relative_to(ROOT))

@@ -1,0 +1,479 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "lh_shell",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 900
+ },
+ "lighting": {
+  "direction": [
+   -0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "materials": {
+  "cut": {
+   "color": "#a8b2c4"
+  },
+  "desk": {
+   "color": "#7a6a5a"
+  },
+  "door_light": {
+   "color": "#7cf0a0",
+   "class": "emissive"
+  },
+  "floor_dark": {
+   "color": "#6c7078"
+  },
+  "glass": {
+   "color": "#6cb4d4"
+  },
+  "tile": {
+   "color": "#9aa0a6"
+  },
+  "wall": {
+   "color": "#4c5462"
+  },
+  "wall_light": {
+   "color": "#6c7484"
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    22.5,
+    0.4,
+    9.5
+   ],
+   "material": "floor_dark",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.2,
+     0.0
+    ]
+   },
+   "faces": {
+    "top": "tile",
+    "back": "cut"
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    22.5,
+    1.0,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.0,
+     0.5,
+     -4.625
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "back_0",
+   "op": "box",
+   "size": [
+    22.5,
+    2.42,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.0,
+     1.19,
+     4.625
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_w_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    0.9
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -11.125,
+     1.19,
+     -4.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_w_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    6.9
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -11.125,
+     1.19,
+     1.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_w_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -11.125,
+     2.245,
+     -3.0
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_light"
+   }
+  },
+  {
+   "id": "end_e_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    0.9
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     11.125,
+     1.19,
+     -4.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    6.9
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     11.125,
+     1.19,
+     1.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     11.125,
+     2.245,
+     -3.0
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_light"
+   }
+  },
+  {
+   "id": "core",
+   "op": "box",
+   "size": [
+    8.0,
+    1.02,
+    2.8
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     -1.0,
+     0.49,
+     1.6
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "screen_w",
+   "op": "box",
+   "size": [
+    6.0,
+    1.02,
+    0.15
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     -8.0,
+     0.49,
+     0.125
+    ]
+   },
+   "open": [
+    "bottom",
+    "right",
+    "left"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "screen_e",
+   "op": "box",
+   "size": [
+    0.15,
+    1.02,
+    4.7
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     3.075,
+     0.49,
+     -2.15
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "lift_doors",
+   "op": "box",
+   "size": [
+    4.2,
+    0.01,
+    0.3
+   ],
+   "material": "floor_dark",
+   "transform": {
+    "translate": [
+     -2.3,
+     0.005,
+     -0.15
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "planter",
+   "op": "box",
+   "size": [
+    1.0,
+    1.02,
+    1.3
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     -4.0,
+     0.49,
+     -1.35
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "reception",
+   "op": "box",
+   "size": [
+    1.8,
+    1.02,
+    0.6
+   ],
+   "material": "desk",
+   "transform": {
+    "translate": [
+     -9.5,
+     0.49,
+     -4.2
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "desk"
+   }
+  },
+  {
+   "id": "sofa",
+   "op": "box",
+   "size": [
+    2.0,
+    0.62,
+    0.6
+   ],
+   "material": "desk",
+   "transform": {
+    "translate": [
+     0.8,
+     0.29,
+     -4.2
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "desk"
+   }
+  },
+  {
+   "id": "boxes",
+   "op": "box",
+   "size": [
+    1.4,
+    1.02,
+    1.4
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     7.3,
+     0.49,
+     -0.7
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "trolley",
+   "op": "box",
+   "size": [
+    1.2,
+    1.02,
+    0.6
+   ],
+   "material": "desk",
+   "transform": {
+    "translate": [
+     7.0,
+     0.49,
+     2.7
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "desk"
+   }
+  }
+ ],
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

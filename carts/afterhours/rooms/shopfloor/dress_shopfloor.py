@@ -384,7 +384,8 @@ def floor_nodes():
     f = Mesh()
     painted_floor(f, FLOOR_X, FLOOR_Z, [WELL], 'floor_{}{}')
     for k, (a, b) in enumerate(zip(WALL_X, WALL_X[1:])):
-        f.quad(a, -SLAB, ZO0, b, CUT, ZO0, (0, 0, -1), f'front_{k}')
+        f.quad(a, -SLAB, ZO0, b, CUT, ZO0, (0, 0, -1), f'front_{k}',        # hand UVs: the mesh has them
+               (lambda a, b: lambda p: ((p[0] - a) / (b - a), (CUT - p[1]) / (CUT + SLAB)))(a, b))
     n = [f.node('floor', 'floor_00')]
     w = Mesh()
     for a, b in ((XO0, LIFT_DOOR[0]), (LIFT_DOOR[1], XO1)):

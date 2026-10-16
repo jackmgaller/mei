@@ -1,0 +1,165 @@
+// The pause menu (agent E): START in play opens it (A's fe_pause() hook; SELECT restarts the room
+// at once, without it). The room's clock is frozen while it is open (Mode.Pause: nothing ticks,
+// and paused time is not counted), the music and the ambience duck (F's au_pause()). It has the
+// stage select's look: the dark void, the rows on the left, and the stage's section model on the
+// right as a map: the rooms visited on this run lit, the route through them in the thief's
+// colour, the room he is in marked where he stands.
+//
+// Rows: RESUME (also B or START), RESTART ROOM (A's room_restart(): the room from its door, a
+// restart counted, as a catch), RESTART STAGE (the stage from its first room: the run's time and
+// restarts start again; the world reopened over a fade, as the select does), STAGE SELECT (the
+// run left), CONTROLS (shown in place of the map while the row is chosen).
+//
+// Tapes stay exact: nothing ticks while paused, and the menu hands back only once A, B and START
+// are released, so the button that closed it is never a press on the first tick after.
+
+const PAUSE_ROWS = 5
+const PAUSE_LABELS: [5]*u8 = ["RESUME", "RESTART ROOM", "RESTART STAGE", "STAGE SELECT", "CONTROLS"]
+const PAUSE_CONTROLS = 4
+
+// The controls panel: a line each, the control and what it does; the keyboard's under them.
+const CONTROL_KEYS: [9]*u8 = ["STICK", "R", "A", "X", "CARD", "B / L", "START", "SELECT", "L+R+A"]
+const CONTROL_WHAT: [9]*u8 = ["Walk (silent)", "Run (held; loud)", "Hide in a hiding place",
+                              "Dash", "Walk over it: its doors open", "Use, switch a tool",
+                              "Pause", "Restart the room at once", "Select: a locked stage"]
+
+var pause_sel: s32
+var pause_t: s32
+var pause_go: s32 = -1         // restarting the stage: the fade's frames (-1: no)
+var pause_leave: s32           // 1 resume, 2 restart the room: once A, B and START are released
+var pause_lit: u32             // the map's lit rooms
+var pause_n: s32               // pauses opened (the checks)
+
+// START in play (A's hook): opens the pause. Not in a stand-in run (A's tests).
+fn fe_pause() -> bool {
+    if standin_run > 0 { return false }
+    game_mode(Mode.Pause)
+    pause_sel = 0
+    pause_t = 0
+    pause_go = -1
+    pause_leave = 0
+    pause_n += 1
+    au_pause(true)
+    section_read()
+    pause_lit = run_visited | ((1 as u32) << run_room as u32)
+    section_lights(pause_lit)
+    return true
+}
+
+fn pause_update(pad: u32, press: u32) {
+    pause_t += 1
+    if pause_go >= 0 {
+        // RESTART STAGE: the fade out while the stage's world opens again (as the select)
+        let ready = stage_prepare_step()
+        pause_go += 1
+        if (pause_go >= 14 && ready) || pause_go >= 40 {
+            pause_go = -1
+            au_pause(false)
+            play_stage(stage_of())
+        }
+        return
+    }
+    if pause_leave != 0 {
+        if pad & (A | B | START) != 0 { return }
+        au_pause(false)
+        if pause_leave == 2 { room_restart() }
+        pause_leave = 0
+        game_mode(Mode.Play)
+        return
+    }
+    if press & UP != 0 && pause_sel > 0 {
+        pause_sel -= 1
+        au_menu_move()
+    } else if press & DOWN != 0 && pause_sel + 1 < PAUSE_ROWS {
+        pause_sel += 1
+        au_menu_move()
+    } else if press & (B | START) != 0 {
+        au_menu_back()
+        pause_leave = 1
+    } else if press & A != 0 {
+        match pause_sel {
+            0 => {
+                au_menu_ok()
+                pause_leave = 1
+            }
+            1 => {
+                au_menu_ok()
+                pause_leave = 2
+            }
+            2 => {
+                au_menu_ok()
+                pause_go = 0
+                stage_prepare(stage_of())
+            }
+            3 => {
+                au_menu_ok()
+                au_pause(false)
+                select_begin(stage_of())
+            }
+            else => {}
+        }
+    }
+}
+
+fn pause_draw() {
+    cls(VOID)
+    let b = &menu_buf[0]
+    if pause_sel == PAUSE_CONTROLS {
+        pause_controls()
+    } else {
+        // the map: the stage's model, the rooms visited lit, the route, where he is
+        section_view(222, 104, 176, menu_yaw(), -0.6, true, false, pause_lit)
+        if (pause_t / 12) % 4 != 3 {
+            let p = sec_screen(run_room, vec3(thief.x, room.floor, thief.z))
+            if p.z >= 0 {
+                rect_blend(p.x - 3, p.y - 3, 7, 7, COL_ORANGE, BLEND_ADD)
+                rect(p.x - 1, p.y - 1, 3, 3, COL_WARM)
+            }
+        }
+        font_use(null)
+        str_copy(b, 80, "ROOM ")
+        str_append_int(b, 80, run_room + 1, 0, false)
+        str_append(b, 80, "  ")
+        str_append(b, 80, room_name(stage_of(), run_room))
+        let _ = font_text_align(304, 200, b, COL_DIM, ALIGN_RIGHT)
+    }
+    font_use(FONT_HEAD)
+    let _ = font_text(16, 10, "PAUSED", COL_DIM)
+    let _ = font_text(16, 26, stage_def(stage_of()).name, COL_TEXT)
+    font_use(null)
+    // the room's clock and the run's time, as they stopped
+    str_copy(b, 80, "Room ")
+    str_append_ticks(b, 80, clock)
+    str_append(b, 80, "   run ")
+    str_append_ticks(b, 80, total)
+    str_append(b, 80, "   restarts ")
+    str_append_int(b, 80, run_restarts(), 0, false)
+    let _ = font_text(16, 42, b, COL_FAINT)
+    for i in 0..PAUSE_ROWS {
+        let y = 66 + i * 20
+        var col = COL_DIM
+        if i == pause_sel {
+            rect(10, y + 1, 2, 12, COL_ORANGE)
+            col = COL_TEXT
+        }
+        font_use(FONT_HEAD)
+        let _ = font_text(18, y, PAUSE_LABELS[i], col)
+    }
+    font_use(FONT_HEAD)
+    let _ = font_text(16, 222, "A  CHOOSE     B  RESUME", COL_FAINT)
+    font_use(null)
+    if pause_go >= 0 { fade_cover(pause_go * 20) }
+}
+
+fn pause_controls() {
+    font_use(FONT_HEAD)
+    let _ = font_text(128, 62, "CONTROLS", COL_DIM)
+    font_use(null)
+    for i in 0..len(CONTROL_KEYS) {
+        let y = 80 + i * 12
+        let _ = font_text_align(164, y, CONTROL_KEYS[i], COL_WARM, ALIGN_RIGHT)
+        let _ = font_text(171, y, CONTROL_WHAT[i], COL_TEXT)
+    }
+    let _ = font_text(128, 192, "Keys: WASD or arrows, E run, J hide,", COL_FAINT)
+    let _ = font_text(128, 202, "U dash, K / Q tools, Enter, Backspace", COL_FAINT)
+}

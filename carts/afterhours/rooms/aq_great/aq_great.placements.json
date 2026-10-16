@@ -1,0 +1,37 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "aq_great",
+ "placements": [
+  {
+   "id": "ag_room",
+   "asset": "ag_room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "ag_room_col"
+  },
+  {
+   "id": "ag_tank",
+   "asset": "ag_tank",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "ag_wwater",
+   "asset": "ag_wwater",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

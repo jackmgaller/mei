@@ -1,0 +1,17 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "hall",
+ "placements": [
+  {
+   "id": "lh_shell",
+   "asset": "lh_shell",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "lh_shell_col"
+  }
+ ]
+}

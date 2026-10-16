@@ -1,0 +1,17 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "aq_plant",
+ "placements": [
+  {
+   "id": "ap_shell",
+   "asset": "ap_shell",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "ap_shell_col"
+  }
+ ]
+}

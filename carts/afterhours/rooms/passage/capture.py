@@ -56,6 +56,11 @@ SCENES = {
                   'at': {'sf_guard_night': (2.6, 3.4)}, 'assets': ['sf_floor', 'sf_escalators', 'sf_counters']},
     'foodhall': {'thief': ((-3.0, -3.0), 90), 'looks': {'fh_camera_middle': 180, 'fh_guard_melon': 300, 'fh_guard_cleaner': 270},
                  'at': {'fh_guard_cleaner': (2.0, 2.9)}, 'assets': ['fh_hall', 'fh_cases']},
+    # the tower (carts/afterhours/levels/tower)
+    'trading': {'thief': ((3.0, -4.0), 270), 'looks': {'tf_guard_floor': 270, 'tf_camera_office': 300},
+                'at': {'tf_guard_floor': (1.2, 0.4)}, 'assets': ['tf_floor', 'tf_glass']},
+    'ninth': {'thief': ((3.5, 3.8), 90), 'looks': {'nf_guard_round': 180, 'nf_camera_office': 40},
+              'assets': ['nf_floor', 'nf_glass']},
 }
 
 
@@ -225,6 +230,7 @@ def main():
     ap.add_argument('room', choices=sorted(SCENES))
     ap.add_argument('--build-dir', default='build-dr-R2')
     ap.add_argument('--verify', action='store_true', help='run the Asset Checker on every recipe first')
+    ap.add_argument('--beyond', type=float, help='also draw one view panned to this x (past the game\'s pan), as ROOM_60_beyond.png')
     args = ap.parse_args()
     folder = ROOMS / args.room
     build = ROOT / args.build_dir
@@ -309,6 +315,9 @@ def main():
             numbers['assets'][entry['name']] = {k: entry.get(k) for k in ('triangles', 'vertices')}
     images = []
     views = [(x, tz) for x in pans(room)]
+    if args.beyond is not None:
+        img, st = shoot(tools, out, 'view_beyond', cart('room', eye_at(args.beyond, tz), full, CAM_DIST - 14, CAM_DIST + 14))
+        img.resize((960, 720), Image.NEAREST).save(folder / 'shots' / f'{args.room}_60_beyond.png')
     tz_back = frame_room_back(room, f)
     if tz_back - tz > 0.05:          # a room deeper than the picture pans in z too: its back as well
         views.append((room['position'][0], tz_back))

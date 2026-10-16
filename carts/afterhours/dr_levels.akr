@@ -1,16 +1,23 @@
-// The levels' worlds (B's, worlds.txt): which World Kit world each level of the game is. A level
-// is one world holding its rooms (dr_world.akr reads it), played as one run. Stage 1 is `level1`
-// (levels/level1/ROUTE.md); stage 2, keycards and backtracking, is `level2` (rooms of doors,
-// dr_keys.akr); stage 3 is Gate 1's hard platform, `platform` (B's order, NOTES_B.md). A's end
-// line starts the next; after the last, the first again.
-import "level1.akr"
-import "level2.akr"
+// The levels' worlds (B's and J's, worlds.txt): which World Kit world each stage of the game is.
+// A stage is one world holding its rooms (dr_world.akr reads it), played as one run. In order:
+// the station (rooms in a line), the tower (in a line), the aquarium (J's: rooms of doors, dark
+// galleries, two-level rooms), the store (rooms of doors, keycards: dr_keys.akr), Gate 1's hard
+// platform. A's end line starts the next stage; after the last, the first again. E's stage table
+// is keyed by these constants.
+import "station.akr"
+import "tower.akr"
+import "aquarium.akr"
+import "store.akr"
 import "platform.akr"
 
-const LEVELS = 3
-const STAGE2 = 1               // level2's index
-const PLATFORM_LEVEL = 2       // the platform's
-var level: s32                 // the level being played (0: level 1)
+const STAGE_STATION = 0
+const STAGE_TOWER = 1
+const STAGE_AQUARIUM = 2
+const STAGE_STORE = 3
+const PLATFORM_LEVEL = 4
+const STAGE2 = STAGE_STORE     // (the store was stage 2 before the station and the tower split)
+const LEVELS = 5
+var level: s32                 // the stage being played (0: the station)
 
 // Opens the level's world (the reader keeps one pack open).
 fn level_open() -> bool { return level_open_n(level) }
@@ -18,7 +25,35 @@ fn level_open() -> bool { return level_open_n(level) }
 // Opens level n's world without making it the level played (E's stage select draws each stage's
 // model from its world; the run then reopens its own through stage_start()).
 fn level_open_n(n: s32) -> bool {
-    if n == STAGE2 { return world_level2_load() }
+    if n == STAGE_TOWER { return world_tower_load() }
+    if n == STAGE_AQUARIUM { return world_aquarium_load() }
+    if n == STAGE_STORE { return world_store_load() }
     if n == PLATFORM_LEVEL { return world_platform_load() }
-    return world_level1_load()
+    return world_station_load()
+}
+
+// Opens level n's world without entering a region (no textures): the pack, the swatch, every
+// region's palettes (stage_prepare(), dr_world.akr, then copies the first room's textures a frame
+// at a time).
+fn level_open_bare(n: s32) -> bool {
+    var ok = false
+    if n == STAGE_TOWER {
+        ok = wp_open(WORLD_TOWER)
+        if ok { memcpy((VRAM_TEXTURES + 14 * TEXTURE_SLOT_SIZE) as *u8, WORLD_TOWER_SWATCH, 8) }
+    } else if n == STAGE_AQUARIUM {
+        ok = wp_open(WORLD_AQUARIUM)
+        if ok { memcpy((VRAM_TEXTURES + 14 * TEXTURE_SLOT_SIZE) as *u8, WORLD_AQUARIUM_SWATCH, 8) }
+    } else if n == STAGE_STORE {
+        ok = wp_open(WORLD_STORE)
+        if ok { memcpy((VRAM_TEXTURES + 14 * TEXTURE_SLOT_SIZE) as *u8, WORLD_STORE_SWATCH, 8) }
+    } else if n == PLATFORM_LEVEL {
+        ok = wp_open(WORLD_PLATFORM)
+        if ok { memcpy((VRAM_TEXTURES + 14 * TEXTURE_SLOT_SIZE) as *u8, WORLD_PLATFORM_SWATCH, 8) }
+    } else {
+        ok = wp_open(WORLD_STATION)
+        if ok { memcpy((VRAM_TEXTURES + 14 * TEXTURE_SLOT_SIZE) as *u8, WORLD_STATION_SWATCH, 8) }
+    }
+    if !ok { return false }
+    for k in 0..wp_pack.region_count as s32 { wp_variant_load(k, 0) }
+    return true
 }

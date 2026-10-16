@@ -72,6 +72,13 @@ private var tr_fade: [AU_TRAINS]s32
 private var tr_vl: [AU_TRAINS]s32
 private var tr_vr: [AU_TRAINS]s32
 
+// a machine of the room turning (the roof's searchlight): its channel (-1 none), held this frame
+private var mc_ch: s32 = -1
+private var mc_held: bool
+private var mc_fade: s32
+private var mc_vl: s32
+private var mc_vr: s32
+
 // the steps
 private var step_acc: fixed
 private var step_foot: s32
@@ -223,7 +230,9 @@ private fn au_attempt_sound(id: s32) -> bool {
     return id == SFX_STEP_WALK || id == SFX_STEP_RUN || id == SFX_HIDE_IN || id == SFX_HIDE_OUT ||
            id == SFX_TRAIN_HORN || id == SFX_TRAIN_BRAKE || id == SFX_DOORS_OPEN ||
            id == SFX_DOOR_CHIME || id == SFX_DOORS_CLOSE || id == SFX_ALERT || id == SFX_KNOCK ||
-           id == SFX_BELL || id == SFX_CARD || id == SFX_UNLOCK
+           id == SFX_BELL || id == SFX_CARD || id == SFX_UNLOCK || id == SFX_DASH ||
+           id == SFX_DASH_SKID || id == SFX_DASH_BUMP || id == SFX_DASH_READY ||
+           id == SFX_SEARCHLIGHT
 }
 
 // Every attempt's start (a catch's, START's, a room's entry): stops the attempt's sounds and
@@ -298,6 +307,41 @@ fn au_card(dx: fixed) { au_fx_play(SFX_CARD, 6, 1, 1.0, 256, au_pan(dx)) }
 
 // A staff door unlocked by its card (dx: the door's).
 fn au_unlock(dx: fixed) { au_fx_play(SFX_UNLOCK, 6, 1, 1.0, 256, au_pan(dx)) }
+
+// The dash (agent G's, NOTES_G.md): its push-off; its end, a skid or (bump) a thud into a wall;
+// a tiny tick when it is ready again.
+fn au_dash(dx: fixed) { au_fx_play(SFX_DASH, 4, 1, au_vary(), 256, au_pan(dx) / 2) }
+fn au_dash_end(bump: bool, dx: fixed) {
+    if bump {
+        au_fx_play(SFX_DASH_BUMP, 4, 1, au_vary(), 256, au_pan(dx) / 2)
+    } else {
+        au_fx_play(SFX_DASH_SKID, 4, 1, au_vary(), 256, au_pan(dx) / 2)
+    }
+}
+fn au_dash_ready(dx: fixed) { au_fx_play(SFX_DASH_READY, 1, 1, 1.0, 256, au_pan(dx) / 2) }
+
+private fn mc_mine() -> bool {
+    return mc_ch >= 0 && sound_playing(mc_ch) && au_fx.id[mc_ch] == SFX_SEARCHLIGHT
+}
+
+// Every tick a machine of the room turns (on: the roof's searchlight sweeping; dx: its x less
+// the camera's): its motor, held while the calls say on, fading out over four frames when they
+// stop (its holds, a restart, the freeze).
+fn au_machine(on: bool, dx: fixed) {
+    au_init()
+    if !on { return }
+    let p = au_pan(dx)
+    let v = SFX[SFX_SEARCHLIGHT * 5 + 2]
+    mc_vl = au_left(v, p)
+    mc_vr = au_right(v, p)
+    mc_held = true
+    mc_fade = 256
+    if mc_mine() {
+        sound_vol(mc_ch, mc_vl, mc_vr)
+        return
+    }
+    mc_ch = au_fx_play(SFX_SEARCHLIGHT, 3, 1, 1.0, 256, p)
+}
 
 // ---- the trains
 
@@ -424,6 +468,22 @@ fn au_tick() {
             }
         }
         amb_volumes(k)
+    }
+    // the machine's loop
+    if mc_ch >= 0 {
+        if !mc_mine() {
+            mc_ch = -1
+        } else if mc_held {
+            mc_held = false
+        } else {
+            mc_fade -= AU_FADE_LOOP
+            if mc_fade <= 0 {
+                stop(mc_ch)
+                mc_ch = -1
+            } else {
+                sound_vol(mc_ch, mc_vl * mc_fade >> 8, mc_vr * mc_fade >> 8)
+            }
+        }
     }
     // the trains' loops
     for t in 0..AU_TRAINS {

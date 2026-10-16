@@ -1,0 +1,17 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "roof",
+ "placements": [
+  {
+   "id": "rf_shell",
+   "asset": "rf_shell",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "rf_shell_col"
+  }
+ ]
+}

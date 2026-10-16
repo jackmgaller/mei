@@ -1,0 +1,1672 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "ap_machines",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 1900
+ },
+ "materials": {
+  "filter": {
+   "color": "#6a9a80",
+   "smooth": true
+  },
+  "band": {
+   "color": "#4e7a62"
+  },
+  "manway": {
+   "color": "#5a8a70"
+  },
+  "plinth": {
+   "color": "#8a8880"
+  },
+  "pipe_green": {
+   "color": "#5a8a70"
+  },
+  "pipe_grey": {
+   "color": "#9aa0a4"
+  },
+  "pipe_blue": {
+   "color": "#4a78b0"
+  },
+  "valve": {
+   "color": "#c03a30"
+  },
+  "gauge_rim": {
+   "color": "#30343a"
+  },
+  "gauge": {
+   "color": "#e0e0d8",
+   "texture": {
+    "image": "art/ap_gauge.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "pump_base": {
+   "color": "#4a5058"
+  },
+  "motor": {
+   "color": "#3c64aa"
+  },
+  "motor_side": {
+   "color": "#3c64aa",
+   "texture": {
+    "image": "art/ap_motor.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "motor_cap": {
+   "color": "#2c4a80"
+  },
+  "volute": {
+   "color": "#7a8088"
+  },
+  "status": {
+   "color": "#50ff90",
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "filter_0",
+   "op": "lathe",
+   "segments": 12,
+   "caps": false,
+   "material": "filter",
+   "profile": [
+    [
+     0.72,
+     -0.02
+    ],
+    [
+     0.72,
+     1.95
+    ],
+    [
+     0.6696,
+     2.1
+    ],
+    [
+     0.5184,
+     2.24
+    ],
+    [
+     0.288,
+     2.33
+    ],
+    [
+     0.0,
+     2.37
+    ]
+   ],
+   "transform": {
+    "translate": [
+     -6.2,
+     0.0,
+     3.75
+    ]
+   }
+  },
+  {
+   "id": "band_00",
+   "op": "cylinder",
+   "radius": 0.755,
+   "height": 0.07,
+   "segments": 12,
+   "caps": false,
+   "material": "band",
+   "transform": {
+    "translate": [
+     -6.2,
+     0.55,
+     3.75
+    ]
+   }
+  },
+  {
+   "id": "band_01",
+   "op": "cylinder",
+   "radius": 0.755,
+   "height": 0.07,
+   "segments": 12,
+   "caps": false,
+   "material": "band",
+   "transform": {
+    "translate": [
+     -6.2,
+     1.6,
+     3.75
+    ]
+   }
+  },
+  {
+   "id": "manway_0",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 0.06,
+   "segments": 8,
+   "material": "band",
+   "faces": {
+    "bottom": "manway"
+   },
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -5.9,
+     1.25,
+     3.05
+    ]
+   }
+  },
+  {
+   "id": "vent_0",
+   "op": "cylinder",
+   "radius": 0.05,
+   "height": 0.12,
+   "segments": 6,
+   "material": "pipe_grey",
+   "transform": {
+    "translate": [
+     -6.2,
+     2.38,
+     3.75
+    ]
+   }
+  },
+  {
+   "id": "plinth_0",
+   "op": "box",
+   "size": [
+    1.52,
+    0.14,
+    1.51
+   ],
+   "material": "plinth",
+   "transform": {
+    "translate": [
+     -6.2,
+     0.05,
+     3.745
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "header_00",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 1.9,
+   "segments": 6,
+   "material": "pipe_grey",
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     -6.2,
+     0.32,
+     3.12
+    ]
+   }
+  },
+  {
+   "id": "valve_000",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 0.03,
+   "segments": 6,
+   "material": "valve",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -6.82,
+     0.32,
+     3.02
+    ]
+   }
+  },
+  {
+   "id": "valve_002",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 0.03,
+   "segments": 6,
+   "material": "valve",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -5.58,
+     0.32,
+     3.02
+    ]
+   }
+  },
+  {
+   "id": "header_01",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 1.9,
+   "segments": 6,
+   "material": "pipe_green",
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     -6.2,
+     0.78,
+     3.12
+    ]
+   }
+  },
+  {
+   "id": "valve_010",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 0.03,
+   "segments": 6,
+   "material": "valve",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -6.82,
+     0.78,
+     3.02
+    ]
+   }
+  },
+  {
+   "id": "valve_012",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 0.03,
+   "segments": 6,
+   "material": "valve",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -5.58,
+     0.78,
+     3.02
+    ]
+   }
+  },
+  {
+   "id": "gauge_post_0",
+   "op": "box",
+   "size": [
+    0.04,
+    0.14,
+    0.04
+   ],
+   "material": "pipe_grey",
+   "transform": {
+    "translate": [
+     -6.2,
+     0.85,
+     3.12
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "gauge_0",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 0.03,
+   "segments": 8,
+   "material": "gauge_rim",
+   "faces": {
+    "bottom": "gauge"
+   },
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -6.2,
+     0.92,
+     3.08
+    ]
+   }
+  },
+  {
+   "id": "riser_00",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 1.95,
+   "segments": 6,
+   "caps": false,
+   "material": "pipe_green",
+   "transform": {
+    "translate": [
+     -7.06,
+     0.95,
+     4.38
+    ]
+   }
+  },
+  {
+   "id": "riser_02",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 1.95,
+   "segments": 6,
+   "caps": false,
+   "material": "pipe_green",
+   "transform": {
+    "translate": [
+     -5.34,
+     0.95,
+     4.38
+    ]
+   }
+  },
+  {
+   "id": "filter_1",
+   "op": "lathe",
+   "segments": 12,
+   "caps": false,
+   "material": "filter",
+   "profile": [
+    [
+     0.72,
+     -0.02
+    ],
+    [
+     0.72,
+     1.95
+    ],
+    [
+     0.6696,
+     2.1
+    ],
+    [
+     0.5184,
+     2.24
+    ],
+    [
+     0.288,
+     2.33
+    ],
+    [
+     0.0,
+     2.37
+    ]
+   ],
+   "transform": {
+    "translate": [
+     -0.6,
+     0.0,
+     3.75
+    ]
+   }
+  },
+  {
+   "id": "band_10",
+   "op": "cylinder",
+   "radius": 0.755,
+   "height": 0.07,
+   "segments": 12,
+   "caps": false,
+   "material": "band",
+   "transform": {
+    "translate": [
+     -0.6,
+     0.55,
+     3.75
+    ]
+   }
+  },
+  {
+   "id": "band_11",
+   "op": "cylinder",
+   "radius": 0.755,
+   "height": 0.07,
+   "segments": 12,
+   "caps": false,
+   "material": "band",
+   "transform": {
+    "translate": [
+     -0.6,
+     1.6,
+     3.75
+    ]
+   }
+  },
+  {
+   "id": "manway_1",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 0.06,
+   "segments": 8,
+   "material": "band",
+   "faces": {
+    "bottom": "manway"
+   },
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -0.3,
+     1.25,
+     3.05
+    ]
+   }
+  },
+  {
+   "id": "vent_1",
+   "op": "cylinder",
+   "radius": 0.05,
+   "height": 0.12,
+   "segments": 6,
+   "material": "pipe_grey",
+   "transform": {
+    "translate": [
+     -0.6,
+     2.38,
+     3.75
+    ]
+   }
+  },
+  {
+   "id": "plinth_1",
+   "op": "box",
+   "size": [
+    1.52,
+    0.14,
+    1.51
+   ],
+   "material": "plinth",
+   "transform": {
+    "translate": [
+     -0.6,
+     0.05,
+     3.745
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "header_10",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 1.9,
+   "segments": 6,
+   "material": "pipe_grey",
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     -0.6,
+     0.32,
+     3.12
+    ]
+   }
+  },
+  {
+   "id": "valve_100",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 0.03,
+   "segments": 6,
+   "material": "valve",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -1.22,
+     0.32,
+     3.02
+    ]
+   }
+  },
+  {
+   "id": "valve_102",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 0.03,
+   "segments": 6,
+   "material": "valve",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     0.02,
+     0.32,
+     3.02
+    ]
+   }
+  },
+  {
+   "id": "header_11",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 1.9,
+   "segments": 6,
+   "material": "pipe_green",
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     -0.6,
+     0.78,
+     3.12
+    ]
+   }
+  },
+  {
+   "id": "valve_110",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 0.03,
+   "segments": 6,
+   "material": "valve",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -1.22,
+     0.78,
+     3.02
+    ]
+   }
+  },
+  {
+   "id": "valve_112",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 0.03,
+   "segments": 6,
+   "material": "valve",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     0.02,
+     0.78,
+     3.02
+    ]
+   }
+  },
+  {
+   "id": "gauge_post_1",
+   "op": "box",
+   "size": [
+    0.04,
+    0.14,
+    0.04
+   ],
+   "material": "pipe_grey",
+   "transform": {
+    "translate": [
+     -0.6,
+     0.85,
+     3.12
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "gauge_1",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 0.03,
+   "segments": 8,
+   "material": "gauge_rim",
+   "faces": {
+    "bottom": "gauge"
+   },
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -0.6,
+     0.92,
+     3.08
+    ]
+   }
+  },
+  {
+   "id": "riser_10",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 1.95,
+   "segments": 6,
+   "caps": false,
+   "material": "pipe_green",
+   "transform": {
+    "translate": [
+     -1.46,
+     0.95,
+     4.38
+    ]
+   }
+  },
+  {
+   "id": "riser_12",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 1.95,
+   "segments": 6,
+   "caps": false,
+   "material": "pipe_green",
+   "transform": {
+    "translate": [
+     0.26,
+     0.95,
+     4.38
+    ]
+   }
+  },
+  {
+   "id": "filter_2",
+   "op": "lathe",
+   "segments": 12,
+   "caps": false,
+   "material": "filter",
+   "profile": [
+    [
+     0.72,
+     -0.02
+    ],
+    [
+     0.72,
+     1.95
+    ],
+    [
+     0.6696,
+     2.1
+    ],
+    [
+     0.5184,
+     2.24
+    ],
+    [
+     0.288,
+     2.33
+    ],
+    [
+     0.0,
+     2.37
+    ]
+   ],
+   "transform": {
+    "translate": [
+     4.6,
+     0.0,
+     3.75
+    ]
+   }
+  },
+  {
+   "id": "band_20",
+   "op": "cylinder",
+   "radius": 0.755,
+   "height": 0.07,
+   "segments": 12,
+   "caps": false,
+   "material": "band",
+   "transform": {
+    "translate": [
+     4.6,
+     0.55,
+     3.75
+    ]
+   }
+  },
+  {
+   "id": "band_21",
+   "op": "cylinder",
+   "radius": 0.755,
+   "height": 0.07,
+   "segments": 12,
+   "caps": false,
+   "material": "band",
+   "transform": {
+    "translate": [
+     4.6,
+     1.6,
+     3.75
+    ]
+   }
+  },
+  {
+   "id": "manway_2",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 0.06,
+   "segments": 8,
+   "material": "band",
+   "faces": {
+    "bottom": "manway"
+   },
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     4.9,
+     1.25,
+     3.05
+    ]
+   }
+  },
+  {
+   "id": "vent_2",
+   "op": "cylinder",
+   "radius": 0.05,
+   "height": 0.12,
+   "segments": 6,
+   "material": "pipe_grey",
+   "transform": {
+    "translate": [
+     4.6,
+     2.38,
+     3.75
+    ]
+   }
+  },
+  {
+   "id": "plinth_2",
+   "op": "box",
+   "size": [
+    1.52,
+    0.14,
+    1.51
+   ],
+   "material": "plinth",
+   "transform": {
+    "translate": [
+     4.6,
+     0.05,
+     3.745
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "header_20",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 1.8999999999999995,
+   "segments": 6,
+   "material": "pipe_grey",
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     4.6,
+     0.32,
+     3.12
+    ]
+   }
+  },
+  {
+   "id": "valve_200",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 0.03,
+   "segments": 6,
+   "material": "valve",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     3.98,
+     0.32,
+     3.02
+    ]
+   }
+  },
+  {
+   "id": "valve_202",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 0.03,
+   "segments": 6,
+   "material": "valve",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     5.22,
+     0.32,
+     3.02
+    ]
+   }
+  },
+  {
+   "id": "header_21",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 1.8999999999999995,
+   "segments": 6,
+   "material": "pipe_green",
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     4.6,
+     0.78,
+     3.12
+    ]
+   }
+  },
+  {
+   "id": "valve_210",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 0.03,
+   "segments": 6,
+   "material": "valve",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     3.98,
+     0.78,
+     3.02
+    ]
+   }
+  },
+  {
+   "id": "valve_212",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 0.03,
+   "segments": 6,
+   "material": "valve",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     5.22,
+     0.78,
+     3.02
+    ]
+   }
+  },
+  {
+   "id": "gauge_post_2",
+   "op": "box",
+   "size": [
+    0.04,
+    0.14,
+    0.04
+   ],
+   "material": "pipe_grey",
+   "transform": {
+    "translate": [
+     4.6,
+     0.85,
+     3.12
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "gauge_2",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 0.03,
+   "segments": 8,
+   "material": "gauge_rim",
+   "faces": {
+    "bottom": "gauge"
+   },
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     4.6,
+     0.92,
+     3.08
+    ]
+   }
+  },
+  {
+   "id": "riser_20",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 1.95,
+   "segments": 6,
+   "caps": false,
+   "material": "pipe_green",
+   "transform": {
+    "translate": [
+     3.74,
+     0.95,
+     4.38
+    ]
+   }
+  },
+  {
+   "id": "riser_22",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 1.95,
+   "segments": 6,
+   "caps": false,
+   "material": "pipe_green",
+   "transform": {
+    "translate": [
+     5.46,
+     0.95,
+     4.38
+    ]
+   }
+  },
+  {
+   "id": "manifold",
+   "op": "cylinder",
+   "radius": 0.11,
+   "height": 17.96,
+   "segments": 6,
+   "caps": false,
+   "material": "pipe_green",
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     0.0,
+     1.95,
+     4.37
+    ]
+   }
+  },
+  {
+   "id": "return",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 17.96,
+   "segments": 6,
+   "caps": false,
+   "material": "pipe_blue",
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     0.0,
+     1.7,
+     4.42
+    ]
+   }
+  },
+  {
+   "id": "pump_base_0",
+   "op": "box",
+   "size": [
+    0.6,
+    0.12,
+    0.5
+   ],
+   "material": "pump_base",
+   "transform": {
+    "translate": [
+     -1.7,
+     0.04,
+     -2.45
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "motor_0",
+   "op": "cylinder",
+   "radius": 0.17,
+   "height": 0.38,
+   "segments": 8,
+   "material": "motor",
+   "faces": {
+    "side": "motor_side"
+   },
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     -1.79,
+     0.3,
+     -2.45
+    ]
+   }
+  },
+  {
+   "id": "volute_0",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 0.14,
+   "segments": 8,
+   "material": "volute",
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     -1.5,
+     0.32,
+     -2.45
+    ]
+   }
+  },
+  {
+   "id": "outlet_0",
+   "op": "cylinder",
+   "radius": 0.06,
+   "height": 0.4,
+   "segments": 6,
+   "material": "pipe_blue",
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     -1.5,
+     0.7,
+     -2.45
+    ]
+   }
+  },
+  {
+   "id": "suction_0",
+   "op": "box",
+   "size": [
+    0.12,
+    0.12,
+    0.55
+   ],
+   "material": "pipe_grey",
+   "transform": {
+    "translate": [
+     -1.5,
+     0.32,
+     -2.175
+    ]
+   },
+   "open": [
+    "back"
+   ]
+  },
+  {
+   "id": "dip_0",
+   "op": "box",
+   "size": [
+    0.1,
+    0.62,
+    0.1
+   ],
+   "material": "pipe_grey",
+   "transform": {
+    "translate": [
+     -1.5,
+     -0.04,
+     -1.96
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "lamp_0",
+   "op": "box",
+   "size": [
+    0.07,
+    0.07,
+    0.03
+   ],
+   "material": "status",
+   "transform": {
+    "translate": [
+     -1.915,
+     0.135,
+     -2.685
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "pump_base_1",
+   "op": "box",
+   "size": [
+    0.6,
+    0.12,
+    0.5
+   ],
+   "material": "pump_base",
+   "transform": {
+    "translate": [
+     3.3,
+     0.04,
+     -2.45
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "motor_1",
+   "op": "cylinder",
+   "radius": 0.17,
+   "height": 0.38,
+   "segments": 8,
+   "material": "motor",
+   "faces": {
+    "side": "motor_side"
+   },
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     3.21,
+     0.3,
+     -2.45
+    ]
+   }
+  },
+  {
+   "id": "volute_1",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 0.14,
+   "segments": 8,
+   "material": "volute",
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     90.0
+    ],
+    "translate": [
+     3.5,
+     0.32,
+     -2.45
+    ]
+   }
+  },
+  {
+   "id": "outlet_1",
+   "op": "cylinder",
+   "radius": 0.06,
+   "height": 0.4,
+   "segments": 6,
+   "material": "pipe_blue",
+   "transform": {
+    "rotate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "translate": [
+     3.5,
+     0.7,
+     -2.45
+    ]
+   }
+  },
+  {
+   "id": "suction_1",
+   "op": "box",
+   "size": [
+    0.12,
+    0.12,
+    0.55
+   ],
+   "material": "pipe_grey",
+   "transform": {
+    "translate": [
+     3.5,
+     0.32,
+     -2.175
+    ]
+   },
+   "open": [
+    "back"
+   ]
+  },
+  {
+   "id": "dip_1",
+   "op": "box",
+   "size": [
+    0.1,
+    0.62,
+    0.1
+   ],
+   "material": "pipe_grey",
+   "transform": {
+    "translate": [
+     3.5,
+     -0.04,
+     -1.96
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "lamp_1",
+   "op": "box",
+   "size": [
+    0.07,
+    0.07,
+    0.03
+   ],
+   "material": "status",
+   "transform": {
+    "translate": [
+     3.085,
+     0.135,
+     -2.685
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "pump_plinth_2",
+   "op": "box",
+   "size": [
+    0.7,
+    0.4,
+    0.7
+   ],
+   "material": "plinth",
+   "transform": {
+    "translate": [
+     -5.55,
+     -0.15,
+     -0.55
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ]
+  },
+  {
+   "id": "motor_2",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 0.51,
+   "segments": 8,
+   "material": "motor",
+   "faces": {
+    "side": "motor_side"
+   },
+   "transform": {
+    "translate": [
+     -5.55,
+     0.545,
+     -0.55
+    ]
+   }
+  },
+  {
+   "id": "casing_2",
+   "op": "cylinder",
+   "radius": 0.25,
+   "height": 0.26,
+   "segments": 8,
+   "material": "volute",
+   "transform": {
+    "translate": [
+     -5.55,
+     0.17,
+     -0.55
+    ]
+   }
+  },
+  {
+   "id": "fan_2",
+   "op": "cylinder",
+   "radius": 0.16,
+   "height": 0.13,
+   "segments": 8,
+   "material": "motor_cap",
+   "transform": {
+    "translate": [
+     -5.55,
+     0.855,
+     -0.55
+    ]
+   }
+  },
+  {
+   "id": "pump_plinth_3",
+   "op": "box",
+   "size": [
+    0.7,
+    0.4,
+    0.7
+   ],
+   "material": "plinth",
+   "transform": {
+    "translate": [
+     1.35,
+     -0.15,
+     0.55
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ]
+  },
+  {
+   "id": "motor_3",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 0.51,
+   "segments": 8,
+   "material": "motor",
+   "faces": {
+    "side": "motor_side"
+   },
+   "transform": {
+    "translate": [
+     1.35,
+     0.545,
+     0.55
+    ]
+   }
+  },
+  {
+   "id": "casing_3",
+   "op": "cylinder",
+   "radius": 0.25,
+   "height": 0.26,
+   "segments": 8,
+   "material": "volute",
+   "transform": {
+    "translate": [
+     1.35,
+     0.17,
+     0.55
+    ]
+   }
+  },
+  {
+   "id": "fan_3",
+   "op": "cylinder",
+   "radius": 0.16,
+   "height": 0.13,
+   "segments": 8,
+   "material": "motor_cap",
+   "transform": {
+    "translate": [
+     1.35,
+     0.855,
+     0.55
+    ]
+   }
+  }
+ ],
+ "lighting": {
+  "direction": [
+   -0.25,
+   0.7,
+   -0.65
+  ],
+  "ambient": 0.3,
+  "diffuse": 0.18,
+  "lights": [
+   {
+    "id": "back_0",
+    "at": [
+     -8.1,
+     2.2,
+     4.3
+    ],
+    "color": "#ffd8a0",
+    "intensity": 1.5,
+    "range": 5.2
+   },
+   {
+    "id": "back_1",
+    "at": [
+     -3.4,
+     2.2,
+     4.3
+    ],
+    "color": "#ffd8a0",
+    "intensity": 1.5,
+    "range": 5.2
+   },
+   {
+    "id": "back_2",
+    "at": [
+     2.0,
+     2.2,
+     4.3
+    ],
+    "color": "#ffd8a0",
+    "intensity": 1.5,
+    "range": 5.2
+   },
+   {
+    "id": "back_3",
+    "at": [
+     7.3,
+     2.2,
+     4.3
+    ],
+    "color": "#ffd8a0",
+    "intensity": 1.5,
+    "range": 5.2
+   },
+   {
+    "id": "ceil_0",
+    "at": [
+     -4.6,
+     2.7,
+     0.4
+    ],
+    "color": "#ffe4b8",
+    "intensity": 1.4,
+    "range": 4.6
+   },
+   {
+    "id": "ceil_1",
+    "at": [
+     0.4,
+     2.7,
+     0.4
+    ],
+    "color": "#ffe4b8",
+    "intensity": 1.4,
+    "range": 4.6
+   },
+   {
+    "id": "ceil_2",
+    "at": [
+     5.4,
+     2.7,
+     0.4
+    ],
+    "color": "#ffe4b8",
+    "intensity": 1.4,
+    "range": 4.6
+   },
+   {
+    "id": "clamp_0",
+    "at": [
+     -6.6,
+     0.95,
+     -3.33
+    ],
+    "color": "#fff0d4",
+    "intensity": 1.1,
+    "range": 3.2
+   },
+   {
+    "id": "clamp_1",
+    "at": [
+     1.8,
+     0.95,
+     -3.33
+    ],
+    "color": "#fff0d4",
+    "intensity": 1.1,
+    "range": 3.2
+   },
+   {
+    "id": "clamp_2",
+    "at": [
+     7.4,
+     0.95,
+     -3.33
+    ],
+    "color": "#fff0d4",
+    "intensity": 1.1,
+    "range": 3.2
+   },
+   {
+    "id": "door_kitchen",
+    "at": [
+     10.05,
+     1.8,
+     -2.8
+    ],
+    "color": "#d8e8ff",
+    "intensity": 1.4,
+    "range": 3.2
+   },
+   {
+    "id": "door_quar",
+    "at": [
+     -10.05,
+     1.8,
+     2.0
+    ],
+    "color": "#c8b8f0",
+    "intensity": 1.0,
+    "range": 2.8
+   }
+  ],
+  "refine": {
+   "tolerance": 24,
+   "max_added": 120
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

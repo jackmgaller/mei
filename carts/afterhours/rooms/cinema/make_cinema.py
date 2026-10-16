@@ -5,7 +5,7 @@ floor plan.
 
     python3 carts/afterhours/rooms/cinema/make_cinema.py
 
-The thief comes out of the aquarium's service corridor behind the screen. The auditorium: three
+The assessor comes in behind the screen by the backstage door off the goods lift. The auditorium: three
 blocks of seats either side of a middle aisle, an aisle in front and one at the back, two cross
 aisles. The projector's window high in the east wall looks down the middle aisle (a cone that
 never moves). An usher walks round the seats; a cleaner sweeps the second cross aisle, front to
@@ -34,7 +34,7 @@ CROSS_2 = 1.9                                         # the second cross aisle's
 ROOM = {
     'name': NAME, 'prefix': P, 'title': 'the_cinema', 'x': X, 'z': Z, 'entry': 'screen',
     'doors': [
-        # behind the screen: the aquarium's service corridor (the stage's start; not a way back)
+        # behind the screen: the backstage door off the goods lift (the stage's start; not a way back)
         {'id': 'screen', 'side': 'w', 'at': (-0.6, 0.6), 'spawn': (0.0, 0.9)},
         {'id': 'corridor', 'side': 'e', 'at': (2.6, 3.8), 'to': 'sc_door_cinema'},
     ],

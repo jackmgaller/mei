@@ -1,0 +1,486 @@
+// Agent G's scenarios: the dash (dr_dash.akr; NOTES_G.md). 70-75 run on agent A's stand-in
+// platform (dr_standin.akr, whose numbers are known), 75 and 77 on B's rooms. tests/harness.akr
+// imports this file and hands it the scenarios it does not know (g_init(), g_scenario()).
+//
+// 70  distance and timing: 2.0 m over 12 ticks, each tick its DASH_STEP; committed (input held
+//     during it does nothing), 8 ticks of recovery, the cooldown, a held X does not repeat, a
+//     half-tilted diagonal stick dashes the full 2 m its way
+// 71  its cost: no noise while it slides; one skid of 3 m where it ends, heard by exactly the
+//     guards within 3 m (a posted guard 4 m off does not hear it; he hears a run at 5.9 m)
+// 72  walls mid-dash: a pillar and the thin glass screen stop it (a bump, ended early, never
+//     past their faces); at a slant along the platform's edge he slides on, not a bump
+// 73  the same tape twice: dashes, bumps, skids heard, a fragile thing knocked by a dash; the
+//     same room on every tick, the dash's state included
+// 74  sight at every tick: a narrow fan (10 degrees) crossed 0.8 m from the guard, between two
+//     ticks' ends: caught at the first substep inside the drawn fan, stopped there; no drawn cone
+//     covered any point of his path before; the same catch on the replay after the restart
+// 75  the cost in cycles: dashes round B's platform, its worst frame and the dash's own cycles
+// 76  a route: B's tape for level 1's first room with one dash at 335 clears on 347, not 385
+// 77  (shot) a dash in level 1's first room, for the capture strip (SEQ)
+// 78  (shot) 74's catch: the freeze, stopped inside the narrow fan
+
+const G_STEP_SUM: fixed = 2.0
+
+// 73: walks, dashes (through the fragile thing at -1.4, into the pillar at 3), a run, until START
+// at 900 (the harness compares the replay)
+const TAPE_G_BUSY: [18]Span = [
+    Span { n: 10, pad: 0 },
+    Span { n: 1, pad: X | RIGHT },             // along z 1.6 to x -8.4
+    Span { n: 40, pad: RIGHT },
+    Span { n: 30, pad: DOWN },
+    Span { n: 1, pad: X, sx: 127, sy: 60 },     // up and right, past the bench
+    Span { n: 60, pad: RIGHT },
+    Span { n: 31, pad: UP },
+    Span { n: 15, pad: RIGHT },
+    Span { n: 1, pad: X | RIGHT },             // through the fragile thing at (-1.4, 2.5)
+    Span { n: 70, pad: 0 },
+    Span { n: 60, pad: DOWN },
+    Span { n: 30, pad: R | RIGHT },            // a run (loud)
+    Span { n: 1, pad: X | RIGHT },             // into the pillar at 3
+    Span { n: 80, pad: 0 },
+    Span { n: 1, pad: X | UP },
+    Span { n: 100, pad: 0, sx: -90, sy: -90 },
+    Span { n: 1, pad: X },                     // the way he faces
+    Span { n: 900, pad: RIGHT },
+]
+
+// 74 and 78: still, then X with the stick up: across the fan's narrow end
+const TAPE_G_CROSS: [3]Span = [
+    Span { n: 5, pad: 0 },
+    Span { n: 1, pad: X | UP },
+    Span { n: 200, pad: UP },
+]
+
+// 75: round B's platform (its spawn at the stair, the west end), dashing as it goes
+const TAPE_G_TOUR: [14]Span = [
+    Span { n: 30, pad: DOWN },
+    Span { n: 1, pad: X | RIGHT },
+    Span { n: 70, pad: RIGHT },
+    Span { n: 1, pad: X | RIGHT },
+    Span { n: 70, pad: UP | RIGHT },
+    Span { n: 1, pad: X | RIGHT },
+    Span { n: 80, pad: DOWN | RIGHT },
+    Span { n: 1, pad: X | UP },
+    Span { n: 60, pad: R | RIGHT },
+    Span { n: 1, pad: X | RIGHT },
+    Span { n: 70, pad: LEFT },
+    Span { n: 1, pad: X | LEFT },
+    Span { n: 70, pad: DOWN },
+    Span { n: 1600, pad: RIGHT },
+]
+
+var g_px: fixed                // his position before the last tick
+var g_pz: fixed
+var g_ax: fixed                // a dash's start
+var g_az: fixed
+var g_step: s32
+var g_n: s32
+var g_t: s32 = -1
+var g_cx: fixed                // 74: the first catch's point and tick
+var g_cz: fixed
+var g_ct: s32
+var g_hashes: [1000]u32
+var g_hash_n: s32
+var g_worst_dash: s32
+var g_worst_tick: s32
+var g_dash_ticks: s32
+
+fn g_init() {
+    match SCENARIO {
+        70 => { name = "the dash: 2 m in 12 ticks, committed, recovery, cooldown, any tilt"; standin(); test_no_catch = true }
+        71 => { name = "the dash's cost: silent while it slides, a 3 m skid where it ends"; standin(); test_no_catch = true; g_spawn(7.0, 1.6) }
+        72 => { name = "the dash into walls: stopped at the face, a bump; at a slant it slides"; standin(); test_no_catch = true; g_spawn(1.5, 0.0) }
+        73 => { name = "the same tape with dashes twice: the same room on every tick"; standin(); test_no_catch = true; play(&TAPE_G_BUSY[0], len(TAPE_G_BUSY)) }
+        74, 78 => { name = "the dash and sight: every substep of its path tested against the drawn fans"; g_narrow_fan(); play(&TAPE_G_CROSS[0], len(TAPE_G_CROSS)) }
+        75 => { name = "the dash's cost in cycles on B's platform"; platform_run(); test_no_catch = true; play(&TAPE_G_TOUR[0], len(TAPE_G_TOUR)) }
+        76 => { name = "a dash route: level 1's first room, B's tape with one dash"; level_room(0) }
+        77 => { name = "shot: a dash in level 1's first room"; level_room(0); test_no_catch = true }
+        else => {}
+    }
+}
+
+fn g_spawn(x: fixed, z: fixed) {
+    room.spawn_x = x
+    room.spawn_z = z
+    restart_attempt()
+}
+
+// 74: the stand-in with one watcher: a posted guard at (13, 1.6) looking -x and never turning, a
+// fan 10 degrees wide; the thief at (12.2, 0.37), 0.8 m in front of him and below the fan.
+fn g_narrow_fan() {
+    standin()
+    room.watch[0] = WatchDef { kind: WKind.Posted, x: 13.0, z: 1.6, head: 270.0 * DEG, route: -1, sight: 5.0,
+                               half: 5.0 * DEG, speed: 0.02, look_a: 270.0 * DEG, look_b: 270.0 * DEG,
+                               hold: 90, turn: 60, hear: 6.0 }
+    room.nwatch = 1
+    g_spawn(12.2, 0.37)
+}
+
+fn g_scenario(f: s32) {
+    match SCENARIO {
+        70 => g_distance(f)
+        71 => g_cost(f)
+        72 => g_walls(f)
+        73 => g_twice(f)
+        74, 78 => g_sight(f)
+        75 => g_budget(f)
+        76 => g_route(f)
+        77 => g_shot(f)
+        else => {}
+    }
+}
+
+fn near(a: fixed, b: fixed, e: fixed) -> bool { return abs(a - b) <= e }
+
+// Every tick of a slide moved him its DASH_STEP (when nothing stopped him).
+fn g_step_check() {
+    if phase != Phase.Play || clock == 0 { return }
+    let last = clock - 1
+    if dash.start_t >= 0 && last >= dash.start_t && last - dash.start_t < DASH_TICKS && (dash.k >= 0 || dash.end_t == last) && !dash.bump {
+        let k = last - dash.start_t
+        let d = sqrt(dist2(thief.x, thief.z, g_px, g_pz))
+        always(near(d, DASH_STEP[k], 0.002), "each tick of the slide moves its DASH_STEP", d)
+        g_dash_ticks += 1
+    }
+    g_px = thief.x
+    g_pz = thief.z
+}
+
+// 70
+fn g_distance(_f: s32) {
+    g_step_check()
+    let c = clock
+    // the input: X with the stick right at 10; down held through the slide and the recovery;
+    // right; X in the cooldown at 40; X held from 70 to 140; X with a half-tilted stick at 141
+    if c == 10 { press(X | RIGHT) }
+    if c >= 11 && c <= 30 { press(DOWN) }
+    if c >= 31 && c <= 39 { press(RIGHT) }
+    if c == 40 { press(X) }
+    if c >= 70 && c <= 135 { press(X) }
+    if c == 141 {
+        press(X)
+        stick_v = vec2(fixed(60) / 127, fixed(-30) / 127)
+    }
+    if c == 10 {
+        expect(dash.n == 0 && thief.x == -10.4 && thief.z == 1.6, "at the spawn, no dash yet", thief.x)
+        g_ax = thief.x
+        g_az = thief.z
+    }
+    if c == 11 {
+        expect(dashing() && dash.start_t == 10 && dash.k == 1, "X starts the dash on the tick it is pressed", fixed(dash.start_t))
+        expect(near(thief.x - g_ax, DASH_STEP[0], 0.001), "its first tick", thief.x - g_ax)
+        expect(dash.ready_at == 10 + DASH_COOL, "ready again DASH_COOL ticks after the press", fixed(dash.ready_at))
+    }
+    if c == 21 { expect(dashing(), "still sliding on its 12th tick", fixed(dash.k)) }
+    if c == 22 {
+        expect(!dashing() && dash.end_t == 21 && dash.rec == DASH_RECOVER && !dash.bump, "it ends after 12 ticks, the recovery begins", fixed(dash.end_t))
+        expect(near(thief.x - g_ax, G_STEP_SUM, 0.003), "2.0 m", thief.x - g_ax)
+        expect(thief.z == g_az, "committed: down held through it did not steer it", thief.z)
+        g_ax = thief.x
+    }
+    if c == 30 { expect(thief.x == g_ax && thief.z == g_az, "the recovery: 8 ticks standing, down held", thief.z) }
+    if c == 31 { expect(near(thief.z, g_az - WALK, 0.0005), "then he walks", thief.z) }
+    if c == 41 { expect(dash.n == 1 && !dashing() && dash.rec <= 0, "X in the cooldown does nothing", fixed(dash.n)) }
+    if c == 70 {
+        g_ax = thief.x
+        g_az = thief.z
+    }
+    if c == 71 { expect(dash.n == 2 && dash.start_t == 70, "X once it is ready: the second", fixed(dash.n)) }
+    if c == 83 {
+        expect(near(sqrt(dist2(thief.x, thief.z, g_ax, g_az)), G_STEP_SUM, 0.003), "the way he faces (no stick): 2.0 m", thief.x - g_ax)
+        expect(near(thief.z, g_az, 0.003), "along his heading (+x)", thief.z - g_az)
+    }
+    if c == 141 {
+        expect(dash.n == 2, "X held 66 ticks dashes once", fixed(dash.n))
+        g_ax = thief.x
+        g_az = thief.z
+    }
+    if c == 154 {
+        expect(dash.n == 3, "a fresh press, a third", fixed(dash.n))
+        let dx = thief.x - g_ax
+        let dz = thief.z - g_az
+        expect(near(sqrt(dx * dx + dz * dz), G_STEP_SUM, 0.003), "a half-tilted stick: the full 2.0 m", sqrt(dx * dx + dz * dz))
+        // its way: the stick as the tape keeps it (s8: 59, -29), at any tilt
+        let qx = fixed(quantize(fixed(60) / 127))
+        let qz = fixed(quantize(fixed(-30) / 127))
+        expect(near(dz * qx - dx * qz, 0.0, 0.003 * qx), "the stick's way", dz * qx - dx * qz)
+        expect(g_dash_ticks == 36, "every slide tick checked against DASH_STEP", fixed(g_dash_ticks))
+        done()
+    }
+}
+
+// Whether guard i went to the dash's skid.
+fn went_to_skid(i: s32) -> bool {
+    let g = &guards[i]
+    return g.mode == GMode.GoNoise && g.nx == dash.end_x && g.nz == dash.end_z
+}
+
+// Every patrol or posted guard went to the skid exactly when he was within DASH_NOISE of it.
+fn g_heard_iff() -> s32 {
+    var n = 0
+    for i in 0..room.nwatch {
+        if room.watch[i].kind == WKind.Camera { continue }
+        let g = &guards[i]
+        let inside = dist2(g.x, g.z, dash.end_x, dash.end_z) < DASH_NOISE * DASH_NOISE
+        always(went_to_skid(i) == inside, "a guard goes to the skid exactly when he is within 3 m", fixed(i))
+        if inside { n += 1 }
+    }
+    return n
+}
+
+// 71: three attempts: a dash landing 4 m from the posted guard (2), one landing 2.5 m from him,
+// then a run from 7 m.
+fn g_cost(_f: s32) {
+    if phase != Phase.Play { return }
+    let c = clock
+    if g_step < 2 && c == 5 { press(X | RIGHT) }
+    // during the slide no noise; on its last tick one, the skid
+    if dashing() && c > 6 {
+        expect_quiet()
+    }
+    if g_step < 2 && c == 17 {
+        expect(dash.end_t == 16 && nnoise == 1 && noises[0].r == DASH_NOISE && noises[0].x == thief.x && noises[0].z == thief.z, "one noise, the skid, 3 m, where it ended", fixed(nnoise))
+        let n = g_heard_iff()
+        let d = sqrt(dist2(room.watch[2].x, room.watch[2].z, dash.end_x, dash.end_z))   // where he stood
+        if g_step == 0 {
+            expect(near(d, 4.0, 0.01) && !went_to_skid(2), "4 m off, the posted guard does not hear it (he hears a run at 6 m)", d)
+            g_spawn_next(8.5)
+        } else {
+            expect(near(d, 2.5, 0.01) && went_to_skid(2) && n == 1, "2.5 m off, he does, alone", d)
+            g_spawn_next(7.0)
+        }
+    }
+    if g_step == 2 && restarts == 2 {
+        if c >= 5 { press(R | RIGHT) }
+        if guards[2].mode == GMode.GoNoise {
+            let d = sqrt(dist2(guards[2].x, guards[2].z, thief.x, thief.z))
+            expect(d < room.watch[2].hear && d > DASH_NOISE * 1.5, "a run is heard twice as far", d)
+            done()
+        }
+        if c > 60 { expect(false, "the run was not heard", 0.0) }
+    }
+}
+
+var g_quiet_ok: bool = true
+fn expect_quiet() {
+    // the tick before (clock - 1) was a slide tick that did not end it
+    if dash.end_t != clock - 1 && nnoise != 0 && g_quiet_ok {
+        g_quiet_ok = false
+        expect(false, "no noise while it slides", fixed(nnoise))
+    }
+}
+
+fn g_spawn_next(x: fixed) {
+    room.spawn_x = x
+    press(START)
+    g_step += 1
+}
+
+// 72: the pillar at x 3 (its face 2.7) from (1.5, 0); the glass screen at x -10.6 (0.06 thick)
+// from (-9.95, -0.3); along the platform's edge (z 3, the track behind it solid) at a slant.
+fn g_walls(_f: s32) {
+    if phase != Phase.Play { return }
+    let c = clock
+    if g_step == 0 {
+        always(thief.x <= 2.4 + 0.0005, "never past the pillar's face", thief.x)
+        if c == 5 {
+            g_ax = thief.x
+            press(X | RIGHT)
+        }
+        if c > 5 && !dashing() && dash.end_t >= 0 && g_t < 0 {
+            g_t = c
+            expect(dash.bump && dash.end_t - dash.start_t < DASH_TICKS - 1, "the pillar ends it early: a bump", fixed(dash.end_t - dash.start_t))
+            expect(near(thief.x, 2.4, 0.0005) && thief.z == 0.0, "stopped against its face, as walking is", thief.x)
+            expect(nnoise == 1 && noises[0].r == DASH_NOISE && noises[0].x == thief.x, "the skid where it stopped", fixed(nnoise))
+            expect(dash.rec == DASH_RECOVER, "then the recovery", fixed(dash.rec))
+            room.spawn_x = -9.95
+            room.spawn_z = -0.3
+            press(START)
+            g_step = 1
+            g_t = -1
+        }
+    } else if g_step == 1 {
+        always(thief.x >= -10.6 + 0.03 + THIEF_R - 0.0005, "never into the glass screen", thief.x)
+        if c == 5 { press(X | LEFT) }
+        if c > 5 && !dashing() && dash.end_t >= 0 && g_t < 0 {
+            g_t = c
+            expect(dash.bump && near(thief.x, -10.27, 0.0005), "the glass stops it, a bump", thief.x)
+            room.spawn_x = 0.0
+            room.spawn_z = 2.2
+            press(START)
+            g_step = 2
+            g_t = -1
+        }
+    } else {
+        always(thief.z <= 2.7 + 0.0005, "never over the platform's edge", thief.z)
+        if c == 5 {
+            g_ax = thief.x
+            press(X)
+            stick_v = vec2(1.0, fixed(64) / 127)
+        }
+        if c > 5 && !dashing() && dash.end_t >= 0 && g_t < 0 {
+            g_t = c
+            expect(!dash.bump && dash.end_t - dash.start_t == DASH_TICKS - 1, "at a slant it is no bump: all 12 ticks", fixed(dash.end_t - dash.start_t))
+            expect(near(thief.z, 2.7, 0.0005), "held at the edge", thief.z)
+            expect(thief.x - g_ax > 1.7, "sliding along it", thief.x - g_ax)
+            done()
+        }
+    }
+}
+
+// The room's hash with the dash's state.
+fn g_hash() -> u32 {
+    var h = room_hash()
+    h = mix(h, dash.k)
+    h = mix(h, dash.rec)
+    h = mix(h, dash.ready_at)
+    h = mix(h, dash.n)
+    h = mix(h, bits(dash.end_x) ^ bits(dash.end_z))
+    for i in 0..room.nfrag { h = mix(h, fragile_down[i] as s32) }
+    return h
+}
+
+// 73: the first attempt's hashes for 900 ticks, START, the second compared tick by tick.
+fn g_twice(_f: s32) {
+    if phase != Phase.Play { return }
+    if restarts == 0 {
+        if clock < len(g_hashes) {
+            g_hashes[clock] = g_hash()
+            g_hash_n = clock + 1
+        }
+        if clock == 900 {
+            expect(dash.n >= 6, "dashes made", fixed(dash.n))
+            expect(fragile_down[0], "a dash knocked the fragile thing over", 0.0)
+            var heard = 0
+            for i in 0..room.nwatch {
+                if guards[i].away { heard += 1 }
+            }
+            note("guards off their routes", fixed(heard))
+            press(START)
+        }
+    } else if restarts == 1 {
+        if clock < g_hash_n {
+            always(g_hashes[clock] == g_hash(), "the replay matches on every tick", fixed(clock))
+            g_n = clock + 1
+        }
+        if clock == g_hash_n - 1 {
+            expect(g_n == g_hash_n && g_hash_n == 901, "every tick compared", fixed(g_n))
+            done()
+        }
+    }
+}
+
+// The drawn cone of watcher i covers the point (the harness's tri_cover() on the cone's mesh).
+fn drawn_cover_at(i: s32, x: fixed, z: fixed) -> bool {
+    let f = &guards[i].fan
+    let m = &mb_cones[i]
+    if m.nv < RAYS + 1 { return false }
+    let ax = f.ax + m.v[0].x
+    let az = f.az + m.v[0].z
+    for k in 0..RAYS - 1 {
+        if tri_cover(ax, az, f.ax + m.v[k + 1].x, f.az + m.v[k + 1].z, f.ax + m.v[k + 2].x, f.az + m.v[k + 2].z, x, z) { return true }
+    }
+    return false
+}
+
+// 74 (78: the same, stopped on the freeze for the picture)
+fn g_sight(f: s32) {
+    if f == 0 { return }
+    if phase == Phase.Play && caught_n == g_n {
+        // every tick he plays (the cones drawn last frame are this state's): no drawn cone covers
+        // any point of the last tick's path, nor where he stands
+        for i in 0..room.nwatch {
+            always(drawn_is_fan(i), "the drawn cone is the fan", fixed(i))
+            always(!drawn_cover_at(i, thief.x, thief.z), "no drawn cone covers him", fixed(i))
+            for p in 0..dash.np { always(!drawn_cover_at(i, dash.px[p], dash.pz[p]), "nor any point of his path", fixed(p)) }
+        }
+        g_dash_ticks += 1
+    }
+    if phase == Phase.Caught && caught_n > g_n {
+        g_n = caught_n
+        if SCENARIO == 78 {
+            done_at = f + 6
+        }
+        expect(why == Why.Seen && catcher == 0, "seen", fixed(why as s32))
+        expect(dash.cut && dashing(), "mid-dash, stopped by the path test", fixed(dash.k))
+        expect(thief.x == dash.px[dash.np - 1] && thief.z == dash.pz[dash.np - 1], "at a point of his path", thief.z)
+        expect(drawn_cover_at(0, thief.x, thief.z) && drawn_is_fan(0), "the drawn fan covers him there", thief.z)
+        expect(!fan_covers(&guards[0].fan, dash.uncut_x, dash.uncut_z), "where the tick would have ended is beyond the fan", dash.uncut_z)
+        expect(!fan_covers(&guards[0].fan, g_px, g_pz), "and where the tick before ended, short of it", g_pz)
+        if g_n == 1 {
+            g_cx = thief.x
+            g_cz = thief.z
+            g_ct = caught_at
+            note("caught on dash tick", fixed(caught_at - dash.start_t))
+        } else {
+            expect(thief.x == g_cx && thief.z == g_cz && caught_at == g_ct, "the replay is caught at the same tick and point", thief.z)
+            expect(g_dash_ticks > 2, "ticks checked", fixed(g_dash_ticks))
+            if SCENARIO == 74 { done() }
+        }
+    }
+    if phase == Phase.Play {
+        g_px = thief.x
+        g_pz = thief.z
+    }
+    if done_at >= 0 && f >= done_at { done() }
+}
+
+// 75: the worst frame and the dash's own worst cycles.
+fn g_budget(f: s32) {
+    if f > 2 {
+        budget_watch()
+        if dash_cycles > g_worst_dash {
+            g_worst_dash = dash_cycles
+            g_worst_tick = clock
+        }
+    }
+    if f == 1990 {
+        print("DASH cycles worst ")
+        print_int(g_worst_dash)
+        print(" (clock ")
+        print_int(g_worst_tick)
+        print("); frame worst cpu ")
+        print_int(worst_cpu)
+        print(" gpu ")
+        print_int(worst_gpu)
+        print("; dashes ")
+        print_int(dash.n)
+        println("")
+        expect(dash.n >= 6, "dashes made", fixed(dash.n))
+        expect(worst_cpu < 1000000 && worst_gpu < 2000000, "within the budgets", fixed(worst_cpu / 1000))
+        done()
+    }
+}
+
+// 77: level 1's first room: right along the platform, a dash at 60; done 40 ticks later.
+fn g_shot(_f: s32) {
+    if phase != Phase.Play { return }
+    if clock < 60 { stick_v = vec2(1.0, 0.0) }
+    if clock == 60 { press(X | RIGHT) }
+    if clock == 60 + 70 { done() }
+}
+
+// 76: B's tape for level 1's first room, with X pressed at G_ROUTE_AT (SHOT, when given, moves it
+// for a search: 280 + 5 SHOT): never caught, through the exit sooner than the tape alone (385).
+const G_ROUTE_AT = 335
+fn g_route(_f: s32) {
+    let at = if_s(SHOT > 0, 280 + SHOT * 5, G_ROUTE_AT)
+    if phase == Phase.Play && clock == at { press(X) }
+    if caught_n > 0 && !finished {
+        print("ROUTE ")
+        print_int(at)
+        print(" caught at ")
+        print_int(caught_at)
+        println("")
+        expect(false, "the dash route is never caught", fixed(caught_at))
+    }
+    if run_room != 0 || phase == Phase.Clear {
+        print("ROUTE ")
+        print_int(at)
+        print(" clears on ")
+        print_int(room_time[0])
+        println("")
+        expect(room_time[0] < 385, "sooner than the tape without the dash (385)", fixed(room_time[0]))
+        done()
+    }
+}

@@ -1,0 +1,97 @@
+// The transition through doors on rooms' upper levels (agent H; tests/trans/check.sh runs it):
+// J's aquarium stage, started directly (stage_start), the thief put into the first way out on
+// the upper level of each room he comes into, until a room has none. Two transitions today: the
+// entrance hall's mezzanine to the great tank's catwalk (level 1 to level 1, both rooms on 1F)
+// and the catwalk up to the tank tops' floor (1F's walkway at 3.2 m to 2F at 4 m).
+// Each must hand over at the next room's clock 0 with the thief at his door's spawn, on its
+// level, the frame within the budgets. A passing run ends with "DONE 90".
+import "../../../dr_game.akr"
+import "../../../dr_world.akr"
+
+const CPU_BUDGET_C = 1000000
+const GPU_BUDGET_C = 2000000
+var last_mode: Mode = Mode.Play
+var trans_start: s32
+var nt: s32
+var jumped: s32 = -1
+var worst: s32
+var worst_gpu: s32
+var finished: bool
+
+fn test_init() { test_no_catch = true }
+fn test_hook(_f: s32) {}
+fn input_stick(_f: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+fn fail(what: *u8) {
+    print("FAIL ")
+    println(what)
+    assert(false)
+}
+
+// The thief into the room's first way out on its upper level (false: there is none).
+fn jump_up() -> bool {
+    for i in 0..room.ndoors {
+        let d = &room.doors[i]
+        if d.box.level == 1 && d.to_room >= 0 {
+            thief.level = 1
+            thief.x = d.box.cx
+            thief.z = d.box.cz
+            print("JUMP room ")
+            print_int(run_room + 1)
+            print(" door ")
+            print_int(i)
+            print(" to room ")
+            print_int(d.to_room + 1)
+            println("")
+            return true
+        }
+    }
+    return false
+}
+
+fn input_pad(f: s32) -> u32 {
+    if f > 2 && last_mode == Mode.Transition {
+        worst = max(worst, cpu_used())
+        worst_gpu = max(worst_gpu, gpu_used())
+    }
+    if finished { return 0 }
+    if f == 30 { stage_start(STAGE_AQUARIUM) }
+    if f > 30 && mode == Mode.Play && clock == 30 && jumped != nt {
+        jumped = nt
+        if !jump_up() {
+            print("BUDGET the upper-level transitions: worst CPU ")
+            print_int(worst)
+            print(", worst GPU ")
+            print_int(worst_gpu)
+            println("")
+            if nt < 2 { fail("fewer than two upper-level transitions") }
+            if worst >= CPU_BUDGET_C || worst_gpu >= GPU_BUDGET_C { fail("a frame over the budgets") }
+            print("DONE 90: upper-level doors, ")
+            print_int(nt)
+            println(" transitions")
+            finished = true
+        }
+    }
+    if last_mode != Mode.Transition && mode == Mode.Transition { trans_start = f }
+    if last_mode == Mode.Transition && mode == Mode.Play {
+        nt += 1
+        print("TRANSITION ")
+        print_int(nt)
+        print(" into room ")
+        print_int(run_room + 1)
+        print(": frames ")
+        print_int(trans_start)
+        print("-")
+        print_int(f - 1)
+        println("")
+        print("LEVEL ")
+        print_int(thief.level)
+        println("")
+        if clock != 0 || phase != Phase.Play { fail("not at the room's clock 0") }
+        if thief.x != room.spawn_x || thief.z != room.spawn_z { fail("not at his door's spawn") }
+        if thief.level != room.spawn_level { fail("not on his door's level") }
+        if !tr_clock_ok { fail("the clock moved between ready and control") }
+    }
+    last_mode = mode
+    return 0
+}

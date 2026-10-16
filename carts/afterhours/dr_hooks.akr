@@ -13,7 +13,7 @@
 // Nothing here changes the rooms' clockwork: the hooks are told what happened and draw or play
 // it, so a tape plays the same with them or without.
 
-enum Mode: u8 { Title, Select, Play, Transition, End }
+enum Mode: u8 { Title, Select, Play, Transition, End, Pause }
 
 // ---- E (front end)
 
@@ -32,6 +32,11 @@ weak fn fe_draw() -> bool { return false }
 // E's transition may draw its own picture instead (it may still call draw_trains(),
 // draw_things(), draw_people(), draw_cones() with its own camera and view_origin).
 weak fn fe_draw_room() -> bool { return true }
+
+// START pressed in play (E's pause menu): true when E opened it (it sets Mode.Pause, and later
+// Mode.Play again with game_mode()); false, and START restarts the room as SELECT always does
+// (room_restart()). In Mode.Pause nothing ticks and A draws no room.
+weak fn fe_pause() -> bool { return false }
 
 // Whether E runs the transitions: then a room's exit goes to Mode.Transition and waits for
 // transition_ready() / transition_control(), and the stage's last exit goes to Mode.End.
@@ -73,8 +78,12 @@ fn event(e: Ev, a: s32) { fe_event(e, a) }
 weak fn au_tick() {}
 weak fn au_music(_on: bool) {}
 weak fn au_room(_amb: s32) {}      // 0 none, 1 platform, 2 gates, 3 passage, 4 lobby, 5 aquarium;
-                                   // stage 2 (level2): 6 cinema, 7 projection booth, 8 staff
-                                   // corridor, 9 shop floor, 10 food hall
+                                   // the store: 6 cinema, 7 projection booth, 8 staff corridor,
+                                   // 9 shop floor, 10 food hall; the aquarium (J's): 11 the great
+                                   // tank, 12 jellyfish, 13 quarantine, 14 the plant, 15 the
+                                   // kitchen, 16 the tank tops (its hall and ocean gallery 5);
+                                   // the tower (B's): 4 the lobby, 17 the lift hall by its lifts,
+                                   // 18 by its stair, 19 trading, 20 the ninth floor, 21 the roof
 weak fn au_restart() {}
 weak fn au_retry() {}
 weak fn au_caught() {}
@@ -86,5 +95,9 @@ weak fn au_clear() {}
 weak fn au_alert(_dx: fixed) {}
 weak fn au_knock(_dx: fixed) {}
 weak fn au_bell(_dx: fixed) {}
+weak fn au_machine(_on: bool, _dx: fixed) {}   // every tick on the tower's roof: its searchlight sweeping (on) or holding
 weak fn au_card(_dx: fixed) {}     // (stage 2) a keycard picked up, dx from the camera
 weak fn au_unlock(_dx: fixed) {}   // a staff door opened
+
+// ---- W (the moving water, NOTES_W.md): once a frame, from update(); dr_water.akr replaces it.
+weak fn water_tick() {}

@@ -1,0 +1,375 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "rf_shell",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 900
+ },
+ "lighting": {
+  "direction": [
+   -0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "materials": {
+  "cut": {
+   "color": "#a8b2c4"
+  },
+  "door_light": {
+   "color": "#7cf0a0",
+   "class": "emissive"
+  },
+  "floor_dark": {
+   "color": "#6c7078"
+  },
+  "tile": {
+   "color": "#9aa0a6"
+  },
+  "wall": {
+   "color": "#4c5462"
+  },
+  "wall_light": {
+   "color": "#6c7484"
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    22.5,
+    0.4,
+    9.5
+   ],
+   "material": "floor_dark",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.2,
+     0.0
+    ]
+   },
+   "faces": {
+    "top": "tile",
+    "back": "cut"
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    22.5,
+    1.0,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.0,
+     0.5,
+     -4.625
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "back_0",
+   "op": "box",
+   "size": [
+    22.5,
+    2.42,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.0,
+     1.19,
+     4.625
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_w_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    9.0
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -11.125,
+     1.19,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    6.9
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     11.125,
+     1.19,
+     -1.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    0.9
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     11.125,
+     1.19,
+     4.05
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     11.125,
+     2.245,
+     3.0
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_light"
+   }
+  },
+  {
+   "id": "motor_room",
+   "op": "box",
+   "size": [
+    8.0,
+    1.02,
+    4.3
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     -1.0,
+     0.49,
+     2.35
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "helipad",
+   "op": "box",
+   "size": [
+    5.0,
+    0.01,
+    4.8
+   ],
+   "material": "floor_dark",
+   "transform": {
+    "translate": [
+     6.9,
+     0.005,
+     -1.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "tank_e",
+   "op": "box",
+   "size": [
+    1.6,
+    1.02,
+    1.6
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     6.0,
+     0.49,
+     3.2
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "plant_a",
+   "op": "box",
+   "size": [
+    1.4,
+    1.02,
+    1.4
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     2.1,
+     0.49,
+     -2.3
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "skylight",
+   "op": "box",
+   "size": [
+    1.4,
+    1.02,
+    0.8
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     -1.9,
+     0.49,
+     -2.2
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "plant_b",
+   "op": "box",
+   "size": [
+    1.9,
+    1.02,
+    1.75
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     -5.95,
+     0.49,
+     -2.875
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "tank_w",
+   "op": "box",
+   "size": [
+    1.6,
+    1.02,
+    1.6
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     -9.0,
+     0.49,
+     -0.4
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  }
+ ],
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

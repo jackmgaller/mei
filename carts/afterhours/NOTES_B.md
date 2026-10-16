@@ -3,6 +3,144 @@
 What B has landed, what B asks of A, and B's decisions. A's side is in `NOTES_A.md`. Newest
 first in each section.
 
+## The owner's gate: layout sheets; the tower made richer (2026-10-15)
+
+- **Layout sheets** (`levels/layout_sheet.py`, Pillow, Figtree from `tools/fonts/`): a stage's
+  section and a plan of each room from its play file, with the watchers, their cones (a narrow
+  beam swept wide is drawn cast at several headings, so its shadows show) and the solution's
+  paths. `levels/station/sketch.py` writes `levels/station/sketch.png` (**approved**);
+  `levels/tower/sketch.py` writes `levels/tower/sketch.png` with the building in section
+  (`building_section()`).
+- **The tower, richer** (the owner: "richer first"; **approved**): a stage of doors without
+  keycards, `levels/tower/ROUTE.md`. Rooms `rooms/hall/` (new), `rooms/trading/`, `rooms/ninth/`,
+  `rooms/roof/` (rewritten; the line version's files are gone), each with `make_NAME.py`, its
+  greybox and `PLAN.md`; the lobby's exit made a door in `make_tower.py`
+  (`assemble.exit_to_door()`). Tapes `tests/tapes/tower_solution.akr`: `TOWER_LEGS` 6,
+  `TOWER_LEG_ROOM` [0,1,2,3,4,1], `TOWER_LEG_DOOR` [0,1,1,1,1,3], `SOLUTION_TOWER_LEG_0` .. `5`.
+  6,971 model ticks; in the cart (A's scenarios 91, 92) 6,969, never caught. World Checker: 5
+  cells, 71 views, 0 hard failures, 0 over thresholds.
+- **The tower dressed** (all four new rooms, 2026-10-15): `make_tower.py`'s `ROOMS` take
+  `rooms/hall/dressed`, `rooms/trading`, `rooms/ninth`, `rooms/roof/dressed`; stand-in caps 1,400
+  (trading) and 1,500 (ninth). The play files are unchanged (the builders' collision matches the
+  wall map), so the tapes stand.
+- `levels/s2room.py`: doors with `side: 'free'` (a door on a prop's face, the lifts on a core:
+  `pos`, `yaw`, `width`, `spawn_at`). A door with no `to` and no `end` is a way in only (the
+  cinema's screen, the lift hall's lifts).
+- **level1 and level2 removed** (A: nothing reads them): their worlds, ID locks, make scripts,
+  solutions, ROUTE.md, tapes, `worlds.txt` lines and schema names. `levels/level1/aquarium/`
+  stays: J's aquarium world reads its placements and collision.
+- The station's passage stand-in cap is 900 (`r3_passage` is 792 triangles with its street stair;
+  under 700 the stand-in left it out).
+
+## One place a stage: the station, the tower, the store (2026-10-15, the main checkout)
+
+The owner's premise (DESIGN.md, "The premise"): each stage is one property. Level 1 is split in
+two, the aquarium gets a stage of its own (agent J's, `levels/aquarium/`), and the stages are,
+in order: **the station, the tower, the aquarium, the department store, the platform** (agreed
+with J's ROUTE.md: the aquarium sits after the tower and before the store's keycards).
+
+| Stage | World (`levels/NAME/`) | Rooms | Model / cart ticks | Tapes |
+|---|---|---|---|---|
+| 1 The station | `station` | the last train, the ticket gates, the passage (dressed, unchanged) | 2,830 / 2,835 | `tests/tapes/station_solution.akr`, `SOLUTION_STATION_ARRIVAL`, `_GATES`, `_PASSAGE` |
+| 2 The tower | `tower` | the lobby (dressed, unchanged), **the lift hall (twice), the trading floor, the ninth floor, the roof** (new, greybox): a stage of doors | 6,971 / 6,969 | `tests/tapes/tower_solution.akr`, `TOWER_LEGS`, `TOWER_LEG_ROOM`, `TOWER_LEG_DOOR`, `SOLUTION_TOWER_LEG_0` .. `5` |
+| 3 The aquarium | `aquarium` (J's) | J's eight rooms, the sketched aquarium among them | | J's |
+| 4 The store | `store` (was `level2`; nothing else changed) | as stage 2 was | 10,219 / 10,216 | `tests/tapes/store_solution.akr`, `STORE_LEGS`, `STORE_LEG_ROOM`, `STORE_LEG_DOOR`, `SOLUTION_STORE_LEG_0` .. `7` |
+| 5 The platform | `platform` | Gate 1's | | `platform_solution.akr` |
+
+- Routes: `levels/station/ROUTE.md`, `levels/tower/ROUTE.md`, `levels/store/ROUTE.md`. New plans
+  for the builders: `rooms/hall/PLAN.md`, `rooms/trading/PLAN.md`, `rooms/ninth/PLAN.md`,
+  `rooms/roof/PLAN.md`.
+- What changed in the old rooms: the passage's way out is now the station's own stair up to the
+  street, the lobby's way in the tower's night entrance from the street, the cinema's start the
+  store's backstage door (dressing beyond the doorways only; each PLAN.md, "Stage change"). No
+  tape changed.
+- All three worlds build clean in `build-ah-B` (World Checker 0 hard failures, 0 over
+  thresholds; station 53 views, tower 56, store 57), slot 7 and palettes 250-251 free. The
+  station's and the tower's tapes clear in the cart on a scratch harness of mine (station 2,835
+  ticks, tower 5,238, no catch); A's scenarios move to them.
+- **The move** is done: A's `dr_levels.akr` and scenarios run the new worlds, and level1 and
+  level2 are removed (above).
+- The aquarium's play file (`levels/level1/aquarium/`: `make_aquarium_play.py`, the play file,
+  its placements and collision) is J's to take into `levels/aquarium/`.
+
+### For a new stage lead: building a stage with B's tools
+
+Everything is Python 3 with the standard library (NumPy for the World Checker at build time,
+Pillow for the pictures). Paths from `carts/afterhours/`.
+
+1. **A room in greybox** is a `make_NAME.py` in `rooms/NAME/` that describes the room as a dict
+   and calls `levels/s2room.py`'s `build()`, then `levels/greybox.py`'s `write_room()`. See
+   `rooms/ninth/make_ninth.py` (a room of a line: doorways `kind: 'in'` and `'out'`) and
+   `rooms/corridor/make_corridor.py` (a room of doors: `to`, `card`, `end`). The description:
+   the inner faces of the walls (`x`, `z`), doorways in the west, east or back wall, props by
+   kind (`block`, `low`, `glass`, `pillar`, `machine`, `seat`, `mark`), hiding places, keycards,
+   and watchers from `greybox.patrol()` and `greybox.posted()`. It writes the greybox recipes
+   (`greybox/`), the placements (only while the room has none: the builder's are never
+   overwritten) and the play file (`NAME.play.json`: the room's entities and its wall map, in the
+   room's own frame, origin in the middle of its floor). Things a builder adds that stop the
+   thief go into the play file as extra `wall` entities in `main()` (as `rooms/cinema/`'s
+   `DRESSED`), not into the description the dress scripts read.
+2. **The stage's world** is `levels/STAGE/make_STAGE.py` calling `levels/assemble.py`'s
+   `build(out, name, rooms, ...)`: rooms in the section's order with their floor heights, play
+   files, placements and asset folders. It places each room in its own 32 m cell, a region each,
+   chains `next` and `first`, makes stand-ins (give a room a cap when its main recipe is over 700
+   triangles), adds the game camera's views for the World Checker, and reserves slot 7 and
+   palettes 250-251. Then add the world to `worlds.txt` (and its name to the schema's `worlds`
+   line: ask me) and build with `make B=build-mine build-mine/carts/afterhours.mei`.
+3. **Puzzles** are played on `levels/rules_model.py`, a float model of A's runtime (the cart is
+   the truth: the model lands within a few ticks of it). `levels/planner.py`'s `play(steps, sim)`
+   runs a plan: `('go', x, z)` (walk straight there), `('until', pred)` (stand still until a
+   condition on the sim holds: a guard's waypoint, a heading, the clock), `('idle', n)`,
+   `('press', 'A')`. It returns the result, the inputs and each watcher's nearest approach.
+   To find a timing, scan it: play the plan for each start tick and print which watcher catches
+   (my scratch scans did exactly this). Pictures: `planner.draw()` / `sheet()`, or the
+   solutions' `--pictures DIR`.
+4. **Tapes**: a stage of a line uses `planner.line_stage()` (see `levels/tower/solutions.py`); a
+   stage of doors plays its legs in order with the run's cards and doors carried (see
+   `levels/store/solutions.py`). Both write `tests/tapes/STAGE_solution.akr`; A's scenarios play
+   them in the cart. Keep margins above 0.4 m on the model (the cart's fixed point moves the
+   thief a few centimetres).
+5. **Docs**: a `ROUTE.md` per stage (the rooms, the run, the rules, the World Kit layout,
+   commands) and a `PLAN.md` per room for its builder (the story, a drawn plan, a table of every
+   thing with its numbers and what it does in play, the solution, "Must stay", "Free to dress").
+
+The model knows what A's runtime knew on 2026-10-15: centre catches, train sight, `turn_rate`,
+the 180° tie, doors, keycards and the run's state. It does not know the dash (G) or J's dark
+rooms, lights, torches and two levels: those need adding to `rules_model.py` before tapes that
+use them can be drafted. I keep the shared tools: tell me what you need (here, or through the
+coordinator) and I add it, schema fields included. Rooms that never use a new rule work today.
+
+### Answers to J
+
+- **The order**: station, tower, aquarium, store, platform, as your ROUTE.md has it. The tower
+  shows glass once (the ninth floor's boardroom); your ocean gallery takes it further, so "glass,
+  again" fits. The tower teaches no darkness, torches, water or levels: they are all yours.
+- **The sketched aquarium**: it is yours; its plan (`rooms/aquarium/PLAN.md`) now says so. Its
+  play file and collision are in `levels/level1/aquarium/`; move them into `levels/aquarium/` when
+  you take them, and tell me so I drop the old path.
+- **Schema**: send me the fields you agreed with A (`room.dark`, `room.upper`, `light`,
+  `guard.torch`, `level` on the types that need it) and I add them to `afterhours.game.mochi` in
+  one change, so the worlds rebuild once. `aquarium` is already in the schema's `worlds` line.
+- **The model**: send me the rules' exact numbers and tick order for the dark, lights, torches and
+  levels as A builds them, and I add them to `rules_model.py` with a check that the existing
+  stages' plans still clear.
+
+## All three worlds (2026-10-15, the main checkout)
+
+- **Kept free for the front end**: every world recipe (`make_level1.py`, `make_level2.py`,
+  `make_platform.py`) gives its regions texture slots `"13-8,6-0,16-31"` (no slot 7) and
+  reserves 4-bit palettes 250-251 (`palette.reserved`): E's fonts (`front_art.akr`) live there.
+  Before, stage 2's dressed rooms took slot 7 and the end screen's text came out as noise. Built:
+  level1 uses slots 8-13, level2 5, 6 and 8-13, the platform none; no region takes palettes
+  250-251.
+- **`room.storey`** (`s16`, 0 not shown, n > 0 nF, n < 0 Bn): asked for by A for the HUD, then
+  not used: the owner keeps the HUD's "ROOM n" (the jump from ROOM 1 to ROOM 3 hints at a room
+  behind a locked door). Kept for E's section or a later map; nothing reads it today. Level 1: B3, B2, B1, 1F, 11F (the tower's roof); stage 2: cinema 8F,
+  booth 9F, corridor 8F, shop floor 7F, food hall B1; the platform B3.
+- **Checks** (`build-ah-B`): the three worlds' World Checkers 0 hard failures and 0 over
+  thresholds; every plan clears on the model (level 1, the platform, stage 2's eight legs, the
+  same ticks); `tests/check.sh` passes all 32 of A's scenarios and E's 7.
+
 ## Stage 2: keycards and backtracking (2026-10-15, in the worktree `afterhours-next`)
 
 **Dressed (phase 2)**: `make_level2.py` takes the cinema, the booth and the corridor from their

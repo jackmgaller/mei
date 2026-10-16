@@ -1,0 +1,522 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "ninth",
+ "entities": [
+  {
+   "id": "nf_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "name": "the_ninth_floor",
+    "entry": "nf_spawn_stair",
+    "size": [
+     16.5,
+     2.4,
+     9.0
+    ]
+   }
+  },
+  {
+   "id": "nf_spawn_stair",
+   "type": "spawn",
+   "position": [
+    -6.8,
+    0,
+    3.375
+   ],
+   "params": {
+    "yaw": 180
+   }
+  },
+  {
+   "id": "nf_door_stair",
+   "type": "door",
+   "position": [
+    -6.8,
+    0,
+    4.375
+   ],
+   "yaw": 180,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "nf_spawn_stair",
+    "to": "tf_door_stair"
+   }
+  },
+  {
+   "id": "nf_spawn_up",
+   "type": "spawn",
+   "position": [
+    7.125,
+    0,
+    3.2
+   ],
+   "params": {
+    "yaw": 270
+   }
+  },
+  {
+   "id": "nf_door_up",
+   "type": "door",
+   "position": [
+    8.125,
+    0,
+    3.2
+   ],
+   "yaw": 270,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "nf_spawn_up",
+    "to": "rf_door_private"
+   }
+  },
+  {
+   "id": "nf_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -4.375
+   ],
+   "params": {
+    "size": [
+     16.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "nf_wall_back_0",
+   "type": "wall",
+   "position": [
+    -7.825,
+    0,
+    4.375
+   ],
+   "params": {
+    "size": [
+     0.85,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "nf_wall_back_1",
+   "type": "wall",
+   "position": [
+    1.025,
+    0,
+    4.375
+   ],
+   "params": {
+    "size": [
+     14.45,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "nf_wall_end_w_0",
+   "type": "wall",
+   "position": [
+    -8.125,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     8.5
+    ]
+   }
+  },
+  {
+   "id": "nf_wall_end_e_0",
+   "type": "wall",
+   "position": [
+    8.125,
+    0,
+    -0.825
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     6.85
+    ]
+   }
+  },
+  {
+   "id": "nf_wall_end_e_1",
+   "type": "wall",
+   "position": [
+    8.125,
+    0,
+    4.025
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.45
+    ]
+   }
+  },
+  {
+   "id": "nf_wall_core",
+   "type": "wall",
+   "position": [
+    -1.0,
+    0,
+    2.325
+   ],
+   "params": {
+    "size": [
+     8.0,
+     2.4,
+     3.85
+    ]
+   }
+  },
+  {
+   "id": "nf_wall_cupboard_s",
+   "type": "wall",
+   "position": [
+    -7.55,
+    0,
+    -1.1
+   ],
+   "params": {
+    "size": [
+     0.9,
+     2.0,
+     0.2
+    ]
+   }
+  },
+  {
+   "id": "nf_wall_cupboard_n",
+   "type": "wall",
+   "position": [
+    -7.55,
+    0,
+    0.3
+   ],
+   "params": {
+    "size": [
+     0.9,
+     2.0,
+     0.2
+    ]
+   }
+  },
+  {
+   "id": "nf_wall_glass_s",
+   "type": "wall",
+   "position": [
+    -0.9,
+    0,
+    -3.025
+   ],
+   "params": {
+    "size": [
+     5.0,
+     2.4,
+     0.15
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "nf_wall_glass_n",
+   "type": "wall",
+   "position": [
+    -0.9,
+    0,
+    -0.875
+   ],
+   "params": {
+    "size": [
+     5.0,
+     2.4,
+     0.15
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "nf_wall_glass_w",
+   "type": "wall",
+   "position": [
+    -3.325,
+    0,
+    -1.95
+   ],
+   "params": {
+    "size": [
+     0.15,
+     2.4,
+     2.0
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "nf_wall_glass_e",
+   "type": "wall",
+   "position": [
+    1.525,
+    0,
+    -1.95
+   ],
+   "params": {
+    "size": [
+     0.15,
+     2.4,
+     2.0
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "nf_wall_table",
+   "type": "wall",
+   "position": [
+    -0.9,
+    0,
+    -1.95
+   ],
+   "params": {
+    "size": [
+     3.0,
+     0.75,
+     0.9
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "nf_wall_office_s_a",
+   "type": "wall",
+   "position": [
+    4.0,
+    0,
+    0.725
+   ],
+   "params": {
+    "size": [
+     2.0,
+     2.4,
+     0.15
+    ]
+   }
+  },
+  {
+   "id": "nf_wall_office_s_b",
+   "type": "wall",
+   "position": [
+    7.1,
+    0,
+    0.725
+   ],
+   "params": {
+    "size": [
+     1.8,
+     2.4,
+     0.15
+    ]
+   }
+  },
+  {
+   "id": "nf_wall_office_desk",
+   "type": "wall",
+   "position": [
+    5.4,
+    0,
+    2.3
+   ],
+   "params": {
+    "size": [
+     1.6,
+     0.75,
+     0.6
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "nf_wall_crates_a",
+   "type": "wall",
+   "position": [
+    4.7,
+    0,
+    -2.8
+   ],
+   "params": {
+    "size": [
+     1.4,
+     1.8,
+     1.2
+    ]
+   }
+  },
+  {
+   "id": "nf_wall_crates_b",
+   "type": "wall",
+   "position": [
+    6.8,
+    0,
+    -0.9
+   ],
+   "params": {
+    "size": [
+     1.2,
+     1.8,
+     1.0
+    ]
+   }
+  },
+  {
+   "id": "nf_hide_cupboard",
+   "type": "hide_spot",
+   "position": [
+    -7.55,
+    0,
+    -0.4
+   ],
+   "params": {
+    "size": [
+     0.9,
+     1.7,
+     1.2
+    ]
+   }
+  },
+  {
+   "id": "nf_wp_round_n",
+   "type": "waypoint",
+   "position": [
+    -1.0,
+    0,
+    -0.2
+   ],
+   "params": {
+    "next": "nf_wp_round_nw",
+    "wait": 120,
+    "look": 180
+   }
+  },
+  {
+   "id": "nf_wp_round_nw",
+   "type": "waypoint",
+   "position": [
+    -4.3,
+    0,
+    -0.2
+   ],
+   "params": {
+    "next": "nf_wp_round_sw",
+    "wait": 0,
+    "look": 180
+   }
+  },
+  {
+   "id": "nf_wp_round_sw",
+   "type": "waypoint",
+   "position": [
+    -4.3,
+    0,
+    -3.7
+   ],
+   "params": {
+    "next": "nf_wp_round_se",
+    "wait": 0,
+    "look": 90
+   }
+  },
+  {
+   "id": "nf_wp_round_se",
+   "type": "waypoint",
+   "position": [
+    2.6,
+    0,
+    -3.7
+   ],
+   "params": {
+    "next": "nf_wp_round_ne",
+    "wait": 0,
+    "look": 0
+   }
+  },
+  {
+   "id": "nf_wp_round_ne",
+   "type": "waypoint",
+   "position": [
+    2.6,
+    0,
+    -0.2
+   ],
+   "params": {
+    "next": "nf_wp_round_n",
+    "wait": 0,
+    "look": 270
+   }
+  },
+  {
+   "id": "nf_guard_round",
+   "type": "guard",
+   "position": [
+    -1.0,
+    0,
+    -0.2
+   ],
+   "yaw": 0.0,
+   "params": {
+    "kind": "patrol",
+    "route": "nf_wp_round_n",
+    "speed": 1.0,
+    "sight": 6.0,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 200
+   }
+  },
+  {
+   "id": "nf_camera_office",
+   "type": "guard",
+   "position": [
+    7.7,
+    2.3,
+    1.0
+   ],
+   "params": {
+    "kind": "camera",
+    "look_a": -20,
+    "look_b": 40,
+    "hold": 120,
+    "turn": 120,
+    "phase": 0,
+    "sight": 6.0,
+    "fov": 30
+   }
+  }
+ ],
+ "paths": {}
+}

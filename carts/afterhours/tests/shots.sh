@@ -18,7 +18,8 @@ shot() {      # scenario frames name [SHOT]
 shot 20 621 train_passing
 shot 21 451 cone_cut_by_pillar
 shot 22 91 caught_freeze
-for k in 1 2 3 4 5; do shot 5$((k - 1)) 102 frame_level1_room$k; done
+for k in 1 2 3; do shot 5$((k - 1)) 102 frame_station_room$k; done
+for k in 1 2; do shot 5$((k + 2)) 102 frame_tower_room$k; done
 shot 55 102 frame_platform
 # hiding, in level 1's gates (B's tape): going in, hidden, coming out. The frames follow that tape
 # (scenario 56 prints NOTE frame when its moment comes); redo them if the tape changes.

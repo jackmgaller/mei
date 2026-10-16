@@ -71,7 +71,11 @@ def play(steps, sim, frames=(), limit=7200):
         path.append((sim.th['x'], sim.th['z']))
         if not sim.th['hidden']:
             for g, w in zip(sim.guards, sim.watch):
+                if w.get('level', 0) != getattr(sim, 'level', 0):
+                    continue
                 m = S.fan_dist(g['fan'], sim.th['x'], sim.th['z']) - (0.0 if S.RULES['centre'] else S.THIEF_R)
+                if getattr(sim, 'dark', False) and not w.get('torch') and not sim.lit(sim.th['x'], sim.th['z'], sim.clock - 1):
+                    m = max(m, sim.light_dist(sim.th['x'], sim.th['z'], sim.clock - 1))
                 if m < margins.get(w['id'], (99, 0))[0]:
                     margins[w['id']] = (round(m, 2), sim.clock - 1)
         if why:
@@ -164,6 +168,12 @@ def draw(sim, path):
     for b in sim.walls:
         col = (40, 40, 44) if b.edge else (60, 66, 80) if b.blocks else (150, 120, 90)
         d.polygon([at(*p) for p in b.corners()], fill=col)
+    for lb, lvl, period, on, off in getattr(sim, 'lights', []):
+        if lvl != getattr(sim, 'level', 0):
+            continue
+        lit = period <= 0 or (sim.clock - off) % period < on
+        d.polygon([at(*p) for p in lb.corners()], fill=(120, 200, 230, 90 if lit else 20),
+                  outline=(120, 200, 230, 160))
     for s in sim.spots:
         d.polygon([at(*p) for p in s.corners()], outline=(80, 120, 220))
     if sim.exit is not None:
@@ -187,7 +197,10 @@ def draw(sim, path):
         d.polygon([at(*p) for p in b.corners()], fill=(240, 230, 150))
     for g, w in zip(sim.guards, sim.watch):
         ax, az, pts = g['fan']
-        d.polygon([at(ax, az)] + [at(*p) for p in pts], fill=(255, 240, 120, 70), outline=(255, 240, 120, 160))
+        other = w.get('level', 0) != getattr(sim, 'level', 0)
+        dim = getattr(sim, 'dark', False) and not w.get('torch')
+        fill = (255, 240, 120, 0 if other else 30 if dim else 70)
+        d.polygon([at(ax, az)] + [at(*p) for p in pts], fill=fill, outline=(150, 150, 150, 120) if other else (255, 240, 120, 160))
         x, y = at(g['x'], g['z'])
         d.ellipse([x - 8, y - 8, x + 8, y + 8], fill=(160, 160, 255) if w['kind'] == 'camera' else (220, 60, 60))
     if len(path) > 1:
@@ -198,3 +211,38 @@ def draw(sim, path):
     return im
 
 
+
+
+# ---- a stage of a line (the station, the tower): one tape a room, each from its clock 0
+
+def line_stage(rooms, tapes, prefix, header, argv=None):
+    """Plays each room's plan on its play file and writes the tapes. rooms: [(CONST, play file
+    (a path), plan, what)]; the tapes are `{prefix}_{CONST}`. Command line: --check (play only,
+    write nothing), --pictures DIR (each room from above every second)."""
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--check', action='store_true')
+    ap.add_argument('--pictures', metavar='DIR')
+    args = ap.parse_args(argv)
+    out = [header]
+    ok, total = True, 0
+    for const, play_path, steps, what in rooms:
+        sim = S.Sim(play=play_path)
+        r = play(steps, sim, frames=range(0, 7200, 60) if args.pictures else ())
+        near = ', '.join(f'{k} {m:.2f} m at {t}' for k, (m, t) in sorted(r['margins'].items(), key=lambda kv: kv[1][0]))
+        print(f'{prefix}_{const}: {r["result"]}; nearest: {near}')
+        ok &= bool(r['result']) and r['result'][0] == 'cleared'
+        if args.pictures:
+            sheet(r['shots'], Path(args.pictures) / f'{prefix.lower()}_{const.lower()}.png', cols=6)
+        if r['result']:
+            total += r['result'][1] + 1
+            out += tape_lines(f'{prefix}_{const}', r['inputs'], f'{what}. The model clears it on tick {r["result"][1]}.')
+    if not ok:
+        sys.exit('a plan does not clear its room: the tapes were not written')
+    print(f'the stage: {total} ticks ({total / 60:.1f} s) without a catch')
+    if not args.check:
+        text = '\n'.join(out)
+        tapes = Path(tapes)
+        if not tapes.exists() or tapes.read_text() != text:
+            tapes.write_text(text)
+            print('wrote', tapes)

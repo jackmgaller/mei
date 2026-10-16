@@ -1,0 +1,37 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "aq_kitchen",
+ "placements": [
+  {
+   "id": "ak_room",
+   "asset": "ak_room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "ak_room_col"
+  },
+  {
+   "id": "ak_props",
+   "asset": "ak_props",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "ak_glass",
+   "asset": "ak_glass",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

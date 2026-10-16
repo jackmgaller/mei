@@ -1,13 +1,13 @@
-# Stage 2, room 2: the staff corridor (floor plan)
+# The department store (stage 3), room 2: the staff corridor (floor plan)
 
-Stage 2's hub (`levels/level2/ROUTE.md`), crossed three times. The back of house behind the
-cinema and the store on the eighth floor: a wide service corridor, fluorescent tubes, roll cages
-of stock parked down its west half, the security office in the middle of its front wall with a
-window onto the corridor, pallets along the back. Three doors: from the cinema (west), a **blue**
-staff door in the back wall up to the projection booth, and the staff stair down to the shop
-floor (east). A porter walks round the roll cages; the guard in the office looks out of his
-window from side to side; a camera over the stair door watches the east end. A column stands in
-the back lane straight out from the office window: its shadow is the room's secret.
+The store's hub (`levels/store/ROUTE.md`), crossed three times. The back of house behind the cinema
+and the store on the eighth floor: a wide service corridor, fluorescent tubes, roll cages of stock
+parked down its west half, the security office in the middle of its front wall with a window onto
+the corridor, pallets along the back. Three doors: from the cinema (west), a **blue** staff door in
+the back wall up to the projection booth, and the staff stair down to the shop floor (east). A
+porter walks round the roll cages; the guard in the office looks out of his window from side to
+side; a camera over the stair door watches the east end. A column stands in the back lane straight
+out from the office window: its shadow is the room's secret.
 
 The greybox is `make_corridor.py` (it writes `greybox/`, `corridor.placements.json` and
 `corridor.play.json`). The dressed room replaces the greybox recipes and the placements file;
@@ -80,5 +80,5 @@ booth's stair beyond the blue door.
 
 ## Rules for every room
 
-As `levels/level2/ROUTE.md`, "Rules for every room", with this room's prefix `sc_` and its
+As `levels/store/ROUTE.md`, "Rules for every room", with this room's prefix `sc_` and its
 placements in `corridor.placements.json`.

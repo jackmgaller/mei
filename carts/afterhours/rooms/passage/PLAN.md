@@ -1,15 +1,24 @@
-# Room 3: the passage (floor plan)
+# The station, room 3: the passage (floor plan)
 
-Level 1's third room (`levels/level1/ROUTE.md`). A long tiled passage under the street, one floor
-down: its little shops' shutters down along the back wall, a vending machine glowing at the front,
-square pillars staggered down its length. A security camera high on the far end wall sweeps the
-whole passage, slowly. It teaches that pillars cast sight shadows: go from one shadow to the next
-as the sweep passes. Lit by the vending machine, the shutters' small lamps and the tunnel lights,
-with the camera's red lamp at the end.
+The station's last room (`levels/station/ROUTE.md`; until 2026-10-15 level 1's third). A long tiled
+passage under the street, one floor down: its little shops' shutters down along the back wall, a
+vending machine glowing at the front, square pillars staggered down its length. A security camera
+high on the far end wall sweeps the whole passage, slowly. It teaches that pillars cast sight
+shadows: go from one shadow to the next as the sweep passes. Lit by the vending machine, the
+shutters' small lamps and the tunnel lights, with the camera's red lamp at the end.
 
 The greybox is `make_passage.py` (it writes `greybox/`, `passage.placements.json` and
 `passage.play.json`). The dressed room replaces the greybox recipes and the placements file; the
 play file is the level lead's.
+
+## Stage change (2026-10-15)
+
+Each stage is now one place (DESIGN.md, "The premise"), and the passage is the station's last
+room. **Its way out, the doorway at the front of the east wall, is now the station's own exit:
+its stairs up to the street**, not the stair up to the tower's lobby. Nothing in play moved (the
+exit box, the camera, the tape). To redress: what is seen beyond the doorway (a stair rising to
+the street, the street's cold light and a little rain coming down it, the exit pictogram over
+the doorway) in place of the lobby's warm light.
 
 ## The plan
 

@@ -51,6 +51,15 @@
   "depth": true,
   "perspective": true
  },
+ "textures": {
+  "slots": "13-8,6-0,16-31"
+ },
+ "palette": {
+  "reserved": [
+   250,
+   251
+  ]
+ },
  "verification": {
   "vantage_points": [
    {
@@ -206,6 +215,7 @@
      ],
      "params": {
       "name": "the_platform",
+      "storey": -3,
       "entry": "spawn",
       "exit": "staff_door",
       "first": true,

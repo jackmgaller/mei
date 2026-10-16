@@ -327,7 +327,7 @@ def world():
 
     ents = []
     ents.append({'id': 'room', 'type': 'room', 'position': [r((xo0 + xo1) / 2), 0, r((zo0 + zc + WALL_T) / 2)],
-                 'params': {'name': 'the_platform', 'entry': 'spawn', 'exit': 'staff_door', 'first': True, 'toys': TOYS, 'bells': BELLS,
+                 'params': {'name': 'the_platform', 'storey': -3, 'entry': 'spawn', 'exit': 'staff_door', 'first': True, 'toys': TOYS, 'bells': BELLS,
                             'size': [r(xo1 - xo0), H, r(zc + WALL_T - zo0)]}})
     ents.append({'id': 'spawn', 'type': 'spawn', 'position': [SPAWN[0], 0, SPAWN[1]], 'params': {'yaw': SPAWN[2]}})
     ents.append({'id': 'staff_door', 'type': 'exit',
@@ -408,6 +408,10 @@ def world():
         'regions': {'station': {}},
         'paths': paths,
         'runtime': {'depth': True, 'perspective': True},
+        # the front end's fonts (agent E, front_art.akr) live in texture slot 7 and 4-bit palettes
+        # 250-251, loaded once for the whole cart: no region may take them
+        'textures': {'slots': '13-8,6-0,16-31'},
+        'palette': {'reserved': [250, 251]},
         # The game's camera (dr_view.akr: 60 degrees down, 28.2 m from its target) over the room's
         # west end, middle and east end. The checker draws them at its own field of view, wider
         # than the game's 20 degrees, so they see more of the room than the game does.

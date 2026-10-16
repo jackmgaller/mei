@@ -94,7 +94,7 @@ fn doors_reset() {
     for i in 0..room.ndoors {
         let d = &room.doors[i]
         door_t[i] = -1
-        door_armed[i] = !box_contains(&d.box, thief.x, thief.z)
+        door_armed[i] = d.box.level != thief.level || !box_contains(&d.box, thief.x, thief.z)
         door_wall(d)
     }
     room_segs()
@@ -113,7 +113,7 @@ fn door_wall(d: *Door) {
 // moves.
 fn keys_update(t: s32) {
     for i in 0..room.ncards {
-        if card_taken(i) { continue }
+        if card_taken(i) || room.card_level[i] != thief.level { continue }
         if dist2(thief.x, thief.z, room.card_x[i], room.card_z[i]) < CARD_R * CARD_R {
             bit_set(&att_taken[0], room.card_key[i])
             held = held | ((1 as u32) << room.card_col[i] as u32)
@@ -126,7 +126,7 @@ fn keys_update(t: s32) {
     var changed = false
     for i in 0..room.ndoors {
         let d = &room.doors[i]
-        if door_open(d) { continue }
+        if door_open(d) || d.box.level != thief.level { continue }
         if held & ((1 as u32) << d.card as u32) == 0 { continue }
         if box_touches(&d.box, thief.x, thief.z, THIEF_R + DOOR_REACH) {
             bit_set(&att_open[0], d.key)
@@ -146,10 +146,10 @@ fn keys_update(t: s32) {
 // platform), -1 none.
 const EXIT_LINE = 99
 fn way_out() -> s32 {
-    if room.has_exit && in_exit() { return EXIT_LINE }
+    if room.has_exit && room.exit.level == thief.level && in_exit() { return EXIT_LINE }
     for i in 0..room.ndoors {
         let d = &room.doors[i]
-        let inside = box_contains(&d.box, thief.x, thief.z)
+        let inside = d.box.level == thief.level && box_contains(&d.box, thief.x, thief.z)
         if !door_armed[i] {
             door_armed[i] = !inside
             continue

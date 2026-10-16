@@ -14,6 +14,12 @@ A room description (a dict):
                        end walls, x for the back wall); its spawn `depth` metres into the room from
                        the wall's middle line (default 1.0), facing in; `along` shifts it along the
                        wall from the doorway's middle
+                       A door with side 'free' stands inside the room, on a prop's face (a lift's
+                       doors on a core): `pos` (x, z) its middle, `yaw` the way into the room,
+                       `width`, `spawn_at` (x, z); it cuts no gap (the prop's face is its door)
+                       A room of a line (the station's and the tower's way: the room's spawn, its
+                       exit, `next`) marks its two doorways `kind: 'in'` (the spawn, `P + 'spawn'`)
+                       and `kind: 'out'` (the exit box in the doorway, `P + 'exit'`) instead
   entry                the door whose spawn the stage starts at (the first room), else any
   props                [(id, kind, (x0, z0, x1, z1), height[, faces to leave open])]: kind 'block'
                        (stops the thief, cuts cones: a wall, a pillar, a mannequin), 'low' (stops
@@ -32,6 +38,7 @@ KIND = {'block': ('wall_light', True, True), 'low': ('desk', False, True), 'glas
         'mark': ('floor_dark', False, False), 'seat': ('bench', False, True), 'machine': ('machine', True, True),
         'pillar': ('pillar', True, True), 'hide': ('hide', True, True)}
 DOOR_DEPTH = 0.4
+EXIT_DEPTH = 0.6
 YAW = {'w': 90, 'e': 270, 'n': 180}
 
 
@@ -116,18 +123,28 @@ def play_entities(d):
     ents = []
     entry = None
     for dr in d['doors']:
-        a0, a1 = dr['at']
+        a0, a1 = dr.get('at', (0.0, 0.0))
         mid = (a0 + a1) / 2
         along, depth = dr.get('spawn') or (0.0, 1.0)
-        if dr['side'] == 'w':
+        if dr['side'] == 'free':
+            pos, sp = dr['pos'], dr['spawn_at']
+        elif dr['side'] == 'w':
             pos, sp = (X0 - WALL_T / 2, mid), (X0 - WALL_T / 2 + depth, mid + along)
         elif dr['side'] == 'e':
             pos, sp = (X1 + WALL_T / 2, mid), (X1 + WALL_T / 2 - depth, mid + along)
         else:
             pos, sp = (mid, Z1 + WALL_T / 2), (mid + along, Z1 + WALL_T / 2 - depth)
-        yaw = YAW[dr['side']]
+        yaw = dr['yaw'] if dr['side'] == 'free' else YAW[dr['side']]
+        if dr.get('kind') == 'in':           # a room of a line (stage 1's way): its spawn
+            ents.append({'id': P + 'spawn', 'type': 'spawn', 'position': [r(sp[0]), 0, r(sp[1])], 'params': {'yaw': yaw}})
+            entry = P + 'spawn'
+            continue
+        if dr.get('kind') == 'out':          # ... and its exit box, in the doorway
+            size = [EXIT_DEPTH, 2.0, r(a1 - a0)] if dr['side'] in 'we' else [r(a1 - a0), 2.0, EXIT_DEPTH]
+            ents.append({'id': P + 'exit', 'type': 'exit', 'position': [r(pos[0]), 0, r(pos[1])], 'params': {'size': size}})
+            continue
         did = P + 'door_' + dr['id']
-        p = {'size': [r(a1 - a0), 2.2, DOOR_DEPTH]}
+        p = {'size': [r(dr['width'] if dr['side'] == 'free' else a1 - a0), 2.2, DOOR_DEPTH]}
         if dr.get('spawn') is not False:
             p['spawn'] = P + 'spawn_' + dr['id']
             ents.append({'id': P + 'spawn_' + dr['id'], 'type': 'spawn', 'position': [r(sp[0]), 0, r(sp[1])],
@@ -143,6 +160,8 @@ def play_entities(d):
             entry = P + 'spawn_' + dr['id']
     room = {'id': P + 'room', 'type': 'room', 'position': [0, 0, 0],
             'params': {'name': d['title'], 'entry': entry, 'size': [r(xo1 - xo0), WALL_H, r(zo1 - zo0)]}}
+    if any(dr.get('kind') == 'out' for dr in d['doors']):
+        room['params']['exit'] = P + 'exit'
     ents.insert(0, room)
     # the wall map: the shell, then the props
     ents.append(wall(P + 'wall_front', xo0, zo0, xo1, Z0, h=CUT))

@@ -1,16 +1,29 @@
-# Room 4: the lobby (floor plan)
+# The tower, room 1: the lobby (floor plan)
 
-Level 1's fourth room (`levels/level1/ROUTE.md`). The ground-floor lobby of the office tower above
-the passage, at night: a stone floor, a reception desk in the middle, two big planters, the lifts
-shut for the night in the east wall, and a stopped escalator rising along the back wall: the only
-way up. Two night guards walk lines that cross: one up and down the west side from the passage's
-door to the back, one along the back in front of the escalator. It teaches two routes crossing:
-get past one, then wait for the other. Lit by the street through the glass front (cut away: the
-light painted on the floor), the desk's lamp, the lifts' lit call buttons.
+The tower's first room (`levels/tower/ROUTE.md`; until 2026-10-15 level 1's fourth). The
+ground-floor lobby of the office tower above the passage, at night: a stone floor, a reception desk
+in the middle, two big planters, the lifts shut for the night in the east wall, and a stopped
+escalator rising along the back wall: the only way up. Two night guards walk lines that cross: one
+up and down the west side from the passage's door to the back, one along the back in front of the
+escalator. It teaches two routes crossing: get past one, then wait for the other. Lit by the street
+through the glass front (cut away: the light painted on the floor), the desk's lamp, the lifts' lit
+call buttons.
 
 The greybox is `make_lobby.py` (it writes `greybox/`, `lobby.placements.json` and
 `lobby.play.json`). The dressed room replaces the greybox recipes and the placements file; the
 play file is the level lead's.
+
+## Stage change (2026-10-15)
+
+Each stage is now one place (DESIGN.md, "The premise"), and the lobby is the tower's first room.
+**Its way in, the doorway at the front of the west wall, is now the tower's night entrance from
+the street** (a side door off the pavement, the night bell, the street's light), not the stair
+up from the station's passage. Nothing in play moved (the spawn, the guards, the tape). To
+redress: what is seen beyond the west doorway. The escalator now leads up to the lifts, which
+come out in the lift hall on the sixth floor (`rooms/hall/`); in the tower, a stage of doors, the
+escalator's exit box is played as a door (`levels/tower/make_tower.py`), in the same place. The
+directory board and the lifts' floor indicators may list floors from 1 to 11 with no ninth (the
+ninth floor, `rooms/ninth/`, is the one the tower does not declare).
 
 ## The plan
 

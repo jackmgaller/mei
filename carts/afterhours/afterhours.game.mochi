@@ -24,13 +24,17 @@ probe {
   floor_max_degrees = 40
 }
 
-worlds level1, level2, platform
+worlds station, tower, aquarium, store, platform
 
 // A room. The entity's position is the centre of the room's floor (its y is the floor's height)
 // and `size` its extent (x, y, z), which the camera's pan keeps on the screen and which holds the
-// room's entities. `name` is what the transition, the stage select and the stage's end call it,
+// room's entities. A `dark` room (the aquarium's) is lit only by its `light`s: a watcher without a
+// torch sees the thief only where they fall. `upper` is a walkway this many metres above the floor
+// (0: one level); the things with a `level` are on the floor (0) or the walkway (1), and the thief
+// is on the level of the door he came in by. `name` is what the transition, the stage select and the stage's end call it,
 // as a World Kit name (lower case, words joined by _): shown in capitals with spaces, so
-// `the_last_train` reads THE LAST TRAIN.
+// `the_last_train` reads THE LAST TRAIN. `storey` is the floor it is on, shown beside the name:
+// n > 0 is nF (8 is 8F), n < 0 is Bn (−1 is B1), 0 is not shown.
 // `toys` and `bells` are the tools the thief has in the room.
 //
 // Rooms join in one of two ways:
@@ -44,6 +48,7 @@ worlds level1, level2, platform
 //   its doors' spawns).
 type room {
   name:  name
+  storey: s16 = 0
   entry: ref
   exit:  ref?
   size:  vec3
@@ -51,17 +56,21 @@ type room {
   first: bool = false
   toys:  u8 = 0
   bells: u8 = 0
+  dark:  bool = false
+  upper: fixed = 0
 }
 
 // Where the thief starts and restarts: the foot of the stair, the room's door. In a stage of
 // doors, each door he can come in by has one (the door's `spawn`).
 type spawn {
-  yaw: fixed = 0
+  yaw:   fixed = 0
+  level: u8 = 0
 }
 
 // The way out (the staff door). The room is cleared when the thief's centre is inside the box.
 type exit {
-  size: vec3 = [1, 2, 1]
+  size:  vec3 = [1, 2, 1]
+  level: u8 = 0
 }
 
 // A point on a patrol guard's route. The guard walks to it, stops `wait` ticks looking `look`
@@ -88,6 +97,10 @@ type waypoint {
 // width) and `turn_rate` (how fast a patrol's head turns toward where he walks or looks, degrees a
 // second). Level 1's early rooms use slow patrols, short and narrow cones and slow heads.
 //
+// A guard on a `level` sees only that level (waypoints take their guard's level); noise is heard
+// on both. With a `torch` he sees his whole fan in a dark room, lit or not; his torch lights nobody
+// for anyone else.
+//
 // Patrol and posted guards hear noise: they walk to it, look around and walk back (DESIGN.md,
 // "Caught means restart"). `hear` is how far, in metres, they hear the thief running; a tool's
 // noise carries as far as the tool says (A's runtime).
@@ -104,6 +117,8 @@ type guard {
   phase:  s16 = 0
   hear:   fixed = 6
   turn_rate: fixed = 240
+  level:  u8 = 0
+  torch:  bool = false
 }
 
 // A train on its timetable. It runs along the World Kit path `path` (the track's centre line at
@@ -138,7 +153,8 @@ type train {
 // Somewhere to hide: a box. The thief inside it who presses A is hidden from every cone until he
 // moves out.
 type hide_spot {
-  size: vec3 = [1, 2, 1]
+  size:  vec3 = [1, 2, 1]
+  level: u8 = 0
 }
 
 // Something fragile (a stack of cans, a sign on an easel). Brushing it makes a noise `noise`
@@ -146,17 +162,20 @@ type hide_spot {
 type fragile {
   radius: fixed = 0.4
   noise:  fixed = 8
+  level:  u8 = 0
 }
 
 // The room's walls, as boxes in plan (2D): the wall map, written by the room's script from the
 // same numbers as the room's assets, so the two cannot drift apart. `blocks` cuts cones; `solid`
 // stops the thief and the guards. Glass is a wall that does not block (a tank, a window); low
 // furniture (a bench) is the same: it stops the thief and the cones pass over it. The tracks are
-// not walls: the runtime makes each train's path, `width` wide, out of bounds by itself.
+// not walls: the runtime makes each train's path, `width` wide, out of bounds by itself. Water,
+// and the open air beside a walkway, are walls that do not block (cones cross them), on a level.
 type wall {
   size:   vec3
   blocks: bool = true
   solid:  bool = true
+  level:  u8 = 0
 }
 
 // A doorway (stage 2): a box `size` (x across the opening, z through it, turned by the yaw) in a
@@ -177,10 +196,23 @@ type door {
   to:    ref?
   end:   bool = false
   card:  none | red | blue | green | yellow = none
+  level: u8 = 0
 }
 
 // A keycard on the floor (stage 2): picked up when the thief's centre comes within 0.5 m of it,
 // shown on the HUD, and kept (not used up): it opens every staff door of its colour.
 type keycard {
   colour: red | blue | green | yellow
+  level:  u8 = 0
+}
+
+// Where a tank's light falls in a dark room: a box in plan (size x and z, turned by its yaw) on a
+// level. Lit always (`period` 0), or on the room's clock for `on` ticks from `offset`, every
+// `period` ticks.
+type light {
+  size:   vec3 = [2, 0.1, 2]
+  level:  u8 = 0
+  period: s16 = 0
+  on:     s16 = 0
+  offset: s16 = 0
 }

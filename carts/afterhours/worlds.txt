@@ -1,9 +1,16 @@
-# The worlds After Hours runs on (docs/WORLDKIT.md, "Using a world in a cart").
-# Level 1: five rooms from the last train up to the aquarium on the roof
-# (carts/afterhours/levels/level1/make_level1.py assembles it from the rooms' files).
-carts/afterhours/levels/level1/level1.world.json
-# Stage 2: keycards and backtracking, the cinema down to the food hall
-# (carts/afterhours/levels/level2/make_level2.py assembles it from the rooms' files).
-carts/afterhours/levels/level2/level2.world.json
-# Gate 1's hard platform, kept for a later level (rooms/platform/make_platform.py).
+# The worlds After Hours runs on (docs/WORLDKIT.md, "Using a world in a cart"). One world a stage:
+# each stage is one place (DESIGN.md, "The premise").
+# Stage 1, the station: the last train's platform, the ticket gates, the passage
+# (carts/afterhours/levels/station/make_station.py assembles it from the rooms' files).
+carts/afterhours/levels/station/station.world.json
+# Stage 2, the tower: its lobby, the trading floor, the ninth floor, its roof
+# (levels/tower/make_tower.py).
+carts/afterhours/levels/tower/tower.world.json
+# Stage 3, the aquarium: dark galleries, walkways over water, two-level rooms, the public galleries down
+# to the plant and up to the tank tops (levels/aquarium/make_aquarium.py, agent J's).
+carts/afterhours/levels/aquarium/aquarium.world.json
+# Stage 4, the department store: keycards and backtracking, the cinema down to the food hall
+# (levels/store/make_store.py).
+carts/afterhours/levels/store/store.world.json
+# Gate 1's hard platform, the way home (rooms/platform/make_platform.py).
 carts/afterhours/rooms/platform/platform.world.json

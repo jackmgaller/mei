@@ -1,12 +1,13 @@
-# Stage 2, room 0: the cinema (floor plan)
+# The department store (stage 3), room 0: the cinema (floor plan)
 
-Stage 2's first room (`levels/level2/ROUTE.md`). An auditorium on the eighth floor of a
-department store, after the last show: the screen still lit by the film running in the booth,
-the projector's beam over the seats, the exit signs. The thief comes out of the aquarium's
-service corridor behind the screen (the run's way down from stage 1's roof). An usher walks round
-the seats with a torch; a cleaner works up and down one cross aisle; the projector's window high
-in the east wall looks straight down the middle aisle and never moves. The way out is the staff
-door at the back of the east wall, to the staff corridor.
+The store's first room (`levels/store/ROUTE.md`). An auditorium on the eighth floor of a department
+store, after the last show: the screen still lit by the film running in the booth, the projector's
+beam over the seats, the exit signs. The assessor comes in behind the screen by the cinema's
+backstage door, off the store's goods lift (the stage's start; until the split it was the
+aquarium's service corridor: the dressing beyond that doorway changes, nothing in play). An usher
+walks round the seats with a torch; a cleaner works up and down one cross aisle; the projector's
+window high in the east wall looks straight down the middle aisle and never moves. The way out is
+the staff door at the back of the east wall, to the staff corridor.
 
 The greybox is `make_cinema.py` (it writes `greybox/`, `cinema.placements.json` and
 `cinema.play.json`). The dressed room replaces the greybox recipes and the placements file; the
@@ -65,9 +66,9 @@ along the back and up to the staff door before the usher comes up the east side.
 The screen (the film's light on it, flickering: a palette cycle or a texture), the curtains
 either side, rows of seats as rows, the beam over the seats (light only, high), the exit signs
 over the doors (pictograms), carpet, wall lamps, the space behind the screen (speakers, the
-aquarium corridor's door), the staff door's landing beyond the east wall.
+backstage door to the goods lift), the staff door's landing beyond the east wall.
 
 ## Rules for every room
 
-As `levels/level2/ROUTE.md`, "Rules for every room", with this room's prefix `cn_` and its
+As `levels/store/ROUTE.md`, "Rules for every room", with this room's prefix `cn_` and its
 placements in `cinema.placements.json`.

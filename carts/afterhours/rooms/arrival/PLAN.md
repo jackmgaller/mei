@@ -1,11 +1,12 @@
-# Room 1: the last train (floor plan)
+# The station, room 1: the last train (floor plan)
 
-Level 1's first room (`levels/level1/ROUTE.md`). The far end of a side platform three floors
-under the complex, after midnight. The thief steps off the last train, which pulls out behind
-him into the tunnel; the stair up to the ticket gates is at the platform's east end, and a
-station guard stands beside it, looking up the platform, then turning to the timetable. It
-teaches what a cone is, and timing one. It should be calm and lit by the platform's fluorescent
-tubes, the train's lit windows sliding away, and the stair's light from above.
+The station's first room (`levels/station/ROUTE.md`; until 2026-10-15 level 1's first). The far end
+of a side platform three floors under the complex, after midnight. The thief steps off the last
+train, which pulls out behind him into the tunnel; the stair up to the ticket gates is at the
+platform's east end, and a station guard stands beside it, looking up the platform, then turning to
+the timetable. It teaches what a cone is, and timing one. It should be calm and lit by the
+platform's fluorescent tubes, the train's lit windows sliding away, and the stair's light from
+above.
 
 The greybox is `make_arrival.py` (it writes `greybox/`, `arrival.placements.json` and
 `arrival.play.json`). The dressed room replaces the greybox recipes and the placements file; the

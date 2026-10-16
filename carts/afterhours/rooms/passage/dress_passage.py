@@ -80,8 +80,12 @@ def room_lights():
          'shadows': True, 'radius': 0.35},
         {'id': 'hose', 'at': [HOSE_X, 1.35, Z1 - 0.25], 'color': '#ff3a24', 'intensity': 0.9, 'range': 1.3},
         {'id': 'camera', 'at': [X1 - 0.3, 2.2, 2.85], 'color': '#ff2a1a', 'intensity': 1.1, 'range': 1.9},
-        {'id': 'exit_stair', 'at': [X1 + 0.9, 1.7, -2.5], 'color': '#ffc488', 'intensity': 2.4, 'range': 3.6,
+        # the station's way out: its stair up to the street, the street's cold light coming down it
+        {'id': 'street', 'at': [X1 + 1.6, 2.3, -2.5], 'color': '#c8dcff', 'intensity': 2.8, 'range': 4.4,
          'shadows': True, 'radius': 0.3},
+        # the exit pictogram over the doorway: painted on the floor only (the kit's sixteen are taken)
+        {'id': 'exit_sign', 'at': [X1 - 0.2, 2.15, -2.5], 'color': '#60ff90', 'intensity': 0.7, 'range': 1.7,
+         'paint': True},
         {'id': 'entry_stair', 'at': [X0 - 0.9, 1.5, -1.6], 'color': '#a8c4ff', 'intensity': 2.0, 'range': 3.2,
          'shadows': True, 'radius': 0.3},
         {'id': 'phone', 'at': [PHONE_X, 1.65, Z1 - 0.35], 'color': '#9cffc0', 'intensity': 0.7, 'range': 1.3},
@@ -91,7 +95,7 @@ def room_lights():
 
 
 def kit_lights():
-    return [{k: v for k, v in light.items() if k != 'tube'} for light in room_lights()]
+    return [{k: v for k, v in light.items() if k != 'tube'} for light in room_lights() if not light.get('paint')]
 
 
 def blockers():
@@ -190,6 +194,12 @@ def floor_paint(x, z):
             rgb = rgb * (1 - 0.28 * d[..., None]) + d[..., None] * np.array([10, 14, 20])
     puddle = blob(x, z, ux + 0.25, uz - 0.1, 0.55, 0.32) > 0.5
     rgb = np.where(puddle[..., None], rgb * 0.72 + np.array([8, 12, 22]), rgb)
+    # the rain walked in from the street: the floor wet inside the way out, the street's light in it
+    wet = soft_rect(x, z, X1 - 1.3, X1 + 0.3, EXIT[0] + 0.1, EXIT[1] - 0.1, 0.6)
+    rgb = rgb * (1 - 0.25 * wet[..., None])
+    sheen = blob(x, z, X1 - 0.5, -2.5 - 2.0 * math.tan(math.radians(30)) * 0.5, 0.7, 0.35) * wet
+    rgb += (sheen * 0.6)[..., None] * hex_rgb('#c8dcff')
+    rgb += (blob(x, z, X1 - 0.35, -2.5, 0.25, 0.35) * 0.18)[..., None] * hex_rgb('#60ff90')
     return rgb
 
 
@@ -449,8 +459,23 @@ def paper_top():
     return img
 
 
+def exit_sign():
+    """The exit pictogram: a white figure running out through a doorway, on green."""
+    img = Image.new('RGB', (16, 9), (40, 170, 90))
+    d = ImageDraw.Draw(img)
+    d.rectangle([11, 1, 14, 7], outline=(240, 250, 240))
+    d.point((6, 1), fill=(250, 255, 250))
+    d.line([(6, 2), (5, 5)], fill=(250, 255, 250))
+    d.line([(5, 5), (3, 7)], fill=(250, 255, 250))
+    d.line([(5, 5), (7, 7)], fill=(250, 255, 250))
+    d.line([(4, 3), (8, 3)], fill=(250, 255, 250))
+    d.line([(8, 3), (9, 2)], fill=(250, 255, 250))
+    return img
+
+
 def draw_art():
     ART.mkdir(exist_ok=True)
+    exit_sign().save(ART / 'exit_sign.png')
     w, h = FLOOR_TEX
     paintings = []
     for a, b in zip(FLOOR_SPLIT, FLOOR_SPLIT[1:]):
@@ -491,7 +516,13 @@ def materials():
                      'texture': {'pattern': 'tile', 'colors': ['#c8c6ba', '#9a988e'], 'size': 16,
                                  'params': {'count': 2, 'grout': 1}, 'projection': 'box', 'scale': [0.3, 0.3]}},
         'lintel': {'color': '#76787e'},
-        'door_light': {'color': '#ffd8a8', 'class': 'emissive'},
+        'door_light': {'color': '#d8e6ff', 'class': 'emissive'},
+        'exit_sign': {'color': '#30c060', 'class': 'emissive', 'texture': {'image': 'art/exit_sign.png', 'bits': 4, 'projection': 'fit'}},
+        'stair': {'color': '#6a6c72', 'texture': {'pattern': 'stripes', 'colors': ['#707278', '#5c5e64'], 'size': 16,
+                                                  'params': {'count': 2, 'axis': 'v'}, 'projection': 'box', 'scale': [0.3, 0.3]}},
+        'stairwell': {'color': '#7a7a78'},
+        'handrail': {'color': '#c8ccd4'},
+        'rain': {'color': '#506080', 'blend': 'add', 'double_sided': True},
         'pillar': {'color': '#c4c2b4', 'texture': {'image': 'art/pillar.png', 'bits': 4, 'projection': 'fit'}},
         'pillar_cut': {'color': '#8c9ab4', 'class': 'emissive',
                        'texture': {'image': 'art/pillar_cut.png', 'bits': 4, 'projection': 'fit'}},
@@ -628,6 +659,52 @@ def prop_nodes():
            translate=[x, h / 2 - 0.01, Z1 - 0.3]) for k, (x, h) in enumerate(((4.05, 0.42), (3.65, 0.36), (4.12, 0.3)))
         ][:2] + [at({'id': 'bucket_2', 'op': 'cylinder', 'radius': 0.15, 'height': 0.3, 'segments': 8,
                      'material': 'bucket'}, translate=[3.86, 0.14, Z1 - 0.62])]))
+    n.append(group('street_stair', street_stair()))
+    return n
+
+
+def street_stair():
+    """Beyond the way out (the station's exit since stage 1 became the station alone): the stair
+    rising east to the street, cut at the section's ceiling like everything else, wet, with a
+    little rain coming down it; the exit pictogram on a flag sign over the doorway."""
+    za, zb = EXIT                   # z -3.4 .. -1.6
+    steps, run, rise = 12, 0.3, 0.19
+    pts = [(XO1, -0.02)]
+    xx = XO1
+    for k in range(1, steps + 1):
+        pts.append((xx, rise * k))
+        xx += run
+        pts.append((xx, rise * k))
+    pts.append((xx, -0.02))
+    pts = [p_ for p_ in pts if p_[1] <= WALL_H - 0.02]
+    if pts[-1][1] > 0:
+        pts.append((pts[-1][0], -0.02))
+    n = [{'id': 'steps', 'op': 'extrude', 'material': 'stair', 'depth': r(zb - za - 0.02), 'points': [[r(a), r(b)] for a, b in pts],
+          'faces': {'back': 'cut', 'front': 'stairwell'}, 'transform': {'translate': [0, 0, r((za + zb) / 2)]}}]
+    x_end = pts[-1][0]
+    n.append(box('well_n', (XO1, -0.02, zb), (x_end + 0.2, WALL_H - 0.02, zb + 0.25), 'stairwell', open=['bottom', 'front', 'left'],
+                 faces={'top': 'cut', 'back': 'stairwell'}))
+    n.append(box('well_s', (XO1, -0.02, ZO0), (x_end + 0.2, CUT, za - 0.005), 'stairwell', open=['bottom', 'front', 'left'],
+                 faces={'top': 'cut', 'back': 'cut'}))
+    n.append(at({'id': 'rail', 'op': 'box', 'size': [r(math.hypot(x_end - XO1, rise * steps) * 0.9), 0.04, 0.05],
+                 'material': 'handrail'},
+                translate=[r((XO1 + x_end) / 2), r(rise * steps / 2 + 0.9), r(zb - 0.08)],
+                rotate=[0, 0, r(math.degrees(math.atan2(rise, run)))]))
+    rain = Mesh()
+    rng = np.random.default_rng(12)
+    for k in range(14):
+        rx = XO1 + 0.6 + rng.random() * (x_end - XO1 - 0.8)
+        rz = za + 0.2 + rng.random() * (zb - za - 0.4)
+        floor_y = rise * min(steps, max(1, math.ceil((rx - XO1) / run)))
+        y0 = floor_y + 0.3 + rng.random() * 0.5
+        y1 = min(y0 + 0.45, WALL_H - 0.05)
+        if y1 - y0 < 0.15:
+            continue
+        rain.poly([(rx - 0.012, y1, rz), (rx + 0.012, y1, rz), (rx + 0.04, y0, rz), (rx + 0.016, y0, rz)], (0, 0, -1))
+    # agent W: the rain falls now (r3_wwater's sheets of streaks); the still streaks are left out
+    # n.append(rain.node('rain', 'rain'))
+    n.append(box('exit_flag', (X1 - 0.75, 2.12, -2.53), (X1 + 0.03, 2.36, -2.47), 'sign_box', faces={'back': 'exit_sign',
+                                                                                                    'front': 'exit_sign'}))
     return n
 
 
@@ -694,6 +771,28 @@ def collision():
     return collision_recipe(P + 'passage_col', n)
 
 
+def wwater_recipe():
+    """Agent W (NOTES_W.md): the station stair's water. Rain falling down the stairwell (two sheets
+    of streaks, in place of the still streaks), rings spreading in the umbrella's puddle where it
+    drips, and the rain's sheen on the wet floor inside the way out, lit by the street's light."""
+    sys.path.insert(0, str(HERE.parents[1] / 'water'))
+    import wateranim
+    ov = wateranim.Overlay(P + 'wwater')
+    ov.material('rain', 'w_rain', axis='z')
+    ov.material('drip', 'w_drip', scale=0.5)
+    ov.material('glint', 'w_ripple')
+    za, zb = EXIT
+    x_end = XO1 + 0.3 * 12
+    for z in (za + 0.45, zb - 0.45):
+        ov.wall_z('rain', z, XO1 + 0.3, x_end - 0.3, 0.15, WALL_H - 0.05, facing=-1, nx=3, ny=1)
+    ux, uz = UMBRELLA
+    ov.ellipse('drip', 0.03, ux + 0.25, uz - 0.1, 0.55 * 0.8, 0.32 * 0.8, n=10)
+    ov.floor('glint', 0.03, X1 - 1.2, X1 - 0.02, za + 0.15, zb - 0.15, nx=1, nz=1)
+    ov.light((X1 + 1.6, 2.3, -2.5), '#c8dcff', 2.2, 4.6, id='street')
+    ov.light((ux + 0.25, 0.9, uz - 0.4), '#b8ccf0', 3.2, 1.5, id='puddle')
+    return ov.recipe(ART, refine={'tolerance': 20, 'max_added': 24})
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
@@ -703,13 +802,16 @@ def main():
     write_json(HERE / f'{P}passage.asset.json', passage_recipe())
     write_json(HERE / f'{P}passage_col.asset.json', collision())
     write_json(HERE / f'{P}showcase.asset.json', showcase_recipe())
+    write_json(HERE / f'{P}wwater.asset.json', wwater_recipe())       # agent W
     if not args.no_placements:
         write_json(HERE / 'passage.placements.json', {
             'format': 'after-hours-placements', 'version': 1, 'room': 'passage',
             'placements': [{'id': P + 'passage', 'asset': P + 'passage', 'position': [0, 0, 0],
                             'collision': P + 'passage_col'},
                            {'id': P + 'showcase', 'asset': P + 'showcase', 'position': [0, 0, 0],
-                            'collision': 'none'}]})     # on the wall, out of reach: the wall's collision is the shell's
+                            'collision': 'none'},
+                           {'id': P + 'wwater', 'asset': P + 'wwater', 'position': [0, 0, 0],
+                            'collision': 'none'}]})     # agent W: the moving water     # on the wall, out of reach: the wall's collision is the shell's
     print('wrote r3_passage, r3_passage_col, passage.placements.json and', len(list(ART.glob('*.png'))),
           'textures in', ART.relative_to(HERE.parents[3]))
 

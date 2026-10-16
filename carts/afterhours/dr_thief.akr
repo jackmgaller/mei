@@ -1,5 +1,7 @@
 // The thief: free movement in plan, collision with the walls, the tracks and the open trains,
-// hiding, the fragile things, and his tools (the wind-up toy and the pocket bell).
+// hiding, the fragile things, and his tools (the wind-up toy and the pocket bell). The dash
+// (X) is agent G's dr_dash.akr.
+import "dr_dash.akr"
 
 const THIEF_R: fixed = 0.3          // the footprint, the probe's radius
 const WALK: fixed = 0.04            // metres a tick: 2.4 m/s
@@ -33,6 +35,7 @@ struct Thief {
     toys: s32          // left to use
     bells: s32
     car: s32           // the car he is inside (train * 16 + car), -1 none
+    level: s32         // the room's level he is on (the door he came in by)
 }
 
 struct Toy {
@@ -68,7 +71,7 @@ struct Input {
 
 fn thief_reset() {
     thief = Thief { x: room.spawn_x, z: room.spawn_z, head: room.spawn_head, toys: room.toys,
-                    bells: room.bells, car: -1, hide_t: -1000 }
+                    bells: room.bells, car: -1, hide_t: -1000, level: room.spawn_level }
     if room.toys == 0 && room.bells > 0 { thief.tool = Tool.Bell }
     for i in 0..MAX_TOYS { toys[i] = Toy {} }
     for i in 0..MAX_BELLS { bells[i] = Bell {} }
@@ -76,10 +79,12 @@ fn thief_reset() {
         fragile_down[i] = false
         fragile_at[i] = 0
     }
+    dash_reset()
 }
 
-// Pushes a circle out of everything solid: the walls, and this tick's tracks and open trains
-// (dyn_boxes).
+// Pushes a circle out of everything solid on the thief's level: the walls (water and the open air
+// beside a catwalk are walls that do not block), and on the floor this tick's tracks and open
+// trains (dyn_boxes).
 fn solid_push(x0: fixed, z0: fixed, r: fixed) -> vec2 {
     var x = x0
     var z = z0
@@ -87,16 +92,18 @@ fn solid_push(x0: fixed, z0: fixed, r: fixed) -> vec2 {
         push_hit = false
         for i in 0..room.nwalls {
             let b = &room.walls[i]
-            if b.solid {
+            if b.solid && b.level == thief.level {
                 let p = box_push(b, x, z, r)
                 x = p.x
                 z = p.y
             }
         }
-        for i in 0..ndyn_boxes {
-            let p = box_push(&dyn_boxes[i], x, z, r)
-            x = p.x
-            z = p.y
+        if thief.level == 0 {
+            for i in 0..ndyn_boxes {
+                let p = box_push(&dyn_boxes[i], x, z, r)
+                x = p.x
+                z = p.y
+            }
         }
         if !push_hit { break }
     }
@@ -135,6 +142,7 @@ fn thief_update(inp: *Input, t: s32) {
     thief.moving = moving
     thief.running = false
     thief.moved = 0.0
+    dash_tick_start(t)
     if thief.hidden {
         if moving || inp.press & A != 0 {
             thief.hidden = false
@@ -142,6 +150,11 @@ fn thief_update(inp: *Input, t: s32) {
             event(Ev.HideOut, 0)
             au_hide(false)
         }
+        return
+    }
+    // X: the dash (dr_dash.akr); while he slides or recovers his input does nothing else
+    if dash_busy(inp, mv, t) {
+        thief.car = train_inside(thief.x, thief.z)
         return
     }
     if moving {
@@ -167,22 +180,11 @@ fn thief_update(inp: *Input, t: s32) {
     }
     thief.car = train_inside(thief.x, thief.z)
     if thief.running { noise(thief.x, thief.z, 0.0, -1) }
-    // fragile things
-    for i in 0..room.nfrag {
-        if fragile_down[i] { continue }
-        let r = room.frag_r[i] + THIEF_R
-        if dist2(thief.x, thief.z, room.frag_x[i], room.frag_z[i]) < r * r {
-            fragile_down[i] = true
-            fragile_at[i] = t
-            event(Ev.Fragile, i)
-            au_knock(room.frag_x[i] - cam_x)
-            noise(room.frag_x[i], room.frag_z[i], room.frag_noise[i], -1)
-        }
-    }
+    fragile_touch(thief.x, thief.z, t)
     // A: hide in a spot he stands in
     if inp.press & A != 0 {
         for i in 0..room.nspots {
-            if box_contains(&room.spots[i], thief.x, thief.z) {
+            if room.spots[i].level == thief.level && box_contains(&room.spots[i], thief.x, thief.z) {
                 thief.hidden = true
                 thief.hide_t = t
                 event(Ev.HideIn, 0)
@@ -196,6 +198,21 @@ fn thief_update(inp: *Input, t: s32) {
         if thief.tool == Tool.Toy { thief.tool = Tool.Bell } else { thief.tool = Tool.Toy }
     }
     if inp.press & B != 0 { use_tool(t) }
+}
+
+// The fragile things his footprint at (x, z) brushes are knocked over (one noise each).
+fn fragile_touch(x: fixed, z: fixed, t: s32) {
+    for i in 0..room.nfrag {
+        if fragile_down[i] || room.frag_level[i] != thief.level { continue }
+        let r = room.frag_r[i] + THIEF_R
+        if dist2(x, z, room.frag_x[i], room.frag_z[i]) < r * r {
+            fragile_down[i] = true
+            fragile_at[i] = t
+            event(Ev.Fragile, i)
+            au_knock(room.frag_x[i] - cam_x)
+            noise(room.frag_x[i], room.frag_z[i], room.frag_noise[i], -1)
+        }
+    }
 }
 
 fn use_tool(t: s32) {

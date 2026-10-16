@@ -71,6 +71,7 @@ var run_visited: u32           // the rooms he has been in this run (bit k)
 var run_cleared: u32           // the rooms he has left by a way out this run
 var spent_before: s32          // room_spent of this room before this visit
 var visits: s32                // rooms entered this run (the tests)
+var load_cycles: s32           // the last room_load_n()'s cycles (the tests)
 
 fn init() {
     render_depth(true)
@@ -81,6 +82,13 @@ fn init() {
     test_init()
 }
 
+// Each tick after the guards: what a stage's rooms do beyond the rules (dr_world.akr replaces it:
+// the tower roof's searchlight's sound).
+weak fn stage_tick() {}
+
+// Whether stage n's world was opened by stage_prepare() (dr_world.akr replaces it).
+weak fn stage_prepared(_n: s32) -> bool { return false }
+
 // The stage (level) being played (dr_world.akr replaces it).
 weak fn stage_of() -> s32 { return 0 }
 
@@ -89,12 +97,13 @@ weak fn stage_of() -> s32 { return 0 }
 // Sets the mode (E: Title, Select, End; Play only through stage_start or transition_control).
 fn game_mode(m: Mode) { mode = m }
 
-// Starts stage n (a level; 0 is level 1) from its first room, in control (Mode.Play). Its world
-// is opened again (the stage select may have opened another to draw it); the ghosts are
-// forgotten when n is not the stage they were recorded on.
+// Starts stage n from its first room, in control (Mode.Play). Its world is opened again (the
+// stage select may have opened another to draw it), unless stage_prepare(n) opened it and
+// stage_prepare_step() copied its first room's textures over the frames before (dr_world.akr);
+// the ghosts are forgotten when n is not the stage they were recorded on.
 fn stage_start(n: s32) {
     if standin_run == 0 {
-        assert(level_switch(n), "no such stage")
+        if !stage_prepared(n) { assert(level_switch(n), "no such stage") }
         if n != ghost_stage {
             ghosts_clear()
             ghost_stage = n
@@ -107,12 +116,28 @@ fn stage_start(n: s32) {
 // In a transition: loads the next room and sets it at its clock 0, not running (E may draw it
 // now). Once; transition_control() does it if E did not.
 fn transition_ready() {
-    if mode != Mode.Transition || trans_ready { return }
-    assert(load_room(trans_to), "the next room did not load")
+    while !transition_ready_step() {}
+}
+
+// The same a piece at a time, for a transition that spreads the load over frames (H's
+// tr_load_piece() calls it once a frame): ready_piece says how many are done. 0: the room's
+// entities (room_load_n()); 1: its doors and sight segments; 2: its framing; 3: the entry at
+// clock 0 (Ev.RoomReady). True when the room is ready (and on every call after, and outside a
+// transition).
+var ready_piece: s32           // pieces of the transition's room load done
+fn transition_ready_step() -> bool {
+    if mode != Mode.Transition || trans_ready { return true }
+    if ready_piece < 3 {
+        assert(load_room_piece(trans_to, ready_piece), "the next room did not load")
+        ready_piece += 1
+        return false
+    }
     entry_door = trans_door
     enter_room()
+    ready_piece = 4
     trans_ready = true
     event(Ev.RoomReady, run_room)
+    return true
 }
 
 // Ends the transition: the next room is played from its clock 0, the thief in control.
@@ -156,6 +181,7 @@ fn room_exit() {
         trans_to = exit_to_room
         trans_door = exit_to_door
         trans_ready = false
+        ready_piece = 0
         return
     }
     assert(load_room(exit_to_room), "the next room did not load")
@@ -181,9 +207,31 @@ weak fn room_count() -> s32 { return 1 }
 
 // Loads room k of the run (false: there is none); its best attempt becomes the ghost.
 fn load_room(k: s32) -> bool {
+    for p in 0..3 {
+        if !load_room_piece(k, p) { return false }
+    }
+    return true
+}
+
+// Loading room k in three pieces (transition_ready_step() spreads them over frames): 0 its
+// entities (the loader), 1 its doors and sight segments, 2 its framing.
+fn load_room_piece(k: s32, piece: s32) -> bool {
+    if piece == 1 {
+        doors_setup()
+        room_segs()
+        return true
+    }
+    if piece == 2 {
+        view_init_room()
+        return true
+    }
     if k >= MAX_RUN { return false }
     var ok = false
-    if standin_graph {
+    if standin_aqua {
+        ok = k < STANDIN_AQUA_ROOMS
+        if ok { standin_aqua_load(k) }
+        run_length = STANDIN_AQUA_ROOMS
+    } else if standin_graph {
         ok = k < STANDIN_GRAPH_ROOMS
         if ok { standin_graph_load(k) }
         run_length = STANDIN_GRAPH_ROOMS
@@ -192,14 +240,13 @@ fn load_room(k: s32) -> bool {
         if ok { standin_load() }
         run_length = standin_run
     } else {
+        let c0 = cycle_count()
         ok = room_load_n(k)
+        load_cycles = cycle_count() - c0
         run_length = room_count()
     }
     if !ok { return false }
     run_room = k
-    doors_setup()
-    room_segs()
-    view_init_room()
     return true
 }
 
@@ -207,6 +254,7 @@ fn load_room(k: s32) -> bool {
 // the room has a way to another.
 var run_length: s32 = 1        // the run's rooms (the loader's count)
 var standin_graph: bool        // (the tests) the stand-in rooms of doors instead of the loader's
+var standin_aqua: bool         // (the tests) the stand-in aquarium rooms (dark, two levels)
 fn room_load_more() -> bool {
     if exit_to_room > -2 { return exit_to_room >= 0 }
     if room.ndoors == 0 { return run_room + 1 < run_length }
@@ -249,6 +297,7 @@ fn enter_room() {
         room.spawn_x = d.sx
         room.spawn_z = d.sz
         room.spawn_head = d.sh
+        room.spawn_level = d.box.level
     } else {
         entry_door = -1
     }
@@ -259,18 +308,30 @@ fn enter_room() {
     au_room(room_amb())
 }
 
-// The room's ambience for au_room(): level 1's rooms in their order (platform, gates, passage,
-// lobby, aquarium: 1-5), stage 2's (cinema, projection booth, staff corridor, shop floor, food
-// hall: 6-10), the platform level's room the platform (1); 0 for a stand-in room.
+// The room's ambience for au_room(): the stage's (stage_amb(), dr_world.akr); 0 for a stand-in
+// room.
 fn room_amb() -> s32 {
     if !room_is_world { return 0 }
-    if stage_of() == 0 { return min(run_room + 1, 5) }
-    if stage_has_doors() { return min(run_room + 6, 10) }
-    return 1
+    return stage_amb(run_room)
 }
+
+// Room k's ambience in the stage being played (dr_world.akr replaces it).
+weak fn stage_amb(_k: s32) -> s32 { return 1 }
 
 // Whether the stage's rooms join by doors (stage 2; dr_world.akr replaces it).
 weak fn stage_has_doors() -> bool { return false }
+
+// The room again from its clock 0 at the door he came in by, as a restart (START without E's
+// pause, SELECT, or E's pause menu's "Restart room"): the attempt ends (kept as the ghost if it
+// is the best), one restart counted.
+fn room_restart() {
+    tape_now.caught = false
+    tape_end()
+    restarts += 1
+    restart_attempt()
+    au_retry()
+    event(Ev.Restart, run_room)
+}
 
 fn restart_attempt() {
     phase = Phase.Play
@@ -284,11 +345,13 @@ fn restart_attempt() {
     guards_reset()
     sim_quiet = true
     trains_update(0)
+    lights_update(0)
     sim_quiet = false
     guards_sight()
     nnoise = 0
     tape_begin(&tape_now)
     view_restart()
+    cones_forget()
     au_restart()
 }
 
@@ -296,6 +359,7 @@ fn quantize(v: fixed) -> s32 { return clamp((v * 127) as s32, -127, 127) }
 
 fn update() {
     let c0 = cycle_count()
+    water_tick()                   // agent W: the water's tiles (dr_water.akr; a function of frame() only)
     let pad = input_pad(frame_n)
     let st = input_stick(frame_n)
     let press_raw = pad & ~raw_prev
@@ -310,15 +374,12 @@ fn update() {
     }
     match phase {
         Play => {
-            if press_raw & START != 0 {
-                tape_now.caught = false
-                tape_end()
-                restarts += 1
-                restart_attempt()
-                au_retry()
-                event(Ev.Restart, run_room)
+            if press_raw & START != 0 && fe_pause() {
+                // E opened its pause menu (Mode.Pause): nothing ticks until it resumes
+            } else if press_raw & (START | SELECT) != 0 {
+                room_restart()
             } else {
-                var inp = Input { pad: pad & ~START, sx: quantize(st.x), sy: quantize(st.y) }
+                var inp = Input { pad: pad & ~(START | SELECT), sx: quantize(st.x), sy: quantize(st.y) }
                 inp.press = inp.pad & ~tick_prev
                 tick_prev = inp.pad
                 tick(&inp)
@@ -338,7 +399,7 @@ fn update() {
         }
         Clear => {
             if press_raw & A != 0 {
-                if standin_run == 0 && !standin_graph && level_switch(-1) {
+                if standin_run == 0 && !standin_graph && !standin_aqua && level_switch(-1) {
                     ghosts_clear()
                     ghost_stage = stage_of()
                 }
@@ -356,6 +417,7 @@ fn tick(inp: *Input) {
     let c0 = cycle_count()
     nnoise = 0
     trains_update(clock)
+    lights_update(clock)
     thief_update(inp, clock)
     keys_update(clock)
     au_thief(thief.moved, thief.running, thief.x - cam_x)
@@ -364,10 +426,12 @@ fn tick(inp: *Input) {
     }
     tools_update(clock)
     for i in 0..room.nwatch { guard_update(i, clock) }
+    stage_tick()
     let s0 = cycle_count()
     sight_rays_tested = 0
     guards_sight()
     sight_cycles = cycle_count() - s0
+    dash_path_test()               // agent G: a dash's path this tick, tested point by point
     tape_record(&tape_now, inp, thief.x, thief.z)
     tape_now.near = min(tape_now.near, exit_dist())
     total += 1
@@ -378,10 +442,10 @@ fn tick(inp: *Input) {
         let g = &guards[i]
         g.caught = false
         if w != Why.None { continue }
-        if !thief.hidden && fan_covers(&g.fan, thief.x, thief.z) {
+        if watcher_sees(i, thief.x, thief.z) {
             who = i
             w = Why.Seen
-        } else if room.watch[i].kind != WKind.Camera {
+        } else if room.watch[i].kind != WKind.Camera && room.watch[i].level == thief.level {
             let r = THIEF_R + GUARD_R
             if !thief.hidden && dist2(thief.x, thief.z, g.x, g.z) < r * r {
                 who = i
@@ -409,6 +473,15 @@ fn tick(inp: *Input) {
     room_spent[run_room] = spent_before + total - room_entered
     clock += 1
     tick_cycles = cycle_count() - c0
+}
+
+// Whether watcher i sees the thief were his centre at (x, z) this tick: not hidden, on the
+// watcher's level, inside the drawn fan, and (a dark-eyed watcher in a dark room) lit.
+fn watcher_sees(i: s32, x: fixed, z: fixed) -> bool {
+    if thief.hidden || room.watch[i].level != thief.level { return false }
+    if !fan_covers(&guards[i].fan, x, z) { return false }
+    if dark_eyed(i) && !lit_at(x, z, thief.level) { return false }
+    return true
 }
 
 // The run's restarts so far (the rooms left, every visit, and this attempt's room).

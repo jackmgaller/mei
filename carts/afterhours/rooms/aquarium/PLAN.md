@@ -1,14 +1,45 @@
-# Room 5: the aquarium (floor plan)
+# The aquarium (floor plan)
 
-Level 1's last room (`levels/level1/ROUTE.md`), on the roof of the office tower: the sketch's
-aquarium after closing, reached by the lift from the lobby. It is the level's reward and its
-hardest room: it teaches nothing new but combines the four ideas before it, with one more,
-glass: the jellyfish column and the coral cube let cones through but not the thief.
+Level 1's last room until 2026-10-15; now a room of the aquarium stage (agent J's,
+`levels/aquarium/`): the sketch's aquarium after closing. In level 1 it was the reward and the
+hardest room: it teaches nothing new but combines the ideas before it, with one more, glass: the
+jellyfish column and the coral cube let cones through but not the thief.
 
 This folder is the aquarium builder's (`make_aquarium.py`, `capture.py`, the recipes and art).
 This plan is the level lead's; the room's play file (its entities and wall map) is
 `carts/afterhours/levels/level1/aquarium/aquarium.play.json`, written by `make_aquarium_play.py` there
 from the numbers below.
+
+## Stage change (2026-10-15)
+
+Each stage is now one place (DESIGN.md, "The premise"), and the owner gave the aquarium a stage
+of its own, built by agent J: a whole aquarium as one property. This room leaves the tower (whose
+top is now its roof, `rooms/roof/`) and becomes one of the aquarium stage's rooms; where it sits
+in that stage, and what leads in and out of it, are J's (`levels/aquarium/ROUTE.md`). Its puzzle
+and its play file (`levels/level1/aquarium/aquarium.play.json`, written by
+`make_aquarium_play.py`, with its collision) are unchanged and are J's to take.
+
+## The aquarium stage (2026-10-15, agent J)
+
+The room moves to the aquarium stage (`levels/aquarium/ROUTE.md`) as its room 3, **the ocean
+gallery**: the last of the public galleries, entered from the jellyfish gallery and left by the
+staff door into quarantine (leg 3). The tower gets a top of its own (DESIGN.md, Decided). Its play
+file for this stage is J's, `levels/aquarium/ocean/ocean.play.json` (written by
+`make_ocean_play.py` there from the tower's, ids `ao_`): **nothing in play moves**. The puzzle, the
+watchers, the footprints and the must-stay list below are unchanged; the way in and the staff
+door become doors. What it asks of the builder:
+
+- **The way in** (the front wall's gap, x −4.9 … −3.7) now comes from the jellyfish gallery, not
+  the lift: dress what is seen beyond it as the end of a dark gallery (a violet-lit passage),
+  not the lift lobby.
+- **The staff door** leads backstage into quarantine: beyond it, a plain service corridor.
+- **The jellyfish are the jellyfish gallery's** (signature props once per stage): restock the
+  glass column with something else (garden eels in sand, a column of sardines, seahorses), its
+  glass footprint unchanged.
+- **Textures**: the room's region uses texture slots `8,6-3,20-24` (10 slots; it uses 61 KB today)
+  and never slot 7 or 4-bit palettes 250-251.
+- **Checks**: `python3 carts/afterhours/levels/aquarium/make_aquarium.py`, then
+  `make B=YOUR_BUILD_DIR YOUR_BUILD_DIR/carts/afterhours.mei` builds the stage with the World Checker.
 
 ## The plan
 

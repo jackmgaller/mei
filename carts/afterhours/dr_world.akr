@@ -9,11 +9,12 @@
 // exit leads to (a world with no `first`: its rooms in entity order). The room entity's y is the
 // room's floor. Entering a room enters its cell's region (textures, palettes).
 //
-// A stage of doors (stage 2, level2): `next` only numbers the rooms (rooms off that chain follow
+// A stage of doors (the store, the aquarium): `next` only numbers the rooms (rooms off that chain follow
 // in entity order); each `door` entity leads to the room holding its `to` door. A door's number
 // in the stage (dr_keys.akr) is its entity number, a keycard's too. The doors of a room are
-// numbered in entity order (B's S2_LEG_DOOR counts them the same way).
+// numbered in entity order (the tapes' *_LEG_DOOR count them the same way).
 import "dr_levels.akr"
+import "dr_water.akr"          // agent W: the moving water (NOTES_W.md)
 
 // The run's rooms come from the level's world (replaces dr_game.akr's weak defaults).
 fn room_load_n(k: s32) -> bool { return world_room_load(k) }
@@ -29,6 +30,119 @@ fn level_switch(n: s32) -> bool {
     norder = -1
     wp_region_loaded = -1
     return level_open()
+}
+
+// Room k's ambience for au_room() (F's numbers, dr_hooks.akr): the station's rooms the platform,
+// the gates, the passage (1-3); the tower's TOWER_AMB (the lift hall by the door he came in by); the aquarium's AQUARIUM_AMB; the store's 6-10 in its order; the platform 1.
+fn stage_amb(k: s32) -> s32 {
+    if level == STAGE_STATION { return clamp(k + 1, 1, 3) }
+    if level == STAGE_TOWER {
+        if k == 1 {
+            if entry_door > 0 { return 18 }        // the lift hall by its stair (from the roof)
+            return 17                              // by its lifts
+        }
+        return TOWER_AMB[clamp(k, 0, 4)]
+    }
+    if level == STAGE_AQUARIUM { return AQUARIUM_AMB[clamp(k, 0, 7)] }
+    if level == STAGE_STORE { return clamp(k + 6, 6, 10) }
+    return 1
+}
+
+// The tower's rooms' ambiences (F's): the lobby, the lift hall (17 or 18), trading, the ninth
+// floor, the roof.
+const TOWER_AMB: [5]s32 = [4, 17, 19, 20, 21]
+
+// The tower's roof (its room 4): the searchlight (its first camera) sweeping or holding, for its
+// motor's sound, every tick.
+var sl_head: fixed
+fn stage_tick() {
+    if level != STAGE_TOWER || run_room != 4 || !room_is_world { return }
+    for i in 0..room.nwatch {
+        if room.watch[i].kind != WKind.Camera { continue }
+        let g = &guards[i]
+        let on = clock > 0 && abs(g.head - sl_head) > 0.0001
+        sl_head = g.head
+        au_machine(on, g.x - cam_x)
+        return
+    }
+}
+
+// The aquarium's rooms' ambiences (J's, NOTES_J.md): the hall, the great tank, the jellyfish, the
+// ocean gallery, the quarantine, the plant, the kitchen, the tank tops.
+const AQUARIUM_AMB: [8]s32 = [5, 11, 12, 5, 13, 14, 15, 16]
+
+// How the stage's fragile things look (dr_view.akr): gift boxes in the store, buckets of fish in
+// the aquarium, a stack elsewhere.
+fn fragile_look() -> s32 {
+    if level == STAGE_STORE { return 1 }
+    if level == STAGE_AQUARIUM { return 2 }
+    return 0
+}
+
+// ---- starting a stage over several frames (E's select fades out meanwhile): stage_prepare(n)
+// opens its world with no textures; stage_prepare_step(), a frame each, copies its first room's
+// region's textures one at a time (true when all are in); stage_start(n) then plays it, opening
+// nothing again. Nothing may open another pack between stage_prepare() and stage_start() (the
+// reader forgets what it copied on wp_open()); if one did, stage_start() opens the world itself.
+
+var prep_n: s32 = -1           // the stage prepared, -1 none
+var prep_pack: *WpHeader
+var prep_region: s32
+var prep_tex: s32
+
+fn stage_prepare(n: s32) {
+    level = n
+    norder = -1
+    wp_region_loaded = -1
+    prep_n = -1
+    if !level_open_bare(n) { return }
+    prep_n = n
+    prep_pack = wp_pack
+    prep_tex = 0
+    prep_region = -1
+    if level_rooms() > 0 {
+        let cell = wp_cell_at(wp_entity_pos(wp_entity(order[0])))
+        if cell != null { prep_region = cell.region as s32 }
+    }
+}
+
+fn stage_prepare_step() -> bool {
+    if prep_n < 0 || prep_region < 0 || wp_pack != prep_pack { return true }
+    if prep_tex < wp_region(prep_region).texture_count as s32 {
+        wp_texture_load(prep_region, prep_tex)
+        prep_tex += 1
+    }
+    return prep_tex >= wp_region(prep_region).texture_count as s32
+}
+
+// Room k's region's textures copied a frame at a time before it is loaded (the tests' way of
+// entering rooms without a front end's transition): room_prepare(k), then room_prepare_step()
+// a frame until true, then load_room(k).
+fn room_prepare(k: s32) {
+    prep_region = -1
+    prep_tex = 0
+    prep_pack = wp_pack
+    if k >= level_rooms() { return }
+    let cell = wp_cell_at(wp_entity_pos(wp_entity(order[k])))
+    if cell != null { prep_region = cell.region as s32 }
+}
+
+fn room_prepare_step() -> bool {
+    prep_n = level
+    return stage_prepare_step()
+}
+
+// (dr_game.akr's stage_start()) Whether stage n's world is open from stage_prepare(), so that it
+// need not be opened again; the remaining textures are copied as its first room is entered.
+fn stage_prepared(n: s32) -> bool {
+    let ok = prep_n == n && wp_pack == prep_pack && wp_pack != null
+    prep_n = -1
+    if ok {
+        level = n
+        norder = -1
+        wp_region_loaded = -1
+    }
+    return ok
 }
 
 // Whether the open stage's rooms join by doors (dr_game.akr's weak default).
@@ -135,6 +249,24 @@ fn room_door_spawn(k: s32, d: s32) -> vec3 {
     return vec3(q.x, wp_entity_pos(wp_entity(r)).y, q.z)
 }
 
+// Room k's box alone (its centre, size, floor and walkway): what the framing needs, without
+// loading the room (the tests frame every room so).
+fn room_frame_only(k: s32) -> bool {
+    if k >= level_rooms() { return false }
+    let re = wp_entity(order[k])
+    let p = wp_entity_params(re) as *AfterhoursRoom
+    let pos = wp_entity_pos(re)
+    room.cx = pos.x
+    room.cz = pos.z
+    room.sx = p.size.x
+    room.sz = p.size.z
+    room.floor = pos.y
+    room.upper = p.upper
+    room.levels = 1
+    if p.upper > 0.0 { room.levels = 2 }
+    return true
+}
+
 // Room k of the run: its entities, read into the room model. False when the level has no room k.
 fn world_room_load(k: s32) -> bool {
     if k >= level_rooms() { return false }
@@ -186,16 +318,21 @@ fn world_room_load(k: s32) -> bool {
             room.sz = p.size.z
             room.toys = p.toys as s32
             room.bells = p.bells as s32
+            room.dark = p.dark
+            room.upper = p.upper
+            if p.upper > 0.0 { room.levels = 2 }
             let sp = wp_entity(p.entry as s32)
             let spos = wp_entity_pos(sp)
             room.spawn_x = spos.x
             room.spawn_z = spos.z
             room.spawn_head = deg((wp_entity_params(sp) as *AfterhoursSpawn).yaw)
+            room.spawn_level = (wp_entity_params(sp) as *AfterhoursSpawn).level as s32
             if p.exit != 0xFFFFFFFF {
                 let ex = wp_entity(p.exit as s32)
                 let epos = wp_entity_pos(ex)
                 let es = (wp_entity_params(ex) as *AfterhoursExit).size
                 room.exit = box2(epos.x, epos.z, es.x, es.y, es.z, ex.yaw, false, false)
+                room.exit.level = (wp_entity_params(ex) as *AfterhoursExit).level as s32
                 room.has_exit = true
             }
         } else if ty == AFTERHOURS_TYPE_GUARD {
@@ -204,7 +341,7 @@ fn world_room_load(k: s32) -> bool {
                                half: deg(fixed(p.fov as s32)) / 2, speed: p.speed / 60,
                                look_a: deg(p.look_a), look_b: deg(p.look_b), hold: p.hold as s32,
                                turn: p.turn as s32, phase: p.phase as s32, hear: p.hear,
-                               turn_rate: deg(p.turn_rate) / 60 }
+                               turn_rate: deg(p.turn_rate) / 60, level: p.level as s32, torch: p.torch }
             match p.kind {
                 Patrol => w.kind = WKind.Patrol
                 Posted => w.kind = WKind.Posted
@@ -242,13 +379,18 @@ fn world_room_load(k: s32) -> bool {
             t.right = p.sides != AfterhoursTrainSides.Left
         } else if ty == AFTERHOURS_TYPE_HIDE_SPOT {
             let p = prm as *AfterhoursHideSpot
-            room_spot(box2(pos.x, pos.z, p.size.x, p.size.y, p.size.z, e.yaw, false, false))
+            var b = box2(pos.x, pos.z, p.size.x, p.size.y, p.size.z, e.yaw, false, false)
+            b.level = p.level as s32
+            room_spot(b)
         } else if ty == AFTERHOURS_TYPE_FRAGILE {
             let p = prm as *AfterhoursFragile
             room_fragile(pos.x, pos.z, p.radius, p.noise)
+            room.frag_level[room.nfrag - 1] = p.level as s32
         } else if ty == AFTERHOURS_TYPE_WALL {
             let p = prm as *AfterhoursWall
-            room_wall(box2(pos.x, pos.z, p.size.x, p.size.y, p.size.z, e.yaw, p.blocks, p.solid))
+            var b = box2(pos.x, pos.z, p.size.x, p.size.y, p.size.z, e.yaw, p.blocks, p.solid)
+            b.level = p.level as s32
+            room_wall(b)
         } else if ty == AFTERHOURS_TYPE_DOOR {
             let p = prm as *AfterhoursDoor
             var to_room = -1
@@ -261,6 +403,7 @@ fn world_room_load(k: s32) -> bool {
             }
             let i = room_door(box2(pos.x, pos.z, p.size.x, p.size.y, p.size.z, e.yaw, true, true),
                               p.card as s32, to_room, to_door, p.end, n, to_key)
+            room.doors[i].box.level = p.level as s32
             if p.spawn != 0xFFFFFFFF {
                 let sp = wp_entity(p.spawn as s32)
                 let spos = wp_entity_pos(sp)
@@ -269,6 +412,12 @@ fn world_room_load(k: s32) -> bool {
         } else if ty == AFTERHOURS_TYPE_KEYCARD {
             let p = prm as *AfterhoursKeycard
             room_card(pos.x, pos.z, p.colour as s32 + 1, n)
+            room.card_level[room.ncards - 1] = p.level as s32
+        } else if ty == AFTERHOURS_TYPE_LIGHT {
+            let p = prm as *AfterhoursLight
+            var b = box2(pos.x, pos.z, p.size.x, p.size.y, p.size.z, e.yaw, false, false)
+            b.level = p.level as s32
+            room_light(b, p.period as s32, p.on as s32, p.offset as s32)
         }
     }
     room_finish()

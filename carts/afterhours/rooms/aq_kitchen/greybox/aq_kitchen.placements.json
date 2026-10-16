@@ -1,0 +1,17 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "aq_kitchen",
+ "placements": [
+  {
+   "id": "ak_shell",
+   "asset": "ak_shell",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "ak_shell_col"
+  }
+ ]
+}

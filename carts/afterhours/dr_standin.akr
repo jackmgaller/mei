@@ -150,7 +150,7 @@ fn mb_obox(b: *MB, w: *Box2, y0: fixed, y1: fixed, col: u32) {
     }
 }
 
-// ---- stand-in rooms of doors (the tests of stage 2's rules, until B's level2 is in)
+// ---- stand-in rooms of doors (the tests of the store's rules: keycards, doors)
 //
 // Three rooms 16 m by 6, each walled round with gaps for its doors:
 // - 0, the hall: the way in at the left; door 0 at the right to the store (1); door 1 in the back
@@ -240,5 +240,123 @@ fn standin_graph_mesh(b: *MB) {
     for d in 0..room.ndoors {
         let r = &room.doors[d]
         if r.to_room >= 0 || r.end { mb_obox(b, &r.box, 0.0, 0.015, rgb(60, 200, 110)) }
+    }
+}
+
+// ---- stand-in aquarium rooms (the tests of the dark, walkways and levels; NOTES_A.md, "The
+// aquarium stage"), until J's rooms are in
+//
+// - 0, the dark gallery (16 m by 6, dark): the way in at the left; door 0 at the right to the
+//   tank hall's floor; door 1 in the back wall at x -5, up to the tank hall's walkway. Two
+//   tanks' light on the floor: A at x -2.5..0.5, z 0.5..2.5 (always), B at x 2.5..5.5, z
+//   -2.5..-0.5 (on for 120 ticks of every 240 from 0). A dark-eyed camera on the back wall at
+//   (0, 2.85) looking toward the camera (-z), 100 degrees wide, 7 m; a guard with a torch posted
+//   at (7, 2.2) looking left, 40 degrees, 4 m. A pool at x -6..-4, z -2.5..-0.5: a wall that does
+//   not block (cones cross it).
+// - 1, the tank hall (two levels, the walkway 3.2 m up along the back, z 1.6..3): door 0 at the
+//   left of the floor back to the gallery; door 1 at the left of the walkway, from the gallery's
+//   back door; door 2 at the right of the walkway, the end. On the floor a posted guard at (2, -1)
+//   looking +z (at the walkway), 60 degrees, 6 m, hearing 6 m; on the walkway a posted camera at
+//   (7.5, 2.3) looking left, 30 degrees, 4 m.
+
+const STANDIN_AQUA_ROOMS = 2
+const SA_UPPER: fixed = 3.2
+const SA_WALK_Z: fixed = 1.6           // the walkway's front edge (its railing)
+
+fn standin_aqua_load(k: s32) {
+    room_clear()
+    room.cx = 0.0
+    room.cz = 0.0
+    room.sx = 16.0
+    room.sz = 6.0
+    room.spawn_x = -7.0
+    room.spawn_z = 0.0
+    room.spawn_head = HALF_PI
+    room_wall(box2(0.0, -SG_Z - 0.15, 16.6, 1.0, 0.3, 0.0, true, true))
+    if k == 0 {
+        room.name = "stand-in dark gallery"
+        room.dark = true
+        // the back wall cut at x -5.6..-4.4 for the stair up
+        room_wall(box2(-6.95, SG_Z + 0.15, 2.7, 2.6, 0.3, 0.0, true, true))
+        room_wall(box2(1.8, SG_Z + 0.15, 12.4, 2.6, 0.3, 0.0, true, true))
+        sg_end(-SG_X - 0.15, false)
+        sg_end(SG_X + 0.15, true)
+        let d0 = room_door(box2(SG_X, 0.0, 1.2, 2.2, 0.4, HALF_PI, true, true), 0, 1, 0, false, 0, 10)
+        door_in(d0, SG_X - 1.0, 0.0, -HALF_PI)
+        let d1 = room_door(box2(-5.0, SG_Z, 1.2, 2.2, 0.4, 0.0, true, true), 0, 1, 1, false, 1, 11)
+        door_in(d1, -5.0, SG_Z - 1.0, PI)
+        room_light(box2(-1.0, 1.5, 3.0, 0.1, 2.0, 0.0, false, false), 0, 0, 0)
+        room_light(box2(4.0, -1.5, 3.0, 0.1, 2.0, 0.0, false, false), 240, 120, 0)
+        room_watch(WatchDef { kind: WKind.Camera, x: 0.0, z: 2.85, route: -1, sight: 7.0, half: 50.0 * DEG,
+                              look_a: PI, look_b: PI, hold: 60, turn: 60 })
+        room_watch(WatchDef { kind: WKind.Posted, x: 7.0, z: 2.2, route: -1, sight: 4.0, half: 20.0 * DEG,
+                              speed: 0.02, look_a: 270.0 * DEG, look_b: 270.0 * DEG, hold: 60, turn: 60,
+                              hear: 4.0, torch: true })
+        room_wall(box2(-5.0, -1.5, 2.0, 0.3, 2.0, 0.0, false, true))     // the pool
+    } else {
+        room.name = "stand-in tank hall"
+        room.levels = 2
+        room.upper = SA_UPPER
+        room.spawn_x = 0.0
+        room.spawn_z = -1.0
+        // the floor: its back wall and its ends, the left cut for door 0
+        room_wall(box2(0.0, SG_Z + 0.15, 16.6, 2.6, 0.3, 0.0, true, true))
+        sg_end(-SG_X - 0.15, true)
+        sg_end(SG_X + 0.15, false)
+        let d0 = room_door(box2(-SG_X, 0.0, 1.2, 2.2, 0.4, HALF_PI, true, true), 0, 0, 0, false, 10, 0)
+        door_in(d0, -SG_X + 1.0, 0.0, HALF_PI)
+        room_watch(WatchDef { kind: WKind.Posted, x: 2.0, z: -1.0, route: -1, sight: 6.0, half: 30.0 * DEG,
+                              speed: 0.02, look_a: 0.0, look_b: 0.0, hold: 60, turn: 60, hear: 6.0 })
+        // the walkway: its railing (seen over, not walked through), its back wall, its ends cut
+        // for doors 1 and 2 at z 1.7..2.9
+        let wz = (SA_WALK_Z + SG_Z) / 2
+        sa_up(box2(0.0, SA_WALK_Z - 0.075, 16.3, 1.0, 0.15, 0.0, false, true))
+        sa_up(box2(0.0, SG_Z + 0.15, 16.6, 1.0, 0.3, 0.0, true, true))
+        sa_up(box2(-SG_X - 0.15, 1.6, 0.3, 1.0, 0.2, 0.0, true, true))
+        sa_up(box2(SG_X + 0.15, 1.6, 0.3, 1.0, 0.2, 0.0, true, true))
+        let d1 = room_door(box2(-SG_X, wz + 0.0, 1.2, 2.2, 0.4, HALF_PI, true, true), 0, 0, 1, false, 11, 1)
+        room.doors[d1].box.level = 1
+        door_in(d1, -SG_X + 1.0, wz, HALF_PI)
+        let d2 = room_door(box2(SG_X, wz, 1.2, 2.2, 0.4, HALF_PI, true, true), 0, -1, -1, true, 12, -1)
+        room.doors[d2].box.level = 1
+        var cam = WatchDef { kind: WKind.Camera, x: 7.5, z: wz, route: -1, sight: 4.0, half: 15.0 * DEG,
+                             look_a: 270.0 * DEG, look_b: 270.0 * DEG, hold: 60, turn: 60 }
+        cam.level = 1
+        room_watch(cam)
+    }
+    room_finish()
+}
+
+// A wall on the walkway's level.
+fn sa_up(b: Box2) {
+    var w = b
+    w.level = 1
+    room_wall(w)
+}
+
+// A stand-in aquarium room's mesh: the floor, the walls of both levels at their heights, the
+// walkway's deck, the pool's water.
+fn standin_aqua_mesh(b: *MB) {
+    mb_box(b, -SG_X, -0.2, -SG_Z, SG_X, 0.0, SG_Z, rgb(52, 58, 70))
+    if room.levels > 1 {
+        // the deck, a grating's colour, its underside
+        mb_box(b, -SG_X, room.upper - 0.12, SA_WALK_Z, SG_X, room.upper, SG_Z, rgb(84, 92, 100))
+    }
+    for i in 0..room.nwalls {
+        let w = &room.walls[i]
+        var door = false
+        for d in 0..room.ndoors {
+            if room.doors[d].wall == i { door = true }
+        }
+        if door { continue }
+        let y0 = level_y(w.level)
+        var col = rgb(120, 124, 132)
+        if !w.blocks { col = rgb(40, 90, 150) }
+        mb_obox(b, w, y0, y0 + w.h, col)
+    }
+    for d in 0..room.ndoors {
+        let r = &room.doors[d]
+        let y0 = level_y(r.box.level)
+        if r.to_room >= 0 || r.end { mb_obox(b, &r.box, y0, y0 + 0.015, rgb(60, 200, 110)) }
     }
 }

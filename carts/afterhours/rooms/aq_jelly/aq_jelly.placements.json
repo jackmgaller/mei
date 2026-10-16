@@ -1,0 +1,37 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "aq_jelly",
+ "placements": [
+  {
+   "id": "aj_room",
+   "asset": "aj_room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "aj_room_col"
+  },
+  {
+   "id": "aj_columns",
+   "asset": "aj_columns",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "aj_wwater",
+   "asset": "aj_wwater",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

@@ -1,12 +1,13 @@
-# Room 2: the ticket gates (floor plan)
+# The station, room 2: the ticket gates (floor plan)
 
-Level 1's second room (`levels/level1/ROUTE.md`). The concourse at the top of the platform's
-stair, two floors underground: a line of automatic ticket gates across it, the station office
-with its lit window at the back, a bank of coin lockers, ticket machines, and on the far side of
-the gates the way up to the passage. One station guard comes out of the office on his round:
-through the gates, a look down the stair, a look at the lockers, back through the gates and a
-pause at the office door. It teaches hiding: the lockers have a gap the thief can tuck into (A).
-Lit by the office window's warm light, the gates' small green and red lamps, the machines' glow.
+The station's second room (`levels/station/ROUTE.md`; until 2026-10-15 level 1's second). The
+concourse at the top of the platform's stair, two floors underground: a line of automatic ticket
+gates across it, the station office with its lit window at the back, a bank of coin lockers, ticket
+machines, and on the far side of the gates the way up to the passage. One station guard comes out
+of the office on his round: through the gates, a look down the stair, a look at the lockers, back
+through the gates and a pause at the office door. It teaches hiding: the lockers have a gap the
+thief can tuck into (A). Lit by the office window's warm light, the gates' small green and red
+lamps, the machines' glow.
 
 The greybox is `make_gates.py` (it writes `greybox/`, `gates.placements.json` and
 `gates.play.json`). The dressed room replaces the greybox recipes and the placements file; the

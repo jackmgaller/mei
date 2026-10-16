@@ -18,11 +18,14 @@ sting, hiding in and out, a train's horn from the tunnel, its brakes, its doors 
 door chime before they close, the doors closing, the staff door opening (the exit) and shutting
 behind him (a room's entry), the transition's air, the menu's move, ok, back and deny, a stage
 cleared, a guard's alert, a fragile thing knocked over, the pocket bell's beeps, the retry's
-rewind, a keycard picked up and a staff door unlocked. Loops, played from their start and stopped by the cart: a train running (its pitch is
+rewind, a keycard picked up, a staff door unlocked, and the dash (its push-off, its skid or its
+bump into a wall, and a tiny tick when it is ready again). Loops, played from their start and stopped by the cart: a train running (its pitch is
 the cart's: the speed) and a stopped train idling, and the rooms' ambiences (level 1's: the
 platform's hum, the ticket gates' standby, the passage's tubes, the lobby's air handling, the
 aquarium's pumps; stage 2's: the cinema, the projection booth, the staff corridor, the shop floor,
-the food hall), each rendered periodic (their filters run round the seam).
+the food hall; the aquarium stage's: the great tank, the jellyfish gallery, quarantine, the
+life-support plant, the fish kitchen, the tank tops; the tower's: the lift hall's two sides, the
+trading floor, the ninth floor, the roof) and the roof's searchlight turning, each rendered periodic (their filters run round the seam).
 
 The reverb is the console's: preset 3 (hall), its decay set per room by dr_audio.akr.
 
@@ -874,6 +877,53 @@ def sfx_unlock():
     return edges(x, 0.0005, 0.06)
 
 
+def squeak(rng, dur, f0, f1, rough=0.3):
+    """A sneaker's rubber on tile: a tone sliding f0 to f1, stuttering (stick and slip)."""
+    t = tt(dur)
+    n = len(t)
+    f = f0 + (f1 - f0) * t / dur
+    stut = 0.6 + 0.4 * np.sign(np.sin(2 * math.pi * np.cumsum(rng.uniform(60, 110, n)) / FS))
+    x = sine(f) + 0.4 * sine(2 * f) + rough * filt(noise(rng, n), float(np.mean(f)) * 1.5, 2.0, 'bp')
+    return x * filt(stut, 400, 0.7, 'lp') * np.sin(math.pi * np.clip(t / dur, 0, 1)) ** 0.8
+
+
+def sfx_dash():
+    """The dash's push-off: a cloth whoosh and a soft sneaker squeak, about the slide's length."""
+    rng = np.random.default_rng(27)
+    dur = 0.22
+    t = tt(dur)
+    n = len(t)
+    fc = 700 + 2200 * np.sin(math.pi * np.clip(t / dur, 0, 1))
+    whoosh = tvf(noise(rng, n), fc, 0.9, 'bp', 64) * np.sin(math.pi * np.clip(t / dur, 0, 1)) ** 1.5
+    x = whoosh + at(n, 0.0, squeak(rng, 0.06, 2300, 2700), 0.35)
+    return edges(x, 0.002, 0.03)
+
+
+def sfx_dash_skid():
+    """The dash ends in the open: a short rubber skid and a scuff."""
+    rng = np.random.default_rng(28)
+    n = int(0.26 * FS)
+    x = at(n, 0.0, squeak(rng, 0.2, 1900, 1500, 0.5), 0.7)
+    x += at(n, 0.0, burst(rng, n, 1300, 0.8, 0.08, att=0.01), 0.5)
+    return edges(x, 0.002, 0.04)
+
+
+def sfx_dash_bump():
+    """The dash ends against a wall: a soft body thud, the clothes."""
+    rng = np.random.default_rng(29)
+    n = int(0.3 * FS)
+    t = np.arange(n) / FS
+    x = thud(t, 130, 70, 0.012, 0.06) + burst(rng, n, 700, 0.8, 0.03) * 0.4
+    x += at(n, 0.02, rustle(rng, 0.15, 1800, 1200), 0.4)
+    return edges(x, 0.0005, 0.05)
+
+
+def sfx_dash_ready():
+    """The dash ready again: a very small soft tick."""
+    n = int(0.12 * FS)
+    return edges(at(n, 0.0, marimba(91, 0.1, 1.0)), 0.001, 0.02)
+
+
 # ---- loops: n samples at FS, periodic
 
 def loop_train_run(n):
@@ -1028,6 +1078,192 @@ def amb_foodhall(n):
     return comp + fans + buzz
 
 
+def bubbles(rng, n, rate, f_lo, f_hi, amp_lo, amp_hi, d_lo=0.012, d_hi=0.035, starts=None):
+    """Small bubbles (rising chirps) scattered round a loop of n samples: rate a second, or at
+    the given start samples."""
+    out = np.zeros(n)
+    if starts is None:
+        starts = rng.integers(0, n, int(n / FS * rate))
+    for st in starts:
+        d = rng.uniform(d_lo, d_hi)
+        tb = tt(d)
+        f0 = rng.uniform(f_lo, f_hi)
+        b = np.sin(2 * math.pi * np.cumsum(f0 * (1 + 0.8 * tb / d)) / FS) * np.exp(-tb / (d / 3))
+        put_circ(out, int(st), b, rng.uniform(amp_lo, amp_hi))
+    return out
+
+
+def amb_greattank(n):
+    """The great tank's gallery: a deep pump hum, the big tank's slow surge, far bubbles."""
+    rng = np.random.default_rng(51)
+    pump = hum(n, 36, (1.0, 0.7, 0.4, 0.2)) * 0.06
+    surge = cfilt(noise(rng, n), 130, 0.7, 'lp') * 1.3 * slow(n, 2, 0.75)
+    air = cfilt(cfilt(noise(rng, n), 400, 0.6, 'lp'), 40, 0.7, 'hp') * 0.18
+    far = cfilt(bubbles(rng, n, 8, 300, 800, 0.01, 0.03), 1500, 0.7, 'lp')
+    return pump + surge + air + far
+
+
+def amb_jelly(n):
+    """The jellyfish gallery: almost nothing; a soft filter trickle and a low tone."""
+    rng = np.random.default_rng(52)
+    t = np.arange(n) / FS
+    trickle = cfilt(noise(rng, n), 2600, 1.0, 'bp') * 0.05
+    trickle *= 1 + 4 * cfilt(rng.uniform(-1, 1, n), 7, 0.7, 'lp')
+    tone = 0.02 * np.sin(2 * math.pi * loop_hz(55, n) * t) * slow(n, 1, 0.4)
+    air = cfilt(cfilt(noise(rng, n), 250, 0.6, 'lp'), 40, 0.7, 'hp') * 0.1
+    return trickle + tone + air
+
+
+def amb_quarantine(n):
+    """Quarantine: many small airstones bubbling in their tanks, a UV lamp's ballast buzzing."""
+    rng = np.random.default_rng(53)
+    stones = bubbles(rng, n, 70, 800, 2600, 0.005, 0.02, 0.006, 0.018)
+    fizz = cfilt(noise(rng, n), 3500, 1.2, 'bp') * 0.03
+    ballast = cfilt(hum(n, 100, (1.0, 0.8, 0.6, 0.5, 0.4, 0.3), 2.0), 2500, 0.7, 'lp') * 0.02
+    air = cfilt(cfilt(noise(rng, n), 300, 0.6, 'lp'), 40, 0.7, 'hp') * 0.12
+    return stones + fizz + ballast + air
+
+
+def amb_plant(n):
+    """The life-support plant: loud; the pumps, the sand filters' rush, water falling into the
+    sumps."""
+    rng = np.random.default_rng(54)
+    pumps = hum(n, 48.5, (1.0, 0.8, 0.5, 0.4, 0.25, 0.15), 0.8) * 0.12 + hum(n, 24.5, (0.0, 0.0, 1.0, 0.5)) * 0.06
+    rush = cfilt(cfilt(noise(rng, n), 2800, 0.5, 'lp'), 200, 0.7, 'hp') * 0.25
+    fall = cfilt(noise(rng, n), 1100, 0.8, 'bp') * 0.25
+    fall *= 1 + 3 * cfilt(rng.uniform(-1, 1, n), 25, 0.7, 'lp')
+    splash = cfilt(noise(rng, n), 160, 0.7, 'lp') * 0.9
+    return pumps + rush + fall + splash
+
+
+def amb_kitchen(n):
+    """The fish kitchen: the fridges' compressors and fans, a tap dripping into a steel sink."""
+    rng = np.random.default_rng(55)
+    comp = hum(n, 50, (0.4, 1.0, 0.4, 0.2), 0.4) * 0.04 + hum(n, 50.4, (0.3, 0.6, 0.3)) * 0.03
+    fans = cfilt(cfilt(noise(rng, n), 900, 0.6, 'lp'), 120, 0.7, 'hp') * 0.16
+    drips = np.zeros(n)
+    when = 0.4
+    while when < n / FS - 0.1:
+        d = tt(0.12)
+        f = 900 + 1300 * np.clip(d / 0.02, 0, 1)
+        plink = sine(f) * np.exp(-d / 0.035) + 0.5 * np.sin(2 * math.pi * 3100 * d) * np.exp(-d / 0.02)
+        put_circ(drips, int(when * FS), plink, 0.08 * rng.uniform(0.8, 1.0))
+        when += rng.uniform(1.4, 2.1)
+    return comp + fans + drips
+
+
+def amb_tanktops(n):
+    """The tank tops: open water lapping at the walkways, a skimmer's gurgle, a high roof's air."""
+    rng = np.random.default_rng(56)
+    t = np.arange(n) / FS
+    lap = cfilt(noise(rng, n), 650, 0.7, 'lp') * 0.6
+    wave = 0.5 + 0.5 * np.sin(2 * math.pi * loop_hz(0.45, n) * t)
+    wave2 = 0.5 + 0.5 * np.sin(2 * math.pi * loop_hz(0.7, n) * t + 1.3)
+    lap *= 0.3 + 0.7 * wave ** 3 + 0.4 * wave2 ** 4
+    slaps = np.zeros(n)
+    for k in range(int(n / FS * 1.5)):
+        tn = tt(0.08)
+        put_circ(slaps, rng.integers(0, n), burst(rng, len(tn), rng.uniform(700, 1400), 0.9, 0.025, att=0.006),
+                 rng.uniform(0.04, 0.1))
+    gurgle = np.zeros(n)
+    for c in np.arange(0.5, n / FS, 3.0):
+        starts = (c + rng.uniform(0, 0.45, 14)) * FS
+        gurgle += bubbles(rng, n, 0, 180, 520, 0.03, 0.08, 0.02, 0.05, starts=starts)
+    roof = cfilt(cfilt(noise(rng, n), 350, 0.6, 'lp'), 40, 0.7, 'hp') * 0.15
+    return lap + slaps + gurgle + roof
+
+
+def amb_lifthall(n):
+    """The lift hall's lobby side: stone and brass, a soft lobby tone, the lifts' machinery humming
+    in the core."""
+    rng = np.random.default_rng(57)
+    t = np.arange(n) / FS
+    air = cfilt(cfilt(noise(rng, n), 520, 0.6, 'lp'), 50, 0.7, 'hp') * 0.28
+    lifts = hum(n, 50, (0.3, 1.0, 0.5, 0.3), 0.3) * 0.03
+    whine = 0.006 * np.sin(2 * math.pi * loop_hz(410, n) * t) * slow(n, 1, 0.6)
+    return air + lifts + whine
+
+
+def amb_liftback(n):
+    """The lift hall's back of house: the corridor's tubes, a floor polisher far off along it, the
+    goods lift's machinery clunking now and then."""
+    rng = np.random.default_rng(58)
+    t = np.arange(n) / FS
+    air = cfilt(cfilt(noise(rng, n), 600, 0.6, 'lp'), 60, 0.7, 'hp') * 0.22
+    tubes = cfilt(hum(n, 100, (1.0, 0.6, 0.4, 0.2), 1.0), 1500, 0.7, 'lp') * 0.018
+    swell = np.sin(math.pi * t / (n / FS)) ** 2           # the polisher passes, far off, once a loop
+    pol = sine(np.full(n, loop_hz(175, n))) + 0.5 * sine(np.full(n, loop_hz(350, n)))
+    pol += 1.5 * cfilt(noise(rng, n), 900, 1.0, 'bp') * (0.7 + 0.3 * np.sin(2 * math.pi * loop_hz(3.0, n) * t))
+    pol = cfilt(pol, 700, 0.7, 'lp') * 0.035 * swell
+    clunks = np.zeros(n)
+    for c in (2.2, 6.9):
+        tn = tt(0.2)
+        put_circ(clunks, int(c * FS), thud(tn, 110, 60, 0.01, 0.06) + burst(rng, len(tn), 600, 0.8, 0.02) * 0.4, 0.05)
+    goods = hum(n, 25, (0.0, 1.0, 0.6, 0.3)) * 0.025
+    return air + tubes + pol + clunks + goods
+
+
+def amb_trading(n):
+    """The dark trading floor: the air conditioning, dead screens ticking as they cool, a phone
+    ringing unanswered far off."""
+    rng = np.random.default_rng(59)
+    t = np.arange(n) / FS
+    ac = cfilt(cfilt(noise(rng, n), 750, 0.5, 'lp'), 70, 0.7, 'hp') * 0.3
+    ticks = np.zeros(n)
+    for _ in range(int(n / FS * 1.6)):
+        tn = tt(0.01)
+        put_circ(ticks, rng.integers(0, n), burst(rng, len(tn), rng.uniform(2500, 5000), 1.5, 0.0015), rng.uniform(0.01, 0.04))
+    phone = np.zeros(n)
+    for c in (0.6, 3.6):                    # two rings of a double trill, then quiet
+        for k in range(2):
+            tn = tt(0.4)
+            trill = (np.sin(2 * math.pi * 1000 * tn) + np.sin(2 * math.pi * 1330 * tn)) * (np.sin(2 * math.pi * 16 * tn) > 0)
+            put_circ(phone, int((c + k * 0.6) * FS), edges(trill, 0.005, 0.02))
+    phone = cfilt(cfilt(phone, 1800, 0.7, 'lp'), 400, 0.7, 'hp') * 0.012
+    return ac + ticks + phone
+
+
+def amb_ninth(n):
+    """The ninth floor: hushed and carpeted, the air muffled, a clock ticking."""
+    rng = np.random.default_rng(60)
+    air = cfilt(cfilt(noise(rng, n), 220, 0.6, 'lp'), 35, 0.7, 'hp') * 0.25
+    clock = np.zeros(n)
+    k = max(1, round(n / FS))
+    for i in range(k):
+        tn = tt(0.04)
+        f = 2900 if i % 2 == 0 else 2500                   # tick, tock
+        c = np.sin(2 * math.pi * f * tn) * np.exp(-tn / 0.006) + burst(rng, len(tn), 1200, 1.5, 0.004) * 0.5
+        put_circ(clock, int(i * n / k), c, 0.05)
+    return air + clock + hum(n, 50, (0.0, 1.0, 0.3)) * 0.004
+
+
+def amb_roof(n):
+    """The roof: the wind in gusts, the city below, the aircraft warning lights' relays clicking."""
+    rng = np.random.default_rng(61)
+    t = np.arange(n) / FS
+    gust = 0.45 + 0.35 * np.sin(2 * math.pi * loop_hz(0.22, n) * t) + 0.2 * np.sin(2 * math.pi * loop_hz(0.57, n) * t + 2.0)
+    wind = cfilt(noise(rng, n), 420, 0.6, 'lp') * 0.9 * gust
+    whistle = cfilt(noise(rng, n), 950, 6.0, 'bp') * 0.25 * gust ** 3
+    city = cfilt(noise(rng, n), 140, 0.7, 'lp') * 0.9 * slow(n, 2, 0.3, 1.0)
+    relays = np.zeros(n)
+    k = max(1, round(n / FS / 1.5))
+    for i in range(k):
+        tn = tt(0.03)
+        put_circ(relays, int(i * n / k), burst(rng, len(tn), 2200, 1.3, 0.003), 0.04)
+    return wind + whistle + city + relays
+
+
+def loop_searchlight(n):
+    """The roof's searchlight turning: a geared motor's whine and its teeth."""
+    rng = np.random.default_rng(62)
+    t = np.arange(n) / FS
+    f = loop_hz(140, n)
+    x = np.sin(2 * math.pi * f * t) + 0.5 * np.sin(2 * math.pi * 2 * f * t) + 0.25 * np.sin(2 * math.pi * 3 * f * t)
+    x *= 0.8 + 0.2 * np.sign(np.sin(2 * math.pi * loop_hz(23, n) * t))
+    x += cfilt(noise(rng, n), 1600, 2.0, 'bp') * 0.3 * (0.6 + 0.4 * np.sin(2 * math.pi * loop_hz(2, n) * t))
+    return cfilt(x, 2500, 0.7, 'lp')
+
+
 # name, render, peak level in the game (dBFS), reverb send
 ONE_SHOTS = [
     ('step_walk', sfx_step_walk, -22, 1),
@@ -1055,6 +1291,11 @@ ONE_SHOTS = [
     # stage 2
     ('card', sfx_card, -15, 1),
     ('unlock', sfx_unlock, -14, 1),
+    # the dash (agent G's, NOTES_G.md)
+    ('dash', sfx_dash, -19, 1),
+    ('dash_skid', sfx_dash_skid, -20, 1),
+    ('dash_bump', sfx_dash_bump, -19, 1),
+    ('dash_ready', sfx_dash_ready, -32, 0),
 ]
 
 # the loops (started with their loop at 0, stopped by the cart): name, render (n samples at FS,
@@ -1072,6 +1313,20 @@ LOOPS = [
     ('amb_corridor', amb_corridor, 9.0, -25, 0),
     ('amb_shopfloor', amb_shopfloor, 9.0, -28, 0),
     ('amb_foodhall', amb_foodhall, 9.0, -25, 0),
+    # the aquarium stage (manager J, NOTES_J.md)
+    ('amb_greattank', amb_greattank, 9.0, -24, 0),
+    ('amb_jelly', amb_jelly, 9.0, -30, 0),
+    ('amb_quarantine', amb_quarantine, 9.0, -26, 0),
+    ('amb_plant', amb_plant, 9.0, -18, 0),
+    ('amb_kitchen', amb_kitchen, 9.0, -25, 0),
+    ('amb_tanktops', amb_tanktops, 9.0, -23, 0),
+    # the tower (stage 2; B)
+    ('amb_lifthall', amb_lifthall, 9.0, -27, 0),
+    ('amb_liftback', amb_liftback, 9.0, -26, 0),
+    ('amb_trading', amb_trading, 9.0, -26, 0),
+    ('amb_ninth', amb_ninth, 9.0, -31, 0),
+    ('amb_roof', amb_roof, 9.0, -21, 0),
+    ('searchlight', loop_searchlight, 1.0, -25, 1),
 ]
 
 # the rooms' ambiences (dr_audio.akr's AMB_*): name, its loop, the reverb's decay there (x n / 256)
@@ -1087,6 +1342,17 @@ ROOMS = [
     ('corridor', 'amb_corridor', 175),
     ('shopfloor', 'amb_shopfloor', 205),
     ('foodhall', 'amb_foodhall', 180),
+    ('greattank', 'amb_greattank', 215),
+    ('jelly', 'amb_jelly', 190),
+    ('quarantine', 'amb_quarantine', 160),
+    ('plant', 'amb_plant', 190),
+    ('kitchen', 'amb_kitchen', 150),
+    ('tanktops', 'amb_tanktops', 230),
+    ('lifthall', 'amb_lifthall', 200),
+    ('liftback', 'amb_liftback', 170),
+    ('trading', 'amb_trading', 160),
+    ('ninth', 'amb_ninth', 120),
+    ('roof', 'amb_roof', 90),
 ]
 
 

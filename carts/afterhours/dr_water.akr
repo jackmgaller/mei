@@ -1,0 +1,118 @@
+// The moving water (agent W, NOTES_W.md): advances the rooms' animated water tiles (the caustic
+// net on the floors, the glints on the surfaces, the rings on the puddles) every frame. The tiles
+// are the Asset Kit's animated textures (water/wateranim.py writes their frames; the World Kit
+// keeps each region's in its pack): a frame is copied into its tile in VRAM when it changes, and
+// the meshes never change.
+//
+// Why not wp_animate(): it advances only the region last entered with wp_region_enter(), while a
+// transition draws two rooms, the next one's textures copied in by H's dr_trans.akr a slot at a
+// time. water_tick() instead advances every region of the open world whose tiles are in VRAM now:
+// a slot holds region k's tile when the reader last copied k's texture set there
+// (__wp_slot_src, which then holds frame 0) or when this file last wrote one of k's frames there
+// and nothing was copied since. A region whose slots another region's textures took is left
+// alone, so nothing is ever written over another room's textures.
+//
+// Determinism: the frame shown is a function of frame() alone (a tile's frames loop), never of
+// the room's clock or anything the rules read: the tapes play the same with or without it, and a
+// room's water does not jump when a catch restarts the room's clock.
+//
+// Cost (release, NOTES_W.md "Numbers"): about 60 cycles a region with tiles, 40 a tile, and a
+// frame's copy when it changes (a 64 x 64 4-bit tile 64 rows of 32 bytes, a 32 x 32 one 32 rows
+// of 16). The tiles of a region change on different frames (their phases are staggered).
+// Called once a frame from dr_game.akr's update() (the hook water_tick(), dr_hooks.akr).
+
+const W_REGIONS = 16           // regions a world may have with tiles (more are left still)
+const W_ANIMS = 12             // tiles a region may animate (more are left still)
+const W_COPIES = 2             // frames copied in one tick at most: two rooms in a transition, each with
+                               // two tiles, would otherwise copy four 64-row frames on one tick
+
+var wa_pack: *WpHeader         // the world wa_src was read from
+var wa_owner: [32]s32          // per texture slot: the region whose frame this file wrote last, -1
+var wa_ready: [W_REGIONS]bool  // wa_src read for the region
+var wa_any: bool               // the world has a region with tiles
+var wa_src: [W_REGIONS * W_ANIMS]u32     // the region's texture data for each tile's slot
+var wa_shown: [W_REGIONS * W_ANIMS]s16   // the frame in VRAM
+var water_copied: s32          // (a measure) rows copied in the last water_tick()
+var water_cycles: s32          // (a measure) cycles the last water_tick() took
+
+// Whether the water moves (a scenario may replace it, to measure the same cart with it still).
+weak fn water_enabled() -> bool { return true }
+
+fn water_forget() {
+    wa_pack = wp_pack
+    for s in 0..32 { wa_owner[s] = -1 }
+    for k in 0..W_REGIONS { wa_ready[k] = false }
+    wa_any = false
+    for k in 0..min(wp_region_count(), W_REGIONS) {
+        let e = wp_region_ext(k)
+        if e != null && e.anim_count > 0 { wa_any = true }
+    }
+}
+
+// Region k's texture data for slot s (0: the region puts no texture there).
+fn water_slot_src(k: s32, s: s32) -> u32 {
+    let r = wp_region(k)
+    for t in 0..r.texture_count as s32 {
+        let x = (__wp_base + r.texture_off) as *WpTexture + t
+        if (x.slot as s32 & 31) == s { return __wp_base + x.data }
+    }
+    return 0
+}
+
+fn water_tick() {
+    let c0 = cycle_count()
+    water_copied = 0
+    water_cycles = 0
+    if !water_enabled() || wp_pack == null { return }
+    if wp_pack != wa_pack { water_forget() }
+    if !wa_any { return }              // a world without water (the store) costs a compare
+    let t = frame() as s32
+    let nreg = min(wp_region_count(), W_REGIONS)
+    var copies = 0
+    for k in 0..nreg {
+        let e = wp_region_ext(k)
+        if e == null || e.anim_count == 0 { continue }
+        let n = min(e.anim_count as s32, W_ANIMS)
+        let base = k * W_ANIMS
+        let anims = (__wp_base + e.anim_off) as *WpAnim
+        if !wa_ready[k] {
+            for q in 0..n {
+                wa_src[base + q] = water_slot_src(k, ((anims + q).vram as s32 / TEXTURE_SLOT_SIZE) & 31)
+                wa_shown[base + q] = 0
+            }
+            wa_ready[k] = true
+        }
+        // which tiles are k's now; a slot the reader copied k's set into again holds frame 0
+        var held: u32 = 0
+        for q in 0..n {
+            let s = ((anims + q).vram as s32 / TEXTURE_SLOT_SIZE) & 31
+            let src = __wp_slot_src[s]
+            if src != 0 {
+                if src == wa_src[base + q] {
+                    wa_shown[base + q] = 0
+                    held |= (1 as u32) << q as u32
+                }
+            } else if wa_owner[s] == k {
+                held |= (1 as u32) << q as u32
+            }
+        }
+        if held == 0 { continue }
+        for q in 0..n {
+            if held & ((1 as u32) << q as u32) == 0 { continue }
+            if copies >= W_COPIES { break }     // the rest change a frame late (no frame copies more)
+            let a = anims + q
+            let f = tex_frame_at(t + q * 3 + k * 5, a.frames as s32, a.ticks as s32)
+            if f == wa_shown[base + q] as s32 { continue }
+            let rows = a.rows as s32
+            let rb = a.row_bytes as s32
+            let s = (a.vram as s32 / TEXTURE_SLOT_SIZE) & 31
+            tex_frame_copy((__wp_base + a.data + (f * rows * rb) as u32) as *u8, a.vram as s32, rows, rb, a.stride as s32)
+            __wp_slot_src[s] = 0           // the slot no longer holds the set's copy (as wp_animate())
+            wa_owner[s] = k
+            wa_shown[base + q] = f as s16
+            water_copied += rows
+            copies += 1
+        }
+    }
+    water_cycles = cycle_count() - c0
+}

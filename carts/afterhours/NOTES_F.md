@@ -32,11 +32,19 @@ replays are unaffected. Every call is safe at any time, in any order, any number
 | `au_bell(dx)` | The pocket bell beeps | A |
 | `au_card(dx)` | (Stage 2) a keycard picked up | A |
 | `au_unlock(dx)` | A staff door unlocked by its card (dx: the door's) | A |
+| `au_machine(on, dx)` | **Every tick** in a room with a machine that turns on its clock: `on` while it moves (the roof's searchlight sweeping, not in its holds), `dx` its x less `cam_x`. Its motor is a held loop: it fades out over four frames when the calls stop | A |
+| `au_dash(dx)`, `au_dash_end(bump, dx)`, `au_dash_ready(dx)` | The dash starts; it ends (a skid, or `bump`: into a wall); it is ready again | G (`dr_dash.akr`) |
 
 The ambiences, for `au_room`: `AMB_NONE`, `AMB_PLATFORM` (Gate 1's platform and level 1's
 first room), `AMB_GATES`, `AMB_PASSAGE`, `AMB_LOBBY`, `AMB_AQUARIUM` (0-5), and stage 2's
 `AMB_CINEMA`, `AMB_BOOTH` (the projection booth), `AMB_CORRIDOR` (the staff corridor),
-`AMB_SHOPFLOOR`, `AMB_FOODHALL` (6-10). *Proposal to A and B:* the
+`AMB_SHOPFLOOR`, `AMB_FOODHALL` (6-10); the aquarium stage's (NOTES_J.md) `AMB_GREATTANK` (11),
+`AMB_JELLY` (12), `AMB_QUARANTINE` (13), `AMB_PLANT` (14, the life-support plant), `AMB_KITCHEN`
+(15, the fish kitchen), `AMB_TANKTOPS` (16). Its entrance hall and ocean gallery use
+`AMB_AQUARIUM` (5), as J proposed; the catwalk and the mezzanine their room's.
+The tower's (B, stage 2): `AMB_LIFTHALL` (17, the lift hall's lobby side: entered by
+`lh_door_lifts`), `AMB_LIFTBACK` (18, its back of house: entered by `lh_door_stair`),
+`AMB_TRADING` (19), `AMB_NINTH` (20), `AMB_ROOF` (21); the lobby keeps `AMB_LOBBY` (4). *Proposal to A and B:* the
 room type gets a field `sound: none | platform | gates | passage | lobby | aquarium = none` in
 `afterhours.game.mochi`, set by each room's world recipe, and A passes it; until then A can map
 level 1's rooms by their order (platform, gates, passage, lobby, aquarium) and Gate 1's platform
@@ -92,6 +100,13 @@ ambience and its door are already playing when your title opens. E calls
 change); the next `enter_room()` brings the room's ambience back. `au_transition()` is 1.6 s, to match the 1.5 s
 pull-back; the next room's door (`au_room` from `enter_room()`) lands at its end.
 
+**Stage 2 onward, wired by A:** the tower's lobby 4, lift hall 17 (by `lh_door_lifts`) or 18
+(by any other door), trading 19, ninth floor 20, roof 21; the aquarium's hall 5, great tank 11,
+jellyfish 12, ocean gallery 5, quarantine 13, plant 14, kitchen 15, tank tops 16 (the catwalk
+and the mezzanine are levels of the great tank and the hall). `au_machine` is called every tick
+on the tower's roof from `dr_world.akr`'s `stage_tick()`: the roof's first camera-kind watcher is
+the searchlight, `on` while its heading changes.
+
 ## The sounds (for the owner's ears; the WAVs are `--preview`'s)
 
 - **track**: "Shutters Down", 91.9 bpm in D minor: brushes, a sidestick and soft swung hats, an
@@ -123,6 +138,10 @@ pull-back; the next room's door (`au_room` from `enter_room()`) lands at its end
 - **retry**: a short tape rewind (START).
 - **card**: a keycard picked up: the plastic's snap and a small two-note pip.
 - **unlock**: a card reader's beep, the magnetic lock letting go with a clunk, the door easing.
+- **dash**: the push-off: a cloth whoosh over the slide's 0.2 s and a soft sneaker squeak.
+- **dash_skid**: the dash ends in the open: a short stuttering rubber skid and a scuff.
+- **dash_bump**: the dash ends against a wall: a soft body thud and the clothes.
+- **dash_ready**: the dash ready again: a tiny high marimba tick, very quiet.
 - **amb_platform**: ventilation, the tunnels' low wind, the tubes' hum. **amb_gates**: quieter
   room tone, the machines' standby tones. **amb_passage**: the tubes' 100 Hz buzz, one tube
   ticking now and then, long tunnel air. **amb_lobby**: the air handling and the city's rumble.
@@ -132,12 +151,27 @@ pull-back; the next room's door (`au_room` from `enter_room()`) lands at its end
   **amb_corridor**: the tubes, a duct's rush, a vending machine's compressor. **amb_shopfloor**:
   a large quiet, the air handling far off. **amb_foodhall**: the cold cases' two compressors
   beating, their fans.
+- The tower: **amb_lifthall**: stone and brass, a soft lobby tone, the lifts' machinery humming
+  in the core. **amb_liftback**: the corridor's tubes, a floor polisher passing far off once a
+  loop, the goods lift's machinery clunking twice a loop. **amb_trading**: the air conditioning,
+  dead screens ticking as they cool, a phone's double trill far off, twice, then quiet.
+  **amb_ninth**: hushed and carpeted: muffled air and a clock's tick-tock, once a second.
+  **amb_roof**: the wind in gusts with a faint whistle, the city's rumble below, the aircraft
+  warning lights' relays clicking every 1.5 s (the shortest reverb). **searchlight** (loop,
+  `au_machine`): a geared motor's whine and its teeth.
+- The aquarium stage: **amb_greattank**: a deep pump hum, the big tank's slow surge (two swells
+  a loop), far bubbles. **amb_jelly**: almost nothing: a soft filter trickle and a low 55 Hz tone.
+  **amb_quarantine**: many small airstones fizzing, a UV lamp's ballast buzzing at 100 Hz.
+  **amb_plant**: the loudest ambience: the pumps' hum, the sand filters' rush, water falling
+  into the sumps. **amb_kitchen**: the fridges' compressors and fans, a tap dripping into a steel
+  sink every 1.4-2.1 s. **amb_tanktops**: open water lapping at the walkways in slow waves, small
+  slaps, a skimmer's gurgle every 3 s, the high roof's air (the longest reverb).
 
 ## Costs
 
-- **ROM**: 4.66 MB of the cart's 5.88 MB: the track 3.26 MB (three stems of 86 s at ADPCM's
-  12.6 KB a second), the sounds and loops 1.41 MB (ten 9 s ambiences 1.13 MB). The levers: a
-  16-bar track would save 1.6 MB; 6 s ambiences 0.38 MB.
+- **ROM**: 5.94 MB (of the cart's 10.6 MB): the track 3.26 MB (three stems of 86 s at ADPCM's
+  12.6 KB a second), the sounds and loops 2.68 MB (twenty-one 9 s ambiences 2.38 MB). The levers:
+  a 16-bar track would save 1.6 MB; 6 s ambiences 0.8 MB.
 - **Channels**: at most 16 (3 track, 2 ambience while crossing, 2 trains, 9 one-shots); in play
   usually 6-8. The console's mixing cost is fixed per channel playing (DECISIONS.md: 16 ADPCM
   channels with the reverb are about 0.1 ms of host time a frame).

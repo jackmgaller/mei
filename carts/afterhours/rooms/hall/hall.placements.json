@@ -1,0 +1,27 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "hall",
+ "placements": [
+  {
+   "id": "lh_room",
+   "asset": "lh_room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "lh_room_col"
+  },
+  {
+   "id": "lh_glass",
+   "asset": "lh_glass",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

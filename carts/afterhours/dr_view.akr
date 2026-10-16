@@ -42,6 +42,7 @@ var buf_toy: [512]u32
 var buf_bell: [512]u32
 var buf_stack: [512]u32
 var buf_gift: [768]u32
+var buf_bucket: [1536]u32
 var buf_fallen: [512]u32
 var buf_spot: [512]u32
 var buf_cones: [MAX_WATCH * 300]u32
@@ -60,9 +61,16 @@ var mb_toy: MB
 var mb_bell: MB
 var mb_stack: MB
 var mb_gift: MB                    // stage 2's fragile things: a stack of gift boxes, ribboned
+var mb_bucket: MB                  // the aquarium's: a bucket of fish
 var mb_fallen: MB
 var mb_spot: MB
 var mb_cones: [MAX_WATCH]MB
+var buf_lit: [7200]u32
+var mb_lit: MB                     // a dark-eyed watcher's lit fan, rebuilt for each
+var buf_glow: [512]u32
+var mb_glow: MB                    // a light's wash on the floor (a unit box)
+var buf_dark: [1024]u32
+var mb_dark: MB                    // the thief unlit in a dark room
 var mb_leaf: [CARDS]MB             // a staff door's leaf in its card's colour (a unit box)
 var mb_card: [CARDS]MB             // a keycard
 
@@ -109,12 +117,25 @@ fn view_init() {
     mb_box(&mb_gift, -0.2, 0.28, -0.2, 0.2, 0.52, 0.2, rgb(240, 240, 236))
     mb_box(&mb_gift, -0.21, 0.28, -0.04, 0.21, 0.53, 0.04, rgb(214, 60, 120))
     mb_box(&mb_gift, -0.08, 0.52, -0.08, 0.08, 0.6, 0.08, rgb(250, 214, 90))       // the bow
+    // a bucket of fish: a short grey cylinder, radius 0.35, its rim lighter, silver fish showing
+    mb_init(&mb_bucket, &buf_bucket[0], len(buf_bucket), 128)
+    mb_prism(&mb_bucket, 0.0, 0.0, 0.33, 0.0, 0.36, 12, rgb(120, 128, 136))
+    mb_prism(&mb_bucket, 0.0, 0.0, 0.35, 0.36, 0.42, 12, rgb(176, 184, 192))
+    mb_prism(&mb_bucket, 0.0, 0.0, 0.3, 0.42, 0.43, 12, rgb(40, 56, 70))      // the water
+    mb_box(&mb_bucket, -0.2, 0.43, -0.04, 0.08, 0.48, 0.04, rgb(214, 222, 230))  // fish
+    mb_box(&mb_bucket, -0.02, 0.43, 0.08, 0.22, 0.47, 0.15, rgb(200, 210, 222))
+    mb_box(&mb_bucket, -0.12, 0.43, -0.2, 0.1, 0.47, -0.13, rgb(190, 200, 214))
     mb_init(&mb_fallen, &buf_fallen[0], len(buf_fallen), 32)
     mb_box(&mb_fallen, -0.45, 0.0, -0.2, 0.15, 0.25, 0.35, rgb(160, 60, 120))
     mb_box(&mb_fallen, 0.2, 0.0, -0.45, 0.55, 0.2, -0.1, rgb(160, 70, 130))
     mb_init(&mb_spot, &buf_spot[0], len(buf_spot), 32)
     mb_box_ex(&mb_spot, -0.5, 0.0, -0.5, 0.5, 1.0, 0.5, rgb(40, 80, 60), FACE_SEMI, BLEND_ADD, true)
     for i in 0..MAX_WATCH { mb_init(&mb_cones[i], &buf_cones[i * 300], 300, 20) }
+    mb_init(&mb_lit, &buf_lit[0], len(buf_lit), 400)
+    mb_init(&mb_glow, &buf_glow[0], len(buf_glow), 32)
+    mb_box_ex(&mb_glow, -0.5, 0.0, -0.5, 0.5, 1.0, 0.5, rgb(46, 70, 88), FACE_SEMI, BLEND_ADD, true)
+    mb_init(&mb_dark, &buf_dark[0], len(buf_dark), 64)
+    person_mesh(&mb_dark, rgb(96, 56, 40), rgb(104, 84, 74), 0, 0)
     for c in 0..CARDS {
         let col = card_rgb(c + 1)
         mb_init(&mb_leaf[c], &buf_leaf[c * 256], 256, 16)
@@ -138,18 +159,27 @@ fn card_rgb(c: s32) -> u32 {
 fn view_init_room() {
     mb_init(&mb_room, &buf_room[0], len(buf_room), 4096)
     if !room_is_world {
-        if room.ndoors > 0 { standin_graph_mesh(&mb_room) } else { standin_mesh(&mb_room) }
+        if standin_aqua {
+            standin_aqua_mesh(&mb_room)
+        } else if room.ndoors > 0 {
+            standin_graph_mesh(&mb_room)
+        } else {
+            standin_mesh(&mb_room)
+        }
     }
     frame_room()
 }
 
 // The target z that puts the floor's point at depth z on picture line y (the camera's x and its
 // distance unchanged: it slides along z, so the pixels a metre stay as they are).
-fn tz_for(z: fixed, y: s32) -> fixed {
+fn tz_for(z: fixed, y: s32) -> fixed { return tz_for_at(z, 0.0, y) }
+
+// The same for a point h above the floor (a walkway's edge).
+fn tz_for_at(z: fixed, h: fixed, y: s32) -> fixed {
     var tz = z + 5.0
     for _i in 0..6 {
         camera_look(cam_eye(room.cx, tz), 0.0, CAM_PITCH)
-        let p = project_point(vec3(room.cx, room.floor, z))
+        let p = project_point(vec3(room.cx, room.floor + h, z))
         tz += fixed(y - p.y) / 21
     }
     return tz
@@ -164,7 +194,8 @@ fn frame_room() {
     camera_fov(CAM_FOV)
     camera_clip(CAM_DIST - 14.0, CAM_DIST + 14.0)
     let lo = tz_for(room.cz - room.sz / 2, FRONT_Y)    // the front on its line
-    let hi = tz_for(room.cz + room.sz / 2, BACK_Y)     // the back on its line
+    // the back on its line: the walkway's, when the room has one (it stands higher on the picture)
+    let hi = tz_for_at(room.cz + room.sz / 2, level_y(room.levels - 1), BACK_Y)
     if hi <= lo {
         cam_tz_lo = (lo + hi) / 2
         cam_tz_hi = cam_tz_lo
@@ -224,6 +255,10 @@ fn view_update() {
     cam_tz += (cam_goal_z(thief.z) - cam_tz) / 8
 }
 
+// How the stage's fragile things look (dr_world.akr replaces it): 0 a stack (the station, the
+// tower, the platform), 1 gift boxes (the store), 2 a bucket of fish (the aquarium).
+weak fn fragile_look() -> s32 { return 0 }
+
 // The world draws itself (dr_world.akr replaces this when B's world is in).
 weak fn world_draw(_eye: vec3, _yaw: fixed, _pitch: fixed) {}
 
@@ -242,6 +277,7 @@ fn view_draw_room() {
         mesh(mb_room.m)
         for i in 0..room.nspots { draw_box(mb_spot.m, &room.spots[i], room.spots[i].h) }
     }
+    draw_lights()
     draw_trains()
     draw_doors()
     draw_things()
@@ -291,7 +327,7 @@ fn at(x: fixed, y: fixed, z: fixed) -> vec3 { return vec3(x, y + room.floor, z) 
 fn draw_box(m: *Mesh, b: *Box2, h: fixed) {
     var model: mat4
     model[0] = vec4(b.c * b.hx * 2, 0.0, b.s * b.hz * 2, b.cx - view_origin.x)
-    model[1] = vec4(0.0, h, 0.0, room.floor - view_origin.y)
+    model[1] = vec4(0.0, h, 0.0, room.floor + level_y(b.level) - view_origin.y)
     model[2] = vec4(-b.s * b.hx * 2, 0.0, b.c * b.hz * 2, b.cz - view_origin.z)
     model[3] = vec4(0.0, 0.0, 0.0, 1.0)
     mesh_xf(m, model)
@@ -345,14 +381,16 @@ fn draw_things() {
     for i in 0..room.ncards {
         if card_taken(i) { continue }
         let bob = 0.06 + sin(fixed(clock % 120) * (PI / 60)) * 0.03
-        mesh_at(mb_card[clamp(room.card_col[i] - 1, 0, CARDS - 1)].m, at(room.card_x[i], bob, room.card_z[i]),
+        mesh_at(mb_card[clamp(room.card_col[i] - 1, 0, CARDS - 1)].m, at(room.card_x[i], bob + level_y(room.card_level[i]), room.card_z[i]),
                 fixed(clock % 240) * (PI / 120))
     }
     for i in 0..room.nfrag {
-        let p = at(room.frag_x[i], 0.0, room.frag_z[i])
+        let p = at(room.frag_x[i], level_y(room.frag_level[i]), room.frag_z[i])
         if fragile_down[i] {
             mesh_at(mb_fallen.m, p, 0.6)
-        } else if room_is_world && stage_has_doors() {
+        } else if room_is_world && fragile_look() == 2 {
+            mesh_at(mb_bucket.m, p, 0.0)
+        } else if room_is_world && fragile_look() == 1 {
             mesh_at(mb_gift.m, p, 0.0)
         } else {
             mesh_at(mb_stack.m, p, 0.0)
@@ -360,11 +398,11 @@ fn draw_things() {
     }
     for i in 0..MAX_TOYS {
         let y = &toys[i]
-        if y.on { mesh_at(mb_toy.m, at(y.x, 0.0, y.z), y.head) }
+        if y.on { mesh_at(mb_toy.m, at(y.x, level_y(thief.level), y.z), y.head) }
     }
     for i in 0..MAX_BELLS {
         let b = &bells[i]
-        if b.on { mesh_at(mb_bell.m, at(b.x, 0.0, b.z), 0.0) }
+        if b.on { mesh_at(mb_bell.m, at(b.x, level_y(thief.level), b.z), 0.0) }
     }
 }
 
@@ -372,9 +410,9 @@ fn draw_people() {
     for i in 0..room.nwatch {
         let g = &guards[i]
         if room.watch[i].kind == WKind.Camera {
-            mesh_at(mb_cam.m, at(g.x, 0.0, g.z), g.head)
+            mesh_at(mb_cam.m, at(g.x, level_y(room.watch[i].level), g.z), g.head)
         } else {
-            mesh_at(mb_guard.m, at(g.x, 0.0, g.z), g.head)
+            mesh_at(mb_guard.m, at(g.x, level_y(room.watch[i].level), g.z), g.head)
         }
     }
     if thief.hidden {
@@ -384,34 +422,363 @@ fn draw_people() {
         let s = sin(thief.head)
         let c = cos(thief.head)
         model[0] = vec4(c, 0.0, s, thief.x - view_origin.x)
-        model[1] = vec4(0.0, 0.55, 0.0, room.floor - view_origin.y)
+        model[1] = vec4(0.0, 0.55, 0.0, room.floor + level_y(thief.level) - view_origin.y)
         model[2] = vec4(-s, 0.0, c, thief.z - view_origin.z)
         model[3] = vec4(0.0, 0.0, 0.0, 1.0)
         mesh_xf(mb_hidden.m, model)
-    } else {
-        mesh_at(mb_thief.m, at(thief.x, 0.0, thief.z), thief.head)
+    } else if !dash_figure() {     // agent G: sliding or recovering, the dash draws him
+        // in a dark room, standing where no light falls and a dark-eyed watcher shares his level:
+        // drawn dimmed (they cannot see him there)
+        if thief_in_dark() {
+            mesh_at(mb_dark.m, at(thief.x, level_y(thief.level), thief.z), thief.head)
+        } else {
+            mesh_at(mb_thief.m, at(thief.x, level_y(thief.level), thief.z), thief.head)
+        }
     }
     // the ghost: the best attempt so far, at this tick of the clock
     if best.have && phase == Phase.Play && clock < best.ticks {
         let p = ghost_at(clock)
-        mesh_at(mb_ghost.m, at(p.x, 0.0, p.y), 0.0)
+        mesh_at(mb_ghost.m, at(p.x, level_y(room.spawn_level), p.y), 0.0)
     }
 }
 
 // Each watcher's fan as the polygon tested: the apex and the 17 rays' ends, 16 triangles.
+// A dark-eyed watcher's (a dark room, no torch) is drawn as what it tests: the fan clipped to
+// the lights on now on its level, bright; the rest of the fan only as a dotted outline.
+var cones_lit_cyc: s32            // (the measurements) this frame's dark fans' cycles, and all the cones'
+var cones_cyc: s32
 fn draw_cones() {
+    let cc0 = cycle_count()
+    cones_lit_cyc = 0
     depth_offset(6)
     for i in 0..room.nwatch {
         let g = &guards[i]
         let f = &g.fan
+        let y = CONE_Y + level_y(room.watch[i].level)
+        var col = COL_CONE
+        if g.caught && phase == Phase.Caught { col = COL_CONE_HOT }
+        if dark_eyed(i) {
+            let c0 = cycle_count()
+            cone_cached(i, y, col)
+            cones_lit_cyc += cycle_count() - c0
+            continue
+        }
         let b = &mb_cones[i]
         mb_reset(b)
         let _ = mb_vert(b, 0.0, 0.0, 0.0)
         for k in 0..RAYS { let _ = mb_vert(b, f.px[k] - f.ax, 0.0, f.pz[k] - f.az) }
-        var col = COL_CONE
-        if g.caught && phase == Phase.Caught { col = COL_CONE_HOT }
         for k in 0..RAYS - 1 { mb_tri(b, 0, k + 2, k + 1, col, FACE_SEMI | FACE_DOUBLE, BLEND_HALF) }
-        mesh_at(b.m, at(f.ax, CONE_Y, f.az), 0.0)
+        mesh_at(b.m, at(f.ax, y, f.az), 0.0)
+    }
+    depth_offset(0)
+    cones_cyc = cycle_count() - cc0
+}
+
+// The part of watcher i's fan the lights light: each triangle of the fan clipped to each light
+// on (on the watcher's level), as convex polygons.
+const CLIP_N = 8
+var clip_x: [CLIP_N]fixed
+var clip_z: [CLIP_N]fixed
+var clip_n: s32
+var clip_tx: [CLIP_N]fixed
+var clip_tz: [CLIP_N]fixed
+
+fn cone_lit(i: s32, y: fixed, col: u32) {
+    let b = &mb_lit
+    mb_reset(b)
+    cone_lit_into(b, i, col)
+    let f = &guards[i].fan
+    if b.nf > 0 { mesh_at(b.m, at(f.ax, y, f.az), 0.0) }
+}
+
+// ---- a dark-eyed watcher's fan in play, kept: its lit parts and its dotted outline are one mesh
+// (the dots as small triangles on the floor), rebuilt only when what it is made from changes
+// (the fan's points, the lights on, its colour); else drawn as it was. What is drawn is still
+// what cone_lit_into() makes from this tick's fan.
+const LIT_WORDS = 8000
+const LIT_VERTS = 640
+const DOT_R: fixed = 0.035
+var buf_litc: [MAX_WATCH * LIT_WORDS]u32
+var mb_litc: [MAX_WATCH]MB
+var litc_init: bool
+struct LitKey {
+    have: bool
+    ax: fixed
+    az: fixed
+    px: [RAYS]fixed
+    pz: [RAYS]fixed
+    lights: u32
+    col: u32
+    nlit: s32          // the lit parts' vertices (the dots follow)
+}
+var lit_key: [MAX_WATCH]LitKey
+var lit_rebuilds: s32          // (the tests) fans rebuilt since the room was entered
+
+// Forgets every kept fan (a room entered, or set up again).
+fn cones_forget() {
+    for i in 0..MAX_WATCH { lit_key[i].have = false }
+    lit_rebuilds = 0
+}
+
+fn lights_mask(level: s32) -> u32 {
+    var m: u32 = 0
+    for li in 0..room.nlights {
+        if light_lit[li] && room.lights[li].box.level == level { m = m | ((1 as u32) << li as u32) }
+    }
+    return m
+}
+
+fn cone_cached(i: s32, y: fixed, col: u32) {
+    if !litc_init {
+        litc_init = true
+        for w in 0..MAX_WATCH { mb_init(&mb_litc[w], &buf_litc[w * LIT_WORDS], LIT_WORDS, LIT_VERTS) }
+    }
+    let f = &guards[i].fan
+    let k = &lit_key[i]
+    let lights = lights_mask(room.watch[i].level)
+    var same = k.have && k.ax == f.ax && k.az == f.az && k.lights == lights && k.col == col
+    if same {
+        for r in 0..RAYS {
+            if k.px[r] != f.px[r] || k.pz[r] != f.pz[r] { same = false }
+        }
+    }
+    let b = &mb_litc[i]
+    if !same {
+        mb_reset(b)
+        cone_lit_into(b, i, col)
+        k.nlit = b.nv
+        dots_mesh(b, f)
+        k.have = true
+        k.ax = f.ax
+        k.az = f.az
+        for r in 0..RAYS {
+            k.px[r] = f.px[r]
+            k.pz[r] = f.pz[r]
+        }
+        k.lights = lights
+        k.col = col
+        lit_rebuilds += 1
+    }
+    if b.nf > 0 { mesh_at(b.m, at(f.ax, y, f.az), 0.0) }
+}
+
+// The fan's outline as small triangles every DOT_STEP metres, relative to its apex.
+fn dots_mesh(b: *MB, f: *Fan) {
+    dot_left = 0.0
+    dots_tri_line(b, f, f.ax, f.az, f.px[0], f.pz[0])
+    for k in 0..RAYS - 1 { dots_tri_line(b, f, f.px[k], f.pz[k], f.px[k + 1], f.pz[k + 1]) }
+    dots_tri_line(b, f, f.px[RAYS - 1], f.pz[RAYS - 1], f.ax, f.az)
+}
+
+fn dots_tri_line(b: *MB, f: *Fan, ax: fixed, az: fixed, bx: fixed, bz: fixed) {
+    let dx = bx - ax
+    let dz = bz - az
+    let l = sqrt(dx * dx + dz * dz)
+    if l < 0.001 { return }
+    let ux = dx / l
+    let uz = dz / l
+    var s = dot_left
+    while s < l {
+        assert(b.nv + 3 <= b.cap_v && b.nf < b.cap_f, "a dark fan's mesh is full")
+        let x = ax + ux * s - f.ax
+        let z = az + uz * s - f.az
+        let v0 = b.nv
+        b.v[v0] = vec4(x - DOT_R, 0.0, z - DOT_R, 1.0)
+        b.v[v0 + 1] = vec4(x + DOT_R, 0.0, z - DOT_R, 1.0)
+        b.v[v0 + 2] = vec4(x, 0.0, z + DOT_R, 1.0)
+        b.nv = v0 + 3
+        fast_face(b, v0, v0 + 2, v0 + 1, DOT_COL, FACE_DOUBLE, 0)
+        s += DOT_STEP
+    }
+    dot_left = s - l
+    b.m.nverts = b.nv as u16
+    b.m.nfaces = b.nf as u16
+}
+const DOT_COL = 0x6E9096               // rgb(150, 144, 110)
+
+// Watcher i's lit fan into b (its vertices relative to the apex).
+fn cone_lit_into(b: *MB, i: s32, col: u32) {
+    let f = &guards[i].fan
+    let level = room.watch[i].level
+    for li in 0..room.nlights {
+        let l = &room.lights[li]
+        if !light_lit[li] || l.box.level != level { continue }
+        // the light's bounds against the fan's, then each triangle's
+        let r = abs(l.box.hx) + abs(l.box.hz)
+        let lx0 = l.box.cx - r
+        let lx1 = l.box.cx + r
+        let lz0 = l.box.cz - r
+        let lz1 = l.box.cz + r
+        if lx1 < f.x0 || lx0 > f.x1 || lz1 < f.z0 || lz0 > f.z1 { continue }
+        for k in 0..RAYS - 1 {
+            if tri_outside(f, k, lx0, lz0, lx1, lz1) { continue }
+            if cross3(f.ax, f.az, f.px[k], f.pz[k], f.px[k + 1], f.pz[k + 1]) == 0.0 { continue }
+            if !clip_tri(l, f.ax, f.az, f.px[k], f.pz[k], f.px[k + 1], f.pz[k + 1]) { continue }
+            assert(b.nv + clip_n <= b.cap_v && b.nf + clip_n <= b.cap_f, "a dark fan's mesh is full")
+            let v0 = b.nv
+            for j in 0..clip_n { b.v[v0 + j] = vec4(clip_x[j] - f.ax, 0.0, clip_z[j] - f.az, 1.0) }
+            b.nv = v0 + clip_n
+            for j in 1..clip_n - 1 { fast_face(b, v0, v0 + j + 1, v0 + j, col, FACE_SEMI | FACE_DOUBLE, BLEND_HALF) }
+        }
+    }
+    b.m.nverts = b.nv as u16
+    b.m.nfaces = b.nf as u16
+}
+
+// A flat triangle's face, written straight (the caller checked the room and sets the counts).
+fn fast_face(b: *MB, i0: s32, i1: s32, i2: s32, col: u32, flags: u32, blend: u32) {
+    let fc = &b.f[b.nf]
+    b.nf += 1
+    fc.flags = flags as u8
+    fc.blend = blend as u8
+    fc.tex = 0
+    fc.palette = 0
+    fc.idx[0] = i0 as u16
+    fc.idx[1] = i1 as u16
+    fc.idx[2] = i2 as u16
+    fc.idx[3] = i2 as u16
+    fc.col[0] = col
+}
+
+// Whether (x, z) lies in the lit part of watcher i's fan as cone_lit() draws it: the same
+// clipped polygons (the tests compare it with the rule, watcher_sees()).
+fn lit_drawn_covers(i: s32, x: fixed, z: fixed) -> bool {
+    let f = &guards[i].fan
+    let level = room.watch[i].level
+    for li in 0..room.nlights {
+        let l = &room.lights[li]
+        if !light_lit[li] || l.box.level != level { continue }
+        for k in 0..RAYS - 1 {
+            let r = abs(l.box.hx) + abs(l.box.hz)
+            if tri_outside(f, k, l.box.cx - r, l.box.cz - r, l.box.cx + r, l.box.cz + r) { continue }
+            if cross3(f.ax, f.az, f.px[k], f.pz[k], f.px[k + 1], f.pz[k + 1]) == 0.0 { continue }
+            if !clip_tri(l, f.ax, f.az, f.px[k], f.pz[k], f.px[k + 1], f.pz[k + 1]) { continue }
+            var inside = true
+            for j in 0..clip_n {
+                let j2 = (j + 1) % clip_n
+                if cross3(clip_x[j], clip_z[j], clip_x[j2], clip_z[j2], x, z) > 0.0005 { inside = false }
+            }
+            if inside { return true }
+        }
+    }
+    return false
+}
+
+// The triangle (a, b, c) clipped to light l's box, into clip_x/z (clip_n points); false when
+// nothing is left. A triangle wholly outside one of the box's sides is rejected and one wholly
+// inside it kept as it is before any clipping: the same points the clipping would give, sooner.
+fn clip_tri(l: *Light, ax: fixed, az: fixed, bx: fixed, bz: fixed, cx: fixed, cz: fixed) -> bool {
+    clip_n = 3
+    clip_x[0] = ax
+    clip_z[0] = az
+    clip_x[1] = bx
+    clip_z[1] = bz
+    clip_x[2] = cx
+    clip_z[2] = cz
+    var inside = true
+    for p in 0..4 {
+        let ux = l.pux[p]
+        let uz = l.puz[p]
+        let off = l.poff[p]
+        var out = 0
+        if ax * ux + az * uz > off { out += 1 }
+        if bx * ux + bz * uz > off { out += 1 }
+        if cx * ux + cz * uz > off { out += 1 }
+        if out == 3 { return false }
+        if out > 0 { inside = false }
+    }
+    if inside { return true }
+    for p in 0..4 {
+        clip_plane(l.pux[p], l.puz[p], l.poff[p])
+        if clip_n < 3 { return false }
+    }
+    return true
+}
+
+// Whether the fan's triangle k (apex, p[k], p[k+1]) lies wholly outside the bounds.
+fn tri_outside(f: *Fan, k: s32, x0: fixed, z0: fixed, x1: fixed, z1: fixed) -> bool {
+    let ax = f.ax
+    let az = f.az
+    let bx = f.px[k]
+    let bz = f.pz[k]
+    let cx = f.px[k + 1]
+    let cz = f.pz[k + 1]
+    if ax < x0 && bx < x0 && cx < x0 { return true }
+    if ax > x1 && bx > x1 && cx > x1 { return true }
+    if az < z0 && bz < z0 && cz < z0 { return true }
+    return az > z1 && bz > z1 && cz > z1
+}
+
+// Keeps the part of the polygon where x ux + z uz <= off.
+var clip_d: [CLIP_N]fixed
+fn clip_plane(ux: fixed, uz: fixed, off: fixed) {
+    for j in 0..clip_n { clip_d[j] = clip_x[j] * ux + clip_z[j] * uz - off }
+    var n = 0
+    for j in 0..clip_n {
+        var j2 = j + 1
+        if j2 == clip_n { j2 = 0 }
+        let da = clip_d[j]
+        let db = clip_d[j2]
+        if da <= 0.0 && n < CLIP_N {
+            clip_tx[n] = clip_x[j]
+            clip_tz[n] = clip_z[j]
+            n += 1
+        }
+        if (da < 0.0 && db > 0.0) || (da > 0.0 && db < 0.0) {
+            let t = da / (da - db)
+            if n < CLIP_N {
+                clip_tx[n] = clip_x[j] + (clip_x[j2] - clip_x[j]) * t
+                clip_tz[n] = clip_z[j] + (clip_z[j2] - clip_z[j]) * t
+                n += 1
+            }
+        }
+    }
+    for j in 0..n {
+        clip_x[j] = clip_tx[j]
+        clip_z[j] = clip_tz[j]
+    }
+    clip_n = n
+}
+
+// The fan's outline as dots every DOT_STEP metres: where the watcher looks, not where he sees.
+const DOT_STEP: fixed = 0.35
+fn cone_dots(f: *Fan, y: fixed) {
+    let col = rgb(150, 144, 110)
+    dots_line(f.ax, f.az, f.px[0], f.pz[0], y, col)
+    for k in 0..RAYS - 1 { dots_line(f.px[k], f.pz[k], f.px[k + 1], f.pz[k + 1], y, col) }
+    dots_line(f.px[RAYS - 1], f.pz[RAYS - 1], f.ax, f.az, y, col)
+}
+
+var dot_left: fixed                 // the distance to the next dot along the outline
+fn dots_line(ax: fixed, az: fixed, bx: fixed, bz: fixed, y: fixed, col: u32) {
+    let dx = bx - ax
+    let dz = bz - az
+    let l = sqrt(dx * dx + dz * dz)
+    if l < 0.001 { return }
+    var s = dot_left
+    while s < l {
+        let p = project_point(at(ax + dx * s / l, y, az + dz * s / l))
+        if p.z >= 0 { rect(p.x, p.y, 1, 1, col) }
+        s += DOT_STEP
+    }
+    dot_left = s - l
+}
+
+// Whether the thief stands unlit where a dark-eyed watcher on his level would not see him.
+fn thief_in_dark() -> bool {
+    if !room.dark || lit_at(thief.x, thief.z, thief.level) { return false }
+    for i in 0..room.nwatch {
+        if dark_eyed(i) && room.watch[i].level == thief.level { return true }
+    }
+    return false
+}
+
+// The lights on now, as a faint wash on their floor: the area a dark-eyed watcher sees in.
+fn draw_lights() {
+    if !room.dark { return }
+    depth_offset(4)
+    for i in 0..room.nlights {
+        if light_lit[i] { draw_box(mb_glow.m, &room.lights[i].box, 0.02) }
     }
     depth_offset(0)
 }
@@ -426,12 +793,13 @@ fn ring_colour(col: u32) {
     }
 }
 
+var ring_lift: fixed               // the level the rings are drawn on (draw_rings(): the thief's)
 fn ring_at(x: fixed, z: fixed, r: fixed, col: u32) {
     if r < 0.05 { return }
     ring_colour(col)
     var model: mat4
     model[0] = vec4(r, 0.0, 0.0, x - view_origin.x)
-    model[1] = vec4(0.0, 1.0, 0.0, room.floor + 0.04 - view_origin.y)
+    model[1] = vec4(0.0, 1.0, 0.0, room.floor + ring_lift + 0.04 - view_origin.y)
     model[2] = vec4(0.0, 0.0, r, z - view_origin.z)
     model[3] = vec4(0.0, 0.0, 0.0, 1.0)
     mesh_xf(mb_ring.m, model)
@@ -441,6 +809,7 @@ fn ring_at(x: fixed, z: fixed, r: fixed, col: u32) {
 // bell, a fragile thing and the toys' clicks.
 fn draw_rings() {
     depth_offset(8)
+    ring_lift = level_y(thief.level)
     // hiding: a ring closes onto him as he goes in (12 ticks), a cool ring stays at his feet while
     // he hides, and one opens out as he comes out
     let ht = clock - thief.hide_t
@@ -454,7 +823,11 @@ fn draw_rings() {
     for i in 0..room.ncards {
         if card_taken(i) { continue }
         let p = clock % 90
-        if p < 30 { ring_at(room.card_x[i], room.card_z[i], 0.25 + fixed(p) * 0.02, col_scale(card_rgb(room.card_col[i]), 1.0 - fixed(p) / 30)) }
+        if p < 30 {
+            ring_lift = level_y(room.card_level[i])
+            ring_at(room.card_x[i], room.card_z[i], 0.25 + fixed(p) * 0.02, col_scale(card_rgb(room.card_col[i]), 1.0 - fixed(p) / 30))
+            ring_lift = level_y(thief.level)
+        }
     }
     if thief.running && room.hear_max > 0.0 {
         ring_at(thief.x, thief.z, room.hear_max, rgb(110, 90, 70))
@@ -467,7 +840,9 @@ fn draw_rings() {
     }
     for i in 0..room.nfrag {
         if fragile_down[i] && clock - fragile_at[i] < 30 {
+            ring_lift = level_y(room.frag_level[i])
             ring_at(room.frag_x[i], room.frag_z[i], room.frag_noise[i] * (clock - fragile_at[i] + 1) / 30, rgb(140, 90, 120))
+            ring_lift = level_y(thief.level)
         }
     }
     for i in 0..MAX_TOYS {
@@ -477,13 +852,14 @@ fn draw_rings() {
             ring_at(y.x, y.z, TOY_NOISE * (p + 1) / 30, rgb(50, 90, 60))
         }
     }
+    dash_rings()                   // agent G: the dash's skid and its ready ring
     depth_offset(0)
 }
 
 // The marks over the picture: the "!" over a caught thief, and cones off the screen's sides.
 fn draw_marks() {
     if phase == Phase.Caught {
-        let p = project_point(at(thief.x, 2.3, thief.z))
+        let p = project_point(at(thief.x, 2.3 + level_y(thief.level), thief.z))
         if p.z >= 0 {
             rect(p.x - 5, p.y - 14, 11, 15, rgb(230, 30, 30))
             text(p.x - 3, p.y - 11, "!", rgb(255, 255, 255))

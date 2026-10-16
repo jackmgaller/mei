@@ -14,6 +14,7 @@ struct Fan {
     z0: fixed
     x1: fixed
     z1: fixed
+    level: s32         // the room's level it is cast on (its walls; it sees only there)
 }
 
 // The trains' sides this tick (dr_train.akr fills them before the fans are cast).
@@ -116,8 +117,14 @@ fn ray_t(dx: fixed, dz: fixed) -> fixed {
 }
 
 // Casts the fan from (ax, az) looking `head`, `half` either side, `range` long: 17 rays, each
-// cut at the nearest crossing of a wall side or a train side.
+// cut at the nearest crossing of a wall side or a train side. On the floor (level 0).
 fn fan_cast(f: *Fan, ax: fixed, az: fixed, head: fixed, half: fixed, range: fixed) {
+    fan_cast_level(f, 0, ax, az, head, half, range)
+}
+
+// The same on a level of the room: cut by that level's walls (the trains run on the floor).
+fn fan_cast_level(f: *Fan, level: s32, ax: fixed, az: fixed, head: fixed, half: fixed, range: fixed) {
+    f.level = level
     f.ax = ax
     f.az = az
     // the rays' directions (times the range), and the wedge's bounds
@@ -151,8 +158,12 @@ fn fan_cast(f: *Fan, ax: fixed, az: fixed, head: fixed, half: fixed, range: fixe
     fc_rx = dxs[RAYS - 1]
     fc_rz = dzs[RAYS - 1]
     ncand = 0
-    cands_from(&room.segs[0], room.nseg)
-    cands_from(&dyn_segs[0], ndyn)
+    if level == 0 {
+        cands_from(&room.segs[0], room.seg_n0)
+        cands_from(&dyn_segs[0], ndyn)
+    } else {
+        cands_from(&room.segs[room.seg_n0], room.nseg - room.seg_n0)
+    }
     sight_rays_tested += ncand * RAYS
     var x0 = ax
     var x1 = ax

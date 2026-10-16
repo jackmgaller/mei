@@ -1,0 +1,133 @@
+// Every stage through the transition (agent H; tests/trans/check.sh runs it): STAGE (the
+// constants in dr_levels.akr) started directly, its solution tapes played leg by leg (a leg a room
+// visit, by the room's clock; nobody catches, so a tape that drifts still moves on), through
+// dr_trans.akr's transitions to the stage's end. Checks each hand-over (clock 0, at his door's
+// spawn, on its level) and prints the worst transition frame; fails when one is within
+// TR_MARGIN of the budgets. A passing run ends with "DONE 95".
+import "../../../dr_game.akr"
+import "../../../dr_world.akr"
+import "../../tapes/station_solution.akr"
+import "../../tapes/tower_solution.akr"
+import "../../tapes/aquarium_solution.akr"
+import "../../tapes/store_solution.akr"
+
+const CPU_BUDGET_C = 1000000
+const GPU_BUDGET_C = 2000000
+const TR_MARGIN = 150000       // no transition frame within 15% of the CPU budget
+
+const ST_TAPES: [3]*Span = [SOLUTION_STATION_ARRIVAL, SOLUTION_STATION_GATES, SOLUTION_STATION_PASSAGE]
+const ST_LENS: [3]s32 = [len(SOLUTION_STATION_ARRIVAL), len(SOLUTION_STATION_GATES), len(SOLUTION_STATION_PASSAGE)]
+const TW_TAPES: [6]*Span = [SOLUTION_TOWER_LEG_0, SOLUTION_TOWER_LEG_1, SOLUTION_TOWER_LEG_2, SOLUTION_TOWER_LEG_3,
+                            SOLUTION_TOWER_LEG_4, SOLUTION_TOWER_LEG_5]
+const TW_LENS: [6]s32 = [len(SOLUTION_TOWER_LEG_0), len(SOLUTION_TOWER_LEG_1), len(SOLUTION_TOWER_LEG_2),
+                         len(SOLUTION_TOWER_LEG_3), len(SOLUTION_TOWER_LEG_4), len(SOLUTION_TOWER_LEG_5)]
+const AQ_TAPES: [10]*Span = [SOLUTION_AQUARIUM_LEG_0, SOLUTION_AQUARIUM_LEG_1, SOLUTION_AQUARIUM_LEG_2,
+                             SOLUTION_AQUARIUM_LEG_3, SOLUTION_AQUARIUM_LEG_4, SOLUTION_AQUARIUM_LEG_5,
+                             SOLUTION_AQUARIUM_LEG_6, SOLUTION_AQUARIUM_LEG_7, SOLUTION_AQUARIUM_LEG_8,
+                             SOLUTION_AQUARIUM_LEG_9]
+const AQ_LENS: [10]s32 = [len(SOLUTION_AQUARIUM_LEG_0), len(SOLUTION_AQUARIUM_LEG_1), len(SOLUTION_AQUARIUM_LEG_2),
+                          len(SOLUTION_AQUARIUM_LEG_3), len(SOLUTION_AQUARIUM_LEG_4), len(SOLUTION_AQUARIUM_LEG_5),
+                          len(SOLUTION_AQUARIUM_LEG_6), len(SOLUTION_AQUARIUM_LEG_7), len(SOLUTION_AQUARIUM_LEG_8),
+                          len(SOLUTION_AQUARIUM_LEG_9)]
+const SR_TAPES: [8]*Span = [SOLUTION_STORE_LEG_0, SOLUTION_STORE_LEG_1, SOLUTION_STORE_LEG_2, SOLUTION_STORE_LEG_3,
+                            SOLUTION_STORE_LEG_4, SOLUTION_STORE_LEG_5, SOLUTION_STORE_LEG_6, SOLUTION_STORE_LEG_7]
+const SR_LENS: [8]s32 = [len(SOLUTION_STORE_LEG_0), len(SOLUTION_STORE_LEG_1), len(SOLUTION_STORE_LEG_2),
+                         len(SOLUTION_STORE_LEG_3), len(SOLUTION_STORE_LEG_4), len(SOLUTION_STORE_LEG_5),
+                         len(SOLUTION_STORE_LEG_6), len(SOLUTION_STORE_LEG_7)]
+
+var leg: s32
+var nlegs: s32
+var stick_v: vec2
+var last_mode: Mode = Mode.Play
+var trans_start: s32
+var nt: s32
+var worst: s32
+var worst_at: s32
+var worst_gpu: s32
+var finished: bool
+var started: bool
+
+fn test_init() { test_no_catch = true }
+fn test_hook(_f: s32) {}
+fn input_stick(_f: s32) -> vec2 { return stick_v }
+
+fn fail(what: *u8) {
+    print("FAIL ")
+    println(what)
+    assert(false)
+}
+
+fn tape(k: s32) -> *Span {
+    if STAGE == STAGE_STATION { return ST_TAPES[k] }
+    if STAGE == STAGE_TOWER { return TW_TAPES[k] }
+    if STAGE == STAGE_AQUARIUM { return AQ_TAPES[k] }
+    return SR_TAPES[k]
+}
+
+fn tape_n(k: s32) -> s32 {
+    if STAGE == STAGE_STATION { return ST_LENS[k] }
+    if STAGE == STAGE_TOWER { return TW_LENS[k] }
+    if STAGE == STAGE_AQUARIUM { return AQ_LENS[k] }
+    return SR_LENS[k]
+}
+
+fn input_pad(f: s32) -> u32 {
+    if f > 2 && last_mode == Mode.Transition {
+        if cpu_used() > worst {
+            worst = cpu_used()
+            worst_at = f - 1
+        }
+        worst_gpu = max(worst_gpu, gpu_used())
+    }
+    var pad: u32 = 0
+    stick_v = vec2(0.0, 0.0)
+    if finished { return 0 }
+    if f == 30 {
+        nlegs = 3
+        if STAGE == STAGE_TOWER { nlegs = TOWER_LEGS }
+        if STAGE == STAGE_AQUARIUM { nlegs = AQUARIUM_LEGS }
+        if STAGE == STAGE_STORE { nlegs = STORE_LEGS }
+        stage_start(STAGE)
+        started = true
+    }
+    if started && mode == Mode.Play && phase == Phase.Play && leg < nlegs {
+        let s = span_at(tape(leg), tape_n(leg), clock)
+        pad = s.pad as u32
+        stick_v = vec2(fixed(s.sx as s32) / 127, fixed(s.sy as s32) / 127)
+    }
+    if last_mode != Mode.Transition && mode == Mode.Transition { trans_start = f }
+    if last_mode == Mode.Transition && mode == Mode.Play {
+        nt += 1
+        leg += 1
+        print("TRANSITION ")
+        print_int(nt)
+        print(" into room ")
+        print_int(run_room + 1)
+        print(": frames ")
+        print_int(trans_start)
+        print("-")
+        print_int(f - 1)
+        println("")
+        if clock != 0 || phase != Phase.Play { fail("not at the room's clock 0") }
+        if thief.x != room.spawn_x || thief.z != room.spawn_z { fail("not at his door's spawn") }
+        if thief.level != room.spawn_level { fail("not on his door's level") }
+        if !tr_clock_ok { fail("the clock moved between ready and control") }
+    }
+    if started && mode == Mode.End && !finished {
+        finished = true
+        print("BUDGET the transitions' worst frame: CPU ")
+        print_int(worst)
+        print(" (frame ")
+        print_int(worst_at)
+        print("), GPU ")
+        print_int(worst_gpu)
+        println("")
+        if nt < nlegs - 1 { fail("fewer transitions than the stage's legs") }
+        if worst >= CPU_BUDGET_C - TR_MARGIN || worst_gpu >= GPU_BUDGET_C - TR_MARGIN { fail("a transition frame within 15% of the budgets") }
+        print("DONE 95: the stage through the transition, ")
+        print_int(nt)
+        println(" transitions")
+    }
+    last_mode = mode
+    return pad
+}

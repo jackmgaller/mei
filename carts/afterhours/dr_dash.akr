@@ -1,0 +1,232 @@
+// The dash (agent G's; NOTES_G.md has the design and the reasons): X throws the thief 2 m in a
+// straight line over 12 ticks, committed, then 8 ticks of recovery; one a second. Where it ends
+// (or a wall stops it) it makes a skid, a noise of 3 m. Each tick's slide is three substeps of at
+// most 0.08 m, each pushed out of the walls as walking is; every substep's point is tested against
+// the tick's fans after they are cast (dash_path_test(), from tick()), and the first one covered
+// is where he stops, seen.
+//
+// Exact in fixed point and a function of the input tape (X is bit 64 of a span's pad), so a tape
+// with dashes replays exactly. A tape without X never starts one, and nothing here then changes
+// the room.
+
+const DASH_TICKS = 12
+const DASH_STEP: [12]fixed = [0.24, 0.24, 0.24, 0.22, 0.20, 0.18, 0.16, 0.14, 0.12, 0.10, 0.08, 0.08]
+const DASH_SUBS = 3            // substeps a tick (the longest, 0.08 m, is a run's step)
+const DASH_RECOVER = 8         // ticks he stands after it, input ignored
+const DASH_COOL = 60           // ticks from one press to the next
+const DASH_NOISE: fixed = 3.0  // the skid where it ends
+const DASH_HIST = 8            // ticks of positions kept for the afterimages
+
+struct Dash {
+    k: s32             // the slide's tick (0 on the press tick), -1 not sliding
+    dx: fixed          // its direction (a unit vector)
+    dz: fixed
+    rec: s32           // recovery ticks left
+    ready_at: s32      // the clock from which X starts one
+    start_t: s32       // the clock the last one started (-1000: none this attempt)
+    end_t: s32         // ... and ended
+    end_x: fixed       // where it ended (the skid's ring)
+    end_z: fixed
+    bump: bool         // it ended against a wall
+    cut: bool          // (this tick) the path test stopped him at a covered point
+    uncut_x: fixed     // ... and where the tick's slide had taken him
+    uncut_z: fixed
+    n: s32             // dashes this attempt
+    np: s32            // this tick's path points (the substeps' ends, in order)
+    px: [DASH_SUBS]fixed
+    pz: [DASH_SUBS]fixed
+    hist_t: [DASH_HIST]s32     // the slide's positions at the end of recent ticks (by clock)
+    hist_x: [DASH_HIST]fixed
+    hist_z: [DASH_HIST]fixed
+}
+
+var dash: Dash
+var dash_cycles: s32           // cycles the dash took this tick (its slide and its path test)
+
+// ---- F's sounds (NOTES_G.md, "Sounds for F"): dr_audio.akr replaces these
+weak fn au_dash(_dx: fixed) {}                   // the dash starts: a push-off
+weak fn au_dash_end(_bump: bool, _dx: fixed) {}  // it ends: a skid, or a thud against a wall
+weak fn au_dash_ready(_dx: fixed) {}             // it is ready again (optional, quiet)
+
+fn dash_reset() {
+    dash = Dash { k: -1, start_t: -1000, end_t: -1000 }
+    for i in 0..DASH_HIST { dash.hist_t[i] = -1000 }
+}
+
+// Every tick before the thief's input is read (hidden or not).
+fn dash_tick_start(t: s32) {
+    dash.np = 0
+    dash.cut = false
+    dash_cycles = 0
+    if dash.n > 0 && t == dash.ready_at { au_dash_ready(thief.x - cam_x) }
+}
+
+// The dash's part of the thief's tick (not hidden): starts one on a press of X when it is ready;
+// slides, or recovers. True when it owns this tick (his input does nothing else).
+fn dash_busy(inp: *Input, mv: vec2, t: s32) -> bool {
+    let c0 = cycle_count()
+    if dash.k < 0 && dash.rec <= 0 {
+        if inp.press & X == 0 || t < dash.ready_at { return false }
+        var dx = mv.x
+        var dz = mv.y
+        if dx == 0.0 && dz == 0.0 {
+            dx = sin(thief.head)
+            dz = cos(thief.head)
+        } else {
+            let m = sqrt(dx * dx + dz * dz)
+            dx = dx / m
+            dz = dz / m
+            thief.head = heading_to(dx, dz)
+        }
+        dash.dx = dx
+        dash.dz = dz
+        dash.k = 0
+        dash.start_t = t
+        dash.ready_at = t + DASH_COOL
+        dash.n += 1
+        au_dash(thief.x - cam_x)
+    }
+    if dash.k < 0 {
+        dash.rec -= 1
+        thief.moving = false
+        dash_cycles = cycle_count() - c0
+        return true
+    }
+    // the slide: three substeps, each pushed out of what is solid; held to less than half a
+    // substep, it ends (a bump)
+    let s = DASH_STEP[dash.k] / DASH_SUBS
+    var bump = false
+    for _i in 0..DASH_SUBS {
+        let p = solid_push(thief.x + dash.dx * s, thief.z + dash.dz * s, THIEF_R)
+        let mx = p.x - thief.x
+        let mz = p.y - thief.z
+        thief.x = p.x
+        thief.z = p.y
+        dash.px[dash.np] = p.x
+        dash.pz[dash.np] = p.y
+        dash.np += 1
+        fragile_touch(p.x, p.y, t)
+        if mx * mx + mz * mz < s * s / 4 {
+            bump = true
+            break
+        }
+    }
+    thief.moving = true
+    let h = t % DASH_HIST
+    dash.hist_t[h] = t
+    dash.hist_x[h] = thief.x
+    dash.hist_z[h] = thief.z
+    dash.k += 1
+    if bump || dash.k >= DASH_TICKS {
+        dash.k = -1
+        dash.rec = DASH_RECOVER
+        dash.end_t = t
+        dash.end_x = thief.x
+        dash.end_z = thief.z
+        dash.bump = bump
+        noise(thief.x, thief.z, DASH_NOISE, -1)
+        au_dash_end(bump, thief.x - cam_x)
+    }
+    dash_cycles = cycle_count() - c0
+    return true
+}
+
+fn dashing() -> bool { return dash.k >= 0 }
+
+// After the tick's fans are cast (tick(), before the test): the points of his path this tick in
+// order; at the first one a fan covers, he stops there (and the test that follows sees him).
+fn dash_path_test() {
+    if dash.np <= 1 || thief.hidden || test_no_catch { return }
+    let c0 = cycle_count()
+    for i in 0..dash.np - 1 {
+        for w in 0..room.nwatch {
+            if watcher_sees(w, dash.px[i], dash.pz[i]) {   // agent A: levels and the dark (was fan_covers)
+                dash.uncut_x = thief.x
+                dash.uncut_z = thief.z
+                thief.x = dash.px[i]
+                thief.z = dash.pz[i]
+                dash.np = i + 1
+                dash.cut = true
+                dash_cycles += cycle_count() - c0
+                return
+            }
+        }
+    }
+    dash_cycles += cycle_count() - c0
+}
+
+// ---- drawing (called from dr_view.akr's draw_people() and draw_rings())
+
+var buf_dash_fig: [1024]u32
+var buf_dash_after: [1024]u32
+var mb_dash_fig: MB            // his figure (as mb_thief), drawn through a matrix: low and leaning
+var mb_dash_after: MB          // an afterimage, in his orange, additive
+var dash_meshes: bool
+
+fn dash_meshes_init() {
+    if dash_meshes { return }
+    dash_meshes = true
+    mb_init(&mb_dash_fig, &buf_dash_fig[0], len(buf_dash_fig), 64)
+    person_mesh(&mb_dash_fig, rgb(255, 128, 32), rgb(255, 196, 150), 0, 0)
+    mb_init(&mb_dash_after, &buf_dash_after[0], len(buf_dash_after), 64)
+    person_mesh(&mb_dash_after, rgb(255, 128, 32), rgb(255, 128, 32), FACE_SEMI, BLEND_ADD)
+}
+
+// The figure at (x, z) facing h, its height scaled by sy and leaning forward by `lean` metres a
+// metre of height.
+fn dash_fig_at(m: *Mesh, x: fixed, z: fixed, h: fixed, sy: fixed, lean: fixed) {
+    var model: mat4
+    let s = sin(h)
+    let c = cos(h)
+    model[0] = vec4(c, lean * s, s, x - view_origin.x)
+    model[1] = vec4(0.0, sy, 0.0, room.floor + level_y(thief.level) - view_origin.y)   // agent A: his level
+    model[2] = vec4(-s, lean * c, c, z - view_origin.z)
+    model[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    mesh_xf(m, model)
+}
+
+// Draws the thief while he slides or recovers (true), with the slide's afterimages; false: draw
+// him as usual.
+fn dash_figure() -> bool {
+    let last = clock - 1                     // the tick the picture shows
+    let sliding = dash.k >= 0 || (dash.end_t == last && dash.end_t >= 0)
+    let recovering = !sliding && dash.rec > 0
+    if !sliding && !recovering { return false }
+    dash_meshes_init()
+    // afterimages: where he was 2, 4 and 6 ticks before, fading
+    for j in 1..4 {
+        let tt = last - j * 2
+        if tt < 0 { continue }
+        let h = tt % DASH_HIST
+        if dash.hist_t[h] != tt { continue }
+        let col = col_scale(rgb(255, 128, 32), 0.55 - fixed(j) * 0.15)
+        for q in 0..mb_dash_after.nf {
+            let f = &mb_dash_after.f[q]
+            f.col[0] = col
+            f.col[1] = col
+            f.col[2] = col
+            f.col[3] = col
+        }
+        dash_fig_at(mb_dash_after.m, dash.hist_x[h], dash.hist_z[h], thief.head, 0.8, 0.2)
+    }
+    if sliding {
+        dash_fig_at(mb_dash_fig.m, thief.x, thief.z, thief.head, 0.8, 0.2)
+    } else {
+        dash_fig_at(mb_dash_fig.m, thief.x, thief.z, thief.head, 0.85, 0.08)
+    }
+    return true
+}
+
+// The skid's ring opening to how far it carries, a puff of dust where he stopped, and a small ring
+// closing onto his feet when the dash is ready again.
+fn dash_rings() {
+    if dash.end_t >= 0 && clock - dash.end_t < 30 {
+        let p = clock - dash.end_t
+        ring_at(dash.end_x, dash.end_z, DASH_NOISE * (p + 1) / 30, rgb(140, 96, 56))
+        if p < 10 { ring_at(dash.end_x, dash.end_z, 0.3 + fixed(p) * 0.05, col_scale(rgb(200, 190, 170), 1.0 - fixed(p) / 10)) }
+    }
+    if dash.n > 0 && phase == Phase.Play && !thief.hidden {
+        let p = clock - dash.ready_at
+        if p >= 0 && p < 8 { ring_at(thief.x, thief.z, 0.9 - fixed(p) * 0.075, col_scale(rgb(255, 128, 32), 1.0 - fixed(p) / 10)) }
+    }
+}

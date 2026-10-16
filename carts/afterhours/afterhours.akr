@@ -1,8 +1,10 @@
-// After Hours: Gate 1, a greybox room that plays (DESIGN.md, "Gate 1 plan").
+// After Hours: the stealth cart (DESIGN.md): a run of rooms, each a clockwork puzzle.
 //
 // D-pad or stick: walk (silent). R held: run (loud: the ring shows how far it carries).
+// X: dash, a short committed slide (2 m; a skid where he lands; once a second; dr_dash.akr).
 // A: hide, in a hiding place (move or A again to come out). B: use the tool. L: switch tool.
-// START: restart the room. At the exit, A plays the room again.
+// START: restart the room. Keycards are picked up by walking over them; a staff door of their
+// colour opens when he walks into it.
 //
 // This file is the cart's entry point; the game is in dr_game.akr so that the tests can import
 // it with scripted input (tests/). NOTES_A.md has the runtime's rules and numbers.

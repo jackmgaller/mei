@@ -1,0 +1,112 @@
+{
+ "checks": {},
+ "assets": {
+  "qt_props": {
+   "triangles": 900,
+   "vertices": 705
+  },
+  "qt_room": {
+   "triangles": 142,
+   "vertices": 133
+  },
+  "qt_tanks": {
+   "triangles": 418,
+   "vertices": 472
+  }
+ },
+ "room_triangles": 1460,
+ "camera": {
+  "target_z": -0.841,
+  "pans": {
+   "c": [
+    0.0,
+    24.993,
+    -14.924
+   ]
+  }
+ },
+ "room_c": {
+  "tick": 3,
+  "cpu_cycles": 162733,
+  "tris": 689,
+  "tris_empty": 191,
+  "tris_dropped": 0,
+  "clears": 1,
+  "lists": 1,
+  "px_flat": 3765,
+  "px_gouraud": 15825,
+  "px_tex": 75517,
+  "px_tex_gouraud": 779,
+  "px_semi_flat": 4864,
+  "px_semi_gouraud": 0,
+  "px_semi_tex": 4741,
+  "px_semi_tex_gouraud": 0,
+  "gpu_cycles": 317697,
+  "ticks": 1,
+  "gpu_lag": 0,
+  "px_ztest": 105491,
+  "px_zfail": 28301,
+  "zclears": 1,
+  "tris_recip": 689,
+  "px_persp": 81026,
+  "persp_divs": 8005,
+  "tris_fog": 0,
+  "px_fog": 0
+ },
+ "full_c_uv_a": {
+  "tick": 3,
+  "cpu_cycles": 198476,
+  "tris": 859,
+  "tris_empty": 207,
+  "tris_dropped": 0,
+  "clears": 1,
+  "lists": 1,
+  "px_flat": 4566,
+  "px_gouraud": 15825,
+  "px_tex": 75538,
+  "px_tex_gouraud": 779,
+  "px_semi_flat": 28716,
+  "px_semi_gouraud": 0,
+  "px_semi_tex": 15054,
+  "px_semi_tex_gouraud": 0,
+  "gpu_cycles": 397019,
+  "ticks": 1,
+  "gpu_lag": 0,
+  "px_ztest": 140478,
+  "px_zfail": 41775,
+  "zclears": 1,
+  "tris_recip": 859,
+  "px_persp": 91360,
+  "persp_divs": 8920,
+  "tris_fog": 0,
+  "px_fog": 0
+ },
+ "full_c_uv_b": {
+  "tick": 3,
+  "cpu_cycles": 198324,
+  "tris": 857,
+  "tris_empty": 206,
+  "tris_dropped": 0,
+  "clears": 1,
+  "lists": 1,
+  "px_flat": 4566,
+  "px_gouraud": 15825,
+  "px_tex": 75538,
+  "px_tex_gouraud": 779,
+  "px_semi_flat": 28716,
+  "px_semi_gouraud": 0,
+  "px_semi_tex": 18755,
+  "px_semi_tex_gouraud": 0,
+  "gpu_cycles": 411767,
+  "ticks": 1,
+  "gpu_lag": 0,
+  "px_ztest": 144179,
+  "px_zfail": 41935,
+  "zclears": 1,
+  "tris_recip": 857,
+  "px_persp": 95061,
+  "persp_divs": 9196,
+  "tris_fog": 0,
+  "px_fog": 0
+ }
+}

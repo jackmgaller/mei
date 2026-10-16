@@ -9,36 +9,54 @@
 //   restarts, the total, the new bests and what the stage unlocked; A goes to the select.
 //
 // The stages are A's levels, in order (dr_levels.akr): stage n is level n. Gate 1's platform is
-// the last (B's order: level 1, then level 2 of doors once A adds it, then the platform).
+// the last (stage_def()).
 
 struct StageDef {
     name: *u8          // the stage select's line
     place: *u8         // a line under it
-    level: s32         // A's level (dr_levels.akr)
-    names: s32         // its rooms' names: ROOM_NAMES from here, one a room
+    level: s32         // A's level (dr_levels.akr): the stage's place in the list
+    save: s32          // its save slot (dr_save.akr): fixed, whatever the order
+    names: s32         // its rooms' names: ROOM_NAMES from here, one a room (-1: none)
 }
 
-// The stages while dr_levels.akr has two levels (level 1, the platform) and once it has three
-// (level 2, the stage of doors and keycards, between them). `names`: the rooms' names in
-// ROOM_NAMES when the world gives none (each room's `name`, as the_last_train, is used first).
-const STAGES_2: [2]StageDef = [
-    StageDef { name: "PLATFORM TO ROOF", place: "Up through the tower, after the last train", level: 0, names: 0 },
-    StageDef { name: "THE WAY HOME", place: "The station's platform, the long way round", level: 1, names: 5 },
-]
-const STAGES_3: [3]StageDef = [
-    StageDef { name: "PLATFORM TO ROOF", place: "Up through the tower, after the last train", level: 0, names: 0 },
-    StageDef { name: "AFTER CLOSING", place: "The store and the cinema, keycards and back again", level: 1, names: 6 },
-    StageDef { name: "THE WAY HOME", place: "The station's platform, the long way round", level: 2, names: 5 },
+// Every stage the select knows, each at A's level for it (dr_levels.akr's constants), so the
+// list's order is A's: the station, the tower, the aquarium (J's), the store, the platform. A new
+// stage is a row here with a save slot of its own. The names are placeholders (the game's title
+// and stage names are open). `names`: the rooms' names in ROOM_NAMES when the world gives none
+// (each room's `name`, as the_last_train, is used first).
+const STAGES: [5]StageDef = [
+    StageDef { name: "THE STATION", place: "The last train's platform, the gates, the passage", level: STAGE_STATION, save: 0, names: 0 },
+    StageDef { name: "THE TOWER", place: "The lobby, the trading floor, up to the roof", level: STAGE_TOWER, save: 1, names: -1 },
+    StageDef { name: "THE AQUARIUM", place: "The galleries, back of house, the tank tops", level: STAGE_AQUARIUM, save: 2, names: -1 },
+    StageDef { name: "AFTER CLOSING", place: "The store and the cinema, keycards and back again", level: STAGE_STORE, save: 3, names: -1 },
+    StageDef { name: "THE WAY HOME", place: "The station's platform, the long way round", level: PLATFORM_LEVEL, save: 4, names: 5 },
 ]
 const ROOM_NAMES: [6]*u8 = ["THE LAST TRAIN", "THE TICKET GATES", "THE PASSAGE", "THE LOBBY",
                             "THE AQUARIUM", "THE PLATFORM"]
-const STAGE_N = LEVELS              // (2 or 3: stage_def())
-const PLATFORM_STAGE = STAGE_N - 1     // Gate 1's platform: the last stage
+const STAGE_N = LEVELS
+const PLATFORM_STAGE = PLATFORM_LEVEL  // Gate 1's platform: the last stage
 
+// Stage n's row (n is A's level).
 fn stage_def(n: s32) -> *StageDef {
-    let i = clamp(n, 0, STAGE_N - 1)
-    if STAGE_N >= 3 { return &STAGES_3[i] }
-    return &STAGES_2[min(i, 1)]
+    for i in 0..len(STAGES) {
+        if STAGES[i].level == n { return &STAGES[i] }
+    }
+    return &STAGES[0]
+}
+
+// Stage n's save slot, its progress, and the save calls by stage.
+fn stage_slot(n: s32) -> s32 { return stage_def(n).save }
+fn stage_save(n: s32) -> *StageSave { return &save.stages[stage_slot(n)] }
+fn stage_unlocked(n: s32) -> bool { return n == 0 || slot_unlocked(stage_slot(n)) }
+fn stage_cleared(n: s32) -> bool { return slot_cleared(stage_slot(n)) }
+fn stage_room(n: s32, k: s32, ticks: s32) -> bool { return save_room(stage_slot(n), k, ticks) }
+fn stage_room_cleared(n: s32, k: s32) { save_room_cleared(stage_slot(n), k) }
+
+// Stage n ended (save_stage()'s bits): the stage after it in the list is unlocked.
+fn stage_end(n: s32, total_ticks: s32, restarts_n: s32) -> s32 {
+    var next = -1
+    if n + 1 < STAGE_N { next = stage_slot(n + 1) }
+    return save_stage(stage_slot(n), total_ticks, restarts_n, next)
 }
 
 const COL_TEXT = 0xEEE6E0          // rgb(224, 230, 238)
@@ -83,7 +101,9 @@ fn room_name(stage: s32, k: s32) -> *u8 {
         name_buf[i] = 0
         return &name_buf[0]
     }
-    let i = stage_def(stage).names + k
+    let first = stage_def(stage).names
+    if first < 0 { return "" }
+    let i = first + k
     if i < 0 || i >= len(ROOM_NAMES) { return "" }
     return ROOM_NAMES[i]
 }
@@ -92,11 +112,12 @@ fn room_name(stage: s32, k: s32) -> *u8 {
 // lights (lit: bit k, room k).
 fn menu_show(n: s32, lit: u32) {
     if shown != n {
-        assert(level_open_n(stage_def(n).level), "a stage's world did not open")
+        assert(world_show(n), "a stage's world did not open")
         section_read()
         shown = n
         shown_lit = 0xFFFFFFFF
     }
+    show_textures()
     let pal = section_lights_for(lit)
     if shown_lit != pal {
         section_lights(pal)
@@ -104,8 +125,46 @@ fn menu_show(n: s32, lit: u32) {
     }
 }
 
+// Opens stage n's world to draw its model, without entering a region (A's level_open_bare(): the
+// pack, its palette swatch and every region's palettes). The kit's stand-ins draw
+// palette-backed far colours, so they need no textures; copying a region's texture set (up to
+// eight 32 KB slots, about 56,000 cycles each) is what made the select's frames heavy. A world of
+// one region with textures and no stand-ins (its model draws its placements) gets its textures
+// one a frame (show_textures()), its model held back until they are in. stage_start() opens the
+// world again in full (A's level_switch()).
+var show_region: s32 = -1      // the region whose textures show_textures() is copying (-1: none)
+var show_tex: s32
+
+fn world_show(n: s32) -> bool {
+    if !level_open_bare(stage_def(n).level) { return false }
+    wp_region_loaded = -1
+    show_region = -1
+    show_tex = 0
+    if wp_region_count() == 1 && wp_region(0).texture_count > 0 {
+        var standins = true
+        for i in 0..wp_pack.w as s32 * wp_pack.h as s32 {
+            let c = wp_cell(wp_pack.i0 as s32 + i % wp_pack.w as s32, wp_pack.j0 as s32 + i / wp_pack.w as s32)
+            if c != null && c.standin_off == 0 { standins = false }
+        }
+        if !standins { show_region = 0 }
+    }
+    return true
+}
+
+// One texture a frame of the shown world's, when its model needs them.
+fn show_textures() {
+    if show_region < 0 { return }
+    if show_tex < wp_region(show_region).texture_count as s32 {
+        wp_texture_load(show_region, show_tex)
+        show_tex += 1
+    }
+}
+
+// Whether the shown world's model can be drawn (its textures in, when it needs them).
+fn show_ready() -> bool { return show_region < 0 || show_tex >= wp_region(show_region).texture_count as s32 }
+
 // The rooms of stage s the save has cleared, as a mask.
-fn saved_lit(s: s32) -> u32 { return save.stages[s].rooms }
+fn saved_lit(s: s32) -> u32 { return stage_save(s).rooms }
 
 // The model's slow turn: about 26 degrees either side of the front, over 14 s.
 fn menu_yaw() -> fixed { return sin(fixed(frames_n % 840) * (TAU / 840)) * 0.45 }
@@ -147,11 +206,11 @@ fn title_update(press: u32) {
 fn title_draw() {
     cls(VOID)
     menu_show(0, 0xFFFFFFFF)
-    section_view(160, 146, 270, menu_yaw(), -0.55, false, false, 0xFFFFFFFF)
+    if show_ready() { section_view(160, 146, 270, menu_yaw(), -0.55, false, false, 0xFFFFFFFF) }
     font_use(FONT_TITLE)
     text_c(160, 26, "AFTER HOURS", COL_WARM)
     font_use(FONT_HEAD)
-    text_c(160, 62, "TOKYO  1998", COL_DIM)
+    text_c(160, 62, "TOKYO  1990", COL_DIM)
     if (scr_t / 30) % 3 != 2 { text_c(160, 212, "PRESS START", COL_TEXT) }
     font_use(null)
     saving_mark()
@@ -171,8 +230,11 @@ fn select_begin(n: s32) {
 fn select_update(pad: u32, press: u32) {
     scr_t += 1
     if go_t >= 0 {
+        // the fade out: the stage's world opened (stage_prepare(), A's, on the press) and its
+        // first room's textures copied a frame each, so that the start's frame does not
+        let ready = stage_prepare_step()
         go_t += 1
-        if go_t >= 14 { play_stage(sel) }
+        if (go_t >= 14 && ready) || go_t >= 40 { play_stage(sel) }
         return
     }
     if press & UP != 0 && sel > 0 {
@@ -182,9 +244,12 @@ fn select_update(pad: u32, press: u32) {
         sel += 1
         au_menu_move()
     } else if press & (A | START) != 0 {
-        if stage_unlocked(sel) {
+        // L and R held: a locked stage starts too (playtesting; the save is not changed)
+        if stage_unlocked(sel) || pad & (L | R) == (L | R) {
             au_menu_ok()
             go_t = 0
+            stage_prepare(stage_def(sel).level)
+            shown = sel            // the same world, open again (bare): the model keeps its rooms
         } else {
             au_menu_deny()
         }
@@ -209,12 +274,12 @@ fn select_draw() {
     let locked = !stage_unlocked(sel)
     let lit = saved_lit(sel)
     menu_show(sel, if_u(locked, 0xFFFFFFFF, lit))
-    section_view(222, 102, 172, menu_yaw(), -0.6, true, locked, lit)
+    if show_ready() { section_view(234, 84, 150, menu_yaw(), -0.6, true, locked, lit) }
     font_use(FONT_HEAD)
     let _ = font_text(16, 10, "SELECT STAGE", COL_DIM)
     // the stages
     for i in 0..STAGE_N {
-        let y = 32 + i * 30
+        let y = 28 + i * 22
         let open = stage_unlocked(i)
         let b = &menu_buf[0]
         str_copy(b, 80, "")
@@ -224,7 +289,7 @@ fn select_draw() {
         var col = COL_DIM
         if !open { col = COL_LOCK }
         if i == sel {
-            rect(10, y + 1, 2, 12, COL_ORANGE)
+            rect(10, y + 1, 2, 20, COL_ORANGE)
             col = if_u(open, COL_TEXT, COL_DIM)
         }
         font_use(FONT_HEAD)
@@ -237,30 +302,30 @@ fn select_draw() {
             str_append(b, 80, " to open")
         } else if stage_cleared(i) {
             str_append(b, 80, "Best ")
-            str_append_ticks(b, 80, save.stages[i].best_total)
+            str_append_ticks(b, 80, stage_save(i).best_total)
             str_append(b, 80, "  restarts ")
-            str_append_int(b, 80, save.stages[i].best_restarts, 0, false)
+            str_append_int(b, 80, stage_save(i).best_restarts, 0, false)
         } else {
             str_append(b, 80, "Not cleared yet")
         }
-        let _ = font_text(31, y + 15, b, if_u(i == sel, COL_DIM, COL_FAINT))
+        let _ = font_text(31, y + 12, b, if_u(i == sel, COL_DIM, COL_FAINT))
     }
     // the hovered stage's rooms, in two columns under the model: lit when cleared, with their
     // best times
     if !locked {
         font_use(null)
-        let _ = font_text(16, 152, stage_def(sel).place, COL_FAINT)
-        rect(16, 166, 288, 1, COL_FAINT)
+        let _ = font_text(16, 146, stage_def(sel).place, COL_FAINT)
+        rect(16, 158, 288, 1, COL_FAINT)
         let half = (sec_n + 1) / 2
         for k in 0..sec_n {
             let x = if_s(k < half, 16, 170)
-            let y = 174 + (k % half) * 11
+            let y = 164 + (k % half) * 11
             let done = (lit >> k as u32) & 1 != 0
             rect(x, y + 2, 4, 4, if_u(done, COL_ORANGE, COL_FAINT))
             let _ = font_text(x + 9, y, room_name(sel, k), if_u(done, COL_TEXT, COL_DIM))
             let b = &menu_buf[0]
             str_copy(b, 80, "")
-            let t = save.stages[sel].room_best[k]
+            let t = stage_save(sel).room_best[k]
             if t > 0 { str_append_ticks(b, 80, t) } else { str_append(b, 80, "-") }
             let _ = font_text_align(x + 134, y, b, if_u(done, COL_WARM, COL_FAINT), ALIGN_RIGHT)
         }
@@ -291,11 +356,12 @@ fn end_begin() {
     // rooms in a line saved each room's as it was left)
     if exit_door != EXIT_LINE && exit_door >= 0 {
         for k in 0..min(run_length, SAVE_ROOMS) {
-            if (run_visited >> k as u32) & 1 != 0 && room_time[k] > 0 { let _ = save_room(end_stage, k, room_time[k]) }
+            if (run_visited >> k as u32) & 1 != 0 && room_time[k] > 0 { let _ = stage_room(end_stage, k, room_time[k]) }
         }
     }
-    end_flags = save_stage(end_stage, total, run_restarts(), STAGE_N)
+    end_flags = stage_end(end_stage, total, run_restarts())
     section_read()
+    show_region = -1               // the stage's own world, open in full
     shown = end_stage
     shown_lit = 0xFFFFFFFF
     section_lights(0xFFFFFFFF)
@@ -334,7 +400,7 @@ fn end_draw() {
         str_copy(b, 80, "")
         str_append_int(b, 80, room_restarts[k], 0, false)
         let _ = font_text_align(272, y, b, COL_DIM, ALIGN_RIGHT)
-        if room_time[k] == save.stages[end_stage].room_best[k] && save.stages[end_stage].runs > 1 {
+        if room_time[k] == stage_save(end_stage).room_best[k] && stage_save(end_stage).runs > 1 {
             rect(48, y + 2, 4, 4, COL_ORANGE)
         }
     }
@@ -351,7 +417,7 @@ fn end_draw() {
     str_append_int(b, 80, run_restarts(), 0, false)
     let _ = font_text_align(272, yt, b, COL_DIM, ALIGN_RIGHT)
     var y = yt + 18
-    if end_flags & 1 != 0 && save.stages[end_stage].runs > 1 {
+    if end_flags & 1 != 0 && stage_save(end_stage).runs > 1 {
         text_c(160, y, "NEW BEST TIME", COL_ORANGE)
         y += 14
     }

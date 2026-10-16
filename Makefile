@@ -96,6 +96,7 @@ test-world-carts: $(B)/carts/worldview.mei $(B)/carts/garden.mei $(B)/carts/afte
 	MEIC=$(B)/meic RUN=$(B)/mei-headless WORLDS=$(B)/cart-worlds/worldview carts/worldview/tests/check.sh
 	MEIC=$(B)/meic RUN=$(B)/mei-headless WORLDS=$(B)/cart-worlds/garden carts/garden/tests/check.sh
 	MEIC=$(B)/meic RUN=$(B)/mei-headless WORLDS=$(B)/cart-worlds/afterhours carts/afterhours/tests/check.sh
+	MEIC=$(B)/meic RUN=$(B)/mei-headless WORLDS=$(B)/cart-worlds/afterhours carts/afterhours/tests/trans/check.sh
 	B=$(B) PYTHONDONTWRITEBYTECODE=1 tests/world_carts.sh
 test-carts: test-world-carts
 

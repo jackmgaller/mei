@@ -1,0 +1,27 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "trading",
+ "placements": [
+  {
+   "id": "tf_floor",
+   "asset": "tf_floor",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "tf_floor_col"
+  },
+  {
+   "id": "tf_glass",
+   "asset": "tf_glass",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

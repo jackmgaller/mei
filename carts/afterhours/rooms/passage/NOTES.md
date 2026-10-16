@@ -104,6 +104,25 @@ hard failures and 0 over thresholds in 81 views. The cart's 25 scenarios pass on
 - The usual: flush faces where lintels meet their walls and a phone stands on its shelf, fixed by
   insetting 1 cm.
 
+## Stage change (2026-10-15): the way out is the station's stair to the street
+
+Stage 1 is now the station alone, so the east doorway leads up to the street. Only what is seen
+beyond it changed (`street_stair()` in `dress_passage.py`; the play file and the puzzle did not):
+
+- **The stair up to the street**: 12 wet steps rising east from the doorway, its stairwell's
+  wall and handrail, its front cut at 1 m like the passage's; a few streaks of rain coming down
+  it (additive, under the section's ceiling).
+- **The street's cold light** (`street`, blue-white, soft shadows through the doorway) in place
+  of the lobby's warm one; the floor inside the doorway painted wet, with the street's light in
+  it.
+- **The exit pictogram** (a figure running out through a doorway, on green) on a flag sign under
+  the lintel. Its glow on the floor is painted only (a `paint` light): the kit's 16 are taken.
+
+`r3_passage` is now 792 triangles (the room 1,038 of 2,500). The room alone draws 593–613
+triangles, about 136,000 CPU and 262,000 GPU cycles. The game's pan stops with the doorway at
+the picture's edge, so in play only the flag, the cold light and the wet floor show; the stair
+reads in the pull-back and in `shots/passage_60_beyond.png` (`capture.py passage --beyond 9`).
+
 ## For the level lead
 
 `make_level1.py`'s `ROOMS` entry for the passage: asset folder **`rooms/passage`** (the greybox

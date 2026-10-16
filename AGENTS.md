@@ -278,8 +278,12 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/mechexpo/concepts/gamma_c/make_gamma_c.py` | Gamma's look concept C (military surplus), not packed: `gamma_c_{idle,ray,shield,flare,ground_zero,rest}.asset.json`, `gamma_c_paint_{1,2}.asset.json`, `cameras.json`, `asset-preview.json` (it imports `make_hero.py`, `make_beam.py` and `make_tank.py`); `render_gamma_c.py` beside it draws the review sheets with Mei into a folder given with `-o` |
 | `examples/assets/lab/tank_nook/make_tank_nook.py` | `tank_nook.asset.json` beside it: the Asset Kit's point-light example, an aquarium corner lit by three coloured lights (docs/ASSETKIT.md, "Point lights") |
 | `carts/afterhours/art/make_front_art.py` | After Hours' front-end art (agent E): `art/front_title.fnt` (Belleza) and `art/front_head.fnt` (Sofia Sans Condensed) in texture slot 7, palettes 250-251; `art/save_icon.bin`, the save's title and icon (`tools/mei_icon.py`); `carts/afterhours/front_art.akr`, their embeds (`--preview DIR`: the fonts' atlases and the icon) |
+| `carts/afterhours/rooms/*/make_*.py` | Each room's greybox (`greybox/`), play file (`NAME.play.json`: walls, watchers, lights, doors) and greybox placements, written by the stage's level lead; helpers `levels/s2room.py`, `levels/greybox.py` and, for the aquarium, `levels/aquarium/aqroom.py`. A rerun keeps a builder's `NAME.placements.json` |
+| `carts/afterhours/rooms/*/dress_*.py` | Each dressed room's recipes, textures and, with `--placements`, `NAME.placements.json` (`rooms/aquarium/make_aquarium.py` for the ocean gallery); helpers `rooms/arrival/dresskit.py`, `rooms/passage/diorama.py`, `rooms/corridor/s2dress.py`, `rooms/aq_hall/aqdress.py`, `rooms/aq_quar/aqdress.py`; the rooms' `capture.py` scripts render their shots |
+| `carts/afterhours/levels/*/make_*.py` | Each stage's world recipe (`*.world.json`) from its rooms, with the texture slot sets (`levels/assemble.py`); `solutions.py` beside it writes `tests/tapes/*_solution.akr` (`levels/rules_model.py`, `levels/planner.py`); `sketch.py` the layout sheet (`levels/layout_sheet.py`). Also `rooms/platform/make_platform.py` and `solutions.py` |
+| `carts/afterhours/water/wateranim.py` | The moving water's tiles (caustic net, glints, drip rings, rain) as animated textures, and each wet room's overlay recipe; the dress scripts call it (`water/capture.py` renders its strips) |
 
-The last thirty-one are run by their path from the repository root, not as `tools/NAME.py`; the
+The last thirty-five are run by their path from the repository root, not as `tools/NAME.py`; the
 garden's two audio generators share `carts/garden/audio/garden_dsp.py`, and Mech Expo's models
 `carts/mechexpo/models/hero/mxpaint.py`, which write nothing.
 

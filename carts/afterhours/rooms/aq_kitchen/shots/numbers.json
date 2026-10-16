@@ -1,0 +1,84 @@
+{
+ "checks": {},
+ "assets": {
+  "ak_glass": {
+   "triangles": 12,
+   "vertices": 16
+  },
+  "ak_props": {
+   "triangles": 794,
+   "vertices": 656
+  },
+  "ak_room": {
+   "triangles": 240,
+   "vertices": 206
+  }
+ },
+ "room_triangles": 1046,
+ "camera": {
+  "target_z": -0.841,
+  "pans": {
+   "c": [
+    0.0,
+    24.993,
+    -14.924
+   ]
+  }
+ },
+ "room_c": {
+  "tick": 3,
+  "cpu_cycles": 120500,
+  "tris": 587,
+  "tris_empty": 87,
+  "tris_dropped": 0,
+  "clears": 1,
+  "lists": 1,
+  "px_flat": 660,
+  "px_gouraud": 19177,
+  "px_tex": 74885,
+  "px_tex_gouraud": 2001,
+  "px_semi_flat": 1420,
+  "px_semi_gouraud": 0,
+  "px_semi_tex": 91,
+  "px_semi_tex_gouraud": 0,
+  "gpu_cycles": 289989,
+  "ticks": 1,
+  "gpu_lag": 0,
+  "px_ztest": 98234,
+  "px_zfail": 28037,
+  "zclears": 1,
+  "tris_recip": 587,
+  "px_persp": 76977,
+  "persp_divs": 7472,
+  "tris_fog": 0,
+  "px_fog": 0
+ },
+ "full_c": {
+  "tick": 3,
+  "cpu_cycles": 150977,
+  "tris": 735,
+  "tris_empty": 105,
+  "tris_dropped": 0,
+  "clears": 1,
+  "lists": 1,
+  "px_flat": 1414,
+  "px_gouraud": 19177,
+  "px_tex": 74903,
+  "px_tex_gouraud": 2001,
+  "px_semi_flat": 8124,
+  "px_semi_gouraud": 0,
+  "px_semi_tex": 91,
+  "px_semi_tex_gouraud": 0,
+  "gpu_cycles": 312599,
+  "ticks": 1,
+  "gpu_lag": 0,
+  "px_ztest": 105710,
+  "px_zfail": 29496,
+  "zclears": 1,
+  "tris_recip": 735,
+  "px_persp": 76995,
+  "persp_divs": 7480,
+  "tris_fog": 0,
+  "px_fog": 0
+ }
+}

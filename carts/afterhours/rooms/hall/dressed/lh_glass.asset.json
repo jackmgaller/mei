@@ -1,0 +1,121 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "lh_glass",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 40
+ },
+ "materials": {
+  "glass": {
+   "color": "#a8c8d4",
+   "blend": "half"
+  },
+  "glass_edge": {
+   "color": "#d0e4ec"
+  },
+  "gold": {
+   "color": "#e0bc6c",
+   "texture": {
+    "image": "art/lh_name.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "glass_w",
+   "op": "box",
+   "size": [
+    6.0,
+    0.93,
+    0.07
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     -8.0,
+     0.535,
+     0.125
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ],
+   "faces": {
+    "top": "glass_edge"
+   }
+  },
+  {
+   "id": "glass_e",
+   "op": "box",
+   "size": [
+    0.07,
+    0.93,
+    4.7
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     3.075,
+     0.535,
+     -2.15
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "glass_edge"
+   }
+  },
+  {
+   "id": "name",
+   "op": "mesh",
+   "material": "gold",
+   "vertices": [
+    [
+     -10.3,
+     0.72,
+     0.055
+    ],
+    [
+     -5.7,
+     0.72,
+     0.055
+    ],
+    [
+     -5.7,
+     0.42,
+     0.055
+    ],
+    [
+     -10.3,
+     0.42,
+     0.055
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  }
+ ],
+ "lighting": {
+  "bake": false
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

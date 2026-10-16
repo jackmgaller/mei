@@ -1,5 +1,7 @@
 // The save (agent E; docs/MEMCARD.md): one small save on the memory card, save number 0, with
-// each stage's progress: cleared, unlocked, the rooms ever cleared, each room's best clearing
+// each stage's progress, by the stage's save slot (StageDef.save in dr_menu.akr: 0 the station,
+// 1 the tower, 2 the aquarium, 3 the store, 4 the platform; a slot never changes when stages are
+// inserted or reordered): cleared, unlocked, the rooms ever cleared, each room's best clearing
 // time, the stage's best total (every attempt's ticks, as the end line counts it) and its fewest
 // restarts. 424 bytes: 2 blocks. Read once at boot (the card answers at once); written in the
 // background (save_flush() starts a write when something changed and the card is idle, so a
@@ -9,7 +11,7 @@
 // several KB a room (DESIGN.md: "the best tapes are saved to the memory card"; a later version).
 
 const SAVE_MAGIC: u32 = 0x30534841     // "AHS0"
-const SAVE_VERSION: u32 = 1
+const SAVE_VERSION: u32 = 2           // 2: by save slot (1 was by the stage's place in the list)
 const SAVE_NUM = 0
 const SAVE_STAGES = 8
 const SAVE_ROOMS = 8
@@ -59,10 +61,10 @@ fn save_boot() {
     }
 }
 
-fn stage_unlocked(s: s32) -> bool { return s == 0 || save.stages[s].flags & ST_UNLOCKED != 0 }
-fn stage_cleared(s: s32) -> bool { return save.stages[s].flags & ST_CLEARED != 0 }
+fn slot_unlocked(s: s32) -> bool { return s == 0 || save.stages[s].flags & ST_UNLOCKED != 0 }
+fn slot_cleared(s: s32) -> bool { return save.stages[s].flags & ST_CLEARED != 0 }
 
-// Room k of stage s cleared in `ticks`: its bit, and its best time. True when it is a new best.
+// Room k of slot s cleared in `ticks`: its bit, and its best time. True when it is a new best.
 fn save_room(s: s32, k: s32, ticks: s32) -> bool {
     if s < 0 || s >= SAVE_STAGES || k < 0 || k >= SAVE_ROOMS { return false }
     let st = &save.stages[s]
@@ -76,16 +78,17 @@ fn save_room(s: s32, k: s32, ticks: s32) -> bool {
     return best
 }
 
-// Room k of stage s left by a way out (a stage of doors): its bit only.
+// Room k of slot s left by a way out (a stage of doors): its bit only.
 fn save_room_cleared(s: s32, k: s32) {
     if s < 0 || s >= SAVE_STAGES || k < 0 || k >= SAVE_ROOMS { return }
     save.stages[s].rooms |= (1 as u32) << k as u32
     save_dirty = true
 }
 
-// Stage s ended: cleared, its totals, the next stage unlocked. Bit 0 of the result: a new best
-// total; bit 1: fewer restarts; bit 2: the next stage was unlocked by it.
-fn save_stage(s: s32, total_ticks: s32, restarts_n: s32, stages: s32) -> s32 {
+// The stage in slot s ended: cleared, its totals, the next stage (slot `next`, -1: none)
+// unlocked. Bit 0 of the result: a new best total; bit 1: fewer restarts; bit 2: the next stage
+// was unlocked by it.
+fn save_stage(s: s32, total_ticks: s32, restarts_n: s32, next: s32) -> s32 {
     if s < 0 || s >= SAVE_STAGES { return 0 }
     let st = &save.stages[s]
     var r = 0
@@ -99,8 +102,8 @@ fn save_stage(s: s32, total_ticks: s32, restarts_n: s32, stages: s32) -> s32 {
         st.best_restarts = restarts_n
         r |= 2
     }
-    if s + 1 < min(stages, SAVE_STAGES) && save.stages[s + 1].flags & ST_UNLOCKED == 0 {
-        save.stages[s + 1].flags |= ST_UNLOCKED
+    if next >= 0 && next < SAVE_STAGES && save.stages[next].flags & ST_UNLOCKED == 0 {
+        save.stages[next].flags |= ST_UNLOCKED
         r |= 4
     }
     save_dirty = true

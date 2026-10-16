@@ -1,0 +1,397 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "aq_kitchen",
+ "entities": [
+  {
+   "id": "ak_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "name": "the_fish_kitchen",
+    "entry": "ak_spawn_plant",
+    "size": [
+     13.5,
+     2.4,
+     8.5
+    ]
+   }
+  },
+  {
+   "id": "ak_spawn_plant",
+   "type": "spawn",
+   "position": [
+    -5.625,
+    0,
+    -2.6
+   ],
+   "params": {
+    "yaw": 90
+   }
+  },
+  {
+   "id": "ak_door_plant",
+   "type": "door",
+   "position": [
+    -6.625,
+    0,
+    -2.6
+   ],
+   "yaw": 90,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "ak_spawn_plant",
+    "to": "ap_door_kitchen"
+   }
+  },
+  {
+   "id": "ak_spawn_tops",
+   "type": "spawn",
+   "position": [
+    4.4,
+    0,
+    3.125
+   ],
+   "params": {
+    "yaw": 180
+   }
+  },
+  {
+   "id": "ak_door_tops",
+   "type": "door",
+   "position": [
+    4.4,
+    0,
+    4.125
+   ],
+   "yaw": 180,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "ak_spawn_tops",
+    "to": "at_door_kitchen"
+   }
+  },
+  {
+   "id": "ak_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -4.125
+   ],
+   "params": {
+    "size": [
+     13.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "ak_wall_back_0",
+   "type": "wall",
+   "position": [
+    -1.475,
+    0,
+    4.125
+   ],
+   "params": {
+    "size": [
+     10.55,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "ak_wall_back_1",
+   "type": "wall",
+   "position": [
+    5.875,
+    0,
+    4.125
+   ],
+   "params": {
+    "size": [
+     1.75,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "ak_wall_end_w_0",
+   "type": "wall",
+   "position": [
+    -6.625,
+    0,
+    -3.6
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.8
+    ]
+   }
+  },
+  {
+   "id": "ak_wall_end_w_1",
+   "type": "wall",
+   "position": [
+    -6.625,
+    0,
+    1.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     6.0
+    ]
+   }
+  },
+  {
+   "id": "ak_wall_end_e_0",
+   "type": "wall",
+   "position": [
+    6.625,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     8.0
+    ]
+   }
+  },
+  {
+   "id": "ak_wall_island",
+   "type": "wall",
+   "position": [
+    -0.5,
+    0,
+    -0.5
+   ],
+   "params": {
+    "size": [
+     5.0,
+     0.9,
+     1.4
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "ak_wall_sinks",
+   "type": "wall",
+   "position": [
+    -4.0,
+    0,
+    3.65
+   ],
+   "params": {
+    "size": [
+     5.0,
+     0.9,
+     0.7
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "ak_wall_freezer",
+   "type": "wall",
+   "position": [
+    -5.55,
+    0,
+    1.8
+   ],
+   "params": {
+    "size": [
+     1.9,
+     2.4,
+     2.4
+    ]
+   }
+  },
+  {
+   "id": "ak_wall_feed_tank",
+   "type": "wall",
+   "position": [
+    4.7,
+    0,
+    1.5
+   ],
+   "params": {
+    "size": [
+     1.8,
+     1.2,
+     1.2
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "ak_wall_shelves",
+   "type": "wall",
+   "position": [
+    6.15,
+    0,
+    -1.8
+   ],
+   "params": {
+    "size": [
+     0.7,
+     2.4,
+     3.6
+    ]
+   }
+  },
+  {
+   "id": "ak_hide_freezer",
+   "type": "hide_spot",
+   "position": [
+    -4.2,
+    0,
+    1.8
+   ],
+   "params": {
+    "size": [
+     0.8,
+     1.7,
+     1.2
+    ]
+   }
+  },
+  {
+   "id": "ak_fragile_buckets_0",
+   "type": "fragile",
+   "position": [
+    -0.6,
+    0,
+    -2.3
+   ],
+   "params": {
+    "radius": 0.35,
+    "noise": 6.0
+   }
+  },
+  {
+   "id": "ak_fragile_buckets_1",
+   "type": "fragile",
+   "position": [
+    2.6,
+    0,
+    -1.6
+   ],
+   "params": {
+    "radius": 0.35,
+    "noise": 6.0
+   }
+  },
+  {
+   "id": "ak_fragile_buckets_2",
+   "type": "fragile",
+   "position": [
+    1.4,
+    0,
+    3.1
+   ],
+   "params": {
+    "radius": 0.35,
+    "noise": 6.0
+   }
+  },
+  {
+   "id": "ak_wp_cook_se",
+   "type": "waypoint",
+   "position": [
+    3.0,
+    0,
+    -2.4
+   ],
+   "params": {
+    "next": "ak_wp_cook_ne",
+    "wait": 30,
+    "look": 0
+   }
+  },
+  {
+   "id": "ak_wp_cook_ne",
+   "type": "waypoint",
+   "position": [
+    3.0,
+    0,
+    1.2
+   ],
+   "params": {
+    "next": "ak_wp_cook_nw",
+    "wait": 0,
+    "look": 270
+   }
+  },
+  {
+   "id": "ak_wp_cook_nw",
+   "type": "waypoint",
+   "position": [
+    -4.0,
+    0,
+    1.2
+   ],
+   "params": {
+    "next": "ak_wp_cook_sw",
+    "wait": 30,
+    "look": 180
+   }
+  },
+  {
+   "id": "ak_wp_cook_sw",
+   "type": "waypoint",
+   "position": [
+    -4.0,
+    0,
+    -2.4
+   ],
+   "params": {
+    "next": "ak_wp_cook_se",
+    "wait": 0,
+    "look": 90
+   }
+  },
+  {
+   "id": "ak_guard_cook",
+   "type": "guard",
+   "position": [
+    -1.5,
+    0,
+    -2.4
+   ],
+   "yaw": 90.0,
+   "params": {
+    "kind": "patrol",
+    "route": "ak_wp_cook_se",
+    "speed": 1.0,
+    "sight": 5.0,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 200
+   }
+  }
+ ],
+ "paths": {}
+}

@@ -1,0 +1,37 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "aq_hall",
+ "placements": [
+  {
+   "id": "ah_room",
+   "asset": "ah_room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "ah_room_col"
+  },
+  {
+   "id": "ah_props",
+   "asset": "ah_props",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "ah_wwater",
+   "asset": "ah_wwater",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

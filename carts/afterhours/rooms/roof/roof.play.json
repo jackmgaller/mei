@@ -1,0 +1,330 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "roof",
+ "entities": [
+  {
+   "id": "rf_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "name": "the_roof",
+    "entry": "rf_spawn_private",
+    "size": [
+     22.5,
+     2.4,
+     9.5
+    ]
+   }
+  },
+  {
+   "id": "rf_spawn_private",
+   "type": "spawn",
+   "position": [
+    10.125,
+    0,
+    3.0
+   ],
+   "params": {
+    "yaw": 270
+   }
+  },
+  {
+   "id": "rf_door_private",
+   "type": "door",
+   "position": [
+    11.125,
+    0,
+    3.0
+   ],
+   "yaw": 270,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "rf_spawn_private",
+    "to": "nf_door_up"
+   }
+  },
+  {
+   "id": "rf_spawn_stair",
+   "type": "spawn",
+   "position": [
+    -6.2,
+    0,
+    1.7
+   ],
+   "params": {
+    "yaw": 270
+   }
+  },
+  {
+   "id": "rf_door_stair",
+   "type": "door",
+   "position": [
+    -5.2,
+    0,
+    1.7
+   ],
+   "yaw": 270,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "rf_spawn_stair",
+    "to": "lh_door_stair"
+   }
+  },
+  {
+   "id": "rf_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -4.625
+   ],
+   "params": {
+    "size": [
+     22.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "rf_wall_back_0",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    4.625
+   ],
+   "params": {
+    "size": [
+     22.5,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "rf_wall_end_w_0",
+   "type": "wall",
+   "position": [
+    -11.125,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     9.0
+    ]
+   }
+  },
+  {
+   "id": "rf_wall_end_e_0",
+   "type": "wall",
+   "position": [
+    11.125,
+    0,
+    -1.05
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     6.9
+    ]
+   }
+  },
+  {
+   "id": "rf_wall_end_e_1",
+   "type": "wall",
+   "position": [
+    11.125,
+    0,
+    4.05
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.9
+    ]
+   }
+  },
+  {
+   "id": "rf_wall_motor_room",
+   "type": "wall",
+   "position": [
+    -1.0,
+    0,
+    2.35
+   ],
+   "params": {
+    "size": [
+     8.0,
+     2.4,
+     4.3
+    ]
+   }
+  },
+  {
+   "id": "rf_wall_tank_e",
+   "type": "wall",
+   "position": [
+    6.0,
+    0,
+    3.2
+   ],
+   "params": {
+    "size": [
+     1.6,
+     2.4,
+     1.6
+    ]
+   }
+  },
+  {
+   "id": "rf_wall_plant_a",
+   "type": "wall",
+   "position": [
+    2.1,
+    0,
+    -2.3
+   ],
+   "params": {
+    "size": [
+     1.4,
+     1.6,
+     1.4
+    ]
+   }
+  },
+  {
+   "id": "rf_wall_skylight",
+   "type": "wall",
+   "position": [
+    -1.9,
+    0,
+    -2.2
+   ],
+   "params": {
+    "size": [
+     1.4,
+     1.2,
+     0.8
+    ]
+   }
+  },
+  {
+   "id": "rf_wall_plant_b",
+   "type": "wall",
+   "position": [
+    -5.95,
+    0,
+    -2.875
+   ],
+   "params": {
+    "size": [
+     1.9,
+     1.6,
+     1.75
+    ]
+   }
+  },
+  {
+   "id": "rf_wall_tank_w",
+   "type": "wall",
+   "position": [
+    -9.0,
+    0,
+    -0.4
+   ],
+   "params": {
+    "size": [
+     1.6,
+     2.4,
+     1.6
+    ]
+   }
+  },
+  {
+   "id": "rf_camera_light",
+   "type": "guard",
+   "position": [
+    -1.0,
+    2.3,
+    -0.1
+   ],
+   "params": {
+    "kind": "camera",
+    "look_a": 95,
+    "look_b": 265,
+    "hold": 40,
+    "turn": 360,
+    "phase": 0,
+    "sight": 12.0,
+    "fov": 10
+   }
+  },
+  {
+   "id": "rf_wp_west_n",
+   "type": "waypoint",
+   "position": [
+    -7.0,
+    0,
+    3.6
+   ],
+   "params": {
+    "next": "rf_wp_west_s",
+    "wait": 120,
+    "look": 180
+   }
+  },
+  {
+   "id": "rf_wp_west_s",
+   "type": "waypoint",
+   "position": [
+    -7.2,
+    0,
+    -0.6
+   ],
+   "params": {
+    "next": "rf_wp_west_n",
+    "wait": 150,
+    "look": 0
+   }
+  },
+  {
+   "id": "rf_guard_west",
+   "type": "guard",
+   "position": [
+    -7.0,
+    0,
+    3.6
+   ],
+   "yaw": 0.0,
+   "params": {
+    "kind": "patrol",
+    "route": "rf_wp_west_n",
+    "speed": 0.8,
+    "sight": 5.0,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 200
+   }
+  }
+ ],
+ "paths": {}
+}

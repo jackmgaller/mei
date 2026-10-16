@@ -1,0 +1,47 @@
+// Written by carts/afterhours/levels/station/solutions.py - do not edit; change the plans there.
+// The station's solution tapes (stage 1, agent B's), one per room, each from that room's clock 0.
+// Spans as dr_tape.akr describes them (ticks, buttons held, the stick). Each reaches its room's
+// exit unseen. Drafted on a model of the rules (levels/rules_model.py) and checked in the cart;
+// if a room, its watchers or the rules change, redraft them and check again.
+
+// Room 1, the last train. The model clears it on tick 384.
+const SOLUTION_STATION_ARRIVAL: [5]Span = [
+    Span { n: 52, pad: 0, sx: 126, sy: -18 },
+    Span { n: 1, pad: 0, sx: 104, sy: -68 },
+    Span { n: 235, pad: 0, sx: 0, sy: 0 },
+    Span { n: 72, pad: 0, sx: 126, sy: -15 },
+    Span { n: 55, pad: 0, sx: 126, sy: -17 },
+]
+
+// Room 2, the ticket gates. The model clears it on tick 1507.
+const SOLUTION_STATION_GATES: [12]Span = [
+    Span { n: 38, pad: 0, sx: -19, sy: 126 },
+    Span { n: 112, pad: 0, sx: -20, sy: 125 },
+    Span { n: 1, pad: 0, sx: -46, sy: 95 },
+    Span { n: 20, pad: 0, sx: 0, sy: 127 },
+    Span { n: 1, pad: A, sx: 0, sy: 0 },
+    Span { n: 984, pad: 0, sx: 0, sy: 0 },
+    Span { n: 20, pad: 0, sx: 0, sy: -127 },
+    Span { n: 1, pad: 0, sx: -1, sy: -126 },
+    Span { n: 156, pad: 0, sx: 72, sy: -104 },
+    Span { n: 50, pad: 0, sx: 127, sy: 1 },
+    Span { n: 65, pad: 0, sx: 126, sy: -13 },
+    Span { n: 90, pad: 0, sx: 126, sy: -14 },
+]
+
+// Room 3, the passage. The model clears it on tick 936.
+const SOLUTION_STATION_PASSAGE: [13]Span = [
+    Span { n: 88, pad: 0, sx: 125, sy: -22 },
+    Span { n: 101, pad: 0, sx: 125, sy: -23 },
+    Span { n: 1, pad: 0, sx: 59, sy: -58 },
+    Span { n: 61, pad: 0, sx: 0, sy: 0 },
+    Span { n: 56, pad: 0, sx: 127, sy: 10 },
+    Span { n: 2, pad: 0, sx: 127, sy: 9 },
+    Span { n: 3, pad: 0, sx: 127, sy: 8 },
+    Span { n: 23, pad: 0, sx: 127, sy: 7 },
+    Span { n: 109, pad: 0, sx: 127, sy: 8 },
+    Span { n: 1, pad: 0, sx: -11, sy: 63 },
+    Span { n: 346, pad: 0, sx: 0, sy: 0 },
+    Span { n: 28, pad: 0, sx: 127, sy: -6 },
+    Span { n: 148, pad: 0, sx: 127, sy: -7 },
+]

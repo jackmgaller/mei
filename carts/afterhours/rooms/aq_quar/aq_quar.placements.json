@@ -1,0 +1,47 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "aq_quar",
+ "placements": [
+  {
+   "id": "qt_room",
+   "asset": "qt_room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "qt_room_col"
+  },
+  {
+   "id": "qt_props",
+   "asset": "qt_props",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "qt_tanks",
+   "asset": "qt_tanks",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "qt_wwater",
+   "asset": "qt_wwater",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

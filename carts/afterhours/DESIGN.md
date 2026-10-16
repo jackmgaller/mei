@@ -7,10 +7,11 @@ the [open questions](#open-questions) are listed at the end. When the MVP starts
 
 ## The game
 
-A three-quarter-view stealth game set in a Tokyo complex at night, in the late 90s. A run goes
-through one continuous chain of places. A rooftop shrine leads into an aquarium; the aquarium's
-service corridor comes out behind a cinema screen; the cinema lets out into a department store,
-the department store's basement into an underground mall, and the mall onto a subway platform.
+A three-quarter-view stealth game set in a Tokyo complex at night, in 1990, at the height of the
+asset bubble. A run goes through one continuous chain of places. A rooftop shrine leads into an
+aquarium; the aquarium's service corridor comes out behind a cinema screen; the cinema lets out
+into a department store, the department store's basement into an underground mall, and the mall
+onto a subway platform.
 Each place is one room: a small, finished world that is also a clockwork puzzle. Guards and
 cameras move on fixed routes with their sight cones drawn on the floor, and being seen sends you
 back to the room's door at once.
@@ -48,18 +49,51 @@ replayable from their inputs, so ghosts and speedruns come free.
 | 2026-10-15 | Next | Smoother transitions between rooms, basic sounds and music; then stage 2 starts without waiting |
 | 2026-10-15 | Menus | A stage select early on. An unlocked stage shows an isometric, simplified model of the space before you pick it; perhaps later usable at any time |
 | 2026-10-15 | Stage 2 | Keycards and backtracking |
+| 2026-10-15 | The premise | A bubble-era bureaucrat assessing properties for tax; the companies hide how big their buildings really are and keep him out with guards ([The premise](#the-premise-decided-2026-10-15)) |
+| 2026-10-15 | Era | 1990, the height of the asset bubble; the title screen says TOKYO 1990 |
+| 2026-10-15 | Title | After Hours is to be replaced (it recalls the film); a new title is open |
+| 2026-10-15 | One place per stage | Each stage is one self-contained place: one property to assess. Stage 1 (station to roof) is split in two: the station (platform, ticket gates, passage) and the tower (its lobby, the aquarium on its roof, and new rooms between). The department store follows |
+| 2026-10-15 | An aquarium stage | The aquarium becomes a stage of its own, a whole aquarium as one property; the sketched aquarium room moves into it, and the tower gets a top of its own. Its ideas: depth (8-10 rooms, some re-entered on a walkway above where you crossed below), dark galleries lit only by the tanks, and narrow walkways above the water |
+| 2026-10-15 | The transition | H's pan at the game's own scale, the next room joined at its door; rooms a door joins get separate texture slots so both stay textured (no pop) |
+| 2026-10-15 | Layout sketches first | Before a stage is fully implemented, its lead shows the owner a rough layout sheet (a section of the place and a plan of each room, boxes and lines) and waits for the go-ahead |
+| 2026-10-15 | Layouts approved | The station (the three dressed rooms, ending at the station's stair to the street), the aquarium (J's sheet, 8 rooms, 10 legs) and the richer tower (one lift and stair core, six legs over five rooms, the lift hall crossed twice, the ninth floor reached only by hidden stairs) |
+| 2026-10-15 | The HUD's room number | Keep "ROOM n" by the room's place in the section, not names: in stage 2 the jump from ROOM 1 to ROOM 3 is a hint that a room lies behind a locked door |
 | 2026-10-15 | Gentler | Caught only when a cone covers the thief's centre; one new idea per room; slower guards, shorter cones and fewer watchers in early rooms |
 
 ## Setting: one complex, end to end
 
-Late-90s Tokyo. Terminal stations grew department stores on top and shopping streets underneath.
+Tokyo, 1990. Terminal stations grew department stores on top and shopping streets underneath.
 Office towers carry an aquarium or a planetarium on the roof. A department store keeps a shrine on
 its roof, and a cinema sits on the eighth floor of a mall. From inside, these read as one
 building with no edges, and that is what a run shows.
 
-Every complex in the game is fictional, but built from places of the kind that existed. The
-bubble stays in the background: much of this was built at its height, and some of it is
-half-empty by 1998.
+Every complex in the game is fictional, but built from places of the kind that existed, at the
+height of the bubble that paid for them.
+
+## The premise (decided 2026-10-15)
+
+**He is a tax assessor.** A ward office bureaucrat whose job is to assess what a property is
+worth, so it can be taxed exactly. It is the asset bubble, and the companies have built far more
+than they declared: floors that are not on the plans, a cinema that turns out to open into a
+mall, a station, a room on a ninth floor that officially does not exist. To assess a place he has
+to see all of it, so he goes through every room. The companies do not want him there, so they
+have security guards. He comes after hours, when only the guards are left.
+
+What follows from it (proposals, not yet decided):
+
+- **The HUD's room numbers are the declared plan.** A gap in them (ROOM 1, then ROOM 3) is a
+  room that is not on the books, behind a locked door.
+- **The rank screen is his assessment:** an official form with a red hanko, the declared floor
+  area against what he found, and the tax owed in bubble-era yen; time and restarts in the
+  margin.
+- **Undeclared rooms off the main route** are optional finds that raise the assessment: the
+  stages' secrets, and a reason to replay.
+- **The stage select's model is his survey drawing:** rooms not yet seen are blanks or dashed
+  outlines from the official plans, filled in as he finds them.
+- **Tools from the job:** a measuring tape, a clipboard, a camera for evidence; the mascot suit
+  is a disguise found on site.
+- **The true size is the payoff,** shown on the assessment, not in every transition (the owner
+  finds the transitions make the building look too vast).
 
 **A run** starts in one place and ends in another, crossing a complex in one direction:
 
@@ -178,10 +212,12 @@ the next visit, and the best tapes are saved to the memory card.
 - **The complex is a sectional model.** Rooms are dioramas cut from one building. The walls
   nearest the camera are cut at about 1 m, like an architect's section, and the camera's yaw
   never changes. So this is a building rule for every room's assets: no wall ever has to fade.
-- **Between rooms, the camera pulls back** to show the current room in its place in the
-  section: the room above you, the room you are heading into. The neighbours are drawn as
-  low-detail stand-ins (the World Kit makes them). The connection is the moment the game is
-  about, so it gets a second on screen, not a cut.
+- **Between rooms, the camera pans** at the game's own scale to the next room, drawn joined to
+  this one at its door, a storey at most above or below, as if it were next door (it is). The
+  thief walks on through the doorway and up or down a stair; both rooms stay alive and fully
+  textured (rooms a door joins use separate texture slots). The connection is the moment the
+  game is about, so it gets a moment on screen, not a cut. (The first version pulled back over
+  the whole section; the owner found it made the building look far vaster than it is.)
 - **The rank screen** is the whole section, zoomed out, with your route traced through it from
   the roof to the platform.
 - **The void** around the section is dark, on the Horizon Engine's planes at no CPU or GPU cost:
@@ -334,11 +370,12 @@ starts at 0. The pull-back between rooms comes later.
 
 ## Next: transitions, menus, audio, then stage 2
 
-**Transitions between rooms.** Going through a room's exit no longer cuts: the camera pulls back
-until the room you are leaving and the next one show together as cut-away models in the
-section, then slides and drops into the next room, whose clock starts at 0 when the thief is in
-control again (about 1.5 s; skippable with A). The rooms beyond those two are drawn from the
-World Kit's stand-ins.
+**Transitions between rooms** (reworked by agent H, `NOTES_H.md`). The camera keeps the game's
+pitch, field of view and distance and pans from the room he left to the next, drawn joined at
+its door (a rise is drawn as one storey at most, the real floors labelled on the stair). The
+next room is loaded at clock 0 early, shown dark with its guards and cones, and lights up as he
+crosses into it; control is handed back exactly on A's camera. 54 frames (0.9 s), skippable
+with A or START from frame 8.
 
 **Title and stage select.** A title screen, then a stage select. Hovering an unlocked stage
 shows its section as a slowly turning isometric model: every room as its stand-in, the route
@@ -456,9 +493,10 @@ deliberately plain: Gate 2 dresses it.
 
 **Delivered to the owner:** the cart (`make B=build-dr-A build-dr-A/mei
 build-dr-A/carts/afterhours.mei`, then `build-dr-A/mei build-dr-A/carts/afterhours.mei`),
-captures of the room at a few moments (a train passing, a cone cut by a pillar, the caught freeze), and the
-worst frame's CPU and GPU figures, with sight's CPU cost on its own. The owner plays it and
-judges the speeds, the cone reading, the restart's timing and the trains' rhythm. (Done
+captures of the room at a few moments (a train passing, a cone cut by a pillar, the caught
+freeze), and the worst frame's CPU and GPU figures, with sight's CPU cost on its own. The owner
+plays it and judges the speeds, the cone reading, the restart's timing and the trains' rhythm.
+(Done
 2026-10-15: fun but too hard; see [Decided](#decided) and [Level 1](#level-1).)
 
 ## Team (proposal)
@@ -486,4 +524,4 @@ are the game, so they get their own builders.
   roof.
 - **The wind-up toys:** keep them as the signature tool, or make the tools all 90s gadgetry?
 - **Co-op later?** Two thieves would change the camera and every room. Ruled out for the MVP.
-- **Music:** late-90s Tokyo suggests Shibuya-kei and acid jazz, in style only.
+- **Music:** Tokyo around 1990 suggests Shibuya-kei and acid jazz, in style only.

@@ -12,9 +12,9 @@ origin at the middle of its floor (as the aquarium sketch is). A room script wri
                          routes, trains, hiding places and the wall map) and train paths, in the
                          room's frame
 
-levels/level1/make_level1.py moves each room to its place in the level and writes the world. A
-room builder replaces the placements (and the recipes) and leaves the play file alone; the room's
-PLAN.md says what must stay where.
+levels/assemble.py (through each stage's make_STAGE.py) moves each room to its place in the stage
+and writes the world. A room builder replaces the placements (and the recipes) and leaves the play
+file alone; the room's PLAN.md says what must stay where.
 """
 import json
 import math

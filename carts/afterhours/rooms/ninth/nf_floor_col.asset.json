@@ -1,0 +1,450 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "nf_floor_col",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 400
+ },
+ "lighting": {
+  "direction": [
+   -0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "materials": {
+  "floor": {
+   "color": "#8c9098"
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "mesh",
+   "material": "floor",
+   "vertices": [
+    [
+     -8.25,
+     0.0,
+     4.5
+    ],
+    [
+     8.25,
+     0.0,
+     4.5
+    ],
+    [
+     8.25,
+     0.0,
+     -4.5
+    ],
+    [
+     -8.25,
+     0.0,
+     -4.5
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    16.5,
+    1.0,
+    0.25
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     0.0,
+     0.5,
+     -4.375
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "back_0",
+   "op": "box",
+   "size": [
+    0.85,
+    2.4,
+    0.25
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -7.825,
+     1.2,
+     4.375
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "back_1",
+   "op": "box",
+   "size": [
+    14.45,
+    2.4,
+    0.25
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     1.025,
+     1.2,
+     4.375
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "end_w",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    8.5
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -8.125,
+     1.2,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "end_e_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    6.85
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     8.125,
+     1.2,
+     -0.825
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "back"
+   ]
+  },
+  {
+   "id": "end_e_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.4,
+    0.45
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     8.125,
+     1.2,
+     4.025
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "core",
+   "op": "box",
+   "size": [
+    8.0,
+    2.4,
+    3.85
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -1.0,
+     1.2,
+     2.325
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "cup_s",
+   "op": "box",
+   "size": [
+    0.9,
+    2.0,
+    0.2
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -7.55,
+     1.0,
+     -1.1
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "left"
+   ]
+  },
+  {
+   "id": "cup_n",
+   "op": "box",
+   "size": [
+    0.9,
+    2.0,
+    0.2
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -7.55,
+     1.0,
+     0.3
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "left"
+   ]
+  },
+  {
+   "id": "office_a",
+   "op": "box",
+   "size": [
+    2.0,
+    2.4,
+    0.15
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     4.0,
+     1.2,
+     0.725
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "left"
+   ]
+  },
+  {
+   "id": "office_b",
+   "op": "box",
+   "size": [
+    1.8,
+    2.4,
+    0.15
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     7.1,
+     1.2,
+     0.725
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "right"
+   ]
+  },
+  {
+   "id": "desk",
+   "op": "box",
+   "size": [
+    1.6,
+    0.75,
+    0.6
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     5.4,
+     0.375,
+     2.3
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "board_s",
+   "op": "box",
+   "size": [
+    5.0,
+    2.4,
+    0.15
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -0.9,
+     1.2,
+     -3.025
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "board_n",
+   "op": "box",
+   "size": [
+    5.0,
+    2.4,
+    0.15
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -0.9,
+     1.2,
+     -0.875
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "board_w",
+   "op": "box",
+   "size": [
+    0.15,
+    2.4,
+    2.0
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -3.325,
+     1.2,
+     -1.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "board_e",
+   "op": "box",
+   "size": [
+    0.15,
+    2.4,
+    2.0
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     1.525,
+     1.2,
+     -1.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "crate_0",
+   "op": "box",
+   "size": [
+    1.4,
+    1.8,
+    1.2
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     4.7,
+     0.9,
+     -2.8
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "crate_1",
+   "op": "box",
+   "size": [
+    1.2,
+    1.8,
+    1.0
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     6.8,
+     0.9,
+     -0.9
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  }
+ ]
+}

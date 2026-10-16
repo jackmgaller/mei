@@ -1,0 +1,47 @@
+{
+ "format": "after-hours-placements",
+ "version": 1,
+ "room": "aq_plant",
+ "placements": [
+  {
+   "id": "ap_room",
+   "asset": "ap_room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "ap_room_col"
+  },
+  {
+   "id": "ap_machines",
+   "asset": "ap_machines",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "ap_rails",
+   "asset": "ap_rails",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "ap_wwater",
+   "asset": "ap_wwater",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
+  }
+ ]
+}

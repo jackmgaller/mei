@@ -1,0 +1,483 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "trading",
+ "entities": [
+  {
+   "id": "tf_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "name": "the_trading_floor",
+    "entry": "tf_spawn_hall",
+    "size": [
+     18.5,
+     2.4,
+     9.5
+    ]
+   }
+  },
+  {
+   "id": "tf_spawn_hall",
+   "type": "spawn",
+   "position": [
+    8.125,
+    0,
+    -3.0
+   ],
+   "params": {
+    "yaw": 270
+   }
+  },
+  {
+   "id": "tf_door_hall",
+   "type": "door",
+   "position": [
+    9.125,
+    0,
+    -3.0
+   ],
+   "yaw": 270,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "tf_spawn_hall",
+    "to": "lh_door_trading"
+   }
+  },
+  {
+   "id": "tf_spawn_stair",
+   "type": "spawn",
+   "position": [
+    -8.0,
+    0,
+    3.625
+   ],
+   "params": {
+    "yaw": 180
+   }
+  },
+  {
+   "id": "tf_door_stair",
+   "type": "door",
+   "position": [
+    -8.0,
+    0,
+    4.625
+   ],
+   "yaw": 180,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "tf_spawn_stair",
+    "to": "nf_door_stair"
+   }
+  },
+  {
+   "id": "tf_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -4.625
+   ],
+   "params": {
+    "size": [
+     18.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "tf_wall_back_0",
+   "type": "wall",
+   "position": [
+    -8.925,
+    0,
+    4.625
+   ],
+   "params": {
+    "size": [
+     0.65,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "tf_wall_back_1",
+   "type": "wall",
+   "position": [
+    0.925,
+    0,
+    4.625
+   ],
+   "params": {
+    "size": [
+     16.65,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "tf_wall_end_w_0",
+   "type": "wall",
+   "position": [
+    -9.125,
+    0,
+    0.0
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     9.0
+    ]
+   }
+  },
+  {
+   "id": "tf_wall_end_e_0",
+   "type": "wall",
+   "position": [
+    9.125,
+    0,
+    -4.05
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.9
+    ]
+   }
+  },
+  {
+   "id": "tf_wall_end_e_1",
+   "type": "wall",
+   "position": [
+    9.125,
+    0,
+    1.05
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     6.9
+    ]
+   }
+  },
+  {
+   "id": "tf_wall_office_s_a",
+   "type": "wall",
+   "position": [
+    -8.45,
+    0,
+    0.975
+   ],
+   "params": {
+    "size": [
+     1.1,
+     2.4,
+     0.15
+    ]
+   }
+  },
+  {
+   "id": "tf_wall_office_s_b",
+   "type": "wall",
+   "position": [
+    -6.05,
+    0,
+    0.975
+   ],
+   "params": {
+    "size": [
+     1.3,
+     2.4,
+     0.15
+    ]
+   }
+  },
+  {
+   "id": "tf_wall_office_e",
+   "type": "wall",
+   "position": [
+    -5.475,
+    0,
+    2.775
+   ],
+   "params": {
+    "size": [
+     0.15,
+     2.4,
+     3.45
+    ]
+   }
+  },
+  {
+   "id": "tf_wall_office_desk",
+   "type": "wall",
+   "position": [
+    -6.475,
+    0,
+    4.05
+   ],
+   "params": {
+    "size": [
+     1.85,
+     0.75,
+     0.9
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "tf_wall_fish_w",
+   "type": "wall",
+   "position": [
+    -1.525,
+    0,
+    -3.15
+   ],
+   "params": {
+    "size": [
+     0.15,
+     2.4,
+     2.7
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "tf_wall_fish_e",
+   "type": "wall",
+   "position": [
+    2.425,
+    0,
+    -3.15
+   ],
+   "params": {
+    "size": [
+     0.15,
+     2.4,
+     2.7
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "tf_wall_fish_n",
+   "type": "wall",
+   "position": [
+    0.45,
+    0,
+    -1.875
+   ],
+   "params": {
+    "size": [
+     3.8,
+     2.4,
+     0.15
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "tf_wall_fish_table",
+   "type": "wall",
+   "position": [
+    0.45,
+    0,
+    -3.1
+   ],
+   "params": {
+    "size": [
+     1.9,
+     0.75,
+     1.0
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "tf_wall_desks_a",
+   "type": "wall",
+   "position": [
+    -2.6,
+    0,
+    2.2
+   ],
+   "params": {
+    "size": [
+     4.0,
+     0.9,
+     0.8
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "tf_wall_desks_b",
+   "type": "wall",
+   "position": [
+    2.4,
+    0,
+    2.2
+   ],
+   "params": {
+    "size": [
+     4.0,
+     0.9,
+     0.8
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "tf_wall_desks_c",
+   "type": "wall",
+   "position": [
+    6.6,
+    0,
+    2.2
+   ],
+   "params": {
+    "size": [
+     2.8,
+     0.9,
+     0.8
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "tf_wall_desks_d",
+   "type": "wall",
+   "position": [
+    5.6,
+    0,
+    -3.0
+   ],
+   "params": {
+    "size": [
+     3.2,
+     0.9,
+     0.8
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "tf_wall_col_w",
+   "type": "wall",
+   "position": [
+    -4.05,
+    0,
+    -1.05
+   ],
+   "params": {
+    "size": [
+     0.7,
+     2.4,
+     0.7
+    ]
+   }
+  },
+  {
+   "id": "tf_wall_col_e",
+   "type": "wall",
+   "position": [
+    3.85,
+    0,
+    -1.05
+   ],
+   "params": {
+    "size": [
+     0.7,
+     2.4,
+     0.7
+    ]
+   }
+  },
+  {
+   "id": "tf_wp_floor_w",
+   "type": "waypoint",
+   "position": [
+    -4.6,
+    0,
+    0.4
+   ],
+   "params": {
+    "next": "tf_wp_floor_e",
+    "wait": 90,
+    "look": 0
+   }
+  },
+  {
+   "id": "tf_wp_floor_e",
+   "type": "waypoint",
+   "position": [
+    7.6,
+    0,
+    0.4
+   ],
+   "params": {
+    "next": "tf_wp_floor_w",
+    "wait": 90,
+    "look": 180
+   }
+  },
+  {
+   "id": "tf_guard_floor",
+   "type": "guard",
+   "position": [
+    7.6,
+    0,
+    0.4
+   ],
+   "yaw": 270.0,
+   "params": {
+    "kind": "patrol",
+    "route": "tf_wp_floor_w",
+    "speed": 1.0,
+    "sight": 6.0,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 200
+   }
+  },
+  {
+   "id": "tf_camera_office",
+   "type": "guard",
+   "position": [
+    -5.75,
+    2.3,
+    1.25
+   ],
+   "params": {
+    "kind": "camera",
+    "look_a": 300,
+    "look_b": 350,
+    "hold": 90,
+    "turn": 120,
+    "phase": 345,
+    "sight": 5.0,
+    "fov": 30
+   }
+  }
+ ],
+ "paths": {}
+}

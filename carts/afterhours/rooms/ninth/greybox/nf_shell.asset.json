@@ -1,0 +1,595 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "nf_shell",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 900
+ },
+ "lighting": {
+  "direction": [
+   -0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "materials": {
+  "cut": {
+   "color": "#a8b2c4"
+  },
+  "desk": {
+   "color": "#7a6a5a"
+  },
+  "door_light": {
+   "color": "#7cf0a0",
+   "class": "emissive"
+  },
+  "floor_dark": {
+   "color": "#6c7078"
+  },
+  "glass": {
+   "color": "#6cb4d4"
+  },
+  "hide_floor": {
+   "color": "#283c5c"
+  },
+  "tile": {
+   "color": "#9aa0a6"
+  },
+  "wall": {
+   "color": "#4c5462"
+  },
+  "wall_light": {
+   "color": "#6c7484"
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    16.5,
+    0.4,
+    9.0
+   ],
+   "material": "floor_dark",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.2,
+     0.0
+    ]
+   },
+   "faces": {
+    "top": "tile",
+    "back": "cut"
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "decals": [
+    {
+     "id": "hide_cupboard",
+     "face": "top",
+     "material": "hide_floor",
+     "size": [
+      0.88,
+      1.18
+     ],
+     "at": [
+      -7.55,
+      -0.4
+     ]
+    }
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    16.5,
+    1.0,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.0,
+     0.5,
+     -4.375
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut",
+    "back": "cut"
+   }
+  },
+  {
+   "id": "back_0",
+   "op": "box",
+   "size": [
+    0.85,
+    2.42,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -7.825,
+     1.19,
+     4.375
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "back_1",
+   "op": "box",
+   "size": [
+    14.45,
+    2.42,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     1.025,
+     1.19,
+     4.375
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "back_lintel_0",
+   "op": "box",
+   "size": [
+    1.2,
+    0.29,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -6.8,
+     2.245,
+     4.375
+    ]
+   },
+   "open": [
+    "left",
+    "right"
+   ],
+   "faces": {
+    "bottom": "door_light"
+   }
+  },
+  {
+   "id": "end_w_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    8.5
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -8.125,
+     1.19,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    6.85
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     8.125,
+     1.19,
+     -0.825
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    0.45
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     8.125,
+     1.19,
+     4.025
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "end_e_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     8.125,
+     2.245,
+     3.2
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_light"
+   }
+  },
+  {
+   "id": "core",
+   "op": "box",
+   "size": [
+    8.0,
+    1.02,
+    3.85
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     -1.0,
+     0.49,
+     2.325
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "cupboard_s",
+   "op": "box",
+   "size": [
+    0.9,
+    1.02,
+    0.2
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     -7.55,
+     0.49,
+     -1.1
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "cupboard_n",
+   "op": "box",
+   "size": [
+    0.9,
+    1.02,
+    0.2
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     -7.55,
+     0.49,
+     0.3
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "glass_s",
+   "op": "box",
+   "size": [
+    5.0,
+    1.02,
+    0.15
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     -0.9,
+     0.49,
+     -3.025
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "glass_n",
+   "op": "box",
+   "size": [
+    5.0,
+    1.02,
+    0.15
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     -0.9,
+     0.49,
+     -0.875
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "glass_w",
+   "op": "box",
+   "size": [
+    0.15,
+    1.02,
+    2.0
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     -3.325,
+     0.49,
+     -1.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "glass_e",
+   "op": "box",
+   "size": [
+    0.15,
+    1.02,
+    2.0
+   ],
+   "material": "glass",
+   "transform": {
+    "translate": [
+     1.525,
+     0.49,
+     -1.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "front",
+    "back"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "table",
+   "op": "box",
+   "size": [
+    3.0,
+    0.77,
+    0.9
+   ],
+   "material": "desk",
+   "transform": {
+    "translate": [
+     -0.9,
+     0.365,
+     -1.95
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "desk"
+   }
+  },
+  {
+   "id": "office_s_a",
+   "op": "box",
+   "size": [
+    2.0,
+    1.02,
+    0.15
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     4.0,
+     0.49,
+     0.725
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "office_s_b",
+   "op": "box",
+   "size": [
+    1.8,
+    1.02,
+    0.15
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     7.1,
+     0.49,
+     0.725
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "office_desk",
+   "op": "box",
+   "size": [
+    1.6,
+    0.77,
+    0.6
+   ],
+   "material": "desk",
+   "transform": {
+    "translate": [
+     5.4,
+     0.365,
+     2.3
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "desk"
+   }
+  },
+  {
+   "id": "crates_a",
+   "op": "box",
+   "size": [
+    1.4,
+    1.02,
+    1.2
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     4.7,
+     0.49,
+     -2.8
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "crates_b",
+   "op": "box",
+   "size": [
+    1.2,
+    1.02,
+    1.0
+   ],
+   "material": "wall_light",
+   "transform": {
+    "translate": [
+     6.8,
+     0.49,
+     -0.9
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  }
+ ],
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

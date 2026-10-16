@@ -22,6 +22,16 @@
     0
    ],
    "collision": "none"
+  },
+  {
+   "id": "r3_wwater",
+   "asset": "r3_wwater",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
   }
  ]
 }

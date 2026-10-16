@@ -1,0 +1,2054 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "ak_props",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 1600
+ },
+ "materials": {
+  "cut": {
+   "color": "#76849e",
+   "class": "emissive"
+  },
+  "steel": {
+   "color": "#b4bcc2"
+  },
+  "steel_edge": {
+   "color": "#a4acb2"
+  },
+  "chrome": {
+   "color": "#d8dee4"
+  },
+  "wire": {
+   "color": "#9aa2a8"
+  },
+  "scale": {
+   "color": "#e0e2e0"
+  },
+  "scale_top": {
+   "color": "#c8ccd0"
+  },
+  "scale_lcd": {
+   "color": "#60c890",
+   "class": "emissive"
+  },
+  "bowl": {
+   "color": "#c8ccd0"
+  },
+  "bowl_in": {
+   "color": "#a86a6a"
+  },
+  "tray": {
+   "color": "#e8eaec"
+  },
+  "styro": {
+   "color": "#eef0ec"
+  },
+  "lid_blue": {
+   "color": "#4a78c8"
+  },
+  "carton": {
+   "color": "#b08a5c"
+  },
+  "carton_top": {
+   "color": "#c09a6a"
+  },
+  "styro_side": {
+   "color": "#e8eae6",
+   "texture": {
+    "image": "art/ak_styro.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "sink_top": {
+   "color": "#b8c0c4",
+   "texture": {
+    "image": "art/ak_sink_top.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "sink_front": {
+   "color": "#b8bec2",
+   "texture": {
+    "image": "art/ak_cupboards.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "fitting": {
+   "color": "#c8ccd0"
+  },
+  "tube": {
+   "color": "#f4fcff",
+   "class": "emissive"
+  },
+  "fz_panel": {
+   "color": "#e2e6ea"
+  },
+  "fz_cut": {
+   "color": "#9aa4b4",
+   "class": "emissive"
+  },
+  "fz_frame": {
+   "color": "#c8ccd2"
+  },
+  "fz_floor": {
+   "color": "#b8d0e0",
+   "texture": {
+    "image": "art/ak_freezer_floor.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "frozen": {
+   "color": "#c0d8ea"
+  },
+  "frost_top": {
+   "color": "#e4f0f8"
+  },
+  "cabinet": {
+   "color": "#9aa2a8"
+  },
+  "rim": {
+   "color": "#3a4048"
+  },
+  "feed_bottom": {
+   "color": "#3a7ab0",
+   "texture": {
+    "image": "art/ak_feed_bottom.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "bubble": {
+   "color": "#c8e8ff",
+   "class": "emissive"
+  },
+  "tank_light": {
+   "color": "#c8f0ff",
+   "class": "emissive"
+  },
+  "carton_0": {
+   "color": "#b08a5c",
+   "texture": {
+    "image": "art/ak_carton_0.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "carton_1": {
+   "color": "#b08a5c",
+   "texture": {
+    "image": "art/ak_carton_1.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "carton_2": {
+   "color": "#b08a5c",
+   "texture": {
+    "image": "art/ak_carton_2.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "table_top_0": {
+   "color": "#c8ccd0",
+   "texture": {
+    "image": "art/ak_table_top_0.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "table_top_1": {
+   "color": "#c8ccd0",
+   "texture": {
+    "image": "art/ak_table_top_1.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "table_0",
+   "op": "box",
+   "size": [
+    2.45,
+    0.04,
+    1.4
+   ],
+   "material": "steel_edge",
+   "transform": {
+    "translate": [
+     -1.775,
+     0.88,
+     -0.5
+    ]
+   },
+   "faces": {
+    "top": "table_top_0"
+   }
+  },
+  {
+   "id": "undershelf_0",
+   "op": "box",
+   "size": [
+    2.35,
+    0.04,
+    1.3
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -1.775,
+     0.18,
+     -0.5
+    ]
+   }
+  },
+  {
+   "id": "leg_00",
+   "op": "box",
+   "size": [
+    0.05,
+    0.881,
+    0.05
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -2.96,
+     0.4205,
+     -1.16
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "leg_01",
+   "op": "box",
+   "size": [
+    0.05,
+    0.881,
+    0.05
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -0.59,
+     0.4205,
+     -1.16
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "leg_02",
+   "op": "box",
+   "size": [
+    0.05,
+    0.881,
+    0.05
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -2.96,
+     0.4205,
+     0.16
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "leg_03",
+   "op": "box",
+   "size": [
+    0.05,
+    0.881,
+    0.05
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -0.59,
+     0.4205,
+     0.16
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "under_box_00",
+   "op": "box",
+   "size": [
+    0.6367,
+    0.301,
+    1.05
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     -2.5317,
+     0.3495,
+     -0.525
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "carton_0",
+    "top": "carton_top"
+   }
+  },
+  {
+   "id": "under_box_01",
+   "op": "box",
+   "size": [
+    0.6367,
+    0.301,
+    1.05
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     -1.815,
+     0.3495,
+     -0.525
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "styro_side",
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "under_box_02",
+   "op": "box",
+   "size": [
+    0.6367,
+    0.301,
+    1.05
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     -1.0983,
+     0.3495,
+     -0.525
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "carton_2",
+    "top": "carton_top"
+   }
+  },
+  {
+   "id": "table_1",
+   "op": "box",
+   "size": [
+    2.45,
+    0.04,
+    1.4
+   ],
+   "material": "steel_edge",
+   "transform": {
+    "translate": [
+     0.775,
+     0.88,
+     -0.5
+    ]
+   },
+   "faces": {
+    "top": "table_top_1"
+   }
+  },
+  {
+   "id": "undershelf_1",
+   "op": "box",
+   "size": [
+    2.35,
+    0.04,
+    1.3
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     0.775,
+     0.18,
+     -0.5
+    ]
+   }
+  },
+  {
+   "id": "leg_10",
+   "op": "box",
+   "size": [
+    0.05,
+    0.881,
+    0.05
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -0.41,
+     0.4205,
+     -1.16
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "leg_11",
+   "op": "box",
+   "size": [
+    0.05,
+    0.881,
+    0.05
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     1.96,
+     0.4205,
+     -1.16
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "leg_12",
+   "op": "box",
+   "size": [
+    0.05,
+    0.881,
+    0.05
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -0.41,
+     0.4205,
+     0.16
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "leg_13",
+   "op": "box",
+   "size": [
+    0.05,
+    0.881,
+    0.05
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     1.96,
+     0.4205,
+     0.16
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "under_box_10",
+   "op": "box",
+   "size": [
+    0.6367,
+    0.301,
+    1.05
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     0.0183,
+     0.3495,
+     -0.525
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "styro_side",
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "under_box_11",
+   "op": "box",
+   "size": [
+    0.6367,
+    0.301,
+    1.05
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     0.735,
+     0.3495,
+     -0.525
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "carton_1",
+    "top": "carton_top"
+   }
+  },
+  {
+   "id": "under_box_12",
+   "op": "box",
+   "size": [
+    0.6367,
+    0.301,
+    1.05
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     1.4517,
+     0.3495,
+     -0.525
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "styro_side",
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "scale",
+   "op": "box",
+   "size": [
+    0.25,
+    0.08,
+    0.22
+   ],
+   "material": "scale",
+   "transform": {
+    "translate": [
+     1.805,
+     0.93,
+     -1.01
+    ]
+   },
+   "faces": {
+    "top": "scale_top",
+    "back": "scale_lcd"
+   }
+  },
+  {
+   "id": "bowl_0",
+   "op": "cylinder",
+   "radius": 0.13,
+   "height": 0.08,
+   "segments": 8,
+   "material": "bowl",
+   "faces": {
+    "top": "bowl_in"
+   },
+   "transform": {
+    "translate": [
+     -0.75,
+     0.935,
+     -1.0
+    ]
+   }
+  },
+  {
+   "id": "trays",
+   "op": "box",
+   "size": [
+    0.45,
+    0.09,
+    0.25
+   ],
+   "material": "tray",
+   "transform": {
+    "translate": [
+     -1.475,
+     0.935,
+     -1.025
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "sinks",
+   "op": "box",
+   "size": [
+    5.0,
+    0.92,
+    0.7
+   ],
+   "material": "steel_edge",
+   "transform": {
+    "translate": [
+     -4.0,
+     0.44,
+     3.65
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "front"
+   ],
+   "faces": {
+    "top": "sink_top",
+    "back": "sink_front"
+   }
+  },
+  {
+   "id": "tap_0",
+   "op": "box",
+   "size": [
+    0.04,
+    0.1,
+    0.04
+   ],
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     -5.6,
+     0.94,
+     3.9
+    ]
+   }
+  },
+  {
+   "id": "spout_0",
+   "op": "box",
+   "size": [
+    0.03,
+    0.035,
+    0.19
+   ],
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     -5.6,
+     0.9675,
+     3.795
+    ]
+   }
+  },
+  {
+   "id": "tap_1",
+   "op": "box",
+   "size": [
+    0.04,
+    0.1,
+    0.04
+   ],
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     -4.3,
+     0.94,
+     3.9
+    ]
+   }
+  },
+  {
+   "id": "spout_1",
+   "op": "box",
+   "size": [
+    0.03,
+    0.035,
+    0.19
+   ],
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     -4.3,
+     0.9675,
+     3.795
+    ]
+   }
+  },
+  {
+   "id": "tap_2",
+   "op": "box",
+   "size": [
+    0.04,
+    0.1,
+    0.04
+   ],
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     -3.0,
+     0.94,
+     3.9
+    ]
+   }
+  },
+  {
+   "id": "spout_2",
+   "op": "box",
+   "size": [
+    0.03,
+    0.035,
+    0.19
+   ],
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     -3.0,
+     0.9675,
+     3.795
+    ]
+   }
+  },
+  {
+   "id": "sink_light",
+   "op": "box",
+   "size": [
+    3.2,
+    0.1,
+    0.11
+   ],
+   "material": "fitting",
+   "transform": {
+    "translate": [
+     -4.0,
+     2.0,
+     3.955
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "bottom": "tube",
+    "back": "tube"
+   }
+  },
+  {
+   "id": "fz_s",
+   "op": "box",
+   "size": [
+    1.9,
+    1.02,
+    0.1
+   ],
+   "material": "fz_panel",
+   "transform": {
+    "translate": [
+     -5.55,
+     0.49,
+     0.65
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "fz_cut"
+   }
+  },
+  {
+   "id": "fz_n",
+   "op": "box",
+   "size": [
+    1.9,
+    1.02,
+    0.1
+   ],
+   "material": "fz_panel",
+   "transform": {
+    "translate": [
+     -5.55,
+     0.49,
+     2.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "fz_cut"
+   }
+  },
+  {
+   "id": "fz_e0",
+   "op": "box",
+   "size": [
+    0.1,
+    1.02,
+    0.5
+   ],
+   "material": "fz_panel",
+   "transform": {
+    "translate": [
+     -4.65,
+     0.49,
+     0.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "fz_cut"
+   }
+  },
+  {
+   "id": "fz_e1",
+   "op": "box",
+   "size": [
+    0.1,
+    1.02,
+    0.5
+   ],
+   "material": "fz_panel",
+   "transform": {
+    "translate": [
+     -4.65,
+     0.49,
+     2.65
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "fz_cut"
+   }
+  },
+  {
+   "id": "fz_floor",
+   "op": "box",
+   "size": [
+    1.79,
+    0.06,
+    2.2
+   ],
+   "material": "fz_floor",
+   "transform": {
+    "translate": [
+     -5.595,
+     0.0,
+     1.8
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "fz_shelf_w0",
+   "op": "box",
+   "size": [
+    0.49,
+    0.02,
+    2.13
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.29,
+     1.815
+    ]
+   },
+   "open": [
+    "left"
+   ]
+  },
+  {
+   "id": "fz_shelf_w1",
+   "op": "box",
+   "size": [
+    0.49,
+    0.02,
+    2.13
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.69,
+     1.815
+    ]
+   },
+   "open": [
+    "left"
+   ]
+  },
+  {
+   "id": "fz_box_00",
+   "op": "box",
+   "size": [
+    0.41,
+    0.215,
+    0.44
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.1375,
+     1.02
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "fz_box_01",
+   "op": "box",
+   "size": [
+    0.41,
+    0.215,
+    0.44
+   ],
+   "material": "frozen",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.1375,
+     1.54
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "frost_top"
+   }
+  },
+  {
+   "id": "fz_box_02",
+   "op": "box",
+   "size": [
+    0.41,
+    0.215,
+    0.44
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.1375,
+     2.06
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "fz_box_03",
+   "op": "box",
+   "size": [
+    0.41,
+    0.215,
+    0.44
+   ],
+   "material": "frozen",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.1375,
+     2.58
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "frost_top"
+   }
+  },
+  {
+   "id": "fz_box_10",
+   "op": "box",
+   "size": [
+    0.41,
+    0.255,
+    0.44
+   ],
+   "material": "frozen",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.4325,
+     1.02
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "frost_top"
+   }
+  },
+  {
+   "id": "fz_box_11",
+   "op": "box",
+   "size": [
+    0.41,
+    0.255,
+    0.44
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.4325,
+     1.54
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "fz_box_12",
+   "op": "box",
+   "size": [
+    0.41,
+    0.255,
+    0.44
+   ],
+   "material": "frozen",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.4325,
+     2.06
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "frost_top"
+   }
+  },
+  {
+   "id": "fz_box_13",
+   "op": "box",
+   "size": [
+    0.41,
+    0.255,
+    0.44
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.4325,
+     2.58
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "fz_box_20",
+   "op": "box",
+   "size": [
+    0.41,
+    0.195,
+    0.44
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.8025,
+     1.02
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "fz_box_21",
+   "op": "box",
+   "size": [
+    0.41,
+    0.195,
+    0.44
+   ],
+   "material": "frozen",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.8025,
+     1.54
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "frost_top"
+   }
+  },
+  {
+   "id": "fz_box_22",
+   "op": "box",
+   "size": [
+    0.41,
+    0.195,
+    0.44
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.8025,
+     2.06
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "fz_box_23",
+   "op": "box",
+   "size": [
+    0.41,
+    0.195,
+    0.44
+   ],
+   "material": "frozen",
+   "transform": {
+    "translate": [
+     -6.245,
+     0.8025,
+     2.58
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "frost_top"
+   }
+  },
+  {
+   "id": "fz_block_0",
+   "op": "box",
+   "size": [
+    0.32,
+    0.155,
+    0.36
+   ],
+   "material": "frozen",
+   "transform": {
+    "translate": [
+     -5.69,
+     0.1025,
+     2.66
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "frost_top"
+   }
+  },
+  {
+   "id": "fz_block_1",
+   "op": "box",
+   "size": [
+    0.32,
+    0.275,
+    0.36
+   ],
+   "material": "frozen",
+   "transform": {
+    "translate": [
+     -5.33,
+     0.1625,
+     2.66
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "frost_top"
+   }
+  },
+  {
+   "id": "fz_block_2",
+   "op": "box",
+   "size": [
+    0.32,
+    0.155,
+    0.36
+   ],
+   "material": "frozen",
+   "transform": {
+    "translate": [
+     -4.97,
+     0.1025,
+     2.66
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "frost_top"
+   }
+  },
+  {
+   "id": "fz_jamb_0",
+   "op": "box",
+   "size": [
+    0.16,
+    1.016,
+    0.08
+   ],
+   "material": "fz_frame",
+   "transform": {
+    "translate": [
+     -4.64,
+     0.488,
+     1.18
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "fz_cut"
+   }
+  },
+  {
+   "id": "fz_jamb_1",
+   "op": "box",
+   "size": [
+    0.16,
+    1.016,
+    0.08
+   ],
+   "material": "fz_frame",
+   "transform": {
+    "translate": [
+     -4.64,
+     0.488,
+     2.42
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "fz_cut"
+   }
+  },
+  {
+   "id": "feed_stand",
+   "op": "box",
+   "size": [
+    1.8,
+    0.46,
+    1.2
+   ],
+   "material": "cabinet",
+   "transform": {
+    "translate": [
+     4.7,
+     0.21,
+     1.5
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "steel"
+   }
+  },
+  {
+   "id": "feed_rim",
+   "op": "box",
+   "size": [
+    1.78,
+    0.051,
+    1.18
+   ],
+   "material": "rim",
+   "transform": {
+    "translate": [
+     4.7,
+     0.4645,
+     1.5
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "feed_bottom"
+   }
+  },
+  {
+   "id": "feed_trim",
+   "op": "box",
+   "size": [
+    1.78,
+    0.035,
+    1.18
+   ],
+   "material": "rim",
+   "transform": {
+    "translate": [
+     4.7,
+     0.9575,
+     1.5
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "feed_airstone",
+   "op": "cylinder",
+   "radius": 0.03,
+   "height": 0.04,
+   "segments": 4,
+   "material": "bubble",
+   "transform": {
+    "translate": [
+     5.35,
+     0.505,
+     1.85
+    ]
+   }
+  },
+  {
+   "id": "feed_bubbles",
+   "op": "box",
+   "size": [
+    0.03,
+    0.35,
+    0.03
+   ],
+   "material": "bubble",
+   "transform": {
+    "translate": [
+     5.35,
+     0.705,
+     1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "feed_lamp",
+   "op": "box",
+   "size": [
+    1.2,
+    0.035,
+    0.14
+   ],
+   "material": "fitting",
+   "transform": {
+    "translate": [
+     4.7,
+     0.9775,
+     1.97
+    ]
+   },
+   "faces": {
+    "bottom": "tank_light"
+   }
+  },
+  {
+   "id": "post_0",
+   "op": "box",
+   "size": [
+    0.04,
+    1.02,
+    0.04
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     5.83,
+     0.49,
+     -3.57
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "post_1",
+   "op": "box",
+   "size": [
+    0.04,
+    1.02,
+    0.04
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     5.83,
+     0.49,
+     -0.03
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "post_2",
+   "op": "box",
+   "size": [
+    0.04,
+    1.02,
+    0.04
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     5.83,
+     0.49,
+     -1.8
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "cut"
+   }
+  },
+  {
+   "id": "rack_0",
+   "op": "box",
+   "size": [
+    0.64,
+    0.03,
+    3.5
+   ],
+   "material": "wire",
+   "transform": {
+    "translate": [
+     6.18,
+     0.105,
+     -1.8
+    ]
+   },
+   "open": [
+    "right"
+   ]
+  },
+  {
+   "id": "rack_1",
+   "op": "box",
+   "size": [
+    0.64,
+    0.03,
+    3.5
+   ],
+   "material": "wire",
+   "transform": {
+    "translate": [
+     6.18,
+     0.505,
+     -1.8
+    ]
+   },
+   "open": [
+    "right"
+   ]
+  },
+  {
+   "id": "stock_0",
+   "op": "box",
+   "size": [
+    0.58,
+    0.305,
+    0.46
+   ],
+   "material": "carton",
+   "transform": {
+    "translate": [
+     6.17,
+     0.2675,
+     -3.31
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "carton_0",
+    "top": "carton_top"
+   }
+  },
+  {
+   "id": "stock_1",
+   "op": "box",
+   "size": [
+    0.58,
+    0.355,
+    0.38
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     6.17,
+     0.2925,
+     -2.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "styro_side",
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "stock_2",
+   "op": "box",
+   "size": [
+    0.58,
+    0.355,
+    0.52
+   ],
+   "material": "carton",
+   "transform": {
+    "translate": [
+     6.17,
+     0.2925,
+     -2.36
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "carton_2",
+    "top": "carton_top"
+   }
+  },
+  {
+   "id": "stock_3",
+   "op": "box",
+   "size": [
+    0.58,
+    0.325,
+    0.42
+   ],
+   "material": "carton",
+   "transform": {
+    "translate": [
+     6.17,
+     0.2775,
+     -1.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "carton_0",
+    "top": "carton_top"
+   }
+  },
+  {
+   "id": "stock_4",
+   "op": "box",
+   "size": [
+    0.58,
+    0.305,
+    0.46
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     6.17,
+     0.2675,
+     -1.37
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "styro_side",
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "stock_5",
+   "op": "box",
+   "size": [
+    0.58,
+    0.355,
+    0.38
+   ],
+   "material": "carton",
+   "transform": {
+    "translate": [
+     6.17,
+     0.2925,
+     -0.91
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "carton_2",
+    "top": "carton_top"
+   }
+  },
+  {
+   "id": "stock_6",
+   "op": "box",
+   "size": [
+    0.58,
+    0.355,
+    0.52
+   ],
+   "material": "carton",
+   "transform": {
+    "translate": [
+     6.17,
+     0.2925,
+     -0.42
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "carton_0",
+    "top": "carton_top"
+   }
+  },
+  {
+   "id": "stock_7",
+   "op": "box",
+   "size": [
+    0.58,
+    0.325,
+    0.42
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     6.17,
+     0.6775,
+     -3.33
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "styro_side",
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "stock_8",
+   "op": "box",
+   "size": [
+    0.58,
+    0.305,
+    0.46
+   ],
+   "material": "carton",
+   "transform": {
+    "translate": [
+     6.17,
+     0.6675,
+     -2.85
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "carton_2",
+    "top": "carton_top"
+   }
+  },
+  {
+   "id": "stock_9",
+   "op": "box",
+   "size": [
+    0.58,
+    0.365,
+    0.38
+   ],
+   "material": "carton",
+   "transform": {
+    "translate": [
+     6.17,
+     0.6975,
+     -2.39
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "carton_0",
+    "top": "carton_top"
+   }
+  },
+  {
+   "id": "stock_10",
+   "op": "box",
+   "size": [
+    0.58,
+    0.425,
+    0.52
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     6.17,
+     0.7275,
+     -1.9
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "styro_side",
+    "top": "lid_blue"
+   }
+  },
+  {
+   "id": "stock_11",
+   "op": "box",
+   "size": [
+    0.58,
+    0.325,
+    0.42
+   ],
+   "material": "carton",
+   "transform": {
+    "translate": [
+     6.17,
+     0.6775,
+     -1.39
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "carton_2",
+    "top": "carton_top"
+   }
+  },
+  {
+   "id": "stock_12",
+   "op": "box",
+   "size": [
+    0.58,
+    0.305,
+    0.46
+   ],
+   "material": "carton",
+   "transform": {
+    "translate": [
+     6.17,
+     0.6675,
+     -0.91
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "carton_0",
+    "top": "carton_top"
+   }
+  },
+  {
+   "id": "stock_13",
+   "op": "box",
+   "size": [
+    0.58,
+    0.365,
+    0.38
+   ],
+   "material": "styro",
+   "transform": {
+    "translate": [
+     6.17,
+     0.6975,
+     -0.45
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "left": "styro_side",
+    "top": "lid_blue"
+   }
+  }
+ ],
+ "lighting": {
+  "direction": [
+   -0.25,
+   0.7,
+   -0.65
+  ],
+  "ambient": 0.44,
+  "diffuse": 0.18,
+  "lights": [
+   {
+    "id": "tube_0",
+    "at": [
+     -4.0,
+     2.6,
+     -2.0
+    ],
+    "color": "#eef6f4",
+    "intensity": 1.1,
+    "range": 4.8
+   },
+   {
+    "id": "tube_1",
+    "at": [
+     0.0,
+     2.6,
+     -2.2
+    ],
+    "color": "#eef6f4",
+    "intensity": 1.1,
+    "range": 4.8
+   },
+   {
+    "id": "tube_2",
+    "at": [
+     3.6,
+     2.6,
+     -2.0
+    ],
+    "color": "#eef6f4",
+    "intensity": 1.1,
+    "range": 4.8
+   },
+   {
+    "id": "tube_3",
+    "at": [
+     -3.6,
+     2.6,
+     1.6
+    ],
+    "color": "#eef6f4",
+    "intensity": 1.1,
+    "range": 4.8
+   },
+   {
+    "id": "tube_4",
+    "at": [
+     0.4,
+     2.6,
+     1.6
+    ],
+    "color": "#eef6f4",
+    "intensity": 1.1,
+    "range": 4.8
+   },
+   {
+    "id": "tube_5",
+    "at": [
+     4.2,
+     2.6,
+     1.2
+    ],
+    "color": "#eef6f4",
+    "intensity": 1.1,
+    "range": 4.8
+   },
+   {
+    "id": "tube_6",
+    "at": [
+     -4.0,
+     2.6,
+     3.4
+    ],
+    "color": "#eef6f4",
+    "intensity": 1.1,
+    "range": 4.8
+   },
+   {
+    "id": "freezer",
+    "at": [
+     -5.6,
+     0.9,
+     1.8
+    ],
+    "color": "#cfe6ff",
+    "intensity": 1.2,
+    "range": 1.8
+   },
+   {
+    "id": "stair",
+    "at": [
+     -7.55,
+     1.6,
+     -2.6
+    ],
+    "color": "#ffe0b8",
+    "intensity": 1.0,
+    "range": 2.6
+   },
+   {
+    "id": "tops",
+    "at": [
+     4.4,
+     1.6,
+     5.25
+    ],
+    "color": "#5a78c0",
+    "intensity": 0.8,
+    "range": 2.4
+   }
+  ],
+  "refine": {
+   "tolerance": 24,
+   "max_added": 120
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

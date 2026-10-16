@@ -1,91 +1,624 @@
-// The transition between rooms (agent E; DESIGN.md, "Next: transitions"): through a room's exit
-// the camera pulls back from the room being left until it and the next one show together as
-// cut-away models in the section, slides along the section and drops into the next room, whose
-// clock starts at 0 when the thief is in control. 90 frames (1.5 s); A (or START) skips it.
+// The transition between rooms (agent H, after agent E's first version; DESIGN.md, "Next:
+// transitions", and the owner's note that the pull-back made the building look far vaster than
+// it is). Through a way out, the thief walks on through the doorway and up or down a stair, and
+// the camera follows him into the next room as if it were next door, which in the building it
+// is: the two rooms are drawn joined at their doors, a few metres apart and at most a storey up
+// or down (TR_GAP, TR_GAP_RISE, TR_STOREY), not where the World Kit world keeps them (32 m
+// apart, the tower 40 m tall); the real floors are marked at the stair's ends (room.storey: 1F,
+// 11F). The camera keeps the game's own pitch, field of view and distance (TR_PAN), so the rooms
+// keep their size on screen, about 24 px a metre. 54 frames (0.9 s); A (or START) skips it.
 //
-// Frame by frame (TR_*): 0-29 the room left is drawn as the game draws it (its placements, the
-// thief at the exit, the guards and cones where they were) while the camera pulls back; from 30
-// it is its stand-in, and the next room's textures are copied into VRAM one a frame (the room
-// left's textures go, so nothing textured of it may show from then on); at 50 the next room is
-// loaded at its clock 0 (transition_ready(): its entities, its region's palettes, the rest of its
-// textures), and drawn as its placements with its guards and cones at clock 0: its lights come
-// on; at 90 the thief is in control (transition_control()). Rooms cleared on this run are lit,
-// the ones ahead dark; the route is traced from the exit to the next door in the thief's colour.
-// The camera ends exactly where A's view starts (cam_x, cam_tz), so the hand-over does not jump.
+// How the two rooms are placed (tr_place()): the room further along the world's x (the cells
+// are in the stage's order) is set beside the other, on the side the other's door faces, the
+// two doors level in z; a door in a back wall that leads up puts it behind and above (a stair or
+// an escalator up at the back), one in a front wall that leads down in front and below. A pair
+// is drawn the same way whichever way he goes through it (stage 2's backtracking).
+//
+// Frame by frame: 0 the room left is frozen as he left it: its state is copied (tr_freeze()),
+// and swapped in to draw it with A's own functions once the runtime's room is the next one, its
+// watchers' fans built once and kept (tr_cones()); 1-4 the next room's textures are copied, two a
+// frame (its slots and the room left's being disjoint), and its placements show once they are
+// in; 5-8 (TR_LOAD) the next room is loaded a piece a frame at its clock 0 (A's
+// transition_ready_step()), dark unless cleared on this run, then drawn with its guards,
+// cones, trains and doors at clock 0, its fans built one a frame while it is off the screen; 5-50
+// the camera slides from the room left's framing to the next room's as A frames it (cam_eye() at
+// cam_x, cam_tz), the thief walks from where he left through the doors and along the stair to
+// his spawn, the dotted way ahead of him, the stair rising out of the void ahead and sinking
+// behind him; the next room's lights come on as he crosses into it and its name shows; 51-53
+// (TR_SETTLE) the next room as A draws it, so the hand-over changes nothing but the HUD; 54 he is
+// in control (transition_control()). Each room's moving things are drawn only while its box is
+// on the screen. No frame carries a whole room's load: the worst is about 66% of the CPU budget
+// (the aquarium, dressed, release build; NOTES_H.md).
+//
+// Textures: a region's set is copied into its texture slots. The worlds give the rooms a door
+// joins disjoint slot sets (the owner's choice; levels/assemble.py gives two or three sets,
+// tests/trans/check_slots.py checks them), so both rooms are drawn textured the whole way, the
+// next room's textures copied two a frame on frames 1-4. Should two rooms share slots (a world
+// without the sets: tr_slots_apart() compares the two rooms' own slots, whatever the sets), the
+// next room is its kit-made stand-in until the camera is half way, then its textures are copied
+// in one frame and the room left becomes its stand-in. NOTES_H.md has the costs.
+//
+// Doors on a room's upper level (the aquarium's mezzanines and catwalks: room.upper, a door's
+// `level`): the way out, the way in and the stair are at the doors' heights (the floor plus
+// `upper`); the rooms' floors are what the storey cap closes up.
 
-const TR_N = 90
-const TR_SWAP = 30
-const TR_READY = 50
+const TR_PAN = 0               // the camera slides through the doorway at the game's distance
+const TR_STEP = 1              // ... stepping back to 1.5 times it half way
+const TR_PAIR = 2              // ... stepping back until both rooms are whole on the screen
+const TR_N = 54                // frames from the exit to control (TR_PAN)
+const TR_READY = 5
 const TR_SKIP_FROM = 8
-const TR_FOV_PEAK: fixed = 0.4189      // 24 degrees at the farthest
-const TR_PITCH_PEAK: fixed = -0.5760   // 33 degrees down at the farthest (the game's is 60)
-const TR_TAN_PEAK: fixed = 0.2126      // tan(TR_FOV_PEAK / 2)
+const TR_SETTLE = 3            // the last frames: the next room as the game draws it
+const TR_GAP: fixed = 1.5      // metres between two rooms' walls, beside each other ...
+const TR_GAP_RISE: fixed = 0.5 // ... and this much more a metre of rise (the stair)
+const TR_STOREY: fixed = 5.0   // the most one room is drawn above or below the other
+
+// The style (the prototypes' captures replace these; the cart uses TR_PAN).
+weak fn tr_style() -> s32 { return TR_PAN }
+// (the captures) draw the rooms as if their textures shared slots
+weak fn tr_split_off() -> bool { return false }
+// (the captures) print each frame's state
+weak fn tr_log() -> bool { return false }
+
+fn tr_len() -> s32 {
+    let s = tr_style()
+    if s == TR_STEP { return 66 }
+    if s == TR_PAIR { return 84 }
+    return TR_N
+}
 
 var tr_t: s32 = -1             // the transition's frame, -1: none
+var tr_n: s32 = TR_N           // its length
 var tr_from: s32
 var tr_to: s32
 var tr_ready: bool
+var tr_split: bool             // the two rooms' textures are in disjoint slots
+var tr_swapped: bool           // (shared slots) the next room's textures are in, the room left's gone
 var tr_tex: s32                // the next room's textures copied so far
 var tr_ntex: s32
 var tr_region: s32
-var tr_t0: vec3                // the camera's target as he went through the exit
-var tr_est: vec3               // where the next room's will be, from the section's numbers
-var tr_dpk: fixed              // the farthest distance
-var tr_origin: vec3            // what the transition's frames are drawn around
+var tr_origin: vec3            // what the frames are drawn around (the room left's centre)
+var tr_off: vec3               // where the next room is drawn: its world position plus this
+var tr_t0: vec3                // the camera's target as he went through the way out (world)
+var tr_t1: vec3                // the next room's, as A frames it (world, the next room's)
+var tr_dpk: fixed              // the farthest the camera goes back
 var tr_lit: u32                // the rooms lit (cleared on this run)
+var tr_light: fixed = -1.0     // the next room's light as last set (0 dark, 1 lit)
+var tr_was_lit: bool           // the next room was cleared before on this run
 var tr_out: vec3               // where he left the room (world, on its floor)
-var tr_in: vec3                // where he comes into the next (its door's spawn)
+var tr_in: vec3                // where he comes into the next (its door's spawn, world)
+var tr_pa: vec3                // the way out's door in the room left (world, its floor)
+var tr_pb: vec3                // the way in's door in the next room (world, its floor)
+var tr_q: [6]vec3              // his way (drawn): where he left, the way out, the room left's wall
+                               // there, the next room's wall, the way in, his spawn; the stair
+                               // runs between the two walls (tr_q[2] to tr_q[3])
+var tr_storey_a: s32           // the rooms' floors (room.storey: 8 is 8F, -1 B1, 0 none)
+var tr_storey_b: s32
+var tr_head_in: fixed          // his heading at the spawn
 var tr_skipped: bool
-// measured, for the checks
+// measured, for the checks and the notes
 var tr_frames: s32             // frames of the last transition, from the exit to control
 var tr_clock_ok: bool = true   // the next room's clock stayed at 0 from ready to control
+var tr_tris: s32               // triangles submitted this frame (the rooms' placements)
+var tr_tris_peak: s32          // ... the most in a frame of the last transition
 
 fn smooth(a: fixed, b: fixed, x: fixed) -> fixed {
     let t = clamp((x - a) / (b - a), 0.0, 1.0)
     return t * t * (3.0 - 2.0 * t)
 }
 
+// Eased in and out more gently than smooth(): it starts and stops with no jerk.
+fn tr_ease(x: fixed) -> fixed {
+    let t = clamp(x, 0.0, 1.0)
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+}
+
+// ---- the plan: where the next room is drawn
+
+// The wall of room k's box nearest point p: 0 left (-x), 1 right (+x), 2 front (-z), 3 back (+z).
+fn tr_side(k: s32, p: vec3) -> s32 {
+    let r = &sec[k]
+    let dl = p.x - (r.c.x - r.sx / 2)
+    let dr = r.c.x + r.sx / 2 - p.x
+    let df = p.z - (r.c.z - r.sz / 2)
+    let dk = r.c.z + r.sz / 2 - p.z
+    var s = 0
+    var m = dl
+    if dr < m {
+        s = 1
+        m = dr
+    }
+    if df < m {
+        s = 2
+        m = df
+    }
+    if dk < m { s = 3 }
+    return s
+}
+
+// Where room hi (the further along x) is drawn beside room lo, as an offset to its world
+// position (lo stays where it is): pl and ph are the doors that join them, at their heights
+// (the room's floor, plus its `upper` for a door on the upper level).
+fn tr_place(lo: s32, hi: s32, pl: vec3, ph: vec3) -> vec3 {
+    let a = &sec[lo]
+    let b = &sec[hi]
+    let rise = b.c.y - a.c.y
+    let shown = clamp(rise, -TR_STOREY, TR_STOREY)
+    var off = vec3(0.0, shown - rise, 0.0)
+    // the stair's rise: door to door (a door on a room's upper level is that much higher)
+    let up = ph.y + off.y - pl.y
+    let gap = TR_GAP + TR_GAP_RISE * abs(up)
+    let s = tr_side(lo, pl)
+    if s == 3 && up > 0.0 {
+        // up at the back: behind and above, its door over the one it comes from
+        off.z = (a.c.z + a.sz / 2 + gap) - (b.c.z - b.sz / 2)
+        off.x = pl.x - ph.x
+    } else if s == 2 && up <= 0.0 {
+        // down at the front: in front and below
+        off.z = (a.c.z - a.sz / 2 - gap) - (b.c.z + b.sz / 2)
+        off.x = pl.x - ph.x
+    } else {
+        // beside, on the side the door faces (else on the stage's way on), the doors level
+        var h = 1.0
+        if s == 0 { h = -1.0 }
+        off.x = (a.c.x + h * (a.sx / 2 + gap)) - (b.c.x - h * b.sx / 2)
+        off.z = pl.z - ph.z
+    }
+    return off
+}
+
+// Room k's door d (a stage of doors), or its way in (a stage of rooms in a line: its spawn),
+// world, at its height: the room's floor, plus the room's `upper` for a door on level 1.
+fn tr_door(k: s32, d: s32, spawn: vec3) -> vec3 {
+    let r = &sec[k]
+    let rp = wp_entity_params(wp_entity(sec_ent[k])) as *AfterhoursRoom
+    if d >= 0 && d < r.ndoors {
+        var y = r.c.y
+        if tr_door_level(k, d) > 0 { y += rp.upper }
+        return vec3(r.door[d].x, y, r.door[d].z)
+    }
+    var y = r.c.y
+    if (wp_entity_params(wp_entity(rp.entry as s32)) as *AfterhoursSpawn).level > 0 { y += rp.upper }
+    return vec3(spawn.x, y, spawn.z)
+}
+
+// The level of room k's door d (its entity, in entity order among the room's doors, as
+// sec_read() and A's door numbers count them).
+fn tr_door_level(k: s32, d: s32) -> s32 {
+    var i = 0
+    for n in 0..wp_pack.entity_count as s32 {
+        let e = wp_entity(n)
+        if e.type_id as s32 != AFTERHOURS_TYPE_DOOR || sec_room_at(wp_entity_pos(e)) != k { continue }
+        if i == d { return (wp_entity_params(e) as *AfterhoursDoor).level as s32 }
+        i += 1
+    }
+    return 0
+}
+
+// ---- the room left, frozen: A's own drawing of its state as he left it
+//
+// From TR_READY the runtime's room is the next one, so the room left's state is copied on frame
+// 0 (tr_freeze()) and swapped in around the calls that draw it (tr_with_left()): A's
+// draw_trains(), draw_doors(), draw_things(), draw_lights(), draw_cones() and tr_people() then
+// draw it exactly as A drew it (its dark rooms' lit cones and dotted outlines, its levels). The
+// parts are what those functions read; a new piece of a room's state that they read belongs in
+// tr_parts().
+
+const TR_STATE = 24576         // bytes for the room's state (tr_parts(): 15,537 today; asserted)
+struct TrPart {
+    p: *u8
+    n: u32
+}
+var tr_part: [24]TrPart
+var tr_nparts: s32
+var tr_frozen: [TR_STATE]u8
+var tr_hold: [TR_STATE]u8
+var tr_state_bytes: u32
+
+fn tr_add_part(p: *u8, n: u32) {
+    tr_part[tr_nparts] = TrPart { p: p, n: n }
+    tr_nparts += 1
+    tr_state_bytes += n
+}
+
+fn tr_parts() {
+    tr_nparts = 0
+    tr_state_bytes = 0
+    // the room but what no drawing reads: its wall map, waypoints, sight segments and tracks
+    tr_room_parts()
+    tr_add_part(&guards[0] as *u8, sizeof(Guard) as u32 * MAX_WATCH as u32)
+    tr_add_part(&trains[0] as *u8, sizeof(TrainState) as u32 * MAX_TRAINS as u32)
+    tr_add_part(&shells[0] as *u8, sizeof(Box2) as u32 * (MAX_TRAINS * MAX_SHELL) as u32)
+    tr_add_part(&nshell[0] as *u8, 4 * MAX_TRAINS as u32)
+    tr_add_part(&thief as *u8, sizeof(Thief) as u32)
+    tr_add_part(&toys[0] as *u8, sizeof(Toy) as u32 * MAX_TOYS as u32)
+    tr_add_part(&bells[0] as *u8, sizeof(Bell) as u32 * MAX_BELLS as u32)
+    tr_add_part(&fragile_down[0] as *u8, sizeof(bool) as u32 * MAX_FRAGILE as u32)
+    tr_add_part(&fragile_at[0] as *u8, 4 * MAX_FRAGILE as u32)
+    tr_add_part(&light_lit[0] as *u8, sizeof(bool) as u32 * MAX_LIGHTS as u32)
+    tr_add_part(&att_taken[0] as *u8, 4 * KEY_WORDS as u32)
+    tr_add_part(&att_open[0] as *u8, 4 * KEY_WORDS as u32)
+    tr_add_part(&door_t[0] as *u8, 4 * MAX_DOORS as u32)
+    tr_add_part(&card_t[0] as *u8, 4 * MAX_CARDS as u32)
+    tr_add_part(&clock as *u8, 4)
+    tr_add_part(&phase as *u8, sizeof(Phase) as u32)
+    tr_add_part(&best as *u8, 4)
+    assert(tr_state_bytes <= TR_STATE, "the transition: the room's state is larger than TR_STATE")
+}
+
+var tr_skip_a: [4]u32
+var tr_skip_n: [4]u32
+fn tr_room_parts() {
+    tr_skip_a[0] = &room.walls[0] as u32
+    tr_skip_n[0] = sizeof(Box2) as u32 * MAX_WALLS as u32
+    tr_skip_a[1] = &room.wps[0] as u32
+    tr_skip_n[1] = sizeof(Waypoint) as u32 * MAX_WP as u32
+    tr_skip_a[2] = &room.segs[0] as u32
+    tr_skip_n[2] = sizeof(Seg) as u32 * MAX_SEGS as u32
+    tr_skip_a[3] = &room.bands[0] as u32
+    tr_skip_n[3] = sizeof(Box2) as u32 * MAX_BANDS as u32
+    // in address order
+    for i in 0..4 {
+        for j in i + 1..4 {
+            if tr_skip_a[j] < tr_skip_a[i] {
+                let a = tr_skip_a[i]
+                let n = tr_skip_n[i]
+                tr_skip_a[i] = tr_skip_a[j]
+                tr_skip_n[i] = tr_skip_n[j]
+                tr_skip_a[j] = a
+                tr_skip_n[j] = n
+            }
+        }
+    }
+    var at = &room as u32
+    for i in 0..4 {
+        if tr_skip_a[i] > at { tr_add_part(at as *u8, tr_skip_a[i] - at) }
+        at = tr_skip_a[i] + tr_skip_n[i]
+    }
+    let end = &room as u32 + sizeof(Room) as u32
+    if end > at { tr_add_part(at as *u8, end - at) }
+}
+
+fn tr_copy(to_parts: bool, buf: *u8) {
+    var o: u32 = 0
+    for i in 0..tr_nparts {
+        let q = &tr_part[i]
+        if to_parts { memcpy(q.p, buf + o, q.n) } else { memcpy(buf + o, q.p, q.n) }
+        o += q.n
+    }
+}
+
+// The room left's state as he leaves it.
+fn tr_freeze() {
+    tr_parts()
+    tr_copy(false, &tr_frozen[0])
+}
+
+// Draws the room left's moving things (its world moved by -tr_origin): live before the next
+// room is loaded, its frozen state swapped in after, and the next room's (which does not change
+// until control: nothing ticks in a transition, tr_hold) put back.
+fn tr_draw_left() {
+    let loading = !tr_ready && tr_piece > 0
+    if loading { tr_copy(false, &tr_hold[0]) }
+    if tr_ready || loading { tr_copy(true, &tr_frozen[0]) }
+    view_origin = tr_origin
+    tr_things(0)
+    if tr_ready || loading { tr_copy(true, &tr_hold[0]) }
+}
+
+// A room's moving things as view_draw_room() draws them, without the thief (the transition walks
+// him), the noise rings and the marks.
+var tr_prof: [8]s32            // (the log) cycles this frame: lights, trains, doors, things, people, cones, swap, rooms
+fn tr_things(r: s32) {
+    var c = cycle_count()
+    draw_lights()
+    c = tr_lap(0, c)
+    draw_trains()
+    c = tr_lap(1, c)
+    draw_doors()
+    c = tr_lap(2, c)
+    draw_things()
+    c = tr_lap(3, c)
+    tr_people()
+    c = tr_lap(4, c)
+    tr_cones(r)
+    c = tr_lap(5, c)
+}
+
+// ---- the room left's cones, kept: a room's state does not change in a transition (nothing
+// ticks), so each watcher's fan as draw_cones() builds it (a dark room's clipped to its lights,
+// with its dotted outline: A's cone_cached()) is copied once into a pool of this file's and
+// drawn again each frame, A's own kept fans being the next room's from then on.
+
+const TR_CONE_POOL = 16384     // words for the room left's kept fans (64 KB)
+var tr_cone_pool: [TR_CONE_POOL]u32
+var tr_cone_used: s32
+struct TrCone {
+    mb: MB
+    at: vec3                   // its apex (world, at the cone's height)
+    have: bool                 // a fan with faces
+    y: fixed                   // the cone's height over the floor
+}
+var tr_cone: [MAX_WATCH]TrCone
+var tr_cones_n: [2]s32         // fans kept (built) so far
+var tr_cones_live: [2]bool     // the pool was full: draw_cones() every frame
+
+fn tr_cones_reset(r: s32) {
+    tr_cones_n[r] = 0
+    tr_cones_live[r] = false
+    if r == 0 { tr_cone_used = 0 }
+}
+
+// The next room's cones are A's own draw_cones(), whose dark fans A keeps (cone_cached()); the
+// room left's are kept here, since A's kept fans are one per watcher and the next room's
+// replace them.
+fn tr_cones(r: s32) {
+    if r == 1 {
+        draw_cones()
+        return
+    }
+    tr_cones_some(0, MAX_WATCH)
+}
+
+// (The next room, off the screen) builds A's kept dark fan of one more of its watchers, so that
+// they are not all built on the frame it comes into view.
+var tr_prebuilt: s32
+fn tr_cones_prebuild() {
+    while tr_prebuilt < room.nwatch && !dark_eyed(tr_prebuilt) { tr_prebuilt += 1 }
+    if tr_prebuilt >= room.nwatch { return }
+    let i = tr_prebuilt
+    tr_prebuilt += 1
+    depth_offset(6)
+    cone_cached(i, CONE_Y + level_y(room.watch[i].level), COL_CONE)
+    depth_offset(0)
+}
+
+// Draws room r's cones (the room left's), building them as draw_cones() does and keeping at most
+// `most` of the fans not kept yet.
+fn tr_cones_some(r: s32, most: s32) {
+    if tr_cones_live[r] {
+        draw_cones()
+        return
+    }
+    depth_offset(6)
+    let n = min(room.nwatch, MAX_WATCH)
+    var built = 0
+    for i in 0..n {
+        let k = &tr_cone[i]
+        if i < tr_cones_n[r] {
+            if k.have { mesh_at(k.mb.m, k.at - view_origin, 0.0) }
+            continue
+        }
+        if built >= most { continue }
+        built += 1
+        tr_cones_n[r] = i + 1
+        let g = &guards[i]
+        let f = &g.fan
+        let y = CONE_Y + level_y(room.watch[i].level)
+        var col = COL_CONE
+        if g.caught && phase == Phase.Caught { col = COL_CONE_HOT }
+        k.at = vec3(f.ax, room.floor + y, f.az)
+        k.y = y
+        if dark_eyed(i) {
+            // A's kept dark fan: its lit parts and its dotted outline, one mesh
+            cone_cached(i, y, col)
+            tr_keep(r, k, &mb_litc[i])
+            continue
+        }
+        let b = &mb_cones[i]
+        mb_reset(b)
+        let _ = mb_vert(b, 0.0, 0.0, 0.0)
+        for q in 0..RAYS { let _ = mb_vert(b, f.px[q] - f.ax, 0.0, f.pz[q] - f.az) }
+        for q in 0..RAYS - 1 { mb_tri(b, 0, q + 2, q + 1, col, FACE_SEMI | FACE_DOUBLE, BLEND_HALF) }
+        mesh_at(b.m, at(f.ax, y, f.az), 0.0)
+        tr_keep(r, k, b)
+    }
+    depth_offset(0)
+}
+
+// Keeps a copy of fan b (its vertices and faces) in the pool.
+fn tr_keep(r: s32, k: *TrCone, b: *MB) {
+    k.have = b.nf > 0
+    if !k.have { return }
+    let words = 4 + b.nv * 4 + b.nf * 9
+    if tr_cone_used + words > TR_CONE_POOL {
+        tr_cones_live[r] = true
+        return
+    }
+    mb_init(&k.mb, &tr_cone_pool[tr_cone_used], words, b.nv)
+    tr_cone_used += words
+    memcpy(k.mb.v as *u8, b.v as *u8, (b.nv * 16) as u32)
+    memcpy(k.mb.f as *u8, b.f as *u8, (b.nf * 36) as u32)
+    k.mb.nv = b.nv
+    k.mb.nf = b.nf
+    k.mb.m.nverts = b.nv as u16
+    k.mb.m.nfaces = b.nf as u16
+}
+
+fn tr_lap(i: s32, c0: s32) -> s32 {
+    let c = cycle_count()
+    tr_prof[i] += c - c0
+    return c
+}
+
+// ---- the rooms' placements, moved
+
+// Draws room k: its stand-in, or its placements when `full`, its world moved by `off` and by
+// -tr_origin; placements off the screen are not drawn (the camera is set).
+fn tr_room(k: s32, full: bool, off: vec3, ppm: fixed) {
+    let r = &sec[k]
+    let cell = r.cell
+    if cell == null { return }
+    let cc = wp_cell_centre(cell) + off - tr_origin
+    let base = wp_pack as u32
+    if !full && cell.standin_off != 0 {
+        let sb = cell.standin_bounds
+        if !tr_visible(cc + vec3(sb.x, sb.y, sb.z), sb.w, ppm) { return }
+        let m = (base + cell.standin_off) as *Mesh
+        mesh_at(m, cc, 0.0)
+        tr_tris += m.nfaces as s32
+        return
+    }
+    let mask = wp_cell_mask(cell)
+    var p = (base + cell.placement_off) as *WpPlacement
+    for _i in 0..cell.placement_count as s32 {
+        let pm = p.mask as u32
+        if (pm == 0 || pm & mask != 0) && p.mesh != 0 {
+            if tr_visible(cc + vec3(p.sphere.x, p.sphere.y, p.sphere.z), p.sphere.w, ppm) {
+                let m = (base + p.mesh) as *Mesh
+                var x: mat4
+                x[0] = vec4(p.cos, 0.0, p.sin, cc.x + p.pos.x)
+                x[1] = vec4(0.0, 1.0, 0.0, cc.y + p.pos.y)
+                x[2] = vec4(-p.sin, 0.0, p.cos, cc.z + p.pos.z)
+                x[3] = vec4(0.0, 0.0, 0.0, 1.0)
+                mesh_xf(m, x)
+                tr_tris += m.nfaces as s32
+            }
+        }
+        p = p + 1
+    }
+}
+
+// Whether room k's box (moved by off), from its floor to 3 m over its upper level, shows on the
+// screen: its eight corners projected.
+fn tr_room_seen(k: s32, off: vec3, _ppm: fixed) -> bool {
+    let r = &sec[k]
+    let c = r.c + off - tr_origin
+    let top = (wp_entity_params(wp_entity(sec_ent[k])) as *AfterhoursRoom).upper + 3.0
+    var x0 = 10000
+    var y0 = 10000
+    var x1 = -10000
+    var y1 = -10000
+    for i in 0..8 {
+        var p = c + vec3(r.sx / 2, -0.5, r.sz / 2)
+        if i & 1 != 0 { p.x = c.x - r.sx / 2 }
+        if i & 2 != 0 { p.z = c.z - r.sz / 2 }
+        if i & 4 != 0 { p.y = c.y + top }
+        let q = project_point(p)
+        if q.z < 0 { return true }
+        x0 = min(x0, q.x)
+        x1 = max(x1, q.x)
+        y0 = min(y0, q.y)
+        y1 = max(y1, q.y)
+    }
+    return x1 >= 0 && x0 < 320 && y1 >= 0 && y0 < 240
+}
+
+// Whether a sphere (drawn coordinates) may show on the screen: its centre projected, its radius
+// at twice the pixels a metre of the camera's target (things nearer the camera are larger).
+fn tr_visible(c: vec3, r: fixed, ppm: fixed) -> bool {
+    let p = project_point(c)
+    if p.z < 0 { return true }
+    let rp = (r * ppm * 2.0) as s32 + 4
+    return p.x > -rp && p.x < 320 + rp && p.y > -rp && p.y < 240 + rp
+}
+
+// ---- the transition
+
 // The thief went through a way out of room `from` and it leads to another room (Ev.RoomExit):
 // A's exit_to_room (from + 1 in a stage of rooms in a line; any room, lower ones too, in a stage
 // of doors), entered by its door exit_to_door.
 fn trans_begin(from: s32) {
     tr_t = 0
+    tr_n = tr_len()
     tr_from = from
     tr_to = exit_to_room
     if tr_to < 0 { tr_to = from + 1 }
     tr_ready = false
+    tr_piece = 0
     tr_skipped = false
+    tr_swapped = false
     tr_tex = 0
     tr_clock_ok = true
+    tr_tris_peak = 0
     section_read()
     tr_from = min(tr_from, sec_n - 1)
     tr_to = min(tr_to, sec_n - 1)
     let a = &sec[tr_from]
     let b = &sec[tr_to]
-    tr_out = vec3(thief.x, room.floor, thief.z)
+    // where he is, on his level (a two-level room's upper level is room.upper above its floor)
+    tr_out = vec3(thief.x, room.floor + level_y(thief.level), thief.z)
+    // the doors that join them: the way he took out, the way he comes in, at their heights
+    tr_pa = tr_out
+    if exit_door >= 0 && exit_door < room.ndoors {
+        let bx = &room.doors[exit_door].box
+        tr_pa = vec3(bx.cx, room.floor + level_y(bx.level), bx.cz)
+    } else if room.has_exit {
+        tr_pa = vec3(room.exit.cx, room.floor + level_y(room.exit.level), room.exit.cz)
+    }
     tr_in = room_door_spawn(tr_to, exit_to_door)
+    tr_pb = tr_door(tr_to, exit_to_door, tr_in)
+    tr_in.y = tr_pb.y
+    // the pair as one arrangement, whichever way he goes
+    if b.c.x >= a.c.x {
+        tr_off = tr_place(tr_from, tr_to, tr_pa, tr_pb)
+    } else {
+        tr_off = vec3(0.0, 0.0, 0.0) - tr_place(tr_to, tr_from, tr_pb, tr_pa)
+    }
+    tr_origin = vec3(fixed(a.c.x as s32), fixed(a.c.y as s32), fixed(a.c.z as s32))
+    tr_q[0] = tr_out - tr_origin
+    tr_q[1] = tr_pa - tr_origin
+    tr_q[2] = tr_edge(tr_from, tr_pa) - tr_origin
+    tr_q[3] = tr_edge(tr_to, tr_pb) + tr_off - tr_origin
+    tr_q[4] = tr_pb + tr_off - tr_origin
+    tr_q[5] = tr_in + tr_off - tr_origin
+    tr_storey_a = tr_storey(tr_from)
+    tr_storey_b = tr_storey(tr_to)
+    tr_t0 = cam_target()
+    tr_t1 = vec3(tr_in.x, b.c.y + CAM_TARGET_Y, b.c.z)    // until the next room is loaded
+    tr_dpk = CAM_DIST
+    if tr_style() == TR_STEP { tr_dpk = CAM_DIST * 1.5 }
+    if tr_style() == TR_PAIR {
+        let bx = b.c.x + tr_off.x
+        let bz = b.c.z + tr_off.z
+        let w = max(a.c.x + a.sx / 2, bx + b.sx / 2) - min(a.c.x - a.sx / 2, bx - b.sx / 2) + 3.0
+        let dz = max(a.c.z + a.sz / 2, bz + b.sz / 2) - min(a.c.z - a.sz / 2, bz - b.sz / 2)
+        let h = dz * 0.87 + abs(b.c.y + tr_off.y - a.c.y) * 0.5 + 4.0
+        tr_dpk = max(CAM_DIST, max(w / 0.47, h / 0.353))
+    }
+    // the textures: disjoint slots, or one set at a time
     tr_region = b.region
     tr_ntex = 0
-    if tr_region >= 0 { tr_ntex = wp_region(tr_region).texture_count as s32 }
-    tr_t0 = vec3(cam_x, room.floor + CAM_TARGET_Y, cam_tz)
-    // the next room's target as A will frame it: x as cam_goal() for the thief at its door, z
-    // as far from its centre as this room's is from this one's (both centred), y its floor
-    var ex = b.c.x
-    let lo = b.c.x - b.sx / 2 + HALF_VIEW
-    let hi = b.c.x + b.sx / 2 - HALF_VIEW
-    if lo <= hi { ex = clamp(tr_in.x, lo, hi) }
-    let zoff = (cam_tz_lo + cam_tz_hi) / 2 - room.cz
-    tr_est = vec3(ex, b.c.y + CAM_TARGET_Y, b.c.z + zoff)
-    // far enough back to hold both rooms, across and up
-    let w = abs(b.c.x - a.c.x) + (a.sx + b.sx) / 2 + 6.0
-    let h = abs(b.c.y - a.c.y) * cos(TR_PITCH_PEAK) + (a.sz + b.sz) / 4 + 8.0
-    tr_dpk = clamp(max(w / (TR_TAN_PEAK * 8 / 3), h / (TR_TAN_PEAK * 2)), 50.0, 140.0)
-    tr_origin = vec3(fixed(((a.c.x + b.c.x) / 2) as s32), fixed(((a.c.y + b.c.y) / 2) as s32),
-                     fixed(((a.c.z + b.c.z) / 2) as s32))
+    tr_split = false
+    if tr_region >= 0 && a.region >= 0 && tr_region != a.region {
+        tr_ntex = wp_region(tr_region).texture_count as s32
+        tr_split = !tr_split_off() && tr_slots_apart(a.region, tr_region)
+    }
+    if !tr_split && tr_region >= 0 {
+        // the next room's region is entered half way (tr_swap()), not by transition_ready()
+        wp_region_loaded = tr_region
+    }
     // the rooms left by a way out on this run are lit (A's run_cleared), the others dark
     tr_lit = run_cleared | ((1 as u32) << tr_from as u32)
+    tr_was_lit = (tr_lit >> tr_to as u32) & 1 != 0
     section_lights(tr_lit)
+    tr_light = -1.0
+    // the room left as he leaves it
+    tr_freeze()
+    tr_cones_reset(0)
     au_transition()
+}
+
+// Where A's camera looks now (world): its target, from its eye (cam_eye()).
+fn cam_target() -> vec3 {
+    return cam_eye(cam_x, cam_tz) + vec3(0.0, sin(CAM_PITCH), cos(CAM_PITCH)) * CAM_DIST
+}
+
+// Whether regions a and b put their textures in different slots (any number of slot sets: the
+// two rooms' own slots are compared).
+fn tr_slots_apart(a: s32, b: s32) -> bool {
+    let ra = wp_region(a)
+    let rb = wp_region(b)
+    var used: u32 = 0
+    for t in 0..ra.texture_count as s32 {
+        let x = (wp_pack as u32 + ra.texture_off) as *WpTexture + t
+        used |= (1 as u32) << (x.slot as u32 & 31)
+    }
+    for t in 0..rb.texture_count as s32 {
+        let x = (wp_pack as u32 + rb.texture_off) as *WpTexture + t
+        if used & ((1 as u32) << (x.slot as u32 & 31)) != 0 { return false }
+    }
+    return true
 }
 
 // One frame of the transition (fe_update in Mode.Transition).
@@ -99,23 +632,92 @@ fn trans_update(_pad: u32, press: u32) {
     }
     tr_t += 1
     tr_frames = tr_t
-    if tr_t >= TR_SWAP && tr_tex < tr_ntex && !tr_ready {
-        wp_texture_load(tr_region, tr_tex)
-        tr_tex += 1
+    // disjoint slots: the next room's textures, two a frame, before it is loaded
+    if tr_split && tr_t < TR_READY {
+        for _i in 0..2 {
+            if tr_tex < tr_ntex {
+                wp_texture_load(tr_region, tr_tex)
+                tr_tex += 1
+            }
+        }
     }
-    if tr_t == TR_READY { tr_make_ready() }
+    if tr_t >= TR_LOAD { tr_load_piece() }
+    if !tr_split && !tr_swapped && tr_ready && tr_u() >= 0.5 { tr_swap() }
     if tr_ready && clock != 0 { tr_clock_ok = false }
-    if tr_t >= TR_N { trans_finish() }
+    if tr_ready { tr_lights(tr_light_at()) }
+    if tr_t >= tr_n { trans_finish() }
 }
 
+// The next room is loaded a piece a frame from TR_LOAD by A's transition_ready_step() (its
+// entities: the room model, walls, lights, watchers, doors, its region's palettes, the textures
+// being in already; its doors and sight segments; its framing; its entry at clock 0), so that
+// no frame carries the whole load: with the aquarium's dressed rooms it is about a million
+// cycles. While it is part loaded nothing of it is drawn but its placements, and the room left's
+// frozen state is swapped in around the live, half-made one.
+const TR_LOAD = 5              // the first piece
+const TR_PIECES = 4
+var tr_piece: s32              // pieces done (TR_PIECES: loaded)
+var tr_piece_cyc: [TR_PIECES]s32   // (the log) each piece's cycles, the last transition's
+
+fn tr_load_piece() {
+    if tr_ready || tr_piece >= TR_PIECES { return }
+    let c0 = cycle_count()
+    let done = transition_ready_step()
+    if ready_piece == 1 {
+        // entering its region lit its palettes: dark again until he crosses into it
+        tr_light = -1.0
+        tr_lights(tr_light_at())
+    }
+    tr_piece_cyc[min(tr_piece, TR_PIECES - 1)] = cycle_count() - c0
+    tr_piece += 1
+    if done { tr_make_ready() }
+}
+
+var tr_ready_cyc: s32
+var tr_ready_t: s32            // the frame the next room was loaded on
 fn tr_make_ready() {
     if tr_ready { return }
-    transition_ready()
+    let c0 = cycle_count()
+    transition_ready()              // A's: the pieces not done yet
     tr_ready = true
+    tr_copy(false, &tr_hold[0])        // the next room's state, at its clock 0
+    tr_prebuilt = 0
+    tr_ready_cyc = cycle_count() - c0
+    tr_ready_t = tr_t
+    tr_t1 = cam_target()
+    tr_head_in = thief.head
+    tr_light = -1.0
+}
+
+// (Shared slots) the next room's textures in, in one frame: the room left is its stand-in from
+// now on.
+fn tr_swap() {
+    if tr_swapped { return }
+    tr_swapped = true
+    if tr_region >= 0 { wp_region_enter(tr_region, 0) }
+    tr_light = -1.0
+}
+
+// The next room's light: dark (unless cleared before on this run) until he crosses into it,
+// then on over a quarter of a second.
+fn tr_light_at() -> fixed {
+    if tr_was_lit { return 1.0 }
+    return smooth(0.55, 0.8, tr_u())
+}
+
+var tr_light_cyc: s32          // (the log) cycles the last change of light took
+fn tr_lights(t: fixed) {
+    if t == tr_light { return }
+    let c0 = cycle_count()
+    tr_light = t
+    section_light(tr_to, t)
+    tr_light_cyc = cycle_count() - c0
 }
 
 fn trans_finish() {
     tr_make_ready()
+    if !tr_split { tr_swap() }
+    tr_lights(1.0)
     tr_t = -1
     transition_control()
 }
@@ -123,58 +725,273 @@ fn trans_finish() {
 // Whether A draws the room this frame: not while the transition draws its own picture.
 fn trans_owns_frame() -> bool { return tr_t >= 0 && mode == Mode.Transition }
 
+// How far the camera is from the room left's framing (0) to the next room's (1).
+// It gets there TR_SETTLE frames before the end, which are drawn as A draws the room.
+fn tr_u() -> fixed { return clamp(fixed(tr_t - TR_READY) / (tr_n - TR_READY - TR_SETTLE), 0.0, 1.0) }
+
+// Where the thief is on his way (drawn) at s (0 where he left, 1 at his spawn), and his heading.
+var tr_walk_head: fixed
+var tr_walk_at: vec3           // where he is this frame (drawn)
+var tr_leg: s32                // the leg he is on: k from tr_q[k] to tr_q[k + 1]
+fn tr_walk(s: fixed) -> vec3 {
+    var total = 0.0
+    for k in 0..5 { total += tr_len3(tr_q[k + 1] - tr_q[k]) }
+    var d = s * total
+    tr_leg = 0
+    for k in 0..5 {
+        let a = tr_q[k]
+        let b = tr_q[k + 1]
+        let l = tr_len3(b - a)
+        tr_leg = k
+        if abs(b.x - a.x) + abs(b.z - a.z) > 0.01 { tr_walk_head = atan2(b.x - a.x, b.z - a.z) }
+        if d <= l || k == 4 {
+            if l < 0.01 { return b }
+            return a + (b - a) * clamp(d / l, 0.0, 1.0)
+        }
+        d -= l
+    }
+    return tr_q[5]
+}
+
+// Point p of room k moved out to the wall of its box nearest it (world).
+fn tr_edge(k: s32, p: vec3) -> vec3 {
+    let r = &sec[k]
+    let s = tr_side(k, p)
+    if s == 0 { return vec3(r.c.x - r.sx / 2, p.y, p.z) }
+    if s == 1 { return vec3(r.c.x + r.sx / 2, p.y, p.z) }
+    if s == 2 { return vec3(p.x, p.y, r.c.z - r.sz / 2) }
+    return vec3(p.x, p.y, r.c.z + r.sz / 2)
+}
+
+// Room k's storey (the world's room.storey).
+fn tr_storey(k: s32) -> s32 {
+    return (wp_entity_params(wp_entity(sec_ent[k])) as *AfterhoursRoom).storey as s32
+}
+
+fn tr_len3(v: vec3) -> fixed { return sqrt(v.x * v.x + v.y * v.y + v.z * v.z) }
+
 // The transition's picture (fe_draw in Mode.Transition).
 fn trans_draw() {
-    let u = fixed(tr_t) / TR_N
-    // out: eased from rest over the first 40%; held; back in over the last 45%, to rest
-    var h = smooth(0.0, 0.40, u)
-    if u > 0.55 { h = 1.0 - smooth(0.55, 1.0, u) }
-    var dest = tr_est
-    if tr_ready {
-        let exact = vec3(cam_x, room.floor + CAM_TARGET_Y, cam_tz)
-        dest = lerp(tr_est, exact, smooth(fixed(TR_READY), fixed(TR_READY + 26), fixed(tr_t)))
+    let u = tr_u()
+    if tr_ready && u >= 1.0 && tr_walked() >= 1.0 {
+        // there: the next room exactly as the game will draw it at control, but the HUD
+        view_draw_room()
+        trans_caption(tr_to, clamp((tr_n - tr_t) * 24, 0, 255))
+        return
     }
-    // the target slides to between the two rooms as the camera pulls back, holds there, and goes
-    // on to the next room's as it comes down
-    let mid = (tr_t0 + tr_est) / 2
-    let target = lerp(lerp(tr_t0, mid, smooth(0.04, 0.42, u)), dest, smooth(0.52, 0.97, u))
-    let d = lerp(CAM_DIST, tr_dpk, h)
-    let pitch = lerp(CAM_PITCH, TR_PITCH_PEAK, h)
-    let fov = lerp(CAM_FOV, TR_FOV_PEAK, h)
-    let eye = target - vec3(0.0, sin(pitch), cos(pitch)) * d
+    let e = tr_ease(u)
+    // the camera: the game's pitch and field of view; the target slides from the room left's
+    // to the next room's (drawn), the distance stepping back half way in TR_STEP and TR_PAIR
+    let t0 = tr_t0 - tr_origin
+    let t1 = tr_t1 + tr_off - tr_origin
+    var h = smooth(0.0, 0.5, u)
+    if u > 0.5 { h = 1.0 - smooth(0.5, 1.0, u) }
+    var target = t0 + (t1 - t0) * e
+    let d = CAM_DIST + (tr_dpk - CAM_DIST) * h
+    let eye = target - vec3(0.0, sin(CAM_PITCH), cos(CAM_PITCH)) * d
     cls(VOID)
-    view_origin = tr_origin
-    camera_fov(fov)
-    camera_clip(max(CAM_DIST - 14.0, d - 60.0), d + 60.0)
-    camera_look(eye - view_origin, 0.0, pitch)
-    section_xf(tr_origin, vec3(0.0, 0.0, 0.0), 1.0, 0.0, false)
-    sec_tris = 0
-    for k in 0..sec_n {
-        let full = (k == tr_from && tr_t < TR_SWAP) || (k == tr_to && tr_ready)
-        section_room(k, full)
+    camera_fov(CAM_FOV)
+    camera_clip(max(4.0, d - 20.0), d + 20.0)
+    camera_look(eye, 0.0, CAM_PITCH)
+    let ppm = 680.0 / d
+    tr_tris = 0
+    // the rooms: the room left as its placements (its stand-in once its textures are gone), the
+    // next as its placements once loaded with its textures in (its stand-in before that)
+    let zero = vec3(0.0, 0.0, 0.0)
+    for i in 0..8 { tr_prof[i] = 0 }
+    let cr = cycle_count()
+    tr_room(tr_from, tr_split || !tr_swapped, zero, ppm)
+    // (with disjoint slots its placements show as soon as its textures are in, before its things)
+    if tr_ready || (tr_split && tr_tex >= tr_ntex) { tr_room(tr_to, tr_split || tr_swapped, tr_off, ppm) }
+    tr_tris_peak = max(tr_tris_peak, tr_tris)
+    tr_prof[7] = cycle_count() - cr
+    // the room left's things as he left them; the next room's at its clock 0 (each only while
+    // its room is on the screen: a dark room's cones cost as much to draw as in play)
+    if tr_room_seen(tr_from, zero, ppm) { tr_draw_left() }
+    if tr_ready && tr_room_seen(tr_to, tr_off, ppm) {
+        view_origin = tr_origin - tr_off
+        tr_things(1)
+    } else if tr_ready && tr_t > tr_ready_t {
+        // the next room's dark fans built (A keeps them) one a frame while it is off the screen,
+        // not all on the frame it comes into view
+        view_origin = tr_origin - tr_off
+        tr_cones_prebuild()
     }
-    // the people, the trains and the cones: the room left's as they were, then the next room's
-    // at its clock 0
-    if tr_t < TR_SWAP || tr_ready {
-        draw_trains()
-        draw_things()
-        draw_people()
-        draw_cones()
-    }
-    // the way through the building, from the exit to the next door
-    let p = smooth(0.12, 0.62, u)
-    if p > 0.0 {
-        let a = sec_screen(tr_from, tr_out)
-        let b = sec_screen(tr_to, tr_in)
-        if a.z >= 0 && b.z >= 0 {
-            let e = ivec4(a.x + (fixed(b.x - a.x) * p) as s32, a.y + (fixed(b.y - a.y) * p) as s32, 1, 0)
-            sec_dots(a, e, SEC_ROUTE)
-            rect_blend(e.x - 2, e.y - 2, 5, 5, SEC_ROUTE, BLEND_ADD)
-        }
-    }
+    // the thief on his way through the doors, the stair, the dots ahead of him
+    let s = tr_walked()
+    let p = tr_walk(s)
+    tr_walk_at = p
+    var head = tr_walk_head
+    if s >= 1.0 && tr_ready { head = tr_head_in }
+    var m = mb_thief.m
+    if s >= 1.0 && tr_ready && thief_in_dark() { m = mb_dark.m }
+    mesh_at(m, p, head)
+    tr_stair()
+    if s < 1.0 { tr_route(p) }
     // the next room's name, as its lights come on
-    if tr_ready {
-        let k = clamp(min((tr_t - TR_READY) * 8, (TR_N - tr_t) * 24), 0, 255)
+    if tr_ready && u > 0.5 {
+        let k = clamp(min(((u - 0.5) * 600.0) as s32, (tr_n - tr_t) * 24), 0, 255)
         trans_caption(tr_to, k)
     }
+    if tr_log() { tr_print(u, target) }
+}
+
+// The stair between the two rooms' walls (tr_q[2] to tr_q[3]): steps about 0.3 m high, 1.2 m
+// wide, solid down to below the lower floor; a level way across is one landing. It rises out of
+// the void as he sets off, and each step sinks back into it once he is past, so none of it is
+// left when the next room's own picture takes over.
+const TR_STAIR_W: fixed = 1.2
+var tr_step_buf: [512]u32
+var tr_step: MB                // a unit box (x, z -0.5..0.5, y 0..1): a step of the stair
+var tr_step_ok: bool
+fn tr_stair() {
+    if !tr_step_ok {
+        mb_init(&tr_step, &tr_step_buf[0], len(tr_step_buf), 32)
+        mb_box(&tr_step, -0.5, 0.0, -0.5, 0.5, 1.0, 0.5, rgb(112, 118, 132))
+        tr_step_ok = true
+    }
+    let a = tr_q[2]
+    let b = tr_q[3]
+    let dx = b.x - a.x
+    let dz = b.z - a.z
+    let lh = sqrt(dx * dx + dz * dz)
+    if lh < 0.05 { return }
+    let ux = dx / lh
+    let uz = dz / lh
+    let rise = b.y - a.y
+    let n = clamp((abs(rise) / 0.3) as s32, 1, 16)
+    let base = min(a.y, b.y) - 0.4
+    let dl = lh / n
+    // how far up the stair he is (0 at its foot in the room left, 1 at the next room's wall)
+    var f = 0.0
+    if tr_leg > 2 { f = 1.0 }
+    if tr_leg == 2 { f = clamp(tr_len3(tr_walk_at - a) / tr_len3(b - a), 0.0, 1.0) }
+    let grow = smooth(0.0, 10.0, fixed(tr_t))
+    let gone = 1.0 - smooth(0.8, 0.97, tr_walked())    // all of it sunk by the time he stands still
+    for i in 0..n {
+        let c = (fixed(i) + 0.5) / n
+        let k = grow * gone * (1.0 - smooth(c + 0.15, c + 0.45, f))
+        if k <= 0.01 { continue }
+        var top = a.y + rise * (i + 1) / n
+        if rise < 0.0 { top = a.y + rise * i / n }
+        if n == 1 { top = max(a.y, b.y) }
+        top = base + (top - base) * k
+        var x: mat4
+        x[0] = vec4(uz * TR_STAIR_W, 0.0, ux * dl, a.x + dx * c)
+        x[1] = vec4(0.0, top - base, 0.0, base)
+        x[2] = vec4(-ux * TR_STAIR_W, 0.0, uz * dl, a.z + dz * c)
+        x[3] = vec4(0.0, 0.0, 0.0, 1.0)
+        mesh_xf(tr_step.m, x)
+    }
+    // the floors they are on, at each end of the stair (the building's real floors: the
+    // picture closes the rise up to a storey)
+    if tr_storey_a != tr_storey_b && tr_t >= 4 && tr_walked() < 0.85 {
+        tr_storey_tag(a, tr_storey_a)
+        tr_storey_tag(b, tr_storey_b)
+    }
+}
+
+var tr_tag: [8]u8
+fn tr_storey_tag(p: vec3, n: s32) {
+    if n == 0 { return }
+    let q = project_point(p + vec3(0.0, 1.2, 0.0))
+    if q.z < 0 || q.x < 8 || q.x > 304 || q.y < 8 || q.y > 220 { return }
+    let b = &tr_tag[0]
+    str_copy(b, 8, "")
+    if n < 0 {
+        str_append(b, 8, "B")
+        str_append_int(b, 8, -n, 0, false)
+    } else {
+        str_append_int(b, 8, n, 0, false)
+        str_append(b, 8, "F")
+    }
+    font_shadow(rgb(0, 0, 0))
+    let _ = font_text_align(q.x, q.y - 4, b, rgb(255, 200, 150), ALIGN_CENTRE)
+    font_shadow_off()
+}
+
+// (the captures, tr_log()) one line a frame: the camera's target, where the next room is drawn,
+// the textures' state, the triangles of the rooms' placements and the frame before's cycles.
+fn tr_print(u: fixed, target: vec3) {
+    print("TR t ")
+    print_int(tr_t)
+    print(" u ")
+    print_fixed(u)
+    print(" tgt ")
+    print_fixed(target.x)
+    print(" ")
+    print_fixed(target.y)
+    print(" ")
+    print_fixed(target.z)
+    print(" off ")
+    print_fixed(tr_off.x)
+    print(" ")
+    print_fixed(tr_off.y)
+    print(" ")
+    print_fixed(tr_off.z)
+    print(" split ")
+    print_int(tr_split as s32)
+    print(" swapped ")
+    print_int(tr_swapped as s32)
+    print(" tris ")
+    print_int(tr_tris)
+    print(" prev_cpu ")
+    print_int(cpu_used())
+    print(" prev_gpu ")
+    print_int(gpu_used())
+    print(" state ")
+    print_int(tr_state_bytes as s32)
+    print(" prof ")
+    for i in 0..8 {
+        print_int(tr_prof[i])
+        print(" ")
+    }
+    print(" light ")
+    print_int(tr_light_cyc)
+    print(" ready ")
+    print_int(tr_ready_cyc)
+    print(" pool ")
+    print_int(tr_cone_used)
+    print_int(tr_cones_live[0] as s32)
+    print_int(tr_cones_live[1] as s32)
+    print(" pieces ")
+    for i in 0..TR_PIECES {
+        print_int(tr_piece_cyc[i])
+        print(" ")
+    }
+    println("")
+}
+
+// The next room's guards and cameras (draw_people() without the thief, whom the transition
+// walks, and with the ghost at the clock's 0).
+fn tr_people() {
+    for i in 0..room.nwatch {
+        let g = &guards[i]
+        if room.watch[i].kind == WKind.Camera {
+            mesh_at(mb_cam.m, at(g.x, level_y(room.watch[i].level), g.z), g.head)
+        } else {
+            mesh_at(mb_guard.m, at(g.x, level_y(room.watch[i].level), g.z), g.head)
+        }
+    }
+    if best.have && phase == Phase.Play && clock < best.ticks {
+        let q = ghost_at(clock)
+        mesh_at(mb_ghost.m, at(q.x, level_y(room.spawn_level), q.y), 0.0)
+    }
+}
+
+// How far along his way the thief is (0 where he left, 1 at his spawn): he walks on at once,
+// and arrives a little before the camera settles.
+fn tr_walked() -> fixed { return smooth(0.0, 0.9, fixed(tr_t) / tr_n) }
+
+// The way still ahead of him, dotted in his colour: from p (drawn) through the doors to his
+// spawn, marked.
+fn tr_route(p: vec3) {
+    let up = vec3(0.0, 0.15, 0.0)
+    var a = project_point(p + up)
+    for k in tr_leg + 1..6 {
+        let b = project_point(tr_q[k] + up)
+        sec_dots(a, b, SEC_ROUTE)
+        a = b
+    }
+    if a.z >= 0 { rect_blend(a.x - 2, a.y - 2, 5, 5, SEC_ROUTE, BLEND_ADD) }
 }

@@ -1,0 +1,1276 @@
+{
+ "format": "mei-world",
+ "version": 1,
+ "name": "station",
+ "game": "../../afterhours.game.mochi",
+ "assets": "../../rooms/arrival/dressed",
+ "asset_dirs": [
+  "../../rooms/gates/dressed",
+  "../../rooms/passage"
+ ],
+ "grid": {
+  "cell_size": 32
+ },
+ "collision": {
+  "surfaces": {
+   "default": 0
+  }
+ },
+ "regions": {
+  "arrival": {
+   "textures": {
+    "slots": "13-8,6-0"
+   }
+  },
+  "gates": {
+   "textures": {
+    "slots": "16-31"
+   }
+  },
+  "passage": {
+   "textures": {
+    "slots": "13-8,6-0"
+   }
+  }
+ },
+ "paths": {
+  "r1_track": {
+   "points": [
+    [
+     9.25,
+     -16.0,
+     18.3
+    ],
+    [
+     22.75,
+     -16.0,
+     18.3
+    ]
+   ],
+   "raised": true
+  }
+ },
+ "runtime": {
+  "depth": true,
+  "perspective": true
+ },
+ "textures": {
+  "slots": "13-8,6-0,16-31"
+ },
+ "palette": {
+  "reserved": [
+   250,
+   251
+  ]
+ },
+ "standins": {
+  "distance": 64,
+  "triangles": 700,
+  "cells": {
+   "passage": {
+    "triangles": 900
+   }
+  }
+ },
+ "verification": {
+  "vantage_points": [
+   {
+    "name": "game_arrival_0",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     16.0,
+     8.9925,
+     1.542
+    ]
+   },
+   {
+    "name": "game_gates_0",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     48.0,
+     13.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_passage_0",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     75.35,
+     18.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_passage_1",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     80.0,
+     18.9925,
+     1.917
+    ]
+   },
+   {
+    "name": "game_passage_2",
+    "yaw": 0,
+    "pitch": -60,
+    "position": [
+     84.65,
+     18.9925,
+     1.917
+    ]
+   }
+  ],
+  "thresholds": {
+   "cell_triangles": 2500,
+   "standin_triangles": 900
+  }
+ },
+ "cells": [
+  {
+   "id": "arrival",
+   "at": [
+    0,
+    0
+   ],
+   "region": "arrival",
+   "placements": [
+    {
+     "id": "r1_station",
+     "asset": "r1_station",
+     "position": [
+      16.0,
+      -16.0,
+      16.0
+     ],
+     "collision": "r1_station_col"
+    },
+    {
+     "id": "r1_pillar",
+     "asset": "r1_pillar",
+     "position": [
+      11.0,
+      -16.0,
+      14.8
+     ],
+     "collision": "self"
+    },
+    {
+     "id": "r1_bench_1",
+     "asset": "r1_bench_1",
+     "position": [
+      13.0,
+      -16.0,
+      13.4
+     ],
+     "collision": "r1_bench_col"
+    },
+    {
+     "id": "r1_bench_2",
+     "asset": "r1_bench_2",
+     "position": [
+      16.4,
+      -16.0,
+      13.4
+     ],
+     "collision": "r1_bench_col"
+    }
+   ],
+   "entities": [
+    {
+     "id": "r1_room",
+     "type": "room",
+     "position": [
+      16.0,
+      -16.0,
+      15.625
+     ],
+     "params": {
+      "name": "the_last_train",
+      "entry": "r1_spawn",
+      "exit": "r1_exit",
+      "size": [
+       13.5,
+       2.4,
+       8.25
+      ],
+      "storey": -3,
+      "first": true,
+      "next": "r2_room"
+     }
+    },
+    {
+     "id": "r1_spawn",
+     "type": "spawn",
+     "position": [
+      12.92,
+      -16.0,
+      16.6
+     ],
+     "params": {
+      "yaw": 180
+     }
+    },
+    {
+     "id": "r1_exit",
+     "type": "exit",
+     "position": [
+      19.2,
+      -16.0,
+      15.8
+     ],
+     "params": {
+      "size": [
+       0.8,
+       2.0,
+       2.2
+      ]
+     }
+    },
+    {
+     "id": "r1_guard",
+     "type": "guard",
+     "position": [
+      21.5,
+      -16.0,
+      12.8
+     ],
+     "params": {
+      "kind": "posted",
+      "look_a": 300,
+      "look_b": 165,
+      "hold": 240,
+      "turn": 90,
+      "phase": 0,
+      "sight": 5.5,
+      "fov": 60,
+      "hear": 6
+     }
+    },
+    {
+     "id": "r1_train",
+     "type": "train",
+     "position": [
+      21.0,
+      -16.0,
+      18.3
+     ],
+     "params": {
+      "path": "r1_track",
+      "period": 7200,
+      "offset": -540,
+      "arrive": 240,
+      "stop": 11.75,
+      "dwell": 300,
+      "leave": 360,
+      "cars": 2,
+      "car_length": 10,
+      "width": 2.4,
+      "doors": 3,
+      "door_width": 1.3,
+      "sides": "left"
+     }
+    },
+    {
+     "id": "r1_wall_front",
+     "type": "wall",
+     "position": [
+      16.0,
+      -16.0,
+      11.625
+     ],
+     "params": {
+      "size": [
+       13.5,
+       1.0,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "r1_wall_back",
+     "type": "wall",
+     "position": [
+      16.0,
+      -16.0,
+      19.625
+     ],
+     "params": {
+      "size": [
+       13.5,
+       2.4,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "r1_wall_end_w",
+     "type": "wall",
+     "position": [
+      9.375,
+      -16.0,
+      15.625
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       7.75
+      ]
+     }
+    },
+    {
+     "id": "r1_wall_end_e",
+     "type": "wall",
+     "position": [
+      22.625,
+      -16.0,
+      15.625
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       7.75
+      ]
+     }
+    },
+    {
+     "id": "r1_wall_stair",
+     "type": "wall",
+     "position": [
+      21.2,
+      -16.0,
+      15.8
+     ],
+     "params": {
+      "size": [
+       2.6,
+       2.2,
+       2.2
+      ]
+     }
+    },
+    {
+     "id": "r1_wall_pillar",
+     "type": "wall",
+     "position": [
+      11.0,
+      -16.0,
+      14.8
+     ],
+     "params": {
+      "size": [
+       0.5,
+       1.0,
+       0.5
+      ]
+     }
+    },
+    {
+     "id": "r1_wall_bench_1",
+     "type": "wall",
+     "position": [
+      13.0,
+      -16.0,
+      13.4
+     ],
+     "params": {
+      "size": [
+       1.8,
+       0.82,
+       0.45
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r1_wall_bench_2",
+     "type": "wall",
+     "position": [
+      16.4,
+      -16.0,
+      13.4
+     ],
+     "params": {
+      "size": [
+       1.8,
+       0.82,
+       0.45
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r1_wall_bins",
+     "type": "wall",
+     "position": [
+      14.6,
+      -16.0,
+      11.9
+     ],
+     "params": {
+      "size": [
+       1.1,
+       0.9,
+       0.3
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r1_wall_timetable",
+     "type": "wall",
+     "position": [
+      21.8,
+      -16.0,
+      11.79
+     ],
+     "params": {
+      "size": [
+       0.8,
+       1.0,
+       0.08
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r1_wall_ashtray",
+     "type": "wall",
+     "position": [
+      10.05,
+      -16.0,
+      12.05
+     ],
+     "params": {
+      "size": [
+       0.3,
+       0.9,
+       0.3
+      ],
+      "blocks": false
+     }
+    }
+   ]
+  },
+  {
+   "id": "gates",
+   "at": [
+    1,
+    0
+   ],
+   "region": "gates",
+   "placements": [
+    {
+     "id": "r2_concourse",
+     "asset": "r2_concourse",
+     "position": [
+      48.0,
+      -11.0,
+      16.0
+     ],
+     "collision": "r2_concourse_col"
+    },
+    {
+     "id": "r2_glass",
+     "asset": "r2_glass",
+     "position": [
+      48.0,
+      -11.0,
+      16.0
+     ],
+     "collision": "none"
+    }
+   ],
+   "entities": [
+    {
+     "id": "r2_room",
+     "type": "room",
+     "position": [
+      48.0,
+      -11.0,
+      16.0
+     ],
+     "params": {
+      "name": "the_ticket_gates",
+      "entry": "r2_spawn",
+      "exit": "r2_exit",
+      "size": [
+       13.5,
+       2.4,
+       9.0
+      ],
+      "storey": -2,
+      "next": "r3_room"
+     }
+    },
+    {
+     "id": "r2_spawn",
+     "type": "spawn",
+     "position": [
+      44.4,
+      -11.0,
+      13.1
+     ],
+     "params": {
+      "yaw": 90
+     }
+    },
+    {
+     "id": "r2_exit",
+     "type": "exit",
+     "position": [
+      54.2,
+      -11.0,
+      13.4
+     ],
+     "params": {
+      "size": [
+       0.6,
+       2.0,
+       2.0
+      ]
+     }
+    },
+    {
+     "id": "r2_hide_lockers",
+     "type": "hide_spot",
+     "position": [
+      43.5,
+      -11.0,
+      19.8
+     ],
+     "params": {
+      "size": [
+       1.0,
+       1.7,
+       0.9
+      ]
+     }
+    },
+    {
+     "id": "r2_wall_front",
+     "type": "wall",
+     "position": [
+      48.0,
+      -11.0,
+      11.625
+     ],
+     "params": {
+      "size": [
+       13.5,
+       1.0,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "r2_wall_back",
+     "type": "wall",
+     "position": [
+      48.0,
+      -11.0,
+      20.375
+     ],
+     "params": {
+      "size": [
+       13.5,
+       2.4,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "r2_wall_end_w",
+     "type": "wall",
+     "position": [
+      41.375,
+      -11.0,
+      16.0
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       8.5
+      ]
+     }
+    },
+    {
+     "id": "r2_wall_end_e_front",
+     "type": "wall",
+     "position": [
+      54.625,
+      -11.0,
+      12.075
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       0.65
+      ]
+     }
+    },
+    {
+     "id": "r2_wall_end_e_back",
+     "type": "wall",
+     "position": [
+      54.625,
+      -11.0,
+      17.325
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       5.85
+      ]
+     }
+    },
+    {
+     "id": "r2_wall_stairwell",
+     "type": "wall",
+     "position": [
+      42.66,
+      -11.0,
+      13.135
+     ],
+     "params": {
+      "size": [
+       2.32,
+       1.0,
+       2.77
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r2_wall_machines",
+     "type": "wall",
+     "position": [
+      45.7,
+      -11.0,
+      12.0
+     ],
+     "params": {
+      "size": [
+       1.8,
+       1.0,
+       0.5
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r2_wall_office_w",
+     "type": "wall",
+     "position": [
+      46.475,
+      -11.0,
+      19.2
+     ],
+     "params": {
+      "size": [
+       0.15,
+       1.0,
+       2.1
+      ]
+     }
+    },
+    {
+     "id": "r2_wall_office_e",
+     "type": "wall",
+     "position": [
+      49.525,
+      -11.0,
+      19.2
+     ],
+     "params": {
+      "size": [
+       0.15,
+       1.0,
+       2.1
+      ]
+     }
+    },
+    {
+     "id": "r2_wall_office_window",
+     "type": "wall",
+     "position": [
+      47.575,
+      -11.0,
+      18.225
+     ],
+     "params": {
+      "size": [
+       2.05,
+       1.0,
+       0.15
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r2_wall_office_jamb",
+     "type": "wall",
+     "position": [
+      49.375,
+      -11.0,
+      18.225
+     ],
+     "params": {
+      "size": [
+       0.15,
+       1.0,
+       0.15
+      ]
+     }
+    },
+    {
+     "id": "r2_wall_lockers_w",
+     "type": "wall",
+     "position": [
+      42.25,
+      -11.0,
+      19.8
+     ],
+     "params": {
+      "size": [
+       1.5,
+       2.0,
+       0.9
+      ]
+     }
+    },
+    {
+     "id": "r2_wall_lockers_e",
+     "type": "wall",
+     "position": [
+      44.7,
+      -11.0,
+      19.8
+     ],
+     "params": {
+      "size": [
+       1.4,
+       2.0,
+       0.9
+      ]
+     }
+    },
+    {
+     "id": "r2_wall_gate_0",
+     "type": "wall",
+     "position": [
+      48.0,
+      -11.0,
+      12.15
+     ],
+     "params": {
+      "size": [
+       0.6,
+       1.0,
+       0.25
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r2_wall_gate_1",
+     "type": "wall",
+     "position": [
+      48.0,
+      -11.0,
+      13.35
+     ],
+     "params": {
+      "size": [
+       0.6,
+       1.0,
+       0.25
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r2_wall_gate_2",
+     "type": "wall",
+     "position": [
+      48.0,
+      -11.0,
+      14.55
+     ],
+     "params": {
+      "size": [
+       0.6,
+       1.0,
+       0.25
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r2_wall_gate_3",
+     "type": "wall",
+     "position": [
+      48.0,
+      -11.0,
+      15.75
+     ],
+     "params": {
+      "size": [
+       0.6,
+       1.0,
+       0.25
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r2_wall_gate_4",
+     "type": "wall",
+     "position": [
+      48.0,
+      -11.0,
+      16.95
+     ],
+     "params": {
+      "size": [
+       0.6,
+       1.0,
+       0.25
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r2_wall_gate_barrier",
+     "type": "wall",
+     "position": [
+      48.0,
+      -11.0,
+      17.6125
+     ],
+     "params": {
+      "size": [
+       0.6,
+       1.0,
+       1.075
+      ],
+      "blocks": false
+     }
+    },
+    {
+     "id": "r2_wp_aisle_e",
+     "type": "waypoint",
+     "position": [
+      50.4,
+      -11.0,
+      13.95
+     ],
+     "params": {
+      "next": "r2_wp_aisle_w",
+      "wait": 0,
+      "look": 270
+     }
+    },
+    {
+     "id": "r2_wp_aisle_w",
+     "type": "waypoint",
+     "position": [
+      45.4,
+      -11.0,
+      13.95
+     ],
+     "params": {
+      "next": "r2_wp_lockers",
+      "wait": 30,
+      "look": 270
+     }
+    },
+    {
+     "id": "r2_wp_lockers",
+     "type": "waypoint",
+     "position": [
+      44.8,
+      -11.0,
+      18.3
+     ],
+     "params": {
+      "next": "r2_wp_back_w",
+      "wait": 90,
+      "look": 300
+     }
+    },
+    {
+     "id": "r2_wp_back_w",
+     "type": "waypoint",
+     "position": [
+      45.4,
+      -11.0,
+      16.35
+     ],
+     "params": {
+      "next": "r2_wp_back_e",
+      "wait": 0,
+      "look": 90
+     }
+    },
+    {
+     "id": "r2_wp_back_e",
+     "type": "waypoint",
+     "position": [
+      50.4,
+      -11.0,
+      16.35
+     ],
+     "params": {
+      "next": "r2_wp_office",
+      "wait": 0,
+      "look": 90
+     }
+    },
+    {
+     "id": "r2_wp_office",
+     "type": "waypoint",
+     "position": [
+      48.95,
+      -11.0,
+      17.75
+     ],
+     "params": {
+      "next": "r2_wp_aisle_e",
+      "wait": 120,
+      "look": 180
+     }
+    },
+    {
+     "id": "r2_guard",
+     "type": "guard",
+     "position": [
+      50.4,
+      -11.0,
+      16.4
+     ],
+     "yaw": 180.0,
+     "params": {
+      "kind": "patrol",
+      "route": "r2_wp_aisle_e",
+      "speed": 0.9,
+      "sight": 4.5,
+      "fov": 60,
+      "hear": 6,
+      "turn_rate": 180
+     }
+    }
+   ]
+  },
+  {
+   "id": "passage",
+   "at": [
+    2,
+    0
+   ],
+   "region": "passage",
+   "placements": [
+    {
+     "id": "r3_passage",
+     "asset": "r3_passage",
+     "position": [
+      80.0,
+      -6.0,
+      16.0
+     ],
+     "collision": "r3_passage_col"
+    },
+    {
+     "id": "r3_showcase",
+     "asset": "r3_showcase",
+     "position": [
+      80.0,
+      -6.0,
+      16.0
+     ],
+     "collision": "none"
+    },
+    {
+     "id": "r3_wwater",
+     "asset": "r3_wwater",
+     "position": [
+      80.0,
+      -6.0,
+      16.0
+     ],
+     "collision": "none"
+    }
+   ],
+   "entities": [
+    {
+     "id": "r3_room",
+     "type": "room",
+     "position": [
+      80.0,
+      -6.0,
+      16.0
+     ],
+     "params": {
+      "name": "the_passage",
+      "entry": "r3_spawn",
+      "exit": "r3_exit",
+      "size": [
+       22.5,
+       2.4,
+       7.3
+      ],
+      "storey": -1
+     }
+    },
+    {
+     "id": "r3_spawn",
+     "type": "spawn",
+     "position": [
+      69.6,
+      -6.0,
+      14.4
+     ],
+     "params": {
+      "yaw": 90
+     }
+    },
+    {
+     "id": "r3_exit",
+     "type": "exit",
+     "position": [
+      90.7,
+      -6.0,
+      13.5
+     ],
+     "params": {
+      "size": [
+       0.6,
+       2.0,
+       1.8
+      ]
+     }
+    },
+    {
+     "id": "r3_camera",
+     "type": "guard",
+     "position": [
+      90.85,
+      -3.7,
+      18.9
+     ],
+     "params": {
+      "kind": "camera",
+      "look_a": 235,
+      "look_b": 285,
+      "hold": 60,
+      "turn": 210,
+      "phase": 0,
+      "sight": 13.0,
+      "fov": 34
+     }
+    },
+    {
+     "id": "r3_wall_front",
+     "type": "wall",
+     "position": [
+      80.0,
+      -6.0,
+      12.475
+     ],
+     "params": {
+      "size": [
+       22.5,
+       1.0,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "r3_wall_back",
+     "type": "wall",
+     "position": [
+      80.0,
+      -6.0,
+      19.525
+     ],
+     "params": {
+      "size": [
+       22.5,
+       2.4,
+       0.25
+      ]
+     }
+    },
+    {
+     "id": "r3_wall_end_w_front",
+     "type": "wall",
+     "position": [
+      68.875,
+      -6.0,
+      13.0
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       0.8
+      ]
+     }
+    },
+    {
+     "id": "r3_wall_end_w_back",
+     "type": "wall",
+     "position": [
+      68.875,
+      -6.0,
+      17.4
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       4.0
+      ]
+     }
+    },
+    {
+     "id": "r3_wall_end_e",
+     "type": "wall",
+     "position": [
+      91.125,
+      -6.0,
+      16.9
+     ],
+     "params": {
+      "size": [
+       0.25,
+       2.4,
+       5.0
+      ]
+     }
+    },
+    {
+     "id": "r3_wall_entry_beyond",
+     "type": "wall",
+     "position": [
+      68.6,
+      -6.0,
+      14.4
+     ],
+     "params": {
+      "size": [
+       0.3,
+       2.4,
+       2.0
+      ]
+     }
+    },
+    {
+     "id": "r3_wall_exit_beyond",
+     "type": "wall",
+     "position": [
+      91.4,
+      -6.0,
+      13.5
+     ],
+     "params": {
+      "size": [
+       0.3,
+       2.4,
+       1.8
+      ]
+     }
+    },
+    {
+     "id": "r3_wall_pillar_0",
+     "type": "wall",
+     "position": [
+      73.5,
+      -6.0,
+      16.6
+     ],
+     "params": {
+      "size": [
+       0.8,
+       1.0,
+       0.8
+      ]
+     }
+    },
+    {
+     "id": "r3_wall_pillar_1",
+     "type": "wall",
+     "position": [
+      77.5,
+      -6.0,
+      14.6
+     ],
+     "params": {
+      "size": [
+       0.8,
+       1.0,
+       0.8
+      ]
+     }
+    },
+    {
+     "id": "r3_wall_pillar_2",
+     "type": "wall",
+     "position": [
+      81.5,
+      -6.0,
+      16.6
+     ],
+     "params": {
+      "size": [
+       0.8,
+       1.0,
+       0.8
+      ]
+     }
+    },
+    {
+     "id": "r3_wall_pillar_3",
+     "type": "wall",
+     "position": [
+      85.5,
+      -6.0,
+      14.6
+     ],
+     "params": {
+      "size": [
+       0.8,
+       1.0,
+       0.8
+      ]
+     }
+    },
+    {
+     "id": "r3_wall_machine_0",
+     "type": "wall",
+     "position": [
+      80.0,
+      -6.0,
+      12.85
+     ],
+     "params": {
+      "size": [
+       1.2,
+       1.0,
+       0.5
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

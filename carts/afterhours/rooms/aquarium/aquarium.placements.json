@@ -22,6 +22,16 @@
     0
    ],
    "collision": "none"
+  },
+  {
+   "id": "r5_water",
+   "asset": "aq_water",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "collision": "none"
   }
  ]
 }

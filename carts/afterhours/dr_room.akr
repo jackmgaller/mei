@@ -14,6 +14,8 @@ const MAX_BANDS = 16       // the tracks' boxes (a box per path segment)
 const MAX_DOORS = 6        // a room's doors (stage 2: ways out, staff doors)
 const MAX_CARDS = 4        // keycards lying in a room
 const CARDS = 4            // the cards' colours: 1 red, 2 blue, 3 green, 4 yellow (0: none)
+const MAX_LIGHTS = 12      // the aquarium: where the tanks' light falls in a dark room
+const LEVELS_MAX = 2       // a room's levels: 0 its floor, 1 a walkway above it
 
 // An oriented box in plan: centre, half extents along its own x and z, its yaw's cos and sin,
 // and its height (for drawing).
@@ -27,6 +29,7 @@ struct Box2 {
     h: fixed
     blocks: bool       // cuts cones
     solid: bool        // stops the thief and the guards
+    level: s32         // the room's level it is on (0 the floor, 1 the walkway above)
 }
 
 // A wall side for sight, with its bounds.
@@ -68,6 +71,21 @@ struct WatchDef {
     hear: fixed
     turn_rate: fixed   // radians a tick his head turns at (0 at load: TURN_RATE)
     pace: fixed        // how much faster than `speed` he goes to a noise (0 at load: NOISE_PACE)
+    level: s32         // the level he is on (sees and walks only there)
+    torch: bool        // in a dark room he carries a light: he sees his whole fan
+}
+
+// Where a tank's light falls in a dark room (a box in plan, on a level): lit always (period 0),
+// or on the room's clock for `on` ticks from `offset`, every `period` ticks.
+struct Light {
+    box: Box2
+    period: s32
+    on: s32
+    offset: s32
+    // its box's four sides as half-planes x pux + z puz <= poff (for clipping fans to it)
+    pux: [4]fixed
+    puz: [4]fixed
+    poff: [4]fixed
 }
 
 // A train's path: points, the length to each, the unit direction of each segment.
@@ -128,6 +146,16 @@ struct Room {
     frag_r: [MAX_FRAGILE]fixed
     frag_noise: [MAX_FRAGILE]fixed
     has_exit: bool     // `exit` leads on (level 1, the platform); a room of doors has none
+    // the aquarium (NOTES_A.md, "The aquarium stage")
+    dark: bool         // lit only by its lights: a watcher without a torch sees only what they light
+    levels: s32        // 1, or 2: a walkway `upper` metres above the floor
+    upper: fixed
+    spawn_level: s32   // the level he comes in on
+    nlights: s32
+    lights: [MAX_LIGHTS]Light
+    frag_level: [MAX_FRAGILE]s32
+    card_level: [MAX_CARDS]s32
+    seg_n0: s32        // segs[0..seg_n0) are the floor's, segs[seg_n0..nseg) the walkway's
     ndoors: s32
     doors: [MAX_DOORS]Door
     ncards: s32
@@ -174,7 +202,63 @@ fn room_clear() {
     mem_fill(&room as *u8, 0, sizeof(Room) as u32)
     room_is_world = false
     room.name = "room"
+    room.levels = 1
 }
+
+// A level's height above the room's floor.
+fn level_y(l: s32) -> fixed {
+    if l > 0 { return room.upper }
+    return 0.0
+}
+
+fn room_light(b: Box2, period: s32, on: s32, offset: s32) {
+    assert(room.nlights < MAX_LIGHTS, "too many lights")
+    let l = &room.lights[room.nlights]
+    *l = Light { box: b, period: period, on: on, offset: offset }
+    // |lx| <= hx, |lz| <= hz, lx = dx c - dz s, lz = dx s + dz c (box_local())
+    l.pux[0] = b.c
+    l.puz[0] = -b.s
+    l.pux[1] = -b.c
+    l.puz[1] = b.s
+    l.pux[2] = b.s
+    l.puz[2] = b.c
+    l.pux[3] = -b.s
+    l.puz[3] = -b.c
+    for p in 0..4 {
+        var h = b.hx
+        if p >= 2 { h = b.hz }
+        l.poff[p] = h + b.cx * l.pux[p] + b.cz * l.puz[p]
+    }
+    room.nlights += 1
+}
+
+// The lights on this tick (lights_update(), with the trains: what is drawn is what was tested).
+var light_lit: [MAX_LIGHTS]bool
+
+fn lights_update(t: s32) {
+    for i in 0..room.nlights { light_lit[i] = light_on(i, t) }
+}
+
+// Whether light i is on at clock t.
+fn light_on(i: s32, t: s32) -> bool {
+    let l = &room.lights[i]
+    if l.period <= 0 { return true }
+    let u = t - l.offset
+    return u - floordiv(u, l.period) * l.period < l.on
+}
+
+// Whether (x, z) on level `level` is lit this tick (a light on there).
+fn lit_at(x: fixed, z: fixed, level: s32) -> bool {
+    for i in 0..room.nlights {
+        let l = &room.lights[i]
+        if light_lit[i] && l.box.level == level && box_contains(&l.box, x, z) { return true }
+    }
+    return false
+}
+
+// Whether watcher i sees only what the lights light (a dark room, no torch).
+fn dark_eyed(i: s32) -> bool { return room.dark && !room.watch[i].torch }
+
 
 // A box centred at (x, z), size (sx, sz), turned by yaw, sy high.
 fn box2(x: fixed, z: fixed, sx: fixed, sy: fixed, sz: fixed, yaw: fixed, blocks: bool, solid: bool) -> Box2 {
@@ -216,6 +300,7 @@ fn room_fragile(x: fixed, z: fixed, r: fixed, noise: fixed) {
     room.frag_z[k] = z
     room.frag_r[k] = r
     room.frag_noise[k] = noise
+    room.frag_level[k] = 0
     room.nfrag += 1
 }
 
@@ -317,10 +402,13 @@ fn room_finish() {
 // The blocking walls' sides (again when a staff door opens).
 fn room_segs() {
     room.nseg = 0
-    for i in 0..room.nwalls {
-        let b = &room.walls[i]
-        if !b.blocks { continue }
-        box_segs(b)
+    for l in 0..LEVELS_MAX {
+        for i in 0..room.nwalls {
+            let b = &room.walls[i]
+            if !b.blocks || b.level != l { continue }
+            box_segs(b)
+        }
+        if l == 0 { room.seg_n0 = room.nseg }
     }
 }
 

@@ -1,0 +1,1012 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "qt_room",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 1000
+ },
+ "materials": {
+  "cut": {
+   "color": "#3c475e",
+   "class": "emissive"
+  },
+  "section": {
+   "color": "#3a4254",
+   "texture": {
+    "image": "art/qt_section.png",
+    "bits": 4,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_0_0": {
+   "color": "#2a2a40",
+   "texture": {
+    "image": "art/qt_floor_0_0.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_0_1": {
+   "color": "#2a2a40",
+   "texture": {
+    "image": "art/qt_floor_0_1.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_1_0": {
+   "color": "#2a2a40",
+   "texture": {
+    "image": "art/qt_floor_1_0.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "floor_1_1": {
+   "color": "#2a2a40",
+   "texture": {
+    "image": "art/qt_floor_1_1.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "back_0": {
+   "color": "#3a3850",
+   "texture": {
+    "image": "art/qt_back_0.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "back_1": {
+   "color": "#3a3850",
+   "texture": {
+    "image": "art/qt_back_1.png",
+    "bits": 8,
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "wall_in": {
+   "color": "#4a5060"
+  },
+  "end": {
+   "color": "#5c6272"
+  },
+  "reveal": {
+   "color": "#545a6a"
+  },
+  "lintel": {
+   "color": "#8a90a0"
+  },
+  "door_glow": {
+   "color": "#8a90a8",
+   "class": "emissive"
+  },
+  "threshold": {
+   "color": "#2c3448",
+   "class": "emissive"
+  },
+  "beyond_wall": {
+   "color": "#262c3e",
+   "class": "emissive"
+  },
+  "stair_landing": {
+   "color": "#8a8a7c",
+   "class": "emissive"
+  },
+  "stair_wall": {
+   "color": "#4a4c50",
+   "class": "emissive"
+  },
+  "stair_0": {
+   "color": "#7a7a6e",
+   "class": "emissive"
+  },
+  "stair_1": {
+   "color": "#66665c",
+   "class": "emissive"
+  },
+  "stair_2": {
+   "color": "#52524a",
+   "class": "emissive"
+  },
+  "stair_3": {
+   "color": "#40403a",
+   "class": "emissive"
+  },
+  "stair_4": {
+   "color": "#30302c",
+   "class": "emissive"
+  },
+  "stair_5": {
+   "color": "#222220",
+   "class": "emissive"
+  },
+  "lamp_cage": {
+   "color": "#4a4e56"
+  },
+  "lamp_glow": {
+   "color": "#fff4d0",
+   "class": "emissive"
+  }
+ },
+ "nodes": [
+  {
+   "id": "floor_0_0",
+   "op": "box",
+   "size": [
+    6.5,
+    0.05,
+    4.0
+   ],
+   "material": "floor_0_0",
+   "transform": {
+    "translate": [
+     -3.25,
+     -0.025,
+     -2.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "floor_0_1",
+   "op": "box",
+   "size": [
+    6.5,
+    0.05,
+    4.0
+   ],
+   "material": "floor_0_1",
+   "transform": {
+    "translate": [
+     -3.25,
+     -0.025,
+     2.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "floor_1_0",
+   "op": "box",
+   "size": [
+    6.5,
+    0.05,
+    4.0
+   ],
+   "material": "floor_1_0",
+   "transform": {
+    "translate": [
+     3.25,
+     -0.025,
+     -2.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "floor_1_1",
+   "op": "box",
+   "size": [
+    6.5,
+    0.05,
+    4.0
+   ],
+   "material": "floor_1_1",
+   "transform": {
+    "translate": [
+     3.25,
+     -0.025,
+     2.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "mesh",
+   "material": "cut",
+   "vertices": [
+    [
+     -6.75,
+     1.0,
+     -4.25
+    ],
+    [
+     6.75,
+     1.0,
+     -4.25
+    ],
+    [
+     6.75,
+     -0.4,
+     -4.25
+    ],
+    [
+     -6.75,
+     -0.4,
+     -4.25
+    ],
+    [
+     -6.75,
+     -0.4,
+     -4.0
+    ],
+    [
+     6.75,
+     -0.4,
+     -4.0
+    ],
+    [
+     6.75,
+     1.0,
+     -4.0
+    ],
+    [
+     -6.75,
+     1.0,
+     -4.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     2,
+     1,
+     6,
+     5
+    ],
+    [
+     1,
+     0,
+     7,
+     6
+    ],
+    [
+     0,
+     3,
+     4,
+     7
+    ]
+   ],
+   "face_materials": [
+    "section",
+    "wall_in",
+    "cut",
+    "cut",
+    "cut"
+   ]
+  },
+  {
+   "id": "back_0_wall",
+   "op": "box",
+   "size": [
+    6.75,
+    2.42,
+    0.25
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -3.375,
+     1.19,
+     4.125
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "back": "back_0",
+    "top": "cut",
+    "front": "cut",
+    "left": "cut"
+   }
+  },
+  {
+   "id": "back_1_wall",
+   "op": "box",
+   "size": [
+    6.75,
+    2.42,
+    0.25
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     3.375,
+     1.19,
+     4.125
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "back": "back_1",
+    "top": "cut",
+    "front": "cut",
+    "right": "cut"
+   }
+  },
+  {
+   "id": "end_w_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    5.8
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -6.625,
+     1.0,
+     -1.1
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut",
+    "left": "cut",
+    "right": "end",
+    "front": "reveal"
+   }
+  },
+  {
+   "id": "end_w_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    1.0
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -6.625,
+     1.0,
+     3.5
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "left": "cut",
+    "right": "end",
+    "back": "reveal"
+   }
+  },
+  {
+   "id": "end_w_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     -6.625,
+     2.245,
+     2.4
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_glow",
+    "top": "cut",
+    "left": "cut",
+    "right": "lintel"
+   }
+  },
+  {
+   "id": "end_w_sill_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.38,
+    1.2
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     -6.625,
+     -0.21,
+     2.4
+    ]
+   },
+   "open": [
+    "top",
+    "front",
+    "back",
+    "right"
+   ]
+  },
+  {
+   "id": "end_e_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    0.6
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     6.625,
+     1.0,
+     -3.7
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "cut",
+    "right": "cut",
+    "left": "end",
+    "front": "reveal"
+   }
+  },
+  {
+   "id": "end_e_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.8,
+    6.2
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     6.625,
+     1.0,
+     0.9
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "top": "cut",
+    "right": "cut",
+    "left": "end",
+    "back": "reveal"
+   }
+  },
+  {
+   "id": "end_e_lintel_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.29,
+    1.2
+   ],
+   "material": "end",
+   "transform": {
+    "translate": [
+     6.625,
+     2.245,
+     -2.8
+    ]
+   },
+   "open": [
+    "front",
+    "back"
+   ],
+   "faces": {
+    "bottom": "door_glow",
+    "top": "cut",
+    "right": "cut",
+    "left": "lintel"
+   }
+  },
+  {
+   "id": "end_e_sill_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.38,
+    1.2
+   ],
+   "material": "cut",
+   "transform": {
+    "translate": [
+     6.625,
+     -0.21,
+     -2.8
+    ]
+   },
+   "open": [
+    "top",
+    "front",
+    "back",
+    "left"
+   ]
+  },
+  {
+   "id": "beyond_ocean",
+   "op": "mesh",
+   "material": "threshold",
+   "vertices": [
+    [
+     -8.15,
+     0.0,
+     3.0
+    ],
+    [
+     -6.5,
+     0.0,
+     3.0
+    ],
+    [
+     -6.5,
+     0.0,
+     1.8
+    ],
+    [
+     -8.15,
+     0.0,
+     1.8
+    ],
+    [
+     -8.15,
+     2.4,
+     3.0
+    ],
+    [
+     -6.75,
+     2.4,
+     3.0
+    ],
+    [
+     -6.75,
+     -0.4,
+     3.0
+    ],
+    [
+     -8.15,
+     -0.4,
+     3.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ]
+   ],
+   "face_materials": [
+    "threshold",
+    "beyond_wall"
+   ]
+  },
+  {
+   "id": "beyond_plant",
+   "op": "mesh",
+   "material": "stair_landing",
+   "vertices": [
+    [
+     6.5,
+     0.0,
+     -2.2
+    ],
+    [
+     7.2,
+     0.0,
+     -2.2
+    ],
+    [
+     7.2,
+     0.0,
+     -3.4
+    ],
+    [
+     6.5,
+     0.0,
+     -3.4
+    ],
+    [
+     7.2,
+     -0.2,
+     -2.2
+    ],
+    [
+     7.48,
+     -0.2,
+     -2.2
+    ],
+    [
+     7.48,
+     -0.2,
+     -3.4
+    ],
+    [
+     7.2,
+     -0.2,
+     -3.4
+    ],
+    [
+     7.48,
+     -0.4,
+     -2.2
+    ],
+    [
+     7.76,
+     -0.4,
+     -2.2
+    ],
+    [
+     7.76,
+     -0.4,
+     -3.4
+    ],
+    [
+     7.48,
+     -0.4,
+     -3.4
+    ],
+    [
+     7.76,
+     -0.6,
+     -2.2
+    ],
+    [
+     8.04,
+     -0.6,
+     -2.2
+    ],
+    [
+     8.04,
+     -0.6,
+     -3.4
+    ],
+    [
+     7.76,
+     -0.6,
+     -3.4
+    ],
+    [
+     8.04,
+     -0.8,
+     -2.2
+    ],
+    [
+     8.32,
+     -0.8,
+     -2.2
+    ],
+    [
+     8.32,
+     -0.8,
+     -3.4
+    ],
+    [
+     8.04,
+     -0.8,
+     -3.4
+    ],
+    [
+     8.32,
+     -1.0,
+     -2.2
+    ],
+    [
+     8.6,
+     -1.0,
+     -2.2
+    ],
+    [
+     8.6,
+     -1.0,
+     -3.4
+    ],
+    [
+     8.32,
+     -1.0,
+     -3.4
+    ],
+    [
+     8.6,
+     -1.2,
+     -2.2
+    ],
+    [
+     8.88,
+     -1.2,
+     -2.2
+    ],
+    [
+     8.88,
+     -1.2,
+     -3.4
+    ],
+    [
+     8.6,
+     -1.2,
+     -3.4
+    ],
+    [
+     6.75,
+     2.4,
+     -2.2
+    ],
+    [
+     8.88,
+     2.4,
+     -2.2
+    ],
+    [
+     8.88,
+     -1.6,
+     -2.2
+    ],
+    [
+     6.75,
+     -1.6,
+     -2.2
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     8,
+     9,
+     10,
+     11
+    ],
+    [
+     12,
+     13,
+     14,
+     15
+    ],
+    [
+     16,
+     17,
+     18,
+     19
+    ],
+    [
+     20,
+     21,
+     22,
+     23
+    ],
+    [
+     24,
+     25,
+     26,
+     27
+    ],
+    [
+     28,
+     29,
+     30,
+     31
+    ]
+   ],
+   "face_materials": [
+    "stair_landing",
+    "stair_0",
+    "stair_1",
+    "stair_2",
+    "stair_3",
+    "stair_4",
+    "stair_5",
+    "stair_wall"
+   ]
+  },
+  {
+   "id": "stair_lamp",
+   "op": "box",
+   "size": [
+    0.09,
+    0.14,
+    0.32
+   ],
+   "material": "lamp_cage",
+   "transform": {
+    "translate": [
+     6.465,
+     2.2,
+     -2.8
+    ]
+   },
+   "open": [
+    "right"
+   ],
+   "faces": {
+    "left": "lamp_glow",
+    "back": "lamp_glow",
+    "bottom": "lamp_glow"
+   }
+  }
+ ],
+ "lighting": {
+  "direction": [
+   -0.25,
+   0.7,
+   -0.65
+  ],
+  "ambient": 0.08,
+  "diffuse": 0.18,
+  "lights": [
+   {
+    "id": "uv_a0",
+    "at": [
+     -2.8,
+     1.25,
+     1.9
+    ],
+    "color": "#9a6cff",
+    "intensity": 0.9,
+    "range": 2.6
+   },
+   {
+    "id": "uv_a1",
+    "at": [
+     0.0,
+     1.25,
+     1.9
+    ],
+    "color": "#9a6cff",
+    "intensity": 0.9,
+    "range": 2.6
+   },
+   {
+    "id": "uv_a2",
+    "at": [
+     2.8,
+     1.25,
+     1.9
+    ],
+    "color": "#9a6cff",
+    "intensity": 0.9,
+    "range": 2.6
+   },
+   {
+    "id": "uv_b0",
+    "at": [
+     -2.8,
+     1.25,
+     -0.7
+    ],
+    "color": "#9a6cff",
+    "intensity": 0.9,
+    "range": 2.6
+   },
+   {
+    "id": "uv_b1",
+    "at": [
+     0.0,
+     1.25,
+     -0.7
+    ],
+    "color": "#9a6cff",
+    "intensity": 0.9,
+    "range": 2.6
+   },
+   {
+    "id": "uv_b2",
+    "at": [
+     2.8,
+     1.25,
+     -0.7
+    ],
+    "color": "#9a6cff",
+    "intensity": 0.9,
+    "range": 2.6
+   },
+   {
+    "id": "stair",
+    "at": [
+     6.42,
+     2.2,
+     -2.8
+    ],
+    "color": "#f0f0d8",
+    "intensity": 1.6,
+    "range": 3.6
+   },
+   {
+    "id": "passage",
+    "at": [
+     -7.6,
+     1.6,
+     2.4
+    ],
+    "color": "#5a8ad8",
+    "intensity": 0.8,
+    "range": 2.2
+   }
+  ],
+  "refine": {
+   "tolerance": 24,
+   "max_added": 60
+  }
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

@@ -53,6 +53,9 @@ SCENES = {
     'booth': {'thief': (-4.6, 1.6, 180), 'guards': [('pb_guard_projectionist', (-1.8, -1.4), 55)]},
     'corridor': {'thief': (1.5, 2.95, 180), 'guards': [('sc_guard_office', None, 40), ('sc_guard_porter', (-3.2, 1.0), 0),
                                                        ('sc_camera_stair', None, 300)]},
+    # the tower stage's (another stage, the same capture)
+    'hall': {'thief': (-4.0, -0.35, 180), 'guards': [('lh_guard_lobby', (1.6, -2.2), 90), ('lh_guard_cleaner', (9.6, 1.4), 180)]},
+    'roof': {'thief': (3.2, -3.5, 270), 'guards': [('rf_camera_light', None, 150), ('rf_guard_west', (-7.0, 3.6), 180)]},
 }
 
 

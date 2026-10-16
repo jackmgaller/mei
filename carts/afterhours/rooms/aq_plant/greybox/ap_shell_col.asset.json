@@ -1,0 +1,178 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "ap_shell_col",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 400
+ },
+ "lighting": {
+  "direction": [
+   -0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "materials": {
+  "floor": {
+   "color": "#8c9098"
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    18.5,
+    0.4,
+    9.5
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.2,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "front",
+    "back"
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    18.5,
+    1.02,
+    0.25
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     0.0,
+     0.49,
+     -4.625
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "back_0",
+   "op": "box",
+   "size": [
+    18.5,
+    2.42,
+    0.25
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     0.0,
+     1.19,
+     4.625
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "end_w_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    5.9
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -9.125,
+     1.19,
+     -1.55
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "back"
+   ]
+  },
+  {
+   "id": "end_w_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    1.9
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     -9.125,
+     1.19,
+     3.55
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "end_e_0",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    1.1
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     9.125,
+     1.19,
+     -3.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "back"
+   ]
+  },
+  {
+   "id": "end_e_1",
+   "op": "box",
+   "size": [
+    0.25,
+    2.42,
+    6.7
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     9.125,
+     1.19,
+     1.15
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  }
+ ]
+}

@@ -8,17 +8,22 @@
 // they know; the solution's (1) on B's room.
 
 import "a_tapes.akr"
+import "g_dash.akr"            // agent G's scenarios: the dash (70-78)
 import "../dr_world.akr"       // B's room (the cart's own; the rules' scenarios load the stand-in)
 import "../dr_audio.akr"       // F's sounds, so the scenarios run the cart's audio calls too
 import "tapes/platform_solution.akr"   // B's solution tapes: Gate 1's platform
-import "tapes/level1_solution.akr"     // and level 1's, a room each
-import "tapes/level2_solution.akr"     // and stage 2's, a leg (a visit to a room) each
+import "tapes/station_solution.akr"   // the station's, a room each
+import "tapes/tower_solution.akr"     // the tower's, a room each
+import "tapes/store_solution.akr"     // the store's, a leg (a visit to a room) each
+import "tapes/aquarium_solution.akr"  // the aquarium's (J's), a leg each
 
-const L1_TAPES: [5]*Span = [SOLUTION_L1_ARRIVAL, SOLUTION_L1_GATES, SOLUTION_L1_PASSAGE,
-                            SOLUTION_L1_LOBBY, SOLUTION_L1_AQUARIUM]
-const L1_LENS: [5]s32 = [len(SOLUTION_L1_ARRIVAL), len(SOLUTION_L1_GATES), len(SOLUTION_L1_PASSAGE),
-                         len(SOLUTION_L1_LOBBY), len(SOLUTION_L1_AQUARIUM)]
+const ST_TAPES: [3]*Span = [SOLUTION_STATION_ARRIVAL, SOLUTION_STATION_GATES, SOLUTION_STATION_PASSAGE]
+const ST_LENS: [3]s32 = [len(SOLUTION_STATION_ARRIVAL), len(SOLUTION_STATION_GATES), len(SOLUTION_STATION_PASSAGE)]
 var test_run: bool             // scenario 46: each room of the run plays its own tape
+
+// Room k's tape in a stage of rooms in a line (the station).
+fn line_tape(_stage: s32, k: s32) -> *Span { return ST_TAPES[clamp(k, 0, 2)] }
+fn line_tape_n(_stage: s32, k: s32) -> s32 { return ST_LENS[clamp(k, 0, 2)] }
 
 // ---- the harness as a front end (dr_hooks.akr): every event is counted and the room flow
 // logged; with test_fe (scenario 48) the harness runs the transitions as E's does: the exit goes
@@ -34,6 +39,8 @@ var flow_n: s32
 var fe_frames: s32
 var fe_trans: s32              // transitions run
 var fe_hold_clock_ok: bool = true
+var frag_tx: fixed             // where the thief stood when he last knocked a fragile thing over
+var frag_tz: fixed
 
 fn fe_event(e: Ev, a: s32) {
     ev_count[e] += 1
@@ -50,9 +57,13 @@ fn fe_event(e: Ev, a: s32) {
         always(mode == Mode.Play && clock == 0 && phase == Phase.Play, "in control at the room's clock 0", fixed(clock))
         always(thief.x == room.spawn_x && thief.z == room.spawn_z, "at the room's door", thief.x)
     }
+    if e == Ev.Fragile {
+        frag_tx = thief.x
+        frag_tz = thief.z
+    }
     if e == Ev.RoomExit {
         fe_frames = 0
-        if s2_exits <= S2_LEGS {
+        if s2_exits <= MAX_LEGS {
             s2_exit_door[s2_exits] = exit_door
             s2_exit_room[s2_exits] = run_room
             s2_exit_ticks[s2_exits] = tape_now.ticks
@@ -103,7 +114,7 @@ var worst_rays: s32
 // ---- the hooks
 
 fn input_pad(f: s32) -> u32 {
-    if test_run { play(L1_TAPES[run_room], L1_LENS[run_room]) }
+    if test_run { play(line_tape(stage_of(), run_room), line_tape_n(stage_of(), run_room)) }
     pad_v = 0
     stick_v = vec2(0.0, 0.0)
     if tape_on && phase == Phase.Play {
@@ -111,8 +122,34 @@ fn input_pad(f: s32) -> u32 {
         pad_v = s.pad as u32
         stick_v = vec2(fixed(s.sx as s32) / 127, fixed(s.sy as s32) / 127)
     }
+    drop_watch(f)
     scenario(f)
     return pad_v
+}
+
+// Every scenario fails on a dropped frame (the game's frames must keep to the budgets), except
+// the frame after one on which the harness itself did heavy test work (test_heavy: a grid
+// sweep, a search over room sizes), whose overrun is the test's.
+var test_heavy: bool           // set by the scenario during the frame before this one
+var drops: s32
+fn drop_watch(f: s32) {
+    if f > 2 && !finished && frames_dropped() > 0 && !test_heavy {
+        drops += frames_dropped()
+        print("DROPPED the frame before ")
+        print_int(f)
+        print(" (mode ")
+        print_int(mode as s32)
+        print(", room ")
+        print_int(run_room)
+        print(", clock ")
+        print_int(clock)
+        print(", CPU ")
+        print_int(cpu_used())
+        print(", GPU ")
+        print_int(gpu_used())
+        println(")")
+    }
+    test_heavy = false
 }
 
 fn input_stick(_f: s32) -> vec2 { return stick_v }
@@ -147,21 +184,32 @@ fn test_init() {
         22 => { name = "shot: the caught freeze (B's platform)"; platform_run(); play(&TAPE_INTO_CONE_B[0], len(TAPE_INTO_CONE_B)) }
         30 => { name = "budget: the worst frame"; standin(); test_no_catch = true; play(&TAPE_BUSY[0], len(TAPE_BUSY)) }
         31 => { name = "budget: the worst frame on B's platform"; platform_run(); test_no_catch = true; play(&TAPE_TOUR[0], len(TAPE_TOUR)) }
-        41, 42, 43, 44, 45 => { name = "level 1: a room's solution tape reaches its exit unseen"; level_room(SCENARIO - 41) }
+        41, 42, 43 => { name = "the station: a room's solution tape reaches its exit unseen"; line_room(STAGE_STATION, SCENARIO - 41) }
         47 => { name = "framing: every room's floor, front to back, on the picture clear of the HUD" }
-        50, 51, 52, 53, 54 => { name = "shot: a level 1 room's front row"; level_room(SCENARIO - 50); test_no_catch = true; play(&TAPE_FRONT[0], len(TAPE_FRONT)) }
+        50, 51, 52 => { name = "shot: a station room's front row"; line_room(STAGE_STATION, SCENARIO - 50); test_no_catch = true; play(&TAPE_FRONT[0], len(TAPE_FRONT)) }
         56 => { name = "shot: hidden in the gates' hiding place"; level_room(1) }
         55 => { name = "shot: the platform's front row"; platform_run(); test_no_catch = true; play(&TAPE_FRONT[0], len(TAPE_FRONT)) }
-        46 => { name = "level 1 as one run: five rooms' tapes, the run's totals"; test_run = true }
-        48 => { name = "the state flow: level 1 through four transitions run by a front end, its end, the stage again"; test_run = true; test_fe = true; ev_n = 0; for e in Ev { ev_count[e] = 0 }; flow_n = 0; stage_start(0) }
+        46 => { name = "the station as one run: three rooms' tapes, the run's totals"; test_run = true; stage_start(STAGE_STATION) }
+        91 => { name = "the tower as one run: B's legs in order"; legs_run(STAGE_TOWER) }
+        92 => { name = "the tower through a front end's transitions, door to door"; test_fe = true; legs_run(STAGE_TOWER) }
+        48 => { name = "the state flow: the station through two transitions run by a front end, its end, the stage again"; test_run = true; test_fe = true; ev_n = 0; for e in Ev { ev_count[e] = 0 }; flow_n = 0; stage_start(STAGE_STATION) }
         49 => { name = "events: footsteps, the trains, catches"; platform_run(); test_no_catch = true; ev_n = 0; for e in Ev { ev_count[e] = 0 }; play(&TAPE_SHOT_TRAIN[0], len(TAPE_SHOT_TRAIN)) }
         40 => { name = "B's platform: a tour"; platform_run(); test_no_catch = true; play(&TAPE_TOUR[0], len(TAPE_TOUR)) }
         60 => { name = "stage 2's rules: a keycard, a staff door, re-entry by either door, the run's state across rooms"; graph_run() }
+        80 => { name = "the aquarium's dark: a dark-eyed watcher sees only where the lights fall, drawn as tested; a timed light; a torch sees all"; aqua_run() }
+        82 => { name = "budget: the dark gallery and the tank hall, every frame"; aqua_run(); test_no_catch = true }
+        84 => { name = "a guard sent 200 m off (another cell's distance) walks toward it without overflow"; standin(); test_no_catch = true }
+        85 => { name = "the aquarium as one run: J's ten legs in order"; legs_run(STAGE_AQUARIUM) }
+        87 => { name = "(diagnostic, not in check.sh) the aquarium's legs with nobody catching: where each would be caught"; legs_run(STAGE_AQUARIUM); test_no_catch = true }
+        86 => { name = "the aquarium through a front end's transitions: nine, door to door, by both levels"; test_fe = true; legs_run(STAGE_AQUARIUM) }
+        88 => { name = "a stage started over frames: stage_prepare, a texture a frame, stage_start; no frame dropped"; test_no_catch = true }
+        83 => { name = "the aquarium (J's world): each room loads, entered by each way in, stands 40 ticks"; stage_start(STAGE_AQUARIUM); test_no_catch = true }
+        81 => { name = "the aquarium's levels: a walkway above a floor, entered by different doors; each level's walls and cones; hearing across"; aqua_run() }
         61 => { name = "stage 2's rules: caught or START, back at the door he came in by, the room as it was"; graph_run() }
         62 => { name = "stage 2's rules through a front end's transitions: any door to any door"; test_fe = true; graph_run() }
-        63 => { name = "stage 2 (level2) as one run: B's eight legs in order, the cards and doors carried"; s2_run() }
-        64 => { name = "stage 2 (level2) through a front end's transitions: seven, door to door, back and on"; test_fe = true; s2_run() }
-        else => {}
+        63 => { name = "the store as one run: B's eight legs in order, the cards and doors carried"; s2_run() }
+        64 => { name = "the store through a front end's transitions: seven, door to door, back and on"; test_fe = true; s2_run() }
+        else => g_init()
     }
 }
 
@@ -181,12 +229,15 @@ fn platform_run() {
     run_start()
 }
 
-// Level 1 from room k (its tape by the room's clock).
-fn level_room(k: s32) {
-    assert(level_switch(0), "level 1 did not open")
-    assert(load_room(k), "level 1 has no such room")
+// The station from room k (its tape by the room's clock).
+fn level_room(k: s32) { line_room(STAGE_STATION, k) }
+
+// A stage of rooms in a line from room k, with its tape.
+fn line_room(stage: s32, k: s32) {
+    assert(level_switch(stage), "the stage did not open")
+    assert(load_room(k), "the stage has no such room")
     enter_room()
-    play(L1_TAPES[k], L1_LENS[k])
+    play(line_tape(stage, k), line_tape_n(stage, k))
 }
 
 // A run of the stand-in room (n of them in a row: scenario 11 plays two).
@@ -235,6 +286,7 @@ fn note(what: *u8, v: fixed) { report("NOTE ", what, v) }
 
 fn done() {
     if finished { return }
+    expect(drops == 0, "no frame dropped", fixed(drops))
     finished = true
     print("DONE ")
     print_int(SCENARIO)
@@ -336,7 +388,7 @@ fn scenario(f: s32) {
         20, 21 => s_shot(f)
         30, 31 => s_budget(f)
         1, 14, 15 => s_solution(f)
-        41, 42, 43, 44, 45 => s_l1_room(f)
+        41, 42, 43 => s_l1_room(f)
         46 => s_l1_run(f)
         48 => s_flow(f)
         49 => s_events(f)
@@ -344,9 +396,15 @@ fn scenario(f: s32) {
         50, 51, 52, 53, 54, 55 => { if clock >= 100 { done() } }
         56 => s_hidden_shot(f)
         60, 62 => s_doors(f)
+        80 => s_dark(f)
+        81 => s_levels(f)
+        82 => s_aqua_budget(f)
+        83 => s_aqua_world(f)
+        88 => s_prepare(f)
+        84 => s_far(f)
         61 => s_doors_caught(f)
-        63, 64 => s_s2_run(f)
-        else => {}
+        63, 64, 85, 86, 87, 91, 92 => s_s2_run(f)
+        else => g_scenario(f)
     }
 }
 
@@ -845,15 +903,17 @@ fn never_caught() {
     }
 }
 
-// 41-45: level 1's room k (SCENARIO - 41) from its clock 0 with B's tape: never caught, and
-// through its exit (into the next room, or the run's end after the last) before the tape runs out.
+// 41-43 (the station), 91-94 (the tower): room k from its clock 0 with B's tape: never caught,
+// and through its exit (into the next room, or the run's end after the last) before the tape runs
+// out.
 fn s_l1_room(f: s32) {
-    let k = SCENARIO - 41
+    var k = SCENARIO - 41
+    if SCENARIO >= 91 { k = SCENARIO - 91 }
     if f == 0 { return }
     never_caught()
     if run_room != k || phase == Phase.Clear {
         expect(cleared_n == 1, "through the room's exit", fixed(cleared_n))
-        if k < 4 { expect(run_room == k + 1 && clock == 0, "into the next room, its clock at 0", fixed(run_room)) }
+        if k < run_length - 1 { expect(run_room == k + 1 && clock == 0, "into the next room, its clock at 0", fixed(run_room)) }
         else { expect(phase == Phase.Clear, "the last room: the run's end", 0.0) }
         print("CLEAR room ")
         print_int(k + 1)
@@ -866,17 +926,19 @@ fn s_l1_room(f: s32) {
     if clock > spans_ticks(tape, tape_n) + 60 { expect(false, "the tape ran out before the exit", fixed(clock)) }
 }
 
-// 46: the whole of level 1 as one run, each room with its tape: never caught, every room
-// cleared in turn, the run's end, and its totals: the total is the rooms' times, no restarts.
+// 46 (the station), 95 (the tower): the whole stage as one run, each room with its tape: never
+// caught, every room cleared in turn, the run's end, and its totals: the total is the rooms'
+// times, no restarts.
 fn s_l1_run(f: s32) {
     if f == 0 { return }
     if f > 2 { budget_watch() }
     never_caught()
     if phase == Phase.Clear && t0 < 0 {
         t0 = f
-        expect(cleared_n == 5 && run_room == 4, "five rooms cleared, in order", fixed(cleared_n))
+        let n = run_length
+        expect(cleared_n == n && run_room == n - 1, "every room cleared, in order", fixed(cleared_n))
         var sum = 0
-        for k in 0..5 {
+        for k in 0..n {
             expect(room_time[k] > 0 && room_time[k] == room_spent[k] && room_restarts[k] == 0, "a room cleared on its first attempt", fixed(room_time[k]))
             sum += room_time[k]
             print("ROOM ")
@@ -887,7 +949,7 @@ fn s_l1_run(f: s32) {
         }
         expect(total == sum, "the run's total is the rooms' times", fixed(total))
         expect(run_restarts() == 0, "no restarts", fixed(run_restarts()))
-        print("RUN ")
+        if SCENARIO == 95 { print("RUN tower ") } else { print("RUN station ") }
         print_int(total)
         print(" ticks; worst frame: cpu ")
         print_int(worst_cpu)
@@ -905,7 +967,7 @@ fn s_l1_run(f: s32) {
     if f > 6000 { expect(false, "the run did not end", fixed(run_room)) }
 }
 
-// 47: each room of level 1 and the platform, one a frame: with the camera as far toward the front
+// 47: each room of every stage, one a frame (its box only, the world opened bare): with the camera as far toward the front
 // as it goes, the floor's front edge is on the picture above FRONT_Y + 1; as far toward the back,
 // its back edge below BACK_Y - 1; and the pixels a metre at the target stay about 24.
 fn frame_check(what: *u8) {
@@ -914,9 +976,9 @@ fn frame_check(what: *u8) {
     camera_look(cam_eye(room.cx, cam_goal_z(zf)), 0.0, CAM_PITCH)
     let pf = project_point(vec3(room.cx, room.floor, zf))
     expect(pf.y <= FRONT_Y + 1 && pf.y >= BACK_Y - 1, what, fixed(pf.y))
-    camera_look(cam_eye(room.cx, cam_goal_z(zb)), 0.0, CAM_PITCH)
-    let pb = project_point(vec3(room.cx, room.floor, zb))
-    expect(pb.y >= BACK_Y - 1 && pb.y <= FRONT_Y + 1, "  and its back edge", fixed(pb.y))
+    camera_look(cam_eye(room.cx, cam_tz_hi), 0.0, CAM_PITCH)
+    let pb = project_point(vec3(room.cx, room.floor + level_y(room.levels - 1), zb))
+    expect(pb.y >= BACK_Y - 1 && pb.y <= FRONT_Y + 1, "  and its back edge (the walkway's, if it has one)", fixed(pb.y))
     let p0 = project_point(vec3(room.cx, room.floor, zb))
     let p1 = project_point(vec3(room.cx + 1.0, room.floor, zb))
     note("  px a metre (x, at the back edge)", fixed(p1.x - p0.x))
@@ -930,18 +992,33 @@ fn frame_check(what: *u8) {
 }
 
 fn s_framing(f: s32) {
-    if f >= 1 && f <= 5 {
-        assert(level_switch(0), "level 1 did not open")
-        assert(load_room(f - 1), "no room")
-        frame_check("a level 1 room's front edge")
+    if f < 1 || fr_done { return }
+    // the game paused (nothing ticks or draws a room) while each stage's world is opened bare and
+    // each room's box read and framed, one a frame: the station, the tower, the aquarium, the
+    // store, the platform
+    game_mode(Mode.Title)
+    if fr_room < 0 || fr_room >= room_count() {
+        fr_stage += 1
+        fr_room = 0
+        if fr_stage >= LEVELS {
+            fr_done = true
+            done()
+            return
+        }
+        stage_prepare(fr_stage)
+        return
     }
-    if f == 6 {
-        assert(level_switch(PLATFORM_LEVEL), "the platform did not open")
-        assert(load_room(0), "no platform")
-        frame_check("the platform's front edge")
-        done()
-    }
+    assert(room_frame_only(fr_room), "no room")
+    frame_room()
+    frame_check(FR_WHAT[fr_stage])
+    fr_room += 1
 }
+var fr_stage: s32 = -1
+var fr_room: s32 = -1
+var fr_done: bool
+const FR_WHAT: [LEVELS]*u8 = ["a station room's front edge", "a tower room's front edge",
+                              "an aquarium room's front edge", "a store room's front edge",
+                              "the platform's front edge"]
 
 // 56: the gates' tape until he has been hidden 40 ticks (and 8 ticks after he comes out, with
 // SHOT=2: the cue of leaving).
@@ -961,33 +1038,33 @@ fn s_flow(f: s32) {
     never_caught()
     if mode == Mode.End && t0 < 0 {
         t0 = f
-        expect(fe_trans == 4, "four transitions, each 90 frames", fixed(fe_trans))
+        expect(fe_trans == 2, "two transitions, each 90 frames", fixed(fe_trans))
         expect(fe_hold_clock_ok, "the next room's clock stays at 0 until control", 0.0)
-        expect(ev_count[Ev.StageClear] == 1 && ev_count[Ev.RoomExit] == 5 && ev_count[Ev.RoomEnter] == 5 && ev_count[Ev.RoomReady] == 4, "5 exits, 4 ready, 5 in control, the stage cleared", fixed(ev_count[Ev.RoomEnter]))
-        // StageStart, RoomEnter, then (RoomExit, RoomReady, RoomEnter) four times, RoomExit,
+        expect(ev_count[Ev.StageClear] == 1 && ev_count[Ev.RoomExit] == 3 && ev_count[Ev.RoomEnter] == 3 && ev_count[Ev.RoomReady] == 2, "3 exits, 2 ready, 3 in control, the stage cleared", fixed(ev_count[Ev.RoomEnter]))
+        // StageStart, RoomEnter, then (RoomExit, RoomReady, RoomEnter) twice, RoomExit,
         // StageClear
-        var seq_ok = flow_n == 16
-        for i in 0..min(flow_n, 16) {
+        var seq_ok = flow_n == 10
+        for i in 0..min(flow_n, 10) {
             let want = match i {
                 0 => Ev.StageStart
                 1 => Ev.RoomEnter
-                14 => Ev.RoomExit
-                15 => Ev.StageClear
+                8 => Ev.RoomExit
+                9 => Ev.StageClear
                 else => match (i - 2) % 3 { 0 => Ev.RoomExit, 1 => Ev.RoomReady, else => Ev.RoomEnter }
             }
             if flow_log[i] as Ev != want { seq_ok = false }
         }
         expect(seq_ok, "each transition is RoomExit, RoomReady, RoomEnter", fixed(flow_n))
         expect(ev_count[Ev.HideIn] >= 1 && ev_count[Ev.HideIn] == ev_count[Ev.HideOut], "hiding in and out (the gates)", fixed(ev_count[Ev.HideIn]))
-        expect(ev_count[Ev.Step] > 60, "footsteps", fixed(ev_count[Ev.Step]))
+        expect(ev_count[Ev.Step] > 40, "footsteps", fixed(ev_count[Ev.Step]))
         var sum = 0
-        for r in 0..5 { sum += room_time[r] }
-        expect(total == sum && sum == 4786, "the stage's time is its rooms' (the transitions do not count)", fixed(total))
+        for r in 0..3 { sum += room_time[r] }
+        expect(total == sum && sum > 0, "the stage's time is its rooms' (the transitions do not count)", fixed(total))
         expect(phase == Phase.Clear, "the stage's end", 0.0)
     }
     if t0 >= 0 && f == t0 + 20 {
         test_run = false
-        stage_start(0)
+        stage_start(STAGE_STATION)
     }
     if t0 >= 0 && f == t0 + 22 {
         expect(mode == Mode.Play && run_room == 0 && clock <= 2 && total <= 2, "stage_start plays it again from room 1", fixed(run_room))
@@ -1235,49 +1312,185 @@ fn s_doors_caught(f: s32) {
     }
 }
 
-// ---- 63: stage 2 (B's level2) as one run: the eight legs' tapes in order, the state carried
+// ---- 63, 64 (the store), 85, 86 (the aquarium): a stage of doors as one run: its legs' tapes
+// in order, the state carried (the store's cards and doors), each leg checked to start in its
+// room at its clock 0 and to leave by its door, never caught; 64 and 86 through a front end's
+// transitions.
 
-const S2_TAPES: [S2_LEGS]*Span = [SOLUTION_S2_LEG_0, SOLUTION_S2_LEG_1, SOLUTION_S2_LEG_2, SOLUTION_S2_LEG_3,
-                                  SOLUTION_S2_LEG_4, SOLUTION_S2_LEG_5, SOLUTION_S2_LEG_6, SOLUTION_S2_LEG_7]
-const S2_LENS: [S2_LEGS]s32 = [len(SOLUTION_S2_LEG_0), len(SOLUTION_S2_LEG_1), len(SOLUTION_S2_LEG_2),
-                               len(SOLUTION_S2_LEG_3), len(SOLUTION_S2_LEG_4), len(SOLUTION_S2_LEG_5),
-                               len(SOLUTION_S2_LEG_6), len(SOLUTION_S2_LEG_7)]
+const S2_TAPES: [STORE_LEGS]*Span = [SOLUTION_STORE_LEG_0, SOLUTION_STORE_LEG_1, SOLUTION_STORE_LEG_2, SOLUTION_STORE_LEG_3,
+                                  SOLUTION_STORE_LEG_4, SOLUTION_STORE_LEG_5, SOLUTION_STORE_LEG_6, SOLUTION_STORE_LEG_7]
+const S2_LENS: [STORE_LEGS]s32 = [len(SOLUTION_STORE_LEG_0), len(SOLUTION_STORE_LEG_1), len(SOLUTION_STORE_LEG_2),
+                               len(SOLUTION_STORE_LEG_3), len(SOLUTION_STORE_LEG_4), len(SOLUTION_STORE_LEG_5),
+                               len(SOLUTION_STORE_LEG_6), len(SOLUTION_STORE_LEG_7)]
+const AQ_TAPES: [AQUARIUM_LEGS]*Span = [SOLUTION_AQUARIUM_LEG_0, SOLUTION_AQUARIUM_LEG_1, SOLUTION_AQUARIUM_LEG_2,
+                                        SOLUTION_AQUARIUM_LEG_3, SOLUTION_AQUARIUM_LEG_4, SOLUTION_AQUARIUM_LEG_5,
+                                        SOLUTION_AQUARIUM_LEG_6, SOLUTION_AQUARIUM_LEG_7, SOLUTION_AQUARIUM_LEG_8,
+                                        SOLUTION_AQUARIUM_LEG_9]
+const AQ_LENS: [AQUARIUM_LEGS]s32 = [len(SOLUTION_AQUARIUM_LEG_0), len(SOLUTION_AQUARIUM_LEG_1), len(SOLUTION_AQUARIUM_LEG_2),
+                                     len(SOLUTION_AQUARIUM_LEG_3), len(SOLUTION_AQUARIUM_LEG_4), len(SOLUTION_AQUARIUM_LEG_5),
+                                     len(SOLUTION_AQUARIUM_LEG_6), len(SOLUTION_AQUARIUM_LEG_7), len(SOLUTION_AQUARIUM_LEG_8),
+                                     len(SOLUTION_AQUARIUM_LEG_9)]
+const TW_TAPES: [TOWER_LEGS]*Span = [SOLUTION_TOWER_LEG_0, SOLUTION_TOWER_LEG_1, SOLUTION_TOWER_LEG_2,
+                                     SOLUTION_TOWER_LEG_3, SOLUTION_TOWER_LEG_4, SOLUTION_TOWER_LEG_5]
+const TW_LENS: [TOWER_LEGS]s32 = [len(SOLUTION_TOWER_LEG_0), len(SOLUTION_TOWER_LEG_1), len(SOLUTION_TOWER_LEG_2),
+                                  len(SOLUTION_TOWER_LEG_3), len(SOLUTION_TOWER_LEG_4), len(SOLUTION_TOWER_LEG_5)]
+const MAX_LEGS = 16
 var s2_leg: s32 = -1
 var s2_exits: s32              // RoomExit events seen
-var s2_exit_door: [S2_LEGS + 1]s32
-var s2_exit_room: [S2_LEGS + 1]s32
-var s2_exit_ticks: [S2_LEGS + 1]s32
+var s2_exit_door: [MAX_LEGS + 1]s32
+var s2_exit_room: [MAX_LEGS + 1]s32
+var s2_exit_ticks: [MAX_LEGS + 1]s32
+var pr_cpu: [MAX_RUN]s32       // each room's worst frame in play: its CPU, the tick's and sight's
+var pr_gpu: [MAX_RUN]s32
+var pr_tick: [MAX_RUN]s32
+var pr_sight: [MAX_RUN]s32
+var pr_clock: [MAX_RUN]s32
+var pr_cones: [MAX_RUN]s32
+var pr_lit: [MAX_RUN]s32
+var pr_sum: [MAX_RUN]s32       // the dark fans' cycles over its frames in play, and the frames
+var pr_n: [MAX_RUN]s32
+var pr_last_cones: s32
+var pr_last_lit: s32
+var pr_last_clock: s32 = -10
+var pr_last_tick: s32
+var pr_last_sight: s32
+var wb_leg: s32 = -1           // (87) the last leg a catch was reported on
+var lg_n: s32                  // the stage's legs: how many, their rooms and doors, their tapes
+var lg_room: *u8
+var lg_door: *u8
+var lg_tapes: **Span
+var lg_lens: *s32
 
-fn s2_run() {
-    assert(level_switch(STAGE2), "level2 did not open")
+fn s2_run() { legs_run(STAGE_STORE) }
+
+fn legs_run(stage: s32) {
+    assert(level_switch(stage), "the stage did not open")
+    if stage == STAGE_TOWER {
+        lg_n = TOWER_LEGS
+        lg_room = &TOWER_LEG_ROOM[0]
+        lg_door = &TOWER_LEG_DOOR[0]
+        lg_tapes = &TW_TAPES[0]
+        lg_lens = &TW_LENS[0]
+    } else if stage == STAGE_AQUARIUM {
+        lg_n = AQUARIUM_LEGS
+        lg_room = &AQUARIUM_LEG_ROOM[0]
+        lg_door = &AQUARIUM_LEG_DOOR[0]
+        lg_tapes = &AQ_TAPES[0]
+        lg_lens = &AQ_LENS[0]
+    } else {
+        lg_n = STORE_LEGS
+        lg_room = &STORE_LEG_ROOM[0]
+        lg_door = &STORE_LEG_DOOR[0]
+        lg_tapes = &S2_TAPES[0]
+        lg_lens = &S2_LENS[0]
+    }
     ghosts_clear()
     ev_n = 0
     for e in Ev { ev_count[e] = 0 }
     run_start()
 }
 
+fn leg_line(k: s32) {
+    print("LEG ")
+    print_int(k + 1)
+    print(" room ")
+    print_int(s2_exit_room[k])
+    print(" door ")
+    print_int(s2_exit_door[k])
+    print(" ticks ")
+    print_int(s2_exit_ticks[k])
+    print("\n")
+}
+
 fn s_s2_run(f: s32) {
     if visits - 1 != s2_leg && mode == Mode.Play && phase == Phase.Play {
         s2_leg = visits - 1
-        expect(s2_leg < S2_LEGS, "no more legs than B's", fixed(s2_leg))
+        expect(s2_leg < lg_n, "no more legs than the tapes'", fixed(s2_leg))
         if s2_leg > 0 {
             let k = s2_leg - 1
-            expect(s2_exit_room[k] == S2_LEG_ROOM[k] as s32 && s2_exit_door[k] == S2_LEG_DOOR[k] as s32,
+            expect(s2_exit_room[k] == lg_room[k] as s32 && s2_exit_door[k] == lg_door[k] as s32,
                    "the leg left its room by its door", fixed(s2_exit_door[k]))
-            print("LEG ")
-            print_int(k + 1)
-            print(" room ")
-            print_int(s2_exit_room[k])
-            print(" door ")
-            print_int(s2_exit_door[k])
-            print(" ticks ")
-            print_int(s2_exit_ticks[k])
-            print("\n")
+            leg_line(k)
         }
-        expect(run_room == S2_LEG_ROOM[s2_leg] as s32 && clock <= 1, "the leg starts in its room at its clock 0", fixed(run_room))
-        play(S2_TAPES[s2_leg], S2_LENS[s2_leg])
+        expect(run_room == lg_room[s2_leg] as s32 && clock <= 1, "the leg starts in its room at its clock 0", fixed(run_room))
+        play(lg_tapes[s2_leg], lg_lens[s2_leg])
+    }
+    if caught_n != 0 && !finished {
+        print("CAUGHT on leg ")
+        print_int(s2_leg + 1)
+        print(" (room ")
+        print_int(run_room)
+        print(") at clock ")
+        print_int(caught_at)
+        print(" by watcher ")
+        print_int(catcher)
+        print(", why ")
+        print_int(why as s32)
+        print(", thief ")
+        print_fixed(thief.x)
+        print(" ")
+        print_fixed(thief.z)
+        print(" level ")
+        print_int(thief.level)
+        if catcher >= 0 {
+            let g = &guards[catcher]
+            print("; the watcher at ")
+            print_fixed(g.x)
+            print(" ")
+            print_fixed(g.z)
+            print(" heading ")
+            print_fixed(g.head / DEG)
+            print(" mode ")
+            print_int(g.mode as s32)
+            print(", apart ")
+            print_fixed(sqrt(dist2(g.x, g.z, thief.x, thief.z)))
+        }
+        print("; this run: fragile knocked ")
+        print_int(ev_count[Ev.Fragile])
+        print(", heard ")
+        print_int(ev_count[Ev.Heard])
+        for i in 0..room.nfrag {
+            if fragile_down[i] {
+                print("; fragile ")
+                print_int(i)
+                print(" knocked at clock ")
+                print_int(fragile_at[i])
+                print(" at ")
+                print_fixed(room.frag_x[i] - room.cx)
+                print(" ")
+                print_fixed(room.frag_z[i] - room.cz)
+                print(" (room frame), radius ")
+                print_fixed(room.frag_r[i])
+                print("; he stood at ")
+                print_fixed(frag_tx - room.cx)
+                print(" ")
+                print_fixed(frag_tz - room.cz)
+                print(", ")
+                print_fixed(sqrt(dist2(frag_tx, frag_tz, room.frag_x[i], room.frag_z[i])))
+                print(" m from it")
+            }
+        }
+        print("\n")
     }
     always(caught_n == 0, "never caught", fixed(caught_n))
+    if SCENARIO == 87 && mode == Mode.Play && phase == Phase.Play && clock > 0 && s2_leg != wb_leg {
+        for i in 0..room.nwatch {
+            let g = &guards[i]
+            let r = THIEF_R + GUARD_R
+            let touch = room.watch[i].kind != WKind.Camera && room.watch[i].level == thief.level && !thief.hidden && dist2(thief.x, thief.z, g.x, g.z) < r * r
+            if (watcher_sees(i, thief.x, thief.z) || touch) && s2_leg != wb_leg {
+                wb_leg = s2_leg
+                print("WOULD BE CAUGHT on leg ")
+                print_int(s2_leg + 1)
+                print(" at clock ")
+                print_int(clock - 1)
+                print(" by watcher ")
+                print_int(i)
+                if touch { print(" (touch)") } else { print(" (seen)") }
+                print("\n")
+            }
+        }
+    }
     if f > 1 {
         if cpu_used() > worst_cpu {
             worst_cpu = cpu_used()
@@ -1285,21 +1498,57 @@ fn s_s2_run(f: s32) {
         }
         worst_gpu = max(worst_gpu, gpu_used())
         worst_sight = max(worst_sight, sight_cycles)
+        // in play only: not a room's first ticks (its load, its transition), per room
+        if mode == Mode.Play && phase == Phase.Play && clock > 2 && pr_last_clock == clock - 1 {
+            let r = run_room
+            if cpu_used() > pr_cpu[r] {
+                pr_cpu[r] = cpu_used()
+                pr_tick[r] = pr_last_tick
+                pr_sight[r] = pr_last_sight
+                pr_cones[r] = pr_last_cones
+                pr_lit[r] = pr_last_lit
+                pr_clock[r] = clock - 1
+            }
+            pr_gpu[r] = max(pr_gpu[r], gpu_used())
+            pr_sum[r] += pr_last_lit
+            pr_n[r] += 1
+        }
+        pr_last_clock = clock
+        pr_last_tick = tick_cycles
+        pr_last_sight = sight_cycles
+        pr_last_cones = cones_cyc
+        pr_last_lit = cones_lit_cyc
     }
     if phase == Phase.Clear {
-        let k = S2_LEGS - 1
-        expect(s2_leg == k && s2_exit_door[k] == S2_LEG_DOOR[k] as s32, "the last leg leaves by the end door", fixed(s2_leg))
+        let k = lg_n - 1
+        for r in 0..room_count() {
+            print("PLAY room ")
+            print_int(r)
+            print(": worst frame cpu ")
+            print_int(pr_cpu[r])
+            print(" (its tick ")
+            print_int(pr_tick[r])
+            print(", sight ")
+            print_int(pr_sight[r])
+            print("; the cones ")
+            print_int(pr_cones[r])
+            print(", of which the dark fans ")
+            print_int(pr_lit[r])
+            print("; the dark fans a frame on average ")
+            if pr_n[r] > 0 { print_int(pr_sum[r] / pr_n[r]) } else { print("0") }
+            print(") gpu ")
+            print_int(pr_gpu[r])
+            print(" at clock ")
+            print_int(pr_clock[r])
+            print("\n")
+        }
+        expect(s2_leg == k && s2_exit_door[k] == lg_door[k] as s32, "the last leg leaves by the end door", fixed(s2_leg))
         var sum = 0
         for r in 0..MAX_RUN { sum += room_time[r] }
         expect(sum == total && run_restarts() == 0, "the rooms' times make the run's total", fixed(total))
-        expect(run_held != 0, "cards held at the end", fixed(run_held as s32))
-        print("LEG 8 room ")
-        print_int(s2_exit_room[k])
-        print(" door ")
-        print_int(s2_exit_door[k])
-        print(" ticks ")
-        print_int(s2_exit_ticks[k])
-        print("\nRUN2 ")
+        if SCENARIO == 63 || SCENARIO == 64 { expect(run_held != 0, "cards held at the end", fixed(run_held as s32)) }
+        leg_line(k)
+        if SCENARIO >= 91 { print("RUN tower ") } else if SCENARIO >= 85 { print("RUN aquarium ") } else { print("RUN2 ") }
         print_int(total)
         print(" ticks; worst frame: cpu ")
         print_int(worst_cpu)
@@ -1311,10 +1560,493 @@ fn s_s2_run(f: s32) {
         print_int(worst_sight)
         print("\n")
         expect(worst_cpu < 1000000 && worst_gpu < 2000000, "every frame within the budgets", fixed(worst_cpu / 1000))
-        if SCENARIO == 64 {
-            expect(fe_trans == S2_LEGS - 1 && fe_hold_clock_ok, "seven transitions, each room held at its clock 0", fixed(fe_trans))
+        if SCENARIO == 64 || SCENARIO == 86 || SCENARIO == 92 {
+            expect(fe_trans == lg_n - 1 && fe_hold_clock_ok, "a transition a leg, each room held at its clock 0", fixed(fe_trans))
             expect(mode == Mode.End, "the end door ends the stage", 0.0)
         }
         done()
+    }
+}
+
+// ---- the aquarium's rules on the stand-in aquarium rooms (dr_standin.akr): the dark gallery (0;
+// light A always, light B on 120 of every 240 ticks, a dark-eyed camera (watcher 0), a torch
+// guard (1), a pool), the tank hall (1; a floor guard (0) looking at the walkway, a walkway
+// camera (1), the walkway 3.2 m up at z 1.6..3)
+
+fn aqua_run() {
+    standin_aqua = true
+    ev_n = 0
+    for e in Ev { ev_count[e] = 0 }
+    run_start()
+}
+
+// Points of the room on an odd grid: the drawn lit fan of watcher i against the rule.
+fn lit_sweep(i: s32) -> s32 {
+    test_heavy = true
+    var bad = 0
+    var n = 0
+    var x = -7.9
+    while x < 7.9 {
+        var z = -2.9
+        while z < 2.9 {
+            let rule = fan_covers(&guards[i].fan, x, z) && lit_at(x, z, room.watch[i].level)
+            if rule != lit_drawn_covers(i, x, z) { bad += 1 }
+            if rule { n += 1 }
+            z += 0.2311
+        }
+        x += 0.2537
+    }
+    note("  grid points the lit fan covers", fixed(n))
+    return bad
+}
+
+var sd_prev_drawn: bool
+
+// 80: in the dark under the camera's fan, unseen (drawn dimmed); into light A in the fan: caught
+// on the tick he enters it, the drawn lit fan covering him then and not the tick before; under
+// light B while it is off, then caught the tick it comes on; the torch guard catches him unlit.
+fn s_dark(f: s32) {
+    if f == 0 { return }
+    if phase == Phase.Play && sg_step < 9 {
+        always(lit_drawn_covers(0, thief.x, thief.z) == (watcher_sees(0, thief.x, thief.z) && !thief.hidden), "the camera's drawn lit fan is its test", thief.x)
+    }
+    // the kept fan drawn last frame is the fan a rebuild makes from the fan tested
+    if f > 2 && lit_key[0].have {
+        mb_reset(&mb_lit)
+        cone_lit_into(&mb_lit, 0, lit_key[0].col)
+        var same = mb_lit.nv == lit_key[0].nlit
+        for v in 0..min(mb_lit.nv, lit_key[0].nlit) {
+            let a = mb_lit.v[v]
+            let c = mb_litc[0].v[v]
+            if a.x != c.x || a.z != c.z { same = false }
+        }
+        always(same, "the kept lit fan is the one a rebuild makes", fixed(mb_lit.nv))
+    }
+    if sg_step == 0 {
+        if steer(-3.0, 0.0) {
+            expect(fan_covers(&guards[0].fan, thief.x, thief.z) && !lit_at(thief.x, thief.z, 0), "in the camera's fan, in the dark", thief.x)
+            expect(phase == Phase.Play && caught_n == 0 && thief_in_dark(), "unseen, drawn dimmed", 0.0)
+            expect(lit_sweep(0) == 0, "on a grid, the drawn lit fan is the fan and the lights", 0.0)
+            sg_step = 1
+        }
+    } else if sg_step == 1 {
+        if phase == Phase.Caught {
+            expect(why == Why.Seen && catcher == 0, "seen by the camera", fixed(catcher))
+            expect(lit_at(thief.x, thief.z, 0) && lit_drawn_covers(0, thief.x, thief.z), "where the light falls, the drawn lit fan over him", thief.z)
+            expect(!sd_prev_drawn, "and it did not cover him the tick before", 0.0)
+            sg_step = 2
+        } else {
+            sd_prev_drawn = lit_drawn_covers(0, thief.x, thief.z)
+            let _ = steer(-1.5, 1.2)
+        }
+    } else if sg_step == 2 {
+        if phase == Phase.Play && clock > 0 {
+            if steer(2.0, -1.5) && clock % 240 == 150 { sg_step = 3 }
+        }
+    } else if sg_step == 3 {
+        if phase == Phase.Caught {
+            expect(caught_at % 240 == 0 && catcher == 0, "caught the tick light B comes on", fixed(caught_at))
+            expect(lit_drawn_covers(0, thief.x, thief.z), "the drawn lit fan over him", 0.0)
+            sg_step = 4
+        } else {
+            if !steer(4.0, -1.5) {
+                always(!light_lit[1], "he reaches light B while it is off", fixed(clock))
+            } else if clock % 240 == 230 {
+                expect(!light_lit[1] && caught_n == 1, "under light B, off: unseen", fixed(clock))
+                expect(lit_sweep(0) == 0, "on a grid, the drawn lit fan is the fan and the lights", 0.0)
+            }
+        }
+    } else if sg_step == 4 {
+        if phase == Phase.Play && clock > 0 {
+            if steer(4.5, 0.0) { sg_step = 5 }
+        }
+    } else if sg_step == 5 {
+        if phase == Phase.Caught {
+            expect(why == Why.Seen && catcher == 1 && !lit_at(thief.x, thief.z, 0), "the torch guard sees him in the dark", fixed(catcher))
+            done()
+        } else {
+            let _ = steer(5.0, 2.2)
+        }
+    }
+}
+
+// 81: the gallery -> the hall's floor (under the walkway, in the walkway camera's fan: unseen) ->
+// the gallery -> the hall's walkway by its back door (the railing holds him; the floor guard's fan
+// under him: unseen; his run heard below, the guard comes under him) -> the walkway camera
+// catches him: back at the walkway's door, on the walkway.
+var sl_heard: bool
+var sl_near: fixed = 1000.0
+fn s_levels(f: s32) {
+    if f == 0 { return }
+    if visits != sg_seen {
+        sg_seen = visits
+        sg_step = 0
+        if visits == 2 {
+            came_in(1, 0, -7.0, 0.0)
+            expect(thief.level == 0 && room.levels == 2, "into the hall on its floor", fixed(thief.level))
+            two_level_frame()
+        }
+        if visits == 4 {
+            came_in(1, 1, -7.0, 2.3)
+            expect(thief.level == 1, "into the hall on its walkway", fixed(thief.level))
+            expect(!best.have && ghost_for(1, 0).have, "the walkway by its door: a ghost of its own", 0.0)
+        }
+    }
+    if phase == Phase.Caught && visits != 4 { expect(false, "caught", fixed(catcher)) }
+    if visits == 1 {
+        let _ = steer(8.5, 0.0)
+    } else if visits == 2 {
+        if sg_step == 0 {
+            if steer(-6.0, -2.5) { sg_step = 1 }
+        } else if sg_step == 1 {
+            if steer(5.5, -2.5) { sg_step = 2 }
+        } else if sg_step == 2 {
+            if steer(5.5, 2.3) {
+                sg_step = 3
+                sg_t = clock
+            }
+        } else if sg_step == 3 {
+            always(fan_covers(&guards[1].fan, thief.x, thief.z) && !watcher_sees(1, thief.x, thief.z), "under the walkway camera's fan, on the floor: unseen", thief.z)
+            if clock - sg_t == 60 {
+                expect(thief.z > 2.2, "the walkway's railing does not stop him on the floor", thief.z)
+                sg_step = 4
+            }
+        } else if sg_step == 4 {
+            if steer(5.5, -2.5) { sg_step = 5 }
+        } else if sg_step == 5 {
+            if steer(-6.0, -2.5) { sg_step = 6 }
+        } else {
+            let _ = steer(-8.5, 0.0)
+        }
+    } else if visits == 3 {
+        if sg_step == 0 {
+            if steer(-5.0, 0.0) { sg_step = 1 }
+        } else {
+            let _ = steer(-5.0, 3.5)
+        }
+    } else if visits == 4 {
+        if sg_step == 0 {
+            let _ = steer(-5.0, 0.0)
+            if clock == 60 {
+                expect(thief.z >= SA_WALK_Z + THIEF_R - 0.01, "on the walkway the railing holds him", thief.z)
+                sg_step = 1
+            }
+        } else if sg_step == 1 {
+            if steer(2.0, 2.3) {
+                expect(fan_covers(&guards[0].fan, thief.x, thief.z) && !watcher_sees(0, thief.x, thief.z), "over the floor guard's fan, on the walkway: unseen", thief.x)
+                sg_step = 2
+                sg_t = clock
+            }
+        } else if sg_step == 2 {
+            // run to and fro over him: heard below
+            press(R)
+            if (clock - sg_t) % 40 < 20 { let _ = steer(1.0, 2.3) } else { let _ = steer(2.0, 2.3) }
+            if guards[0].mode == GMode.GoNoise && !sl_heard {
+                sl_heard = true
+                expect(ev_count[Ev.Heard] >= 1, "the floor guard hears him run on the walkway", 0.0)
+            }
+            if clock - sg_t == 40 { sg_step = 3 }
+        } else if sg_step == 3 {
+            let g = &guards[0]
+            sl_near = min(sl_near, sqrt(dist2(g.x, g.z, thief.x, thief.z)))
+            if clock - sg_t == 400 {
+                expect(sl_heard && sl_near < NEAR_NOISE + 0.3, "he walks to below the noise, on the floor", sl_near)
+                sg_step = 4
+            }
+        } else if sg_step == 4 {
+            if phase == Phase.Caught {
+                expect(why == Why.Seen && catcher == 1, "the walkway camera sees him on the walkway", fixed(catcher))
+                sg_step = 5
+            } else {
+                let _ = steer(5.5, 2.3)
+            }
+        } else if sg_step == 5 {
+            if phase == Phase.Play {
+                expect(clock == 0 && thief.level == 1 && abs(thief.x - (-7.0)) < 0.001 && abs(thief.z - 2.3) < 0.001, "back at the walkway's door, on the walkway", thief.x)
+                done()
+            }
+        }
+    }
+}
+
+// Both levels on the picture: the floor's front edge at the camera's nearest, the walkway's back
+// edge at its farthest; and the deepest two-level room (walkway 3.2 m up) that needs no z pan.
+fn two_level_frame() {
+    test_heavy = true
+    let zf = room.cz - room.sz / 2
+    let zb = room.cz + room.sz / 2
+    camera_look(cam_eye(room.cx, cam_tz_lo), 0.0, CAM_PITCH)
+    let pf = project_point(vec3(room.cx, room.floor, zf))
+    expect(pf.y <= FRONT_Y + 1, "the floor's front edge on the picture", fixed(pf.y))
+    camera_look(cam_eye(room.cx, cam_tz_hi), 0.0, CAM_PITCH)
+    let pb = project_point(vec3(room.cx, room.floor + room.upper, zb))
+    expect(pb.y >= BACK_Y - 1, "the walkway's back edge on the picture", fixed(pb.y))
+    let keep = room.sz
+    var deepest = 0.0
+    var sz = 5.0
+    while sz < 14.0 {
+        room.sz = sz
+        frame_room()
+        if cam_tz_hi <= cam_tz_lo { deepest = sz }
+        sz += 0.05
+    }
+    room.upper = 0.0
+    var flat = 0.0
+    sz = 5.0
+    while sz < 14.0 {
+        room.sz = sz
+        frame_room()
+        if cam_tz_hi <= cam_tz_lo { flat = sz }
+        sz += 0.05
+    }
+    room.upper = SA_UPPER
+    room.sz = keep
+    frame_room()
+    view_restart()
+    print("FRAME two levels: deepest room with no z pan ")
+    print_fixed(deepest)
+    print(" m with a walkway 3.2 m up (one level: ")
+    print_fixed(flat)
+    println(" m)")
+}
+
+// 82: a walk round the dark gallery (both lights, the camera's lit fan, the dots) and the tank
+// hall's two levels, nobody catching: the worst frame.
+fn s_aqua_budget(f: s32) {
+    if f > 1 {
+        if cpu_used() > worst_cpu {
+            worst_cpu = cpu_used()
+            worst_tick = run_room
+        }
+        worst_gpu = max(worst_gpu, gpu_used())
+    }
+    if visits == 1 {
+        if sg_step == 0 {
+            if steer(-1.0, 1.5) { sg_step = 1 }
+        } else if sg_step == 1 {
+            if steer(4.0, -1.5) { sg_step = 2 }
+        } else {
+            let _ = steer(8.5, 0.0)
+        }
+    } else if visits == 2 {
+        if sg_step == 0 {
+            if steer(5.5, 2.3) { sg_step = 1 }
+        } else {
+            print("AQUA worst frame: cpu ")
+            print_int(worst_cpu)
+            print(" (room ")
+            print_int(worst_tick + 1)
+            print(") gpu ")
+            print_int(worst_gpu)
+            print("\n")
+            expect(worst_cpu < 1000000 && worst_gpu < 2000000, "every frame within the budgets", fixed(worst_cpu / 1000))
+            done()
+        }
+    }
+}
+
+// 83: J's aquarium, room by room: entered by its way in and by each of its doors he can come in
+// by, its level and the spawn's, 40 ticks standing (nobody catches), the worst frame standing
+// (the frame that loads the room is the transition's, measured by E's); a line a room: dark,
+// levels, lights, watchers (dark-eyed, torch), doors.
+var aw_room: s32 = -1
+var aw_door: s32
+var aw_t: s32 = -100
+var aw_loaded: s32 = -1
+var aw_prepping: bool
+var aw_ways: [64]s32           // the stage's ways in: room * 16 + door + 1 (door -1: its entry)
+var aw_n: s32
+var aw_i: s32 = -1
+
+// The stage's ways in, from the pack (no room loaded): each room's entry, and each door with a
+// spawn.
+fn aw_list() {
+    aw_n = 0
+    for k in 0..room_count() {
+        aw_ways[aw_n] = k * 16
+        aw_n += 1
+        var d = 0
+        for m in 0..wp_pack.entity_count as s32 {
+            let e = wp_entity(m)
+            if e.type_id as s32 != AFTERHOURS_TYPE_DOOR || !room_holds(order[k], wp_entity_pos(e)) { continue }
+            if (wp_entity_params(e) as *AfterhoursDoor).spawn != 0xFFFFFFFF && aw_n < 64 {
+                aw_ways[aw_n] = k * 16 + d + 1
+                aw_n += 1
+            }
+            d += 1
+        }
+    }
+}
+
+fn s_aqua_world(f: s32) {
+    if f < 2 { return }
+    if aw_i < 0 {
+        aw_list()
+        aw_i = 0
+        aw_t = -100
+    }
+    // the frames standing (not the one that loads the room: in play the transition does that)
+    if f > 3 && f - aw_t >= 2 && f - aw_t < 40 {
+        if cpu_used() > worst_cpu {
+            worst_cpu = cpu_used()
+            worst_tick = run_room
+        }
+        worst_gpu = max(worst_gpu, gpu_used())
+    }
+    if f - aw_t < 40 { return }
+    if aw_i >= aw_n {
+        print("AQUARIUM rooms ")
+        print_int(room_count())
+        print(", ways in ")
+        print_int(aw_n)
+        print("; worst frame standing: cpu ")
+        print_int(worst_cpu)
+        print(" (room ")
+        print_int(worst_tick + 1)
+        print(") gpu ")
+        print_int(worst_gpu)
+        println("")
+        expect(worst_cpu < 1000000 && worst_gpu < 2000000, "every frame within the budgets", fixed(worst_cpu / 1000))
+        done()
+        return
+    }
+    aw_room = aw_ways[aw_i] / 16
+    aw_door = aw_ways[aw_i] % 16 - 1
+    // a new room: its textures a frame at a time first (as a transition copies them)
+    if aw_room != aw_loaded {
+        if !aw_prepping {
+            game_mode(Mode.Title)
+            room_prepare(aw_room)
+            aw_prepping = true
+            return
+        }
+        if !room_prepare_step() { return }
+        aw_prepping = false
+        aw_loaded = aw_room
+        game_mode(Mode.Play)
+    }
+    assert(load_room(aw_room), "no room")
+    entry_door = aw_door
+    enter_room()
+    aw_t = f
+    aw_i += 1
+    expect(clock == 0 && thief.level == room.spawn_level && abs(thief.x - room.spawn_x) < 0.001, "in at the way in, on its level", fixed(aw_room * 10 + aw_door))
+    if aw_door == -1 {
+        var de = 0
+        var torch = 0
+        for i in 0..room.nwatch {
+            if dark_eyed(i) { de += 1 }
+            if room.watch[i].torch { torch += 1 }
+        }
+        print("ROOM ")
+        print_int(aw_room + 1)
+        print(" ")
+        print(room.name)
+        if room.dark { print(" dark") }
+        print(" levels ")
+        print_int(room.levels)
+        print(" lights ")
+        print_int(room.nlights)
+        print(" watchers ")
+        print_int(room.nwatch)
+        print(" (dark-eyed ")
+        print_int(de)
+        print(", torch ")
+        print_int(torch)
+        print(") doors ")
+        print_int(room.ndoors)
+        print(" walls ")
+        print_int(room.nwalls)
+        println("")
+    }
+}
+
+// 84: the overflow trap the framing scenario once hit (a guard of one cell walking to a point of
+// another, 200 m off: dx * dx past 16.16): the posted guard sent to a noise 200 m away in x and
+// 150 m in z walks toward it at his pace, no trap.
+fn s_far(f: s32) {
+    let g = &guards[2]
+    if f == 1 {
+        g.mode = GMode.GoNoise
+        g.away = true
+        g.bx = g.x
+        g.bz = g.z
+        g.bmode = GMode.Posted
+        g.nx = g.x + 200.0
+        g.nz = g.z + 150.0
+        g.best = 30000.0
+        n0 = (g.x * 100) as s32
+    }
+    if f == 61 {
+        let moved = fixed((g.x * 100) as s32 - n0) / 100
+        expect(moved > 0.3, "he walks toward it (60 ticks)", moved)
+        done()
+    }
+}
+
+// 88: each stage started as E's select does it: stage_prepare(n) on one frame, then
+// stage_prepare_step() a frame until it is done, then stage_start(n); no frame dropped from the
+// prepare to 20 ticks after the start, the start opened nothing again, the first room as a plain
+// start leaves it. Last, a prepare spoiled by another pack opened in between: stage_start opens
+// the stage itself.
+var sp_stage: s32 = -1
+var sp_phase: s32              // 0 prepare, 1 steps, 2 started (playing 20 ticks)
+var sp_t: s32
+var sp_worst: s32
+var sp_worst_start: s32
+var sp_steps: s32
+var sp_load: s32
+fn s_prepare(f: s32) {
+    if f < 3 { return }
+    if frames_dropped() > 0 && sp_stage >= 0 {
+        print("DROPPED in stage ")
+        print_int(sp_stage)
+        print(" phase ")
+        print_int(sp_phase)
+        print(" cpu ")
+        print_int(cpu_used())
+        print("\n")
+        expect(false, "no frame dropped", fixed(cpu_used() / 1000))
+    }
+    if sp_stage >= 0 { sp_worst = max(sp_worst, cpu_used()) }
+    if sp_phase == 2 && f == sp_t + 1 { sp_worst_start = max(sp_worst_start, cpu_used()) }
+    if sp_stage < 0 || (sp_phase == 2 && f - sp_t >= 20) {
+        sp_stage += 1
+        if sp_stage == LEVELS {
+            // spoiled: the store prepared, the station opened (as a display-only open would)
+            stage_prepare(STAGE_STORE)
+            let _ = level_open_bare(STAGE_STATION)
+            stage_start(STAGE_STORE)
+            expect(stage_of() == STAGE_STORE && run_room == 0 && room_is_world && room.ndoors > 0, "a spoiled prepare: stage_start opens the stage itself", fixed(stage_of()))
+            print("PREPARE worst frame cpu ")
+            print_int(sp_worst)
+            print(" (the start's ")
+            print_int(sp_worst_start)
+            print(")\n")
+            done()
+            return
+        }
+        stage_prepare(sp_stage)
+        sp_phase = 1
+        sp_steps = 0
+        return
+    }
+    if sp_phase == 1 {
+        sp_steps += 1
+        if stage_prepare_step() {
+            let c0 = cycle_count()
+            stage_start(sp_stage)
+            print("START stage ")
+            print_int(sp_stage)
+            print(": stage_start ")
+            print_int(cycle_count() - c0)
+            print(" cycles (the room load ")
+            print_int(load_cycles)
+            print(")\n")
+            sp_phase = 2
+            sp_t = f
+            expect(stage_of() == sp_stage && run_room == 0 && clock <= 1 && mode == Mode.Play, "the stage started from its first room", fixed(sp_stage))
+            note("  texture steps", fixed(sp_steps))
+        }
     }
 }

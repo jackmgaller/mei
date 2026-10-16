@@ -56,8 +56,48 @@
    "color": "#76787e"
   },
   "door_light": {
-   "color": "#ffd8a8",
+   "color": "#d8e6ff",
    "class": "emissive"
+  },
+  "exit_sign": {
+   "color": "#30c060",
+   "class": "emissive",
+   "texture": {
+    "image": "art/exit_sign.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "stair": {
+   "color": "#6a6c72",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#707278",
+     "#5c5e64"
+    ],
+    "size": 16,
+    "params": {
+     "count": 2,
+     "axis": "v"
+    },
+    "projection": "box",
+    "scale": [
+     0.3,
+     0.3
+    ]
+   }
+  },
+  "stairwell": {
+   "color": "#7a7a78"
+  },
+  "handrail": {
+   "color": "#c8ccd4"
+  },
+  "rain": {
+   "color": "#506080",
+   "blend": "add",
+   "double_sided": true
   },
   "pillar": {
    "color": "#c4c2b4",
@@ -1758,6 +1798,230 @@
      }
     }
    ]
+  },
+  {
+   "id": "street_stair",
+   "op": "group",
+   "children": [
+    {
+     "id": "steps",
+     "op": "extrude",
+     "material": "stair",
+     "depth": 1.78,
+     "points": [
+      [
+       11.25,
+       -0.02
+      ],
+      [
+       11.25,
+       0.19
+      ],
+      [
+       11.55,
+       0.19
+      ],
+      [
+       11.55,
+       0.38
+      ],
+      [
+       11.85,
+       0.38
+      ],
+      [
+       11.85,
+       0.57
+      ],
+      [
+       12.15,
+       0.57
+      ],
+      [
+       12.15,
+       0.76
+      ],
+      [
+       12.45,
+       0.76
+      ],
+      [
+       12.45,
+       0.95
+      ],
+      [
+       12.75,
+       0.95
+      ],
+      [
+       12.75,
+       1.14
+      ],
+      [
+       13.05,
+       1.14
+      ],
+      [
+       13.05,
+       1.33
+      ],
+      [
+       13.35,
+       1.33
+      ],
+      [
+       13.35,
+       1.52
+      ],
+      [
+       13.65,
+       1.52
+      ],
+      [
+       13.65,
+       1.71
+      ],
+      [
+       13.95,
+       1.71
+      ],
+      [
+       13.95,
+       1.9
+      ],
+      [
+       14.25,
+       1.9
+      ],
+      [
+       14.25,
+       2.09
+      ],
+      [
+       14.55,
+       2.09
+      ],
+      [
+       14.55,
+       2.28
+      ],
+      [
+       14.85,
+       2.28
+      ],
+      [
+       14.85,
+       -0.02
+      ]
+     ],
+     "faces": {
+      "back": "cut",
+      "front": "stairwell"
+     },
+     "transform": {
+      "translate": [
+       0,
+       0,
+       -2.5
+      ]
+     }
+    },
+    {
+     "id": "well_n",
+     "op": "box",
+     "size": [
+      3.8,
+      2.4,
+      0.25
+     ],
+     "material": "stairwell",
+     "transform": {
+      "translate": [
+       13.15,
+       1.18,
+       -1.475
+      ]
+     },
+     "open": [
+      "bottom",
+      "front",
+      "left"
+     ],
+     "faces": {
+      "top": "cut",
+      "back": "stairwell"
+     }
+    },
+    {
+     "id": "well_s",
+     "op": "box",
+     "size": [
+      3.8,
+      1.02,
+      0.245
+     ],
+     "material": "stairwell",
+     "transform": {
+      "translate": [
+       13.15,
+       0.49,
+       -3.5275
+      ]
+     },
+     "open": [
+      "bottom",
+      "front",
+      "left"
+     ],
+     "faces": {
+      "top": "cut",
+      "back": "cut"
+     }
+    },
+    {
+     "id": "rail",
+     "op": "box",
+     "size": [
+      3.8351,
+      0.04,
+      0.05
+     ],
+     "material": "handrail",
+     "transform": {
+      "rotate": [
+       0.0,
+       0.0,
+       32.347
+      ],
+      "translate": [
+       13.05,
+       2.04,
+       -1.68
+      ]
+     }
+    },
+    {
+     "id": "exit_flag",
+     "op": "box",
+     "size": [
+      0.78,
+      0.24,
+      0.06
+     ],
+     "material": "sign_box",
+     "transform": {
+      "translate": [
+       10.64,
+       2.24,
+       -2.5
+      ]
+     },
+     "faces": {
+      "back": "exit_sign",
+      "front": "exit_sign"
+     }
+    }
+   ]
   }
  ],
  "lighting": {
@@ -1907,15 +2171,15 @@
     "range": 1.9
    },
    {
-    "id": "exit_stair",
+    "id": "street",
     "at": [
-     11.9,
-     1.7,
+     12.6,
+     2.3,
      -2.5
     ],
-    "color": "#ffc488",
-    "intensity": 2.4,
-    "range": 3.6,
+    "color": "#c8dcff",
+    "intensity": 2.8,
+    "range": 4.4,
     "shadows": true,
     "radius": 0.3
    },

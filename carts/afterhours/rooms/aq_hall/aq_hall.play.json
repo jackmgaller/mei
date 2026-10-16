@@ -1,0 +1,681 @@
+{
+ "format": "after-hours-play",
+ "version": 1,
+ "room": "aq_hall",
+ "entities": [
+  {
+   "id": "ah_room",
+   "type": "room",
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "params": {
+    "name": "the_entrance_hall",
+    "entry": "ah_spawn_main",
+    "size": [
+     16.5,
+     5.6,
+     7.5
+    ],
+    "dark": true,
+    "upper": 3.2
+   }
+  },
+  {
+   "id": "ah_spawn_main",
+   "type": "spawn",
+   "position": [
+    -7.125,
+    0,
+    -2.4
+   ],
+   "params": {
+    "yaw": 90
+   }
+  },
+  {
+   "id": "ah_door_main",
+   "type": "door",
+   "position": [
+    -8.125,
+    0,
+    -2.4
+   ],
+   "yaw": 90,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "ah_spawn_main"
+   }
+  },
+  {
+   "id": "ah_spawn_great",
+   "type": "spawn",
+   "position": [
+    7.125,
+    0,
+    -1.0
+   ],
+   "params": {
+    "yaw": 270
+   }
+  },
+  {
+   "id": "ah_door_great",
+   "type": "door",
+   "position": [
+    8.125,
+    0,
+    -1.0
+   ],
+   "yaw": 270,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "ah_spawn_great",
+    "to": "ag_door_hall"
+   }
+  },
+  {
+   "id": "ah_spawn_catwalk",
+   "type": "spawn",
+   "position": [
+    7.125,
+    0,
+    2.8
+   ],
+   "params": {
+    "yaw": 270,
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_door_catwalk",
+   "type": "door",
+   "position": [
+    8.125,
+    0,
+    2.8
+   ],
+   "yaw": 270,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "spawn": "ah_spawn_catwalk",
+    "to": "ag_door_hall_up",
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_door_deck",
+   "type": "door",
+   "position": [
+    -8.125,
+    0,
+    2.8
+   ],
+   "yaw": 90,
+   "params": {
+    "size": [
+     1.2,
+     2.2,
+     0.4
+    ],
+    "end": true,
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_wall_front",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -3.625
+   ],
+   "params": {
+    "size": [
+     16.5,
+     1.0,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "ah_wall_back_0",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    3.625
+   ],
+   "params": {
+    "size": [
+     16.5,
+     2.4,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "ah_wall_end_w_0",
+   "type": "wall",
+   "position": [
+    -8.125,
+    0,
+    -3.25
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.5
+    ]
+   }
+  },
+  {
+   "id": "ah_wall_end_w_1",
+   "type": "wall",
+   "position": [
+    -8.125,
+    0,
+    0.85
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     5.3
+    ]
+   }
+  },
+  {
+   "id": "ah_wall_end_e_0",
+   "type": "wall",
+   "position": [
+    8.125,
+    0,
+    -2.55
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     1.9
+    ]
+   }
+  },
+  {
+   "id": "ah_wall_end_e_1",
+   "type": "wall",
+   "position": [
+    8.125,
+    0,
+    1.55
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     3.9
+    ]
+   }
+  },
+  {
+   "id": "ah_wall_up_back_0",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    3.625
+   ],
+   "params": {
+    "size": [
+     16.5,
+     2.4,
+     0.25
+    ],
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_wall_up_end_w_0",
+   "type": "wall",
+   "position": [
+    -8.125,
+    0,
+    -0.65
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     5.7
+    ],
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_wall_up_end_w_1",
+   "type": "wall",
+   "position": [
+    -8.125,
+    0,
+    3.45
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.1
+    ],
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_wall_up_end_e_0",
+   "type": "wall",
+   "position": [
+    8.125,
+    0,
+    -0.65
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     5.7
+    ],
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_wall_up_end_e_1",
+   "type": "wall",
+   "position": [
+    8.125,
+    0,
+    3.45
+   ],
+   "params": {
+    "size": [
+     0.25,
+     2.4,
+     0.1
+    ],
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_wall_tank",
+   "type": "wall",
+   "position": [
+    0.2,
+    0,
+    0.8
+   ],
+   "params": {
+    "size": [
+     2.8,
+     2.4,
+     2.8
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "ah_wall_gates",
+   "type": "wall",
+   "position": [
+    -4.55,
+    0,
+    1.25
+   ],
+   "params": {
+    "size": [
+     0.3,
+     1.0,
+     4.5
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "ah_wall_desk",
+   "type": "wall",
+   "position": [
+    5.0,
+    0,
+    0.9
+   ],
+   "params": {
+    "size": [
+     2.8,
+     1.0,
+     0.6
+    ],
+    "blocks": false
+   }
+  },
+  {
+   "id": "ah_wall_pillar_w",
+   "type": "wall",
+   "position": [
+    -6.0,
+    0,
+    1.2
+   ],
+   "params": {
+    "size": [
+     0.6,
+     2.4,
+     0.6
+    ]
+   }
+  },
+  {
+   "id": "ah_wall_pillar_e",
+   "type": "wall",
+   "position": [
+    6.9,
+    0,
+    1.2
+   ],
+   "params": {
+    "size": [
+     0.6,
+     2.4,
+     0.6
+    ]
+   }
+  },
+  {
+   "id": "ah_wall_tank_top",
+   "type": "wall",
+   "position": [
+    0.2,
+    0,
+    1.75
+   ],
+   "params": {
+    "size": [
+     2.8,
+     0.0,
+     0.9
+    ],
+    "blocks": false,
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_wall_tables_w",
+   "type": "wall",
+   "position": [
+    -6.0,
+    0,
+    1.6
+   ],
+   "params": {
+    "size": [
+     1.2,
+     0.8,
+     0.5
+    ],
+    "blocks": false,
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_wall_tables_e",
+   "type": "wall",
+   "position": [
+    6.0,
+    0,
+    1.6
+   ],
+   "params": {
+    "size": [
+     1.2,
+     0.8,
+     0.5
+    ],
+    "blocks": false,
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_air_0",
+   "type": "wall",
+   "position": [
+    0.0,
+    0,
+    -1.1
+   ],
+   "params": {
+    "size": [
+     16.0,
+     0.0,
+     4.8
+    ],
+    "blocks": false,
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_hide_booth_w",
+   "type": "hide_spot",
+   "position": [
+    -4.0,
+    0,
+    3.175
+   ],
+   "params": {
+    "size": [
+     1.2,
+     1.7,
+     0.65
+    ],
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_hide_booth_e",
+   "type": "hide_spot",
+   "position": [
+    3.6,
+    0,
+    3.175
+   ],
+   "params": {
+    "size": [
+     1.2,
+     1.7,
+     0.65
+    ],
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_light_tank_s",
+   "type": "light",
+   "position": [
+    0.2,
+    0,
+    -2.05
+   ],
+   "params": {
+    "size": [
+     5.2,
+     0.1,
+     2.9
+    ]
+   }
+  },
+  {
+   "id": "ah_light_tank_w",
+   "type": "light",
+   "position": [
+    -1.8,
+    0,
+    0.35
+   ],
+   "params": {
+    "size": [
+     1.2,
+     0.1,
+     1.9
+    ]
+   }
+  },
+  {
+   "id": "ah_light_tank_e",
+   "type": "light",
+   "position": [
+    2.2,
+    0,
+    0.35
+   ],
+   "params": {
+    "size": [
+     1.2,
+     0.1,
+     1.9
+    ]
+   }
+  },
+  {
+   "id": "ah_light_door_e",
+   "type": "light",
+   "position": [
+    7.3,
+    0,
+    -0.8
+   ],
+   "params": {
+    "size": [
+     1.4,
+     0.1,
+     2.0
+    ]
+   }
+  },
+  {
+   "id": "ah_light_tank_top",
+   "type": "light",
+   "position": [
+    0.2,
+    0,
+    2.4
+   ],
+   "params": {
+    "size": [
+     4.8,
+     0.1,
+     2.2
+    ],
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_guard_desk",
+   "type": "guard",
+   "position": [
+    5.0,
+    0.0,
+    1.9
+   ],
+   "params": {
+    "kind": "posted",
+    "look_a": 135,
+    "look_b": 235,
+    "hold": 150,
+    "turn": 90,
+    "phase": 300,
+    "sight": 8.0,
+    "fov": 50,
+    "hear": 6
+   }
+  },
+  {
+   "id": "ah_wp_mezz_w",
+   "type": "waypoint",
+   "position": [
+    -5.8,
+    0,
+    2.3
+   ],
+   "params": {
+    "next": "ah_wp_mezz_e",
+    "wait": 60,
+    "look": 270
+   }
+  },
+  {
+   "id": "ah_wp_mezz_e",
+   "type": "waypoint",
+   "position": [
+    5.8,
+    0,
+    2.3
+   ],
+   "params": {
+    "next": "ah_wp_mezz_w",
+    "wait": 60,
+    "look": 90
+   }
+  },
+  {
+   "id": "ah_guard_mezz",
+   "type": "guard",
+   "position": [
+    3.5,
+    0,
+    2.3
+   ],
+   "yaw": 270.0,
+   "params": {
+    "kind": "patrol",
+    "route": "ah_wp_mezz_w",
+    "speed": 0.9,
+    "sight": 4.5,
+    "fov": 60,
+    "hear": 6,
+    "turn_rate": 200,
+    "torch": true,
+    "level": 1
+   }
+  },
+  {
+   "id": "ah_camera_mezz",
+   "type": "guard",
+   "position": [
+    4.6,
+    5.5,
+    3.3
+   ],
+   "params": {
+    "kind": "camera",
+    "look_a": 250,
+    "look_b": 295,
+    "hold": 180,
+    "turn": 90,
+    "phase": 443,
+    "sight": 7.5,
+    "fov": 40,
+    "level": 1
+   }
+  }
+ ],
+ "paths": {}
+}
